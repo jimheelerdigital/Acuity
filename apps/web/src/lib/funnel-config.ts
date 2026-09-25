@@ -49,6 +49,8 @@ export type FunnelStep =
   | "timeline"
   | "create-account"
   | "savings"
+  /** Embedded Stripe Checkout after the paywall (not counted in STEP_ORDER). */
+  | "checkout"
   | "download";
 
 // The 11 counted steps for /start. Women convert on relief and on being seen,

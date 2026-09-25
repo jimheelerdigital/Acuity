@@ -7,6 +7,51 @@
 
 ---
 
+## [2026-09-25] — Stripe checkout embedded in the normal funnels; test-funnel plan runs to Day 365
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** (previous commit: plan + Ripple mark), (this commit) (embedded checkout)
+
+### In plain English (for Keenan)
+On /start and /start-bwk, tapping "Start my free 7 days" no longer sends people to a separate Stripe page. They stay on our page: "Start your free week", their plan with a "Change" link, and Stripe's checkout underneath (Link, Apple Pay/Google Pay where available, card). This matches what the test funnels already do. If Stripe's embedded form can't load, it falls back to the old redirect automatically. The in-app /upgrade page is unchanged, per Keenan.
+
+In both test funnels, the plan screen is now "Keenan's year with Ripple" and goes past Day 7: Day 30 "The ripple effect starts" and Day 365 "It spreads through your whole life". The "Ripple keeps track of it" badge on the reassurance screen shows the Ripple logo instead of a feather.
+
+### Technical changes (for Jimmy)
+- New `apps/web/src/lib/stripe-embedded.ts`:
+  - `loadStripeJs` (moved from funnel-v9)
+  - `mountEmbeddedCheckout(el, endpoint, body)`, which POSTs `{...body, embedded: true}` and mounts `initEmbeddedCheckout`
+- `lib/funnel-config.ts`: `FunnelStep` gains `"checkout"`. It is not in STEP_ORDER, so the funnel tests are unchanged, 27/27
+- `components/onboarding-funnel.tsx`:
+  - the paywall's "Start my free 7 days" → `setStep("checkout")`, where it previously ran a hosted redirect
+  - new `CheckoutScreen`: a plan summary with Change → savings, the embedded mount, a skeleton while loading, and a session-expired → sign-in state
+  - on failure it logs `funnel_checkout_embed_failed` and falls back to `handleCheckout` (the hosted redirect)
+  - on mount it logs `funnel_checkout_started` = `<plan>|embedded` and fires the pixel's InitiateCheckout
+  - the step is wired into `ALL_STEPS`, `inFunnel`, `rank` (the savings index), the view event `funnel_checkout_viewed`, `goBack` (→ savings) and the progress bar (100%)
+- No server change: `/api/onboarding/create-checkout` already supported `embedded` with the same `?step=download&payment=success` return URL. `/api/stripe/checkout` (/upgrade) is untouched
+- `components/funnel-v9.tsx`:
+  - `PlanScreen` gets Day 30 (Waves) and Day 365 (Sprout, brand-specific life areas); title "<name>'s year with Ripple"
+  - the reassure badge uses `ripple-mark-coral-t.png` whitened on the brand square
+  - uses the shared Stripe loader
+
+### Manual steps needed
+- [ ] Say "push it" (Keenan)
+- [ ] Review the funnel checkout change before it ships (payment flow) (Jimmy)
+- [ ] Stripe dashboard → Products: rename "Acuity Pro" to "Ripple Pro". Embedded Checkout shows "Try Acuity Pro" (seen in Keenan's screenshot) (Keenan)
+- [ ] Stripe dashboard → Settings → Payment methods: decide which methods to show. Test mode currently offers Cash App Pay, Klarna, Amazon Pay and Bank alongside card and Link (Keenan / Jimmy)
+
+### Notes
+- Verified locally with a Stripe **test-mode** embedded session, stubbing create-checkout because there's no signed-in user:
+  - it renders on /start (light) and /start-bwk (dusk)
+  - events: funnel_checkout_viewed, funnel_checkout_started monthly|embedded
+  - Change → savings
+- The after-payment screens (verify-payment stubbed to paid) render on all four funnels: "Your free trial is on. Welcome to Ripple." on /start*, "You're in." with 3 steps on /start-test*
+- Local shows $4.99 in our summary because the local env lacks `NEXT_PUBLIC_NEW_PRICING_ENABLED`. Prod shows $9.99
+- A stub returning no client secret raises an uncaught "fetchClientSecret failed" from inside Stripe.js (dev overlay). The funnel still falls back to the hosted redirect
+
+---
+
 ## [2026-09-25] — BWK videos now post to Facebook; fantasy lane stops failing
 
 **Requested by:** Keenan

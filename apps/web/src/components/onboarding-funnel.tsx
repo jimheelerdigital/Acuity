@@ -1,5 +1,6 @@
 "use client";
 
+import { mountEmbeddedCheckout } from "@/lib/stripe-embedded";
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from "react";
 import { getProviders, signIn, useSession } from "next-auth/react";
 import { displayAnnual, displayAnnualAsMonthly, displayMonthly, displaySavingsPct, planValueDollars } from "@/lib/pricing";
@@ -49,7 +50,7 @@ const ALL_STEPS: Step[] = [
   "entry", "branch-q2", "branch-q3", "branch-q6",
   "pain", "current-future", "mechanism",
   "processing", "pattern-result", "timeline",
-  "create-account", "savings", "download",
+  "create-account", "savings", "checkout", "download",
 ];
 
 // ─── Constants ──────────────────────────────────────────────────────────────
@@ -261,10 +262,10 @@ export function OnboardingFunnel() {
   // Restore persisted state from sessionStorage so refresh doesn't lose progress.
   // URL ?step= params (OAuth/Stripe returns) take priority over stored state.
   const order = cfg.STEP_ORDER;
-  const inFunnel = (s: string): s is Step => s === "download" || (order as string[]).includes(s);
+  const inFunnel = (s: string): s is Step => s === "download" || s === "checkout" || (order as string[]).includes(s);
   // Position used for progress + forward-only resume. download sits after the
-  // last counted step.
-  const rank = (s: Step) => (s === "download" ? order.length : order.indexOf(s));
+  // last counted step; checkout ranks with the paywall it belongs to.
+  const rank = (s: Step) => (s === "download" ? order.length : s === "checkout" ? order.indexOf("savings") : order.indexOf(s));
   const nextOf = (s: Step): Step => order[order.indexOf(s) + 1] ?? "download";
   const savedRaw = typeof window !== "undefined" ? loadFunnelState(cfg.path) : null;
   const saved = savedRaw && inFunnel(savedRaw.step) ? savedRaw : null;
@@ -540,6 +541,7 @@ export function OnboardingFunnel() {
       timeline: "funnel_timeline_viewed",
       "create-account": "funnel_create_account_viewed",
       savings: "funnel_savings_viewed",
+      checkout: "funnel_checkout_viewed",
       download: "funnel_download_viewed",
     };
     if (eventMap[step]) {
@@ -560,12 +562,13 @@ export function OnboardingFunnel() {
   useEffect(() => { window.scrollTo(0, 0); }, [step]);
 
   const goBack = () => {
+    if (step === "checkout") return setStep("savings");
     const idx = order.indexOf(step);
     if (idx > 0) setStep(order[idx - 1]);
   };
   const advance = () => setStep(nextOf(step));
 
-  const progressPct = step === "download" ? 100 : ((order.indexOf(step) + 1) / order.length) * 100;
+  const progressPct = step === "download" || step === "checkout" ? 100 : ((order.indexOf(step) + 1) / order.length) * 100;
 
   // ── Entry answer — shared by the live screen and the pre-hydration tap ──
   const selectEntry = (opt: { label: string; branch?: Branch }, via: "tap" | "pretap", s1How?: "yes" | "more" | "list") => {
@@ -960,6 +963,18 @@ export function OnboardingFunnel() {
              so OAuth signups (which return to this step, not create-account)
              still fire the reg pixel; it's idempotent + CAPI-guarded so email
              signups that already fired it are a no-op. ── */}
+      {step === "checkout" && (
+        <CheckoutScreen
+          key="checkout"
+          plan={selectedPlan}
+          funnel={cfg.path}
+          track={track}
+          onChangePlan={() => setStep("savings")}
+          onFallback={handleCheckout}
+          fallbackError={apiError}
+        />
+      )}
+
       {step === "savings" && !paymentConfirmed && <TrackCompleteRegistration />}
       {step === "savings" && (
         <SavingsScreen
@@ -976,7 +991,9 @@ export function OnboardingFunnel() {
             // v7 split event for the two-equal-buttons layout.
             track("funnel_paywall_paid_selected", { value: selectedPlan });
             track("funnel_paywall_lock_in_selected", { value: selectedPlan });
-            handleCheckout();
+            // Embedded Stripe Checkout on our own page (2026-09-25). The
+            // hosted redirect (handleCheckout) is the fallback inside it.
+            setStep("checkout");
           }}
           onSkip={() => {
             // "Continue to download" — keep the FREE account (no Pro), go to
@@ -2430,6 +2447,88 @@ function SavingsScreen({ branch, answers: _answers, track, selectedPlan, onPlanC
           <p className="text-[11px] text-center text-acuity-text-ter">Record debriefs and get a one-line summary. No card.</p>
           <p className="text-[10px] text-acuity-text-quiet text-center mt-1">If you&rsquo;re in crisis, call or text 988 (Suicide &amp; Crisis Lifeline).</p>
         </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Checkout (embedded Stripe) ─────────────────────────────────────────────
+//
+// 2026-09-25 (Keenan): Stripe's Embedded Checkout on our own page instead of
+// a redirect, matching /start-test. Apple Pay / Google Pay / Link sit at the
+// top of Stripe's form. Payment success sends the page to the same
+// ?step=download&payment=success return URL as before. If the embed can't
+// load, fall back to the hosted redirect (onFallback = handleCheckout).
+
+function CheckoutScreen({ plan, funnel, track, onChangePlan, onFallback, fallbackError }: {
+  plan: "monthly" | "yearly";
+  funnel: string;
+  track: (event: string, props?: Record<string, unknown>) => void;
+  onChangePlan: () => void;
+  onFallback: () => void;
+  fallbackError: string | null;
+}) {
+  const mountRef = useRef<HTMLDivElement>(null);
+  const [state, setState] = useState<"loading" | "ready" | "fallback" | "expired">("loading");
+  useEffect(() => {
+    let destroyed = false;
+    let instance: { destroy: () => void } | null = null;
+    (async () => {
+      try {
+        if (!mountRef.current) throw new Error("no_mount");
+        const checkout = await mountEmbeddedCheckout(mountRef.current, "/api/onboarding/create-checkout", { interval: plan, funnel });
+        if (destroyed) return checkout.destroy();
+        instance = checkout;
+        setState("ready");
+        track("funnel_checkout_started", { value: `${plan}|embedded` });
+        fireFbq("InitiateCheckout", { content_name: "Start Free Trial", currency: "USD", value: planValueDollars(plan) });
+      } catch (e) {
+        if (destroyed) return;
+        const msg = e instanceof Error ? e.message : "unknown";
+        track("funnel_checkout_embed_failed", { value: msg.slice(0, 120) });
+        if (msg === "unauthorized") return setState("expired");
+        setState("fallback");
+        onFallback();
+      }
+    })();
+    return () => {
+      destroyed = true;
+      instance?.destroy();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [plan, funnel]);
+
+  const price = plan === "yearly" ? `${displayAnnual()}/year` : `${displayMonthly()}/month`;
+  return (
+    <div className="min-h-screen px-6 pt-20 pb-10">
+      <div className="max-w-lg mx-auto funnel-screen">
+        <h2 className="text-center text-[26px] font-bold tracking-tight mb-5">Start your free week</h2>
+        <div className="mb-4 rounded-[22px] f-card px-5 py-4 flex items-center justify-between">
+          <div>
+            <p className="text-[15px] font-semibold">Ripple Pro, {plan === "yearly" ? "yearly" : "monthly"}</p>
+            <p className="text-[13px] text-acuity-text-sec tabular-nums">$0 today, then {price}</p>
+          </div>
+          <button onClick={onChangePlan} className="text-[13px] font-semibold text-acuity-primary">Change</button>
+        </div>
+        {(state === "loading" || state === "fallback") && (
+          <div className="rounded-[22px] f-card p-5 space-y-3">
+            {[70, 100, 100, 60].map((w, i) => (
+              <div key={i} className="h-11 rounded-xl f-sub animate-pulse" style={{ width: `${w}%` }} />
+            ))}
+            <p className="text-center text-[13px] text-acuity-text-ter">
+              {state === "fallback" ? (fallbackError ?? "Opening secure checkout\u2026") : "Loading secure checkout\u2026"}
+            </p>
+          </div>
+        )}
+        {state === "expired" && (
+          <div className="rounded-[22px] f-card p-5 text-center">
+            <p className="text-[15px] text-acuity-text">Your session ended. Sign in again to start your free week.</p>
+            <button onClick={() => signIn(undefined, { callbackUrl: `${window.location.pathname}?step=savings` })}
+              className="mt-4 rounded-full bg-acuity-primary px-6 py-3 text-white font-semibold">Sign in</button>
+          </div>
+        )}
+        <div ref={mountRef} className="rounded-[22px] overflow-hidden" />
+        <p className="mt-4 text-center text-[12px] text-acuity-text-ter">Secure checkout by Stripe. Cancel any time.</p>
       </div>
     </div>
   );
