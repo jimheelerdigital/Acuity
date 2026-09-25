@@ -24,6 +24,13 @@ module.exports = {
   bundleIdentifier: "com.heelerdigital.acuity.watchkitapp",
   // v5 default is 11.0; pin explicitly so the build is deterministic.
   deploymentTarget: "11.0",
+  // Watch app icon. REQUIRED by App Store Connect — a watch app with no icon is
+  // rejected at submission validation ("Missing Icons ... CFBundleIconName is
+  // missing"). apple-targets resolves this path relative to THIS target dir and,
+  // for type:"watch", generates a 1024px watchOS AppIcon.appiconset + sets
+  // ASSETCATALOG_COMPILER_APPICON_NAME=AppIcon (which lets Xcode emit
+  // CFBundleIconName into the merged Info.plist). Reuses the phone app icon.
+  icon: "../../assets/icon.png",
   colors: {
     // Coral accent — matches the app + widget. Color("AccentColor") in Swift.
     AccentColor: "#ED9672",
