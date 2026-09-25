@@ -1,8 +1,10 @@
 import SwiftUI
 
-// The wrist debrief — the center page of the watch app, mirroring the phone's
-// center record button. Tap the orb to start; tap again to stop & upload. The
-// entry lands in the same QUEUED pipeline as a phone recording (POST /api/record).
+// The wrist debrief — the center page, mirroring the phone's center record button.
+// Offline-first: tapping the orb starts; tapping again STOPS and PERSISTS the
+// recording to the queue (RecordingQueue) before any upload, so capture never
+// depends on signal or the phone. Upload happens right after, on open, and
+// whenever a token + network are available; failures stay queued and retry.
 //
 // The orb (OrbView) pulses to the mic amplitude while recording, using the
 // user's palette colors handed over from the phone.
@@ -11,10 +13,12 @@ struct RecordView: View {
     @EnvironmentObject var session: WatchSession
     @EnvironmentObject var router: RecordRouter
     @StateObject private var recorder = Recorder()
+    @ObservedObject private var queue = RecordingQueue.shared
 
-    private enum Phase { case idle, recording, uploading, done, error }
+    private enum Phase { case idle, recording, saving, done, error }
     @State private var phase: Phase = .idle
     @State private var message: String?
+    @State private var doneNote: String = ""
 
     var body: some View {
         VStack(spacing: 10) {
@@ -23,6 +27,7 @@ struct RecordView: View {
                 orbButton(active: false, amplitude: 0)
                 Text("Tap to record")
                     .font(.subheadline.weight(.semibold))
+                pendingNote
             case .recording:
                 orbButton(active: true, amplitude: recorder.amplitude)
                 Text(timeString(recorder.elapsed))
@@ -31,14 +36,14 @@ struct RecordView: View {
                 Text("Tap to stop & save")
                     .font(.caption2)
                     .foregroundStyle(.secondary)
-            case .uploading:
+            case .saving:
                 ProgressView()
                 Text("Saving your debrief…").font(.caption)
             case .done:
                 Image(systemName: "checkmark.circle.fill")
                     .font(.largeTitle)
                     .foregroundStyle(session.primary)
-                Text("Saved. It'll be ready in the app shortly.")
+                Text(doneNote)
                     .font(.caption).multilineTextAlignment(.center)
             case .error:
                 Image(systemName: "exclamationmark.triangle.fill")
@@ -50,9 +55,23 @@ struct RecordView: View {
             }
         }
         .padding(.horizontal, 6)
+        // Drain any queued recordings when the page appears (e.g. back in range).
+        .task { await drainQueue() }
         // Action Button / Siri intent asks to start a debrief.
         .onChange(of: router.recordTrigger) { _, _ in
             if phase == .idle { Task { await beginRecording() } }
+        }
+    }
+
+    @ViewBuilder private var pendingNote: some View {
+        if queue.pendingCount > 0 {
+            HStack(spacing: 4) {
+                Image(systemName: "arrow.up.circle")
+                Text("\(queue.pendingCount) waiting to upload")
+            }
+            .font(.caption2)
+            .foregroundStyle(.secondary)
+            .onTapGesture { Task { await drainQueue() } }
         }
     }
 
@@ -60,7 +79,7 @@ struct RecordView: View {
         Button {
             switch phase {
             case .idle: Task { await beginRecording() }
-            case .recording: Task { await finishAndUpload() }
+            case .recording: Task { await finishAndSave() }
             default: break
             }
         } label: {
@@ -102,28 +121,28 @@ struct RecordView: View {
         }
     }
 
-    private func finishAndUpload() async {
+    private func finishAndSave() async {
         guard let result = recorder.stop() else {
             message = "Recording was empty."
             phase = .error
             return
         }
-        guard let token = session.token else {
-            message = "Sign in on your phone first."
-            phase = .error
-            return
-        }
-        phase = .uploading
-        let api = RippleAPI(apiBase: session.apiBase, token: token)
-        do {
-            try await api.uploadRecording(fileURL: result.url, durationSeconds: result.duration)
-            recorder.cleanup()
-            phase = .done
-            try? await Task.sleep(nanoseconds: 1_800_000_000)
-            phase = .idle
-        } catch {
-            message = "Couldn't upload. Check your connection and try again."
-            phase = .error
-        }
+        // Persist FIRST — capture is never lost, even with no signal or token.
+        queue.enqueue(fileURL: result.url, duration: result.duration)
+        phase = .saving
+        await drainQueue()
+        doneNote = queue.pendingCount == 0
+            ? "Saved. It'll be ready in the app shortly."
+            : "Saved. It'll upload when you're back in range."
+        phase = .done
+        try? await Task.sleep(nanoseconds: 1_800_000_000)
+        phase = .idle
+    }
+
+    /// Upload whatever is queued, if we have a token. No token / no network → the
+    /// recordings simply stay queued and retry next time.
+    private func drainQueue() async {
+        guard queue.pendingCount > 0, let token = session.token else { return }
+        await queue.drain(using: RippleAPI(apiBase: session.apiBase, token: token))
     }
 }
