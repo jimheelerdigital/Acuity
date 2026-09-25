@@ -46,7 +46,7 @@ export async function GET(req: NextRequest) {
   const fv = lastFunnelEvent?.flowVersion ?? "";
   // v9 (/start-test) names its paywall step "paywall"; v8 funnels use "savings".
   const [path, paywallStep] = fv.startsWith("v9")
-    ? ["/start-test", "paywall"]
+    ? [fv.includes("bwk") ? "/start-test-bwk" : "/start-test", "paywall"]
     : fv.includes("bwk")
       ? ["/start-bwk", "savings"]
       : ["/start", "savings"];

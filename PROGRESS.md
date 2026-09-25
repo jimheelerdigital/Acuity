@@ -7,6 +7,45 @@
 
 ---
 
+## [2026-09-25] — /start-test-bwk: the men's version of the test funnel
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** see git log
+
+### In plain English (for Keenan)
+There's now a BWK version of the test funnel at /start-test-bwk. It's the same flow as /start-test (yes/no opener, quick "that's me" statements, email to see results, the paywall with Apple/Google Pay), rewritten for men in BWK's dark navy and indigo look.
+- Opener: "I know what I should be doing. I'm just not doing it."
+- Statements such as "I make the plan. Then I don't follow it."
+- The "how it works" demo uses a work-and-gym example.
+- Pattern names: The Planner, The Operator, The Night Shift, The Loop, The Grinder.
+- Only real reviews.
+- It has its own "Test BWK" view in the admin Funnel tab.
+
+### Technical changes (for Jimmy)
+- `lib/funnel-v9-config.ts`:
+  - New `V9Config` and `V9_CONFIGS` (ripple / bwk). `RIPPLE_V9` wraps the existing constants.
+  - New `BWK_V9`: steps, `bwkStateName`, samples matched by plate answer, reassure copy, plate labels, milestones, dusk theme, flowVersion `v9-test-bwk`.
+- `components/funnel-v9.tsx`:
+  - `FunnelV9({ brand })` provides the config through `V9Ctx`, and every screen reads `useV9()`.
+  - Per-brand sessionStorage key.
+  - Dusk palette CSS (same tokens as /start-bwk).
+  - The coral mark is hue-shifted to indigo on dusk, because the indigo PNG has a solid background.
+  - The portaled `BottomBar` carries the theme attributes.
+  - BWK option icons.
+- New `app/start-test-bwk/page.tsx` with a navy body background.
+- `create-checkout`: `/start-test-bwk` added to the allowlist; hosted cancel goes to `?step=paywall` for any /start-test* path.
+- `/pro-trial`: v9 + bwk flowVersion → `/start-test-bwk?step=paywall`.
+- `install-banner`: `/start-test-bwk` excluded.
+- Admin metrics: `v9-test-bwk` cohort. The funnel steps and labels come from `V9_CONFIGS` by flowVersion. New "Test BWK" button in the Funnel tab.
+
+### Manual steps needed
+- [ ] Point a BWK ad set at /start-test-bwk to compare it with /start-bwk. (Keenan)
+
+### Notes
+- Walked both /start-test and /start-test-bwk hook → email locally with no errors.
+- The only transparent logo is `ripple-mark-coral-t.png`. `ripple-mark-indigo.png` and `ripple-mark-white.png` are RGB with backgrounds.
+
 ## [2026-09-25] — /start-test: one question at a time, yes/no statements, longer funnel
 
 **Requested by:** Keenan

@@ -22,7 +22,7 @@
  * forgot-password email) so she can sign in to the app.
  */
 
-import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { signIn } from "next-auth/react";
 import {
@@ -30,7 +30,7 @@ import {
   CalendarDays, CalendarRange, Car, Check, ChevronLeft, ChevronRight, CircleCheck, CloudRain, Compass,
   Eye, Feather, Footprints, Heart, HeartHandshake, Home, Hourglass, Keyboard, KeyRound, Layers,
   LineChart, ListTodo, Lock, Mail, Mic, Moon, Repeat, RotateCcw, ShieldCheck, Smartphone, Sparkles,
-  Star, Sunrise, Target, TrendingDown, TrendingUp, User, Users, Zap, type LucideIcon,
+  Star, Sunrise, Target, TrendingDown, TrendingUp, User, Users, Zap, Dumbbell, Wallet, Rocket, Flame, Truck, type LucideIcon,
 } from "lucide-react";
 
 import { fireFbq, waitForFbq } from "@/components/meta-pixel-events";
@@ -44,15 +44,10 @@ import {
 } from "@/lib/pricing";
 import { APP_STORE_RATING_LABEL } from "@/lib/social-proof";
 import {
-  V9_FAQ,
-  V9_FLOW_VERSION,
-  V9_HOOK_LINE,
-  V9_PATH,
-  V9_PROGRESS_END,
-  V9_REVIEWS,
-  V9_SAMPLES,
-  V9_STEPS,
-  v9StateName,
+  RIPPLE_V9,
+  V9_CONFIGS,
+  type V9Brand,
+  type V9Config,
   type V9Step,
 } from "@/lib/funnel-v9-config";
 
@@ -84,6 +79,13 @@ const OPTION_ICONS: Record<string, LucideIcon> = {
   "notice:drains": BatteryLow, "notice:lifts": TrendingUp, "notice:habits": Target, "notice:putoff": Hourglass, "notice:mood": LineChart,
   "when:car": Car, "when:walk": Footprints, "when:quiet": Moon, "when:whenever": Zap,
   "commit:ready": Sparkles, "commit:try": Compass,
+  // BWK (/start-test-bwk)
+  "age:u25": User, "age:25": User,
+  "plate:side": Rocket, "plate:training": Dumbbell, "plate:money": Wallet, "plate:family": Users,
+  "pileup:drive": Car,
+  "offload:follow": Target, "offload:train": Dumbbell, "offload:money": Wallet, "offload:remember": ListTodo,
+  "notice:fires": Flame,
+  "when:truck": Truck, "when:gym": Dumbbell,
 };
 
 function sessionId(): string {
@@ -105,12 +107,6 @@ function haptic() {
   } catch {}
 }
 
-/** Small encouragement pills at checkpoints (engagement, per the redesign ask). */
-const MILESTONES: Record<string, string> = {
-  offload: "Halfway there.",
-  talktype: "You're doing great. A few more.",
-  name: "Almost done.",
-};
 
 function randomPassword(): string {
   const bytes = new Uint8Array(24);
@@ -142,7 +138,21 @@ function loadStripeJs(): Promise<boolean> {
   });
 }
 
+/** The brand config for the page (Ripple /start-test or BWK /start-test-bwk). */
+const V9Ctx = createContext<V9Config>(RIPPLE_V9);
+/** The only transparent mark is coral; shift it to the dusk indigo for BWK. */
+const DUSK_MARK = { filter: "hue-rotate(262deg) saturate(1.15) brightness(1.1)" } as const;
+const useV9 = () => useContext(V9Ctx);
+
 const CSS = `
+.v9[data-funnel-theme="dusk"] {
+  --acuity-primary: oklch(0.64 0.16 292); --acuity-primary-hi: oklch(0.74 0.14 293); --acuity-primary-lo: oklch(0.54 0.19 291);
+  --acuity-primary-soft: oklch(0.64 0.16 292 / 0.18);
+  --acuity-bg: oklch(0.168 0.037 287); --acuity-bg-sub: oklch(0.2 0.042 287); --acuity-bg-inset: oklch(0.14 0.03 287); --acuity-card-bg: oklch(0.215 0.048 287);
+  --acuity-grad-primary: linear-gradient(135deg, var(--acuity-primary-hi) 0%, var(--acuity-primary) 55%, var(--acuity-primary-lo) 100%);
+  --acuity-hero-grad: radial-gradient(120% 70% at 50% 0%, oklch(0.34 0.12 292 / 0.35) 0%, transparent 60%), linear-gradient(180deg, oklch(0.19 0.042 287) 0%, oklch(0.168 0.037 287) 100%);
+  color-scheme: dark;
+}
 .v9 { --v9-tint: color-mix(in oklch, var(--acuity-primary) 9%, var(--acuity-card-bg)); --v9-ring: color-mix(in oklch, var(--acuity-primary) 38%, transparent); }
 .v9 .card { background: var(--acuity-card-bg); border: 1px solid var(--acuity-line-strong); box-shadow: 0 1px 2px rgba(20,16,40,.04), 0 6px 18px rgba(20,16,40,.05); }
 .v9 .card-sel { background: var(--v9-tint); border-color: var(--acuity-primary); box-shadow: 0 0 0 3px var(--v9-ring); }
@@ -175,7 +185,10 @@ const CSS = `
 @media (prefers-reduced-motion: reduce) { .v9 * { animation: none !important; transition: none !important; } }
 `;
 
-export function FunnelV9() {
+export function FunnelV9({ brand = "ripple" }: { brand?: V9Brand }) {
+  const C = V9_CONFIGS[brand];
+  // Per-brand session state so /start-test and /start-test-bwk never mix.
+  const stateKey = `${STATE_KEY}_${C.brand}`;
   const [stepId, setStepId] = useState<string>("hook");
   const [answers, setAnswers] = useState<Answers>(EMPTY);
   const [plan, setPlan] = useState<Plan>("yearly");
@@ -188,14 +201,14 @@ export function FunnelV9() {
   // the mount effect runs twice and re-read the overwritten copy).
   const [ready, setReady] = useState(false);
 
-  const idx = V9_STEPS.findIndex((s) => s.id === stepId);
-  const step = V9_STEPS[Math.max(0, idx)];
+  const idx = C.steps.findIndex((s) => s.id === stepId);
+  const step = C.steps[Math.max(0, idx)];
 
   const track = useCallback((event: string, value?: string) => {
     trackOnboardingEvent(event, {
       sessionToken: sid.current || null,
       utm: utm.current,
-      flowVersion: V9_FLOW_VERSION,
+      flowVersion: C.flowVersion,
       value: value ?? null,
     });
   }, []);
@@ -225,12 +238,12 @@ export function FunnelV9() {
     let saved: Persisted | null = null;
     if (urlStep) {
       try {
-        const raw = sessionStorage.getItem(STATE_KEY);
+        const raw = sessionStorage.getItem(stateKey);
         if (raw) saved = JSON.parse(raw) as Persisted;
       } catch {}
     } else {
       try {
-        sessionStorage.removeItem(STATE_KEY);
+        sessionStorage.removeItem(stateKey);
       } catch {}
     }
     if (saved) {
@@ -254,7 +267,7 @@ export function FunnelV9() {
           }
         })
         .catch(() => {});
-    } else if (urlStep && V9_STEPS.some((s) => s.id === urlStep)) {
+    } else if (urlStep && C.steps.some((s) => s.id === urlStep)) {
       // The loader auto-advances; landing on it directly shows the email gate.
       setStepId(urlStep === "loader" ? "email" : urlStep);
     }
@@ -268,7 +281,7 @@ export function FunnelV9() {
   useEffect(() => {
     if (!ready) return;
     try {
-      sessionStorage.setItem(STATE_KEY, JSON.stringify({ stepId, answers, plan } satisfies Persisted));
+      sessionStorage.setItem(stateKey, JSON.stringify({ stepId, answers, plan } satisfies Persisted));
     } catch {}
   }, [ready, stepId, answers, plan]);
 
@@ -291,11 +304,11 @@ export function FunnelV9() {
   useEffect(() => {
     const onPop = () => {
       const target = new URLSearchParams(window.location.search).get("step") ?? "hook";
-      const ti = V9_STEPS.findIndex((s) => s.id === target);
+      const ti = C.steps.findIndex((s) => s.id === target);
       if (ti < 0) return;
       // Once the account exists, anything before the result (the quiz, the
       // email gate) is a dead end: send them to their result instead.
-      const resultIdx = V9_STEPS.findIndex((s) => s.id === "result");
+      const resultIdx = C.steps.findIndex((s) => s.id === "result");
       const dest = accountRef.current && ti < resultIdx ? "result" : target === "loader" ? "email" : target;
       setStepId(dest);
     };
@@ -314,26 +327,31 @@ export function FunnelV9() {
 
   const go = useCallback((id: string) => setStepId(id), []);
   const next = useCallback(() => {
-    const i = V9_STEPS.findIndex((s) => s.id === stepId);
-    if (i >= 0 && i < V9_STEPS.length - 1) setStepId(V9_STEPS[i + 1].id);
+    const i = C.steps.findIndex((s) => s.id === stepId);
+    if (i >= 0 && i < C.steps.length - 1) setStepId(C.steps[i + 1].id);
   }, [stepId]);
   const back = useCallback(() => {
-    const i = V9_STEPS.findIndex((s) => s.id === stepId);
-    if (i > 0) setStepId(V9_STEPS[i - 1].id);
+    const i = C.steps.findIndex((s) => s.id === stepId);
+    if (i > 0) setStepId(C.steps[i - 1].id);
   }, [stepId]);
 
   // Back is allowed through the quiz, and from checkout to the paywall.
   // Never from the result onward (the account exists; the email gate would
   // be a dead end), mirroring the /start fix.
   const canGoBack =
-    (idx > 0 && idx <= V9_STEPS.findIndex((s) => s.id === "name")) || stepId === "checkout";
-  const showProgress = idx >= 0 && idx < V9_PROGRESS_END && stepId !== "loader";
-  const progressPct = Math.max(4, Math.round(((idx + 1) / V9_PROGRESS_END) * 100));
+    (idx > 0 && idx <= C.steps.findIndex((s) => s.id === "name")) || stepId === "checkout";
+  const showProgress = idx >= 0 && idx < C.progressEnd && stepId !== "loader";
+  const progressPct = Math.max(4, Math.round(((idx + 1) / C.progressEnd) * 100));
 
   const firstName = answers.name.trim().split(/\s+/)[0] ?? "";
 
   return (
-    <div className="v9 funnel-root min-h-screen bg-acuity-hero-grad text-acuity-text">
+    <V9Ctx.Provider value={C}>
+    <div
+      className="v9 funnel-root min-h-screen bg-acuity-hero-grad text-acuity-text"
+      data-theme={C.theme === "dusk" ? "dark" : undefined}
+      data-funnel-theme={C.theme}
+    >
       <style dangerouslySetInnerHTML={{ __html: CSS }} />
 
       {(showProgress || canGoBack) && (
@@ -361,10 +379,10 @@ export function FunnelV9() {
       {/* Screens with a fixed bottom CTA bar need room under the content;
           tap-to-advance screens don't, so they can center in the viewport. */}
       <main className={`max-w-lg mx-auto px-5 pt-16 ${["statement", "single", "loader", "checkout", "download"].includes(step.kind) ? "pb-8" : "pb-44"}`}>
-        {MILESTONES[stepId] && (
+        {C.milestones[stepId] && (
           <div key={`m-${stepId}`} className="up -mt-1 mb-4 flex justify-center">
             <span className="flex items-center gap-1.5 rounded-full card px-3 py-1 text-[12px] font-semibold text-acuity-text-sec">
-              <Sparkles className="h-3.5 w-3.5 text-acuity-primary" /> {MILESTONES[stepId]}
+              <Sparkles className="h-3.5 w-3.5 text-acuity-primary" /> {C.milestones[stepId]}
             </span>
           </div>
         )}
@@ -383,6 +401,7 @@ export function FunnelV9() {
         />
       </main>
     </div>
+    </V9Ctx.Provider>
   );
 }
 
@@ -449,11 +468,13 @@ function Heading({ eyebrow, title, sub }: { eyebrow?: ReactNode; title: ReactNod
  * "fixed to that ancestor", which floated the CTA mid-screen over content.
  */
 function BottomBar({ children }: { children: ReactNode }) {
+  const C = useV9();
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
   if (!mounted) return null;
   return createPortal(
-    <div className="v9"><div className="fixed bottom-0 inset-x-0 z-40 backdrop-blur-md border-t border-acuity-line px-5 pt-3 pb-5" style={{ background: "color-mix(in oklch, var(--acuity-bg) 88%, transparent)" }}>
+    // Portaled outside the themed root, so it carries the theme itself.
+    <div className="v9" data-theme={C.theme === "dusk" ? "dark" : undefined} data-funnel-theme={C.theme}><div className="fixed bottom-0 inset-x-0 z-40 backdrop-blur-md border-t border-acuity-line px-5 pt-3 pb-5" style={{ background: "color-mix(in oklch, var(--acuity-bg) 88%, transparent)" }}>
       <div className="max-w-lg mx-auto">{children}</div>
     </div></div>,
     document.body
@@ -556,6 +577,7 @@ function OptionCard({ icon: Icon, label, selected, onClick, trailing = "check", 
 }
 
 function SingleScreen({ step, answers, setAnswers, next, track }: ViewProps & { step: Extract<V9Step, { kind: "single" }> }) {
+  const C = useV9();
   const isHook = step.id === "hook";
   const [picked, setPicked] = useState<string | null>(answers.single[step.id] ?? null);
   // Guards a double-tap from advancing twice. It must NOT key off `picked`:
@@ -567,7 +589,7 @@ function SingleScreen({ step, answers, setAnswers, next, track }: ViewProps & { 
       {isHook && (
         <div className="mb-6">
           <RippleMark />
-          <p className="mt-5 text-center text-[15px] font-semibold text-acuity-text-sec text-balance">{V9_HOOK_LINE}</p>
+          <p className="mt-5 text-center text-[15px] font-semibold text-acuity-text-sec text-balance">{C.hookLine}</p>
         </div>
       )}
       <Heading title={step.title} sub={step.sub} />
@@ -602,6 +624,7 @@ function SingleScreen({ step, answers, setAnswers, next, track }: ViewProps & { 
 }
 
 function MultiScreen({ step, answers, setAnswers, next, track }: ViewProps & { step: Extract<V9Step, { kind: "multi" }> }) {
+  const C = useV9();
   const picked = answers.multi[step.id] ?? [];
   const toggle = (id: string) =>
     setAnswers((a) => {
@@ -671,7 +694,7 @@ function MultiScreen({ step, answers, setAnswers, next, track }: ViewProps & { s
   );
 }
 
-const STATEMENT_STEPS = V9_STEPS.filter((s): s is Extract<V9Step, { kind: "statement" }> => s.kind === "statement");
+const statementSteps = (C: V9Config) => C.steps.filter((s): s is Extract<V9Step, { kind: "statement" }> => s.kind === "statement");
 
 /**
  * One statement as a big "thought" card, two stacked buttons. The card flies
@@ -679,6 +702,7 @@ const STATEMENT_STEPS = V9_STEPS.filter((s): s is Extract<V9Step, { kind: "state
  * Vertically centered so the screen never has a dead lower half.
  */
 function StatementScreen({ step, answers, setAnswers, next, track }: ViewProps & { step: Extract<V9Step, { kind: "statement" }> }) {
+  const C = useV9();
   const isHook = step.id === "hook";
   const [fly, setFly] = useState<"yes" | "no" | null>(null);
   const advancing = useRef(false);
@@ -692,28 +716,28 @@ function StatementScreen({ step, answers, setAnswers, next, track }: ViewProps &
     if (isHook) track("funnel_entry_selected", v);
     setTimeout(next, 380);
   };
-  const pos = STATEMENT_STEPS.findIndex((s) => s.id === step.id);
+  const pos = statementSteps(C).findIndex((s) => s.id === step.id);
   const prev = answers.single[step.id];
   return (
     <div className="flex min-h-[calc(100svh-6rem)] flex-col justify-center">
       {isHook ? (
         <div className="up mb-5 flex flex-col items-center text-center">
           <div className="flex items-center gap-2">
-            <img src="/ripple-mark-coral-t.png" alt="" width={36} height={36} className="h-9 w-9" />
+            <img src="/ripple-mark-coral-t.png" alt="" width={36} height={36} className="h-9 w-9" style={C.theme === "dusk" ? DUSK_MARK : undefined} />
             <span className="text-[24px] font-bold tracking-tight">ripple</span>
           </div>
-          <p className="mt-2.5 max-w-[20rem] text-[14px] leading-snug text-acuity-text-sec text-balance">{V9_HOOK_LINE}</p>
+          <p className="mt-2.5 max-w-[20rem] text-[14px] leading-snug text-acuity-text-sec text-balance">{C.hookLine}</p>
         </div>
       ) : (
         <p className="up mb-3 text-center text-[13px] font-semibold tracking-wide text-acuity-primary">
-          Tap what&rsquo;s true &middot; {pos} of {STATEMENT_STEPS.length - 1}
+          Tap what&rsquo;s true &middot; {pos} of {statementSteps(C).length - 1}
         </p>
       )}
       <h1 className="up mb-5 text-center text-[clamp(22px,6.6vw,27px)] font-bold leading-tight tracking-tight">{step.title ?? "Does this sound like you?"}</h1>
 
       <div className={`card-in relative overflow-hidden rounded-[28px] card px-6 py-[clamp(20px,6vw,32px)] ${fly === "yes" ? "fly-yes" : fly === "no" ? "fly-no" : ""}`}>
         <span className="absolute left-0 top-0 h-full w-1.5 grad" aria-hidden />
-        <img src="/ripple-mark-coral-t.png" alt="" aria-hidden className="pointer-events-none absolute -bottom-6 -right-6 h-28 w-28 opacity-[0.07]" />
+        <img src="/ripple-mark-coral-t.png" alt="" aria-hidden className="pointer-events-none absolute -bottom-6 -right-6 h-28 w-28 opacity-[0.07]" style={C.theme === "dusk" ? DUSK_MARK : undefined} />
         <p className="relative text-[clamp(19px,5.8vw,23px)] font-semibold leading-[1.3] tracking-tight text-balance">{step.statement}</p>
       </div>
 
@@ -744,14 +768,15 @@ function StatementScreen({ step, answers, setAnswers, next, track }: ViewProps &
   );
 }
 
-const SLIDER_STEPS = V9_STEPS.filter((s): s is Extract<V9Step, { kind: "slider" }> => s.kind === "slider");
+const sliderSteps = (C: V9Config) => C.steps.filter((s): s is Extract<V9Step, { kind: "slider" }> => s.kind === "slider");
 
 function SliderScreen({ step, answers, setAnswers, next, track }: ViewProps & { step: Extract<V9Step, { kind: "slider" }> }) {
+  const C = useV9();
   // Stored answers are 1-5; the range input is 0-100.
   const saved = answers.sliders[step.id];
   const [val, setVal] = useState<number>(saved != null ? (saved - 1) * 25 : 50);
   const [moved, setMoved] = useState(answers.sliders[step.id] != null);
-  const pos = SLIDER_STEPS.findIndex((s) => s.id === step.id);
+  const pos = sliderSteps(C).findIndex((s) => s.id === step.id);
   const lean = val < 42 ? "left" : val > 58 ? "right" : "middle";
   const done = useRef(false);
   const commit = () => {
@@ -765,7 +790,7 @@ function SliderScreen({ step, answers, setAnswers, next, track }: ViewProps & { 
   };
   return (
     <div className="enter">
-      <Heading eyebrow={`Slider ${pos + 1} of ${SLIDER_STEPS.length}`} title="Which sounds more like you?" sub="Drag toward the one that fits, then let go." />
+      <Heading eyebrow={`Slider ${pos + 1} of ${sliderSteps(C).length}`} title="Which sounds more like you?" sub="Drag toward the one that fits, then let go." />
       <div className="card rounded-3xl p-5">
         <div className="grid grid-cols-2 gap-3">
           {[step.left, step.right].map((s, i) => {
@@ -815,14 +840,13 @@ function SliderScreen({ step, answers, setAnswers, next, track }: ViewProps & { 
 
 // ─── Info screens ──────────────────────────────────────────────────────────
 
-const SMALL_THINGS = ["Emma's form", "Refill Mom's meds", "Call the plumber", "Dentist Thursday", "Reply to Dana", "Birthday gift", "Book my checkup", "Groceries"];
-
 function ReassureScreen({ next }: ViewProps) {
+  const C = useV9();
   return (
     <div className="enter">
-      <Heading title="You're not the only one holding all of it." />
+      <Heading title={C.reassure.title} />
       <div className="relative h-[210px] mb-6 overflow-hidden">
-        {SMALL_THINGS.map((t, i) => (
+        {C.reassure.things.map((t, i) => (
           <span
             key={t}
             className="absolute left-1/2 top-0 -ml-[60px] w-[120px] text-center rounded-full card px-3 py-1.5 text-[12px] font-semibold text-acuity-text-sec"
@@ -846,22 +870,23 @@ function ReassureScreen({ next }: ViewProps) {
         </div>
       </div>
       <p className="text-center text-[16px] leading-relaxed text-acuity-text-sec text-balance">
-        Most of what fills a busy head isn&rsquo;t one big problem. It&rsquo;s fifty small things for other people, with nowhere to set them down.
+        {C.reassure.body}
       </p>
       <div className="mt-6">
-        <ReviewCard {...V9_REVIEWS[0]} />
+        <ReviewCard {...C.reviews[0]} />
       </div>
       <BottomBar>
-        <PrimaryButton onClick={next}>That&rsquo;s me</PrimaryButton>
+        <PrimaryButton onClick={next}>{C.reassure.cta}</PrimaryButton>
       </BottomBar>
     </div>
   );
 }
 
 function ReviewScreen({ next }: ViewProps) {
+  const C = useV9();
   const [active, setActive] = useState(0);
   const ref = useRef<HTMLDivElement>(null);
-  const reviews = [V9_REVIEWS[1], V9_REVIEWS[2], V9_REVIEWS[0]];
+  const reviews = [C.reviews[1], C.reviews[2], C.reviews[0]];
   return (
     <div className="enter">
       <Heading eyebrow="From people who use it" title="What they notice after a few weeks" />
@@ -892,14 +917,13 @@ function ReviewScreen({ next }: ViewProps) {
   );
 }
 
-function pickSample(plate: string[]) {
-  if (plate.includes("kids")) return V9_SAMPLES.kids;
-  if (plate.includes("parents")) return V9_SAMPLES.parents;
-  return V9_SAMPLES.work;
+function pickSample(plate: string[], C: V9Config) {
+  return C.samples.find((x) => x.match.some((m) => plate.includes(m))) ?? C.samples[C.samples.length - 1];
 }
 
 function HowScreen({ answers, next, track }: ViewProps) {
-  const sample = pickSample(answers.multi.plate ?? []);
+  const C = useV9();
+  const sample = pickSample(answers.multi.plate ?? [], C);
   const [run, setRun] = useState(0);
   const [typed, setTyped] = useState(0);
   const [shown, setShown] = useState(0);
@@ -1027,15 +1051,7 @@ function NameScreen({ answers, setAnswers, next, track }: ViewProps) {
   );
 }
 
-function plateLabel(plate: string[]): string {
-  const map: Record<string, string> = {
-    kids: "your kids",
-    parents: "your parents",
-    work: "work",
-    partner: "your partner",
-    house: "the house",
-    health: "your health",
-  };
+function plateLabel(plate: string[], map: Record<string, string>): string {
   const parts = plate.map((p) => map[p]).filter(Boolean).slice(0, 3);
   if (parts.length === 0) return "everything on your plate";
   if (parts.length === 1) return parts[0];
@@ -1043,9 +1059,10 @@ function plateLabel(plate: string[]): string {
 }
 
 function LoaderScreen({ answers, firstName, next }: ViewProps) {
+  const C = useV9();
   const lines = useMemo(
     () => [
-      { icon: Users, text: `Reading your answers about ${plateLabel(answers.multi.plate ?? [])}` },
+      { icon: Users, text: `Reading your answers about ${plateLabel(answers.multi.plate ?? [], C.plateLabels)}` },
       { icon: Layers, text: "Weighing what slips through the cracks" },
       { icon: Brain, text: "Matching you to how Ripple sorts a debrief" },
       { icon: Sparkles, text: firstName ? `Building ${firstName}'s first week` : "Building your first week" },
@@ -1068,7 +1085,7 @@ function LoaderScreen({ answers, firstName, next }: ViewProps) {
     };
   }, [next]);
   const R = 58;
-  const C = 2 * Math.PI * R;
+  const CIRC = 2 * Math.PI * R;
   return (
     <div className="enter pt-4">
       <div className="relative mx-auto h-[150px] w-[150px]">
@@ -1080,7 +1097,7 @@ function LoaderScreen({ answers, firstName, next }: ViewProps) {
             </linearGradient>
           </defs>
           <circle cx="70" cy="70" r={R} fill="none" stroke="var(--acuity-bg-sub)" strokeWidth="10" />
-          <circle cx="70" cy="70" r={R} fill="none" stroke="url(#v9g)" strokeWidth="10" strokeLinecap="round" strokeDasharray={C} strokeDashoffset={C * (1 - pct / 100)} />
+          <circle cx="70" cy="70" r={R} fill="none" stroke="url(#v9g)" strokeWidth="10" strokeLinecap="round" strokeDasharray={CIRC} strokeDashoffset={CIRC * (1 - pct / 100)} />
         </svg>
         <div className="absolute inset-0 flex items-center justify-center text-[30px] font-bold tabular-nums">{pct}%</div>
       </div>
@@ -1105,12 +1122,13 @@ function LoaderScreen({ answers, firstName, next }: ViewProps) {
 }
 
 function EmailScreen({ answers, setAnswers, firstName, next, go, track }: ViewProps) {
+  const C = useV9();
   const [email, setEmail] = useState(answers.email);
   const [optIn, setOptIn] = useState(false);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [exists, setExists] = useState(false);
-  const state = v9StateName({ plate: answers.multi.plate ?? [], sliders: answers.sliders, pileup: answers.single.pileup, said: answers.single });
+  const state = C.stateName({ plate: answers.multi.plate ?? [], sliders: answers.sliders, pileup: answers.single.pileup, said: answers.single });
 
   // Already gave an email this session (refresh, a ?step=email link, or
   // history): the account exists, so go straight to the result instead of
@@ -1149,7 +1167,7 @@ function EmailScreen({ answers, setAnswers, firstName, next, go, track }: ViewPr
             ...(funnelUtm.utmCampaign ? { utm_campaign: funnelUtm.utmCampaign } : {}),
             ...(funnelUtm.utmContent ? { utm_content: funnelUtm.utmContent } : {}),
             ...(funnelUtm.fbclid ? { fbclid: funnelUtm.fbclid } : {}),
-            landingPath: V9_PATH,
+            landingPath: C.path,
             marketingOptIn: optIn ? "yes" : "no",
           },
         }),
@@ -1188,7 +1206,7 @@ function EmailScreen({ answers, setAnswers, firstName, next, go, track }: ViewPr
       <div className="enter">
         <Heading title="You already have a Ripple account." sub="Sign in and we'll take you straight to your results." />
         <BottomBar>
-          <PrimaryButton onClick={() => signIn(undefined, { callbackUrl: `${V9_PATH}?step=result` })}>Sign in</PrimaryButton>
+          <PrimaryButton onClick={() => signIn(undefined, { callbackUrl: `${C.path}?step=result` })}>Sign in</PrimaryButton>
         </BottomBar>
       </div>
     );
@@ -1246,8 +1264,9 @@ function EmailScreen({ answers, setAnswers, firstName, next, go, track }: ViewPr
 // ─── Result, plan, paywall ─────────────────────────────────────────────────
 
 function ResultScreen({ answers, firstName, next }: ViewProps) {
-  const state = v9StateName({ plate: answers.multi.plate ?? [], sliders: answers.sliders, pileup: answers.single.pileup, said: answers.single });
-  const bars = SLIDER_STEPS.map((s) => {
+  const C = useV9();
+  const state = C.stateName({ plate: answers.multi.plate ?? [], sliders: answers.sliders, pileup: answers.single.pileup, said: answers.single });
+  const bars = sliderSteps(C).map((s) => {
     const v = answers.sliders[s.id] ?? 3;
     return { label: s.right, pct: Math.round(((v - 1) / 4) * 100) };
   });
@@ -1282,11 +1301,11 @@ function ResultScreen({ answers, firstName, next }: ViewProps) {
         </div>
       </div>
 
-      {STATEMENT_STEPS.some((st) => answers.single[st.id] === "yes") && (
+      {statementSteps(C).some((st) => answers.single[st.id] === "yes") && (
         <div className="mt-4 card rounded-3xl p-5">
           <p className="text-[13px] font-bold mb-2.5">In your own words</p>
           <div className="space-y-2">
-            {STATEMENT_STEPS.filter((st) => answers.single[st.id] === "yes").map((st, i) => (
+            {statementSteps(C).filter((st) => answers.single[st.id] === "yes").map((st, i) => (
               <p key={st.id} className="up flex gap-2 text-[15px] leading-snug" style={{ animationDelay: `${300 + i * 120}ms` }}>
                 <Check className="mt-0.5 h-4 w-4 shrink-0 text-acuity-primary" strokeWidth={3} />
                 <span>&ldquo;{st.statement}&rdquo;</span>
@@ -1301,7 +1320,7 @@ function ResultScreen({ answers, firstName, next }: ViewProps) {
           <span className="text-[13px] text-acuity-text-ter w-full text-center">You&rsquo;re carrying</span>
           {plate.map((p) => {
             const Icon = OPTION_ICONS[`plate:${p}`] ?? Sparkles;
-            const label = V9_STEPS.find((s) => s.id === "plate" && s.kind === "multi") as Extract<V9Step, { kind: "multi" }>;
+            const label = C.steps.find((s) => s.id === "plate" && s.kind === "multi") as Extract<V9Step, { kind: "multi" }>;
             return (
               <span key={p} className="up flex items-center gap-1.5 rounded-full card px-3 py-1.5 text-[13px] font-semibold">
                 <Icon className="h-3.5 w-3.5 text-acuity-primary" />
@@ -1313,7 +1332,7 @@ function ResultScreen({ answers, firstName, next }: ViewProps) {
       )}
 
       <p className="mt-6 text-center text-[15px] leading-relaxed text-acuity-text-sec text-balance">
-        None of this means something is wrong with you. It means there&rsquo;s nowhere to set it down. That&rsquo;s the part Ripple does.
+        {C.resultOutro}
       </p>
       <BottomBar>
         <PrimaryButton onClick={next}>See my first week</PrimaryButton>
@@ -1375,12 +1394,13 @@ const PRO_FEATURES: { icon: LucideIcon; title: string; text: string }[] = [
 ];
 
 function PaywallScreen({ plan, setPlan, next, go, track, firstName, answers }: ViewProps) {
+  const C = useV9();
   const [open, setOpen] = useState<number | null>(null);
   // Warm Stripe.js while she reads the paywall so checkout mounts fast.
   useEffect(() => {
     loadStripeJs().catch(() => {});
   }, []);
-  const state = v9StateName({ plate: answers.multi.plate ?? [], sliders: answers.sliders, pileup: answers.single.pileup, said: answers.single });
+  const state = C.stateName({ plate: answers.multi.plate ?? [], sliders: answers.sliders, pileup: answers.single.pileup, said: answers.single });
   const after = plan === "yearly" ? `${displayAnnual()}/year` : `${displayMonthly()}/month`;
   const pick = (p: Plan) => {
     setPlan(p);
@@ -1471,15 +1491,15 @@ function PaywallScreen({ plan, setPlan, next, go, track, firstName, answers }: V
       <div className="mt-6">
         <Stars />
         <div className="mt-3 snap noscroll -mx-5 px-5 flex gap-3 overflow-x-auto pb-1">
-          {V9_REVIEWS.map((r) => (
+          {C.reviews.map((r) => (
             <ReviewCard key={r.name} {...r} className="w-[84%] shrink-0" />
           ))}
         </div>
       </div>
 
       <div className="mt-6 card rounded-3xl px-5 py-2">
-        {V9_FAQ.map((f, i) => (
-          <div key={f.q} className={i < V9_FAQ.length - 1 ? "border-b border-acuity-line" : ""}>
+        {C.faq.map((f, i) => (
+          <div key={f.q} className={i < C.faq.length - 1 ? "border-b border-acuity-line" : ""}>
             <button onClick={() => setOpen(open === i ? null : i)} className="w-full py-3.5 text-left text-[15px] font-semibold flex items-center justify-between gap-3">
               {f.q}
               <ChevronRight className={`h-4 w-4 shrink-0 text-acuity-text-ter transition ${open === i ? "rotate-90" : ""}`} />
@@ -1526,6 +1546,7 @@ function Radio({ on }: { on: boolean }) {
 }
 
 function CheckoutScreen({ plan, go, track }: ViewProps) {
+  const C = useV9();
   const mountRef = useRef<HTMLDivElement>(null);
   const [state, setState] = useState<"loading" | "ready" | "fallback" | "error">("loading");
   const [err, setErr] = useState<string | null>(null);
@@ -1534,7 +1555,7 @@ function CheckoutScreen({ plan, go, track }: ViewProps) {
     const res = await fetch("/api/onboarding/create-checkout", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ interval: plan, funnel: V9_PATH }),
+      body: JSON.stringify({ interval: plan, funnel: C.path }),
     });
     const data = (await res.json().catch(() => ({}))) as { url?: string; error?: string };
     if (data.url) {
@@ -1563,7 +1584,7 @@ function CheckoutScreen({ plan, go, track }: ViewProps) {
             const res = await fetch("/api/onboarding/create-checkout", {
               method: "POST",
               headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ interval: plan, funnel: V9_PATH, embedded: true }),
+              body: JSON.stringify({ interval: plan, funnel: C.path, embedded: true }),
             });
             const data = (await res.json()) as { clientSecret?: string; error?: string };
             if (!data.clientSecret) throw new Error(res.status === 401 ? "unauthorized" : data.error ?? "No client secret");

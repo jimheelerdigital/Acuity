@@ -54,6 +54,7 @@ const EXCLUDED_PREFIXES = [
   "/start",
   "/start-bwk",
   "/start-test",
+  "/start-test-bwk",
 ];
 
 function isEligibleRoute(pathname: string): boolean {

@@ -23,7 +23,7 @@ type Interval = "monthly" | "yearly";
 // Funnel paths Stripe may send the buyer back to. Allowlisted so the request
 // body can't point success_url anywhere else. /start-bwk buyers used to land
 // on /start (women's copy, wrong cohort tag) after paying.
-const FUNNEL_PATHS = new Set(["/start", "/start-bwk", "/start-test"]);
+const FUNNEL_PATHS = new Set(["/start", "/start-bwk", "/start-test", "/start-test-bwk"]);
 
 export async function POST(req: NextRequest) {
   // TODO: v1.4 GDPR — If this checkout ever switches from deferred
@@ -91,8 +91,8 @@ export async function POST(req: NextRequest) {
             // Back from Checkout = back to the paywall, where they can switch
             // plan or take the no-card path. (Was step=download, which
             // dropped them past the choice with no way back.)
-            // /start-test (v9) calls its paywall step "paywall".
-            cancel_url: `${process.env.NEXTAUTH_URL}${funnelPath}?step=${funnelPath === "/start-test" ? "paywall" : "savings"}`,
+            // /start-test and /start-test-bwk (v9) call their paywall step "paywall".
+            cancel_url: `${process.env.NEXTAUTH_URL}${funnelPath}?step=${funnelPath.startsWith("/start-test") ? "paywall" : "savings"}`,
           }),
       mode: "subscription",
       // No payment_method_types: Checkout then offers every method enabled in
