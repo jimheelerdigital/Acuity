@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import dynamic from "next/dynamic";
@@ -175,6 +175,14 @@ function NavButton({
 
 export default function AdminDashboard() {
   const searchParams = useSearchParams();
+  // Mark this device as internal (2026-09-26): funnel visits from any
+  // browser that has opened the admin are stored as internal traffic and
+  // left out of the funnel stats (api/onboarding-events).
+  useEffect(() => {
+    try {
+      document.cookie = "acuity_internal=1; path=/; max-age=31536000; SameSite=Lax";
+    } catch {}
+  }, []);
   const router = useRouter();
 
   const rawTab = searchParams.get("tab") ?? "command";

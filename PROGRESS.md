@@ -7,6 +7,35 @@
 
 ---
 
+## [2026-09-26] — Our own test visits no longer count in the funnel dashboard
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** (see git log: "fix: Keep internal QA traffic out of the funnel dashboard")
+
+### In plain English (for Keenan)
+The dashboard showed 31 visitors on the test funnel even though the 50/50 split was off. Every one of them was us: automated test browsers running the redesigns and bug sweeps, plus you clicking through while signed in. Those visits are now labelled internal and hidden. From now on, test browsers, admin accounts, and any browser that has opened the admin dashboard are labelled internal automatically.
+
+### Technical changes (for Jimmy)
+- `apps/web/src/app/api/onboarding-events/route.ts`: events are stored with `isBot: true`, not dropped, when any of these is true:
+  - the body has `automation: "1"`
+  - the `acuity_internal=1` cookie is present
+  - the UA matches `INTERNAL_UA` (Playwright presets: iOS 15_0/10_3_1, or "Android N; Pixel N)" without " Build/")
+  - the session user is an admin
+- `apps/web/src/lib/track-onboarding.ts`: sends `automation: "1"` when `navigator.webdriver` is true.
+- `apps/web/src/app/admin/admin-dashboard.tsx`: sets a 1-year `acuity_internal=1` cookie on load.
+- Data backfill, via a one-off script: 1,044 OnboardingEvent rows from 50 sessions since 09-19 set to `isBot = true`.
+  - /start-test: 30/30; /start-test-bwk: 4/4; /start: 14/170; /start-bwk: 2/82.
+  - Rule used: an internal UA, an internal user (admin or keenanassaraf@gmail.com), or, with the split off, a /start-test* session with no ad tags.
+
+### Manual steps needed
+- [ ] Open /admin once on each phone you test the funnel from, so that device gets the internal cookie (Keenan).
+
+### Notes
+- "Real visitors" couldn't catch this: it keeps any session that clicked, and QA sessions click everything.
+- Four /start sessions carried Meta tags but were internal: three test browsers with fake meta/fbclid params from the 09-25 ad-tracking checks, and Keenan's own bio-link click.
+- The metrics cache is 5 minutes, so the dashboard updates on its own.
+
 ## [2026-09-25] — /start-test-bwk uses the same light look as /start-test
 
 **Requested by:** Keenan

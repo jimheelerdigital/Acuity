@@ -38,6 +38,9 @@ export function trackOnboardingEvent(
     else if (opts?.values != null) body.value = Array.isArray(opts.values) ? opts.values.join(", ") : String(opts.values);
     // Browser environment
     if (opts?.browser) body.browser = opts.browser;
+    // Automated browsers (Playwright/Puppeteer/Selenium set this) are our own
+    // QA runs; the server stores them as internal so the funnel stats skip them.
+    if (typeof navigator !== "undefined" && navigator.webdriver) body.automation = "1";
     // UTM attribution
     if (opts?.utm) {
       if (opts.utm.utmSource) body.utmSource = opts.utm.utmSource;

@@ -69,12 +69,24 @@ const VALID_NON_FUNNEL_EVENTS = new Set([
 
 const BOT_PATTERNS = /facebookexternalhit|Facebot|FacebookBot|WhatsApp|Twitterbot|LinkedInBot|Googlebot|AdsBot-Google|AdsBot|Google-Ads|Google-Safety|Mediapartners-Google|APIs-Google|FeedFetcher-Google|Google-Read-Aloud|DuplexWeb-Google|Storebot-Google|bingbot|Bytespider|Amazonbot|prefetch|prerender|HeadlessChrome|Slurp|DuckDuckBot|Baiduspider|YandexBot|Sogou|Exabot|ia_archiver|MJ12bot|AhrefsBot|SemrushBot|DotBot|PetalBot|bot\/|crawler|spider/i;
 
+/**
+ * Internal traffic (2026-09-26, per Keenan: "how is this showing ripple test
+ * numbers if the funnel is off"): with the split off, every /start-test
+ * session was our own QA. Playwright's stock device presets send synthetic
+ * UAs no real 2026 visitor has: iOS 15.0 / 10.3.1 iPhones, and Android UAs
+ * naming the Pixel model (real Chrome reduces it to "Android 10; K", and
+ * in-app WebViews add " Build/"). Internal events are STORED with isBot=true,
+ * so the dashboard hides them by default and "show bots" can still see them.
+ */
+const INTERNAL_UA = /iPhone OS (15_0|10_3_1) like Mac OS X|\bAndroid \d+; Pixel \d+( Pro)?\)/;
+const INTERNAL_COOKIE = "acuity_internal";
+
 export async function POST(req: NextRequest) {
   let body: {
     event?: string; sessionToken?: string; userId?: string; value?: string;
     utmSource?: string; utmMedium?: string; utmCampaign?: string;
     utmContent?: string; utmTerm?: string; fbclid?: string;
-    browser?: string; flowVersion?: string;
+    browser?: string; flowVersion?: string; automation?: string;
   };
   try {
     body = await req.json();
@@ -112,12 +124,17 @@ export async function POST(req: NextRequest) {
     // Verify userId exists in User table to avoid FK constraint violation
     // (stale sessions can reference deleted/non-existent users), and
     // honor the per-user product-analytics opt-out (v1.4 GDPR slice).
+    let internal =
+      body.automation === "1" ||
+      req.cookies.get(INTERNAL_COOKIE)?.value === "1" ||
+      (ua ? INTERNAL_UA.test(ua) : false);
     let verifiedUserId = userId;
     if (verifiedUserId) {
       const userRow = await prisma.user.findUnique({
         where: { id: verifiedUserId },
-        select: { id: true, productAnalyticsEnabled: true },
+        select: { id: true, productAnalyticsEnabled: true, isAdmin: true },
       });
+      if (userRow?.isAdmin) internal = true;
       if (!userRow) {
         verifiedUserId = null;
       } else if (userRow.productAnalyticsEnabled === false) {
@@ -141,7 +158,7 @@ export async function POST(req: NextRequest) {
         utmTerm: body.utmTerm ?? null,
         fbclid: body.fbclid ?? null,
         browser: ua,
-        isBot: false,
+        isBot: internal,
         flowVersion: body.flowVersion ?? null,
       },
     });
