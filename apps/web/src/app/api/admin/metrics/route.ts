@@ -3064,15 +3064,17 @@ async function getFunnelAnalytics(prisma: PrismaClient, start: Date, end: Date, 
   // new Stripe subscriber, so /start and /start-bwk both showed the same 2
   // even though both trials came from /start-bwk.
   const funnelUserIds = [...new Set(fetchedEvents.map((e: { userId: string | null }) => e.userId).filter((u: string | null): u is string => !!u))];
-  const stripePaid = await prisma.user.findMany({
+  const { isInternalEmail } = await import("@/lib/internal-traffic");
+  const stripePaid = (await prisma.user.findMany({
     where: {
       subscriptionStatus: "PRO",
       stripeSubscriptionId: { not: null },
       createdAt: { gte: effectiveStart, lte: effectiveEnd },
+      isAdmin: false,
       ...(flowVersion === "all" ? {} : { id: { in: funnelUserIds } }),
     },
     select: { id: true, email: true, createdAt: true, signupMethod: true },
-  });
+  })).filter((u: { email: string | null }) => !isInternalEmail(u.email)); // internal never counts (2026-09-26)
 
   // ── Commit completion rate (7c) ──
   const commitViewedSessions = stepReach["commit"]?.size ?? 0;

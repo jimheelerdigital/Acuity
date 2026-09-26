@@ -41,6 +41,12 @@ export function trackOnboardingEvent(
     // Automated browsers (Playwright/Puppeteer/Selenium set this) are our own
     // QA runs; the server stores them as internal so the funnel stats skip them.
     if (typeof navigator !== "undefined" && navigator.webdriver) body.automation = "1";
+    // ?internal=1 on any funnel URL marks this device internal for a year
+    // (for team phones that never open /admin). See lib/internal-traffic.ts.
+    if (typeof window !== "undefined" && /[?&]internal=1\b/.test(window.location.search)) {
+      document.cookie = "acuity_internal=1; path=/; max-age=31536000; SameSite=Lax";
+      body.automation = "1";
+    }
     // UTM attribution
     if (opts?.utm) {
       if (opts.utm.utmSource) body.utmSource = opts.utm.utmSource;

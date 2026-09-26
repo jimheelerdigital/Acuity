@@ -7,6 +7,37 @@
 
 ---
 
+## [2026-09-26] — Internal sessions can never count toward the funnel
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** (see git log: "fix: Guarantee internal sessions never count toward the funnel")
+
+### In plain English (for Keenan)
+Anything from us is now excluded from the funnel numbers, from start to finish. That covers team accounts, test signups, automated test browsers and any team device. If any single step of a visit looks internal, the whole visit is excluded, including steps logged before and after, and the Stripe trial and payment events. Any team phone can be marked internal by opening any funnel link with `?internal=1` on the end.
+
+### Technical changes (for Jimmy)
+- New `apps/web/src/lib/internal-traffic.ts`, the single source of truth. Exports:
+  - `INTERNAL_UA`, `INTERNAL_COOKIE`
+  - `isInternalEmail`: domains heelerdigital.com, getacuity.io, goripple.io; keenanassaraf@gmail.com; env `INTERNAL_EMAILS`
+  - `isInternalUser`, `isInternalSession`, `flagSessionInternal`
+- `apps/web/src/app/api/onboarding-events/route.ts`:
+  - Internal if any of: automation flag, the cookie, the UA, admin, or an internal email.
+  - A session already flagged makes every new event internal.
+  - A newly internal event back-flags the whole session.
+- `apps/web/src/app/api/stripe/webhook/route.ts`: `logServerFunnelEvent` writes `isBot: true` for internal users and sessions. **Jimmy: please review (payment path, but it only touches the analytics row).**
+- `apps/web/src/lib/track-onboarding.ts`: `?internal=1` sets the internal cookie and flags the event.
+- `apps/web/src/app/api/admin/metrics/route.ts`: `stripePaid` excludes admins and internal emails.
+- Backfill: 1,221 more events flagged. 20 internal users (all @heelerdigital.com test and App Review accounts plus keenanassaraf@gmail.com); 68 sessions fully flagged.
+
+### Manual steps needed
+- [ ] Optional: add teammates' personal emails to the `INTERNAL_EMAILS` env var in Vercel, comma-separated (Keenan)
+- [ ] Open any funnel link with `?internal=1` once on each personal phone (Keenan / Jimmy)
+
+### Notes
+- Internal rows are stored with `isBot=true`. Every funnel query already filters `isBot: false`, so no dashboard query changed except stripePaid, which reads Users rather than events.
+- An anonymous team visit on a phone that never opened /admin or used `?internal=1` can't be recognized until it signs in. Once it does, the whole session is back-flagged.
+
 ## [2026-09-26] — Our own test visits no longer count in the funnel dashboard
 
 **Requested by:** Keenan

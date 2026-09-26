@@ -342,6 +342,11 @@ async function logServerFunnelEvent(
   const { userId, event, value, context } = opts;
   try {
     const ctx = await resolveFunnelContext(db, userId);
+    // Internal sessions/users never count toward the funnel (2026-09-26).
+    const { isInternalUser, isInternalSession } = await import("@/lib/internal-traffic");
+    const internal =
+      (await isInternalUser(db, userId)) ||
+      (await isInternalSession(db, ctx?.sessionToken ?? null, userId));
     await db.onboardingEvent.create({
       data: {
         userId,
@@ -355,7 +360,7 @@ async function logServerFunnelEvent(
         utmContent: ctx?.utmContent ?? null,
         utmTerm: ctx?.utmTerm ?? null,
         fbclid: ctx?.fbclid ?? null,
-        isBot: false,
+        isBot: internal,
       },
     });
     if (!ctx?.sessionToken) {

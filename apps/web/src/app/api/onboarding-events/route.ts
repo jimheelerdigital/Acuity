@@ -13,6 +13,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { getAnySessionUserId } from "@/lib/mobile-auth";
+import { INTERNAL_COOKIE, INTERNAL_UA, flagSessionInternal, isInternalEmail, isInternalSession } from "@/lib/internal-traffic";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -69,18 +70,6 @@ const VALID_NON_FUNNEL_EVENTS = new Set([
 
 const BOT_PATTERNS = /facebookexternalhit|Facebot|FacebookBot|WhatsApp|Twitterbot|LinkedInBot|Googlebot|AdsBot-Google|AdsBot|Google-Ads|Google-Safety|Mediapartners-Google|APIs-Google|FeedFetcher-Google|Google-Read-Aloud|DuplexWeb-Google|Storebot-Google|bingbot|Bytespider|Amazonbot|prefetch|prerender|HeadlessChrome|Slurp|DuckDuckBot|Baiduspider|YandexBot|Sogou|Exabot|ia_archiver|MJ12bot|AhrefsBot|SemrushBot|DotBot|PetalBot|bot\/|crawler|spider/i;
 
-/**
- * Internal traffic (2026-09-26, per Keenan: "how is this showing ripple test
- * numbers if the funnel is off"): with the split off, every /start-test
- * session was our own QA. Playwright's stock device presets send synthetic
- * UAs no real 2026 visitor has: iOS 15.0 / 10.3.1 iPhones, and Android UAs
- * naming the Pixel model (real Chrome reduces it to "Android 10; K", and
- * in-app WebViews add " Build/"). Internal events are STORED with isBot=true,
- * so the dashboard hides them by default and "show bots" can still see them.
- */
-const INTERNAL_UA = /iPhone OS (15_0|10_3_1) like Mac OS X|\bAndroid \d+; Pixel \d+( Pro)?\)/;
-const INTERNAL_COOKIE = "acuity_internal";
-
 export async function POST(req: NextRequest) {
   let body: {
     event?: string; sessionToken?: string; userId?: string; value?: string;
@@ -124,6 +113,8 @@ export async function POST(req: NextRequest) {
     // Verify userId exists in User table to avoid FK constraint violation
     // (stale sessions can reference deleted/non-existent users), and
     // honor the per-user product-analytics opt-out (v1.4 GDPR slice).
+    // Internal traffic never counts (lib/internal-traffic.ts): stored with
+    // isBot=true, and the whole session is flagged, before and after.
     let internal =
       body.automation === "1" ||
       req.cookies.get(INTERNAL_COOKIE)?.value === "1" ||
@@ -132,9 +123,9 @@ export async function POST(req: NextRequest) {
     if (verifiedUserId) {
       const userRow = await prisma.user.findUnique({
         where: { id: verifiedUserId },
-        select: { id: true, productAnalyticsEnabled: true, isAdmin: true },
+        select: { id: true, productAnalyticsEnabled: true, isAdmin: true, email: true },
       });
-      if (userRow?.isAdmin) internal = true;
+      if (userRow && (userRow.isAdmin || isInternalEmail(userRow.email))) internal = true;
       if (!userRow) {
         verifiedUserId = null;
       } else if (userRow.productAnalyticsEnabled === false) {
@@ -145,6 +136,8 @@ export async function POST(req: NextRequest) {
         return new Response(null, { status: 204 });
       }
     }
+    const newlyInternal = internal;
+    if (!internal) internal = await isInternalSession(prisma, sessionToken, verifiedUserId);
     await prisma.onboardingEvent.create({
       data: {
         userId: verifiedUserId,
@@ -162,6 +155,7 @@ export async function POST(req: NextRequest) {
         flowVersion: body.flowVersion ?? null,
       },
     });
+    if (newlyInternal) await flagSessionInternal(prisma, sessionToken, verifiedUserId);
   } catch (err) {
     console.error("[onboarding-events] Failed to log event:", err);
   }
