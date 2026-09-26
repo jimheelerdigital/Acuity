@@ -12,13 +12,18 @@
  * Everything is soft: no digest or a Claude/Resend failure means no
  * email, never a thrown run.
  */
-import Anthropic from "@anthropic-ai/sdk";
+import {
+  contentAnthropic,
+  CONTENT_MODEL,
+  CONTENT_INPUT_COST_PER_TOKEN,
+  CONTENT_OUTPUT_COST_PER_TOKEN,
+} from "./claude-client";
 
-const anthropic = new Anthropic();
+const anthropic = contentAnthropic;
 
-const CLAUDE_MODEL = "claude-sonnet-4-6";
-const INPUT_COST_PER_TOKEN = 3 / 1_000_000;
-const OUTPUT_COST_PER_TOKEN = 15 / 1_000_000;
+const CLAUDE_MODEL = CONTENT_MODEL;
+const INPUT_COST_PER_TOKEN = CONTENT_INPUT_COST_PER_TOKEN;
+const OUTPUT_COST_PER_TOKEN = CONTENT_OUTPUT_COST_PER_TOKEN;
 
 const FROM_ADDRESS =
   process.env.CONTENT_FACTORY_EMAIL_FROM ??

@@ -54,6 +54,21 @@ export async function uploadImage(
   return data.publicUrl;
 }
 
+/**
+ * Text layers (2026-09-26): every overlay slide also stores its exact text
+ * layer (adaptive scrim + words, transparent PNG) beside the JPEG as
+ * "<slide>-layer.png". The Higgsfield post video animates the text-free raw
+ * photo and lays this layer back on top, so the words are pixel-identical
+ * to the still slide and the video model never touches them.
+ */
+export function textLayerUrlFor(imageUrl: string): string {
+  return imageUrl.replace(/\.jpg(\?.*)?$/, "-layer.png");
+}
+
+export async function uploadTextLayer(layer: Buffer, slidePath: string): Promise<string> {
+  return uploadImage(layer, slidePath.replace(/\.jpg$/, "-layer.png"), "image/png");
+}
+
 interface GenerateResult {
   postId: string;
   slideCount: number;
@@ -417,14 +432,10 @@ export async function getAvatarReference(
 }
 
 /**
- * Cost split (2026-09-17, per Keenan: "the FIRST picture of every
- * generation should use the newest model of chatgpt, and every other
- * picture in the carousel should revert to the older model"). The
- * cover is the scroll-stopper — it stays on gpt-image-2; interior
- * slides render on gpt-image-1 at a fraction of the cost. Baked-TEXT
- * slides (phone-quote / texts bubbles) intentionally stay on the
- * cover model: their text is vision-verified and the older model's
- * typesetting fails verification more often, which costs retries.
+ * Image slots (2026-09-26, per Keenan: "use gpt-image-2 for ALL photos.
+ * cover is high, inner is medium"). Every photo — generate, reference
+ * edit, and timeline-grid cell — is gpt-image-2; the slot only sets the
+ * quality (and size). Supersedes the 2026-09-17 gpt-image-1 interior split.
  */
 export type ImageSlot = "cover" | "item";
 
@@ -466,8 +477,9 @@ export async function generateImage(
  */
 export async function generateGridCellImage(prompt: string): Promise<Buffer> {
   const response = await openai().images.generate({
-    // Cells are item slides — older model per the 2026-09-17 cost split.
-    model: "gpt-image-1",
+    // gpt-image-2 for every photo (2026-09-26, per Keenan: "use
+    // gpt-image-2 for ALL photos. cover is high, inner is medium").
+    model: "gpt-image-2",
     prompt,
     n: 1,
     size: "1024x1024",
@@ -488,7 +500,8 @@ export async function generateGridCellImage(prompt: string): Promise<Buffer> {
  */
 export async function generateImageWithReference(
   prompt: string,
-  reference: Buffer
+  reference: Buffer,
+  slot: ImageSlot = "cover"
 ): Promise<Buffer> {
   // BWK reference is JPEG; Ripple lane references are PNG — sniff the
   // magic bytes so the upload's content type is honest either way.
@@ -506,8 +519,9 @@ export async function generateImageWithReference(
     // The edit endpoint's tallest portrait size (1024x1792 is
     // generate-only); composeSlide cover-crops to 1080x1920 downstream.
     size: "1024x1536",
-    // Max fidelity (2026-09-04) — same mandate as generateImage.
-    quality: "high",
+    // Same split as generateImage (2026-09-26, per Keenan): cover
+    // "high", inner slides "medium".
+    quality: slot === "cover" ? "high" : "medium",
   });
   const b64 = response.data?.[0]?.b64_json;
   if (!b64) throw new Error("gpt-image-2 edit returned no image data");
@@ -542,7 +556,7 @@ export async function generateMoodyImage(
       if (reference) {
         const full = `${prompt}\n${buildRippleAvatarPrompt(rippleAvatarLane)}`;
         return {
-          buffer: await generateImageWithReference(full, reference),
+          buffer: await generateImageWithReference(full, reference, slot),
           prompt: full,
         };
       }
@@ -552,7 +566,7 @@ export async function generateMoodyImage(
         const { MOODY_AVATAR_PROMPT } = await import("./moody-carousel");
         const full = `${prompt}\n${MOODY_AVATAR_PROMPT}`;
         return {
-          buffer: await generateImageWithReference(full, reference),
+          buffer: await generateImageWithReference(full, reference, slot),
           prompt: full,
         };
       }
@@ -575,24 +589,48 @@ export async function generateCheckedMoodyImage(
   scene: string,
   rippleAvatarLane?: RippleAvatarLane
 ): Promise<{ buffer: Buffer; prompt: string; qc: string }> {
+  let usedPrompt = prompt;
+  const { buffer, qc } = await generateCheckedImage(
+    async () => {
+      const r = await generateMoodyImage(prompt, withAvatar, slot, rippleAvatarLane);
+      usedPrompt = r.prompt;
+      return r.buffer;
+    },
+    { scene, slot, personAllowed: withAvatar }
+  );
+  return { buffer, prompt: usedPrompt, qc };
+}
+
+/**
+ * The Opus 5.5 image gate for ANY generated photo (2026-09-26, per Keenan:
+ * "opus 5.5 checks all images with a filter to determine if they're good
+ * to go"). make() produces one image; on a FAIL it is called once more and
+ * the retry ships regardless (never a dead post). The retry is skipped
+ * when the step has used ~90s (cover) / ~120s (item) so a slow night stays
+ * inside the 300s function cap. Fails open: a check error passes.
+ */
+export async function generateCheckedImage(
+  make: () => Promise<Buffer>,
+  opts: { scene: string; slot: ImageSlot; personAllowed: boolean; bakedText?: boolean }
+): Promise<{ buffer: Buffer; qc: string }> {
   const started = Date.now();
-  const first = await generateMoodyImage(prompt, withAvatar, slot, rippleAvatarLane);
+  const first = await make();
   const { checkMoodyImageQuality } = await import("./moody-carousel");
-  const verdict = await checkMoodyImageQuality(first.buffer, scene, {
-    personAllowed: withAvatar,
+  const verdict = await checkMoodyImageQuality(first, opts.scene, {
+    personAllowed: opts.personAllowed,
+    bakedText: opts.bakedText,
   });
-  if (verdict.ok) return { ...first, qc: verdict.reason };
+  if (verdict.ok) return { buffer: first, qc: verdict.reason };
   console.warn(`[carousel] Image failed quality check (${verdict.reason}) — regenerating once`);
   // A cover's regen can take up to 170s by itself, so it only happens
   // when the first pass was quick.
-  if (Date.now() - started > (slot === "cover" ? 90_000 : 120_000)) {
-    return { ...first, qc: `failed, no time to retry: ${verdict.reason}` };
+  if (Date.now() - started > (opts.slot === "cover" ? 90_000 : 120_000)) {
+    return { buffer: first, qc: `failed, no time to retry: ${verdict.reason}` };
   }
   try {
-    const second = await generateMoodyImage(prompt, withAvatar, slot, rippleAvatarLane);
-    return { ...second, qc: `regenerated after: ${verdict.reason}` };
+    return { buffer: await make(), qc: `regenerated after: ${verdict.reason}` };
   } catch {
-    return { ...first, qc: `failed, retry errored: ${verdict.reason}` };
+    return { buffer: first, qc: `failed, retry errored: ${verdict.reason}` };
   }
 }
 
@@ -609,18 +647,20 @@ export async function uploadOverlaySlide(
   overlay: Buffer,
   path: string
 ): Promise<{ imageUrl: string; rawImageUrl: string }> {
-  const { composeSlideWithOverlay, composeFeedWithOverlay } = await import("./compose");
+  const { composeSlideWithOverlay, composeFeedWithOverlay, buildTextLayer } = await import("./compose");
   const { default: sharp } = await import("sharp");
   const base = path.replace(/\.jpg$/, "");
-  const [final, feed, rawJpeg] = await Promise.all([
+  const [final, feed, rawJpeg, layer] = await Promise.all([
     composeSlideWithOverlay(raw, overlay),
     composeFeedWithOverlay(raw, overlay),
     sharp(raw).jpeg({ quality: 92 }).toBuffer(),
+    buildTextLayer(raw, overlay),
   ]);
   const [imageUrl, rawImageUrl] = await Promise.all([
     uploadImage(final, path),
     uploadImage(rawJpeg, `${base}-raw.jpg`),
     uploadImage(feed, `${base}-feed.jpg`),
+    uploadTextLayer(layer, path),
   ]);
   return { imageUrl, rawImageUrl };
 }

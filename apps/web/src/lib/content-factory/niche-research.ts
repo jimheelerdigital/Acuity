@@ -276,7 +276,7 @@ export type InferredNiche = {
  */
 export async function inferNiche(): Promise<InferredNiche | null> {
   const { prisma } = await import("@/lib/prisma");
-  const { callClaude } = await import("./claude-client");
+  const { callContentClaude } = await import("./claude-client");
 
   const posts = await prisma.carouselPost.findMany({
     orderBy: { generatedFor: "desc" },
@@ -285,7 +285,7 @@ export async function inferNiche(): Promise<InferredNiche | null> {
   });
   if (posts.length === 0) return null;
 
-  const raw = await callClaude({
+  const raw = await callContentClaude({
     purpose: "niche-inference",
     systemPrompt:
       "You are a social media strategist. You respond ONLY with valid JSON, no markdown fences, no commentary.",

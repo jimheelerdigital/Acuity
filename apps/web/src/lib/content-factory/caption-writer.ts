@@ -23,14 +23,19 @@
  * the existing caption unchanged.
  */
 
-import Anthropic from "@anthropic-ai/sdk";
+import {
+  contentAnthropic,
+  CONTENT_MODEL,
+  CONTENT_INPUT_COST_PER_TOKEN,
+  CONTENT_OUTPUT_COST_PER_TOKEN,
+} from "./claude-client";
 
 import { prisma } from "@/lib/prisma";
 
-const anthropic = new Anthropic();
-const CLAUDE_MODEL = "claude-sonnet-4-6";
-const INPUT_COST_PER_TOKEN = 3 / 1_000_000;
-const OUTPUT_COST_PER_TOKEN = 15 / 1_000_000;
+const anthropic = contentAnthropic;
+const CLAUDE_MODEL = CONTENT_MODEL;
+const INPUT_COST_PER_TOKEN = CONTENT_INPUT_COST_PER_TOKEN;
+const OUTPUT_COST_PER_TOKEN = CONTENT_OUTPUT_COST_PER_TOKEN;
 
 const BANNED_TAGS = new Set(["#fyp", "#foryou", "#foryoupage", "#viral", "#explore", "#trending"]);
 

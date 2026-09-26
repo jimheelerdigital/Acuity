@@ -6,7 +6,12 @@
  * avoid duplicates within a 30-day window.
  */
 
-import Anthropic from "@anthropic-ai/sdk";
+import {
+  contentAnthropic,
+  CONTENT_MODEL,
+  CONTENT_INPUT_COST_PER_TOKEN,
+  CONTENT_OUTPUT_COST_PER_TOKEN,
+} from "./claude-client";
 import {
   FORCED_STYLE_LANE,
   isMood,
@@ -19,12 +24,12 @@ import { fetchGrowthosResearch, growthosResearchBlock } from "./growthos-researc
 import { humanizePass, extractVoice, HUMAN_VOICE_RULES } from "./humanizer";
 import { withHeadlineRetry } from "./headline-history";
 
-const anthropic = new Anthropic();
+const anthropic = contentAnthropic;
 
 // Sonnet for creative copy — fast and cheap (~$0.01/call)
-const MODEL = "claude-sonnet-4-6";
-const INPUT_COST_PER_TOKEN = 3 / 1_000_000;
-const OUTPUT_COST_PER_TOKEN = 15 / 1_000_000;
+const MODEL = CONTENT_MODEL;
+const INPUT_COST_PER_TOKEN = CONTENT_INPUT_COST_PER_TOKEN;
+const OUTPUT_COST_PER_TOKEN = CONTENT_OUTPUT_COST_PER_TOKEN;
 
 const STYLE_LANE_KEYS: StyleLane[] = [
   "cinematicReal",

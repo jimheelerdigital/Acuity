@@ -1676,6 +1676,33 @@ export async function composeSlideWithOverlay(
 }
 
 /**
+ * The text layer of composeSlideWithOverlay on its own: the adaptive scrim
+ * (measured against the same resized photo) plus the overlay, on a
+ * transparent 1080x1920 PNG. Laid over an animated copy of the photo it
+ * reproduces the still slide's words pixel for pixel (2026-09-26, the
+ * Higgsfield post videos).
+ */
+export async function buildTextLayer(
+  rawImage: Buffer,
+  overlayPng: Buffer
+): Promise<Buffer> {
+  const base = await sharp(rawImage)
+    .resize(OUTPUT_W, OUTPUT_H, { fit: "cover", position: "centre" })
+    .sharpen({ sigma: 0.6 })
+    .toBuffer();
+  const scrim = await buildAdaptiveScrim(base, overlayPng).catch(() => null);
+  return sharp({
+    create: { width: OUTPUT_W, height: OUTPUT_H, channels: 4, background: { r: 0, g: 0, b: 0, alpha: 0 } },
+  })
+    .composite([
+      ...(scrim ? [{ input: scrim, top: 0, left: 0 }] : []),
+      { input: overlayPng, top: 0, left: 0 },
+    ])
+    .png()
+    .toBuffer();
+}
+
+/**
  * Native 4:5 feed rendition for Instagram/Facebook (2026-09-24 audit
  * fix). The publisher used to center-crop the finished 9:16 slide, which
  * meant feeds showed ~864x1080 source pixels upscaled to 1080x1350. This

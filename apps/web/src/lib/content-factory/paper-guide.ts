@@ -25,16 +25,21 @@
 import * as fs from "fs";
 import * as path from "path";
 
-import Anthropic from "@anthropic-ai/sdk";
+import {
+  contentAnthropic,
+  CONTENT_MODEL,
+  CONTENT_INPUT_COST_PER_TOKEN,
+  CONTENT_OUTPUT_COST_PER_TOKEN,
+} from "./claude-client";
 import sharp from "sharp";
 
 import { HUMAN_VOICE_RULES } from "./humanizer";
 import { withHeadlineRetry } from "./headline-history";
 
-const anthropic = new Anthropic();
-const CLAUDE_MODEL = "claude-sonnet-4-6";
-const INPUT_COST_PER_TOKEN = 3 / 1_000_000;
-const OUTPUT_COST_PER_TOKEN = 15 / 1_000_000;
+const anthropic = contentAnthropic;
+const CLAUDE_MODEL = CONTENT_MODEL;
+const INPUT_COST_PER_TOKEN = CONTENT_INPUT_COST_PER_TOKEN;
+const OUTPUT_COST_PER_TOKEN = CONTENT_OUTPUT_COST_PER_TOKEN;
 
 // ─── Spec ───────────────────────────────────────────────────────────────────
 

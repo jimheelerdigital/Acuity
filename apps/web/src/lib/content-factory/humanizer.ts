@@ -21,12 +21,17 @@
  *    killing the overnight run — the failure is logged to ClaudeCallLog.
  */
 
-import Anthropic from "@anthropic-ai/sdk";
+import {
+  contentAnthropic,
+  CONTENT_MODEL,
+  CONTENT_INPUT_COST_PER_TOKEN,
+  CONTENT_OUTPUT_COST_PER_TOKEN,
+} from "./claude-client";
 
-const anthropic = new Anthropic();
-const CLAUDE_MODEL = "claude-sonnet-4-6";
-const INPUT_COST_PER_TOKEN = 3 / 1_000_000;
-const OUTPUT_COST_PER_TOKEN = 15 / 1_000_000;
+const anthropic = contentAnthropic;
+const CLAUDE_MODEL = CONTENT_MODEL;
+const INPUT_COST_PER_TOKEN = CONTENT_INPUT_COST_PER_TOKEN;
+const OUTPUT_COST_PER_TOKEN = CONTENT_OUTPUT_COST_PER_TOKEN;
 
 /**
  * Short prevention block for system prompts. The full library lives in
@@ -109,6 +114,8 @@ export async function humanizePass<T>(opts: {
   try {
     const response = await anthropic.messages.create({
       model: CLAUDE_MODEL,
+      // Rewrite pass: low effort keeps the generate step inside its time cap.
+      effort: "low",
       // 2026-09-10: 6000 to fit 15-item pick-list payloads (gate fails
       // open on truncation, but a truncated pass skips real rewrites).
       max_tokens: 6000,

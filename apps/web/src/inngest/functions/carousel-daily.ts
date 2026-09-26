@@ -357,27 +357,32 @@ export const carouselDailyCronFn = inngest.createFunction(
       });
 
       const gridCover = await step.run("grid-cover", async () => {
-        const { generateImage, uploadImage } = await import(
+        const { generateImage, generateCheckedImage, uploadOverlaySlide } = await import(
           "@/lib/content-factory/carousel-generate"
         );
         const { buildGridWidePrompt } = await import(
           "@/lib/content-factory/timeline-grid"
         );
-        const { composeSlideWithOverlay, renderMoodyTextOverlay } =
+        const { renderMoodyTextOverlay } =
           await import("@/lib/content-factory/compose");
         const prompt = buildGridWidePrompt(topic.coverScene, false);
-        const raw = await generateImage(prompt);
+        const { buffer: raw, qc } = await generateCheckedImage(
+          () => generateImage(prompt),
+          { scene: topic.coverScene, slot: "cover", personAllowed: true }
+        );
+        logger.info(`[carousel-cron] grid cover quality: ${qc}`);
         const overlay = await renderMoodyTextOverlay(
           [topic.title],
           "COVER",
           "white"
         );
-        const composed = await composeSlideWithOverlay(raw, overlay);
-        const imageUrl = await uploadImage(
-          composed,
+        // Raw + text layer kept so the Higgsfield video can animate it.
+        const { imageUrl, rawImageUrl } = await uploadOverlaySlide(
+          raw,
+          overlay,
           `carousels/${dateStr}/${topic.slug}/slide-cover.jpg`
         );
-        return { imageUrl, overlayText: topic.title, imagePrompt: prompt };
+        return { imageUrl, rawImageUrl, overlayText: topic.title, imagePrompt: prompt };
       });
 
       // One step per phase: the 6 cell photos generate in PARALLEL
@@ -389,15 +394,21 @@ export const carouselDailyCronFn = inngest.createFunction(
       }[] = [];
       for (let p = 0; p < topic.phases.length; p++) {
         const slide = await step.run(`grid-phase-${p}`, async () => {
-          const { generateGridCellImage, uploadImage } = await import(
+          const { generateGridCellImage, generateCheckedImage, uploadImage } = await import(
             "@/lib/content-factory/carousel-generate"
           );
           const { buildGridCellPrompt, composeTimelineGridSlide } =
             await import("@/lib/content-factory/timeline-grid");
           const phase = topic.phases[p];
+          // Every cell passes the Opus image check (2026-09-26).
           const buffers = await Promise.all(
-            phase.cells.map((c) =>
-              generateGridCellImage(buildGridCellPrompt(c.scene))
+            phase.cells.map(async (c) =>
+              (
+                await generateCheckedImage(
+                  () => generateGridCellImage(buildGridCellPrompt(c.scene)),
+                  { scene: c.scene, slot: "item", personAllowed: true }
+                )
+              ).buffer
             )
           );
           const composed = await composeTimelineGridSlide(
@@ -424,27 +435,30 @@ export const carouselDailyCronFn = inngest.createFunction(
       }
 
       const gridCloser = await step.run("grid-closer", async () => {
-        const { generateImage, uploadImage } = await import(
+        const { generateImage, generateCheckedImage, uploadOverlaySlide } = await import(
           "@/lib/content-factory/carousel-generate"
         );
         const { buildGridWidePrompt } = await import(
           "@/lib/content-factory/timeline-grid"
         );
-        const { composeSlideWithOverlay, renderMoodyTextOverlay } =
+        const { renderMoodyTextOverlay } =
           await import("@/lib/content-factory/compose");
         const prompt = buildGridWidePrompt(topic.closerScene, true);
-        const raw = await generateImage(prompt, "item");
+        const { buffer: raw } = await generateCheckedImage(
+          () => generateImage(prompt, "item"),
+          { scene: topic.closerScene, slot: "item", personAllowed: true }
+        );
         const overlay = await renderMoodyTextOverlay(
           [topic.closer],
           "ITEM",
           "white"
         );
-        const composed = await composeSlideWithOverlay(raw, overlay);
-        const imageUrl = await uploadImage(
-          composed,
+        const { imageUrl, rawImageUrl } = await uploadOverlaySlide(
+          raw,
+          overlay,
           `carousels/${dateStr}/${topic.slug}/slide-closer.jpg`
         );
-        return { imageUrl, overlayText: topic.closer, imagePrompt: prompt };
+        return { imageUrl, rawImageUrl, overlayText: topic.closer, imagePrompt: prompt };
       });
 
       const gridResult = await step.run("save-and-email-grid", async () => {
@@ -474,6 +488,7 @@ export const carouselDailyCronFn = inngest.createFunction(
                   overlayText: gridCover.overlayText,
                   imagePrompt: gridCover.imagePrompt,
                   imageUrl: gridCover.imageUrl,
+                  rawImageUrl: gridCover.rawImageUrl,
                 },
                 ...phaseSlides.map((s, i) => ({
                   order: i + 1,
@@ -488,15 +503,16 @@ export const carouselDailyCronFn = inngest.createFunction(
                   overlayText: gridCloser.overlayText,
                   imagePrompt: gridCloser.imagePrompt,
                   imageUrl: gridCloser.imageUrl,
+                  rawImageUrl: gridCloser.rawImageUrl,
                 },
               ],
             },
           },
         });
-        const { sendCarouselEmail } = await import(
-          "@/lib/content-factory/email"
-        );
-        await sendCarouselEmail(post.id);
+        // Higgsfield video next; the brand's daily digest email (one
+        // download packet) replaces the per-post email (2026-09-26).
+        const { queuePostVideo } = await import("@/lib/content-factory/post-video");
+        await queuePostVideo(post.id);
         return {
           postId: post.id,
           slideCount: phaseSlides.length + 2,
@@ -594,8 +610,10 @@ export const carouselDailyCronFn = inngest.createFunction(
             },
           },
         });
-        const { sendCarouselEmail } = await import("@/lib/content-factory/email");
-        await sendCarouselEmail(post.id);
+        // Higgsfield video next; the brand's daily digest email (one
+        // download packet) replaces the per-post email (2026-09-26).
+        const { queuePostVideo } = await import("@/lib/content-factory/post-video");
+        await queuePostVideo(post.id);
         return { postId: post.id, slideCount: paperSlides.length, estimatedCostCents: 2 };
       });
       logger.info(`[carousel-cron] Generated paper guide (${laneKey}) "${topic.title}": ${paperResult.slideCount} slides`);
@@ -675,10 +693,16 @@ export const carouselDailyCronFn = inngest.createFunction(
           buildSelfieImagePrompt,
           generateImage,
           generateImageWithReference,
+          generateCheckedImage,
           uploadImage,
+          uploadTextLayer,
         } = await import("@/lib/content-factory/carousel-generate");
-        const { composeSlide, composeSlideWithOverlay, renderSelfieCaptionOverlay } =
-          await import("@/lib/content-factory/compose");
+        const {
+          composeSlide,
+          composeSlideWithOverlay,
+          renderSelfieCaptionOverlay,
+          buildTextLayer,
+        } = await import("@/lib/content-factory/compose");
 
         const {
           SELFIE_POSE_VARIANTS,
@@ -707,17 +731,20 @@ export const carouselDailyCronFn = inngest.createFunction(
             ],
         });
 
-        let rawBuffer: Buffer;
+        let anchor: Buffer | null = null;
         if (selfie.anchorUrl) {
           const res = await fetch(selfie.anchorUrl);
           if (!res.ok) throw new Error(`Anchor fetch failed: HTTP ${res.status}`);
-          rawBuffer = await generateImageWithReference(
-            prompt,
-            Buffer.from(await res.arrayBuffer())
-          );
-        } else {
-          rawBuffer = await generateImage(prompt);
+          anchor = Buffer.from(await res.arrayBuffer());
         }
+        const { buffer: rawBuffer, qc } = await generateCheckedImage(
+          () =>
+            anchor
+              ? generateImageWithReference(prompt, anchor, "cover")
+              : generateImage(prompt),
+          { scene: selfie.coverScene, slot: "cover", personAllowed: true }
+        );
+        logger.info(`[carousel-cron] selfie cover quality: ${qc}`);
 
         // Text-free raw at final 1080x1920 — this is BOTH the identity
         // reference for this post's mirror slides AND the anchor for
@@ -735,6 +762,10 @@ export const carouselDailyCronFn = inngest.createFunction(
         const composed = await composeSlideWithOverlay(rawBuffer, overlay);
         const imageUrl = await uploadImage(
           composed,
+          `carousels/${dateStr}/${slug}/slide-0-cover.jpg`
+        );
+        await uploadTextLayer(
+          await buildTextLayer(rawBuffer, overlay),
           `carousels/${dateStr}/${slug}/slide-0-cover.jpg`
         );
         return {
@@ -760,9 +791,11 @@ export const carouselDailyCronFn = inngest.createFunction(
             buildSelfieImagePrompt,
             generateImage,
             generateImageWithReference,
+            generateCheckedImage,
             uploadImage,
+            uploadTextLayer,
           } = await import("@/lib/content-factory/carousel-generate");
-          const { composeSlideWithOverlay, renderSelfieCaptionOverlay } =
+          const { composeSlideWithOverlay, renderSelfieCaptionOverlay, buildTextLayer } =
             await import("@/lib/content-factory/compose");
 
           const {
@@ -794,18 +827,20 @@ export const carouselDailyCronFn = inngest.createFunction(
               ],
           });
 
-          let rawBuffer: Buffer;
+          let reference: Buffer | null = null;
           if (shot.type === "mirror") {
             const res = await fetch(cover.rawImageUrl);
             if (!res.ok)
               throw new Error(`Cover reference fetch failed: HTTP ${res.status}`);
-            rawBuffer = await generateImageWithReference(
-              prompt,
-              Buffer.from(await res.arrayBuffer())
-            );
-          } else {
-            rawBuffer = await generateImage(prompt, "item");
+            reference = Buffer.from(await res.arrayBuffer());
           }
+          const { buffer: rawBuffer } = await generateCheckedImage(
+            () =>
+              reference
+                ? generateImageWithReference(prompt, reference, "item")
+                : generateImage(prompt, "item"),
+            { scene: shot.scene, slot: "item", personAllowed: shot.type === "mirror" }
+          );
 
           // Keep the text-free raw so captions can be re-rendered later
           // without paying for image regeneration (lesson from the
@@ -827,6 +862,10 @@ export const carouselDailyCronFn = inngest.createFunction(
           const composed = await composeSlideWithOverlay(rawBuffer, overlay);
           const imageUrl = await uploadImage(
             composed,
+            `carousels/${dateStr}/${slug}/slide-${i + 1}-step.jpg`
+          );
+          await uploadTextLayer(
+            await buildTextLayer(rawBuffer, overlay),
             `carousels/${dateStr}/${slug}/slide-${i + 1}-step.jpg`
           );
           return {
@@ -895,10 +934,10 @@ export const carouselDailyCronFn = inngest.createFunction(
           },
         });
 
-        const { sendCarouselEmail } = await import(
-          "@/lib/content-factory/email"
-        );
-        await sendCarouselEmail(post.id);
+        // Higgsfield video next; the brand's daily digest email (one
+        // download packet) replaces the per-post email (2026-09-26).
+        const { queuePostVideo } = await import("@/lib/content-factory/post-video");
+        await queuePostVideo(post.id);
         return {
           postId: post.id,
           slideCount: stepSlides.length + 1,
@@ -968,26 +1007,29 @@ export const carouselDailyCronFn = inngest.createFunction(
       // shoot the DARK scheme (night interiors / night-city vantage) —
       // white text.
       const pqCover = await step.run("generate-phone-quote-cover", async () => {
-        const { generateMoodyImage, uploadImage } = await import(
+        const { generateCheckedMoodyImage, uploadOverlaySlide } = await import(
           "@/lib/content-factory/carousel-generate"
         );
         const { buildMoodyImagePrompt } = await import(
           "@/lib/content-factory/moody-carousel"
         );
-        const { composeSlideWithOverlay, renderMoodyTextOverlay } =
+        const { renderMoodyTextOverlay } =
           await import("@/lib/content-factory/compose");
 
-        const { buffer: rawBuffer, prompt } = await generateMoodyImage(
+        const { buffer: rawBuffer, prompt, qc } = await generateCheckedMoodyImage(
           buildMoodyImagePrompt(variant, pq.coverScene, "dark"),
-          false
+          false,
+          "cover",
+          pq.coverScene
         );
+        logger.info(`[carousel-cron] phone-quote cover quality: ${qc}`);
         const overlay = await renderMoodyTextOverlay([pq.hook], "ITEM", "white");
-        const composed = await composeSlideWithOverlay(rawBuffer, overlay);
-        const imageUrl = await uploadImage(
-          composed,
+        const { imageUrl, rawImageUrl } = await uploadOverlaySlide(
+          rawBuffer,
+          overlay,
           `carousels/${dateStr}/${slug}/slide-0-cover.jpg`
         );
-        return { imageUrl, overlayText: pq.hook, imagePrompt: prompt };
+        return { imageUrl, rawImageUrl, overlayText: pq.hook, imagePrompt: prompt };
       });
 
       // Slide 1: the quote BAKED INTO the surface (2026-09-11, per
@@ -1014,6 +1056,7 @@ export const carouselDailyCronFn = inngest.createFunction(
           rollQuoteSurface,
           buildBakedQuotePrompt,
           verifyBakedQuote,
+          checkMoodyImageQuality,
           QUOTE_SURFACES,
         } = await import("@/lib/content-factory/moody-carousel");
         const { finalizeBakedQuoteSlide } = await import(
@@ -1032,6 +1075,9 @@ export const carouselDailyCronFn = inngest.createFunction(
         let composed: Buffer | null = null;
         let candidate: Buffer | null = null;
         let candidateSurface = firstSurface;
+        // Words verified but the photo check failed — still beats an
+        // unverified candidate (which never auto-posts).
+        let spelledRight: { jpeg: Buffer; surface: typeof firstSurface } | null = null;
         let imagePrompt = "";
 
         // Time budget (2026-09-24): stop starting new attempts once a
@@ -1044,12 +1090,29 @@ export const carouselDailyCronFn = inngest.createFunction(
             try {
               const { buffer } = await generateMoodyImage(
                 buildBakedQuotePrompt(variant, surface, pq.quote),
-                false
+                false,
+                // Inner slide → gpt-image-2 "medium" (2026-09-26, per Keenan).
+                "item"
               );
               const jpeg = await finalizeBakedQuoteSlide(buffer);
               candidate = jpeg;
               candidateSurface = surface;
-              if (await verifyBakedQuote(jpeg, pq.quote)) {
+              // Words first, then the Opus photo check (2026-09-26): a
+              // correctly spelled but CGI-looking or garbled frame retries.
+              const quality = (await verifyBakedQuote(jpeg, pq.quote))
+                ? await checkMoodyImageQuality(jpeg, `a ${surface} showing a short quote`, {
+                    personAllowed: true,
+                    bakedText: true,
+                  })
+                : null;
+              if (quality && !quality.ok) {
+                spelledRight ??= { jpeg, surface };
+                logger.warn(
+                  `[carousel-cron] Baked quote failed the image check (${surface}, attempt ${attempt}): ${quality.reason}`
+                );
+                continue;
+              }
+              if (quality?.ok) {
                 composed = jpeg;
                 imagePrompt = `PHONE-QUOTE BAKED (${variant}/${surface}) — quote typeset directly into the scene by gpt-image-2; text verified word-for-word by a vision pass. Edit regenerates the image.`;
                 break outer;
@@ -1065,6 +1128,10 @@ export const carouselDailyCronFn = inngest.createFunction(
           }
         }
 
+        if (!composed && spelledRight) {
+          composed = spelledRight.jpeg;
+          imagePrompt = `PHONE-QUOTE BAKED (${variant}/${spelledRight.surface}) — quote typeset directly into the scene by gpt-image-2; text verified word-for-word by a vision pass (image check flagged it on every attempt). Edit regenerates the image.`;
+        }
         if (!composed && candidate) {
           composed = candidate;
           imagePrompt = `PHONE-QUOTE BAKED (${variant}/${candidateSurface}) TEXT-UNVERIFIED — vision pass could not confirm the rendered quote matches; PROOFREAD BEFORE POSTING. Edit regenerates the image.`;
@@ -1120,6 +1187,7 @@ export const carouselDailyCronFn = inngest.createFunction(
                   overlayText: pqCover.overlayText,
                   imagePrompt: pqCover.imagePrompt,
                   imageUrl: pqCover.imageUrl,
+                  rawImageUrl: pqCover.rawImageUrl,
                 },
                 {
                   order: 1,
@@ -1136,10 +1204,10 @@ export const carouselDailyCronFn = inngest.createFunction(
           },
         });
 
-        const { sendCarouselEmail } = await import(
-          "@/lib/content-factory/email"
-        );
-        await sendCarouselEmail(post.id);
+        // Higgsfield video next; the brand's daily digest email (one
+        // download packet) replaces the per-post email (2026-09-26).
+        const { queuePostVideo } = await import("@/lib/content-factory/post-video");
+        await queuePostVideo(post.id);
         // Two gpt-image-2 calls (cover + quote backdrop) at ~25¢ each,
         // plus ~2¢ of Claude tokens.
         return { postId: post.id, slideCount: 2, estimatedCostCents: 52 };
@@ -1198,32 +1266,34 @@ export const carouselDailyCronFn = inngest.createFunction(
       // Slide 0: photo cover with the sentence-case hook — same dark
       // treatment as the phone-quote covers.
       const txCover = await step.run("generate-texts-cover", async () => {
-        const { generateMoodyImage, uploadImage } = await import(
+        const { generateCheckedMoodyImage, uploadOverlaySlide } = await import(
           "@/lib/content-factory/carousel-generate"
         );
         const { buildMoodyImagePrompt } = await import(
           "@/lib/content-factory/moody-carousel"
         );
-        const { composeSlideWithOverlay, renderMoodyTextOverlay } =
+        const { renderMoodyTextOverlay } =
           await import("@/lib/content-factory/compose");
 
         // Avatar-led cover (2026-09-17, per Keenan — "avatars look
         // good and dialed in"): texts-younger covers always feature
         // the lane's recurring woman via her reference photo.
         // future-texts (BWK) stays avatar-free.
-        const { buffer: rawBuffer, prompt } = await generateMoodyImage(
+        const { buffer: rawBuffer, prompt, qc } = await generateCheckedMoodyImage(
           buildMoodyImagePrompt(variant, tx.coverScene, "dark"),
           textsLane === "texts-younger",
           "cover",
+          tx.coverScene,
           textsLane === "texts-younger" ? "texts-younger" : undefined
         );
+        logger.info(`[carousel-cron] texts cover quality: ${qc}`);
         const overlay = await renderMoodyTextOverlay([tx.hook], "ITEM", "white");
-        const composed = await composeSlideWithOverlay(rawBuffer, overlay);
-        const imageUrl = await uploadImage(
-          composed,
+        const { imageUrl, rawImageUrl } = await uploadOverlaySlide(
+          rawBuffer,
+          overlay,
           `carousels/${dateStr}/${slug}/slide-0-cover.jpg`
         );
-        return { imageUrl, overlayText: tx.hook, imagePrompt: prompt };
+        return { imageUrl, rawImageUrl, overlayText: tx.hook, imagePrompt: prompt };
       });
 
       // Slides 1..N: one baked message bubble per slide. Three attempts
@@ -1239,7 +1309,7 @@ export const carouselDailyCronFn = inngest.createFunction(
           const { generateMoodyImage, uploadImage } = await import(
             "@/lib/content-factory/carousel-generate"
           );
-          const { buildBakedTextsPrompt, verifyBakedQuote } = await import(
+          const { buildBakedTextsPrompt, verifyBakedQuote, checkMoodyImageQuality } = await import(
             "@/lib/content-factory/moody-carousel"
           );
           const { finalizeBakedQuoteSlide } = await import(
@@ -1249,6 +1319,7 @@ export const carouselDailyCronFn = inngest.createFunction(
           const message = tx.messages[i];
           let composed: Buffer | null = null;
           let candidate: Buffer | null = null;
+          let spelledRight: Buffer | null = null;
           let imagePrompt = "";
 
           // Time budget (2026-09-24): same as the phone-quote loop — once a
@@ -1259,11 +1330,27 @@ export const carouselDailyCronFn = inngest.createFunction(
             try {
               const { buffer } = await generateMoodyImage(
                 buildBakedTextsPrompt(textsLane, message),
-                false
+                false,
+                // Inner slide → gpt-image-2 "medium" (2026-09-26, per Keenan).
+                "item"
               );
               const jpeg = await finalizeBakedQuoteSlide(buffer);
               candidate = jpeg;
-              if (await verifyBakedQuote(jpeg, message)) {
+              // Words first, then the Opus photo check (2026-09-26).
+              const quality = (await verifyBakedQuote(jpeg, message))
+                ? await checkMoodyImageQuality(jpeg, "a hand holding a phone showing one text message", {
+                    personAllowed: true,
+                    bakedText: true,
+                  })
+                : null;
+              if (quality && !quality.ok) {
+                spelledRight ??= jpeg;
+                logger.warn(
+                  `[carousel-cron] Baked texts message ${i} failed the image check (attempt ${attempt}): ${quality.reason}`
+                );
+                continue;
+              }
+              if (quality?.ok) {
                 composed = jpeg;
                 imagePrompt = `TEXTS BAKED (${textsLane}) — message bubble typeset directly into the phone screen by gpt-image-2; text verified word-for-word by a vision pass. Edit regenerates the image.`;
                 break;
@@ -1278,6 +1365,10 @@ export const carouselDailyCronFn = inngest.createFunction(
             }
           }
 
+          if (!composed && spelledRight) {
+            composed = spelledRight;
+            imagePrompt = `TEXTS BAKED (${textsLane}) — message bubble typeset directly into the phone screen by gpt-image-2; text verified word-for-word by a vision pass (image check flagged it on every attempt). Edit regenerates the image.`;
+          }
           if (!composed && candidate) {
             composed = candidate;
             imagePrompt = `TEXTS BAKED (${textsLane}) TEXT-UNVERIFIED — vision pass could not confirm the rendered message matches; PROOFREAD BEFORE POSTING. Edit regenerates the image.`;
@@ -1325,6 +1416,7 @@ export const carouselDailyCronFn = inngest.createFunction(
                   overlayText: txCover.overlayText,
                   imagePrompt: txCover.imagePrompt,
                   imageUrl: txCover.imageUrl,
+                  rawImageUrl: txCover.rawImageUrl,
                 },
                 ...txSlides.map((s, i) => ({
                   order: i + 1,
@@ -1338,10 +1430,10 @@ export const carouselDailyCronFn = inngest.createFunction(
           },
         });
 
-        const { sendCarouselEmail } = await import(
-          "@/lib/content-factory/email"
-        );
-        await sendCarouselEmail(post.id);
+        // Higgsfield video next; the brand's daily digest email (one
+        // download packet) replaces the per-post email (2026-09-26).
+        const { queuePostVideo } = await import("@/lib/content-factory/post-video");
+        await queuePostVideo(post.id);
         // One cover + one baked image per message at ~25¢ each, plus
         // ~2¢ of Claude tokens (verification retries push some posts
         // higher).
@@ -1676,10 +1768,10 @@ export const carouselDailyCronFn = inngest.createFunction(
         },
       });
 
-      const { sendCarouselEmail } = await import(
-        "@/lib/content-factory/email"
-      );
-      await sendCarouselEmail(post.id);
+      // Higgsfield video next; the brand's daily digest email (one
+      // download packet) replaces the per-post email (2026-09-26).
+      const { queuePostVideo } = await import("@/lib/content-factory/post-video");
+      await queuePostVideo(post.id);
       return {
         postId: post.id,
         slideCount: moodySlides.length + moodyCovers.length,

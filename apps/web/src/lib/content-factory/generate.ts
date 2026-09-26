@@ -1,6 +1,6 @@
 import type { ContentBriefing, ContentPiece } from "@prisma/client";
 
-import { callClaude } from "./claude-client";
+import { callContentClaude } from "./claude-client";
 import { humanizePass, HUMAN_VOICE_RULES } from "./humanizer";
 import { displayMonthly } from "@/lib/pricing";
 
@@ -145,7 +145,7 @@ Top blog pages: ${JSON.stringify(briefing.ga4Winners)}
 
 Write a blog post that taps into what people are talking about today. Pick a target keyword relevant to voice journaling, self-reflection, or personal productivity.`;
 
-  const raw = await callClaude({
+  const raw = await callContentClaude({
     purpose: "generate-blog-post",
     systemPrompt,
     userPrompt,
@@ -199,7 +199,7 @@ Respond as a JSON array of objects:
 
   const userPrompt = `Write ${count} tweet(s) for Ripple. Each should use a different angle.${briefingContext}`;
 
-  const raw = await callClaude({
+  const raw = await callContentClaude({
     purpose: "generate-twitter-posts",
     systemPrompt,
     userPrompt,
@@ -258,7 +258,7 @@ Respond as a JSON array of objects:
 
   const userPrompt = `Write ${count} TikTok script(s) for Ripple.${briefingContext}`;
 
-  const raw = await callClaude({
+  const raw = await callContentClaude({
     purpose: "generate-tiktok-scripts",
     systemPrompt,
     userPrompt,
@@ -306,7 +306,7 @@ Reddit trends: ${JSON.stringify(briefing.redditTop)}
 
 Write ${count} ad copy variants, each using a different angle from: pain, benefit, curiosity, social proof, founder story.`;
 
-  const raw = await callClaude({
+  const raw = await callContentClaude({
     purpose: "generate-ad-copy",
     systemPrompt,
     userPrompt,
@@ -368,7 +368,7 @@ Respond in JSON format:
 
   const userPrompt = `Write 1 Instagram post for Ripple.${briefingContext}`;
 
-  const raw = await callClaude({
+  const raw = await callContentClaude({
     purpose: "generate-instagram-post",
     systemPrompt,
     userPrompt,

@@ -293,10 +293,10 @@ export const nicheResearchNightlyFn = inngest.createFunction(
       });
       if (candidates.length === 0) return 0;
 
-      const { callClaude } = await import(
+      const { callContentClaude } = await import(
         "@/lib/content-factory/claude-client"
       );
-      const raw = await callClaude({
+      const raw = await callContentClaude({
         purpose: "niche-engagement-comments",
         maxTokens: 1500,
         systemPrompt: `You draft Instagram/TikTok comments for Ripple, an AI-powered voice self-reflection app for women 40-50 carrying a heavy mental load. The founder will personally post these from the brand account on other creators' posts in the niche.
@@ -376,10 +376,10 @@ Output strict JSON, no markdown: [{"id": "...", "comment": "..."}, ...] — one 
       ]);
       if (pendingSuggestions.length >= 9) return 0; // queue is full — review first
 
-      const { callClaude } = await import(
+      const { callContentClaude } = await import(
         "@/lib/content-factory/claude-client"
       );
-      const raw = await callClaude({
+      const raw = await callContentClaude({
         purpose: "niche-topic-suggestions",
         maxTokens: 1200,
         systemPrompt: `You suggest Instagram/TikTok carousel topics for Ripple, an AI-powered voice self-reflection app for women 40-50 carrying a heavy mental load. Topics are numbered-list carousels ("7 signs...", "5 ways...").

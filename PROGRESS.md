@@ -67,6 +67,67 @@ The dashboard showed 31 visitors on the test funnel even though the 50/50 split 
 - Four /start sessions carried Meta tags but were internal: three test browsers with fake meta/fbclid params from the 09-25 ad-tracking checks, and Keenan's own bio-link click.
 - The metrics cache is 5 minutes, so the dashboard updates on its own.
 
+## [2026-09-26] — Opus 5.5 writes every post, Higgsfield videos for every post, one digest email per brand
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** (this commit)
+
+### In plain English (for Keenan)
+Every social post is now written by Claude Opus 5.5. That covers the slide text, the pass that makes it sound human, the captions, and turning Reddit and competitor research into topics. Every photo is made by gpt-image-2 (covers at top quality, inside slides at medium), and Opus 5.5 checks each one before it's used. Each post then gets a Higgsfield video (Kling) for Instagram and Facebook: photos come to life while the words stay perfectly still. Instead of one email per post, you get one email for Build With Key and one for Ripple each morning, each with a single button that downloads every slide, end card, video and caption for the day. Competitor research now runs weekly instead of monthly.
+
+### Technical changes (for Jimmy)
+- `lib/content-factory/claude-client.ts`: one content model (`CONTENT_MODEL` = `claude-opus-5-5`, env `CONTENT_CLAUDE_MODEL`). `contentAnthropic.messages.create` wraps the SDK as follows:
+  - Adds thinking headroom to `max_tokens` (low 4k / medium 10k / high 20k).
+  - Sends `output_config.effort` (medium by default; the humanizer and the image checks use low).
+  - Strips sampling params.
+  - Falls back to `claude-opus-5` if 5.5 is unavailable or refuses.
+  - `messageText()` reads text blocks by type.
+  - `callContentClaude` is for social callers. `callClaude` keeps Opus 4.6 for blog/SEO/AdLab, and its cost log is fixed to $5/$25.
+- 11 content-factory files now use the shared client: moody-carousel, generate-topic, humanizer, caption-writer, paper-guide, timeline-grid, reddit-trends, competitor-mimic, quote-loop, ambient-video, video-scripts. The lane report, niche research/memo and `generate.ts` use `callContentClaude`. `verifyBakedQuote` no longer reads `content[0]`.
+- Images:
+  - Timeline grid cells: gpt-image-1 → gpt-image-2 medium.
+  - Reference edits and the baked quote/bubble slides now follow cover = high, inner = medium.
+- Image QA:
+  - `generateCheckedImage()` runs the Opus 5.5 check, with one regeneration on a fail.
+  - It now covers selfie cover and steps, phone-quote and texts covers, grid cover/cells/closer, and moody slides.
+  - Baked quote and bubble slides get the check after text verification (`bakedText` mode). A slide whose text verified but that failed the photo check still ships as verified.
+- Text layers: overlay slides store `<slide>-layer.png` (`compose.buildTextLayer`, `uploadTextLayer`). Phone-quote, texts and grid covers now keep `rawImageUrl`.
+- New `lib/content-factory/post-video.ts` and Inngest `carousel-post-video` (event `content-factory/post-video.build`):
+  - Concurrency 1, clips submitted in waves of 4 (`HIGGSFIELD_MAX_CONCURRENT`).
+  - Model is `kling-video/v2.5-turbo/pro/image-to-video` (env `HIGGSFIELD_LIVING_MODEL`), falling back to `HIGGSFIELD_VIDEO_MODEL` if a submit fails.
+  - Slides with a raw photo and a text layer animate. Baked-text, grid and paper slides, and any failed clip, become push-in stills.
+  - Output goes to `reels/<postId>.mp4`. Build state lives in Storage (`video-builds/<postId>.json`), so there's no schema change.
+- `living-reel.ts`:
+  - New `assemblePostVideo` (live + still slides).
+  - Transitions dip to black around stills so text never stacks.
+  - Non-9:16 stills (square grids) sit whole on a blurred background instead of being cropped.
+  - `assembleLivingReel` now wraps it.
+- `animate-cover.ts`: Kling/Hailuo request schema (fixed durations, negative prompt) and the v2 `Authorization: Key id:secret` header sent alongside `hf-api-key`/`hf-secret`.
+- `carousel-daily.ts`: every lane calls `queuePostVideo(post.id)` instead of `sendCarouselEmail`.
+- `social-publish-cron.ts`: a post whose video is still building (marker pending, under 10h) is skipped until a later run instead of shipping a plain slideshow.
+- New `lib/content-factory/daily-digest.ts` and Inngest `carousel-daily-digest`:
+  - Triggered by event `content-factory/digest.check` (sent after each video) and a cron at 13:00 UTC as the deadline.
+  - Produces one ZIP per brand per day at `packets/<date>/<Brand>-<date>.zip` (STORE), plus a slide strip per post and a `digests/<date>-<brand>.json` claim.
+  - Sets `emailedAt` on the posts.
+- `competitor-scrape-daily`: cron `30 3 1 * *` → `30 3 * * 1` (weekly). Mimic briefs are now used for 9 days, up from 7.
+- `carousel-living-reel.ts` queue cron also claims `video-requests/<postId>.json` → post-video build, for triggering from a laptop.
+
+### Manual steps needed
+- [ ] Push + deploy, then `curl -X PUT https://goripple.io/api/inngest` so Inngest picks up the 2 new functions and the new competitor cron (Keenan says "push it"; Claude runs it)
+- [ ] After deploy, test one real post: drop `video-requests/<postId>.json` in the content-factory bucket, then check `video-builds/<postId>.json` and `reels/<postId>.mp4`. This confirms the Higgsfield key can reach Kling 2.5 Turbo Pro (Claude)
+- [ ] Watch tomorrow's first digest emails (Keenan)
+
+### Notes
+- Opus 5.5 couldn't be tested locally (local ANTHROPIC_API_KEY is invalid; prod-only). If the prod key can't reach it, the wrapper falls back to `claude-opus-5` and logs a warning.
+- Kling 2.5 Turbo Pro is the best image-to-video model listed in Higgsfield's developer API spec (docs.higgsfield.ai/docs/openapi.json, 2026-09-26). Kling 3.0 is still app-only. Credit cost per Kling clip on the API is unverified. At ~6 animated slides × ~16 posts, expect ~90–100 clips/night.
+- The daily email flow no longer sends per-post emails. The admin "Resend email" button and one-off posts still use `sendCarouselEmail`.
+- Inner-slide "medium" now applies to the baked quote and bubble slides too (they were "high" for spelling reliability). The text check still gates them. If PROOFREAD flags rise, move those two calls back to "cover".
+- Weekly competitor scrape is ~4× the Apify usage of monthly (the hashtag top-videos scrape and email ride the same run).
+- Tested locally: `assemblePostVideo` on mixed live/still input (20.1s, 1080x1920, correct transitions). A text layer over the base matches the finished slide within JPEG noise. A real BWK packet for 2026-09-26 built with 63 files / 33 MB and correct download headers, and the email rendered.
+
+---
+
 ## [2026-09-25] — /start-test-bwk uses the same light look as /start-test
 
 **Requested by:** Keenan

@@ -16,11 +16,13 @@ import { inngest } from "@/inngest/client";
 export const competitorScrapeDailyFn = inngest.createFunction(
   {
     id: "competitor-scrape-daily",
-    name: "Content Factory — Monthly Competitor Scrape + Mimic Briefs",
+    name: "Content Factory — Weekly Competitor Scrape + Mimic Briefs",
     retries: 1,
     triggers: [
-      // Monthly (1st, 3:30 UTC) — was daily; cut 2026-09-21 to stay inside Apify plan limits
-      { cron: "30 3 1 * *" },
+      // Weekly (Mondays 3:30 UTC, 2026-09-26 per Keenan: "run competitor
+      // research once a week"). Was monthly since 2026-09-21 for Apify
+      // plan limits — weekly is ~4x that Apify usage.
+      { cron: "30 3 * * 1" },
       { event: "content-factory/competitor.scrape" },
     ],
   },

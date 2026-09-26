@@ -242,7 +242,7 @@ export const laneIntelligenceReportFn = inngest.createFunction(
       .join("\n\n");
 
     const analysis = await step.run("write-analysis", async () => {
-      const { callClaude } = await import("@/lib/content-factory/claude-client");
+      const { callContentClaude } = await import("@/lib/content-factory/claude-client");
 
       const dataBlock = stats
         .map(
@@ -251,7 +251,7 @@ export const laneIntelligenceReportFn = inngest.createFunction(
         )
         .join("\n");
 
-      return callClaude({
+      return callContentClaude({
         purpose: "lane-intelligence-report",
         maxTokens: 3000,
         systemPrompt: `You are the content strategist for a two-brand organic content factory:

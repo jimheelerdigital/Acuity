@@ -27,12 +27,19 @@
  * mentioning any creator, platform, or "trend".
  */
 
-import Anthropic from "@anthropic-ai/sdk";
+import {
+  contentAnthropic,
+  CONTENT_MODEL,
+  CONTENT_INPUT_COST_PER_TOKEN,
+  CONTENT_OUTPUT_COST_PER_TOKEN,
+} from "./claude-client";
 
-const anthropic = new Anthropic();
-const CLAUDE_MODEL = "claude-sonnet-4-6";
-const INPUT_COST_PER_TOKEN = 3 / 1_000_000;
-const OUTPUT_COST_PER_TOKEN = 15 / 1_000_000;
+const anthropic = contentAnthropic;
+const CLAUDE_MODEL = CONTENT_MODEL;
+/** Briefs stay usable for 9 days: the scrape runs weekly, plus slack for a missed run. */
+const BRIEF_FRESH_MS = 9 * 24 * 3600 * 1000;
+const INPUT_COST_PER_TOKEN = CONTENT_INPUT_COST_PER_TOKEN;
+const OUTPUT_COST_PER_TOKEN = CONTENT_OUTPUT_COST_PER_TOKEN;
 
 const APIFY_BASE = "https://api.apify.com/v2/acts";
 /** Posts pulled per account per scrape. Cut 20→10 on 2026-09-21 for Apify plan limits. */
@@ -418,7 +425,7 @@ async function recentBriefs(
  * so callers can concatenate unconditionally. Influence only.
  */
 export async function getMimicSignal(brand: "ripple" | "bwk"): Promise<string> {
-  const briefs = (await recentBriefs(brand, 7)).slice(0, 3);
+  const briefs = (await recentBriefs(brand, BRIEF_FRESH_MS / (24 * 3600 * 1000))).slice(0, 3);
   if (briefs.length === 0) return "";
   return [
     "",
@@ -441,7 +448,7 @@ export async function getTopMimicBrief(
   brand: "ripple" | "bwk"
 ): Promise<MimicBrief | null> {
   const { prisma } = await import("@/lib/prisma");
-  const cutoff = new Date(Date.now() - 7 * 24 * 3600 * 1000);
+  const cutoff = new Date(Date.now() - BRIEF_FRESH_MS);
   const row = await prisma.competitorPost.findFirst({
     where: {
       isOutlier: true,

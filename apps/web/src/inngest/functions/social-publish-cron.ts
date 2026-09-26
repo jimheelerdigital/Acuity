@@ -65,6 +65,9 @@ const MAX_POSTS_PER_RUN = 3;
 // FB page (2026-09-24). Earlier BWK posts stay email/TikTok-only.
 const BWK_META_START = new Date("2026-09-25T00:00:00Z");
 
+/** render-reel result meaning "the post's Higgsfield video is still building". */
+const WAIT_FOR_VIDEO = "__wait_for_video__";
+
 export const socialPublishCronFn = inngest.createFunction(
   {
     id: "social-publish-cron",
@@ -291,9 +294,17 @@ export const socialPublishCronFn = inngest.createFunction(
               const publicUrl = supabase.storage
                 .from("content-factory")
                 .getPublicUrl(storagePath).data.publicUrl;
-              // Already rendered (e.g. by a previous attempt)?
+              // Already rendered (the Higgsfield post video, or a previous attempt)?
               const head = await fetch(publicUrl, { method: "HEAD" });
               if (head.ok) return publicUrl;
+              // Higgsfield video still building (2026-09-26): hold the post
+              // for a later run instead of shipping a plain slideshow.
+              const { readVideoMarker, isVideoPending } = await import(
+                "@/lib/content-factory/post-video"
+              );
+              if (isVideoPending(await readVideoMarker(row.carouselPostId))) {
+                return WAIT_FOR_VIDEO;
+              }
 
               const { pickMusicTrack, renderSlideshowReel } = await import(
                 "@/lib/content-factory/slideshow-reel"
@@ -333,6 +344,13 @@ export const socialPublishCronFn = inngest.createFunction(
             }
           }
         );
+      }
+
+      if (reelUrl === WAIT_FOR_VIDEO) {
+        logger.info(
+          `[social-publish] ${row.platform} row ${row.id} waiting on its Higgsfield video — retrying next run`
+        );
+        continue;
       }
 
       const ok = await step.run(`publish-${row.platform}-${row.id}`, async () => {

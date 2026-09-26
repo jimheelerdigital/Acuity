@@ -75,7 +75,7 @@ export const nicheStrategyMemoFn = inngest.createFunction(
     }
 
     const memo = await step.run("write-memo", async () => {
-      const { callClaude } = await import(
+      const { callContentClaude } = await import(
         "@/lib/content-factory/claude-client"
       );
 
@@ -98,7 +98,7 @@ export const nicheStrategyMemoFn = inngest.createFunction(
         })
         .join("\n");
 
-      return callClaude({
+      return callContentClaude({
         purpose: "niche-strategy-memo",
         maxTokens: 2500,
         systemPrompt: `You are the content strategist for Ripple, an AI-powered voice self-reflection app for women aged 40-50 carrying a heavy mental load. Ripple posts 4 pieces daily to Instagram/TikTok: PHOTO (static carousel), VIDEO (animated carousel), STORY (30s narrated story video), AMBIENT (calm looped scene with a reflective voiceover).

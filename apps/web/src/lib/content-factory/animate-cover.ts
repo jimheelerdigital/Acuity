@@ -47,6 +47,9 @@ function authHeaders(): Record<string, string> {
   return {
     "hf-api-key": process.env.HIGGSFIELD_API_KEY!,
     "hf-secret": process.env.HIGGSFIELD_API_SECRET!,
+    // The v2 API (docs.higgsfield.ai, 2026-09) authenticates with
+    // "Key <id>:<secret>"; sending both styles works on either host.
+    Authorization: `Key ${process.env.HIGGSFIELD_API_KEY}:${process.env.HIGGSFIELD_API_SECRET}`,
   };
 }
 
@@ -380,6 +383,10 @@ export function buildCrazyCoverVideoPrompt(
   ].join(" ");
 }
 
+/** Kling reads a negative prompt; keep the text and composition pinned. */
+const KLING_NEGATIVE_PROMPT =
+  "text, letters, words, captions, subtitles, watermark, logo, new people, extra limbs, morphing faces, warped hands, cartoon, CGI, scene cut, camera shake, blur, distortion";
+
 /**
  * Submit an image-to-video job. Returns the Higgsfield request ID.
  *
@@ -424,13 +431,30 @@ export async function submitCoverVideo(opts: {
     body.duration = opts.duration;
   }
 
+  // Kling / Hailuo endpoints (2026-09-26) take a narrower schema: no
+  // motions / enhance_prompt / quality, and fixed durations (Kling 5|10s,
+  // Hailuo 6|10s). Snap to the nearest allowed length.
+  let payload: Record<string, unknown> = body;
+  if (/^(kling-video|minimax)\//.test(model)) {
+    const allowed = model.startsWith("minimax/") ? [6, 10] : [5, 10];
+    const want = Number(body.duration) || allowed[0];
+    payload = {
+      prompt: opts.prompt,
+      image_url: opts.startImageUrl,
+      duration: want > (allowed[0] + allowed[1]) / 2 ? allowed[1] : allowed[0],
+      ...(model.startsWith("kling-video/")
+        ? { negative_prompt: KLING_NEGATIVE_PROMPT }
+        : { prompt_optimizer: false }),
+    };
+  }
+
   const res = await fetch(`${BASE_URL}/${model}`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
       ...authHeaders(),
     },
-    body: JSON.stringify(body),
+    body: JSON.stringify(payload),
   });
 
   if (!res.ok) {

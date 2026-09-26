@@ -23,14 +23,20 @@
  * caption rule, which still governs every other lane).
  */
 
-import Anthropic from "@anthropic-ai/sdk";
+import {
+  contentAnthropic,
+  CONTENT_MODEL,
+  CONTENT_INPUT_COST_PER_TOKEN,
+  CONTENT_OUTPUT_COST_PER_TOKEN,
+  messageText,
+} from "./claude-client";
 import { humanizePass, extractVoice, HUMAN_VOICE_RULES } from "./humanizer";
 import { withHeadlineRetry, fakeCandidFeedback } from "./headline-history";
 
-const anthropic = new Anthropic();
-const CLAUDE_MODEL = "claude-sonnet-4-6";
-const INPUT_COST_PER_TOKEN = 3 / 1_000_000;
-const OUTPUT_COST_PER_TOKEN = 15 / 1_000_000;
+const anthropic = contentAnthropic;
+const CLAUDE_MODEL = CONTENT_MODEL;
+const INPUT_COST_PER_TOKEN = CONTENT_INPUT_COST_PER_TOKEN;
+const OUTPUT_COST_PER_TOKEN = CONTENT_OUTPUT_COST_PER_TOKEN;
 
 export type MoodyAudience = "women" | "men";
 
@@ -2681,8 +2687,8 @@ export async function verifyBakedQuote(
 ): Promise<boolean> {
   try {
     const response = await anthropic.messages.create({
-      model: CLAUDE_MODEL,
       max_tokens: 10,
+      effort: "low",
       messages: [
         {
           role: "user",
@@ -2703,8 +2709,8 @@ export async function verifyBakedQuote(
         },
       ],
     });
-    const answer =
-      response.content[0]?.type === "text" ? response.content[0].text : "";
+    // Opus 5.5 can open with a thinking block — read text blocks only.
+    const answer = messageText(response);
     return /^\s*yes\b/i.test(answer);
   } catch (err) {
     console.warn(
@@ -2719,21 +2725,23 @@ export async function verifyBakedQuote(
 // people-leaking moody image shipped as-is. One short vision review per
 // image; carousel-generate regenerates once on a FAIL. Fail-OPEN: any
 // error or refusal counts as a pass so the check can never block a post.
-// Model: claude-opus-5 at low effort (the claude-api default; a cheaper
-// model is Keenan's call to make). Sent at 768px wide to keep it cheap.
+// 2026-09-26 (per Keenan: "opus 5.5 checks all images with a filter to
+// determine if they're good to go"): runs on the content model (Opus 5.5)
+// at low effort for EVERY generated photo — moody, selfie, phone-quote and
+// texts covers, grid cells, and the baked quote/bubble slides (bakedText:
+// the words are expected there, so only stray text elsewhere fails).
+// Sent at 768px wide to keep it cheap.
 export async function checkMoodyImageQuality(
   image: Buffer,
   scene: string,
-  opts: { personAllowed: boolean }
+  opts: { personAllowed: boolean; bakedText?: boolean }
 ): Promise<{ ok: boolean; reason: string }> {
   try {
     const { default: sharp } = await import("sharp");
     const small = await sharp(image).resize({ width: 768 }).jpeg({ quality: 85 }).toBuffer();
     const response = await anthropic.messages.create({
-      model: "claude-opus-5",
-      max_tokens: 2000,
-      // effort is newer than this SDK version's types; the API accepts it.
-      ...({ output_config: { effort: "low" } } as Record<string, unknown>),
+      max_tokens: 200,
+      effort: "low",
       messages: [
         {
           role: "user",
@@ -2749,7 +2757,7 @@ export async function checkMoodyImageQuality(
 FAIL it if ANY of these is clearly true:
 1. It looks like CGI, a 3D render, an illustration, or a painting rather than a real photograph.${/\bdragon/i.test(scene) ? " The scene is deliberately FANTASY: the dragon itself is expected, so judge only whether the frame looks like a hyperreal live-action film still, not whether the creature could exist." : ""}
 2. There are smeared, melted, garbled, or malformed areas (warped objects, broken anatomy, mangled hands or faces).
-3. Any readable text, letters, numbers, logos, or watermarks appear.
+3. ${opts.bakedText ? "Readable text appears anywhere OTHER than the one intended message on the screen, sign, or paper the scene describes (that message itself is expected — do not judge its wording), or there are logos or watermarks." : "Any readable text, letters, numbers, logos, or watermarks appear."}
 4. ${opts.personAllowed ? "More than the people the scene describes appear." : "A person appears, unless the scene explicitly describes a distant armored warrior, a rider, or a statue."}
 5. It is so dark or murky that the main subject cannot be made out.
 6. It clearly does not show the intended scene's main subject.

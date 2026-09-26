@@ -324,6 +324,28 @@ export const livingReelQueueFn = inngest.createFunction(
         laneRuns.map((bucket) => ({ name: "content-factory/daily.generate" as const, data: { bucket } }))
       );
     }
-    return { queued: requests.map((r) => r.postId), lanes: laneRuns };
+    // Same drop-a-file trigger for the Higgsfield post video (2026-09-26):
+    // `video-requests/<postId>.json` → content-factory/post-video.build.
+    const videoRuns = await step.run("claim-video-requests", async () => {
+      const { supabase } = await import("@/lib/supabase.server");
+      const { writeVideoMarker } = await import("@/lib/content-factory/post-video");
+      const { data } = await supabase.storage.from("content-factory").list("video-requests", { limit: 20 });
+      const claimed: string[] = [];
+      for (const f of (data ?? []).filter((x) => x.name.endsWith(".json"))) {
+        const { error } = await supabase.storage.from("content-factory").remove([`video-requests/${f.name}`]);
+        if (error) continue;
+        const postId = f.name.replace(/\.json$/, "");
+        await writeVideoMarker(postId, { status: "pending" });
+        claimed.push(postId);
+      }
+      return claimed;
+    });
+    if (videoRuns.length > 0) {
+      await step.sendEvent(
+        "send-video-builds",
+        videoRuns.map((postId) => ({ name: "content-factory/post-video.build" as const, data: { postId } }))
+      );
+    }
+    return { queued: requests.map((r) => r.postId), lanes: laneRuns, videos: videoRuns };
   }
 );
