@@ -14,6 +14,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { useTheme } from "@/contexts/theme-context";
 import { getToken } from "@/lib/auth";
+import { bumpDebriefSignal } from "@/lib/review";
 
 /**
  * App-wide "your brief is ready" notifier.
@@ -112,7 +113,12 @@ export function ProcessingNotifierProvider({
             if (isTerminal(status)) {
               trackedRef.current.delete(id);
               // Only celebrate real briefs; a failed one gets no banner.
-              if (status !== "FAILED" && !cancelled) setToastEntryId(id);
+              if (status !== "FAILED" && !cancelled) {
+                setToastEntryId(id);
+                // A completed debrief is the positive signal that arms the
+                // "Enjoying Ripple?" review nudge (frequency-capped).
+                void bumpDebriefSignal();
+              }
             }
           } catch {
             // transient — leave it tracked, try again next tick

@@ -13,6 +13,7 @@ import { AttachStep } from "react-native-spotlight-tour";
 import { TOUR_STEP_INDEX } from "@/components/tour/steps";
 import { TourTarget } from "@/components/tour/TourTarget";
 import { PastDueBanner } from "@/components/past-due-banner";
+import { ReviewNudge } from "@/components/review-nudge";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 
@@ -94,6 +95,9 @@ export default function TabsLayout() {
           <Tabs.Screen name="profile" options={{ href: null }} />
         </Tabs>
       </View>
+      {/* Compliant "Enjoying Ripple?" review nudge — self-gates (arms only
+          after completed debriefs, frequency-capped, dismissible). */}
+      <ReviewNudge />
     </View>
   );
 }

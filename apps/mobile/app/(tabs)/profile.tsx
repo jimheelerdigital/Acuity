@@ -22,6 +22,7 @@ import { TrialStatusCard } from "@/components/TrialStatusCard";
 import { HapticsRow } from "@/components/appearance/haptics-row";
 import { DeleteAccountModal } from "@/components/delete-account-modal";
 import { FeedbackModal } from "@/components/feedback-modal";
+import { requestReview } from "@/lib/review";
 import { RestorePurchasesButton } from "@/components/restore-purchases-button";
 import { useAuth } from "@/contexts/auth-context";
 import { useTheme } from "@/contexts/theme-context";
@@ -485,6 +486,12 @@ export default function ProfileTab() {
               picker modal; submits to /api/feedback/submit which
               forwards a Block-Kit message to the #acuity-feedback
               Slack channel; Make.com → Monday from there. */}
+          <MenuItem
+            icon="star-outline"
+            label="Rate Ripple"
+            sublabel="Enjoying the app? A rating helps others find it"
+            onPress={() => void requestReview()}
+          />
           <MenuItem
             icon="chatbox-ellipses-outline"
             label="Send feedback"
