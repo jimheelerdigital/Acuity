@@ -58,10 +58,12 @@ export async function POST(req: NextRequest) {
   const nameParts = (user.name ?? "").trim().split(/\s+/);
 
   // Awaited so the serverless function can't freeze mid-request.
+  const { hasInternalCookie } = await import("@/lib/internal-traffic");
   await sendConversionEvent({
     eventName: "CompleteRegistration",
     eventId,
     userId: session.user.id,
+    internal: hasInternalCookie(reqHeaders.get("cookie")),
     eventSourceUrl: "https://goripple.io/start",
     userData: {
       email: user.email ?? undefined,

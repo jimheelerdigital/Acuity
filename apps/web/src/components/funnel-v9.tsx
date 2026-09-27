@@ -207,7 +207,8 @@ export function FunnelV9({ brand = "ripple" }: { brand?: V9Brand }) {
     // remember the arm and log it once (lib/funnel-split.ts).
     if (consumeTestArrival()) track("funnel_split_arm", "test");
     const params = new URLSearchParams(window.location.search);
-    try {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    if (!require("@/lib/internal-traffic").isInternalClient()) try {
       fetch("/api/capi/pageview", {
         method: "POST",
         headers: { "Content-Type": "application/json" },

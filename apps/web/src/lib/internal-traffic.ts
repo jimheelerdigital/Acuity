@@ -79,3 +79,26 @@ export async function flagSessionInternal(
   if (or.length === 0) return;
   await db.onboardingEvent.updateMany({ where: { isBot: false, OR: or }, data: { isBot: true } });
 }
+
+/** Server: does this Cookie header carry the internal-device cookie? */
+export function hasInternalCookie(cookieHeader: string | null | undefined): boolean {
+  return !!cookieHeader && /(?:^|;\s*)acuity_internal=1(?:;|$)/.test(cookieHeader);
+}
+
+/**
+ * Browser: is this an internal device? Automated browsers (navigator.webdriver)
+ * also get the cookie set here, so every later server call (signup, Meta CAPI,
+ * events) sees it too. Used to keep internal visits out of the Meta pixel.
+ */
+export function isInternalClient(): boolean {
+  if (typeof window === "undefined") return false;
+  try {
+    if (navigator.webdriver) {
+      document.cookie = `${INTERNAL_COOKIE}=1; path=/; max-age=31536000; SameSite=Lax`;
+      return true;
+    }
+    return /(?:^|;\s*)acuity_internal=1(?:;|$)/.test(document.cookie);
+  } catch {
+    return false;
+  }
+}

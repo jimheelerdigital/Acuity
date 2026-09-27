@@ -7,6 +7,42 @@
 
 ---
 
+## [2026-09-27] — Test funnels checked end to end; internal visits no longer reach Meta
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** (see git log: "fix: Keep internal traffic out of Meta and clear the funnel checkout")
+
+### In plain English (for Keenan)
+Both test funnels (/start-test and /start-test-bwk) were walked end to end on the live site, from the first screen through Stripe checkout, and both work. The check turned up two fixes, now made:
+- Our own test runs and team phones were still sending fake signups to Meta, which teaches Meta to target the wrong people. They no longer reach Meta at all.
+- The floating crisis-line bar no longer covers the paywall and checkout. The funnel keeps its own small crisis line.
+
+### Technical changes (for Jimmy)
+- `apps/web/src/lib/meta-capi.ts`:
+  - `sendConversionEvent` skips internal traffic via the new `isInternalConversion`.
+  - It checks the `internal` flag, the internal UA, an internal email, and an internal user or a flagged session by userId.
+  - New optional `internal` field on `ConversionEvent`.
+- `apps/web/src/app/api/auth/signup/route.ts`, `api/capi/complete-registration`, `api/capi/pageview`: pass `internal: hasInternalCookie(cookie)`.
+- `apps/web/src/lib/internal-traffic.ts`: added `hasInternalCookie` (server) and `isInternalClient` (browser; also sets the cookie for automated browsers).
+- `apps/web/src/components/meta-pixel-events.tsx` (`fireFbq`), `consent-gated-trackers.tsx` (the PageView), `funnel-v9.tsx`, `app/start/client.tsx`, `app/start-bwk/client.tsx`: no pixel or CAPI PageView calls on internal devices.
+- `apps/web/src/lib/track-onboarding.ts`: automated browsers set the internal cookie.
+- `apps/web/src/app/api/stripe/webhook/route.ts`: the internal check in `logServerFunnelEvent` is now fail-safe. Before, a throwing check skipped writing the payment event, which 4 webhook tests caught. **Jimmy: please review (payment path).**
+- `apps/web/src/components/crisis-footer.tsx`: hidden on `/start*`.
+
+### Manual steps needed
+- [ ] Rename the Stripe product "Acuity Pro" to "Ripple Pro". Stripe's checkout shows "Try Acuity Pro" on every funnel (Keenan, Stripe dashboard).
+- [ ] Run one real $0 trial through /start-test with a real card, then cancel it. The post-payment return and download screen can't be tested without a real card (Keenan).
+
+### Notes
+- Walk results (Playwright, mobile, live site), both funnels:
+  - All 29 screens pass, and the email gate creates an account.
+  - The paywall shows $7.50/mo ($89.99/yr) or $9.99/mo with $0 today, and nothing overflows sideways.
+  - Embedded Stripe checkout loads "7 days free, then $89.99 per year".
+  - About 55s per walk. The only console errors are Stripe's own hCaptcha 401s.
+- Before this fix, the 2 QA walks sent 2 CompleteRegistration events to Meta.
+- 6 failing tests under src/lib/evidence (RevenueCat, EAS, v10 paywall) are pre-existing and unrelated.
+
 ## [2026-09-26] — Internal sessions can never count toward the funnel
 
 **Requested by:** Keenan

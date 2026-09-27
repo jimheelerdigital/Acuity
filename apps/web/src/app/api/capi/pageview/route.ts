@@ -26,9 +26,11 @@ export async function POST(req: NextRequest) {
   const eventId = generateEventId("PageView");
   const reqHeaders = req.headers;
 
+  const { hasInternalCookie } = await import("@/lib/internal-traffic");
   sendConversionEvent({
     eventName: "PageView",
     eventId,
+    internal: hasInternalCookie(reqHeaders.get("cookie")),
     eventSourceUrl: pageUrl || "https://goripple.io/start",
     userData: {
       ip: getClientIp(reqHeaders),

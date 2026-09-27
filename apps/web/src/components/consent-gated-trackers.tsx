@@ -92,7 +92,8 @@ export function ConsentGatedTrackers() {
             s.parentNode.insertBefore(t,s)}(window, document,'script',
             'https://connect.facebook.net/en_US/fbevents.js');
             fbq('init', '${META_PIXEL_ID}');
-            fbq('track', 'PageView');
+            // Internal devices (QA browsers, team phones) never count in Meta.
+            if (!navigator.webdriver && document.cookie.indexOf('acuity_internal=1') < 0) fbq('track', 'PageView');
           `}
         </Script>
       )}

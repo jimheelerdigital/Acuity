@@ -343,10 +343,16 @@ async function logServerFunnelEvent(
   try {
     const ctx = await resolveFunnelContext(db, userId);
     // Internal sessions/users never count toward the funnel (2026-09-26).
-    const { isInternalUser, isInternalSession } = await import("@/lib/internal-traffic");
-    const internal =
-      (await isInternalUser(db, userId)) ||
-      (await isInternalSession(db, ctx?.sessionToken ?? null, userId));
+    // Fail-safe: a failed check must never drop the payment event.
+    let internal = false;
+    try {
+      const { isInternalUser, isInternalSession } = await import("@/lib/internal-traffic");
+      internal =
+        (await isInternalUser(db, userId)) ||
+        (await isInternalSession(db, ctx?.sessionToken ?? null, userId));
+    } catch {
+      internal = false;
+    }
     await db.onboardingEvent.create({
       data: {
         userId,

@@ -254,10 +254,12 @@ export async function POST(req: NextRequest) {
     // Awaited: fire-and-forget fetches can be cut off when the serverless
     // function freezes after responding, and a dropped CompleteRegistration
     // is a missing ad result in Meta. sendConversionEvent never throws.
+    const { hasInternalCookie } = await import("@/lib/internal-traffic");
     await sendConversionEvent({
       eventName: "CompleteRegistration",
       eventId,
       userId,
+      internal: hasInternalCookie(reqHeaders.get("cookie")),
       eventSourceUrl: `${req.nextUrl.origin}/auth/signup`,
       userData: {
         email,

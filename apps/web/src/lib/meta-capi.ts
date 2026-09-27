@@ -65,6 +65,24 @@ interface ConversionEvent {
   actionSource?: "website" | "app" | "email" | "phone_call" | "chat" | "physical_store" | "system_generated" | "other";
   userData: UserData;
   customData?: Record<string, unknown>;
+  /** Caller saw internal traffic (acuity_internal cookie). Never sent to Meta. */
+  internal?: boolean;
+}
+
+async function isInternalConversion(event: ConversionEvent): Promise<boolean> {
+  try {
+    const { INTERNAL_UA, isInternalEmail, isInternalUser, isInternalSession } = await import("@/lib/internal-traffic");
+    if (event.internal) return true;
+    if (event.userData.userAgent && INTERNAL_UA.test(event.userData.userAgent)) return true;
+    if (isInternalEmail(event.userData.email)) return true;
+    if (event.userId) {
+      const { prisma } = await import("@/lib/prisma");
+      if ((await isInternalUser(prisma, event.userId)) || (await isInternalSession(prisma, null, event.userId))) return true;
+    }
+  } catch {
+    // A failed check must never block a real conversion.
+  }
+  return false;
 }
 
 // ─── Send to Meta ───────────────────────────────────────────────────
@@ -75,6 +93,12 @@ interface ConversionEvent {
  * the calling route's response.
  */
 export async function sendConversionEvent(event: ConversionEvent): Promise<void> {
+  // Internal traffic never reaches Meta (2026-09-26): fake signups and
+  // purchases from our own QA would train ad delivery on the wrong people.
+  if (await isInternalConversion(event)) {
+    console.info(`[meta-capi] Skipping ${event.eventName}: internal traffic`);
+    return;
+  }
   const pixelId = process.env.META_PIXEL_ID;
   const accessToken = process.env.META_ACCESS_TOKEN;
 

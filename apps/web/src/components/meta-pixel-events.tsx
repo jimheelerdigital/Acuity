@@ -24,6 +24,9 @@ function getStoredUtm(): Record<string, string> {
  * against the matching server-side CAPI event.
  */
 export function fireFbq(event: string, params?: Record<string, unknown>, eventId?: string) {
+  // Internal devices never fire the pixel (lib/internal-traffic.ts).
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  if (require("@/lib/internal-traffic").isInternalClient()) return;
   if (typeof window !== "undefined" && typeof window.fbq === "function") {
     // Enrich pixel events with UTM attribution from the funnel session
     const utm = getStoredUtm();

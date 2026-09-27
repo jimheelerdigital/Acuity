@@ -25,7 +25,8 @@ export function StartBwkPageClient({ skipSSR }: { skipSSR?: boolean }) {
       } catch {}
 
       // Fire server-side Meta CAPI PageView (bypasses ad blockers)
-      try {
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      if (!require("@/lib/internal-traffic").isInternalClient()) try {
         const params = new URLSearchParams(window.location.search);
         fetch("/api/capi/pageview", {
           method: "POST",

@@ -40,7 +40,11 @@ export function trackOnboardingEvent(
     if (opts?.browser) body.browser = opts.browser;
     // Automated browsers (Playwright/Puppeteer/Selenium set this) are our own
     // QA runs; the server stores them as internal so the funnel stats skip them.
-    if (typeof navigator !== "undefined" && navigator.webdriver) body.automation = "1";
+    if (typeof navigator !== "undefined" && navigator.webdriver) {
+      body.automation = "1";
+      // Also set the internal cookie so signup + Meta CAPI see it server side.
+      document.cookie = "acuity_internal=1; path=/; max-age=31536000; SameSite=Lax";
+    }
     // ?internal=1 on any funnel URL marks this device internal for a year
     // (for team phones that never open /admin). See lib/internal-traffic.ts.
     if (typeof window !== "undefined" && /[?&]internal=1\b/.test(window.location.search)) {
