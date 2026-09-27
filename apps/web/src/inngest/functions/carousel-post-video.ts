@@ -186,23 +186,36 @@ export const carouselPostVideoFn = inngest.createFunction(
         const { submitCoverVideo } = await import("@/lib/content-factory/animate-cover");
         const { POST_VIDEO_MODEL } = await import("@/lib/content-factory/post-video");
         const fallback = process.env.HIGGSFIELD_VIDEO_MODEL?.trim();
-        return Promise.all(
+        const errors: string[] = [];
+        const submitted = await Promise.all(
           wave.map(async (i) => {
             const opts = { startImageUrl: prepared[i].baseUrl, prompt: prepared[i].prompt, duration: 5 };
             try {
               return { i, id: await submitCoverVideo({ ...opts, model: POST_VIDEO_MODEL }), model: POST_VIDEO_MODEL };
             } catch (err) {
+              errors.push(`slide ${i} ${POST_VIDEO_MODEL}: ${err instanceof Error ? err.message : err}`);
               console.warn(`[post-video] ${POST_VIDEO_MODEL} submit failed for slide ${i}: ${err instanceof Error ? err.message : err}`);
               if (!fallback || fallback === POST_VIDEO_MODEL) return { i, id: null, model: POST_VIDEO_MODEL };
               try {
                 return { i, id: await submitCoverVideo({ ...opts, model: fallback }), model: fallback };
               } catch (err2) {
+                errors.push(`slide ${i} ${fallback}: ${err2 instanceof Error ? err2.message : err2}`);
                 console.warn(`[post-video] ${fallback} submit failed for slide ${i}: ${err2 instanceof Error ? err2.message : err2}`);
                 return { i, id: null, model: fallback };
               }
             }
           })
         );
+        // Submit log beside the build (ops scripts can read Storage, not Inngest logs).
+        const { supabase } = await import("@/lib/supabase.server");
+        await supabase.storage
+          .from("content-factory")
+          .upload(
+            `living/${postId}/submit-${w}.json`,
+            Buffer.from(JSON.stringify({ at: new Date().toISOString(), submitted, errors }, null, 1)),
+            { contentType: "application/json", upsert: true }
+          );
+        return submitted;
       });
       for (const j of jobs) {
         clips[j.i] = null;
@@ -217,7 +230,7 @@ export const carouselPostVideoFn = inngest.createFunction(
           return Promise.all(
             pending.map(async (j) => {
               try {
-                const st = await checkCoverVideo(j.id!);
+                const st = await checkCoverVideo(j.id!, j.model);
                 if (st.status === "completed" && st.videoUrl) return { i: j.i, state: "done" as const, url: st.videoUrl };
                 if (st.status === "queued" || st.status === "in_progress") return { i: j.i, state: "wait" as const };
                 return { i: j.i, state: "failed" as const, reason: st.status };

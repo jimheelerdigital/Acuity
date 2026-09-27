@@ -160,6 +160,7 @@ Every social post is now written by Claude Opus 5.5. That covers the slide text,
 - The daily email flow no longer sends per-post emails. The admin "Resend email" button and one-off posts still use `sendCarouselEmail`.
 - Inner-slide "medium" now applies to the baked quote and bubble slides too (they were "high" for spelling reliability). The text check still gates them. If PROOFREAD flags rise, move those two calls back to "cover".
 - Weekly competitor scrape is ~4× the Apify usage of monthly (the hashtag top-videos scrape and email ride the same run).
+- 2026-09-27 prod test: the first build hung on the Higgsfield submit past the 300s step cap, twice. Follow-up fix: Kling/Hailuo go to the v2 host `api.higgsfield.ai`, every Higgsfield request has a 60s timeout, and each wave's submit results are written to `living/<postId>/submit-<w>.json`.
 - Tested locally: `assemblePostVideo` on mixed live/still input (20.1s, 1080x1920, correct transitions). A text layer over the base matches the finished slide within JPEG noise. A real BWK packet for 2026-09-26 built with 63 files / 33 MB and correct download headers, and the email rendered.
 
 ---

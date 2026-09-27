@@ -26,6 +26,18 @@ import type { CarouselTopic } from "./topics";
 import { isMood, type Mood } from "./brand";
 
 const BASE_URL = "https://platform.higgsfield.ai";
+/**
+ * Kling / Hailuo live on Higgsfield's v2 API host (docs.higgsfield.ai
+ * OpenAPI, 2026-09-26). The first prod test against platform.* hung past
+ * the 300s step cap, so those models go straight to api.*.
+ */
+const V2_BASE_URL = "https://api.higgsfield.ai";
+/** Every Higgsfield call gives up after this — a hung request must never eat a 300s step. */
+const HF_TIMEOUT_MS = 60_000;
+
+export function higgsfieldBaseFor(model?: string): string {
+  return model && /^(kling-video|minimax)\//.test(model) ? V2_BASE_URL : BASE_URL;
+}
 
 /** Max time we'll poll for a video before giving up (per attempt). */
 const POLL_TIMEOUT_MS = 8 * 60_000;
@@ -448,7 +460,8 @@ export async function submitCoverVideo(opts: {
     };
   }
 
-  const res = await fetch(`${BASE_URL}/${model}`, {
+  const res = await fetch(`${higgsfieldBaseFor(model)}/${model}`, {
+    signal: AbortSignal.timeout(HF_TIMEOUT_MS),
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -478,8 +491,9 @@ export interface HiggsfieldStatus {
 }
 
 /** Check a request's status once. */
-export async function checkCoverVideo(requestId: string): Promise<HiggsfieldStatus> {
-  const res = await fetch(`${BASE_URL}/requests/${requestId}/status`, {
+export async function checkCoverVideo(requestId: string, model?: string): Promise<HiggsfieldStatus> {
+  const res = await fetch(`${higgsfieldBaseFor(model)}/requests/${requestId}/status`, {
+    signal: AbortSignal.timeout(HF_TIMEOUT_MS),
     headers: authHeaders(),
   });
   if (!res.ok) {
