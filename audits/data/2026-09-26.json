@@ -1,0 +1,4622 @@
+{
+  "schema_version": 1,
+  "generated_at": "2026-09-27T07:43:22.370Z",
+  "period": {
+    "timezone": "America/Chicago",
+    "week_start": "2026-09-20",
+    "week_end": "2026-09-26",
+    "start_utc": "2026-09-20T05:00:00.000Z",
+    "end_utc_exclusive": "2026-09-27T05:00:00.000Z",
+    "week_in_progress": false,
+    "history_weeks": [
+      "2026-09-13..2026-09-19",
+      "2026-09-06..2026-09-12",
+      "2026-08-30..2026-09-05",
+      "2026-08-23..2026-08-29"
+    ]
+  },
+  "sources_status": {
+    "supabase": "ok",
+    "revenuecat": "ok",
+    "stripe": "ok",
+    "costs": "partial",
+    "app_stores": "ok"
+  },
+  "derived": {
+    "dedup_rule": "RevenueCat ingests Stripe → RevenueCat is the single revenue/subscriber source; Stripe used only for fees and refunds.",
+    "paid_subscribers_by_channel_db": {
+      "ios": 5,
+      "android": 0,
+      "web": 15
+    },
+    "paid_subscribers_total_db": 20,
+    "weekly_revenue_usd": 4.99,
+    "weekly_revenue_basis": "RevenueCat",
+    "weekly_known_cost_usd": 23.18,
+    "cost_per_weekly_active_user_usd": 2.9,
+    "gross_margin_per_paid_user_week_usd": -0.91,
+    "caveat": "Costs only include services with a known figure (see costs.services_unknown). Treat margin as an upper bound until manual-costs.json is complete."
+  },
+  "supabase": {
+    "weekly_series": [
+      {
+        "week": "2026-09-20..2026-09-26",
+        "signups": 23,
+        "weekly_active_recorders": 8,
+        "entries": 38,
+        "entries_per_active_user": 4.75,
+        "median_entry_words": 222,
+        "median_entry_seconds": 142,
+        "pct_active_recording_3plus_days": 62.5
+      },
+      {
+        "week": "2026-09-13..2026-09-19",
+        "signups": 4,
+        "weekly_active_recorders": 5,
+        "entries": 27,
+        "entries_per_active_user": 5.4,
+        "median_entry_words": 282,
+        "median_entry_seconds": 162,
+        "pct_active_recording_3plus_days": 60
+      },
+      {
+        "week": "2026-09-06..2026-09-12",
+        "signups": 1,
+        "weekly_active_recorders": 5,
+        "entries": 34,
+        "entries_per_active_user": 6.8,
+        "median_entry_words": 165,
+        "median_entry_seconds": 103,
+        "pct_active_recording_3plus_days": 60
+      },
+      {
+        "week": "2026-08-30..2026-09-05",
+        "signups": 3,
+        "weekly_active_recorders": 6,
+        "entries": 30,
+        "entries_per_active_user": 5,
+        "median_entry_words": 219,
+        "median_entry_seconds": 103,
+        "pct_active_recording_3plus_days": 33.3
+      },
+      {
+        "week": "2026-08-23..2026-08-29",
+        "signups": 3,
+        "weekly_active_recorders": 6,
+        "entries": 36,
+        "entries_per_active_user": 6,
+        "median_entry_words": 148,
+        "median_entry_seconds": 88,
+        "pct_active_recording_3plus_days": 50
+      }
+    ],
+    "definitions": {
+      "weekly_active_recorders": "Distinct non-admin users with ≥1 Entry created in the week (WAU by recording).",
+      "weekly_active_seen": "Non-admin users whose lastSeenAt falls in the week (app/web open). Only available for the current week — lastSeenAt is overwritten.",
+      "pct_active_recording_3plus_days": "Of weekly active recorders, % who recorded on 3+ distinct local calendar days (user timezone).",
+      "retention_classic": "Dn = % of the cohort with an Entry during day n after signup ([n, n+1) days). Cohort = non-admin signups in the 7 days ending n+1 days before week end, so every member has had the chance.",
+      "retention_week_window": "D7w = entry in days [7,14); D30w = entry in days [28,35). Less noisy at small cohort sizes.",
+      "activation": "% of the week's signups with ≥1 Entry so far."
+    },
+    "weekly_active_seen": 21,
+    "signups_breakdown": {
+      "by_platform": [
+        {
+          "platform": "web_or_unknown",
+          "n": 18
+        },
+        {
+          "platform": "ios",
+          "n": 5
+        }
+      ],
+      "by_method": [
+        {
+          "method": "email",
+          "n": 20
+        },
+        {
+          "method": "mobile-google",
+          "n": 2
+        },
+        {
+          "method": "mobile-apple",
+          "n": 1
+        }
+      ],
+      "by_utm_source_medium": [
+        {
+          "source": "meta",
+          "medium": "paid",
+          "n": 15
+        },
+        {
+          "source": "(none)",
+          "medium": "(none)",
+          "n": 7
+        },
+        {
+          "source": "facebook",
+          "medium": "social",
+          "n": 1
+        }
+      ]
+    },
+    "activation": {
+      "cohort": 23,
+      "activated": 1,
+      "pct": 4.3
+    },
+    "retention": {
+      "d1": {
+        "cohort": 12,
+        "retained": 0,
+        "pct": 0,
+        "cohort_signup_window": "2026-09-18..2026-09-25"
+      },
+      "d7": {
+        "cohort": 1,
+        "retained": 0,
+        "pct": 0,
+        "cohort_signup_window": "2026-09-12..2026-09-19"
+      },
+      "d30": {
+        "cohort": 3,
+        "retained": 0,
+        "pct": 0,
+        "cohort_signup_window": "2026-08-20..2026-08-27"
+      },
+      "d7_week_window": {
+        "cohort": 1,
+        "retained": 0,
+        "pct": 0,
+        "cohort_signup_window": "2026-09-06..2026-09-13"
+      },
+      "d30_week_window": {
+        "cohort": 3,
+        "retained": 0,
+        "pct": 0,
+        "cohort_signup_window": "2026-08-16..2026-08-23"
+      }
+    },
+    "pipeline_health": [
+      {
+        "status": "COMPLETE",
+        "n": 40
+      },
+      {
+        "status": "FAILED",
+        "n": 1
+      }
+    ],
+    "mood_distribution": [
+      {
+        "mood": "GOOD",
+        "n": 19
+      },
+      {
+        "mood": "NEUTRAL",
+        "n": 11
+      },
+      {
+        "mood": "GREAT",
+        "n": 4
+      },
+      {
+        "mood": "ROUGH",
+        "n": 2
+      },
+      {
+        "mood": "(none)",
+        "n": 1
+      },
+      {
+        "mood": "LOW",
+        "n": 1
+      }
+    ],
+    "onboarding": {
+      "note": "app_onboarding_steps: signups in the last 30 days by UserOnboarding.currentStep (read step meanings from the codebase). web_funnel_events: OnboardingEvent counts (bots excluded), uniques = distinct session/user.",
+      "app_onboarding_steps_last_30d": [
+        {
+          "step": 0,
+          "users": 20,
+          "completed": 3
+        },
+        {
+          "step": 1,
+          "users": 2,
+          "completed": 0
+        },
+        {
+          "step": 2,
+          "users": 1,
+          "completed": 0
+        },
+        {
+          "step": 10,
+          "users": 9,
+          "completed": 9
+        }
+      ],
+      "web_funnel_events_this_week": [
+        {
+          "event": "funnel_entry_viewed",
+          "events": 354,
+          "uniques": 294
+        },
+        {
+          "event": "funnel_social_proof_viewed",
+          "events": 402,
+          "uniques": 289
+        },
+        {
+          "event": "funnel_s1_variant",
+          "events": 144,
+          "uniques": 126
+        },
+        {
+          "event": "funnel_entry_selected",
+          "events": 152,
+          "uniques": 64
+        },
+        {
+          "event": "funnel_branch_q2_viewed",
+          "events": 85,
+          "uniques": 64
+        },
+        {
+          "event": "funnel_branch_q3_viewed",
+          "events": 65,
+          "uniques": 54
+        },
+        {
+          "event": "funnel_branch_q2_selected",
+          "events": 59,
+          "uniques": 54
+        },
+        {
+          "event": "funnel_pain_viewed",
+          "events": 59,
+          "uniques": 53
+        },
+        {
+          "event": "funnel_branch_q6_selected",
+          "events": 52,
+          "uniques": 52
+        },
+        {
+          "event": "funnel_branch_q6_viewed",
+          "events": 59,
+          "uniques": 52
+        },
+        {
+          "event": "funnel_branch_q3_selected",
+          "events": 55,
+          "uniques": 52
+        },
+        {
+          "event": "funnel_mechanism_viewed",
+          "events": 48,
+          "uniques": 47
+        },
+        {
+          "event": "funnel_current_future_viewed",
+          "events": 44,
+          "uniques": 41
+        },
+        {
+          "event": "funnel_pattern_result_viewed",
+          "events": 41,
+          "uniques": 38
+        },
+        {
+          "event": "funnel_signup_screen_viewed",
+          "events": 50,
+          "uniques": 38
+        },
+        {
+          "event": "funnel_processing_viewed",
+          "events": 39,
+          "uniques": 38
+        },
+        {
+          "event": "funnel_create_account_viewed",
+          "events": 50,
+          "uniques": 38
+        },
+        {
+          "event": "funnel_pattern_assigned",
+          "events": 41,
+          "uniques": 38
+        },
+        {
+          "event": "funnel_s1_answered",
+          "events": 45,
+          "uniques": 37
+        },
+        {
+          "event": "funnel_webview_detected",
+          "events": 32,
+          "uniques": 27
+        },
+        {
+          "event": "funnel_signup_started",
+          "events": 21,
+          "uniques": 21
+        },
+        {
+          "event": "funnel_savings_viewed",
+          "events": 23,
+          "uniques": 18
+        },
+        {
+          "event": "funnel_account_created",
+          "events": 18,
+          "uniques": 18
+        },
+        {
+          "event": "meta_capi_completeregistration_ok",
+          "events": 12,
+          "uniques": 12
+        },
+        {
+          "event": "funnel_oauth_google_tapped",
+          "events": 11,
+          "uniques": 11
+        },
+        {
+          "event": "funnel_email_signup_tapped",
+          "events": 12,
+          "uniques": 11
+        },
+        {
+          "event": "funnel_oauth_redirect_started",
+          "events": 11,
+          "uniques": 11
+        },
+        {
+          "event": "funnel_email_signup_submitted",
+          "events": 10,
+          "uniques": 10
+        },
+        {
+          "event": "funnel_email_signup_success",
+          "events": 10,
+          "uniques": 10
+        },
+        {
+          "event": "funnel_checkout_started",
+          "events": 13,
+          "uniques": 8
+        },
+        {
+          "event": "funnel_paywall_paid_selected",
+          "events": 8,
+          "uniques": 8
+        },
+        {
+          "event": "funnel_timeline_viewed",
+          "events": 9,
+          "uniques": 8
+        },
+        {
+          "event": "funnel_download_viewed",
+          "events": 8,
+          "uniques": 8
+        },
+        {
+          "event": "funnel_oauth_returned_success",
+          "events": 8,
+          "uniques": 8
+        },
+        {
+          "event": "funnel_download_screen_viewed",
+          "events": 8,
+          "uniques": 8
+        },
+        {
+          "event": "funnel_paywall_lock_in_selected",
+          "events": 8,
+          "uniques": 8
+        },
+        {
+          "event": "funnel_s1_not_quite",
+          "events": 7,
+          "uniques": 7
+        },
+        {
+          "event": "review_gate_shown",
+          "events": 22,
+          "uniques": 5
+        },
+        {
+          "event": "funnel_app_store_clicked",
+          "events": 5,
+          "uniques": 5
+        },
+        {
+          "event": "funnel_paywall_skip_selected",
+          "events": 5,
+          "uniques": 5
+        },
+        {
+          "event": "funnel_paywall_continue_selected",
+          "events": 5,
+          "uniques": 5
+        },
+        {
+          "event": "funnel_trial_continued",
+          "events": 5,
+          "uniques": 5
+        },
+        {
+          "event": "funnel_payment_completed",
+          "events": 4,
+          "uniques": 4
+        },
+        {
+          "event": "funnel_inapp_browser_detected",
+          "events": 4,
+          "uniques": 4
+        },
+        {
+          "event": "funnel_autocopy_success",
+          "events": 6,
+          "uniques": 4
+        },
+        {
+          "event": "funnel_download_returned",
+          "events": 4,
+          "uniques": 4
+        },
+        {
+          "event": "review_gate_confirmed",
+          "events": 9,
+          "uniques": 4
+        },
+        {
+          "event": "funnel_checkout_viewed",
+          "events": 9,
+          "uniques": 4
+        },
+        {
+          "event": "funnel_savings_locked_in",
+          "events": 3,
+          "uniques": 3
+        },
+        {
+          "event": "funnel_continue_web_app_clicked",
+          "events": 3,
+          "uniques": 3
+        },
+        {
+          "event": "funnel_email_signup_failed",
+          "events": 2,
+          "uniques": 2
+        },
+        {
+          "event": "funnel_branch_q4_selected",
+          "events": 2,
+          "uniques": 2
+        },
+        {
+          "event": "funnel_branch_q4_viewed",
+          "events": 2,
+          "uniques": 2
+        },
+        {
+          "event": "backstop_committed",
+          "events": 13,
+          "uniques": 2
+        },
+        {
+          "event": "funnel_shared_q5_selected",
+          "events": 2,
+          "uniques": 2
+        },
+        {
+          "event": "funnel_shared_q5_viewed",
+          "events": 2,
+          "uniques": 2
+        },
+        {
+          "event": "funnel_signup_failed",
+          "events": 2,
+          "uniques": 2
+        },
+        {
+          "event": "meta_capi_purchase_ok",
+          "events": 2,
+          "uniques": 2
+        },
+        {
+          "event": "review_gate_dismissed",
+          "events": 9,
+          "uniques": 2
+        },
+        {
+          "event": "funnel_play_store_clicked",
+          "events": 1,
+          "uniques": 1
+        }
+      ],
+      "web_funnel_events_last_week": [
+        {
+          "event": "review_gate_shown",
+          "events": 12,
+          "uniques": 3
+        },
+        {
+          "event": "funnel_entry_viewed",
+          "events": 3,
+          "uniques": 3
+        },
+        {
+          "event": "funnel_payment_completed",
+          "events": 3,
+          "uniques": 3
+        },
+        {
+          "event": "funnel_social_proof_viewed",
+          "events": 3,
+          "uniques": 3
+        },
+        {
+          "event": "backstop_committed",
+          "events": 17,
+          "uniques": 3
+        },
+        {
+          "event": "review_gate_confirmed",
+          "events": 3,
+          "uniques": 1
+        },
+        {
+          "event": "funnel_download_screen_viewed",
+          "events": 1,
+          "uniques": 1
+        },
+        {
+          "event": "funnel_download_viewed",
+          "events": 1,
+          "uniques": 1
+        },
+        {
+          "event": "review_gate_dismissed",
+          "events": 7,
+          "uniques": 1
+        },
+        {
+          "event": "funnel_hero_app_store_clicked",
+          "events": 1,
+          "uniques": 0
+        }
+      ]
+    },
+    "subscriptions_db": {
+      "note": "Current state from the User table. Each user row has ONE subscriptionSource, so these counts are inherently de-duplicated across stores. 'comp' = complimentary, never revenue. Channel map: apple=iOS, google_play=Android, stripe=web. trial_to_paid is keyed on the user's last-seen devicePlatform (a proxy for channel). churn_proxy uses updatedAt and over-counts; prefer Stripe/RevenueCat churn when present.",
+      "by_status_and_source": [
+        {
+          "status": "FREE",
+          "source": "(none)",
+          "n": 321
+        },
+        {
+          "status": "FREE",
+          "source": "stripe",
+          "n": 27
+        },
+        {
+          "status": "PRO",
+          "source": "stripe",
+          "n": 15
+        },
+        {
+          "status": "PRO",
+          "source": "comp",
+          "n": 5
+        },
+        {
+          "status": "TRIAL",
+          "source": "(none)",
+          "n": 5
+        },
+        {
+          "status": "PRO",
+          "source": "apple",
+          "n": 5
+        },
+        {
+          "status": "FREE",
+          "source": "apple",
+          "n": 2
+        }
+      ],
+      "pro_product_mix": [
+        {
+          "source": "stripe",
+          "product": "(stripe — see stripe.plan_mix)",
+          "n": 15
+        },
+        {
+          "source": "comp",
+          "product": "(stripe — see stripe.plan_mix)",
+          "n": 5
+        },
+        {
+          "source": "apple",
+          "product": "com.heelerdigital.acuity.pro.annual",
+          "n": 2
+        },
+        {
+          "source": "apple",
+          "product": "com.heelerdigital.acuity.pro.monthly",
+          "n": 2
+        },
+        {
+          "source": "apple",
+          "product": "com.heelerdigital.acuity.pro.monthly.v2",
+          "n": 1
+        }
+      ],
+      "new_trials_this_week": 23,
+      "trial_to_paid_7d_by_platform": [
+        {
+          "platform": "web_or_unknown",
+          "trials_ended": 19,
+          "converted": 2
+        },
+        {
+          "platform": "ios",
+          "trials_ended": 3,
+          "converted": 1
+        }
+      ],
+      "trial_to_paid_30d_by_platform": [
+        {
+          "platform": "web_or_unknown",
+          "trials_ended": 23,
+          "converted": 2
+        },
+        {
+          "platform": "ios",
+          "trials_ended": 7,
+          "converted": 1
+        },
+        {
+          "platform": "android",
+          "trials_ended": 1,
+          "converted": 0
+        }
+      ],
+      "churn_proxy_this_week": 3
+    },
+    "audio_minutes_this_week": 91.4
+  },
+  "themes": {
+    "note": "Extracted Entry.themes labels, lower-cased. A theme or theme-word is only shown if at least 2 distinct users mentioned it this week (k-anonymity); labels that look like they carry identifiers are dropped. No entry text is ever included. top_25_theme_words is usually the more useful list — exact labels rarely repeat across users.",
+    "distinct_themes_this_week": 144,
+    "suppressed_below_threshold": 140,
+    "top_25": [
+      {
+        "theme": "evening wind-down",
+        "entries": 2,
+        "distinct_users": 2,
+        "entries_last_week": 0,
+        "wow_change_pct": null
+      },
+      {
+        "theme": "future planning",
+        "entries": 2,
+        "distinct_users": 2,
+        "entries_last_week": 0,
+        "wow_change_pct": null
+      },
+      {
+        "theme": "low energy",
+        "entries": 2,
+        "distinct_users": 2,
+        "entries_last_week": 0,
+        "wow_change_pct": null
+      },
+      {
+        "theme": "social connection",
+        "entries": 2,
+        "distinct_users": 2,
+        "entries_last_week": 2,
+        "wow_change_pct": 0
+      }
+    ],
+    "top_25_theme_words": [
+      {
+        "word": "work",
+        "entries": 15,
+        "distinct_users": 7,
+        "entries_last_week": 6,
+        "wow_change_pct": 150
+      },
+      {
+        "word": "planning",
+        "entries": 7,
+        "distinct_users": 3,
+        "entries_last_week": 6,
+        "wow_change_pct": 17
+      },
+      {
+        "word": "progress",
+        "entries": 6,
+        "distinct_users": 3,
+        "entries_last_week": 3,
+        "wow_change_pct": 100
+      },
+      {
+        "word": "recovery",
+        "entries": 6,
+        "distinct_users": 3,
+        "entries_last_week": 4,
+        "wow_change_pct": 50
+      },
+      {
+        "word": "routine",
+        "entries": 6,
+        "distinct_users": 2,
+        "entries_last_week": 6,
+        "wow_change_pct": 0
+      },
+      {
+        "word": "admin",
+        "entries": 5,
+        "distinct_users": 3,
+        "entries_last_week": 4,
+        "wow_change_pct": 25
+      },
+      {
+        "word": "social",
+        "entries": 5,
+        "distinct_users": 3,
+        "entries_last_week": 3,
+        "wow_change_pct": 67
+      },
+      {
+        "word": "evening",
+        "entries": 5,
+        "distinct_users": 2,
+        "entries_last_week": 2,
+        "wow_change_pct": 150
+      },
+      {
+        "word": "family",
+        "entries": 5,
+        "distinct_users": 2,
+        "entries_last_week": 1,
+        "wow_change_pct": 400
+      },
+      {
+        "word": "morning",
+        "entries": 5,
+        "distinct_users": 2,
+        "entries_last_week": 2,
+        "wow_change_pct": 150
+      },
+      {
+        "word": "time",
+        "entries": 4,
+        "distinct_users": 3,
+        "entries_last_week": 2,
+        "wow_change_pct": 100
+      },
+      {
+        "word": "busy",
+        "entries": 4,
+        "distinct_users": 2,
+        "entries_last_week": 6,
+        "wow_change_pct": -33
+      },
+      {
+        "word": "connection",
+        "entries": 4,
+        "distinct_users": 2,
+        "entries_last_week": 3,
+        "wow_change_pct": 33
+      },
+      {
+        "word": "self",
+        "entries": 4,
+        "distinct_users": 2,
+        "entries_last_week": 4,
+        "wow_change_pct": 0
+      },
+      {
+        "word": "energy",
+        "entries": 3,
+        "distinct_users": 3,
+        "entries_last_week": 0,
+        "wow_change_pct": null
+      },
+      {
+        "word": "fatigue",
+        "entries": 3,
+        "distinct_users": 3,
+        "entries_last_week": 2,
+        "wow_change_pct": 50
+      },
+      {
+        "word": "health",
+        "entries": 3,
+        "distinct_users": 2,
+        "entries_last_week": 2,
+        "wow_change_pct": 50
+      },
+      {
+        "word": "london",
+        "entries": 3,
+        "distinct_users": 2,
+        "entries_last_week": 1,
+        "wow_change_pct": 200
+      },
+      {
+        "word": "prep",
+        "entries": 3,
+        "distinct_users": 2,
+        "entries_last_week": 2,
+        "wow_change_pct": 50
+      },
+      {
+        "word": "rest",
+        "entries": 3,
+        "distinct_users": 2,
+        "entries_last_week": 6,
+        "wow_change_pct": -50
+      },
+      {
+        "word": "down",
+        "entries": 2,
+        "distinct_users": 2,
+        "entries_last_week": 0,
+        "wow_change_pct": null
+      },
+      {
+        "word": "financial",
+        "entries": 2,
+        "distinct_users": 2,
+        "entries_last_week": 1,
+        "wow_change_pct": 100
+      },
+      {
+        "word": "future",
+        "entries": 2,
+        "distinct_users": 2,
+        "entries_last_week": 0,
+        "wow_change_pct": null
+      },
+      {
+        "word": "home",
+        "entries": 2,
+        "distinct_users": 2,
+        "entries_last_week": 2,
+        "wow_change_pct": 0
+      },
+      {
+        "word": "light",
+        "entries": 2,
+        "distinct_users": 2,
+        "entries_last_week": 2,
+        "wow_change_pct": 0
+      }
+    ],
+    "faded_since_last_week": []
+  },
+  "revenuecat": {
+    "overview": {
+      "active_trials": {
+        "name": "Active Trials",
+        "value": 0,
+        "unit": "#",
+        "period": "P0D"
+      },
+      "active_subscriptions": {
+        "name": "Active Subscriptions",
+        "value": 15,
+        "unit": "#",
+        "period": "P0D"
+      },
+      "mrr": {
+        "name": "MRR",
+        "value": 64,
+        "unit": "$",
+        "period": "P28D"
+      },
+      "revenue": {
+        "name": "Revenue",
+        "value": 39,
+        "unit": "$",
+        "period": "P28D"
+      },
+      "new_customers": {
+        "name": "New Customers",
+        "value": 22,
+        "unit": "#",
+        "period": "P28D"
+      },
+      "active_users": {
+        "name": "Active Users",
+        "value": 26,
+        "unit": "#",
+        "period": "P28D"
+      }
+    },
+    "revenue_this_week_usd": 4.99,
+    "revenue_last_week_usd": 14.97,
+    "charts": {
+      "mrr": {
+        "display_name": "MRR",
+        "resolution": "week",
+        "yaxis": "$",
+        "summary": {
+          "average": {
+            "MRR": 51.63
+          }
+        },
+        "measures": [
+          "MRR"
+        ],
+        "segments": [],
+        "values": [
+          {
+            "cohort": 1783209600,
+            "incomplete": false,
+            "measure": 0,
+            "value": 26.12
+          },
+          {
+            "cohort": 1783814400,
+            "incomplete": false,
+            "measure": 0,
+            "value": 29.45
+          },
+          {
+            "cohort": 1784419200,
+            "incomplete": false,
+            "measure": 0,
+            "value": 34.44
+          },
+          {
+            "cohort": 1785024000,
+            "incomplete": false,
+            "measure": 0,
+            "value": 39.43
+          },
+          {
+            "cohort": 1785628800,
+            "incomplete": false,
+            "measure": 0,
+            "value": 44.42
+          },
+          {
+            "cohort": 1786233600,
+            "incomplete": false,
+            "measure": 0,
+            "value": 59.39
+          },
+          {
+            "cohort": 1786838400,
+            "incomplete": false,
+            "measure": 0,
+            "value": 64.38
+          },
+          {
+            "cohort": 1787443200,
+            "incomplete": false,
+            "measure": 0,
+            "value": 64.38
+          },
+          {
+            "cohort": 1788048000,
+            "incomplete": false,
+            "measure": 0,
+            "value": 64.38
+          },
+          {
+            "cohort": 1788652800,
+            "incomplete": false,
+            "measure": 0,
+            "value": 64.38
+          },
+          {
+            "cohort": 1789257600,
+            "incomplete": false,
+            "measure": 0,
+            "value": 64.38
+          },
+          {
+            "cohort": 1789862400,
+            "incomplete": false,
+            "measure": 0,
+            "value": 64.38
+          }
+        ]
+      },
+      "revenue": {
+        "display_name": "Revenue",
+        "resolution": "week",
+        "yaxis": "$",
+        "summary": {
+          "average": {
+            "Ad Impressions": 0,
+            "Revenue": 21.53,
+            "Transactions": 1.75
+          },
+          "total": {
+            "Ad Impressions": 0,
+            "Revenue": 258.39,
+            "Transactions": 21
+          }
+        },
+        "measures": [
+          "Revenue",
+          "Transactions",
+          "Ad Impressions"
+        ],
+        "segments": [],
+        "values": [
+          {
+            "cohort": 1783209600,
+            "incomplete": false,
+            "measure": 0,
+            "value": 133.57
+          },
+          {
+            "cohort": 1783209600,
+            "incomplete": false,
+            "measure": 1,
+            "value": 3
+          },
+          {
+            "cohort": 1783209600,
+            "incomplete": false,
+            "measure": 2,
+            "value": 0
+          },
+          {
+            "cohort": 1783814400,
+            "incomplete": false,
+            "measure": 0,
+            "value": 39.99
+          },
+          {
+            "cohort": 1783814400,
+            "incomplete": false,
+            "measure": 1,
+            "value": 1
+          },
+          {
+            "cohort": 1783814400,
+            "incomplete": false,
+            "measure": 2,
+            "value": 0
+          },
+          {
+            "cohort": 1784419200,
+            "incomplete": false,
+            "measure": 0,
+            "value": 4.99
+          },
+          {
+            "cohort": 1784419200,
+            "incomplete": false,
+            "measure": 1,
+            "value": 1
+          },
+          {
+            "cohort": 1784419200,
+            "incomplete": false,
+            "measure": 2,
+            "value": 0
+          },
+          {
+            "cohort": 1785024000,
+            "incomplete": false,
+            "measure": 0,
+            "value": 4.99
+          },
+          {
+            "cohort": 1785024000,
+            "incomplete": false,
+            "measure": 1,
+            "value": 1
+          },
+          {
+            "cohort": 1785024000,
+            "incomplete": false,
+            "measure": 2,
+            "value": 0
+          },
+          {
+            "cohort": 1785628800,
+            "incomplete": false,
+            "measure": 0,
+            "value": 9.98
+          },
+          {
+            "cohort": 1785628800,
+            "incomplete": false,
+            "measure": 1,
+            "value": 2
+          },
+          {
+            "cohort": 1785628800,
+            "incomplete": false,
+            "measure": 2,
+            "value": 0
+          },
+          {
+            "cohort": 1786233600,
+            "incomplete": false,
+            "measure": 0,
+            "value": 14.97
+          },
+          {
+            "cohort": 1786233600,
+            "incomplete": false,
+            "measure": 1,
+            "value": 3
+          },
+          {
+            "cohort": 1786233600,
+            "incomplete": false,
+            "measure": 2,
+            "value": 0
+          },
+          {
+            "cohort": 1786838400,
+            "incomplete": false,
+            "measure": 0,
+            "value": 9.98
+          },
+          {
+            "cohort": 1786838400,
+            "incomplete": false,
+            "measure": 1,
+            "value": 2
+          },
+          {
+            "cohort": 1786838400,
+            "incomplete": false,
+            "measure": 2,
+            "value": 0
+          },
+          {
+            "cohort": 1787443200,
+            "incomplete": false,
+            "measure": 0,
+            "value": 0
+          },
+          {
+            "cohort": 1787443200,
+            "incomplete": false,
+            "measure": 1,
+            "value": 0
+          },
+          {
+            "cohort": 1787443200,
+            "incomplete": false,
+            "measure": 2,
+            "value": 0
+          },
+          {
+            "cohort": 1788048000,
+            "incomplete": false,
+            "measure": 0,
+            "value": 14.97
+          },
+          {
+            "cohort": 1788048000,
+            "incomplete": false,
+            "measure": 1,
+            "value": 3
+          },
+          {
+            "cohort": 1788048000,
+            "incomplete": false,
+            "measure": 2,
+            "value": 0
+          },
+          {
+            "cohort": 1788652800,
+            "incomplete": false,
+            "measure": 0,
+            "value": 4.99
+          },
+          {
+            "cohort": 1788652800,
+            "incomplete": false,
+            "measure": 1,
+            "value": 1
+          },
+          {
+            "cohort": 1788652800,
+            "incomplete": false,
+            "measure": 2,
+            "value": 0
+          },
+          {
+            "cohort": 1789257600,
+            "incomplete": false,
+            "measure": 0,
+            "value": 14.97
+          },
+          {
+            "cohort": 1789257600,
+            "incomplete": false,
+            "measure": 1,
+            "value": 3
+          },
+          {
+            "cohort": 1789257600,
+            "incomplete": false,
+            "measure": 2,
+            "value": 0
+          },
+          {
+            "cohort": 1789862400,
+            "incomplete": false,
+            "measure": 0,
+            "value": 4.99
+          },
+          {
+            "cohort": 1789862400,
+            "incomplete": false,
+            "measure": 1,
+            "value": 1
+          },
+          {
+            "cohort": 1789862400,
+            "incomplete": false,
+            "measure": 2,
+            "value": 0
+          }
+        ]
+      },
+      "actives": {
+        "display_name": "Active Subscriptions",
+        "resolution": "week",
+        "yaxis": "#",
+        "summary": {
+          "average": {
+            "Actives": 12.42
+          }
+        },
+        "measures": [
+          "Actives"
+        ],
+        "segments": [],
+        "values": [
+          {
+            "cohort": 1783209600,
+            "incomplete": false,
+            "measure": 0,
+            "value": 7
+          },
+          {
+            "cohort": 1783814400,
+            "incomplete": false,
+            "measure": 0,
+            "value": 8
+          },
+          {
+            "cohort": 1784419200,
+            "incomplete": false,
+            "measure": 0,
+            "value": 9
+          },
+          {
+            "cohort": 1785024000,
+            "incomplete": false,
+            "measure": 0,
+            "value": 10
+          },
+          {
+            "cohort": 1785628800,
+            "incomplete": false,
+            "measure": 0,
+            "value": 11
+          },
+          {
+            "cohort": 1786233600,
+            "incomplete": false,
+            "measure": 0,
+            "value": 14
+          },
+          {
+            "cohort": 1786838400,
+            "incomplete": false,
+            "measure": 0,
+            "value": 15
+          },
+          {
+            "cohort": 1787443200,
+            "incomplete": false,
+            "measure": 0,
+            "value": 15
+          },
+          {
+            "cohort": 1788048000,
+            "incomplete": false,
+            "measure": 0,
+            "value": 15
+          },
+          {
+            "cohort": 1788652800,
+            "incomplete": false,
+            "measure": 0,
+            "value": 15
+          },
+          {
+            "cohort": 1789257600,
+            "incomplete": false,
+            "measure": 0,
+            "value": 15
+          },
+          {
+            "cohort": 1789862400,
+            "incomplete": false,
+            "measure": 0,
+            "value": 15
+          }
+        ]
+      },
+      "trials": {
+        "display_name": "Active Trials",
+        "resolution": "week",
+        "yaxis": "#",
+        "summary": {
+          "average": {
+            "Active Trials": 0.08
+          }
+        },
+        "measures": [
+          "Active Trials"
+        ],
+        "segments": [],
+        "values": [
+          {
+            "cohort": 1783209600,
+            "incomplete": false,
+            "measure": 0,
+            "value": 0
+          },
+          {
+            "cohort": 1783814400,
+            "incomplete": false,
+            "measure": 0,
+            "value": 0
+          },
+          {
+            "cohort": 1784419200,
+            "incomplete": false,
+            "measure": 0,
+            "value": 0
+          },
+          {
+            "cohort": 1785024000,
+            "incomplete": false,
+            "measure": 0,
+            "value": 1
+          },
+          {
+            "cohort": 1785628800,
+            "incomplete": false,
+            "measure": 0,
+            "value": 0
+          },
+          {
+            "cohort": 1786233600,
+            "incomplete": false,
+            "measure": 0,
+            "value": 0
+          },
+          {
+            "cohort": 1786838400,
+            "incomplete": false,
+            "measure": 0,
+            "value": 0
+          },
+          {
+            "cohort": 1787443200,
+            "incomplete": false,
+            "measure": 0,
+            "value": 0
+          },
+          {
+            "cohort": 1788048000,
+            "incomplete": false,
+            "measure": 0,
+            "value": 0
+          },
+          {
+            "cohort": 1788652800,
+            "incomplete": false,
+            "measure": 0,
+            "value": 0
+          },
+          {
+            "cohort": 1789257600,
+            "incomplete": false,
+            "measure": 0,
+            "value": 0
+          },
+          {
+            "cohort": 1789862400,
+            "incomplete": false,
+            "measure": 0,
+            "value": 0
+          }
+        ]
+      },
+      "trials_new": {
+        "display_name": "New Trials",
+        "resolution": "week",
+        "yaxis": "#",
+        "summary": {
+          "average": {
+            "New Trials": 0.08
+          },
+          "total": {
+            "New Trials": 1
+          }
+        },
+        "measures": [
+          "New Trials"
+        ],
+        "segments": [],
+        "values": [
+          {
+            "cohort": 1783209600,
+            "incomplete": false,
+            "measure": 0,
+            "value": 0
+          },
+          {
+            "cohort": 1783814400,
+            "incomplete": false,
+            "measure": 0,
+            "value": 0
+          },
+          {
+            "cohort": 1784419200,
+            "incomplete": false,
+            "measure": 0,
+            "value": 0
+          },
+          {
+            "cohort": 1785024000,
+            "incomplete": false,
+            "measure": 0,
+            "value": 1
+          },
+          {
+            "cohort": 1785628800,
+            "incomplete": false,
+            "measure": 0,
+            "value": 0
+          },
+          {
+            "cohort": 1786233600,
+            "incomplete": false,
+            "measure": 0,
+            "value": 0
+          },
+          {
+            "cohort": 1786838400,
+            "incomplete": false,
+            "measure": 0,
+            "value": 0
+          },
+          {
+            "cohort": 1787443200,
+            "incomplete": false,
+            "measure": 0,
+            "value": 0
+          },
+          {
+            "cohort": 1788048000,
+            "incomplete": false,
+            "measure": 0,
+            "value": 0
+          },
+          {
+            "cohort": 1788652800,
+            "incomplete": false,
+            "measure": 0,
+            "value": 0
+          },
+          {
+            "cohort": 1789257600,
+            "incomplete": false,
+            "measure": 0,
+            "value": 0
+          },
+          {
+            "cohort": 1789862400,
+            "incomplete": false,
+            "measure": 0,
+            "value": 0
+          }
+        ]
+      },
+      "trial_conversion_rate": {
+        "display_name": "Trial Conversion Rate",
+        "resolution": "week",
+        "yaxis": "%",
+        "summary": {
+          "average": {
+            "Conversion Rate": 100,
+            "Conversions": 0.08,
+            "Expirations": 0,
+            "Pending": 0,
+            "Trial Starts": 0.08
+          },
+          "total": {
+            "Conversion Rate": 100,
+            "Conversions": 1,
+            "Expirations": 0,
+            "Pending": 0,
+            "Trial Starts": 1
+          }
+        },
+        "measures": [
+          "Trial Starts",
+          "Conversions",
+          "Expirations",
+          "Pending",
+          "Conversion Rate"
+        ],
+        "segments": [],
+        "values": [
+          {
+            "cohort": 1785628800,
+            "incomplete": false,
+            "measure": 0,
+            "value": 0
+          },
+          {
+            "cohort": 1785628800,
+            "incomplete": false,
+            "measure": 1,
+            "value": 0
+          },
+          {
+            "cohort": 1785628800,
+            "incomplete": false,
+            "measure": 2,
+            "value": 0
+          },
+          {
+            "cohort": 1785628800,
+            "incomplete": false,
+            "measure": 3,
+            "value": 0
+          },
+          {
+            "cohort": 1785628800,
+            "incomplete": false,
+            "measure": 4,
+            "value": 0
+          },
+          {
+            "cohort": 1786233600,
+            "incomplete": false,
+            "measure": 0,
+            "value": 0
+          },
+          {
+            "cohort": 1786233600,
+            "incomplete": false,
+            "measure": 1,
+            "value": 0
+          },
+          {
+            "cohort": 1786233600,
+            "incomplete": false,
+            "measure": 2,
+            "value": 0
+          },
+          {
+            "cohort": 1786233600,
+            "incomplete": false,
+            "measure": 3,
+            "value": 0
+          },
+          {
+            "cohort": 1786233600,
+            "incomplete": false,
+            "measure": 4,
+            "value": 0
+          },
+          {
+            "cohort": 1786838400,
+            "incomplete": false,
+            "measure": 0,
+            "value": 0
+          },
+          {
+            "cohort": 1786838400,
+            "incomplete": false,
+            "measure": 1,
+            "value": 0
+          },
+          {
+            "cohort": 1786838400,
+            "incomplete": false,
+            "measure": 2,
+            "value": 0
+          },
+          {
+            "cohort": 1786838400,
+            "incomplete": false,
+            "measure": 3,
+            "value": 0
+          },
+          {
+            "cohort": 1786838400,
+            "incomplete": false,
+            "measure": 4,
+            "value": 0
+          },
+          {
+            "cohort": 1787443200,
+            "incomplete": false,
+            "measure": 0,
+            "value": 0
+          },
+          {
+            "cohort": 1787443200,
+            "incomplete": false,
+            "measure": 1,
+            "value": 0
+          },
+          {
+            "cohort": 1787443200,
+            "incomplete": false,
+            "measure": 2,
+            "value": 0
+          },
+          {
+            "cohort": 1787443200,
+            "incomplete": false,
+            "measure": 3,
+            "value": 0
+          },
+          {
+            "cohort": 1787443200,
+            "incomplete": false,
+            "measure": 4,
+            "value": 0
+          },
+          {
+            "cohort": 1788048000,
+            "incomplete": false,
+            "measure": 0,
+            "value": 0
+          },
+          {
+            "cohort": 1788048000,
+            "incomplete": false,
+            "measure": 1,
+            "value": 0
+          },
+          {
+            "cohort": 1788048000,
+            "incomplete": false,
+            "measure": 2,
+            "value": 0
+          },
+          {
+            "cohort": 1788048000,
+            "incomplete": false,
+            "measure": 3,
+            "value": 0
+          },
+          {
+            "cohort": 1788048000,
+            "incomplete": false,
+            "measure": 4,
+            "value": 0
+          },
+          {
+            "cohort": 1788652800,
+            "incomplete": false,
+            "measure": 0,
+            "value": 0
+          },
+          {
+            "cohort": 1788652800,
+            "incomplete": false,
+            "measure": 1,
+            "value": 0
+          },
+          {
+            "cohort": 1788652800,
+            "incomplete": false,
+            "measure": 2,
+            "value": 0
+          },
+          {
+            "cohort": 1788652800,
+            "incomplete": false,
+            "measure": 3,
+            "value": 0
+          },
+          {
+            "cohort": 1788652800,
+            "incomplete": false,
+            "measure": 4,
+            "value": 0
+          },
+          {
+            "cohort": 1789257600,
+            "incomplete": false,
+            "measure": 0,
+            "value": 0
+          },
+          {
+            "cohort": 1789257600,
+            "incomplete": false,
+            "measure": 1,
+            "value": 0
+          },
+          {
+            "cohort": 1789257600,
+            "incomplete": false,
+            "measure": 2,
+            "value": 0
+          },
+          {
+            "cohort": 1789257600,
+            "incomplete": false,
+            "measure": 3,
+            "value": 0
+          },
+          {
+            "cohort": 1789257600,
+            "incomplete": false,
+            "measure": 4,
+            "value": 0
+          },
+          {
+            "cohort": 1789862400,
+            "incomplete": false,
+            "measure": 0,
+            "value": 0
+          },
+          {
+            "cohort": 1789862400,
+            "incomplete": false,
+            "measure": 1,
+            "value": 0
+          },
+          {
+            "cohort": 1789862400,
+            "incomplete": false,
+            "measure": 2,
+            "value": 0
+          },
+          {
+            "cohort": 1789862400,
+            "incomplete": false,
+            "measure": 3,
+            "value": 0
+          },
+          {
+            "cohort": 1789862400,
+            "incomplete": false,
+            "measure": 4,
+            "value": 0
+          }
+        ]
+      },
+      "conversion_to_paying": {
+        "display_name": "Conversion to Paying",
+        "resolution": "week",
+        "yaxis": "%",
+        "summary": {
+          "average": {
+            "Conversion Rate (7 days)": 34.48,
+            "New Customers": 2.42,
+            "Paying Customers (7 days)": 0.83
+          },
+          "total": {
+            "Conversion Rate (7 days)": 34.48,
+            "New Customers": 29,
+            "Paying Customers (7 days)": 10
+          }
+        },
+        "measures": [
+          "New Customers",
+          "Paying Customers (7 days)",
+          "Conversion Rate (7 days)"
+        ],
+        "segments": [],
+        "values": [
+          {
+            "cohort": 1783209600,
+            "incomplete": false,
+            "measure": 0,
+            "value": 2
+          },
+          {
+            "cohort": 1783209600,
+            "incomplete": false,
+            "measure": 1,
+            "value": 2
+          },
+          {
+            "cohort": 1783209600,
+            "incomplete": false,
+            "measure": 2,
+            "value": 100
+          },
+          {
+            "cohort": 1783814400,
+            "incomplete": false,
+            "measure": 0,
+            "value": 1
+          },
+          {
+            "cohort": 1783814400,
+            "incomplete": false,
+            "measure": 1,
+            "value": 1
+          },
+          {
+            "cohort": 1783814400,
+            "incomplete": false,
+            "measure": 2,
+            "value": 100
+          },
+          {
+            "cohort": 1784419200,
+            "incomplete": false,
+            "measure": 0,
+            "value": 1
+          },
+          {
+            "cohort": 1784419200,
+            "incomplete": false,
+            "measure": 1,
+            "value": 1
+          },
+          {
+            "cohort": 1784419200,
+            "incomplete": false,
+            "measure": 2,
+            "value": 100
+          },
+          {
+            "cohort": 1785024000,
+            "incomplete": false,
+            "measure": 0,
+            "value": 2
+          },
+          {
+            "cohort": 1785024000,
+            "incomplete": false,
+            "measure": 1,
+            "value": 2
+          },
+          {
+            "cohort": 1785024000,
+            "incomplete": false,
+            "measure": 2,
+            "value": 100
+          },
+          {
+            "cohort": 1785628800,
+            "incomplete": false,
+            "measure": 0,
+            "value": 0
+          },
+          {
+            "cohort": 1785628800,
+            "incomplete": false,
+            "measure": 1,
+            "value": 0
+          },
+          {
+            "cohort": 1785628800,
+            "incomplete": false,
+            "measure": 2,
+            "value": 0
+          },
+          {
+            "cohort": 1786233600,
+            "incomplete": false,
+            "measure": 0,
+            "value": 3
+          },
+          {
+            "cohort": 1786233600,
+            "incomplete": false,
+            "measure": 1,
+            "value": 3
+          },
+          {
+            "cohort": 1786233600,
+            "incomplete": false,
+            "measure": 2,
+            "value": 100
+          },
+          {
+            "cohort": 1786838400,
+            "incomplete": false,
+            "measure": 0,
+            "value": 2
+          },
+          {
+            "cohort": 1786838400,
+            "incomplete": false,
+            "measure": 1,
+            "value": 1
+          },
+          {
+            "cohort": 1786838400,
+            "incomplete": false,
+            "measure": 2,
+            "value": 50
+          },
+          {
+            "cohort": 1787443200,
+            "incomplete": false,
+            "measure": 0,
+            "value": 0
+          },
+          {
+            "cohort": 1787443200,
+            "incomplete": false,
+            "measure": 1,
+            "value": 0
+          },
+          {
+            "cohort": 1787443200,
+            "incomplete": false,
+            "measure": 2,
+            "value": 0
+          },
+          {
+            "cohort": 1788048000,
+            "incomplete": false,
+            "measure": 0,
+            "value": 7
+          },
+          {
+            "cohort": 1788048000,
+            "incomplete": false,
+            "measure": 1,
+            "value": 0
+          },
+          {
+            "cohort": 1788048000,
+            "incomplete": false,
+            "measure": 2,
+            "value": 0
+          },
+          {
+            "cohort": 1788652800,
+            "incomplete": false,
+            "measure": 0,
+            "value": 1
+          },
+          {
+            "cohort": 1788652800,
+            "incomplete": false,
+            "measure": 1,
+            "value": 0
+          },
+          {
+            "cohort": 1788652800,
+            "incomplete": false,
+            "measure": 2,
+            "value": 0
+          },
+          {
+            "cohort": 1789257600,
+            "incomplete": false,
+            "measure": 0,
+            "value": 2
+          },
+          {
+            "cohort": 1789257600,
+            "incomplete": false,
+            "measure": 1,
+            "value": 0
+          },
+          {
+            "cohort": 1789257600,
+            "incomplete": false,
+            "measure": 2,
+            "value": 0
+          },
+          {
+            "cohort": 1789862400,
+            "incomplete": false,
+            "measure": 0,
+            "value": 8
+          },
+          {
+            "cohort": 1789862400,
+            "incomplete": true,
+            "measure": 1,
+            "value": 0
+          },
+          {
+            "cohort": 1789862400,
+            "incomplete": true,
+            "measure": 2,
+            "value": 0
+          }
+        ]
+      },
+      "churn": {
+        "display_name": "Churn",
+        "resolution": "week",
+        "yaxis": "%",
+        "summary": {
+          "average": {
+            "Actives": 11.42,
+            "Churn Rate": 0,
+            "Churned Actives": 0
+          }
+        },
+        "measures": [
+          "Actives",
+          "Churned Actives",
+          "Churn Rate"
+        ],
+        "segments": [],
+        "values": [
+          {
+            "cohort": 1783209600,
+            "incomplete": false,
+            "measure": 0,
+            "value": 4
+          },
+          {
+            "cohort": 1783209600,
+            "incomplete": false,
+            "measure": 1,
+            "value": 0
+          },
+          {
+            "cohort": 1783209600,
+            "incomplete": false,
+            "measure": 2,
+            "value": 0
+          },
+          {
+            "cohort": 1783814400,
+            "incomplete": false,
+            "measure": 0,
+            "value": 7
+          },
+          {
+            "cohort": 1783814400,
+            "incomplete": false,
+            "measure": 1,
+            "value": 0
+          },
+          {
+            "cohort": 1783814400,
+            "incomplete": false,
+            "measure": 2,
+            "value": 0
+          },
+          {
+            "cohort": 1784419200,
+            "incomplete": false,
+            "measure": 0,
+            "value": 8
+          },
+          {
+            "cohort": 1784419200,
+            "incomplete": false,
+            "measure": 1,
+            "value": 0
+          },
+          {
+            "cohort": 1784419200,
+            "incomplete": false,
+            "measure": 2,
+            "value": 0
+          },
+          {
+            "cohort": 1785024000,
+            "incomplete": false,
+            "measure": 0,
+            "value": 9
+          },
+          {
+            "cohort": 1785024000,
+            "incomplete": false,
+            "measure": 1,
+            "value": 0
+          },
+          {
+            "cohort": 1785024000,
+            "incomplete": false,
+            "measure": 2,
+            "value": 0
+          },
+          {
+            "cohort": 1785628800,
+            "incomplete": false,
+            "measure": 0,
+            "value": 10
+          },
+          {
+            "cohort": 1785628800,
+            "incomplete": false,
+            "measure": 1,
+            "value": 0
+          },
+          {
+            "cohort": 1785628800,
+            "incomplete": false,
+            "measure": 2,
+            "value": 0
+          },
+          {
+            "cohort": 1786233600,
+            "incomplete": false,
+            "measure": 0,
+            "value": 11
+          },
+          {
+            "cohort": 1786233600,
+            "incomplete": false,
+            "measure": 1,
+            "value": 0
+          },
+          {
+            "cohort": 1786233600,
+            "incomplete": false,
+            "measure": 2,
+            "value": 0
+          },
+          {
+            "cohort": 1786838400,
+            "incomplete": false,
+            "measure": 0,
+            "value": 14
+          },
+          {
+            "cohort": 1786838400,
+            "incomplete": false,
+            "measure": 1,
+            "value": 0
+          },
+          {
+            "cohort": 1786838400,
+            "incomplete": false,
+            "measure": 2,
+            "value": 0
+          },
+          {
+            "cohort": 1787443200,
+            "incomplete": false,
+            "measure": 0,
+            "value": 14
+          },
+          {
+            "cohort": 1787443200,
+            "incomplete": false,
+            "measure": 1,
+            "value": 0
+          },
+          {
+            "cohort": 1787443200,
+            "incomplete": false,
+            "measure": 2,
+            "value": 0
+          },
+          {
+            "cohort": 1788048000,
+            "incomplete": false,
+            "measure": 0,
+            "value": 15
+          },
+          {
+            "cohort": 1788048000,
+            "incomplete": false,
+            "measure": 1,
+            "value": 0
+          },
+          {
+            "cohort": 1788048000,
+            "incomplete": false,
+            "measure": 2,
+            "value": 0
+          },
+          {
+            "cohort": 1788652800,
+            "incomplete": false,
+            "measure": 0,
+            "value": 15
+          },
+          {
+            "cohort": 1788652800,
+            "incomplete": false,
+            "measure": 1,
+            "value": 0
+          },
+          {
+            "cohort": 1788652800,
+            "incomplete": false,
+            "measure": 2,
+            "value": 0
+          },
+          {
+            "cohort": 1789257600,
+            "incomplete": false,
+            "measure": 0,
+            "value": 15
+          },
+          {
+            "cohort": 1789257600,
+            "incomplete": false,
+            "measure": 1,
+            "value": 0
+          },
+          {
+            "cohort": 1789257600,
+            "incomplete": false,
+            "measure": 2,
+            "value": 0
+          },
+          {
+            "cohort": 1789862400,
+            "incomplete": false,
+            "measure": 0,
+            "value": 15
+          },
+          {
+            "cohort": 1789862400,
+            "incomplete": false,
+            "measure": 1,
+            "value": 0
+          },
+          {
+            "cohort": 1789862400,
+            "incomplete": false,
+            "measure": 2,
+            "value": 0
+          }
+        ]
+      },
+      "refunds": {
+        "display_name": "Refunds",
+        "resolution": "week",
+        "yaxis": "$",
+        "summary": {
+          "average": {
+            "Refunded Revenue": 0,
+            "Refunded Transactions": 0
+          },
+          "total": {
+            "Refunded Revenue": 0,
+            "Refunded Transactions": 0
+          }
+        },
+        "measures": [
+          "Refunded Revenue",
+          "Refunded Transactions"
+        ],
+        "segments": [],
+        "values": [
+          {
+            "cohort": 1783209600,
+            "incomplete": false,
+            "measure": 0,
+            "value": 0
+          },
+          {
+            "cohort": 1783209600,
+            "incomplete": false,
+            "measure": 1,
+            "value": 0
+          },
+          {
+            "cohort": 1783814400,
+            "incomplete": false,
+            "measure": 0,
+            "value": 0
+          },
+          {
+            "cohort": 1783814400,
+            "incomplete": false,
+            "measure": 1,
+            "value": 0
+          },
+          {
+            "cohort": 1784419200,
+            "incomplete": false,
+            "measure": 0,
+            "value": 0
+          },
+          {
+            "cohort": 1784419200,
+            "incomplete": false,
+            "measure": 1,
+            "value": 0
+          },
+          {
+            "cohort": 1785024000,
+            "incomplete": false,
+            "measure": 0,
+            "value": 0
+          },
+          {
+            "cohort": 1785024000,
+            "incomplete": false,
+            "measure": 1,
+            "value": 0
+          },
+          {
+            "cohort": 1785628800,
+            "incomplete": false,
+            "measure": 0,
+            "value": 0
+          },
+          {
+            "cohort": 1785628800,
+            "incomplete": false,
+            "measure": 1,
+            "value": 0
+          },
+          {
+            "cohort": 1786233600,
+            "incomplete": false,
+            "measure": 0,
+            "value": 0
+          },
+          {
+            "cohort": 1786233600,
+            "incomplete": false,
+            "measure": 1,
+            "value": 0
+          },
+          {
+            "cohort": 1786838400,
+            "incomplete": false,
+            "measure": 0,
+            "value": 0
+          },
+          {
+            "cohort": 1786838400,
+            "incomplete": false,
+            "measure": 1,
+            "value": 0
+          },
+          {
+            "cohort": 1787443200,
+            "incomplete": false,
+            "measure": 0,
+            "value": 0
+          },
+          {
+            "cohort": 1787443200,
+            "incomplete": false,
+            "measure": 1,
+            "value": 0
+          },
+          {
+            "cohort": 1788048000,
+            "incomplete": false,
+            "measure": 0,
+            "value": 0
+          },
+          {
+            "cohort": 1788048000,
+            "incomplete": false,
+            "measure": 1,
+            "value": 0
+          },
+          {
+            "cohort": 1788652800,
+            "incomplete": false,
+            "measure": 0,
+            "value": 0
+          },
+          {
+            "cohort": 1788652800,
+            "incomplete": false,
+            "measure": 1,
+            "value": 0
+          },
+          {
+            "cohort": 1789257600,
+            "incomplete": false,
+            "measure": 0,
+            "value": 0
+          },
+          {
+            "cohort": 1789257600,
+            "incomplete": false,
+            "measure": 1,
+            "value": 0
+          },
+          {
+            "cohort": 1789862400,
+            "incomplete": false,
+            "measure": 0,
+            "value": 0
+          },
+          {
+            "cohort": 1789862400,
+            "incomplete": false,
+            "measure": 1,
+            "value": 0
+          }
+        ]
+      },
+      "refund_rate": {
+        "display_name": "Refund Rate",
+        "resolution": "week",
+        "yaxis": "%",
+        "summary": {
+          "average": {
+            "Refund Rate": 0,
+            "Refunded Transactions": 0,
+            "Transactions": 1.75
+          },
+          "total": {
+            "Refund Rate": 0,
+            "Refunded Transactions": 0,
+            "Transactions": 21
+          }
+        },
+        "measures": [
+          "Transactions",
+          "Refunded Transactions",
+          "Refund Rate"
+        ],
+        "segments": [],
+        "values": [
+          {
+            "cohort": 1783209600,
+            "incomplete": false,
+            "measure": 0,
+            "value": 3
+          },
+          {
+            "cohort": 1783209600,
+            "incomplete": false,
+            "measure": 1,
+            "value": 0
+          },
+          {
+            "cohort": 1783209600,
+            "incomplete": false,
+            "measure": 2,
+            "value": 0
+          },
+          {
+            "cohort": 1783814400,
+            "incomplete": false,
+            "measure": 0,
+            "value": 1
+          },
+          {
+            "cohort": 1783814400,
+            "incomplete": false,
+            "measure": 1,
+            "value": 0
+          },
+          {
+            "cohort": 1783814400,
+            "incomplete": false,
+            "measure": 2,
+            "value": 0
+          },
+          {
+            "cohort": 1784419200,
+            "incomplete": false,
+            "measure": 0,
+            "value": 1
+          },
+          {
+            "cohort": 1784419200,
+            "incomplete": false,
+            "measure": 1,
+            "value": 0
+          },
+          {
+            "cohort": 1784419200,
+            "incomplete": false,
+            "measure": 2,
+            "value": 0
+          },
+          {
+            "cohort": 1785024000,
+            "incomplete": false,
+            "measure": 0,
+            "value": 1
+          },
+          {
+            "cohort": 1785024000,
+            "incomplete": false,
+            "measure": 1,
+            "value": 0
+          },
+          {
+            "cohort": 1785024000,
+            "incomplete": false,
+            "measure": 2,
+            "value": 0
+          },
+          {
+            "cohort": 1785628800,
+            "incomplete": false,
+            "measure": 0,
+            "value": 2
+          },
+          {
+            "cohort": 1785628800,
+            "incomplete": false,
+            "measure": 1,
+            "value": 0
+          },
+          {
+            "cohort": 1785628800,
+            "incomplete": false,
+            "measure": 2,
+            "value": 0
+          },
+          {
+            "cohort": 1786233600,
+            "incomplete": false,
+            "measure": 0,
+            "value": 3
+          },
+          {
+            "cohort": 1786233600,
+            "incomplete": false,
+            "measure": 1,
+            "value": 0
+          },
+          {
+            "cohort": 1786233600,
+            "incomplete": false,
+            "measure": 2,
+            "value": 0
+          },
+          {
+            "cohort": 1786838400,
+            "incomplete": false,
+            "measure": 0,
+            "value": 2
+          },
+          {
+            "cohort": 1786838400,
+            "incomplete": false,
+            "measure": 1,
+            "value": 0
+          },
+          {
+            "cohort": 1786838400,
+            "incomplete": false,
+            "measure": 2,
+            "value": 0
+          },
+          {
+            "cohort": 1787443200,
+            "incomplete": false,
+            "measure": 0,
+            "value": 0
+          },
+          {
+            "cohort": 1787443200,
+            "incomplete": false,
+            "measure": 1,
+            "value": 0
+          },
+          {
+            "cohort": 1787443200,
+            "incomplete": false,
+            "measure": 2,
+            "value": 0
+          },
+          {
+            "cohort": 1788048000,
+            "incomplete": false,
+            "measure": 0,
+            "value": 3
+          },
+          {
+            "cohort": 1788048000,
+            "incomplete": false,
+            "measure": 1,
+            "value": 0
+          },
+          {
+            "cohort": 1788048000,
+            "incomplete": false,
+            "measure": 2,
+            "value": 0
+          },
+          {
+            "cohort": 1788652800,
+            "incomplete": false,
+            "measure": 0,
+            "value": 1
+          },
+          {
+            "cohort": 1788652800,
+            "incomplete": false,
+            "measure": 1,
+            "value": 0
+          },
+          {
+            "cohort": 1788652800,
+            "incomplete": false,
+            "measure": 2,
+            "value": 0
+          },
+          {
+            "cohort": 1789257600,
+            "incomplete": false,
+            "measure": 0,
+            "value": 3
+          },
+          {
+            "cohort": 1789257600,
+            "incomplete": false,
+            "measure": 1,
+            "value": 0
+          },
+          {
+            "cohort": 1789257600,
+            "incomplete": false,
+            "measure": 2,
+            "value": 0
+          },
+          {
+            "cohort": 1789862400,
+            "incomplete": false,
+            "measure": 0,
+            "value": 1
+          },
+          {
+            "cohort": 1789862400,
+            "incomplete": false,
+            "measure": 1,
+            "value": 0
+          },
+          {
+            "cohort": 1789862400,
+            "incomplete": false,
+            "measure": 2,
+            "value": 0
+          }
+        ]
+      },
+      "subscription_status": {
+        "display_name": "Subscription Status",
+        "resolution": "week",
+        "yaxis": "#",
+        "summary": {},
+        "measures": [
+          "Total Active Subscriptions",
+          "Active Subscriptions Set to Renew",
+          "Active Subscriptions Set to Cancel",
+          "Active Subscriptions Billing Issue",
+          "Active Subscriptions Set to Renew Percentage",
+          "Active Subscriptions Set to Cancel Percentage",
+          "Active Subscriptions Billing Issue Percentage"
+        ],
+        "segments": [],
+        "values": [
+          {
+            "measure": 0,
+            "value": 15
+          },
+          {
+            "measure": 1,
+            "value": 15
+          },
+          {
+            "measure": 2,
+            "value": 0
+          },
+          {
+            "measure": 3,
+            "value": 0
+          },
+          {
+            "measure": 4,
+            "value": 100
+          },
+          {
+            "measure": 5,
+            "value": 0
+          },
+          {
+            "measure": 6,
+            "value": 0
+          }
+        ]
+      }
+    },
+    "charts_by_store": {
+      "revenue": {
+        "display_name": "Revenue",
+        "resolution": "week",
+        "yaxis": "$",
+        "summary": {
+          "average": {
+            "App Store": {
+              "Ad Impressions": 0,
+              "Revenue": 6.13,
+              "Transactions": 0.42
+            },
+            "Stripe": {
+              "Ad Impressions": 0,
+              "Revenue": 15.4,
+              "Transactions": 1.33
+            },
+            "Total": {
+              "Ad Impressions": 0,
+              "Revenue": 21.53,
+              "Transactions": 1.75
+            }
+          },
+          "total": {
+            "App Store": {
+              "Ad Impressions": 0,
+              "Revenue": 73.55,
+              "Transactions": 5
+            },
+            "Stripe": {
+              "Ad Impressions": 0,
+              "Revenue": 184.84,
+              "Transactions": 16
+            },
+            "Total": {
+              "Ad Impressions": 0,
+              "Revenue": 258.39,
+              "Transactions": 21
+            }
+          }
+        },
+        "measures": [
+          "Revenue",
+          "Transactions",
+          "Ad Impressions"
+        ],
+        "segments": [
+          "Total",
+          "Stripe",
+          "App Store"
+        ],
+        "values": [
+          {
+            "cohort": 1787443200,
+            "incomplete": false,
+            "measure": 2,
+            "segment": 1,
+            "value": 0
+          },
+          {
+            "cohort": 1787443200,
+            "incomplete": false,
+            "measure": 0,
+            "segment": 2,
+            "value": 0
+          },
+          {
+            "cohort": 1787443200,
+            "incomplete": false,
+            "measure": 1,
+            "segment": 2,
+            "value": 0
+          },
+          {
+            "cohort": 1787443200,
+            "incomplete": false,
+            "measure": 2,
+            "segment": 2,
+            "value": 0
+          },
+          {
+            "cohort": 1788048000,
+            "incomplete": false,
+            "measure": 0,
+            "segment": 0,
+            "value": 14.97
+          },
+          {
+            "cohort": 1788048000,
+            "incomplete": false,
+            "measure": 1,
+            "segment": 0,
+            "value": 3
+          },
+          {
+            "cohort": 1788048000,
+            "incomplete": false,
+            "measure": 2,
+            "segment": 0,
+            "value": 0
+          },
+          {
+            "cohort": 1788048000,
+            "incomplete": false,
+            "measure": 0,
+            "segment": 1,
+            "value": 4.99
+          },
+          {
+            "cohort": 1788048000,
+            "incomplete": false,
+            "measure": 1,
+            "segment": 1,
+            "value": 1
+          },
+          {
+            "cohort": 1788048000,
+            "incomplete": false,
+            "measure": 2,
+            "segment": 1,
+            "value": 0
+          },
+          {
+            "cohort": 1788048000,
+            "incomplete": false,
+            "measure": 0,
+            "segment": 2,
+            "value": 9.98
+          },
+          {
+            "cohort": 1788048000,
+            "incomplete": false,
+            "measure": 1,
+            "segment": 2,
+            "value": 2
+          },
+          {
+            "cohort": 1788048000,
+            "incomplete": false,
+            "measure": 2,
+            "segment": 2,
+            "value": 0
+          },
+          {
+            "cohort": 1788652800,
+            "incomplete": false,
+            "measure": 0,
+            "segment": 0,
+            "value": 4.99
+          },
+          {
+            "cohort": 1788652800,
+            "incomplete": false,
+            "measure": 1,
+            "segment": 0,
+            "value": 1
+          },
+          {
+            "cohort": 1788652800,
+            "incomplete": false,
+            "measure": 2,
+            "segment": 0,
+            "value": 0
+          },
+          {
+            "cohort": 1788652800,
+            "incomplete": false,
+            "measure": 0,
+            "segment": 1,
+            "value": 4.99
+          },
+          {
+            "cohort": 1788652800,
+            "incomplete": false,
+            "measure": 1,
+            "segment": 1,
+            "value": 1
+          },
+          {
+            "cohort": 1788652800,
+            "incomplete": false,
+            "measure": 2,
+            "segment": 1,
+            "value": 0
+          },
+          {
+            "cohort": 1788652800,
+            "incomplete": false,
+            "measure": 0,
+            "segment": 2,
+            "value": 0
+          },
+          {
+            "cohort": 1788652800,
+            "incomplete": false,
+            "measure": 1,
+            "segment": 2,
+            "value": 0
+          },
+          {
+            "cohort": 1788652800,
+            "incomplete": false,
+            "measure": 2,
+            "segment": 2,
+            "value": 0
+          },
+          {
+            "cohort": 1789257600,
+            "incomplete": false,
+            "measure": 0,
+            "segment": 0,
+            "value": 14.97
+          },
+          {
+            "cohort": 1789257600,
+            "incomplete": false,
+            "measure": 1,
+            "segment": 0,
+            "value": 3
+          },
+          {
+            "cohort": 1789257600,
+            "incomplete": false,
+            "measure": 2,
+            "segment": 0,
+            "value": 0
+          },
+          {
+            "cohort": 1789257600,
+            "incomplete": false,
+            "measure": 0,
+            "segment": 1,
+            "value": 14.97
+          },
+          {
+            "cohort": 1789257600,
+            "incomplete": false,
+            "measure": 1,
+            "segment": 1,
+            "value": 3
+          },
+          {
+            "cohort": 1789257600,
+            "incomplete": false,
+            "measure": 2,
+            "segment": 1,
+            "value": 0
+          },
+          {
+            "cohort": 1789257600,
+            "incomplete": false,
+            "measure": 0,
+            "segment": 2,
+            "value": 0
+          },
+          {
+            "cohort": 1789257600,
+            "incomplete": false,
+            "measure": 1,
+            "segment": 2,
+            "value": 0
+          },
+          {
+            "cohort": 1789257600,
+            "incomplete": false,
+            "measure": 2,
+            "segment": 2,
+            "value": 0
+          },
+          {
+            "cohort": 1789862400,
+            "incomplete": false,
+            "measure": 0,
+            "segment": 0,
+            "value": 4.99
+          },
+          {
+            "cohort": 1789862400,
+            "incomplete": false,
+            "measure": 1,
+            "segment": 0,
+            "value": 1
+          },
+          {
+            "cohort": 1789862400,
+            "incomplete": false,
+            "measure": 2,
+            "segment": 0,
+            "value": 0
+          },
+          {
+            "cohort": 1789862400,
+            "incomplete": false,
+            "measure": 0,
+            "segment": 1,
+            "value": 4.99
+          },
+          {
+            "cohort": 1789862400,
+            "incomplete": false,
+            "measure": 1,
+            "segment": 1,
+            "value": 1
+          },
+          {
+            "cohort": 1789862400,
+            "incomplete": false,
+            "measure": 2,
+            "segment": 1,
+            "value": 0
+          },
+          {
+            "cohort": 1789862400,
+            "incomplete": false,
+            "measure": 0,
+            "segment": 2,
+            "value": 0
+          },
+          {
+            "cohort": 1789862400,
+            "incomplete": false,
+            "measure": 1,
+            "segment": 2,
+            "value": 0
+          },
+          {
+            "cohort": 1789862400,
+            "incomplete": false,
+            "measure": 2,
+            "segment": 2,
+            "value": 0
+          }
+        ]
+      },
+      "trials_new": {
+        "display_name": "New Trials",
+        "resolution": "week",
+        "yaxis": "#",
+        "summary": {
+          "average": {
+            "App Store": {
+              "New Trials": 0.08
+            },
+            "Total": {
+              "New Trials": 0.08
+            }
+          },
+          "total": {
+            "App Store": {
+              "New Trials": 1
+            },
+            "Total": {
+              "New Trials": 1
+            }
+          }
+        },
+        "measures": [
+          "New Trials"
+        ],
+        "segments": [
+          "Total",
+          "App Store"
+        ],
+        "values": [
+          {
+            "cohort": 1783209600,
+            "incomplete": false,
+            "measure": 0,
+            "segment": 0,
+            "value": 0
+          },
+          {
+            "cohort": 1783209600,
+            "incomplete": false,
+            "measure": 0,
+            "segment": 1,
+            "value": 0
+          },
+          {
+            "cohort": 1783814400,
+            "incomplete": false,
+            "measure": 0,
+            "segment": 0,
+            "value": 0
+          },
+          {
+            "cohort": 1783814400,
+            "incomplete": false,
+            "measure": 0,
+            "segment": 1,
+            "value": 0
+          },
+          {
+            "cohort": 1784419200,
+            "incomplete": false,
+            "measure": 0,
+            "segment": 0,
+            "value": 0
+          },
+          {
+            "cohort": 1784419200,
+            "incomplete": false,
+            "measure": 0,
+            "segment": 1,
+            "value": 0
+          },
+          {
+            "cohort": 1785024000,
+            "incomplete": false,
+            "measure": 0,
+            "segment": 0,
+            "value": 1
+          },
+          {
+            "cohort": 1785024000,
+            "incomplete": false,
+            "measure": 0,
+            "segment": 1,
+            "value": 1
+          },
+          {
+            "cohort": 1785628800,
+            "incomplete": false,
+            "measure": 0,
+            "segment": 0,
+            "value": 0
+          },
+          {
+            "cohort": 1785628800,
+            "incomplete": false,
+            "measure": 0,
+            "segment": 1,
+            "value": 0
+          },
+          {
+            "cohort": 1786233600,
+            "incomplete": false,
+            "measure": 0,
+            "segment": 0,
+            "value": 0
+          },
+          {
+            "cohort": 1786233600,
+            "incomplete": false,
+            "measure": 0,
+            "segment": 1,
+            "value": 0
+          },
+          {
+            "cohort": 1786838400,
+            "incomplete": false,
+            "measure": 0,
+            "segment": 0,
+            "value": 0
+          },
+          {
+            "cohort": 1786838400,
+            "incomplete": false,
+            "measure": 0,
+            "segment": 1,
+            "value": 0
+          },
+          {
+            "cohort": 1787443200,
+            "incomplete": false,
+            "measure": 0,
+            "segment": 0,
+            "value": 0
+          },
+          {
+            "cohort": 1787443200,
+            "incomplete": false,
+            "measure": 0,
+            "segment": 1,
+            "value": 0
+          },
+          {
+            "cohort": 1788048000,
+            "incomplete": false,
+            "measure": 0,
+            "segment": 0,
+            "value": 0
+          },
+          {
+            "cohort": 1788048000,
+            "incomplete": false,
+            "measure": 0,
+            "segment": 1,
+            "value": 0
+          },
+          {
+            "cohort": 1788652800,
+            "incomplete": false,
+            "measure": 0,
+            "segment": 0,
+            "value": 0
+          },
+          {
+            "cohort": 1788652800,
+            "incomplete": false,
+            "measure": 0,
+            "segment": 1,
+            "value": 0
+          },
+          {
+            "cohort": 1789257600,
+            "incomplete": false,
+            "measure": 0,
+            "segment": 0,
+            "value": 0
+          },
+          {
+            "cohort": 1789257600,
+            "incomplete": false,
+            "measure": 0,
+            "segment": 1,
+            "value": 0
+          },
+          {
+            "cohort": 1789862400,
+            "incomplete": false,
+            "measure": 0,
+            "segment": 0,
+            "value": 0
+          },
+          {
+            "cohort": 1789862400,
+            "incomplete": false,
+            "measure": 0,
+            "segment": 1,
+            "value": 0
+          }
+        ]
+      },
+      "trial_conversion_rate": {
+        "display_name": "Trial Conversion Rate",
+        "resolution": "week",
+        "yaxis": "%",
+        "summary": {
+          "average": {
+            "App Store": {
+              "Conversion Rate": 100,
+              "Conversions": 0.08,
+              "Expirations": 0,
+              "Pending": 0,
+              "Trial Starts": 0.08
+            },
+            "Total": {
+              "Conversion Rate": 100,
+              "Conversions": 0.08,
+              "Expirations": 0,
+              "Pending": 0,
+              "Trial Starts": 0.08
+            }
+          },
+          "total": {
+            "App Store": {
+              "Conversion Rate": 100,
+              "Conversions": 1,
+              "Expirations": 0,
+              "Pending": 0,
+              "Trial Starts": 1
+            },
+            "Total": {
+              "Conversion Rate": 100,
+              "Conversions": 1,
+              "Expirations": 0,
+              "Pending": 0,
+              "Trial Starts": 1
+            }
+          }
+        },
+        "measures": [
+          "Trial Starts",
+          "Conversions",
+          "Expirations",
+          "Pending",
+          "Conversion Rate"
+        ],
+        "segments": [
+          "Total",
+          "App Store"
+        ],
+        "values": [
+          {
+            "cohort": 1788048000,
+            "incomplete": false,
+            "measure": 0,
+            "segment": 0,
+            "value": 0
+          },
+          {
+            "cohort": 1788048000,
+            "incomplete": false,
+            "measure": 1,
+            "segment": 0,
+            "value": 0
+          },
+          {
+            "cohort": 1788048000,
+            "incomplete": false,
+            "measure": 2,
+            "segment": 0,
+            "value": 0
+          },
+          {
+            "cohort": 1788048000,
+            "incomplete": false,
+            "measure": 3,
+            "segment": 0,
+            "value": 0
+          },
+          {
+            "cohort": 1788048000,
+            "incomplete": false,
+            "measure": 4,
+            "segment": 0,
+            "value": 0
+          },
+          {
+            "cohort": 1788048000,
+            "incomplete": false,
+            "measure": 0,
+            "segment": 1,
+            "value": 0
+          },
+          {
+            "cohort": 1788048000,
+            "incomplete": false,
+            "measure": 1,
+            "segment": 1,
+            "value": 0
+          },
+          {
+            "cohort": 1788048000,
+            "incomplete": false,
+            "measure": 2,
+            "segment": 1,
+            "value": 0
+          },
+          {
+            "cohort": 1788048000,
+            "incomplete": false,
+            "measure": 3,
+            "segment": 1,
+            "value": 0
+          },
+          {
+            "cohort": 1788048000,
+            "incomplete": false,
+            "measure": 4,
+            "segment": 1,
+            "value": 0
+          },
+          {
+            "cohort": 1788652800,
+            "incomplete": false,
+            "measure": 0,
+            "segment": 0,
+            "value": 0
+          },
+          {
+            "cohort": 1788652800,
+            "incomplete": false,
+            "measure": 1,
+            "segment": 0,
+            "value": 0
+          },
+          {
+            "cohort": 1788652800,
+            "incomplete": false,
+            "measure": 2,
+            "segment": 0,
+            "value": 0
+          },
+          {
+            "cohort": 1788652800,
+            "incomplete": false,
+            "measure": 3,
+            "segment": 0,
+            "value": 0
+          },
+          {
+            "cohort": 1788652800,
+            "incomplete": false,
+            "measure": 4,
+            "segment": 0,
+            "value": 0
+          },
+          {
+            "cohort": 1788652800,
+            "incomplete": false,
+            "measure": 0,
+            "segment": 1,
+            "value": 0
+          },
+          {
+            "cohort": 1788652800,
+            "incomplete": false,
+            "measure": 1,
+            "segment": 1,
+            "value": 0
+          },
+          {
+            "cohort": 1788652800,
+            "incomplete": false,
+            "measure": 2,
+            "segment": 1,
+            "value": 0
+          },
+          {
+            "cohort": 1788652800,
+            "incomplete": false,
+            "measure": 3,
+            "segment": 1,
+            "value": 0
+          },
+          {
+            "cohort": 1788652800,
+            "incomplete": false,
+            "measure": 4,
+            "segment": 1,
+            "value": 0
+          },
+          {
+            "cohort": 1789257600,
+            "incomplete": false,
+            "measure": 0,
+            "segment": 0,
+            "value": 0
+          },
+          {
+            "cohort": 1789257600,
+            "incomplete": false,
+            "measure": 1,
+            "segment": 0,
+            "value": 0
+          },
+          {
+            "cohort": 1789257600,
+            "incomplete": false,
+            "measure": 2,
+            "segment": 0,
+            "value": 0
+          },
+          {
+            "cohort": 1789257600,
+            "incomplete": false,
+            "measure": 3,
+            "segment": 0,
+            "value": 0
+          },
+          {
+            "cohort": 1789257600,
+            "incomplete": false,
+            "measure": 4,
+            "segment": 0,
+            "value": 0
+          },
+          {
+            "cohort": 1789257600,
+            "incomplete": false,
+            "measure": 0,
+            "segment": 1,
+            "value": 0
+          },
+          {
+            "cohort": 1789257600,
+            "incomplete": false,
+            "measure": 1,
+            "segment": 1,
+            "value": 0
+          },
+          {
+            "cohort": 1789257600,
+            "incomplete": false,
+            "measure": 2,
+            "segment": 1,
+            "value": 0
+          },
+          {
+            "cohort": 1789257600,
+            "incomplete": false,
+            "measure": 3,
+            "segment": 1,
+            "value": 0
+          },
+          {
+            "cohort": 1789257600,
+            "incomplete": false,
+            "measure": 4,
+            "segment": 1,
+            "value": 0
+          },
+          {
+            "cohort": 1789862400,
+            "incomplete": false,
+            "measure": 0,
+            "segment": 0,
+            "value": 0
+          },
+          {
+            "cohort": 1789862400,
+            "incomplete": false,
+            "measure": 1,
+            "segment": 0,
+            "value": 0
+          },
+          {
+            "cohort": 1789862400,
+            "incomplete": false,
+            "measure": 2,
+            "segment": 0,
+            "value": 0
+          },
+          {
+            "cohort": 1789862400,
+            "incomplete": false,
+            "measure": 3,
+            "segment": 0,
+            "value": 0
+          },
+          {
+            "cohort": 1789862400,
+            "incomplete": false,
+            "measure": 4,
+            "segment": 0,
+            "value": 0
+          },
+          {
+            "cohort": 1789862400,
+            "incomplete": false,
+            "measure": 0,
+            "segment": 1,
+            "value": 0
+          },
+          {
+            "cohort": 1789862400,
+            "incomplete": false,
+            "measure": 1,
+            "segment": 1,
+            "value": 0
+          },
+          {
+            "cohort": 1789862400,
+            "incomplete": false,
+            "measure": 2,
+            "segment": 1,
+            "value": 0
+          },
+          {
+            "cohort": 1789862400,
+            "incomplete": false,
+            "measure": 3,
+            "segment": 1,
+            "value": 0
+          },
+          {
+            "cohort": 1789862400,
+            "incomplete": false,
+            "measure": 4,
+            "segment": 1,
+            "value": 0
+          }
+        ]
+      },
+      "actives": {
+        "display_name": "Active Subscriptions",
+        "resolution": "week",
+        "yaxis": "#",
+        "summary": {
+          "average": {
+            "App Store": {
+              "Actives": 2.67
+            },
+            "Stripe": {
+              "Actives": 9.75
+            },
+            "Total": {
+              "Actives": 12.42
+            }
+          }
+        },
+        "measures": [
+          "Actives"
+        ],
+        "segments": [
+          "Total",
+          "Stripe",
+          "App Store"
+        ],
+        "values": [
+          {
+            "cohort": 1783209600,
+            "incomplete": false,
+            "measure": 0,
+            "segment": 0,
+            "value": 7
+          },
+          {
+            "cohort": 1783209600,
+            "incomplete": false,
+            "measure": 0,
+            "segment": 1,
+            "value": 5
+          },
+          {
+            "cohort": 1783209600,
+            "incomplete": false,
+            "measure": 0,
+            "segment": 2,
+            "value": 2
+          },
+          {
+            "cohort": 1783814400,
+            "incomplete": false,
+            "measure": 0,
+            "segment": 0,
+            "value": 8
+          },
+          {
+            "cohort": 1783814400,
+            "incomplete": false,
+            "measure": 0,
+            "segment": 1,
+            "value": 6
+          },
+          {
+            "cohort": 1783814400,
+            "incomplete": false,
+            "measure": 0,
+            "segment": 2,
+            "value": 2
+          },
+          {
+            "cohort": 1784419200,
+            "incomplete": false,
+            "measure": 0,
+            "segment": 0,
+            "value": 9
+          },
+          {
+            "cohort": 1784419200,
+            "incomplete": false,
+            "measure": 0,
+            "segment": 1,
+            "value": 7
+          },
+          {
+            "cohort": 1784419200,
+            "incomplete": false,
+            "measure": 0,
+            "segment": 2,
+            "value": 2
+          },
+          {
+            "cohort": 1785024000,
+            "incomplete": false,
+            "measure": 0,
+            "segment": 0,
+            "value": 10
+          },
+          {
+            "cohort": 1785024000,
+            "incomplete": false,
+            "measure": 0,
+            "segment": 1,
+            "value": 8
+          },
+          {
+            "cohort": 1785024000,
+            "incomplete": false,
+            "measure": 0,
+            "segment": 2,
+            "value": 2
+          },
+          {
+            "cohort": 1785628800,
+            "incomplete": false,
+            "measure": 0,
+            "segment": 0,
+            "value": 11
+          },
+          {
+            "cohort": 1785628800,
+            "incomplete": false,
+            "measure": 0,
+            "segment": 1,
+            "value": 8
+          },
+          {
+            "cohort": 1785628800,
+            "incomplete": false,
+            "measure": 0,
+            "segment": 2,
+            "value": 3
+          },
+          {
+            "cohort": 1786233600,
+            "incomplete": false,
+            "measure": 0,
+            "segment": 0,
+            "value": 14
+          },
+          {
+            "cohort": 1786233600,
+            "incomplete": false,
+            "measure": 0,
+            "segment": 1,
+            "value": 11
+          },
+          {
+            "cohort": 1786233600,
+            "incomplete": false,
+            "measure": 0,
+            "segment": 2,
+            "value": 3
+          },
+          {
+            "cohort": 1786838400,
+            "incomplete": false,
+            "measure": 0,
+            "segment": 0,
+            "value": 15
+          },
+          {
+            "cohort": 1786838400,
+            "incomplete": false,
+            "measure": 0,
+            "segment": 1,
+            "value": 12
+          },
+          {
+            "cohort": 1786838400,
+            "incomplete": false,
+            "measure": 0,
+            "segment": 2,
+            "value": 3
+          },
+          {
+            "cohort": 1787443200,
+            "incomplete": false,
+            "measure": 0,
+            "segment": 0,
+            "value": 15
+          },
+          {
+            "cohort": 1787443200,
+            "incomplete": false,
+            "measure": 0,
+            "segment": 1,
+            "value": 12
+          },
+          {
+            "cohort": 1787443200,
+            "incomplete": false,
+            "measure": 0,
+            "segment": 2,
+            "value": 3
+          },
+          {
+            "cohort": 1788048000,
+            "incomplete": false,
+            "measure": 0,
+            "segment": 0,
+            "value": 15
+          },
+          {
+            "cohort": 1788048000,
+            "incomplete": false,
+            "measure": 0,
+            "segment": 1,
+            "value": 12
+          },
+          {
+            "cohort": 1788048000,
+            "incomplete": false,
+            "measure": 0,
+            "segment": 2,
+            "value": 3
+          },
+          {
+            "cohort": 1788652800,
+            "incomplete": false,
+            "measure": 0,
+            "segment": 0,
+            "value": 15
+          },
+          {
+            "cohort": 1788652800,
+            "incomplete": false,
+            "measure": 0,
+            "segment": 1,
+            "value": 12
+          },
+          {
+            "cohort": 1788652800,
+            "incomplete": false,
+            "measure": 0,
+            "segment": 2,
+            "value": 3
+          },
+          {
+            "cohort": 1789257600,
+            "incomplete": false,
+            "measure": 0,
+            "segment": 0,
+            "value": 15
+          },
+          {
+            "cohort": 1789257600,
+            "incomplete": false,
+            "measure": 0,
+            "segment": 1,
+            "value": 12
+          },
+          {
+            "cohort": 1789257600,
+            "incomplete": false,
+            "measure": 0,
+            "segment": 2,
+            "value": 3
+          },
+          {
+            "cohort": 1789862400,
+            "incomplete": false,
+            "measure": 0,
+            "segment": 0,
+            "value": 15
+          },
+          {
+            "cohort": 1789862400,
+            "incomplete": false,
+            "measure": 0,
+            "segment": 1,
+            "value": 12
+          },
+          {
+            "cohort": 1789862400,
+            "incomplete": false,
+            "measure": 0,
+            "segment": 2,
+            "value": 3
+          }
+        ]
+      }
+    },
+    "chart_resolution_used": "1",
+    "includes_stripe": true,
+    "includes_stripe_basis": "auto-detected from store segments"
+  },
+  "stripe": {
+    "scope": {
+      "ripple_products": 1,
+      "other_products_excluded": 3,
+      "non_ripple_subscriptions_excluded": 2,
+      "note": "Shared Stripe account: only subscriptions on products matching the Ripple/Acuity pattern, and charges/refunds/fees from those customers, are counted."
+    },
+    "other_business_revenue": {
+      "active_subscriptions": 2,
+      "mrr_usd": 1699,
+      "note": "Heeler Digital side-project retainers on the shared Stripe account. They cover Ripple's business expenses. Use only for runway/burn context; NOT Ripple revenue."
+    },
+    "subscriptions": {
+      "mrr_usd": 49.94,
+      "active_paying": 12,
+      "past_due": 0,
+      "unpaid": 14,
+      "active_trials": 3,
+      "new_trials_this_week": 3,
+      "new_trials_last_week": 0,
+      "new_paid_no_trial_this_week": 0,
+      "trial_to_paid_7d": {
+        "trials_ended": 0,
+        "converted": 0,
+        "pct": null
+      },
+      "trial_to_paid_30d": {
+        "trials_ended": 0,
+        "converted": 0,
+        "pct": null
+      },
+      "canceled_this_week": 1,
+      "canceled_last_week": 1,
+      "set_to_cancel_at_period_end": 0,
+      "with_discounts": 0,
+      "plan_mix": {
+        "39.99 usd/year": 6,
+        "4.99 usd/month": 6
+      },
+      "note": "MRR = list price of active+past_due subscription items normalised to a month; discounts not subtracted (see with_discounts)."
+    },
+    "this_week": {
+      "gross_revenue_usd": 4.99,
+      "successful_charges": 1,
+      "failed_charges": 0,
+      "refunds_count": 0,
+      "refunds_usd": 0,
+      "stripe_fees_usd": 0.44,
+      "net_usd": 4.55
+    },
+    "last_week": {
+      "gross_revenue_usd": 14.97,
+      "successful_charges": 3,
+      "failed_charges": 0,
+      "refunds_count": 0,
+      "refunds_usd": 0,
+      "stripe_fees_usd": 1.56,
+      "net_usd": 13.41
+    }
+  },
+  "costs": {
+    "weekly_by_service": {
+      "anthropic": {
+        "usd": 20.29,
+        "basis": "ClaudeCallLog (app-logged only)"
+      },
+      "openai": {
+        "usd": 0.55,
+        "basis": "ESTIMATE: 91.4 audio min × $0.006/min (transcription only)"
+      },
+      "stripe_fees": {
+        "usd": 0.44,
+        "basis": "Stripe balance transactions (actual)"
+      },
+      "revenuecat": {
+        "usd": null,
+        "basis": "unknown — set revenuecat in audits/manual-costs.json"
+      },
+      "vercel": {
+        "usd": null,
+        "basis": "unknown — fill audits/manual-costs.json"
+      },
+      "supabase": {
+        "usd": null,
+        "basis": "unknown — fill audits/manual-costs.json"
+      },
+      "expo_eas": {
+        "usd": null,
+        "basis": "unknown — fill audits/manual-costs.json"
+      },
+      "resend": {
+        "usd": null,
+        "basis": "unknown — fill audits/manual-costs.json"
+      },
+      "apple_developer": {
+        "usd": 1.9,
+        "basis": "manual-costs.json monthly_usd × 7/30.44"
+      },
+      "google_play": {
+        "usd": 0,
+        "basis": "manual-costs.json monthly_usd × 7/30.44"
+      },
+      "domains": {
+        "usd": null,
+        "basis": "unknown — fill audits/manual-costs.json"
+      },
+      "other": {
+        "usd": null,
+        "basis": "unknown — fill audits/manual-costs.json"
+      }
+    },
+    "weekly_known_total_usd": 23.18,
+    "services_unknown": [
+      "revenuecat",
+      "vercel",
+      "supabase",
+      "expo_eas",
+      "resend",
+      "domains",
+      "other"
+    ],
+    "claude_call_log": {
+      "total_usd": 20.29,
+      "user_attributed_usd": 0,
+      "by_purpose": [
+        {
+          "purpose": "blog-rewrite-triage",
+          "usd": 11.25,
+          "calls": 49
+        },
+        {
+          "purpose": "auto-blog-generate",
+          "usd": 1.8,
+          "calls": 6
+        },
+        {
+          "purpose": "admin_insights",
+          "usd": 1.52,
+          "calls": 42
+        },
+        {
+          "purpose": "humanize",
+          "usd": 1.4,
+          "calls": 110
+        },
+        {
+          "purpose": "adlab-compliance-check",
+          "usd": 0.59,
+          "calls": 14
+        },
+        {
+          "purpose": "adlab-weekly-batch-women",
+          "usd": 0.43,
+          "calls": 6
+        },
+        {
+          "purpose": "caption-writer",
+          "usd": 0.41,
+          "calls": 41
+        },
+        {
+          "purpose": "adlab-weekly-batch-men",
+          "usd": 0.35,
+          "calls": 6
+        },
+        {
+          "purpose": "timeline-grid-topic",
+          "usd": 0.26,
+          "calls": 7
+        },
+        {
+          "purpose": "adlab-learning-women",
+          "usd": 0.25,
+          "calls": 4
+        },
+        {
+          "purpose": "selfie-topic-generation",
+          "usd": 0.24,
+          "calls": 7
+        },
+        {
+          "purpose": "discipline-real-carousel-topic",
+          "usd": 0.23,
+          "calls": 7
+        },
+        {
+          "purpose": "niche-strategy-memo",
+          "usd": 0.22,
+          "calls": 1
+        },
+        {
+          "purpose": "watching-carousel-topic",
+          "usd": 0.22,
+          "calls": 7
+        },
+        {
+          "purpose": "lane-pulse-men-topic",
+          "usd": 0.2,
+          "calls": 7
+        },
+        {
+          "purpose": "memento-men-carousel-topic",
+          "usd": 0.2,
+          "calls": 7
+        },
+        {
+          "purpose": "lane-muse-men-topic",
+          "usd": 0.19,
+          "calls": 7
+        },
+        {
+          "purpose": "memento-carousel-topic",
+          "usd": 0.18,
+          "calls": 7
+        },
+        {
+          "purpose": "lane-pulse-topic",
+          "usd": 0.18,
+          "calls": 7
+        },
+        {
+          "purpose": "lane-muse-topic",
+          "usd": 0.17,
+          "calls": 7
+        }
+      ]
+    },
+    "infrastructure_cost_table_rows": []
+  },
+  "marketing": {
+    "note": "Paid acquisition (Meta via AdLab daily metrics). Not COGS — used for CAC.",
+    "weekly": [
+      {
+        "week": "2026-09-20..2026-09-26",
+        "meta_adlab_spend_usd": 163.43,
+        "meta_adlab_link_clicks": 119,
+        "meta_adlab_conversions": 11
+      },
+      {
+        "week": "2026-09-13..2026-09-19",
+        "meta_adlab_spend_usd": 0,
+        "meta_adlab_link_clicks": 0,
+        "meta_adlab_conversions": 0
+      },
+      {
+        "week": "2026-09-06..2026-09-12",
+        "meta_adlab_spend_usd": 0,
+        "meta_adlab_link_clicks": 0,
+        "meta_adlab_conversions": 0
+      },
+      {
+        "week": "2026-08-30..2026-09-05",
+        "meta_adlab_spend_usd": 0,
+        "meta_adlab_link_clicks": 0,
+        "meta_adlab_conversions": 0
+      },
+      {
+        "week": "2026-08-23..2026-08-29",
+        "meta_adlab_spend_usd": 0,
+        "meta_adlab_link_clicks": 0,
+        "meta_adlab_conversions": 0
+      }
+    ]
+  },
+  "app_stores": {
+    "app_store": {
+      "name": "Ripple: AI Voice Journal",
+      "rating": 5,
+      "rating_count": 8,
+      "rating_current_version": 5,
+      "version": "1.6.0",
+      "current_version_released": "2026-09-24T13:24:27Z",
+      "price": "Free",
+      "genre": "Lifestyle"
+    },
+    "app_store_reviews_this_week": [],
+    "google_play_reviews_this_week": null,
+    "google_play": {
+      "rating": null,
+      "rating_count": null,
+      "downloads": "10+",
+      "note": "No rating on the Play listing (Google hides it until enough ratings exist)"
+    }
+  },
+  "shipping": {
+    "commits_on_main_this_week": 154,
+    "by_type": {
+      "fix": 46,
+      "style": 7,
+      "feat": 57,
+      "content": 6,
+      "chore": 7,
+      "docs": 25,
+      "seo": 5,
+      "perf": 1
+    },
+    "commits": [
+      {
+        "hash": "d830046",
+        "date": "2026-09-26",
+        "subject": "fix: Guarantee internal sessions never count toward the funnel"
+      },
+      {
+        "hash": "afa4943",
+        "date": "2026-09-26",
+        "subject": "fix: Keep internal QA traffic out of the funnel dashboard"
+      },
+      {
+        "hash": "0f2629d",
+        "date": "2026-09-25",
+        "subject": "style: Give /start-test-bwk the same light look as /start-test"
+      },
+      {
+        "hash": "bb768a7",
+        "date": "2026-09-25",
+        "subject": "fix: Limit funnel checkout to card and Link to cut bounced payments"
+      },
+      {
+        "hash": "fceb0cc",
+        "date": "2026-09-25",
+        "subject": "feat: Publish every lane as a music reel on Instagram and Facebook"
+      },
+      {
+        "hash": "74c298e",
+        "date": "2026-09-25",
+        "subject": "feat: Embed Stripe checkout in the /start and /start-bwk paywalls"
+      },
+      {
+        "hash": "ed0c31c",
+        "date": "2026-09-25",
+        "subject": "feat: Add Day 30 and Day 365 to the test-funnel plan and use the Ripple mark"
+      },
+      {
+        "hash": "dacf8d2",
+        "date": "2026-09-25",
+        "subject": "fix: Post BWK to Facebook as the Page and stop fantasy covers timing out"
+      },
+      {
+        "hash": "eb6199f",
+        "date": "2026-09-25",
+        "subject": "style: Rebuild /start-test-bwk on the /start look in steel and cobalt"
+      },
+      {
+        "hash": "55e27d9",
+        "date": "2026-09-25",
+        "subject": "style: Restyle /start-test-bwk in charcoal, cream and purple with a serif quote"
+      },
+      {
+        "hash": "d63d85e",
+        "date": "2026-09-25",
+        "subject": "fix: Type the reset guides onto real paper photos"
+      },
+      {
+        "hash": "6d87586",
+        "date": "2026-09-25",
+        "subject": "feat: Compare normal and test funnels side by side in admin"
+      },
+      {
+        "hash": "2fbf4ca",
+        "date": "2026-09-25",
+        "subject": "feat: Add week chips to the test funnels and a switchable normal/test split"
+      },
+      {
+        "hash": "ef53818",
+        "date": "2026-09-25",
+        "subject": "feat: Add paper reset-guide carousel lanes for Ripple and BWK"
+      },
+      {
+        "hash": "a2e16c6",
+        "date": "2026-09-25",
+        "subject": "style: Show test-funnel statements as quotes with a feeling avatar"
+      },
+      {
+        "hash": "d9b205b",
+        "date": "2026-09-25",
+        "subject": "feat: Add /start-test-bwk, the men's version of the test funnel"
+      },
+      {
+        "hash": "faabea2",
+        "date": "2026-09-25",
+        "subject": "style: Redesign the /start-test yes/no screens and drop the step counter"
+      },
+      {
+        "hash": "06a97f5",
+        "date": "2026-09-25",
+        "subject": "feat: Make /start-test one yes/no question at a time and longer"
+      },
+      {
+        "hash": "ed746bd",
+        "date": "2026-09-25",
+        "subject": "feat: Split test a yes/no first screen on /start and /start-bwk"
+      },
+      {
+        "hash": "ce9abbf",
+        "date": "2026-09-25",
+        "subject": "content: Use the headed text layout on every Ripple and BWK photo post"
+      },
+      {
+        "hash": "d33db35",
+        "date": "2026-09-25",
+        "subject": "fix: Count real funnel visitors and per-funnel paid users in admin"
+      },
+      {
+        "hash": "d07feef",
+        "date": "2026-09-25",
+        "subject": "fix: Stop dropping Meta signup events and mislabelling ad signups"
+      },
+      {
+        "hash": "28d7870",
+        "date": "2026-09-24",
+        "subject": "fix: Smooth /start-test and fix the repeat email-step signup"
+      },
+      {
+        "hash": "1b93a5d",
+        "date": "2026-09-24",
+        "subject": "fix: Let /start-test answers be changed and give every screen a link"
+      },
+      {
+        "hash": "344bb1b",
+        "date": "2026-09-24",
+        "subject": "chore: Add the Kling 3.0 living-reel batch script for Meta posts"
+      },
+      {
+        "hash": "4c57da4",
+        "date": "2026-09-24",
+        "subject": "feat: Redesign /start-test with interactive, cohesive screens"
+      },
+      {
+        "hash": "b604e4a",
+        "date": "2026-09-24",
+        "subject": "fix: Assemble living reels from variable-frame-rate clips"
+      },
+      {
+        "hash": "0e3c202",
+        "date": "2026-09-24",
+        "subject": "fix: Send the ad click with trial purchases and log Meta's answers"
+      },
+      {
+        "hash": "9982fb0",
+        "date": "2026-09-24",
+        "subject": "feat: Add /start-test, an evidence-based long funnel with in-page checkout"
+      },
+      {
+        "hash": "a6c95aa",
+        "date": "2026-09-24",
+        "subject": "fix: Record why a living reel build failed"
+      },
+      {
+        "hash": "2f581d8",
+        "date": "2026-09-24",
+        "subject": "feat: Let ops scripts queue living reels through Storage"
+      },
+      {
+        "hash": "c99a44e",
+        "date": "2026-09-24",
+        "subject": "feat: Build living reels where every slide's photo comes to life"
+      },
+      {
+        "hash": "bc9421a",
+        "date": "2026-09-24",
+        "subject": "feat: Post Ripple and BWK lanes as reels, one carousel lane each"
+      },
+      {
+        "hash": "c9d8845",
+        "date": "2026-09-24",
+        "subject": "docs: Mark Stripe trial reminder webhook event as enabled"
+      },
+      {
+        "hash": "5c4e4a8",
+        "date": "2026-09-24",
+        "subject": "style: Split funnel screen 1 into a header and an example below the answers"
+      },
+      {
+        "hash": "c8f7ed4",
+        "date": "2026-09-24",
+        "subject": "style: Redesign funnel screen 1 intro as a clean header"
+      },
+      {
+        "hash": "030ce6c",
+        "date": "2026-09-24",
+        "subject": "fix: Email funnel signups who skip the paywall their free Pro week"
+      },
+      {
+        "hash": "7676f40",
+        "date": "2026-09-24",
+        "subject": "docs: Log funnel screen 1, cookie banner and admin funnel work"
+      },
+      {
+        "hash": "60dd573",
+        "date": "2026-09-24",
+        "subject": "feat: Split admin funnel analytics into Ripple and BWK with real steps"
+      },
+      {
+        "hash": "13819b3",
+        "date": "2026-09-24",
+        "subject": "feat: Remove the cookie banner so the Meta pixel sees ad visitors"
+      },
+      {
+        "hash": "34bcb43",
+        "date": "2026-09-24",
+        "subject": "feat: Explain Ripple on funnel screen 1 and bring back Apple sign-in"
+      },
+      {
+        "hash": "58c04c9",
+        "date": "2026-09-24",
+        "subject": "fix: Pace ad activation so Meta's rate limit doesn't kill ads"
+      },
+      {
+        "hash": "993068b",
+        "date": "2026-09-24",
+        "subject": "fix: Retry ads as feed-only when Meta rejects the placement version"
+      },
+      {
+        "hash": "a6bca54",
+        "date": "2026-09-24",
+        "subject": "fix: Keep the ad batch when one ad has a bad field"
+      },
+      {
+        "hash": "d4d3fe8",
+        "date": "2026-09-24",
+        "subject": "feat: Make every ad show the pain and how Ripple fixes it"
+      },
+      {
+        "hash": "2f02177",
+        "date": "2026-09-24",
+        "subject": "fix: Keep top image quality for ads and social covers only"
+      },
+      {
+        "hash": "6fa489e",
+        "date": "2026-09-24",
+        "subject": "fix: Launch women's ads with valid Advantage+ age targeting"
+      },
+      {
+        "hash": "67d313c",
+        "date": "2026-09-24",
+        "subject": "feat: Top-quality images for every slide, per-image quality check, native feed crops"
+      },
+      {
+        "hash": "7c58e1b",
+        "date": "2026-09-24",
+        "subject": "fix: Hide the app download banner on the men's funnel"
+      },
+      {
+        "hash": "874b51f",
+        "date": "2026-09-24",
+        "subject": "docs: Restore the weekly audit progress entry split by a rebase"
+      },
+      {
+        "hash": "018040a",
+        "date": "2026-09-24",
+        "subject": "content: Use the span-to-mission cover shape for the timeline lane"
+      },
+      {
+        "hash": "985b13d",
+        "date": "2026-09-24",
+        "subject": "feat: Auto-post BWK to its own Instagram and Facebook with its own schedule"
+      },
+      {
+        "hash": "93cd656",
+        "date": "2026-09-24",
+        "subject": "feat: Lock BWK lanes to themes, command covers, fantasy lane, image quality"
+      },
+      {
+        "hash": "8a51aaf",
+        "date": "2026-09-24",
+        "subject": "docs: Add Build With Key brand kit (logo, social avatars, FB cover)"
+      },
+      {
+        "hash": "152c8c0",
+        "date": "2026-09-24",
+        "subject": "content: Use a real App Store review on the men's funnel paywall"
+      },
+      {
+        "hash": "d2af015",
+        "date": "2026-09-24",
+        "subject": "fix(audit): guarantee failure-email sends when collector fails hard (#66)"
+      },
+      {
+        "hash": "8cd4ba8",
+        "date": "2026-09-24",
+        "subject": "content: Swap the weekly report for the task list and patterns on the paywall"
+      },
+      {
+        "hash": "b79d5e9",
+        "date": "2026-09-24",
+        "subject": "feat: Require a card for the web funnel Pro trial and rebuild the paywall"
+      },
+      {
+        "hash": "8e1c8ff",
+        "date": "2026-09-24",
+        "subject": "content: Feature habit tracking across both web funnels"
+      },
+      {
+        "hash": "469c93f",
+        "date": "2026-09-24",
+        "subject": "fix: Repair web Apple sign-in and recover failed Google funnel logins"
+      },
+      {
+        "hash": "5a3df3b",
+        "date": "2026-09-24",
+        "subject": "feat: Cut both web funnels to 11 steps and rebuild the paywall"
+      },
+      {
+        "hash": "3cdbebb",
+        "date": "2026-09-24",
+        "subject": "fix: Vision-check feed crops and allow per-ad image regeneration"
+      },
+      {
+        "hash": "cce6cde",
+        "date": "2026-09-23",
+        "subject": "fix: Scope audit Stripe metrics to Ripple and email Jim too"
+      },
+      {
+        "hash": "2cf71a4",
+        "date": "2026-09-23",
+        "subject": "fix: Stop placement crops from cutting ad headlines"
+      },
+      {
+        "hash": "ad5d1ff",
+        "date": "2026-09-23",
+        "subject": "feat: Add automated weekly business audit emailed every Saturday"
+      },
+      {
+        "hash": "07c4ba9",
+        "date": "2026-09-23",
+        "subject": "feat: Preview weekly ads as Meta feed posts and stories"
+      },
+      {
+        "hash": "eb5e4d2",
+        "date": "2026-09-23",
+        "subject": "feat: Render ads at 4:5 and 9:16 with placement mapping, add app-proof format"
+      },
+      {
+        "hash": "c735746",
+        "date": "2026-09-23",
+        "subject": "feat: Open ad review thumbnails full size with complete copy"
+      },
+      {
+        "hash": "420630b",
+        "date": "2026-09-23",
+        "subject": "feat: Ship social Phase 1 — metrics dashboard, alerts, Posted link, Shorts/Threads, dedupe"
+      },
+      {
+        "hash": "c10cc54",
+        "date": "2026-09-23",
+        "subject": "fix: Hold weekly ad copy to Meta's 40/125-character limits"
+      },
+      {
+        "hash": "88cbee2",
+        "date": "2026-09-23",
+        "subject": "fix: Get social metrics flowing, route bio links to funnels, write captions"
+      },
+      {
+        "hash": "095d1f5",
+        "date": "2026-09-23",
+        "subject": "fix: Keep brand rules above competitor ideas in weekly ad prompt"
+      },
+      {
+        "hash": "af92660",
+        "date": "2026-09-23",
+        "subject": "feat: Run weekly ads in fixed-budget evergreen campaigns optimizing signups"
+      },
+      {
+        "hash": "7ab6f53",
+        "date": "2026-09-23",
+        "subject": "feat: Teach the weekly ad batch from trial starts + competitor ads"
+      },
+      {
+        "hash": "30f8e4f",
+        "date": "2026-09-23",
+        "subject": "docs: Log the AdLab kill-engine activation and safety revamp"
+      },
+      {
+        "hash": "4ccb2c9",
+        "date": "2026-09-23",
+        "subject": "feat: Turn on the AdLab kill engine — scheduled daily with safety revamp"
+      },
+      {
+        "hash": "78f996d",
+        "date": "2026-09-23",
+        "subject": "docs: Log the Stripe price env-var cutover to $9.99/$89.99"
+      },
+      {
+        "hash": "20a97bd",
+        "date": "2026-09-23",
+        "subject": "fix: Remove 60-second claims, fix StartTrial pixel, add habit tracking to paywall"
+      },
+      {
+        "hash": "310de75",
+        "date": "2026-09-23",
+        "subject": "fix: Commit missing rc-parity-soak module that broke production builds"
+      },
+      {
+        "hash": "eed54ef",
+        "date": "2026-09-23",
+        "subject": "docs: Correct commit hash in pricing-sweep PROGRESS entry"
+      }
+    ]
+  },
+  "blind_spots": [
+    {
+      "source": "costs.anthropic_admin_api",
+      "error": "ANTHROPIC_ADMIN_KEY not set — using app-logged ClaudeCallLog instead (misses Claude Code / this audit / untracked calls)",
+      "fix": "Claude Console → Settings → Admin keys → create admin key"
+    },
+    {
+      "source": "costs.openai_admin_api",
+      "error": "OPENAI_ADMIN_KEY not set — Whisper cost is an estimate from audio minutes",
+      "fix": "platform.openai.com → Settings → Organization → Admin keys"
+    },
+    {
+      "source": "costs.manual",
+      "error": "No cost figure for: revenuecat, vercel, supabase, expo_eas, resend, domains, other",
+      "fix": "Fill monthly_usd for each service in audits/manual-costs.json on main"
+    },
+    {
+      "source": "google_play.reviews",
+      "error": "GOOGLE_PLAY_SERVICE_ACCOUNT_JSON not set",
+      "fix": "Add the same service-account JSON used for Android IAP verification as a GitHub secret"
+    }
+  ]
+}
