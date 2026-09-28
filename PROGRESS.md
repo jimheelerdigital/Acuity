@@ -31,7 +31,8 @@ None.
 
 ### Notes
 - Verified locally against the prod DB with an admin session: 5 paid (Ripple normal 2 monthly, BWK normal 2 monthly, BWK test 1 yearly). Trial milestones per funnel match.
-- The test funnels are losing people at screen 1: /start-test 1 of 17, /start-test-bwk 5 of 25, against about 37% and 29% on the normal funnels. Event mapping checked; it's real.
+- CORRECTION (same day): the "test funnels lose at screen 1" read was wrong. It compared test visitors since the split started against 7 days of normal traffic, mostly pre-split. Split visitors only, same hours: normal 4/38 answered screen 1 (11%), test 5/46 (11%). Both arms fell from about 35% overnight, so that's a traffic change, not the test funnel. The "FB-noOS" sessions are real Android Facebook app users (FB4A UA), not Meta prefetch.
+- Follow-up fix: the normal-vs-test verdicts (`pairTests`) now always use split-only sessions via `buildFunnels(true)`, whatever the chart filter.
 
 ## [2026-09-28] — Test funnel ends by sending them straight to the app
 

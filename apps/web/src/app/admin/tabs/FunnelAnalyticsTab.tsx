@@ -389,7 +389,7 @@ function CompareView({ start, end, traffic, mode }: { start: string; end: string
       {mode !== "cmp-bwk" && <PairVerdicts tests={data.tests.ripple} target={data.targetPerArm} title={mode === "cmp-all" ? "Ripple: normal vs test" : undefined} />}
       {mode !== "cmp-ripple" && <PairVerdicts tests={data.tests.bwk} target={data.targetPerArm} title={mode === "cmp-all" ? "BWK: normal vs test" : undefined} />}
       <div style={{ fontSize: 11, color: "rgba(255,255,255,0.35)" }}>
-        Don&rsquo;t call a winner before ~{data.targetPerArm} real visitors per arm. Card trials need far more than that; use &ldquo;Passed the gate&rdquo; as the early read.
+        The normal-vs-test verdicts above always compare split visitors only, over the same hours, whatever the chart shows. Don&rsquo;t call a winner before ~{data.targetPerArm} real visitors per arm. Card trials need far more than that; use &ldquo;Passed the gate&rdquo; as the early read.
       </div>
 
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", gap: 12 }}>

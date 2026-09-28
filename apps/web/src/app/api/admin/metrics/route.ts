@@ -2097,11 +2097,16 @@ async function getFunnelCompare(
     if (name === "funnel_split_arm" && (e.value === "normal" || e.value === "test")) s.arm = e.value;
   }
 
-  const funnels = COMPARE_FLOWS.map((flow) => {
+  // The funnels are built twice: `funnels` for the chart (all real visitors
+  // unless the split-only box is ticked) and `splitFunnels` for the
+  // normal-vs-test verdicts, which must ALWAYS compare split visitors only.
+  // Comparing the test arm against every normal visitor over the range
+  // mixed in pre-split days and read as "test is losing" (2026-09-28).
+  const buildFunnels = (onlySplit: boolean) => COMPARE_FLOWS.map((flow) => {
     const family = flow.startsWith("v9") ? "v9" : "v8";
     const all = [...byFlow.get(flow)!.values()];
     const trafficKept = all.filter((s) => traffic === "all" || s.inApp || (traffic === "real" && s.acted));
-    const kept = splitOnly ? trafficKept.filter((s) => s.arm !== null) : trafficKept;
+    const kept = onlySplit ? trafficKept.filter((s) => s.arm !== null) : trafficKept;
 
     const counts: Record<string, number> = Object.fromEntries(COMPARE_MILESTONES.map((m) => [m.key, 0]));
     const mains = COMPARE_MILESTONES.filter((m) => m.main);
@@ -2147,11 +2152,13 @@ async function getFunnelCompare(
       milestones,
     };
   });
+  const funnels = buildFunnels(splitOnly);
+  const splitFunnels = splitOnly ? funnels : buildFunnels(true);
 
   // Normal vs test per audience, on the milestones worth testing. Each rate
   // is measured against Landed so the arms are compared on the same base.
   const pairTests = (normal: CompareFlow, test: CompareFlow) => {
-    const a = funnels.find((f) => f.flow === normal)!, b = funnels.find((f) => f.flow === test)!;
+    const a = splitFunnels.find((f) => f.flow === normal)!, b = splitFunnels.find((f) => f.flow === test)!;
     const na = a.milestones[0].count, nb = b.milestones[0].count;
     return COMPARE_MILESTONES.filter((m) => m.test).map((m) => {
       const xa = a.milestones.find((x) => x.key === m.key)!.count;
