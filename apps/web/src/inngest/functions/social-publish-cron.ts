@@ -294,17 +294,19 @@ export const socialPublishCronFn = inngest.createFunction(
               const publicUrl = supabase.storage
                 .from("content-factory")
                 .getPublicUrl(storagePath).data.publicUrl;
-              // Already rendered (the Higgsfield post video, or a previous attempt)?
-              const head = await fetch(publicUrl, { method: "HEAD" });
-              if (head.ok) return publicUrl;
               // Higgsfield video still building (2026-09-26): hold the post
-              // for a later run instead of shipping a plain slideshow.
+              // for a later run instead of shipping a plain slideshow. Checked
+              // BEFORE the file exists check — a rebuild overwrites a fallback
+              // slideshow sitting at the same path (2026-09-28).
               const { readVideoMarker, isVideoPending } = await import(
                 "@/lib/content-factory/post-video"
               );
               if (isVideoPending(await readVideoMarker(row.carouselPostId))) {
                 return WAIT_FOR_VIDEO;
               }
+              // Already rendered (the Higgsfield post video, or a previous attempt)?
+              const head = await fetch(publicUrl, { method: "HEAD" });
+              if (head.ok) return publicUrl;
 
               const { pickMusicTrack, renderSlideshowReel } = await import(
                 "@/lib/content-factory/slideshow-reel"
