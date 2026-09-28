@@ -7,6 +7,29 @@
 
 ---
 
+## [2026-09-28] — Weekly ad rotation no longer pauses the proven winners
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** (see git log: "fix: Stop the weekly ad rotation from pausing proven winners")
+
+### In plain English (for Keenan)
+Each week, when new ads are added, the system pauses older ones to keep 8 per audience. On 09-27 it paused the best ones: "Two years of noticing" (the top traffic driver) and two BWK ads that each produced a paid trial. It judged ads by a number that rewards lucky small spends. Now an ad that produced a paid trial, or got 3+ sign-ups at $25 or less each, is never paused by the rotation, and the rest are ranked more fairly.
+
+### Technical changes (for Jimmy)
+- `apps/web/src/lib/adlab/evergreen.ts` (`makeRoomInAdSet`):
+  - Protects ads with at least 1 paid trial (from our `funnel_payment_completed` by `utm_content`), or at least 3 signups at or under $25 CPL, using the higher of Meta conversions and our `funnel_account_created`.
+  - Ranks the rest by the smoothed rate `(signups + 0.5) / (spend + $15)`.
+  - Runs over MAX_ACTIVE_ADS instead of retiring a protected ad.
+  - Returns `protectedCount`.
+
+### Manual steps needed
+- [ ] Keenan: in Ads Manager, check whether "Two years of noticing", "Same patterns. Different year." and "You know. You just don't do." are paused. Turn them back on if you want them running, then tell Claude Code so the DB is marked live and syncs their metrics again.
+
+### Notes
+- The cron only syncs metrics for ads with DB status live or scaled. An ad re-enabled in Ads Manager while the DB says "killed" goes dark in our data, so the DB must be updated when that happens.
+- Correction to earlier advice: spend is already consolidated. There are 2 evergreen ad sets (women $60/day, men $40/day, $100/day total), not 4 campaigns at $200/day.
+
 ## [2026-09-28] — Tracking link and dashboard for an App Store-first ad test
 
 **Requested by:** Keenan

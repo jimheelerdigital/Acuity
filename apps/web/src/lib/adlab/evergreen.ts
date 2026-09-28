@@ -111,37 +111,71 @@ export async function ensureEvergreenAdSet(
 
 /**
  * Pause the weakest live ads in the ad set so `incoming` new ads fit under
- * MAX_ACTIVE_ADS. Weakest = fewest signups per dollar (Meta-reported
- * registrations, lifetime), ties broken by spend. Ads still inside their
- * first 72h are only retired if nothing older is left.
+ * MAX_ACTIVE_ADS.
  *
- * Status is written to the DB only after Meta confirms the pause.
+ * 2026-09-28 fix (per Keenan: "nothing has been cut yet"). The 09-27 rotation
+ * retired the proven winners ("Two years of noticing": 8 signups on $107;
+ * two BWK ads that each produced a PAID trial) because it ranked by raw
+ * Meta signups per dollar, where 1 signup on $10 beats 8 on $107. Now:
+ *   - PROTECTED, never retired: an ad that produced a paid trial in our own
+ *     funnel data, or has >=3 signups at <= $25 each (Meta-reported or ours,
+ *     whichever is higher).
+ *   - The rest rank by a smoothed rate, (signups + 0.5) / (spend + $15), so
+ *     a lucky tiny spend can't outrank a proven one.
+ *   - If there aren't enough unprotected ads to make room, the ad set runs
+ *     over the cap rather than losing a winner.
+ * Ads still inside their first 72h are only retired if nothing older is
+ * left. Status is written to the DB only after Meta confirms the pause.
  */
+const PROTECT_MIN_SIGNUPS = 3;
+const PROTECT_MAX_CPL_CENTS = 2500;
+
 export async function makeRoomInAdSet(
   adsetId: string,
   incoming: number
-): Promise<{ retired: Array<{ adId: string; reason: string }>; failed: string[] }> {
+): Promise<{ retired: Array<{ adId: string; reason: string }>; failed: string[]; protectedCount: number }> {
   const live = await prisma.adLabAd.findMany({
     where: { metaAdsetId: adsetId, status: { in: ["live", "scaled"] } },
     include: { metrics: true },
   });
   const excess = live.length + incoming - MAX_ACTIVE_ADS;
-  if (excess <= 0) return { retired: [], failed: [] };
+  if (excess <= 0) return { retired: [], failed: [], protectedCount: 0 };
+
+  // Our own funnel outcomes per creative (utm_content = creative id).
+  const creativeIds = live.map((a) => a.creativeId);
+  const ev = await prisma.onboardingEvent.findMany({
+    where: { utmContent: { in: creativeIds }, isBot: false, event: { in: ["funnel_account_created", "funnel_payment_completed"] } },
+    select: { utmContent: true, event: true, sessionToken: true, value: true },
+  });
+  const ours = new Map<string, { accounts: Set<string>; trials: Set<string> }>();
+  for (const e of ev) {
+    const o = ours.get(e.utmContent!) ?? { accounts: new Set(), trials: new Set() };
+    const key = e.sessionToken ?? "";
+    if (e.event === "funnel_account_created") o.accounts.add(key);
+    if (e.event === "funnel_payment_completed" && !(e.value ?? "").endsWith(":renewal")) o.trials.add(key);
+    ours.set(e.utmContent!, o);
+  }
 
   const now = Date.now();
-  const ranked = live
-    .map((ad) => {
-      const spend = ad.metrics.reduce((n, m) => n + m.spendCents, 0);
-      const conv = ad.metrics.reduce((n, m) => n + m.conversions, 0);
-      const young = !!ad.launchedAt && now - ad.launchedAt.getTime() < MIN_HOURS_BEFORE_RETIRE * 3_600_000;
-      return { ad, spend, conv, young, perDollar: spend > 0 ? conv / spend : 0 };
-    })
-    .sort((a, b) => Number(a.young) - Number(b.young) || a.perDollar - b.perDollar || b.spend - a.spend);
+  const scored = live.map((ad) => {
+    const spend = ad.metrics.reduce((n, m) => n + m.spendCents, 0);
+    const metaConv = ad.metrics.reduce((n, m) => n + m.conversions, 0);
+    const o = ours.get(ad.creativeId);
+    const signups = Math.max(metaConv, o?.accounts.size ?? 0);
+    const trials = o?.trials.size ?? 0;
+    const young = !!ad.launchedAt && now - ad.launchedAt.getTime() < MIN_HOURS_BEFORE_RETIRE * 3_600_000;
+    const isWinner = trials > 0 || (signups >= PROTECT_MIN_SIGNUPS && spend / signups <= PROTECT_MAX_CPL_CENTS);
+    return { ad, spend, conv: signups, trials, young, isWinner, rate: (signups + 0.5) / (spend + 1500) };
+  });
+  const protectedCount = scored.filter((r) => r.isWinner).length;
+  const ranked = scored
+    .filter((r) => !r.isWinner)
+    .sort((a, b) => Number(a.young) - Number(b.young) || a.rate - b.rate || b.spend - a.spend);
 
   const retired: Array<{ adId: string; reason: string }> = [];
   const failed: string[] = [];
   for (const r of ranked.slice(0, excess)) {
-    const reason = `ROTATE: retired to make room for this week's ads — ${r.conv} signups on $${(r.spend / 100).toFixed(2)} lifetime.`;
+    const reason = `ROTATE: retired to make room for this week's ads — ${r.conv} signups, ${r.trials} trials on $${(r.spend / 100).toFixed(2)} lifetime.`;
     try {
       if (r.ad.metaAdId) await meta.setStatus(r.ad.metaAdId, "ad", "PAUSED");
       await prisma.adLabAd.update({ where: { id: r.ad.id }, data: { status: "killed", decisionReason: reason } });
@@ -152,7 +186,10 @@ export async function makeRoomInAdSet(
       failed.push(r.ad.id);
     }
   }
-  return { retired, failed };
+  if (ranked.length < excess) {
+    console.warn(`[adlab-evergreen] ${adsetId}: ${protectedCount} protected winners — running ${excess - ranked.length} over MAX_ACTIVE_ADS rather than retiring one`);
+  }
+  return { retired, failed, protectedCount };
 }
 
 /** All evergreen ad set ids — the engine must never raise their budgets. */
