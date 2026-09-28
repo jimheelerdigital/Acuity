@@ -2689,6 +2689,11 @@ function DownloadScreen({ track, paymentConfirmed, selectedPlan }: {
               ? <>We sent it to <strong className="text-acuity-text">{email}</strong>. After installing, tap <strong className="text-acuity-text">Open Ripple</strong> in that email on your phone and the app opens signed in. No password.</>
               : <>We&rsquo;re emailing you a sign-in link. After installing, tap it on your phone and the app opens signed in. No password.</>}
           </p>
+          {email && (
+            <p className="mt-3 text-sm text-acuity-text-ter leading-relaxed">
+              Or sign in as <strong className="text-acuity-text">{email}</strong>, with the password you just created (or Continue with Google if that&rsquo;s how you signed up).
+            </p>
+          )}
           <p className="mt-3 text-xs text-acuity-text-ter leading-relaxed">
             Don&rsquo;t create a new account in the app. If it asks you to sign up, tap <strong>Already have an account? Sign in</strong>, then <strong>Email me a link</strong>.
           </p>

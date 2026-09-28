@@ -7,6 +7,30 @@
 
 ---
 
+## [2026-09-28] — Success screen shows your login and lets you set a password (web-to-app standard)
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** (see git log: "feat: Add the standard login step to the funnel success screens")
+
+### In plain English (for Keenan)
+This mirrors what the big web-funnel apps do after payment: show the email you log in with, and let you create a password for the app right there. Test-funnel customers had a password they never saw, so the app's normal email + password sign-in was useless to them. Now they can set one on the success screen. If their email isn't confirmed yet, we re-send the confirmation, because the app won't accept a password from an unconfirmed email. Normal-funnel customers get a reminder to sign in with the email and password they chose (or Google).
+
+### Technical changes (for Jimmy)
+- New `apps/web/src/app/api/account/set-password/route.ts` (POST `{password}`):
+  - Signed-in owner, within 48h of account creation; otherwise 403 and use forgot-password. Rate-limited.
+  - If `emailVerified` is null it re-sends `welcomeVerifyEmail` with a new `verify:` token, because `/api/auth/mobile-login` requires emailVerified.
+  - **Jimmy: please review (auth).**
+- `apps/web/src/components/funnel-v9.tsx`: `LoginCard` shows the login email and a password box (`funnel_v9_password_set`).
+- `apps/web/src/components/onboarding-funnel.tsx`: the v8 download card shows "sign in as {email} with your password (or Google)".
+
+### Manual steps needed
+- [ ] Jimmy: review set-password (auth)
+
+### Notes
+- Web signup state on 09-28: 28 web signups, 17 email-verified, 16 with a user-chosen password. The app's password sign-in blocked the 11 unverified. Tapping the magic link verifies the email, so it stays the primary path; the password is the familiar fallback.
+- Still needs an app update, not done by decision: automatic sign-in on first open, and a first screen asking whether you're new or already signed up.
+
 ## [2026-09-28] — Web signups get into their app account in one tap (no app update)
 
 **Requested by:** Keenan

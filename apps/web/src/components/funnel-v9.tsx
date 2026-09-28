@@ -1944,7 +1944,57 @@ function GetTheApp({
             Don&rsquo;t create a new account in the app. If it asks you to sign up, tap <strong>Already have an account? Sign in</strong>, then <strong>Email me a link</strong>.
           </p>
         </div>
+        {answers.email && <LoginCard email={answers.email} track={track} />}
       </div>
+    </div>
+  );
+}
+
+/** "Your login" (2026-09-28): the standard web-to-app success-page step.
+ *  Shows the email she'll sign in with and lets her set a password for the
+ *  app's email + password sign-in (the email-gate account has a random one). */
+function LoginCard({ email, track }: { email: string; track: ViewProps["track"] }) {
+  const [pw, setPw] = useState("");
+  const [state, setState] = useState<"idle" | "saving" | "saved" | "error">("idle");
+  const [msg, setMsg] = useState<string | null>(null);
+  const save = async () => {
+    setState("saving");
+    setMsg(null);
+    try {
+      const res = await fetch("/api/account/set-password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ password: pw }),
+      });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(body.error ?? "Couldn't save that. Try again.");
+      track("funnel_v9_password_set", body.needsVerification ? "needs_verify" : "verified");
+      setMsg(body.needsVerification ? `Saved. Tap the confirm link we just sent to ${email} before signing in with it.` : "Saved. Use it with your email in the app.");
+      setState("saved");
+    } catch (e) {
+      setMsg(e instanceof Error ? e.message : "Couldn't save that. Try again.");
+      setState("error");
+    }
+  };
+  return (
+    <div className="card rounded-3xl p-5">
+      <StepBadge n={3} icon={KeyRound} title="Your login" text={`You sign in with ${email}. Want a password too? The link works without one.`} />
+      {state !== "saved" && (
+        <div className="mt-4 flex gap-2">
+          <input
+            type="password"
+            value={pw}
+            onChange={(e) => setPw(e.target.value)}
+            placeholder="Create a password (8+ characters)"
+            autoComplete="new-password"
+            className="min-w-0 flex-1 rounded-full border border-acuity-line bg-transparent px-4 py-3 text-[15px] outline-none focus:border-acuity-primary"
+          />
+          <button onClick={save} disabled={pw.length < 8 || state === "saving"} className="shrink-0 rounded-full soft px-4 py-3 text-[14px] font-semibold disabled:opacity-40">
+            {state === "saving" ? "Saving…" : "Save"}
+          </button>
+        </div>
+      )}
+      {msg && <p className="mt-3 text-[13px] leading-relaxed text-acuity-text-sec">{msg}</p>}
     </div>
   );
 }
