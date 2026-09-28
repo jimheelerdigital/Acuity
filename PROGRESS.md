@@ -340,6 +340,7 @@ Every social post is now written by Claude Opus 5.5. That covers the slide text,
   - Vercel's Linux ffmpeg also rejects xfade unless every input is marked constant frame rate in the graph (`fps=30`), so the join adds it per input.
   - The xfade crossfade chain still failed on Vercel's ffmpeg even with `fps=30`. It was replaced: each segment now dips to and from black (0.3s) and segments join by concat-demuxer stream copy. The join has no filter graph now.
   - The 09-28 overnight run also lost 5 lanes (questions, texts-younger, muse, muse-men, timeline): the old single-pass assembly ran out of memory and Vercel killed the shared instance, taking concurrent generation steps with it. `carousel-daily` retries raised 1 → 2.
+  - 09-28 (Keenan): selfie, reset-guide, phone-quote, texts-younger, reset-guide-men and timeline post as IG/FB photo carousels only (`CAROUSEL_LANES`) and get no Higgsfield build. Digest emails are off unless `DIGEST_EMAIL_ENABLED=1`. The Graph API refuses to delete IG media ("(#10) Insufficient permissions"), so replaced IG slideshows must be deleted by hand. FB deletes work.
   - Local timings on this laptop are unreliable (it sleeps mid-run); measure CPU time instead.
 - Tested locally: `assemblePostVideo` on mixed live/still input (20.1s, 1080x1920, correct transitions). A text layer over the base matches the finished slide within JPEG noise. A real BWK packet for 2026-09-26 built with 63 files / 33 MB and correct download headers, and the email rendered.
 

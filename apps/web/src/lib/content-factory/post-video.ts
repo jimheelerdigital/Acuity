@@ -97,6 +97,11 @@ export function isVideoPending(marker: VideoBuildMarker | null): boolean {
  * its finished video.
  */
 export async function queuePostVideo(postId: string): Promise<void> {
+  // Carousel-only lanes never get a video (2026-09-28).
+  const { prisma } = await import("@/lib/prisma");
+  const { laneWantsReel } = await import("./social-publish");
+  const post = await prisma.carouselPost.findUnique({ where: { id: postId }, select: { lane: true } });
+  if (!laneWantsReel(post?.lane ?? null)) return;
   await writeVideoMarker(postId, { status: "pending" });
   const { inngest } = await import("@/inngest/client");
   await inngest.send({ name: "content-factory/post-video.build", data: { postId } });

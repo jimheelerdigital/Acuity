@@ -80,14 +80,20 @@ export const AUTO_LANES = [
 export const REEL_LANES = ["memento", "selfie"] as const;
 
 /**
- * Lanes that stay silent swipeable photo carousels. EMPTY since 2026-09-25
- * (per Keenan: "every single post on facebook/instagram needs to be a REEL
- * with MUSIC OVERLAY for ALL POST LANES"). This replaces the 09-24 "keep one
- * photo carousel each lane: discipline & muse" exception, and the paper
- * reset-guide lanes are reels too. Kept as a list so a carousel lane can
- * come back without re-plumbing.
+ * Lanes that publish as swipeable photo carousels on IG/FB — no video, and
+ * no Higgsfield build (2026-09-28, per Keenan: "THE FOLLOWING SHOULD POST
+ * AS CAROUSELS ONLY: selfie, reset guide, phone quote, text younger, reset
+ * guide men, timeline"). Every other lane posts its Higgsfield video.
+ * (Was empty 2026-09-25 → 09-28, when every lane was a reel.)
  */
-export const CAROUSEL_LANES: readonly string[] = [];
+export const CAROUSEL_LANES: readonly string[] = [
+  "selfie",
+  "reset-guide",
+  "phone-quote",
+  "texts-younger",
+  "reset-guide-men",
+  "timeline",
+];
 
 /**
  * Every other lane, both brands, publishes as a reel since 2026-09-24 (per

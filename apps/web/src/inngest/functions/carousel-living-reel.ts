@@ -360,11 +360,15 @@ export const livingReelQueueFn = inngest.createFunction(
       const out: { postId: string; results: string[] }[] = [];
       for (const f of (data ?? []).filter((x) => x.name.endsWith(".json"))) {
         const postId = f.name.replace(/\.json$/, "");
-        const marker = await readVideoMarker(postId);
-        if (marker?.status !== "done" || marker.source !== "higgsfield") continue; // wait for the video
+        const post = await prisma.carouselPost.findUnique({ where: { id: postId }, select: { lane: true } });
+        const { laneWantsReel } = await import("@/lib/content-factory/social-publish");
+        // Video lanes wait for their Higgsfield video; carousel lanes repost now.
+        if (laneWantsReel(post?.lane ?? null)) {
+          const marker = await readVideoMarker(postId);
+          if (marker?.status !== "done" || marker.source !== "higgsfield") continue;
+        }
         const { error } = await supabase.storage.from("content-factory").remove([`replace-requests/${f.name}`]);
         if (error) continue;
-        const post = await prisma.carouselPost.findUnique({ where: { id: postId }, select: { lane: true } });
         const account = post ? await resolveAccount(post.lane) : null;
         const rows = await prisma.socialPublish.findMany({
           where: { carouselPostId: postId, platform: { in: ["instagram", "facebook"] }, status: "POSTED" },
