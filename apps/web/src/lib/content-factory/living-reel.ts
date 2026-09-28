@@ -321,7 +321,12 @@ export async function joinPostVideo(opts: {
     inputs.push("-i", ctaSeg);
 
     const all = [...segs.map((s) => s.seconds), CTA_SEC];
-    const f: string[] = all.map((_, i) => `[${i}:v]settb=AVTB,setpts=PTS-STARTPTS[s${i}]`);
+    // fps=30 in the graph marks every input constant-frame-rate — the
+    // Linux ffmpeg build on Vercel refuses xfade otherwise ("inputs needs
+    // to be a constant frame rate"), even for -r 30 encoded segments.
+    const f: string[] = all.map(
+      (_, i) => `[${i}:v]fps=30,format=yuv420p,setsar=1,settb=AVTB,setpts=PTS-STARTPTS[s${i}]`
+    );
     let prev = "s0";
     let t = all[0];
     for (let i = 1; i < all.length; i++) {

@@ -164,6 +164,7 @@ Every social post is now written by Claude Opus 5.5. That covers the slide text,
 - 2026-09-28: with submits fixed, Kling rendered all clips in ~3 min. But the single "assemble" ffmpeg graph (every clip + looped text layers + crossfade chain + looped music) stalled at ~2 fps and hit the 300s cap on every retry.
   - Rebuilt as small passes: `renderSlideSegment` (one step per slide) → `joinPostVideo` (video-only crossfades) → a separate music mux.
   - Clip URLs are cached at `living/<postId>/clips.json`, so a rerun doesn't re-pay Higgsfield.
+  - Vercel's Linux ffmpeg also rejects xfade unless every input is marked constant frame rate in the graph (`fps=30`), so the join adds it per input.
   - Local timings on this laptop are unreliable (it sleeps mid-run); measure CPU time instead.
 - Tested locally: `assemblePostVideo` on mixed live/still input (20.1s, 1080x1920, correct transitions). A text layer over the base matches the finished slide within JPEG noise. A real BWK packet for 2026-09-26 built with 63 files / 33 MB and correct download headers, and the email rendered.
 
