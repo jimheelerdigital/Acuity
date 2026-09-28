@@ -220,7 +220,8 @@ interface PostRow {
  */
 export async function sendCarouselEmail(
   carouselPostId: string,
-  force = false
+  force = false,
+  opts: { allLanes?: boolean } = {}
 ): Promise<{ emailId: string }> {
   const { prisma } = await import("@/lib/prisma");
 
@@ -241,7 +242,9 @@ export async function sendCarouselEmail(
   // auto-post to IG/FB silently with no email. Lanes with NO ContentLane
   // row (one-offs, quote loops, specials) keep emailing as before, and
   // force=true (the admin "Resend email" button) always sends.
-  if (!force && post.lane) {
+  // allLanes (2026-09-28, per Keenan: "send me individual emails for each
+  // post please. one email per post") — the daily send covers every lane.
+  if (!force && !opts.allLanes && post.lane) {
     const laneRow = await prisma.contentLane.findUnique({
       where: { key: post.lane },
       select: { spec: true },
@@ -324,6 +327,34 @@ export async function sendCarouselEmail(
     totalBytes += cta.buf.length;
   }
 
+  // The post's finished video (Higgsfield post video, 2026-09-28) — what
+  // goes to IG/FB. Attached first when everything fits, else linked.
+  let video: { url: string; downloadUrl: string; buf: Buffer | null; label: string } | null = null;
+  {
+    const { readVideoMarker, reelPath } = await import("./post-video");
+    const { laneWantsReel } = await import("./social-publish");
+    if (laneWantsReel(post.lane)) {
+      const marker = await readVideoMarker(post.id);
+      const { supabase } = await import("@/lib/supabase.server");
+      const url = marker?.url ?? supabase.storage.from("content-factory").getPublicUrl(reelPath(post.id)).data.publicUrl;
+      const res = await fetch(url).catch(() => null);
+      if (res?.ok) {
+        const buf = Buffer.from(await res.arrayBuffer());
+        const fits = totalBytes + buf.length <= MAX_ATTACHMENT_BYTES;
+        if (fits) totalBytes += buf.length;
+        video = {
+          url,
+          downloadUrl: `${url}?download=${encodeURIComponent(`${post.lane ?? "post"}-video.mp4`)}`,
+          buf: fits ? buf : null,
+          label:
+            marker?.source === "higgsfield"
+              ? `Higgsfield video (${marker.liveSlides} of ${marker.totalSlides} slides animated${marker.model ? ` · ${marker.model}` : ""})`
+              : "Video",
+        };
+      }
+    }
+  }
+
   const useAttachments = totalBytes <= MAX_ATTACHMENT_BYTES;
 
   // ── Build HTML ──────────────────────────────────────────────────
@@ -368,6 +399,12 @@ export async function sendCarouselEmail(
     </div>
 
     ${postedButton}
+
+    ${video ? `<div style="background:#1A1A1A;border-radius:12px;padding:14px 16px;margin:0 0 16px;">
+      <p style="font-size:13px;color:#DDD;margin:0 0 8px;">🎬 ${escapeHtml(video.label)}${video.buf && useAttachments ? " — attached" : ""}</p>
+      <a href="${escapeHtml(video.downloadUrl)}" style="color:#F97E4E;font-size:13px;font-weight:600;">Download video</a>
+      &nbsp;·&nbsp;<a href="${escapeHtml(video.url)}" style="color:#F97E4E;font-size:13px;">Watch</a>
+    </div>` : ""}
 
     ${coverUrl ? `<img src="${escapeHtml(coverUrl)}" alt="Cover" style="width:100%;border-radius:12px;margin-bottom:16px;" />` : ""}
 
@@ -416,11 +453,14 @@ export async function sendCarouselEmail(
     text,
   };
 
-  if (useAttachments && slideBuffers.length > 0) {
-    (emailPayload as unknown as Record<string, unknown>).attachments = slideBuffers.map((s) => ({
-      filename: s.filename,
-      content: s.buf.toString("base64"),
-    }));
+  if (useAttachments && (slideBuffers.length > 0 || video?.buf)) {
+    (emailPayload as unknown as Record<string, unknown>).attachments = [
+      ...(video?.buf ? [{ filename: `00-video.mp4`, content: video.buf.toString("base64") }] : []),
+      ...slideBuffers.map((s) => ({
+        filename: s.filename,
+        content: s.buf.toString("base64"),
+      })),
+    ];
   }
 
   const resp = await resend.emails.send(emailPayload);

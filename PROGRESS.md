@@ -441,6 +441,10 @@ Every social post is now written by Claude Opus 5.5. That covers the slide text,
     - Keenan: Kling 2.5 Turbo Standard is the backup.
     - The primary is now the cheapest working model: Hailuo 2.3 Standard until Oct 1 ($0.0117/s promo, ~$0.07 per 6s clip, 768x1364), then Kling 2.5 Turbo Standard ($0.0231/s, ~$0.12 per 5s clip, 720p), with Hailuo as the backup after Oct 1.
     - Both were verified with real test clips.
+  - 09-28 (Keenan: "send me individual emails for each post please. one email per post. send BWK posts first, then ripple posts 2nd"):
+    - `carousel-daily-digest` now sends one email per post via `sendCarouselEmail(id, false, { allLanes: true })`: caption, slides, and the finished video (attached when under the 28MB cap, otherwise linked).
+    - All BWK posts go first, then all Ripple, once every lane has generated and every video is done, or at the 13:00 UTC deadline.
+    - Carousel lanes trigger the readiness check when they generate. The ZIP digest stays off unless `DIGEST_EMAIL_ENABLED=1`.
   - Local timings on this laptop are unreliable (it sleeps mid-run); measure CPU time instead.
 - Tested locally: `assemblePostVideo` on mixed live/still input (20.1s, 1080x1920, correct transitions). A text layer over the base matches the finished slide within JPEG noise. A real BWK packet for 2026-09-26 built with 63 files / 33 MB and correct download headers, and the email rendered.
 

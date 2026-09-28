@@ -128,8 +128,18 @@ export async function queuePostVideo(postId: string): Promise<void> {
   // Carousel-only lanes never get a video (2026-09-28).
   const { prisma } = await import("@/lib/prisma");
   const { laneWantsReel } = await import("./social-publish");
-  const post = await prisma.carouselPost.findUnique({ where: { id: postId }, select: { lane: true } });
-  if (!laneWantsReel(post?.lane ?? null)) return;
+  const post = await prisma.carouselPost.findUnique({
+    where: { id: postId },
+    select: { lane: true, generatedFor: true },
+  });
+  if (!laneWantsReel(post?.lane ?? null)) {
+    // No video to wait on — tell the daily post-email send this one's ready.
+    if (post) {
+      const { laneBrand } = await import("./social-publish");
+      await requestDigestCheck(await laneBrand(post.lane), post.generatedFor.toISOString().slice(0, 10));
+    }
+    return;
+  }
   await writeVideoMarker(postId, { status: "pending" });
   const { inngest } = await import("@/inngest/client");
   await inngest.send({ name: "content-factory/post-video.build", data: { postId } });
