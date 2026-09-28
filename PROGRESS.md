@@ -7,6 +7,27 @@
 
 ---
 
+## [2026-09-28] — Ads Manager on/off changes sync into our system automatically
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** (see git log: "feat: Sync ad on/off status from Ads Manager every day")
+
+### In plain English (for Keenan)
+Whatever you turn on or off in Ads Manager is now copied into our system every morning before the ad engine runs, so its numbers and decisions follow what's actually running. To sync right away, open goripple.io/api/admin/adlab/reconcile while signed in to the admin.
+
+### Technical changes (for Jimmy)
+- New `apps/web/src/lib/adlab/reconcile.ts`: `reconcileAdStatuses()`. It covers ads launched in the last 45 days. If Meta's configured `status` is ACTIVE but the DB has the ad killed, it marks it live. If the ad is PAUSED, ARCHIVED or DELETED on Meta but live or scaled in the DB, it marks it killed. Both write an AdLabDecision.
+- `apps/web/src/lib/adlab/meta.ts`: new `getAdConfiguredStatus(adId)`, which reads the ad's own `status`, not effective_status.
+- `apps/web/src/app/api/admin/adlab/cron/route.ts`: runs the reconcile before loading live ads.
+- New `apps/web/src/app/api/admin/adlab/reconcile/route.ts` (GET, admin session), for an on-demand run.
+
+### Manual steps needed
+- [ ] Keenan: open https://goripple.io/api/admin/adlab/reconcile while signed in to the admin, to sync today's Ads Manager changes now.
+
+### Notes
+- DB status "paused" (created, never activated) is left alone.
+
 ## [2026-09-28] — New ad uploads audit old ads instead of pausing them to make room
 
 **Requested by:** Keenan

@@ -124,6 +124,16 @@ export async function GET(req: NextRequest) {
     syncDates.push(d.toISOString().slice(0, 10));
   }
 
+  // Ads Manager is the source of truth for on/off (2026-09-28): pick up ads
+  // turned on or off by hand before syncing and judging.
+  try {
+    const { reconcileAdStatuses } = await import("@/lib/adlab/reconcile");
+    const rec = await reconcileAdStatuses();
+    if (rec.turnedOn.length || rec.turnedOff.length) console.log("[adlab-cron] reconcile", JSON.stringify(rec));
+  } catch (err) {
+    console.error("[adlab-cron] reconcile failed:", err);
+  }
+
   // Load all live/scaled ads with their projects
   const ads = await prisma.adLabAd.findMany({
     where: { status: { in: ["live", "scaled"] } },

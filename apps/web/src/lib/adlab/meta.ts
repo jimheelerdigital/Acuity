@@ -506,6 +506,19 @@ export async function getAdInsights(adId: string, since: string, until: string) 
  * Verify a campaign/ad set/ad actually exists on Meta.
  * Returns { exists, status, name } or { exists: false, error }.
  */
+/** The ad's own on/off setting in Ads Manager (not effective_status, which
+ *  also reflects the campaign/ad set). Null when Meta can't be read. */
+export async function getAdConfiguredStatus(adId: string): Promise<string | null> {
+  const bizSdk = await getBizSdk();
+  await getApi();
+  try {
+    const result: { status?: string } = await new bizSdk.Ad(adId).get(["status"]);
+    return result.status ?? null;
+  } catch {
+    return null;
+  }
+}
+
 export async function verifyObjectOnMeta(
   objectId: string,
   type: "campaign" | "adset" | "ad"
