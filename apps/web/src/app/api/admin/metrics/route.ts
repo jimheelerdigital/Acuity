@@ -2223,12 +2223,36 @@ async function getFunnelCompare(
     };
   });
 
+  // App Store-first test (2026-09-28): ad clicks through /get, then people
+  // who signed up inside the app (any source; the app has no Meta SDK, so
+  // app signups can't be tied to an ad one by one), and what they did.
+  const storeClicks = await prisma.onboardingEvent.findMany({
+    where: { event: "app_store_redirect", isBot: false, createdAt: { gte: start, lte: end } },
+    select: { value: true },
+  });
+  const appUsers = (await prisma.user.findMany({
+    where: { createdAt: { gte: start, lte: end }, isAdmin: false, signupMethod: { startsWith: "mobile" } },
+    select: { id: true, email: true, subscriptionStatus: true, subscriptionSource: true },
+  })).filter((u: { email: string | null }) => !isInternalEmail(u.email));
+  const appDebriefed = appUsers.length
+    ? (await prisma.entry.findMany({ where: { userId: { in: appUsers.map((u: { id: string }) => u.id) } }, select: { userId: true }, distinct: ["userId"] })).length
+    : 0;
+  const appStore = {
+    clicks: storeClicks.length,
+    ios: storeClicks.filter((c: { value: string | null }) => c.value === "ios").length,
+    android: storeClicks.filter((c: { value: string | null }) => c.value === "android").length,
+    appSignups: appUsers.length,
+    appDebriefed,
+    appPaid: appUsers.filter((u: { subscriptionStatus: string }) => u.subscriptionStatus === "PRO").length,
+  };
+
   return {
     flag,
     splitOnly,
     traffic,
     targetPerArm: 350,
     paid,
+    appStore,
     funnels,
     tests: { ripple: pairTests("v8", "v9-test"), bwk: pairTests("v8-bwk", "v9-test-bwk") },
   };

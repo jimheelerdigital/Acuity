@@ -241,6 +241,37 @@ function PaidCard({ paid }: { paid: any[] }) {
   );
 }
 
+/** App Store-first test (2026-09-28): /get ad clicks → app signups → first
+ *  debrief → paying. App signups include every app source (no Meta SDK). */
+function AppStoreCard({ a }: { a: any }) {
+  if (!a) return null;
+  const steps = [
+    { label: "Ad clicks to the store (/get)", n: a.clicks, note: `${a.ios} iPhone · ${a.android} Android` },
+    { label: "Signed up in the app", n: a.appSignups, note: "all app sources" },
+    { label: "Recorded a debrief", n: a.appDebriefed, note: "" },
+    { label: "Paying (Pro)", n: a.appPaid, note: "" },
+  ];
+  const max = Math.max(1, ...steps.map((x) => x.n));
+  return (
+    <div style={{ background: "var(--acuity-card-bg)", borderRadius: 12, padding: 16 }}>
+      <div style={H}>App Store test: ads straight to the store</div>
+      {steps.map((x, i) => (
+        <div key={x.label} style={{ display: "grid", gridTemplateColumns: "200px 1fr 170px", gap: 10, alignItems: "center", padding: "5px 0" }}>
+          <span style={{ fontSize: 12, color: "var(--acuity-text-sec)" }}>{x.label}</span>
+          <div style={{ height: 16, background: "rgba(255,255,255,0.04)", borderRadius: 4, overflow: "hidden" }}>
+            <div style={{ width: `${Math.max(x.n > 0 ? 1.5 : 0, (x.n / max) * 100)}%`, height: "100%", background: "#e8b45a", borderRadius: 4 }} />
+          </div>
+          <span style={{ fontSize: 11, color: "var(--acuity-text-sec)", textAlign: "right", whiteSpace: "nowrap" }}>
+            <b style={{ color: "var(--acuity-text)" }}>{x.n}</b>
+            {i > 0 && steps[i - 1].n > 0 && ` · ${Math.round((x.n / steps[i - 1].n) * 100)}% of prev`}
+            {x.note && <span style={{ opacity: 0.5 }}> · {x.note}</span>}
+          </span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 /** Every milestone as a row of bars, one bar per funnel, sized by the share
  *  of that funnel's visitors who got there. */
 function MilestoneChart({ funnels, cols }: { funnels: Record<string, any>; cols: (keyof typeof FUNNELS)[] }) {
@@ -379,6 +410,7 @@ function CompareView({ start, end, traffic, mode }: { start: string; end: string
       </div>
 
       <PaidCard paid={data.paid ?? []} />
+      <AppStoreCard a={data.appStore} />
       <MilestoneChart funnels={Object.fromEntries(cols.map((fk) => [fk, funnel(fk)]))} cols={cols} />
       {splitOn && (
         <div style={{ fontSize: 11, color: "rgba(255,255,255,0.35)" }}>

@@ -7,6 +7,28 @@
 
 ---
 
+## [2026-09-28] — Tracking link and dashboard for an App Store-first ad test
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** (see git log: "feat: Add a tracked App Store link and dashboard for the app-first test")
+
+### In plain English (for Keenan)
+To test sending ads straight to the App Store, ads should point to goripple.io/get instead of the store link. It counts the click, then sends iPhones to the App Store and Android phones to Google Play. The Funnel dashboard has a new "App Store test" card: ad clicks, then signed up in the app, recorded a debrief, and paying. The app has no Meta tracking kit, so app signups can't be matched to an ad one by one. We judge the test by the totals over the test period.
+
+### Technical changes (for Jimmy)
+- New `apps/web/src/app/get/route.ts`:
+  - Logs `OnboardingEvent {event: "app_store_redirect", value: ios|android|other, flowVersion: "app-store"}` with UTMs and fbclid. Bots are skipped; internal traffic is stored with isBot.
+  - 302 redirect to the App Store, or to Play with an install referrer.
+- `apps/web/src/app/api/admin/metrics/route.ts` (`getFunnelCompare`): new `appStore {clicks, ios, android, appSignups, appDebriefed, appPaid}`. App signups are Users with `signupMethod` starting "mobile", non-internal.
+- `apps/web/src/app/admin/tabs/FunnelAnalyticsTab.tsx`: `AppStoreCard`.
+
+### Manual steps needed
+- [ ] Keenan: create the Meta test campaign pointing at `https://goripple.io/get?utm_source=meta&utm_medium=paid&utm_campaign={{campaign.name}}&utm_content={{ad.id}}` (steps given in chat)
+
+### Notes
+- In-app flow today: the onboarding paywall records the plan but doesn't charge. The user gets a no-card trial (14 days per `trialDaysForEmail`). Payment happens later via Subscribe (StoreKit on iOS, web checkout on Android). Expect more trial starts and fewer payers than the card-required web trial.
+
 ## [2026-09-28] — No email confirmation required anywhere
 
 **Requested by:** Keenan
