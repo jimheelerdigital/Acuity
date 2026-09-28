@@ -177,10 +177,23 @@ export const carouselPostVideoFn = inngest.createFunction(
     }
 
     // ── 3. Higgsfield clips, in waves ────────────────────────────────
-    const clips: Record<number, string | null> = {};
-    const models: string[] = [];
+    // Finished clip URLs are cached per post, so a rerun after an assembly
+    // failure doesn't pay Higgsfield for the same clips again.
+    const cached = await step.run("load-cached-clips", async () => {
+      const { supabase } = await import("@/lib/supabase.server");
+      const { data } = await supabase.storage.from("content-factory").download(`living/${postId}/clips.json`);
+      if (!data) return null;
+      try {
+        const c = JSON.parse(await data.text()) as { clips: Record<string, string | null>; models: string[] };
+        return liveIdx.every((i) => c.clips[i]) ? c : null;
+      } catch {
+        return null;
+      }
+    });
+    const clips: Record<number, string | null> = cached ? { ...cached.clips } : {};
+    const models: string[] = cached ? [...cached.models] : [];
     const { POST_VIDEO_WAVE } = await import("@/lib/content-factory/post-video");
-    for (let w = 0; w * POST_VIDEO_WAVE < liveIdx.length; w++) {
+    for (let w = 0; !cached && w * POST_VIDEO_WAVE < liveIdx.length; w++) {
       const wave = liveIdx.slice(w * POST_VIDEO_WAVE, (w + 1) * POST_VIDEO_WAVE);
       const jobs = await step.run(`submit-${w}`, async () => {
         const { submitCoverVideo } = await import("@/lib/content-factory/animate-cover");
@@ -253,45 +266,86 @@ export const carouselPostVideoFn = inngest.createFunction(
       }
     }
 
-    // ── 4. Assemble + store at the publisher's path ──────────────────
-    const result = await step.run("assemble", async () => {
-      const { supabase } = await import("@/lib/supabase.server");
-      const { assemblePostVideo, LIVING_CLIP_SEC } = await import("@/lib/content-factory/living-reel");
-      const { pickMusicTrack } = await import("@/lib/content-factory/slideshow-reel");
-      const { reelPath, writeVideoMarker } = await import("@/lib/content-factory/post-video");
-      const get = async (u: string) => {
-        const r = await fetch(u);
-        if (!r.ok) throw new Error(`Download failed (${r.status}): ${u}`);
-        return Buffer.from(await r.arrayBuffer());
-      };
-      const slides = await Promise.all(
-        plan.slides.map(async (s, i) => {
+    if (!cached && liveIdx.some((i) => clips[i])) {
+      await step.run("cache-clips", async () => {
+        const { supabase } = await import("@/lib/supabase.server");
+        await supabase.storage
+          .from("content-factory")
+          .upload(`living/${postId}/clips.json`, Buffer.from(JSON.stringify({ clips, models })), {
+            contentType: "application/json",
+            upsert: true,
+          });
+      });
+    }
+
+    // ── 4. One segment per slide (own step each — a single big ffmpeg
+    // graph stalled past the 300s cap in prod, 2026-09-27) ───────────
+    const segments: { url: string; seconds: number; still: boolean }[] = [];
+    for (let i = 0; i < plan.slides.length; i++) {
+      segments.push(
+        await step.run(`segment-${i}`, async () => {
+          const { supabase } = await import("@/lib/supabase.server");
+          const { renderSlideSegment, LIVING_CLIP_SEC } = await import("@/lib/content-factory/living-reel");
+          const get = async (u: string) => {
+            const r = await fetch(u);
+            if (!r.ok) throw new Error(`Download failed (${r.status}): ${u}`);
+            return Buffer.from(await r.arrayBuffer());
+          };
+          const s = plan.slides[i];
           const clipUrl = clips[i];
+          let slide;
           if (s.mode === "live" && clipUrl && prepared[i]) {
             const [clip, layer] = await Promise.all([get(clipUrl), get(prepared[i].layerUrl)]);
-            return { kind: "live" as const, clip, layer, seconds: s.seconds };
+            slide = { kind: "live" as const, clip, layer, seconds: s.seconds };
+          } else if (s.mode === "still") {
+            slide = { kind: "still" as const, image: await get(s.imageUrl), seconds: s.seconds };
+          } else {
+            // Animated slide whose clip failed: use its finished JPEG.
+            const { prisma } = await import("@/lib/prisma");
+            const row = await prisma.carouselSlide.findFirst({
+              where: { carouselPostId: postId, rawImageUrl: s.rawUrl },
+              select: { imageUrl: true },
+            });
+            slide = { kind: "still" as const, image: await get(row!.imageUrl), seconds: s.seconds };
           }
-          const imageUrl = s.mode === "still" ? s.imageUrl : null;
-          if (imageUrl) return { kind: "still" as const, image: await get(imageUrl), seconds: s.seconds };
-          // Animated slide whose clip failed: its finished JPEG sits beside
-          // the stored raw ("<slide>-raw.jpg" → "<slide>.jpg").
-          const { prisma } = await import("@/lib/prisma");
-          const row = await prisma.carouselSlide.findFirst({
-            where: { carouselPostId: postId, rawImageUrl: (s as { rawUrl: string }).rawUrl },
-            select: { imageUrl: true },
-          });
-          return { kind: "still" as const, image: await get(row!.imageUrl), seconds: s.seconds };
+          const buf = await renderSlideSegment(slide, { first: i === 0, clipSeconds: LIVING_CLIP_SEC });
+          const p = `living/${postId}/seg-${i}.mp4`;
+          const { error } = await supabase.storage
+            .from("content-factory")
+            .upload(p, buf, { contentType: "video/mp4", upsert: true });
+          if (error) throw new Error(`Segment upload failed (${p}): ${error.message}`);
+          return {
+            url: supabase.storage.from("content-factory").getPublicUrl(p).data.publicUrl,
+            seconds: s.seconds,
+            still: slide.kind === "still",
+          };
         })
       );
-      const live = slides.filter((s) => s.kind === "live").length;
+    }
+
+    // ── 5. Join + music, store at the publisher's path ───────────────
+    const result = await step.run("join", async () => {
+      const t0 = Date.now();
+      const { supabase } = await import("@/lib/supabase.server");
+      const { joinPostVideo } = await import("@/lib/content-factory/living-reel");
+      const { pickMusicTrack } = await import("@/lib/content-factory/slideshow-reel");
+      const { reelPath, writeVideoMarker } = await import("@/lib/content-factory/post-video");
+      const bufs = await Promise.all(
+        segments.map(async (sg) => {
+          const r = await fetch(sg.url);
+          if (!r.ok) throw new Error(`Segment download failed (${r.status}): ${sg.url}`);
+          return { buf: Buffer.from(await r.arrayBuffer()), seconds: sg.seconds, still: sg.still };
+        })
+      );
+      const live = segments.filter((sg) => !sg.still).length;
       const music = await pickMusicTrack(plan.lane);
       if (!music) throw new Error(`No music track for lane ${plan.lane}`);
-      const { buf, seconds } = await assemblePostVideo({
-        slides,
-        clipSeconds: LIVING_CLIP_SEC,
+      const { buf, seconds } = await joinPostVideo({
+        segments: bufs,
         ctaUrl: `https://goripple.io/cta-slide-${plan.brand}.jpg`,
         musicUrl: music,
       });
+      console.log(`[post-video] ${postId}: joined in ${Date.now() - t0}ms (${seconds.toFixed(1)}s video)`);
       const path = reelPath(postId);
       const { error } = await supabase.storage
         .from("content-factory")
@@ -311,9 +365,9 @@ export const carouselPostVideoFn = inngest.createFunction(
         source: live > 0 ? "higgsfield" : "stills",
         model,
         liveSlides: live,
-        totalSlides: slides.length,
+        totalSlides: segments.length,
       });
-      return { url, seconds, bytes: buf.length, live, total: slides.length };
+      return { url, seconds, bytes: buf.length, live, total: segments.length };
     });
 
     await step.run("digest-check", async () => {

@@ -161,6 +161,10 @@ Every social post is now written by Claude Opus 5.5. That covers the slide text,
 - Inner-slide "medium" now applies to the baked quote and bubble slides too (they were "high" for spelling reliability). The text check still gates them. If PROOFREAD flags rise, move those two calls back to "cover".
 - Weekly competitor scrape is ~4× the Apify usage of monthly (the hashtag top-videos scrape and email ride the same run).
 - 2026-09-27 prod test: the first build hung on the Higgsfield submit past the 300s step cap, twice. Follow-up fix: Kling/Hailuo go to the v2 host `api.higgsfield.ai`, every Higgsfield request has a 60s timeout, and each wave's submit results are written to `living/<postId>/submit-<w>.json`.
+- 2026-09-28: with submits fixed, Kling rendered all clips in ~3 min. But the single "assemble" ffmpeg graph (every clip + looped text layers + crossfade chain + looped music) stalled at ~2 fps and hit the 300s cap on every retry.
+  - Rebuilt as small passes: `renderSlideSegment` (one step per slide) → `joinPostVideo` (video-only crossfades) → a separate music mux.
+  - Clip URLs are cached at `living/<postId>/clips.json`, so a rerun doesn't re-pay Higgsfield.
+  - Local timings on this laptop are unreliable (it sleeps mid-run); measure CPU time instead.
 - Tested locally: `assemblePostVideo` on mixed live/still input (20.1s, 1080x1920, correct transitions). A text layer over the base matches the finished slide within JPEG noise. A real BWK packet for 2026-09-26 built with 63 files / 33 MB and correct download headers, and the email rendered.
 
 ---
