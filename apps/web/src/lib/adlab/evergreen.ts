@@ -110,41 +110,51 @@ export async function ensureEvergreenAdSet(
 }
 
 /**
- * Pause the weakest live ads in the ad set so `incoming` new ads fit under
- * MAX_ACTIVE_ADS.
+ * Audit the ad set's live ads when a new batch is uploaded (2026-09-28, per
+ * Keenan: "when we upload new ads we should never pause old winning ads ...
+ * audit the other ads to see which were working versus not and pause the
+ * ones that weren't working").
  *
- * 2026-09-28 fix (per Keenan: "nothing has been cut yet"). The 09-27 rotation
- * retired the proven winners ("Two years of noticing": 8 signups on $107;
- * two BWK ads that each produced a PAID trial) because it ranked by raw
- * Meta signups per dollar, where 1 signup on $10 beats 8 on $107. Now:
- *   - PROTECTED, never retired: an ad that produced a paid trial in our own
- *     funnel data, or has >=3 signups at <= $25 each (Meta-reported or ours,
- *     whichever is higher).
- *   - The rest rank by a smoothed rate, (signups + 0.5) / (spend + $15), so
- *     a lucky tiny spend can't outrank a proven one.
- *   - If there aren't enough unprotected ads to make room, the ad set runs
- *     over the cap rather than losing a winner.
- * Ads still inside their first 72h are only retired if nothing older is
- * left. Status is written to the DB only after Meta confirms the pause.
+ * No ad is paused just to make room. Each live ad gets a verdict:
+ *   WINNER      a paid trial in our funnel data, or >=3 signups at <= $25
+ *               each. Never paused.
+ *   NOT WORKING judged only with evidence (>= $15 spent AND >= 72h live):
+ *               >= $20 spent with 0 signups, OR cost per signup > $40, OR
+ *               link CTR < 0.5% over >= 1,500 impressions with 0 signups.
+ *               Paused.
+ *   KEEP        everything else, including ads too new to judge.
+ * Signups = the higher of Meta-reported conversions and our own
+ * funnel_account_created sessions for the ad (utm_content = creative id).
+ * The ad set can run over MAX_ACTIVE_ADS; that's a signal to upload fewer.
+ * Status is written to the DB only after Meta confirms the pause.
  */
-const PROTECT_MIN_SIGNUPS = 3;
-const PROTECT_MAX_CPL_CENTS = 2500;
+const WINNER_MIN_SIGNUPS = 3;
+const WINNER_MAX_CPL_CENTS = 2500;
+const JUDGE_MIN_SPEND_CENTS = 1500;
+const JUDGE_MIN_HOURS = 72;
+const DEAD_SPEND_CENTS = 2000;
+const BAD_CPL_CENTS = 4000;
+const LOW_CTR_PCT = 0.5;
+const LOW_CTR_MIN_IMPRESSIONS = 1500;
+
+export type AdVerdict = "winner" | "not_working" | "keep";
 
 export async function makeRoomInAdSet(
   adsetId: string,
-  incoming: number
-): Promise<{ retired: Array<{ adId: string; reason: string }>; failed: string[]; protectedCount: number }> {
+  _incoming: number
+): Promise<{
+  retired: Array<{ adId: string; reason: string }>;
+  failed: string[];
+  audit: Array<{ adId: string; verdict: AdVerdict; reason: string }>;
+}> {
   const live = await prisma.adLabAd.findMany({
     where: { metaAdsetId: adsetId, status: { in: ["live", "scaled"] } },
     include: { metrics: true },
   });
-  const excess = live.length + incoming - MAX_ACTIVE_ADS;
-  if (excess <= 0) return { retired: [], failed: [], protectedCount: 0 };
+  if (live.length === 0) return { retired: [], failed: [], audit: [] };
 
-  // Our own funnel outcomes per creative (utm_content = creative id).
-  const creativeIds = live.map((a) => a.creativeId);
   const ev = await prisma.onboardingEvent.findMany({
-    where: { utmContent: { in: creativeIds }, isBot: false, event: { in: ["funnel_account_created", "funnel_payment_completed"] } },
+    where: { utmContent: { in: live.map((a) => a.creativeId) }, isBot: false, event: { in: ["funnel_account_created", "funnel_payment_completed"] } },
     select: { utmContent: true, event: true, sessionToken: true, value: true },
   });
   const ours = new Map<string, { accounts: Set<string>; trials: Set<string> }>();
@@ -157,25 +167,37 @@ export async function makeRoomInAdSet(
   }
 
   const now = Date.now();
-  const scored = live.map((ad) => {
+  const $ = (c: number) => `$${(c / 100).toFixed(2)}`;
+  const audit = live.map((ad) => {
     const spend = ad.metrics.reduce((n, m) => n + m.spendCents, 0);
+    const imps = ad.metrics.reduce((n, m) => n + m.impressions, 0);
+    const clicks = ad.metrics.reduce((n, m) => n + m.clicks, 0);
     const metaConv = ad.metrics.reduce((n, m) => n + m.conversions, 0);
     const o = ours.get(ad.creativeId);
     const signups = Math.max(metaConv, o?.accounts.size ?? 0);
     const trials = o?.trials.size ?? 0;
-    const young = !!ad.launchedAt && now - ad.launchedAt.getTime() < MIN_HOURS_BEFORE_RETIRE * 3_600_000;
-    const isWinner = trials > 0 || (signups >= PROTECT_MIN_SIGNUPS && spend / signups <= PROTECT_MAX_CPL_CENTS);
-    return { ad, spend, conv: signups, trials, young, isWinner, rate: (signups + 0.5) / (spend + 1500) };
+    const hours = ad.launchedAt ? (now - ad.launchedAt.getTime()) / 3_600_000 : 0;
+    const ctr = imps > 0 ? (clicks / imps) * 100 : 0;
+    const summary = `${signups} signups, ${trials} trials, ${$(spend)} spent, ${ctr.toFixed(2)}% CTR over ${imps} impressions`;
+
+    let verdict: AdVerdict = "keep";
+    let why = "not enough evidence yet";
+    if (trials > 0 || (signups >= WINNER_MIN_SIGNUPS && spend / signups <= WINNER_MAX_CPL_CENTS)) {
+      verdict = "winner";
+      why = trials > 0 ? "produced a paid trial" : `${signups} signups at ${$(spend / signups)} each`;
+    } else if (spend >= JUDGE_MIN_SPEND_CENTS && hours >= JUDGE_MIN_HOURS) {
+      if (signups === 0 && spend >= DEAD_SPEND_CENTS) { verdict = "not_working"; why = `${$(spend)} spent with no signups`; }
+      else if (signups > 0 && spend / signups > BAD_CPL_CENTS) { verdict = "not_working"; why = `${$(spend / signups)} per signup (over $40)`; }
+      else if (signups === 0 && imps >= LOW_CTR_MIN_IMPRESSIONS && ctr < LOW_CTR_PCT) { verdict = "not_working"; why = `${ctr.toFixed(2)}% click rate, no signups`; }
+      else why = "working well enough to keep";
+    }
+    return { ad, verdict, reason: `${why} (${summary})` };
   });
-  const protectedCount = scored.filter((r) => r.isWinner).length;
-  const ranked = scored
-    .filter((r) => !r.isWinner)
-    .sort((a, b) => Number(a.young) - Number(b.young) || a.rate - b.rate || b.spend - a.spend);
 
   const retired: Array<{ adId: string; reason: string }> = [];
   const failed: string[] = [];
-  for (const r of ranked.slice(0, excess)) {
-    const reason = `ROTATE: retired to make room for this week's ads — ${r.conv} signups, ${r.trials} trials on $${(r.spend / 100).toFixed(2)} lifetime.`;
+  for (const r of audit.filter((x) => x.verdict === "not_working")) {
+    const reason = `AUDIT on new upload: not working — ${r.reason}.`;
     try {
       if (r.ad.metaAdId) await meta.setStatus(r.ad.metaAdId, "ad", "PAUSED");
       await prisma.adLabAd.update({ where: { id: r.ad.id }, data: { status: "killed", decisionReason: reason } });
@@ -186,10 +208,11 @@ export async function makeRoomInAdSet(
       failed.push(r.ad.id);
     }
   }
-  if (ranked.length < excess) {
-    console.warn(`[adlab-evergreen] ${adsetId}: ${protectedCount} protected winners — running ${excess - ranked.length} over MAX_ACTIVE_ADS rather than retiring one`);
+  const stillLive = live.length - retired.length;
+  if (stillLive + _incoming > MAX_ACTIVE_ADS) {
+    console.warn(`[adlab-evergreen] ${adsetId}: ${stillLive + _incoming} live ads after upload (cap ${MAX_ACTIVE_ADS}) — nothing else was paused because the rest are winners or still being judged`);
   }
-  return { retired, failed, protectedCount };
+  return { retired, failed, audit: audit.map((r) => ({ adId: r.ad.id, verdict: r.verdict, reason: r.reason })) };
 }
 
 /** All evergreen ad set ids — the engine must never raise their budgets. */

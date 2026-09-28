@@ -7,6 +7,31 @@
 
 ---
 
+## [2026-09-28] — New ad uploads audit old ads instead of pausing them to make room
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** (see git log: "fix: Audit old ads on upload and never pause winners")
+
+### In plain English (for Keenan)
+Uploading a new batch of ads no longer pauses older ads just to make room. Instead, it checks every running ad:
+- **Winners are never paused.** That's anything with a paid trial, or 3+ sign-ups at $25 or less each.
+- **Ads that clearly aren't working are paused.** That's $20+ spent with no sign-ups, sign-ups costing over $40 each, or a very low click rate with no sign-ups. It only judges an ad after $15 spent and 3 days live.
+- **Everything else keeps running.**
+
+A dry run on today's ads flags 5 winners, including the 3 the old rotation had paused, and pauses nothing, because the rest are still too new to judge.
+
+### Technical changes (for Jimmy)
+- `apps/web/src/lib/adlab/evergreen.ts`: `makeRoomInAdSet` is now an audit. Each ad gets a verdict (winner / not_working / keep); only not_working ads are paused, and the function returns `audit[]`. There is no cap-based retirement; the ad set may run over MAX_ACTIVE_ADS, with a warning.
+- Signups = max(Meta conversions, our `funnel_account_created` for `utm_content`). Trials = our `funnel_payment_completed`.
+- This replaces the same-day interim version (smoothed ranking plus protection) earlier in this log.
+
+### Manual steps needed
+- [ ] Keenan: turn back on "Two years of noticing", "Same patterns. Different year." and "You know. You just don't do." in Ads Manager (paused by the old rotation on 09-27). Then tell Claude Code, so the DB marks them live and metrics sync again.
+
+### Notes
+- Verdicts from the dry run on 09-28: WINNER = She stopped chasing, Don't recognize who you became (new BWK, 1 trial), plus the 3 paused ones. All other ads were too new to judge.
+
 ## [2026-09-28] — Weekly ad rotation no longer pauses the proven winners
 
 **Requested by:** Keenan
