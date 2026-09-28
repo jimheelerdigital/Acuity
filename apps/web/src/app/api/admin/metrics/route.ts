@@ -2033,6 +2033,11 @@ const COMPARE_MILESTONES: Milestone[] = [
   { key: "trial", label: "Card trial started", base: "checkout", test: true, v8: ["funnel_payment_completed", "funnel_savings_locked_in"], v9: ["funnel_payment_completed", "funnel_savings_locked_in"] },
   { key: "free", label: "Free plan chosen", base: "paywall", v8: ["funnel_paywall_continue_selected", "funnel_paywall_skip_selected"], v9: ["funnel_paywall_skip_selected"] },
   { key: "download", label: "Download", base: "passed", v8: ["funnel_download_viewed"], v9: ["funnel_v9_download_viewed"] },
+  // Past the web (2026-09-28): counted per signed-in person, not by funnel
+  // event. "app" = an app_signed_in event (lib/mobile-session.ts); "debrief"
+  // = at least one Entry. These are the numbers that were silently zero.
+  { key: "app", label: "Signed into the app", base: "passed", v8: [], v9: [] },
+  { key: "debrief", label: "First debrief", base: "app", v8: [], v9: [] },
 ];
 
 async function getFunnelCompare(
@@ -2081,7 +2086,7 @@ async function getFunnelCompare(
   }
 
   // Group per funnel + session. Renewals are renamed so they never count.
-  type Sess = { names: Set<string>; inApp: boolean; acted: boolean; arm: string | null };
+  type Sess = { names: Set<string>; inApp: boolean; acted: boolean; arm: string | null; users: Set<string> };
   const byFlow = new Map<CompareFlow, Map<string, Sess>>(COMPARE_FLOWS.map((f) => [f, new Map()]));
   for (const e of fetched) {
     const flow = e.flowVersion as CompareFlow;
@@ -2089,13 +2094,24 @@ async function getFunnelCompare(
     if (!m) continue;
     const token = canonical.get(`${flow}:${e.sessionToken}`) ?? e.sessionToken!;
     let s = m.get(token);
-    if (!s) { s = { names: new Set(), inApp: false, acted: false, arm: null }; m.set(token, s); }
+    if (!s) { s = { names: new Set(), inApp: false, acted: false, arm: null, users: new Set() }; m.set(token, s); }
+    if (e.userId) s.users.add(e.userId);
     const name = e.event === "funnel_payment_completed" && e.value?.endsWith(":renewal") ? "funnel_payment_renewal" : e.event;
     s.names.add(name);
     if (e.browser && IN_APP_UA.test(e.browser)) s.inApp = true;
     if (!PAGE_LOAD_EVENTS.has(name)) s.acted = true;
     if (name === "funnel_split_arm" && (e.value === "normal" || e.value === "test")) s.arm = e.value;
   }
+
+  const funnelUsers = [...new Set(fetched.map((e: { userId: string | null }) => e.userId).filter((u: string | null): u is string => !!u))];
+  const [appRows, debriefRows] = funnelUsers.length
+    ? await Promise.all([
+        prisma.onboardingEvent.findMany({ where: { userId: { in: funnelUsers }, event: "app_signed_in" }, select: { userId: true }, distinct: ["userId"] }),
+        prisma.entry.findMany({ where: { userId: { in: funnelUsers } }, select: { userId: true }, distinct: ["userId"] }),
+      ])
+    : [[], []];
+  const inApp = new Set(appRows.map((r: { userId: string | null }) => r.userId));
+  const debriefed = new Set(debriefRows.map((r: { userId: string }) => r.userId));
 
   // The funnels are built twice: `funnels` for the chart (all real visitors
   // unless the split-only box is ticked) and `splitFunnels` for the
@@ -2120,6 +2136,9 @@ async function getFunnelCompare(
       const checkout = trial || hit("checkout");
       const free = hit("free");
       const download = hit("download");
+      const users = [...s.users];
+      const debrief = users.some((u) => debriefed.has(u));
+      const app = debrief || users.some((u) => inApp.has(u));
       // A branch event means the visitor reached the step it branches from.
       if (checkout || free) furthest = Math.max(furthest, mainIdx("paywall"));
       if (download) furthest = Math.max(furthest, mainIdx("passed"));
@@ -2128,6 +2147,8 @@ async function getFunnelCompare(
       if (trial) counts.trial++;
       if (free) counts.free++;
       if (download) counts.download++;
+      if (app) counts.app++;
+      if (debrief) counts.debrief++;
     }
     const landed = counts.landed;
     const pct = (n: number, d: number) => (d > 0 ? Math.round((n / d) * 1000) / 10 : 0);

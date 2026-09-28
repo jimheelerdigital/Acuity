@@ -72,6 +72,16 @@ export async function issueMobileSessionToken(
     Date.now() + MOBILE_SESSION_MAX_AGE_SECONDS * 1000
   ).toISOString();
 
+  // "Got into the app" signal (2026-09-28): every app sign-in (password,
+  // Google, Apple, magic link) passes through here. The admin funnel counts
+  // it and the activation emails stop once it exists. Never blocks sign-in.
+  try {
+    const { prisma } = await import("@/lib/prisma");
+    await prisma.onboardingEvent.create({ data: { userId: user.id, event: "app_signed_in" } });
+  } catch {
+    // analytics only
+  }
+
   return { sessionToken, expiresAt };
 }
 

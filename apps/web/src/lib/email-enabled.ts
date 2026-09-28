@@ -63,6 +63,7 @@ export const EMAIL_ENABLED: Record<string, boolean> = {
   nr_winback_1: true, // never-recorded drip #1 (day 1): "you never gave it a shot"
   nr_winback_2: true, // never-recorded drip #2 (day 3): "here's what one debrief gets you"
   nr_winback_3: true, // never-recorded drip #3 (day 6): "should I take the hint?"
+  app_access_rescue: true, // 2026-09-28 one-off: web signups who never got into the app, one-tap signed-in link
 
   // ── PAUSED — duplicate-welcome cleanup (2026-06-24) ─────────────
   // The two OLD user-facing welcomes stay off: new signups used to get

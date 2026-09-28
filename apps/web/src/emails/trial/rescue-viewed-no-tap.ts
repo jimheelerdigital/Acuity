@@ -10,7 +10,7 @@
  */
 
 import { escapeHtml } from "@/lib/escape-html";
-import { keenanSignature, appStoreAndPlayButtons, secondaryButton, trialLayout , para } from "./layout";
+import { keenanSignature, appStoreAndPlayButtons, secondaryButton, trialLayout , para, appAccessBlock } from "./layout";
 import type { TrialEmailTemplate, TrialVars } from "./types";
 
 
@@ -36,7 +36,7 @@ export const rescueViewedNoTap: TrialEmailTemplate = {
       ${para(`And if you\u2019re ready, here are both ways in:`)}
       <tr>
         <td style="padding-bottom:8px;">
-          ${appStoreAndPlayButtons()}
+          ${appAccessBlock(v)}
         </td>
       </tr>
       <tr>

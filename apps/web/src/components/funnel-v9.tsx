@@ -1940,6 +1940,9 @@ function GetTheApp({
               Didn&rsquo;t get it? Send again
             </button>
           )}
+          <p className="mt-3 text-[13px] leading-relaxed text-acuity-text-sec">
+            Don&rsquo;t create a new account in the app. If it asks you to sign up, tap <strong>Already have an account? Sign in</strong>, then <strong>Email me a link</strong>.
+          </p>
         </div>
       </div>
     </div>

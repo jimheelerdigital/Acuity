@@ -7,7 +7,7 @@
  */
 
 import { escapeHtml } from "@/lib/escape-html";
-import { keenanSignature, appStoreAndPlayButtons, secondaryButton, trialLayout , para } from "./layout";
+import { keenanSignature, appStoreAndPlayButtons, secondaryButton, trialLayout , para, appAccessBlock } from "./layout";
 import type { TrialEmailTemplate, TrialVars } from "./types";
 
 const APP_STORE_URL =
@@ -39,7 +39,7 @@ export const neverRecorded48h: TrialEmailTemplate = {
       ${para(`None of that exists until you talk to it once. It\u2019s a few minutes. That\u2019s the whole ask.`)}
       <tr>
         <td style="padding-bottom:8px;">
-          ${appStoreAndPlayButtons(APP_STORE_URL)}
+          ${appAccessBlock(v)}
         </td>
       </tr>
       <tr>

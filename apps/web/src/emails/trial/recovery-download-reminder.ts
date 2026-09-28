@@ -6,7 +6,7 @@
  */
 
 import { escapeHtml } from "@/lib/escape-html";
-import { keenanSignature, trialButton, appStoreAndPlayButtons, trialLayout , para } from "./layout";
+import { keenanSignature, trialButton, appStoreAndPlayButtons, trialLayout , para, appAccessBlock } from "./layout";
 import type { TrialEmailTemplate, TrialVars } from "./types";
 
 const APP_STORE_URL =
@@ -31,7 +31,7 @@ export const recoveryDownloadReminder: TrialEmailTemplate = {
         "Here\u2019s the link to download the app \u2014 on iPhone or Android:"
       )}
       <tr><td style="padding-bottom:16px;">
-        ${appStoreAndPlayButtons(APP_STORE_URL)}
+        ${appAccessBlock(v)}
       </td></tr>
       ${para(
         "Prefer not to install anything? The web app has everything:"

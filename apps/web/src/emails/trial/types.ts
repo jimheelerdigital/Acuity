@@ -22,6 +22,9 @@ export interface TrialVars {
   foundingMemberNumber: number | null;
   /** Tokenized unsubscribe URL — required in every email footer. */
   unsubscribeUrl: string;
+  /** One-tap "open the app already signed in" link (lib/app-access.ts).
+   *  Set only for emails that ask her to get into the app. */
+  signInUrl?: string | null;
 }
 
 export interface TrialEmailTemplate {
@@ -75,4 +78,5 @@ export type TrialEmailKey =
   | "milestone_365"
   | "nr_winback_1"
   | "nr_winback_2"
-  | "nr_winback_3";
+  | "nr_winback_3"
+  | "app_access_rescue";

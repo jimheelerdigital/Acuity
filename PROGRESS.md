@@ -7,6 +7,42 @@
 
 ---
 
+## [2026-09-28] — Web signups get into their app account in one tap (no app update)
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** (see git log: "fix: Get web signups into their app account with one-tap sign-in")
+
+### In plain English (for Keenan)
+Nobody who signed up on the website had ever got into their account in the app: 26 signups since 09-24, including 5 paying, zero app sign-ins, zero debriefs. When they opened the app it treated them as brand new and asked them to sign up again. Two created a second, empty account with "Sign in with Apple", including one paying customer. What changed:
+- **Those two accounts are repaired.** Their Apple sign-in now opens the account they paid for.
+- **One-tap sign-in in every email.** Every email that asks people to get into the app (paid-no-app, never recorded, download rescues, win-backs) now has an "Open Ripple, signed in" button that opens the app already signed in, plus both store buttons and "don't create a new account".
+- **The normal funnels send the sign-in link too.** /start and /start-bwk now email it automatically at the download screen, like the test funnels, and say plainly not to sign up again.
+- **A rescue email** went to everyone who signed up and never got in.
+- **The dashboard shows who actually got in.** New "Signed into the app" and "First debrief" milestones per funnel.
+
+### Technical changes (for Jimmy)
+- New `apps/web/src/lib/app-access.ts`: `createAppSignInUrl(email)` (72h `mobile:` VerificationToken, returns an /auth/mobile-complete URL) and `hasSignedIntoApp`.
+- `apps/web/src/lib/mobile-session.ts`: `issueMobileSessionToken` logs `OnboardingEvent {event: "app_signed_in", userId}`. Every app sign-in path goes through it.
+- Emails:
+  - `apps/web/src/emails/trial/types.ts`: `TrialVars.signInUrl`.
+  - `layout.ts`: new `appAccessBlock(v)`, which replaces `appStoreAndPlayButtons` in 13 templates (never-recorded x4, nr-winback x3, recovery-paid-no-app, recovery-download-reminder, rescue x4).
+  - `recovery-paid-no-app` no longer offers the web app.
+  - New template `app-access-rescue.ts` (key `app_access_rescue`), registered in registry, types and email-enabled.
+- `apps/web/src/lib/trial-emails.ts`: `APP_ACCESS_EMAIL_KEYS`. `sendTrialEmail` mints a fresh sign-in URL for those keys.
+- `apps/web/src/components/onboarding-funnel.tsx` (v8 `DownloadScreen`): auto-sends the funnel magic link (`funnel_app_link_sent`), adds an email-link card and "don't create a new account", removes "Continue in the Web App".
+- `apps/web/src/components/funnel-v9.tsx`: adds the "don't create a new account" line.
+- `apps/web/src/app/api/admin/metrics/route.ts`: compare milestones `app` ("Signed into the app") and `debrief` ("First debrief"), counted per signed-in person from `app_signed_in` events and Entries.
+- Data fix (one-off script): the duplicate Apple accounts cmuj0aafo… (Dana) and cmuk8divo… (Mark), both empty, were deleted. Their `appleSubject` moved to the web accounts cmuj06s8z… (paid) and cmuk8a0il….
+
+### Manual steps needed
+- [ ] Keenan: on your phone, tap "Open Ripple" in one of the sign-in emails and confirm the app opens signed in to that account. This is the one path we can't test from here.
+- [ ] Jimmy: review `lib/app-access.ts` and the magic-link use in lifecycle emails (auth).
+
+### Notes
+- No app update. Everything uses the shipped app's existing magic-link handler (acuity://auth-callback). The only real fixes left for the app itself: a first screen asking "new or already signed up?", and automatic sign-in on first open.
+- Sign in with Apple's "Hide my email" can't be matched to a web account server-side. Linking by IP is unsafe because mobile carriers share IPs. The activation emails are the net: the link signs them into the right account even if they made a duplicate.
+
 ## [2026-09-28] — Funnel dashboard shows real paid subscribers and every step visually
 
 **Requested by:** Keenan

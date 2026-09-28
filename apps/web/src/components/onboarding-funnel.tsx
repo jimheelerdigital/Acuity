@@ -2541,8 +2541,37 @@ function DownloadScreen({ track, paymentConfirmed, selectedPlan }: {
   paymentConfirmed: boolean;
   selectedPlan: "monthly" | "yearly";
 }) {
-  const { status: authStatus } = useSession();
+  const { data: session, status: authStatus } = useSession();
   const [testimonialIdx, setTestimonialIdx] = useState(0);
+  // One-tap app sign-in (2026-09-28): web signups downloaded the app, landed
+  // in its new-user sign-up and never reached the account they made here.
+  // Email the signed-in link on arrival (once per browser session).
+  const email = session?.user?.email ?? null;
+  const [linkSent, setLinkSent] = useState(false);
+  useEffect(() => {
+    if (authStatus !== "authenticated" || !email) return;
+    try {
+      if (sessionStorage.getItem("acuity_app_link_sent") === "1") {
+        setLinkSent(true);
+        return;
+      }
+    } catch {}
+    fetch("/api/auth/mobile-magic-link", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, context: "funnel" }),
+    })
+      .then((r) => {
+        if (!r.ok) return;
+        setLinkSent(true);
+        try {
+          sessionStorage.setItem("acuity_app_link_sent", "1");
+        } catch {}
+        track("funnel_app_link_sent");
+      })
+      .catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [authStatus, email]);
   const celebratedRef = useRef(false);
 
   // Shared App Store CTA webview handling: detection, clipboard auto-copy,
@@ -2607,12 +2636,12 @@ function DownloadScreen({ track, paymentConfirmed, selectedPlan }: {
           <>
             <h2 className="text-2xl sm:text-3xl font-bold tracking-tight mb-3">Your free trial is on. Welcome to Ripple.</h2>
             <p className="text-sm text-acuity-text-ter mb-2 tabular-nums">$0 today, then {planPrice} after day 7.</p>
-            <p className="text-sm text-acuity-text-ter mb-10">Record your first debrief &mdash; in the app or right here on the web.</p>
+            <p className="text-sm text-acuity-text-ter mb-8">Last step: get the app. Your first debrief happens there.</p>
           </>
         ) : (
           <>
             <h2 className="text-2xl sm:text-3xl font-bold tracking-tight mb-3">Your free account is ready.</h2>
-            <p className="text-sm text-acuity-text-ter mb-10">Record your first debrief &mdash; in the app or right here on the web.</p>
+            <p className="text-sm text-acuity-text-ter mb-8">Last step: get the app. Your first debrief happens there.</p>
           </>
         )}
 
@@ -2653,40 +2682,17 @@ function DownloadScreen({ track, paymentConfirmed, selectedPlan }: {
           </div>
         )}
 
-        <button
-          onClick={async () => {
-            track("funnel_continue_web_app_clicked", { value: diagContext });
-
-            // Mark web onboarding complete so /home doesn't bounce them into
-            // the 10-step web onboarding flow. This user just finished the
-            // entire /start funnel — they don't need onboarding again.
-            // Fire-and-forget: if it fails, still route them (they'll just
-            // hit onboarding, which is better than being stuck).
-            try {
-              await fetch("/api/onboarding/complete", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ skipped: true, skippedAtStep: 0 }),
-              });
-            } catch {}
-
-            // Route to /home. The user's session was established during
-            // account creation (signIn("credentials") or OAuth callback).
-            // authStatus may still be "loading" if useSession hasn't
-            // resolved yet, so treat anything other than explicit
-            // "unauthenticated" as having a session — the middleware will
-            // handle the edge case of a truly missing token.
-            if (authStatus === "unauthenticated") {
-              window.location.href = "/auth/signin?callbackUrl=/home";
-            } else {
-              window.location.href = "/home";
-            }
-          }}
-          className="w-full mt-3 rounded-full border-2 border-acuity-primary px-8 py-3.5 text-[15px] font-semibold text-acuity-primary text-center transition hover:bg-acuity-primary-soft active:scale-[0.98]"
-        >
-          Continue in the Web App
-          <span className="block text-[11px] font-normal text-acuity-text-ter mt-0.5">Record your first debrief right now &mdash; no download needed.</span>
-        </button>
+        <div className="mt-6 rounded-2xl border border-acuity-line bg-acuity-card-bg p-5 text-left">
+          <p className="text-[15px] font-semibold mb-1.5">Then tap the link in your email</p>
+          <p className="text-sm text-acuity-text-ter leading-relaxed">
+            {linkSent && email
+              ? <>We sent it to <strong className="text-acuity-text">{email}</strong>. After installing, tap <strong className="text-acuity-text">Open Ripple</strong> in that email on your phone and the app opens signed in. No password.</>
+              : <>We&rsquo;re emailing you a sign-in link. After installing, tap it on your phone and the app opens signed in. No password.</>}
+          </p>
+          <p className="mt-3 text-xs text-acuity-text-ter leading-relaxed">
+            Don&rsquo;t create a new account in the app. If it asks you to sign up, tap <strong>Already have an account? Sign in</strong>, then <strong>Email me a link</strong>.
+          </p>
+        </div>
 
         {/* QR code — desktop only */}
         <div className="mt-8 hidden sm:block">

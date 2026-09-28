@@ -56,6 +56,7 @@ import { nrWinback3 } from "./nr-winback-3";
 import { keepMomentum } from "./keep-momentum";
 import { trialEnding } from "./trial-ending";
 import { welcomeDay0 } from "./welcome-day0";
+import { appAccessRescue } from "./app-access-rescue";
 
 export const TRIAL_EMAIL_TEMPLATES: Record<TrialEmailKey, TrialEmailTemplate> =
   {
@@ -105,6 +106,7 @@ export const TRIAL_EMAIL_TEMPLATES: Record<TrialEmailKey, TrialEmailTemplate> =
     nr_winback_1: nrWinback1,
     nr_winback_2: nrWinback2,
     nr_winback_3: nrWinback3,
+    app_access_rescue: appAccessRescue,
   };
 
 export type { TrialEmailKey, TrialEmailTemplate } from "./types";

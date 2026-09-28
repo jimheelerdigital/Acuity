@@ -190,6 +190,25 @@ export function appStoreAndPlayButtons(
   </table>`;
 }
 
+/**
+ * "Get into the app" block (2026-09-28). The store buttons alone sent web
+ * signups into the app's NEW-user onboarding, where they made a second empty
+ * account (or gave up). With a signInUrl it leads with one-tap sign-in into
+ * the account they already have, and says plainly not to create a new one.
+ */
+export function appAccessBlock(v: { signInUrl?: string | null }): string {
+  if (!v.signInUrl) return appStoreAndPlayButtons();
+  const step = (n: number, text: string) =>
+    `<tr><td style="padding:6px 0;font-size:16px;color:#374151;line-height:1.6;"><strong style="color:#C4451C;">${n}.</strong> ${text}</td></tr>`;
+  return `<table role="presentation" cellpadding="0" cellspacing="0" width="100%" style="margin:8px 0;">
+    ${step(1, "Get the Ripple app if you don&rsquo;t have it yet:")}
+    <tr><td>${appStoreAndPlayButtons()}</td></tr>
+    ${step(2, "Then tap this button <strong>on your phone</strong>. Ripple opens already signed in to your account. No password.")}
+    <tr><td style="padding:6px 0 4px;">${primaryButton(v.signInUrl, "Open Ripple, signed in")}</td></tr>
+    <tr><td style="padding:4px 0 8px;font-size:14px;color:#6b7280;line-height:1.6;">Please don&rsquo;t create a new account in the app. Your membership is on this one. If the app asks you to sign up, tap <strong>Already have an account? Sign in</strong>, then <strong>Email me a link</strong>. This button works for 3 days.</td></tr>
+  </table>`;
+}
+
 /** Subtle inset card — coral left-accent. Used for quotes, insights. */
 export function trialCard(inner: string): string {
   return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0">

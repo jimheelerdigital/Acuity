@@ -160,6 +160,24 @@ export interface SendResult {
  * Skips the send if the user is unsubscribed from onboarding emails.
  * Caller is free to re-check status afterward.
  */
+/** Emails whose job is getting her into the app (see appAccessBlock). */
+export const APP_ACCESS_EMAIL_KEYS = new Set<string>([
+  "recovery_paid_no_app",
+  "recovery_download_reminder",
+  "rescue_signup_only",
+  "rescue_viewed_no_tap",
+  "rescue_tapped_app_store",
+  "rescue_webview_blocked",
+  "never_recorded_24h",
+  "never_recorded_48h",
+  "never_recorded_3day",
+  "never_recorded_lastday",
+  "nr_winback_1",
+  "nr_winback_2",
+  "nr_winback_3",
+  "app_access_rescue",
+]);
+
 export async function sendTrialEmail(
   userId: string,
   emailKey: TrialEmailKey,
@@ -226,6 +244,18 @@ export async function sendTrialEmail(
     totalRecordings: user.totalRecordings,
     foundingMemberNumber: user.foundingMemberNumber,
   });
+
+  // Emails that ask her to get into the app carry a fresh one-tap sign-in
+  // link (2026-09-28): store links alone led web signups into the app's
+  // new-user onboarding and a second, empty account.
+  if (APP_ACCESS_EMAIL_KEYS.has(emailKey)) {
+    try {
+      const { createAppSignInUrl } = await import("@/lib/app-access");
+      vars.signInUrl = await createAppSignInUrl(user.email);
+    } catch (err) {
+      safeLog.error("trial-email.sign_in_link_failed", err as Error, { emailKey, userId: user.id });
+    }
+  }
 
   const subject = template.subject(vars);
   const html = template.html(vars);

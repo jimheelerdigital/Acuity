@@ -8,7 +8,7 @@
  */
 
 import { escapeHtml } from "@/lib/escape-html";
-import { keenanSignature, trialButton, appStoreAndPlayButtons, trialLayout , para } from "./layout";
+import { keenanSignature, trialButton, appStoreAndPlayButtons, trialLayout , para, appAccessBlock } from "./layout";
 import type { TrialEmailTemplate, TrialVars } from "./types";
 
 const APP_STORE_URL = "https://apps.apple.com/us/app/acuity-daily/id6762633410";
@@ -54,15 +54,10 @@ export const recoveryPaidNoApp: TrialEmailTemplate = {
       </tr>
       ${para(`That\u2019s it. Ripple does the rest \u2014 it pulls out your tasks, keeps track of what you care about, and picks up on how you\u2019re actually feeling.`)}
       ${para(`Your first weekly report comes together once you have a few entries in. Most people just start with how the day went and go from there.`)}
-      ${para(`Download the app on iPhone or Android \u2014 or if you would rather not install anything, use the web app right in your browser:`)}
+      ${para(`Here\u2019s how to get into your account on your phone:`)}
       <tr>
         <td style="padding-bottom:4px;">
-          ${appStoreAndPlayButtons(APP_STORE_URL)}
-        </td>
-      </tr>
-      <tr>
-        <td style="padding-bottom:28px;">
-          ${trialButton(WEB_APP_URL, "Open the web app")}
+          ${appAccessBlock(v)}
         </td>
       </tr>
       ${keenanSignature()}
