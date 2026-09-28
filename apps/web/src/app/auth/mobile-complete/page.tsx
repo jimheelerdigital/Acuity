@@ -26,7 +26,10 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
 
-type Phase = "init" | "redirecting" | "invalid" | "desktop";
+type Phase = "init" | "redirecting" | "noapp" | "invalid" | "desktop";
+
+const APP_STORE_URL = "https://apps.apple.com/us/app/acuity-daily/id6762633410";
+const PLAY_STORE_URL = "https://play.google.com/store/apps/details?id=com.heelerdigital.acuity";
 
 function isMobile(): boolean {
   if (typeof navigator === "undefined") return false;
@@ -57,6 +60,13 @@ function MobileCompleteInner() {
     // Trigger the OS to route the custom scheme. On iOS this opens
     // Ripple (or prompts "Open in Ripple?" on first use).
     window.location.href = url;
+    // App not installed yet (2026-09-28, funnel buyers usually aren't): the
+    // page stays visible, so offer the store. The token is only consumed
+    // when the app redeems it, so she can come back and tap again.
+    const t = window.setTimeout(() => {
+      if (document.visibilityState === "visible") setPhase("noapp");
+    }, 1600);
+    return () => window.clearTimeout(t);
   }, [token]);
 
   return (
@@ -85,6 +95,28 @@ function MobileCompleteInner() {
                 className="mt-5 inline-block rounded-xl bg-zinc-900 px-4 py-3 text-sm font-semibold text-white hover:bg-zinc-700"
               >
                 Open Ripple →
+              </a>
+            )}
+          </>
+        )}
+        {phase === "noapp" && (
+          <>
+            <div className="mb-4 text-4xl">📲</div>
+            <h1 className="text-xl font-semibold text-zinc-900 dark:text-zinc-50 mb-2">
+              Get Ripple first
+            </h1>
+            <p className="text-sm text-zinc-500 dark:text-zinc-400 leading-relaxed">
+              Install the app, then come back to your email and tap the button again. You&apos;ll be signed in, no password.
+            </p>
+            <a
+              href={/Android/i.test(navigator.userAgent) ? PLAY_STORE_URL : APP_STORE_URL}
+              className="mt-5 block rounded-xl bg-zinc-900 px-4 py-3 text-sm font-semibold text-white hover:bg-zinc-700"
+            >
+              {/Android/i.test(navigator.userAgent) ? "Get it on Google Play" : "Download on the App Store"}
+            </a>
+            {deepLink && (
+              <a href={deepLink} className="mt-3 inline-block text-sm font-semibold text-acuity-primary">
+                I have the app. Open Ripple →
               </a>
             )}
           </>

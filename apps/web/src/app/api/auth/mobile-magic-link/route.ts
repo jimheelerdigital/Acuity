@@ -26,7 +26,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 
-import { magicLinkEmail } from "@/emails/magic-link";
+import { funnelAppAccessEmail, magicLinkEmail } from "@/emails/magic-link";
 import { randomToken } from "@/lib/auth-tokens";
 import {
   checkRateLimit,
@@ -40,14 +40,21 @@ export const runtime = "nodejs";
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const MOBILE_PREFIX = "mobile:";
 const TTL_HOURS = 24;
+const FUNNEL_TTL_HOURS = 72;
+const APP_STORE_URL = "https://apps.apple.com/us/app/acuity-daily/id6762633410";
+const PLAY_STORE_URL = "https://play.google.com/store/apps/details?id=com.heelerdigital.acuity";
 
 function publicOrigin(req: NextRequest): string {
   return process.env.NEXTAUTH_URL ?? req.nextUrl.origin;
 }
 
 export async function POST(req: NextRequest) {
-  const body = (await req.json().catch(() => null)) as { email?: unknown } | null;
+  const body = (await req.json().catch(() => null)) as { email?: unknown; context?: unknown } | null;
   const email = typeof body?.email === "string" ? body.email.toLowerCase().trim() : "";
+  // "funnel" (2026-09-28): sent automatically after web checkout, before she
+  // has the app. 72h link + an install-then-tap email. Only for an EXISTING
+  // account, so it can never create users or be used to sign someone up.
+  const funnel = body?.context === "funnel";
 
   if (!email || !EMAIL_RE.test(email)) {
     return NextResponse.json({ error: "InvalidEmail" }, { status: 400 });
@@ -66,6 +73,14 @@ export async function POST(req: NextRequest) {
     where: { email },
     select: { id: true },
   });
+  if (funnel) {
+    // Funnel mode only for the signed-in owner of this email.
+    const { getAnySessionUserId } = await import("@/lib/mobile-auth");
+    const sessionUserId = await getAnySessionUserId(req).catch(() => null);
+    if (!user || sessionUserId !== user.id) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+  }
   if (!user) {
     // Single source of truth for trial length: trialDaysForEmail (14
     // standard, 3 for re-signups within 90d — anti-abuse). bootstrapNewUser
@@ -87,7 +102,7 @@ export async function POST(req: NextRequest) {
   }
 
   const token = randomToken();
-  const expires = new Date(Date.now() + TTL_HOURS * 60 * 60 * 1000);
+  const expires = new Date(Date.now() + (funnel ? FUNNEL_TTL_HOURS : TTL_HOURS) * 60 * 60 * 1000);
 
   await prisma.verificationToken.create({
     data: {
@@ -99,7 +114,9 @@ export async function POST(req: NextRequest) {
 
   const origin = publicOrigin(req);
   const completeUrl = `${origin}/auth/mobile-complete?token=${encodeURIComponent(token)}`;
-  const { subject, html } = magicLinkEmail(completeUrl);
+  const { subject, html } = funnel
+    ? funnelAppAccessEmail(completeUrl, { appStoreUrl: APP_STORE_URL, playStoreUrl: PLAY_STORE_URL })
+    : magicLinkEmail(completeUrl);
   try {
     const { sendEmailOrThrow } = await import("@/lib/resend");
     await sendEmailOrThrow({

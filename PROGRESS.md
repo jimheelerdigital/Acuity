@@ -7,6 +7,44 @@
 
 ---
 
+## [2026-09-28] — Test funnel ends with a real first debrief, then the app with a magic link
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** (see git log: "feat: End the test funnels with a first debrief and an auto-sent app link")
+
+### In plain English (for Keenan)
+After someone starts their free week on /start-test or /start-test-bwk, the last screen now has three parts:
+1. **First debrief.** She does a short first debrief right there: talk for up to 90 seconds, or type it. If her browser blocks the mic, it switches to typing automatically.
+2. **Saved to her account.** Ripple shows the tasks and mood it pulled out, marked "saved to your Ripple".
+3. **Get the app.** One button for her phone's app store. We've already emailed her a link: after installing, she taps it and the app opens signed in, with her debrief waiting. No password.
+
+If she taps the link before installing, the page now shows the store button instead of doing nothing.
+
+### Technical changes (for Jimmy)
+- New `apps/web/src/app/api/onboarding/first-debrief-text/route.ts` (POST `{text}`, 10 to 2,000 characters). It requires a signed-in user with `canExtractEntries` and zero entries. It creates `Entry {transcript, QUEUED}`, sends `entry/process.requested {skipTranscribe: true}` (the existing edit-reprocess path) and returns 202 `{entryId}`.
+- Voice debriefs reuse `uploadAudioDirect(..., "entry")` plus `/api/record`, the same path as the web recorder. Both are polled with `useEntryPolling`.
+- `apps/web/src/app/api/auth/mobile-magic-link/route.ts`: new `context: "funnel"` mode.
+  - Only for an existing account whose signed-in session matches the email (401 otherwise); it never creates users.
+  - 72h token and the new `funnelAppAccessEmail` (install, then tap).
+  - **Jimmy: please review (auth).**
+- `apps/web/src/emails/magic-link.ts`: new `funnelAppAccessEmail`.
+- `apps/web/src/app/auth/mobile-complete/page.tsx`: a new "noapp" phase. If the page is still visible 1.6s after the `acuity://` redirect, it shows the platform's store button and an "I have the app" retry. The token is still consumed only by the app.
+- `apps/web/src/components/funnel-v9.tsx`: `DownloadScreen` rebuilt as debrief, then processing/saved, then app (`FirstDebriefCapture`, `FirstDebriefResult`, `GetTheApp`).
+  - The magic link is sent automatically once per session.
+  - Store button by platform.
+  - A "confirming" hold while verify-payment answers on the Stripe return; `paid` used to arrive after the first render.
+  - Dev-only `?qa_paid=1` preview, dead in production.
+  - New events: `funnel_v9_end_*_viewed`, `funnel_v9_debrief_{record_started,submitted,saved,skipped,mic_denied,stuck}`, `funnel_v9_magic_link_sent`.
+
+### Manual steps needed
+- [ ] Run one more real trial on /start-test to see the full new ending live (Keenan)
+- [ ] Review the funnel magic-link mode (Jimmy)
+
+### Notes
+- Free-plan finishers skip the debrief. Without extraction entitlement there's no list to show, so they go straight to the app screen.
+- Chosen over reusing the anonymous try endpoints: their one-try-per-browser rule and daily caps would block paying customers.
+
 ## [2026-09-27] — Test funnels checked end to end; internal visits no longer reach Meta
 
 **Requested by:** Keenan
