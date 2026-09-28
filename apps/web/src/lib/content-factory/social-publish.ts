@@ -490,6 +490,26 @@ async function fbPageToken(account: SocialAccount): Promise<string> {
 }
 
 /**
+ * Delete a published IG media / FB post (2026-09-28, per Keenan: replace
+ * the day's slideshow posts with their Higgsfield videos — "override the
+ * old posts"). FB deletes run as the Page. Returns null on success, else
+ * the Graph error so the caller can report posts to remove by hand.
+ */
+export async function deletePublishedPost(
+  account: SocialAccount,
+  platform: "instagram" | "facebook",
+  externalId: string
+): Promise<string | null> {
+  const token = platform === "facebook" ? await fbPageToken(account) : account.accessToken;
+  const res = await fetch(`${GRAPH}/${externalId}?access_token=${encodeURIComponent(token)}`, {
+    method: "DELETE",
+  });
+  const json = (await res.json().catch(() => ({}))) as { success?: boolean; error?: { message?: string } };
+  if (res.ok && json.success !== false && !json.error) return null;
+  return json.error?.message ?? `HTTP ${res.status}`;
+}
+
+/**
  * Publish a multi-photo post to the Facebook Page: upload each photo
  * unpublished, then create one feed post attaching them all.
  */

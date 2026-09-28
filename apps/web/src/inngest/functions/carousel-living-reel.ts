@@ -346,6 +346,70 @@ export const livingReelQueueFn = inngest.createFunction(
         videoRuns.map((postId) => ({ name: "content-factory/post-video.build" as const, data: { postId } }))
       );
     }
-    return { queued: requests.map((r) => r.postId), lanes: laneRuns, videos: videoRuns };
+    // Replace published slideshow posts with the Higgsfield video
+    // (2026-09-28): `replace-requests/<postId>.json`. Claimed only once the
+    // post's video is done, so nothing is deleted before its replacement
+    // exists. Deletes the IG/FB posts, then re-queues those rows to publish
+    // the video right away.
+    const replaced = await step.run("claim-replace-requests", async () => {
+      const { supabase } = await import("@/lib/supabase.server");
+      const { readVideoMarker } = await import("@/lib/content-factory/post-video");
+      const { prisma } = await import("@/lib/prisma");
+      const { resolveAccount, deletePublishedPost } = await import("@/lib/content-factory/social-publish");
+      const { data } = await supabase.storage.from("content-factory").list("replace-requests", { limit: 20 });
+      const out: { postId: string; results: string[] }[] = [];
+      for (const f of (data ?? []).filter((x) => x.name.endsWith(".json"))) {
+        const postId = f.name.replace(/\.json$/, "");
+        const marker = await readVideoMarker(postId);
+        if (marker?.status !== "done" || marker.source !== "higgsfield") continue; // wait for the video
+        const { error } = await supabase.storage.from("content-factory").remove([`replace-requests/${f.name}`]);
+        if (error) continue;
+        const post = await prisma.carouselPost.findUnique({ where: { id: postId }, select: { lane: true } });
+        const account = post ? await resolveAccount(post.lane) : null;
+        const rows = await prisma.socialPublish.findMany({
+          where: { carouselPostId: postId, platform: { in: ["instagram", "facebook"] }, status: "POSTED" },
+        });
+        const results: string[] = [];
+        for (const [n, r] of rows.entries()) {
+          const deleteError =
+            account && r.externalId
+              ? await deletePublishedPost(account, r.platform as "instagram" | "facebook", r.externalId)
+              : "no account or external id";
+          results.push(`${r.platform} ${r.permalink ?? r.externalId}: ${deleteError ? `DELETE FAILED (${deleteError})` : "deleted"}`);
+          await prisma.socialPublish.update({
+            where: { id: r.id },
+            data: {
+              status: "PENDING",
+              attempts: 0,
+              externalId: null,
+              permalink: null,
+              postedAt: null,
+              scheduledAt: new Date(Date.now() + n * 5 * 60_000),
+              error: `Replacing slideshow ${r.permalink ?? r.externalId} with the Higgsfield video (${deleteError ? `old post NOT deleted: ${deleteError}` : "old post deleted"})`,
+              views: null,
+              likes: null,
+              comments: null,
+              shares: null,
+              saves: null,
+              metricsAt: null,
+              reach: null,
+              avgWatchMs: null,
+              follows: null,
+              profileVisits: null,
+              metricsError: null,
+            },
+          });
+        }
+        await supabase.storage
+          .from("content-factory")
+          .upload(`replace-results/${postId}.json`, Buffer.from(JSON.stringify({ at: new Date().toISOString(), results }, null, 1)), {
+            contentType: "application/json",
+            upsert: true,
+          });
+        out.push({ postId, results });
+      }
+      return out;
+    });
+    return { queued: requests.map((r) => r.postId), lanes: laneRuns, videos: videoRuns, replaced };
   }
 );
