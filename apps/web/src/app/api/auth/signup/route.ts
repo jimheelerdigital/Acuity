@@ -279,7 +279,7 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({
       ok: true,
-      requiresVerification: !existing || !existing.emailVerified,
+      requiresVerification: false, // never required (2026-09-28)
       wasCreated,
       capiEventId: eventId, // returned so browser pixel can use same event_id for dedup
     });
@@ -287,7 +287,7 @@ export async function POST(req: NextRequest) {
 
   return NextResponse.json({
     ok: true,
-    requiresVerification: !existing || !existing.emailVerified,
+    requiresVerification: false, // never required (2026-09-28)
     wasCreated,
   });
 }

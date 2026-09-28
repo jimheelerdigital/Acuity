@@ -73,12 +73,9 @@ export async function POST(req: NextRequest) {
   if (!match) {
     return NextResponse.json({ error: "InvalidCredentials" }, { status: 401 });
   }
-  if (!user.emailVerified) {
-    // EmailNotVerified is a state issue (valid creds, account not ready),
-    // not an auth failure — keep at 400 so the mobile client can route
-    // to a resend-verification UX rather than a "wrong password" toast.
-    return NextResponse.json({ error: "EmailNotVerified" }, { status: 400 });
-  }
+  // No email-confirmation gate (2026-09-28, per Keenan: "DO NOT MAKE PEOPLE
+  // CONFIRM THEIR EMAIL ... if they have a login, they can sign in"). Valid
+  // email + password = signed in, same as web credentials sign-in.
 
   const { sessionToken, expiresAt } = await issueMobileSessionToken(user);
   return NextResponse.json(

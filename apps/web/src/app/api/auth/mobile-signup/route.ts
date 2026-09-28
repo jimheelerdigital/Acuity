@@ -173,6 +173,7 @@ export async function POST(req: NextRequest) {
 
   return NextResponse.json({
     ok: true,
-    requiresVerification: !existing || !existing.emailVerified,
+    // Never required (2026-09-28): accounts are usable immediately.
+    requiresVerification: false,
   });
 }

@@ -7,6 +7,29 @@
 
 ---
 
+## [2026-09-28] — No email confirmation required anywhere
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** (see git log: "fix: Remove the email-confirmation requirement from app sign-in")
+
+### In plain English (for Keenan)
+Nobody has to confirm their email any more. The app's email + password sign-in was refusing anyone who hadn't clicked a confirmation link, and 193 accounts were in that state, so they couldn't log into the app with their password. Now if you have a login, you can sign in.
+
+### Technical changes (for Jimmy)
+- `apps/web/src/app/api/auth/mobile-login/route.ts`: removed the `EmailNotVerified` gate; valid credentials sign in. Web credentials sign-in already had no gate (`lib/auth.ts`).
+- `apps/web/src/app/api/auth/mobile-signup/route.ts` and `api/auth/signup/route.ts`: `requiresVerification: false`. New accounts were already created with `emailVerified` set.
+- `apps/web/src/app/api/account/set-password/route.ts`: no confirmation re-send; `needsVerification` is always false.
+- `apps/web/src/components/funnel-v9.tsx`: LoginCard message simplified.
+- Data: set `emailVerified = now()` on all 193 users where it was null.
+
+### Manual steps needed
+- [ ] Jimmy: note the auth change. Email ownership is no longer checked before password sign-in (Keenan's decision).
+
+### Notes
+- The welcome email still contains a verify link. Harmless, and clicking it changes nothing.
+- The app's own `(auth)/sign-up` screen still shows a "check your email" state after email sign-up (client-side, needs an app update to change). The account works immediately regardless.
+
 ## [2026-09-28] — Success screen shows your login and lets you set a password (web-to-app standard)
 
 **Requested by:** Keenan

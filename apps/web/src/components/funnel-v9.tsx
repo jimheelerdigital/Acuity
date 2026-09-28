@@ -1969,7 +1969,7 @@ function LoginCard({ email, track }: { email: string; track: ViewProps["track"] 
       const body = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(body.error ?? "Couldn't save that. Try again.");
       track("funnel_v9_password_set", body.needsVerification ? "needs_verify" : "verified");
-      setMsg(body.needsVerification ? `Saved. Tap the confirm link we just sent to ${email} before signing in with it.` : "Saved. Use it with your email in the app.");
+      setMsg("Saved. Use it with your email in the app.");
       setState("saved");
     } catch (e) {
       setMsg(e instanceof Error ? e.message : "Couldn't save that. Try again.");
