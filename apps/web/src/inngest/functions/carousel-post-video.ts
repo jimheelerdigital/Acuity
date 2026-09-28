@@ -192,77 +192,84 @@ export const carouselPostVideoFn = inngest.createFunction(
     });
     const clips: Record<number, string | null> = cached ? { ...cached.clips } : {};
     const models: string[] = cached ? [...cached.models] : [];
-    const { POST_VIDEO_WAVE } = await import("@/lib/content-factory/post-video");
+    const { POST_VIDEO_WAVE, POST_VIDEO_MODEL, POST_VIDEO_FALLBACK_MODEL, POST_VIDEO_ROUNDS } = await import(
+      "@/lib/content-factory/post-video"
+    );
+    const attemptModels = [...new Set([POST_VIDEO_MODEL, POST_VIDEO_FALLBACK_MODEL].filter(Boolean))];
     for (let w = 0; !cached && w * POST_VIDEO_WAVE < liveIdx.length; w++) {
-      const wave = liveIdx.slice(w * POST_VIDEO_WAVE, (w + 1) * POST_VIDEO_WAVE);
-      const jobs = await step.run(`submit-${w}`, async () => {
-        const { submitCoverVideo } = await import("@/lib/content-factory/animate-cover");
-        const { POST_VIDEO_MODEL } = await import("@/lib/content-factory/post-video");
-        const fallback = process.env.HIGGSFIELD_VIDEO_MODEL?.trim();
-        const errors: string[] = [];
-        const submitted = await Promise.all(
-          wave.map(async (i) => {
-            const opts = { startImageUrl: prepared[i].baseUrl, prompt: prepared[i].prompt, duration: 5 };
-            try {
-              return { i, id: await submitCoverVideo({ ...opts, model: POST_VIDEO_MODEL }), model: POST_VIDEO_MODEL };
-            } catch (err) {
-              errors.push(`slide ${i} ${POST_VIDEO_MODEL}: ${err instanceof Error ? err.message : err}`);
-              console.warn(`[post-video] ${POST_VIDEO_MODEL} submit failed for slide ${i}: ${err instanceof Error ? err.message : err}`);
-              if (!fallback || fallback === POST_VIDEO_MODEL) return { i, id: null, model: POST_VIDEO_MODEL };
+      let remaining = liveIdx.slice(w * POST_VIDEO_WAVE, (w + 1) * POST_VIDEO_WAVE);
+      for (const i of remaining) clips[i] = null;
+      // Primary model first; whatever it doesn't deliver in time (failed
+      // submit, failed clip, or still queued) goes to the fallback once.
+      for (let a = 0; a < attemptModels.length && remaining.length > 0; a++) {
+        const model = attemptModels[a];
+        const batch = remaining;
+        const jobs = await step.run(`submit-${w}-${a}`, async () => {
+          const { submitCoverVideo } = await import("@/lib/content-factory/animate-cover");
+          const errors: string[] = [];
+          const submitted = await Promise.all(
+            batch.map(async (i) => {
               try {
-                return { i, id: await submitCoverVideo({ ...opts, model: fallback }), model: fallback };
-              } catch (err2) {
-                errors.push(`slide ${i} ${fallback}: ${err2 instanceof Error ? err2.message : err2}`);
-                console.warn(`[post-video] ${fallback} submit failed for slide ${i}: ${err2 instanceof Error ? err2.message : err2}`);
-                return { i, id: null, model: fallback };
-              }
-            }
-          })
-        );
-        // Submit log beside the build (ops scripts can read Storage, not Inngest logs).
-        const { supabase } = await import("@/lib/supabase.server");
-        await supabase.storage
-          .from("content-factory")
-          .upload(
-            `living/${postId}/submit-${w}.json`,
-            Buffer.from(JSON.stringify({ at: new Date().toISOString(), submitted, errors }, null, 1)),
-            { contentType: "application/json", upsert: true }
-          );
-        return submitted;
-      });
-      for (const j of jobs) {
-        clips[j.i] = null;
-        if (j.id) models.push(j.model);
-      }
-      let pending = jobs.filter((j) => j.id);
-      // Up to ~15 min per wave; anything still out after that goes still.
-      for (let round = 0; round < 30 && pending.length > 0; round++) {
-        await step.sleep(`wait-${w}-${round}`, "30s");
-        const results = await step.run(`poll-${w}-${round}`, async () => {
-          const { checkCoverVideo } = await import("@/lib/content-factory/animate-cover");
-          return Promise.all(
-            pending.map(async (j) => {
-              try {
-                const st = await checkCoverVideo(j.id!, j.model);
-                if (st.status === "completed" && st.videoUrl) return { i: j.i, state: "done" as const, url: st.videoUrl };
-                if (st.status === "queued" || st.status === "in_progress") return { i: j.i, state: "wait" as const };
-                return { i: j.i, state: "failed" as const, reason: st.status };
+                const id = await submitCoverVideo({
+                  startImageUrl: prepared[i].baseUrl,
+                  prompt: prepared[i].prompt,
+                  duration: 5,
+                  model,
+                });
+                return { i, id: id as string | null, model };
               } catch (err) {
-                // A status hiccup isn't a failed clip — ask again next round.
-                return { i: j.i, state: "wait" as const, reason: err instanceof Error ? err.message : String(err) };
+                errors.push(`slide ${i} ${model}: ${err instanceof Error ? err.message : err}`);
+                return { i, id: null as string | null, model };
               }
             })
           );
+          // Submit log beside the build (ops scripts can read Storage, not Inngest logs).
+          const { supabase } = await import("@/lib/supabase.server");
+          await supabase.storage
+            .from("content-factory")
+            .upload(
+              `living/${postId}/submit-${w}-${a}.json`,
+              Buffer.from(JSON.stringify({ at: new Date().toISOString(), submitted, errors }, null, 1)),
+              { contentType: "application/json", upsert: true }
+            );
+          return submitted;
         });
-        for (const r of results) {
-          if (r.state === "done") clips[r.i] = r.url;
-          if (r.state === "failed") logger.warn(`[post-video] clip for slide ${r.i} ended ${r.reason}`);
+        let pending = jobs.filter((j) => j.id);
+        const rounds = POST_VIDEO_ROUNDS[a] ?? 20;
+        for (let round = 0; round < rounds && pending.length > 0; round++) {
+          await step.sleep(`wait-${w}-${a}-${round}`, "30s");
+          const results = await step.run(`poll-${w}-${a}-${round}`, async () => {
+            const { checkCoverVideo } = await import("@/lib/content-factory/animate-cover");
+            return Promise.all(
+              pending.map(async (j) => {
+                try {
+                  const st = await checkCoverVideo(j.id!, j.model);
+                  if (st.status === "completed" && st.videoUrl) return { i: j.i, state: "done" as const, url: st.videoUrl };
+                  if (st.status === "queued" || st.status === "in_progress") return { i: j.i, state: "wait" as const };
+                  return { i: j.i, state: "failed" as const, reason: st.status };
+                } catch (err) {
+                  // A status hiccup isn't a failed clip — ask again next round.
+                  return { i: j.i, state: "wait" as const, reason: err instanceof Error ? err.message : String(err) };
+                }
+              })
+            );
+          });
+          for (const r of results) {
+            if (r.state === "done") {
+              clips[r.i] = r.url;
+              models.push(model);
+            }
+            if (r.state === "failed") logger.warn(`[post-video] ${model} clip for slide ${r.i} ended ${r.reason}`);
+          }
+          const settled = new Set(results.filter((r) => r.state !== "wait").map((r) => r.i));
+          pending = pending.filter((j) => !settled.has(j.i));
         }
-        const settled = new Set(results.filter((r) => r.state !== "wait").map((r) => r.i));
-        pending = pending.filter((j) => !settled.has(j.i));
-      }
-      if (pending.length > 0) {
-        logger.warn(`[post-video] ${pending.length} clip(s) still rendering after 15 min — those slides go still`);
+        remaining = batch.filter((i) => !clips[i]);
+        if (remaining.length > 0) {
+          logger.warn(
+            `[post-video] ${model} left ${remaining.length} clip(s) undelivered in wave ${w}${a + 1 < attemptModels.length ? ` — retrying on ${attemptModels[a + 1]}` : " — those slides go still"}`
+          );
+        }
       }
     }
 

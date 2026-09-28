@@ -117,6 +117,51 @@ export const socialHealthCheckFn = inngest.createFunction(
         out.push(`AdLab competitor ad brief is stale — last ${age(brief?.date)} (Saturday scrape may have failed).`);
       }
 
+      // 6. Today's posts + Higgsfield videos (2026-09-28, per Keenan: "adjust
+      // this so we don't run into future issues"). Runs 2h before the first
+      // IG/FB slot. Self-heals once: a lane with no post today is re-run, a
+      // video lane whose build failed or came out with no animation is
+      // rebuilt (finished clips are cached, so no double Higgsfield spend).
+      {
+        const { supabase } = await import("@/lib/supabase.server");
+        const { laneWantsReel } = await import("@/lib/content-factory/social-publish");
+        const { readVideoMarker } = await import("@/lib/content-factory/post-video");
+        const today = new Date();
+        today.setUTCHours(0, 0, 0, 0);
+        const lanes = await prisma.contentLane.findMany({
+          where: { status: { not: "RETIRED" } },
+          select: { key: true, hoursUtc: true },
+        });
+        const posts = await prisma.carouselPost.findMany({
+          where: { generatedFor: today },
+          select: { id: true, lane: true },
+        });
+        const have = new Set(posts.map((p) => p.lane));
+        const missing = lanes.filter((l) => l.hoursUtc.length > 0 && !have.has(l.key)).map((l) => l.key);
+        for (const lane of missing) {
+          await supabase.storage
+            .from("content-factory")
+            .upload(`lane-requests/${lane}.json`, Buffer.from("{}"), { contentType: "application/json", upsert: true });
+        }
+        if (missing.length) {
+          out.push(`${missing.length} lane(s) produced no post overnight: ${missing.join(", ")} — re-running them now.`);
+        }
+        const broken: string[] = [];
+        for (const p of posts) {
+          if (!laneWantsReel(p.lane)) continue;
+          const m = await readVideoMarker(p.id);
+          const bad = !m || m.status === "failed" || (m.status === "done" && m.source !== "higgsfield");
+          if (!bad) continue;
+          broken.push(`${p.lane} (${m ? m.status : "no build"}${m?.error ? `: ${m.error.slice(0, 80)}` : ""})`);
+          await supabase.storage
+            .from("content-factory")
+            .upload(`video-requests/${p.id}.json`, Buffer.from("{}"), { contentType: "application/json", upsert: true });
+        }
+        if (broken.length) {
+          out.push(`${broken.length} post(s) have no Higgsfield animation yet — rebuilding now: ${broken.join("; ")}`);
+        }
+      }
+
       return out;
     });
 

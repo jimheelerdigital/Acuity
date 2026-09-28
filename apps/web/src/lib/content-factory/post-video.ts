@@ -50,6 +50,22 @@ const BUCKET = "content-factory";
 export const POST_VIDEO_MODEL =
   process.env.HIGGSFIELD_LIVING_MODEL?.trim() || "higgsfield-ai/dop/lite";
 
+/**
+ * Second model for clips the primary didn't deliver (2026-09-28: DoP Lite
+ * jobs sat "queued" for 20+ minutes on the dev API). Unfinished or failed
+ * slides are resubmitted here once, so a slow or broken model costs a few
+ * minutes — never the whole night's animation. HIGGSFIELD_FALLBACK_MODEL
+ * overrides; default is the other of DoP Lite / Kling 2.5 Turbo Pro.
+ */
+export const POST_VIDEO_FALLBACK_MODEL =
+  process.env.HIGGSFIELD_FALLBACK_MODEL?.trim() ||
+  (POST_VIDEO_MODEL.startsWith("higgsfield-ai/dop")
+    ? "kling-video/v2.5-turbo/pro/image-to-video"
+    : "higgsfield-ai/dop/lite");
+
+/** Poll rounds (30s each) per model attempt: primary 10 min, fallback 12 min. */
+export const POST_VIDEO_ROUNDS = [20, 24];
+
 /** Clips submitted at once — Higgsfield silently drops jobs past ~4 per account. */
 export const POST_VIDEO_WAVE = Math.max(1, Number(process.env.HIGGSFIELD_MAX_CONCURRENT) || 4);
 
