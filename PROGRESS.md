@@ -7,6 +7,29 @@
 
 ---
 
+## [2026-09-28] — Test funnel ends by sending them straight to the app
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** (see git log: "feat: Send test-funnel buyers straight to the app, drop the web debrief")
+
+### In plain English (for Keenan)
+Recording on the web after payment is gone. The processing took 30 to 40 seconds right after she'd paid, which is too long. The last screen is now "Last step: get the app": one download button for her phone, and the sign-in link is already in her inbox. She installs, taps the link, and the app opens signed in for her first debrief. "Continue on the web instead" is removed, so the app is the only path.
+
+### Technical changes (for Jimmy)
+- `apps/web/src/components/funnel-v9.tsx`:
+  - `DownloadScreen` is now a short "confirming" hold and then `GetTheApp`.
+  - Removed `FirstDebriefCapture`, `FirstDebriefResult`, `FirstDebriefReview` and the web-app fallback.
+  - The payment-verification state is now a module flag (`verifyingPayment`) set before the `verify-payment` fetch. Reading `?payment=success` missed the case where the URL was already cleaned, which flashed the app screen during Keenan's live run.
+- Removed `apps/web/src/app/api/onboarding/first-debrief-text/route.ts` (unused now).
+- Kept from the previous entry: funnel magic-link mode (72h, owner-only), `funnelAppAccessEmail`, and the "Get Ripple first" fallback on /auth/mobile-complete.
+
+### Manual steps needed
+- [ ] Jimmy: review the funnel magic-link mode (auth), still pending from the previous entry
+
+### Notes
+- Keenan's live run (13:47–13:50 UTC) timings: checkout to paid in about 22s; the voice debrief took 34s to process before its result showed. That wait is why the web debrief was dropped.
+
 ## [2026-09-28] — Test funnel ends with a real first debrief, then the app with a magic link
 
 **Requested by:** Keenan

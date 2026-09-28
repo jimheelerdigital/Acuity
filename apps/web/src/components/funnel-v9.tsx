@@ -38,7 +38,6 @@ import {
 
 import { fireFbq, waitForFbq } from "@/components/meta-pixel-events";
 import { trackOnboardingEvent, captureUtmParams, type UtmParams } from "@/lib/track-onboarding";
-import { useEntryPolling } from "@/hooks/use-entry-polling";
 import {
   displayAnnual,
   displayAnnualAsMonthly,
@@ -242,8 +241,12 @@ export function FunnelV9({ brand = "ripple" }: { brand?: V9Brand }) {
       setPaid(true);
       setStepId("download");
     } else if (urlStep === "download" && params.get("payment") === "success" && params.get("session_id")) {
+      verifyingPayment = true;
       setStepId("download");
       fetch(`/api/onboarding/verify-payment?session_id=${encodeURIComponent(params.get("session_id")!)}`)
+        .finally(() => {
+          verifyingPayment = false;
+        })
         .then((r) => r.json())
         .then((d: { paid?: boolean }) => {
           if (d.paid) {
@@ -1797,43 +1800,36 @@ function CheckoutScreen({ plan, go, track }: ViewProps) {
 }
 
 /**
- * The end of the funnel (2026-09-28, per Keenan: "this screen needs to be a
- * limited debrief screen, followed by it saving to their account, followed by
- * pushing them downloading the app. they need to be automatically sent a magic
- * link and download the app and have their first debrief more seamlessly").
- *
- *   debrief    one first debrief, talk (max 90s) or type. Voice goes through
- *              /api/record, typing through /api/onboarding/first-debrief-text;
- *              both run the full pipeline and save to her account.
- *   processing polls the entry (same hook as the app's web recorder)
- *   saved      her tasks, mood and summary, "saved to your Ripple"
- *   app        the magic link is emailed automatically on arrival; one store
- *              button for her phone; the link opens the app signed in.
- * Free-plan finishers (no extraction entitlement) go straight to "app".
+ * The end of the funnel (2026-09-28, per Keenan). After checkout she goes
+ * straight to the app: "make them download the app first before they record
+ * ... the analyzation process takes too long". A web first debrief was tried
+ * the same day and dropped: 30-40s of processing right after paying was too
+ * long a wait. The sign-in link is emailed automatically (72h, install-then-
+ * tap), so the app opens signed in and her first debrief happens there.
  */
-const FIRST_ENTRY_KEY = "acuity_v9_first_entry";
 const MAGIC_SENT_KEY = "acuity_v9_magic_sent";
-const DEBRIEF_MAX_S = 90;
-const DEBRIEF_MIN_S = 5;
-
-type EndPhase = "debrief" | "processing" | "saved" | "app";
+/** True while the Stripe return is being verified (set by FunnelV9's mount
+ *  effect). The URL can already be cleaned by then, so read this, not it. */
+let verifyingPayment = false;
 
 function DownloadScreen({ answers, firstName, paid, track }: ViewProps) {
-  const [phase, setPhase] = useState<EndPhase>(() => {
-    if (!paid) return "app";
+  // `paid` flips true only after /api/onboarding/verify-payment answers on the
+  // Stripe return. Hold a short "confirming" state so the copy (Pro trial vs
+  // free account) and the confetti are right, with a 10s fallback.
+  const [returning] = useState(() => {
+    if (verifyingPayment) return true;
     try {
-      return sessionStorage.getItem(FIRST_ENTRY_KEY) ? "processing" : "debrief";
+      return new URLSearchParams(window.location.search).get("payment") === "success";
     } catch {
-      return "debrief";
+      return false;
     }
   });
-  const [entryId, setEntryId] = useState<string | null>(() => {
-    try {
-      return sessionStorage.getItem(FIRST_ENTRY_KEY);
-    } catch {
-      return null;
-    }
-  });
+  const [gaveUp, setGaveUp] = useState(false);
+  useEffect(() => {
+    if (!returning) return;
+    const t = window.setTimeout(() => setGaveUp(true), 10_000);
+    return () => window.clearTimeout(t);
+  }, [returning]);
   useEffect(() => {
     if (!paid) return;
     import("canvas-confetti")
@@ -1842,42 +1838,7 @@ function DownloadScreen({ answers, firstName, paid, track }: ViewProps) {
       })
       .catch(() => {});
   }, [paid]);
-  useEffect(() => {
-    track(`funnel_v9_end_${phase}_viewed`);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [phase]);
-
-  // `paid` flips true only after /api/onboarding/verify-payment answers on the
-  // Stripe return, so the first render can see paid=false. Hold on a short
-  // "confirming" state for that return, then open the debrief.
-  const skippedRef = useRef(false);
-  const [returning] = useState(() => {
-    try {
-      return new URLSearchParams(window.location.search).get("payment") === "success";
-    } catch {
-      return false;
-    }
-  });
-  const [confirmGaveUp, setConfirmGaveUp] = useState(false);
-  useEffect(() => {
-    if (!returning) return;
-    const t = window.setTimeout(() => setConfirmGaveUp(true), 10_000);
-    return () => window.clearTimeout(t);
-  }, [returning]);
-  useEffect(() => {
-    if (paid && !skippedRef.current && phase === "app" && !entryId) setPhase("debrief");
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [paid]);
-
-  const onEntry = (id: string) => {
-    try {
-      sessionStorage.setItem(FIRST_ENTRY_KEY, id);
-    } catch {}
-    setEntryId(id);
-    setPhase("processing");
-  };
-
-  if (returning && !paid && !confirmGaveUp && phase === "app") {
+  if (returning && !paid && !gaveUp) {
     return (
       <div className="enter text-center">
         <div className="mb-6">
@@ -1887,336 +1848,7 @@ function DownloadScreen({ answers, firstName, paid, track }: ViewProps) {
       </div>
     );
   }
-  if (phase === "debrief") {
-    return (
-      <FirstDebriefCapture
-        firstName={firstName}
-        track={track}
-        onEntry={onEntry}
-        onSkip={() => {
-          skippedRef.current = true;
-          track("funnel_v9_debrief_skipped");
-          setPhase("app");
-        }}
-      />
-    );
-  }
-  if (phase === "processing" || phase === "saved") {
-    return <FirstDebriefResult entryId={entryId} track={track} onDone={() => setPhase("app")} onSaved={() => setPhase("saved")} />;
-  }
-  return <GetTheApp answers={answers} firstName={firstName} paid={paid} track={track} hasDebrief={!!entryId} />;
-}
-
-function FirstDebriefCapture({
-  firstName,
-  track,
-  onEntry,
-  onSkip,
-}: {
-  firstName: string;
-  track: ViewProps["track"];
-  onEntry: (entryId: string) => void;
-  onSkip: () => void;
-}) {
-  const C = useV9();
-  const [mode, setMode] = useState<"idle" | "recording" | "sending" | "typing">("idle");
-  const [elapsed, setElapsed] = useState(0);
-  const [text, setText] = useState("");
-  const [error, setError] = useState<string | null>(null);
-  const recRef = useRef<MediaRecorder | null>(null);
-  const chunksRef = useRef<Blob[]>([]);
-  const startRef = useRef(0);
-  const timerRef = useRef<number | null>(null);
-  const prompt = C.brand === "bwk" ? "What's on your plate this week?" : "What's on your mind this week?";
-
-  useEffect(
-    () => () => {
-      if (timerRef.current) window.clearInterval(timerRef.current);
-      recRef.current?.stream.getTracks().forEach((t) => t.stop());
-    },
-    []
-  );
-
-  const submitVoice = async (blob: Blob, seconds: number) => {
-    setMode("sending");
-    try {
-      const { uploadAudioDirect } = await import("@/lib/direct-upload.client");
-      const up = await uploadAudioDirect(blob, "entry");
-      const res = await fetch("/api/record", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ storagePath: up.storagePath, mimeType: up.mimeType, durationSeconds: String(seconds) }),
-      });
-      const body = await res.json().catch(() => ({}));
-      if (!res.ok || !body.entryId) throw new Error(body.error ?? `HTTP ${res.status}`);
-      track("funnel_v9_debrief_submitted", "voice");
-      onEntry(body.entryId as string);
-    } catch {
-      setError("That didn't go through. Try again, or type it instead.");
-      setMode("idle");
-    }
-  };
-
-  const start = async () => {
-    setError(null);
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const { bestMimeType } = await import("@/components/debrief-shared");
-      const mime = bestMimeType();
-      const rec = new MediaRecorder(stream, mime ? { mimeType: mime } : undefined);
-      chunksRef.current = [];
-      rec.ondataavailable = (e) => {
-        if (e.data.size > 0) chunksRef.current.push(e.data);
-      };
-      rec.onstop = () => {
-        stream.getTracks().forEach((t) => t.stop());
-        if (timerRef.current) window.clearInterval(timerRef.current);
-        const secs = Math.round((Date.now() - startRef.current) / 1000);
-        void submitVoice(new Blob(chunksRef.current, { type: rec.mimeType || mime || "audio/webm" }), secs);
-      };
-      rec.start(1000);
-      recRef.current = rec;
-      startRef.current = Date.now();
-      setElapsed(0);
-      setMode("recording");
-      track("funnel_v9_debrief_record_started");
-      timerRef.current = window.setInterval(() => {
-        const secs = Math.round((Date.now() - startRef.current) / 1000);
-        setElapsed(secs);
-        if (secs >= DEBRIEF_MAX_S) recRef.current?.stop();
-      }, 250);
-    } catch {
-      // In-app browsers often refuse the mic. Typing is right there instead.
-      track("funnel_v9_debrief_mic_denied");
-      setError("Your browser didn't let us use the mic, so type it instead.");
-      setMode("typing");
-    }
-  };
-
-  const stop = () => {
-    if (elapsed < DEBRIEF_MIN_S) return;
-    recRef.current?.stop();
-  };
-
-  const submitText = async () => {
-    setMode("sending");
-    setError(null);
-    try {
-      const res = await fetch("/api/onboarding/first-debrief-text", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text }),
-      });
-      const body = await res.json().catch(() => ({}));
-      if (res.status === 409) return onSkip();
-      if (!res.ok || !body.entryId) throw new Error(body.error ?? `HTTP ${res.status}`);
-      track("funnel_v9_debrief_submitted", "text");
-      onEntry(body.entryId as string);
-    } catch (e) {
-      setError(e instanceof Error && e.message.length < 80 ? e.message : "That didn't go through. Try again.");
-      setMode("typing");
-    }
-  };
-
-  const left = Math.max(0, DEBRIEF_MAX_S - elapsed);
-  return (
-    <div className="enter">
-      <Heading
-        eyebrow={firstName ? `You're in, ${firstName}` : "You're in"}
-        title="Try your first debrief"
-        sub={`${prompt} Say it however it comes out. Ripple sorts it into your list.`}
-      />
-      {mode !== "typing" ? (
-        <div className="card rounded-3xl px-6 py-8 text-center">
-          <button
-            onClick={mode === "recording" ? stop : start}
-            disabled={mode === "sending"}
-            aria-label={mode === "recording" ? "Stop recording" : "Start recording"}
-            className={`relative mx-auto flex h-28 w-28 items-center justify-center rounded-full grad text-white shadow-[0_10px_30px_-8px_var(--acuity-primary)] transition active:scale-95 disabled:opacity-60 ${mode === "recording" ? "animate-pulse" : ""}`}
-          >
-            {mode === "recording" ? <span className="h-8 w-8 rounded-md bg-white" /> : <Mic className="h-11 w-11" />}
-          </button>
-          <p className="mt-5 text-[15px] font-semibold">
-            {mode === "idle" && "Tap and start talking"}
-            {mode === "recording" && (elapsed < DEBRIEF_MIN_S ? "Keep going…" : `Tap to finish · ${left}s left`)}
-            {mode === "sending" && "Saving to your Ripple…"}
-          </p>
-          <p className="mt-1 text-[13px] text-acuity-text-sec">Up to 90 seconds. It saves to your account.</p>
-          {mode === "idle" && (
-            <button onClick={() => setMode("typing")} className="mt-5 inline-flex items-center gap-1.5 text-[14px] font-semibold text-acuity-primary">
-              <Keyboard className="h-4 w-4" /> Rather type it?
-            </button>
-          )}
-        </div>
-      ) : (
-        <div className="card rounded-3xl p-5">
-          <textarea
-            value={text}
-            onChange={(e) => setText(e.target.value.slice(0, 2000))}
-            rows={6}
-            autoFocus
-            placeholder="The school form is due Friday, I still haven't called the dentist, and work's been a lot…"
-            className="w-full resize-none rounded-2xl border border-acuity-line bg-transparent p-4 text-[16px] leading-relaxed outline-none focus:border-acuity-primary"
-          />
-          <p className="mt-1 text-right text-[12px] text-acuity-text-quiet">{text.length}/2000</p>
-        </div>
-      )}
-      {error && <p className="mt-3 text-center text-[14px] text-acuity-text-sec">{error}</p>}
-      <button onClick={onSkip} className="mt-5 block w-full text-center text-[14px] text-acuity-text-sec underline-offset-2 hover:underline">
-        I&rsquo;ll do it in the app
-      </button>
-      {mode === "typing" && (
-        <BottomBar>
-          <PrimaryButton onClick={submitText} disabled={text.trim().length < 10}>
-            Save my first debrief
-          </PrimaryButton>
-        </BottomBar>
-      )}
-    </div>
-  );
-}
-
-function FirstDebriefResult({
-  entryId,
-  track,
-  onDone,
-  onSaved,
-}: {
-  entryId: string | null;
-  track: ViewProps["track"];
-  onDone: () => void;
-  onSaved: () => void;
-}) {
-  const poll = useEntryPolling(entryId);
-  const done = poll.status === "complete" || poll.status === "partial";
-  const stuck = poll.status === "failed" || poll.status === "timeout";
-  useEffect(() => {
-    if (done) {
-      track("funnel_v9_debrief_saved", poll.status);
-      onSaved();
-    }
-    if (stuck) track("funnel_v9_debrief_stuck", poll.status);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [done, stuck]);
-
-  if (!done && !stuck) {
-    return (
-      <div className="enter text-center">
-        <div className="mb-6">
-          <RippleMark size={96} />
-        </div>
-        <Heading title="Ripple is sorting it out" sub="Pulling out your tasks, your mood and what's weighing on you. A few seconds." />
-      </div>
-    );
-  }
-  if (stuck) {
-    return (
-      <div className="enter text-center">
-        <Heading title="It's saved. Still sorting." sub="Your debrief is on your account. The list will be waiting in the app." />
-        <BottomBar>
-          <PrimaryButton onClick={onDone}>Get the app</PrimaryButton>
-        </BottomBar>
-      </div>
-    );
-  }
-
-  return <FirstDebriefReview entryId={entryId!} entry={poll.entry} track={track} onDone={onDone} />;
-}
-
-type RawTask = { title?: string; description?: string | null; priority?: string; dueDate?: string | null; groupName?: string | null };
-
-/** Her extracted tasks, all ticked; "Save to my list" commits them to her
- *  account through the app's own review endpoint (tasks stay proposed on the
- *  entry until confirmed, exactly like the app's review gate). */
-function FirstDebriefReview({
-  entryId,
-  entry,
-  track,
-  onDone,
-}: {
-  entryId: string;
-  entry: ReturnType<typeof useEntryPolling>["entry"];
-  track: ViewProps["track"];
-  onDone: () => void;
-}) {
-  const raw = (entry?.rawAnalysis ?? {}) as { tasks?: RawTask[]; goals?: { title?: string }[] };
-  const tasks = (raw.tasks ?? []).filter((t) => !!t.title).slice(0, 6);
-  const [keep, setKeep] = useState<Set<number>>(() => new Set(tasks.map((_, i) => i)));
-  const [state, setState] = useState<"review" | "saving" | "saved">("review");
-  const mood = entry?.mood;
-  const save = async () => {
-    setState("saving");
-    try {
-      await fetch(`/api/entries/${entryId}/extraction`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "commit", tasks: tasks.filter((_, i) => keep.has(i)), goals: raw.goals ?? [] }),
-      });
-    } catch {}
-    track("funnel_v9_debrief_committed", String(keep.size));
-    setState("saved");
-  };
-  return (
-    <div className="enter">
-      <div className="mb-4 flex justify-center">
-        <span className="inline-flex items-center gap-1.5 rounded-full soft px-3 py-1.5 text-[13px] font-semibold">
-          <CircleCheck className="h-4 w-4 text-acuity-primary" /> {state === "saved" ? "Saved to your Ripple" : "Debrief saved"}
-        </span>
-      </div>
-      <Heading title={state === "saved" ? "It's on your list" : "Here's what Ripple caught"} sub={state === "saved" ? "Waiting for you in the app, ready to check off." : tasks.length ? "Untick anything you don't want on your list." : undefined} />
-      <div className="card rounded-3xl p-5">
-        {tasks.length > 0 ? (
-          <>
-            <p className="mb-3 flex items-center gap-2 text-[13px] font-bold">
-              <ListChecks className="h-4 w-4 text-acuity-primary" /> Your list
-            </p>
-            <ul className="space-y-1">
-              {tasks.map((t, i) => {
-                const on = keep.has(i);
-                return (
-                  <li key={i}>
-                    <button
-                      disabled={state !== "review"}
-                      onClick={() =>
-                        setKeep((k) => {
-                          const n = new Set(k);
-                          if (n.has(i)) n.delete(i);
-                          else n.add(i);
-                          return n;
-                        })
-                      }
-                      className="flex w-full items-start gap-2.5 rounded-xl py-1.5 text-left text-[15px] leading-snug"
-                    >
-                      <span className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-md border-2 ${on ? "grad border-transparent text-white" : "border-acuity-line"}`}>
-                        {on && <Check className="h-3.5 w-3.5" strokeWidth={3} />}
-                      </span>
-                      <span className={on ? "" : "text-acuity-text-quiet line-through"}>{t.title}</span>
-                    </button>
-                  </li>
-                );
-              })}
-            </ul>
-          </>
-        ) : (
-          entry?.summary && <p className="text-[15px] leading-relaxed">{entry.summary}</p>
-        )}
-        {mood && (
-          <p className="mt-4 border-t border-acuity-line pt-3 text-[14px] text-acuity-text-sec">
-            Mood: <span className="font-semibold text-acuity-text">{mood.toLowerCase().replace(/_/g, " ")}</span>
-          </p>
-        )}
-      </div>
-      <BottomBar>
-        {state === "saved" ? (
-          <PrimaryButton onClick={onDone}>Get the app</PrimaryButton>
-        ) : (
-          <PrimaryButton onClick={save} disabled={state === "saving"}>
-            {tasks.length ? "Save to my list" : "Save it"}
-          </PrimaryButton>
-        )}
-      </BottomBar>
-    </div>
-  );
+  return <GetTheApp answers={answers} firstName={firstName} paid={paid} track={track} />;
 }
 
 function GetTheApp({
@@ -2224,13 +1856,11 @@ function GetTheApp({
   firstName,
   paid,
   track,
-  hasDebrief,
 }: {
   answers: ViewProps["answers"];
   firstName: string;
   paid: boolean;
   track: ViewProps["track"];
-  hasDebrief: boolean;
 }) {
   const [sent, setSent] = useState(false);
   const [platform, setPlatform] = useState<"ios" | "android" | "desktop">("ios");
@@ -2264,17 +1894,6 @@ function GetTheApp({
     if (already) setSent(true);
     else void sendLink(false);
   }, [sendLink]);
-  const openWeb = async () => {
-    track("funnel_continue_web_app_clicked");
-    try {
-      await fetch("/api/onboarding/complete", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ skipped: true, skippedAtStep: 0 }),
-      });
-    } catch {}
-    window.location.href = "/home";
-  };
   const store =
     platform === "android"
       ? [{ href: PLAY_STORE_URL, label: "Get it on Google Play", ev: "funnel_play_store_clicked" }]
@@ -2290,12 +1909,13 @@ function GetTheApp({
         <RippleMark size={84} />
       </div>
       <Heading
-        title={hasDebrief ? "Your debrief is waiting in the app" : firstName ? `You're in, ${firstName}.` : "You're in."}
-        sub={paid ? "Your 7 free days of Ripple Pro have started. Ripple lives on your phone." : "Your free Ripple account is ready. Ripple lives on your phone."}
+        eyebrow={firstName ? `You're in, ${firstName}` : "You're in"}
+        title="Last step: get the app"
+        sub={`${paid ? "Your 7 free days of Ripple Pro have started." : "Your free Ripple account is ready."} Your first debrief happens in the app.`}
       />
       <div className="space-y-3">
         <div className="card rounded-3xl p-5">
-          <StepBadge n={1} icon={Smartphone} title="Get the app" text="Talk to it any time of day, from anywhere." />
+          <StepBadge n={1} icon={Smartphone} title="Download Ripple" text="Free on your phone. You already have your account." />
           <div className={`mt-4 grid gap-2 ${store.length > 1 ? "grid-cols-2" : "grid-cols-1"}`}>
             {store.map((s) => (
               <a key={s.href} href={s.href} onClick={() => track(s.ev)} className="rounded-full grad py-3.5 text-center text-[15px] font-semibold text-white">
@@ -2311,7 +1931,7 @@ function GetTheApp({
             title="Tap the link in your email"
             text={
               sent
-                ? `We sent it to ${answers.email}. Open it on your phone after installing and Ripple opens signed in. No password.`
+                ? `We sent it to ${answers.email}. Tap it on your phone after installing and Ripple opens signed in, ready for your first debrief. No password.`
                 : "We're sending you a sign-in link. No password needed."
             }
           />
@@ -2322,9 +1942,6 @@ function GetTheApp({
           )}
         </div>
       </div>
-      <button onClick={openWeb} className="mt-6 block w-full text-center text-[14px] text-acuity-text-sec underline-offset-2 hover:underline">
-        Continue on the web instead
-      </button>
     </div>
   );
 }
