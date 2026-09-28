@@ -2120,34 +2120,85 @@ function FirstDebriefResult({
     );
   }
 
-  const raw = (poll.entry?.rawAnalysis ?? {}) as { tasks?: { title?: string }[] };
-  const tasks = (raw.tasks ?? []).map((t) => t.title).filter((t): t is string => !!t).slice(0, 5);
-  const mood = poll.entry?.mood;
+  return <FirstDebriefReview entryId={entryId!} entry={poll.entry} track={track} onDone={onDone} />;
+}
+
+type RawTask = { title?: string; description?: string | null; priority?: string; dueDate?: string | null; groupName?: string | null };
+
+/** Her extracted tasks, all ticked; "Save to my list" commits them to her
+ *  account through the app's own review endpoint (tasks stay proposed on the
+ *  entry until confirmed, exactly like the app's review gate). */
+function FirstDebriefReview({
+  entryId,
+  entry,
+  track,
+  onDone,
+}: {
+  entryId: string;
+  entry: ReturnType<typeof useEntryPolling>["entry"];
+  track: ViewProps["track"];
+  onDone: () => void;
+}) {
+  const raw = (entry?.rawAnalysis ?? {}) as { tasks?: RawTask[]; goals?: { title?: string }[] };
+  const tasks = (raw.tasks ?? []).filter((t) => !!t.title).slice(0, 6);
+  const [keep, setKeep] = useState<Set<number>>(() => new Set(tasks.map((_, i) => i)));
+  const [state, setState] = useState<"review" | "saving" | "saved">("review");
+  const mood = entry?.mood;
+  const save = async () => {
+    setState("saving");
+    try {
+      await fetch(`/api/entries/${entryId}/extraction`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "commit", tasks: tasks.filter((_, i) => keep.has(i)), goals: raw.goals ?? [] }),
+      });
+    } catch {}
+    track("funnel_v9_debrief_committed", String(keep.size));
+    setState("saved");
+  };
   return (
     <div className="enter">
       <div className="mb-4 flex justify-center">
         <span className="inline-flex items-center gap-1.5 rounded-full soft px-3 py-1.5 text-[13px] font-semibold">
-          <CircleCheck className="h-4 w-4 text-acuity-primary" /> Saved to your Ripple
+          <CircleCheck className="h-4 w-4 text-acuity-primary" /> {state === "saved" ? "Saved to your Ripple" : "Debrief saved"}
         </span>
       </div>
-      <Heading title="Here's what Ripple caught" />
+      <Heading title={state === "saved" ? "It's on your list" : "Here's what Ripple caught"} sub={state === "saved" ? "Waiting for you in the app, ready to check off." : tasks.length ? "Untick anything you don't want on your list." : undefined} />
       <div className="card rounded-3xl p-5">
         {tasks.length > 0 ? (
           <>
             <p className="mb-3 flex items-center gap-2 text-[13px] font-bold">
               <ListChecks className="h-4 w-4 text-acuity-primary" /> Your list
             </p>
-            <ul className="space-y-2.5">
-              {tasks.map((t) => (
-                <li key={t} className="flex gap-2.5 text-[15px] leading-snug">
-                  <span className="mt-0.5 h-4 w-4 shrink-0 rounded border-2 border-acuity-primary/60" />
-                  {t}
-                </li>
-              ))}
+            <ul className="space-y-1">
+              {tasks.map((t, i) => {
+                const on = keep.has(i);
+                return (
+                  <li key={i}>
+                    <button
+                      disabled={state !== "review"}
+                      onClick={() =>
+                        setKeep((k) => {
+                          const n = new Set(k);
+                          if (n.has(i)) n.delete(i);
+                          else n.add(i);
+                          return n;
+                        })
+                      }
+                      className="flex w-full items-start gap-2.5 rounded-xl py-1.5 text-left text-[15px] leading-snug"
+                    >
+                      <span className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-md border-2 ${on ? "grad border-transparent text-white" : "border-acuity-line"}`}>
+                        {on && <Check className="h-3.5 w-3.5" strokeWidth={3} />}
+                      </span>
+                      <span className={on ? "" : "text-acuity-text-quiet line-through"}>{t.title}</span>
+                    </button>
+                  </li>
+                );
+              })}
             </ul>
           </>
         ) : (
-          poll.entry?.summary && <p className="text-[15px] leading-relaxed">{poll.entry.summary}</p>
+          entry?.summary && <p className="text-[15px] leading-relaxed">{entry.summary}</p>
         )}
         {mood && (
           <p className="mt-4 border-t border-acuity-line pt-3 text-[14px] text-acuity-text-sec">
@@ -2155,9 +2206,14 @@ function FirstDebriefResult({
           </p>
         )}
       </div>
-      <p className="mt-4 text-center text-[14px] text-acuity-text-sec">It&rsquo;s all in the app, ready to check off.</p>
       <BottomBar>
-        <PrimaryButton onClick={onDone}>Get the app</PrimaryButton>
+        {state === "saved" ? (
+          <PrimaryButton onClick={onDone}>Get the app</PrimaryButton>
+        ) : (
+          <PrimaryButton onClick={save} disabled={state === "saving"}>
+            {tasks.length ? "Save to my list" : "Save it"}
+          </PrimaryButton>
+        )}
       </BottomBar>
     </div>
   );

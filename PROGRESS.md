@@ -42,6 +42,8 @@ If she taps the link before installing, the page now shows the store button inst
 - [ ] Review the funnel magic-link mode (Jimmy)
 
 ### Notes
+- Extracted tasks stay proposed on the entry until confirmed; that's the app's review gate. The funnel's "Save to my list" commits the ticked ones through `POST /api/entries/[id]/extraction {action: "commit"}`. That is the "saving to their account" step.
+- Prod check: a typed debrief ran through the pipeline in about 36s and extracted "Submit school form", "Book Mom's appointment" and "Get a walk in". The second attempt returned 409. The funnel magic link is 72h, and 401 when signed out. The landing page showed "Get Ripple first" with no app. The test accounts were deleted.
 - Free-plan finishers skip the debrief. Without extraction entitlement there's no list to show, so they go straight to the app screen.
 - Chosen over reusing the anonymous try endpoints: their one-try-per-browser rule and daily caps would block paying customers.
 
