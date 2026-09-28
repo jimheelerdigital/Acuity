@@ -21,6 +21,12 @@ export const carouselDailyDigestFn = inngest.createFunction(
     triggers: [{ event: "content-factory/digest.check" }, { cron: "0 13 * * *" }],
   },
   async ({ event, step, logger }) => {
+    // Off by default (2026-09-28, per Keenan: "i don't need the emails with
+    // the videos - i exclusively need you to post the proper videos on
+    // instagram/facebook"). DIGEST_EMAIL_ENABLED=1 turns it back on.
+    if (process.env.DIGEST_EMAIL_ENABLED !== "1") {
+      return { skipped: "digest emails disabled (DIGEST_EMAIL_ENABLED != 1)" };
+    }
     const isCron = event?.name !== "content-factory/digest.check";
     const data = (event?.data ?? {}) as { brand?: "ripple" | "bwk"; date?: string; force?: boolean };
     const date = data.date ?? new Date(typeof event?.ts === "number" ? event.ts : Date.now()).toISOString().slice(0, 10);
