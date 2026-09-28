@@ -41,9 +41,14 @@ export interface VideoBuildMarker {
 
 const BUCKET = "content-factory";
 
-/** Primary Higgsfield model for post videos; HIGGSFIELD_LIVING_MODEL overrides. */
+/**
+ * Primary Higgsfield model for post videos; HIGGSFIELD_LIVING_MODEL overrides.
+ * DoP Lite since 2026-09-29's run (per Keenan, after Kling 2.5 Turbo Pro's
+ * ~$0.19/clip — $0.35 after Oct 1: "go back to using DOP lite and lets see
+ * if we can get away with that"). Kling: "kling-video/v2.5-turbo/pro/image-to-video".
+ */
 export const POST_VIDEO_MODEL =
-  process.env.HIGGSFIELD_LIVING_MODEL?.trim() || "kling-video/v2.5-turbo/pro/image-to-video";
+  process.env.HIGGSFIELD_LIVING_MODEL?.trim() || "higgsfield-ai/dop/lite";
 
 /** Clips submitted at once — Higgsfield silently drops jobs past ~4 per account. */
 export const POST_VIDEO_WAVE = Math.max(1, Number(process.env.HIGGSFIELD_MAX_CONCURRENT) || 4);
