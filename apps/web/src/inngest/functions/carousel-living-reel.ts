@@ -414,6 +414,69 @@ export const livingReelQueueFn = inngest.createFunction(
       }
       return out;
     });
-    return { queued: requests.map((r) => r.postId), lanes: laneRuns, videos: videoRuns, replaced };
+    // Higgsfield probe (2026-09-28, DoP Lite jobs never finishing):
+    // `hf-probe/<name>.json` = { statusIds?: string[], submit?: { model, imageUrl, host? } }
+    // → raw responses from BOTH API hosts at `hf-probe-results/<name>.json`.
+    const probes = await step.run("claim-hf-probes", async () => {
+      const { supabase } = await import("@/lib/supabase.server");
+      const { data } = await supabase.storage.from("content-factory").list("hf-probe", { limit: 5 });
+      const done: string[] = [];
+      const key = process.env.HIGGSFIELD_API_KEY ?? "";
+      const secret = process.env.HIGGSFIELD_API_SECRET ?? "";
+      const headerSets: Record<string, Record<string, string>> = {
+        legacy: { "hf-api-key": key, "hf-secret": secret },
+        v2: { Authorization: `Key ${key}:${secret}` },
+      };
+      const call = async (url: string, headers: Record<string, string>, body?: unknown) => {
+        try {
+          const r = await fetch(url, {
+            method: body ? "POST" : "GET",
+            headers: { ...headers, ...(body ? { "Content-Type": "application/json" } : {}) },
+            body: body ? JSON.stringify(body) : undefined,
+            signal: AbortSignal.timeout(30_000),
+          });
+          return { status: r.status, body: (await r.text()).slice(0, 1500) };
+        } catch (err) {
+          return { error: err instanceof Error ? err.message : String(err) };
+        }
+      };
+      for (const f of (data ?? []).filter((x) => x.name.endsWith(".json"))) {
+        const path = `hf-probe/${f.name}`;
+        const dl = await supabase.storage.from("content-factory").download(path);
+        const { error } = await supabase.storage.from("content-factory").remove([path]);
+        if (error || !dl.data) continue;
+        const req = JSON.parse(await dl.data.text()) as {
+          statusIds?: string[];
+          submit?: { model: string; imageUrl: string; body?: Record<string, unknown> };
+        };
+        const out: Record<string, unknown> = { at: new Date().toISOString() };
+        for (const id of req.statusIds ?? []) {
+          for (const host of ["https://platform.higgsfield.ai", "https://api.higgsfield.ai"]) {
+            for (const [hname, h] of Object.entries(headerSets)) {
+              out[`status ${id} @ ${host} (${hname})`] = await call(`${host}/requests/${id}/status`, h);
+            }
+          }
+        }
+        if (req.submit) {
+          const body = req.submit.body ?? {
+            prompt: "The photo comes to life with subtle cinematic ambient motion. Camera: very slow steady push-in.",
+            image_url: req.submit.imageUrl,
+            duration: 5,
+          };
+          for (const host of ["https://platform.higgsfield.ai", "https://api.higgsfield.ai"]) {
+            out[`submit ${req.submit.model} @ ${host} (v2 auth)`] = await call(`${host}/${req.submit.model}`, headerSets.v2, body);
+          }
+        }
+        await supabase.storage
+          .from("content-factory")
+          .upload(`hf-probe-results/${f.name}`, Buffer.from(JSON.stringify(out, null, 1)), {
+            contentType: "application/json",
+            upsert: true,
+          });
+        done.push(f.name);
+      }
+      return done;
+    });
+    return { queued: requests.map((r) => r.postId), lanes: laneRuns, videos: videoRuns, replaced, probes };
   }
 );
