@@ -192,7 +192,9 @@ export const carouselDailyCronFn = inngest.createFunction(
       // Generation trigger (cron fan-out + admin generate actions).
       { event: "content-factory/daily.generate" },
     ],
-    retries: 1,
+    // 2 (2026-09-28): a lane lost to one crashed instance (OOM from a
+    // neighbouring job) gets a second retry; finished steps are memoized.
+    retries: 2,
   },
   async ({ event, step, logger }) => {
     // ── CRON runs only DISPATCH: fan out this hour's two lanes ─────

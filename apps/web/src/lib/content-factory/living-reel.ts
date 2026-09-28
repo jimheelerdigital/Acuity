@@ -25,8 +25,6 @@ const H = 1920;
 export const LIVING_CLIP_SEC = 5;
 const COVER_SEC = 3.5;
 const CTA_SEC = 3;
-const XFADE_SEC = 0.6;
-const TEXT_FADE_SEC = 0.3;
 
 function ffmpegPath(): string | null {
   try {
@@ -237,6 +235,13 @@ function withTempDir<T>(fn: (dir: string) => Promise<T>): Promise<T> {
 }
 
 const SEGMENT_ENCODE = ["-c:v", "libx264", "-preset", "veryfast", "-crf", "18", "-pix_fmt", "yuv420p", "-r", "30"];
+/** Each segment dips to/from black over this long, so segments simply concatenate. */
+const DIP_SEC = 0.3;
+
+/** Fade in (unless first) and out, as a filter-chain suffix for a d-second segment. */
+function dipFilters(d: number, first: boolean): string {
+  return `${first ? "" : `fade=t=in:st=0:d=${DIP_SEC},`}fade=t=out:st=${(d - DIP_SEC).toFixed(2)}:d=${DIP_SEC}`;
+}
 
 /**
  * Render ONE slide to its own 1080x1920 30fps segment of exactly
@@ -245,9 +250,11 @@ const SEGMENT_ENCODE = ["-c:v", "libx264", "-preset", "veryfast", "-crf", "18", 
  * crossfade chain and looped music together — stalled at ~2 fps in
  * production and blew the 300s step cap. A segment takes seconds.
  *
- * live: the clip slowed to fill the slot, the text layer on top fading in
- * after the incoming transition (not on the first slide) and out before
- * the next. still: a slow 6% push-in on the finished slide.
+ * live: the clip slowed to fill the slot, the text layer on top. still: a
+ * slow 6% push-in on the finished slide. Every segment dips from and to
+ * black at its edges (2026-09-28): segments then join by plain
+ * concatenation — the xfade crossfade chain failed on Vercel's ffmpeg
+ * build ("inputs needs to be a constant frame rate") even with fps=30.
  */
 export async function renderSlideSegment(slide: PostVideoSlide, opts: { first: boolean; clipSeconds?: number }): Promise<Buffer> {
   const clipSec = opts.clipSeconds ?? LIVING_CLIP_SEC;
@@ -259,7 +266,6 @@ export async function renderSlideSegment(slide: PostVideoSlide, opts: { first: b
       const layerPath = path.join(dir, "layer.png");
       fs.writeFileSync(clipPath, slide.clip);
       fs.writeFileSync(layerPath, slide.layer);
-      const fadeIn = opts.first ? "" : `fade=t=in:st=${XFADE_SEC}:d=${TEXT_FADE_SEC}:alpha=1,`;
       await runFfmpeg([
         "-i", clipPath,
         "-loop", "1", "-t", String(d), "-i", layerPath,
@@ -267,8 +273,8 @@ export async function renderSlideSegment(slide: PostVideoSlide, opts: { first: b
         [
           // tpad holds the last frame if the model returned a shorter clip.
           `[0:v]setpts=${(d / clipSec).toFixed(3)}*PTS,scale=${W}:${H}:force_original_aspect_ratio=increase,crop=${W}:${H},fps=30,setsar=1,tpad=stop_mode=clone:stop_duration=${d},trim=0:${d},setpts=PTS-STARTPTS[bg]`,
-          `[1:v]format=rgba,fps=30,${fadeIn}fade=t=out:st=${(d - XFADE_SEC - TEXT_FADE_SEC).toFixed(2)}:d=${TEXT_FADE_SEC}:alpha=1[l]`,
-          `[bg][l]overlay=0:0:shortest=1,format=yuv420p[v]`,
+          `[1:v]format=rgba,fps=30[l]`,
+          `[bg][l]overlay=0:0:shortest=1,format=yuv420p,${dipFilters(d, opts.first)}[v]`,
         ].join(";"),
         "-map", "[v]", "-t", String(d), ...SEGMENT_ENCODE, out,
       ]);
@@ -281,7 +287,7 @@ export async function renderSlideSegment(slide: PostVideoSlide, opts: { first: b
       await runFfmpeg([
         "-i", stillPath,
         "-vf",
-        `scale=${W * 2}:${H * 2}:force_original_aspect_ratio=increase,crop=${W * 2}:${H * 2},zoompan=z='1+0.06*on/${frames}':x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':d=${frames}:s=${W}x${H}:fps=30,setsar=1,format=yuv420p`,
+        `scale=${W * 2}:${H * 2}:force_original_aspect_ratio=increase,crop=${W * 2}:${H * 2},zoompan=z='1+0.06*on/${frames}':x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':d=${frames}:s=${W}x${H}:fps=30,setsar=1,format=yuv420p,${dipFilters(d, opts.first)}`,
         "-t", String(d), ...SEGMENT_ENCODE, out,
       ]);
     }
@@ -290,11 +296,10 @@ export async function renderSlideSegment(slide: PostVideoSlide, opts: { first: b
 }
 
 /**
- * Join rendered segments into the post video: crossfades between animated
- * slides, a dip to black wherever a still (words in the photo) is
- * involved so two slides' text never stacks, the brand CTA end card, then
- * the music muxed in a SEPARATE pass (a looped audio input inside the
- * crossfade graph is what stalled ffmpeg).
+ * Join rendered segments into the post video: the segments (each already
+ * dipping to/from black) plus the brand CTA end card, concatenated with a
+ * stream copy — no filter graph — then the music muxed in a SEPARATE pass
+ * (a looped audio input inside one big graph is what stalled ffmpeg).
  */
 export async function joinPostVideo(opts: {
   segments: { buf: Buffer; seconds: number; still: boolean }[];
@@ -309,43 +314,22 @@ export async function joinPostVideo(opts: {
     const ctaSeg = path.join(dir, "cta.mp4");
     await runFfmpeg([
       "-loop", "1", "-t", String(CTA_SEC), "-i", ctaImg,
-      "-vf", `scale=${W}:${H}:force_original_aspect_ratio=increase,crop=${W}:${H},fps=30,setsar=1,format=yuv420p`,
+      "-vf", `scale=${W}:${H}:force_original_aspect_ratio=increase,crop=${W}:${H},fps=30,setsar=1,format=yuv420p,fade=t=in:st=0:d=${DIP_SEC}`,
       "-t", String(CTA_SEC), ...SEGMENT_ENCODE, ctaSeg,
     ]);
-    const inputs: string[] = [];
+    const list: string[] = [];
     segs.forEach((s, i) => {
       const p = path.join(dir, `seg-${i}.mp4`);
       fs.writeFileSync(p, s.buf);
-      inputs.push("-i", p);
+      list.push(`file '${p}'`);
     });
-    inputs.push("-i", ctaSeg);
+    list.push(`file '${ctaSeg}'`);
+    const listPath = path.join(dir, "list.txt");
+    fs.writeFileSync(listPath, list.join("\n"));
+    const t = segs.reduce((a, s) => a + s.seconds, 0) + CTA_SEC;
 
-    const all = [...segs.map((s) => s.seconds), CTA_SEC];
-    // fps=30 in the graph marks every input constant-frame-rate — the
-    // Linux ffmpeg build on Vercel refuses xfade otherwise ("inputs needs
-    // to be a constant frame rate"), even for -r 30 encoded segments.
-    const f: string[] = all.map(
-      (_, i) => `[${i}:v]fps=30,format=yuv420p,setsar=1,settb=AVTB,setpts=PTS-STARTPTS[s${i}]`
-    );
-    let prev = "s0";
-    let t = all[0];
-    for (let i = 1; i < all.length; i++) {
-      const out = i === all.length - 1 ? "vout" : `x${i}`;
-      const stillInvolved = segs[i - 1]?.still || segs[i]?.still;
-      f.push(
-        `[${prev}][s${i}]xfade=transition=${stillInvolved ? "fadeblack" : "fade"}:duration=${XFADE_SEC}:offset=${(t - XFADE_SEC).toFixed(2)}[${out}]`
-      );
-      t = t - XFADE_SEC + all[i];
-      prev = out;
-    }
     const silent = path.join(dir, "silent.mp4");
-    await runFfmpeg([
-      ...inputs,
-      "-filter_complex", f.join(";"),
-      "-map", `[${all.length === 1 ? "s0" : "vout"}]`,
-      "-c:v", "libx264", "-preset", "veryfast", "-crf", "20", "-pix_fmt", "yuv420p",
-      "-t", t.toFixed(2), silent,
-    ]);
+    await runFfmpeg(["-f", "concat", "-safe", "0", "-i", listPath, "-c", "copy", silent]);
 
     const music = path.join(dir, "music.audio");
     await download(opts.musicUrl, music);
