@@ -2048,8 +2048,9 @@ async function getFunnelCompare(
     select: { enabled: true, updatedAt: true },
   }).catch(() => null);
   const flag = { exists: !!flagRow, enabled: flagRow?.enabled ?? false, updatedAt: flagRow?.updatedAt ?? null };
-  // Default: split visitors only while the split is on, everyone otherwise.
-  const splitOnly = splitOnlyParam ? splitOnlyParam === "on" : flag.enabled;
+  // Default: every real visitor (2026-09-28, per Keenan: the split-only
+  // default hid all 5 paid subscribers). "Split visitors only" is opt-in.
+  const splitOnly = splitOnlyParam === "on";
 
   const fetched = await prisma.onboardingEvent.findMany({
     where: {
@@ -2060,8 +2061,24 @@ async function getFunnelCompare(
       ...(showBots ? {} : { isBot: false }),
     },
     take: 100000,
-    select: { sessionToken: true, event: true, value: true, browser: true, flowVersion: true },
+    select: { sessionToken: true, event: true, value: true, browser: true, flowVersion: true, userId: true },
   });
+
+  // One person = one session (2026-09-28): a Stripe return or a reload can
+  // start a new session token for the same signed-in buyer, which counted an
+  // extra "Landed" and left her trial on a different session than her funnel.
+  // Sessions that share a userId within a funnel are merged into the first.
+  const canonical = new Map<string, string>();
+  {
+    const firstTokenForUser = new Map<string, string>();
+    for (const e of fetched) {
+      if (!e.userId) continue;
+      const key = `${e.flowVersion}:${e.userId}`;
+      const first = firstTokenForUser.get(key);
+      if (!first) firstTokenForUser.set(key, e.sessionToken!);
+      else if (first !== e.sessionToken) canonical.set(`${e.flowVersion}:${e.sessionToken}`, first);
+    }
+  }
 
   // Group per funnel + session. Renewals are renamed so they never count.
   type Sess = { names: Set<string>; inApp: boolean; acted: boolean; arm: string | null };
@@ -2070,7 +2087,7 @@ async function getFunnelCompare(
     const flow = e.flowVersion as CompareFlow;
     const m = byFlow.get(flow);
     if (!m) continue;
-    const token = e.sessionToken!;
+    const token = canonical.get(`${flow}:${e.sessionToken}`) ?? e.sessionToken!;
     let s = m.get(token);
     if (!s) { s = { names: new Set(), inApp: false, acted: false, arm: null }; m.set(token, s); }
     const name = e.event === "funnel_payment_completed" && e.value?.endsWith(":renewal") ? "funnel_payment_renewal" : e.event;
@@ -2144,11 +2161,46 @@ async function getFunnelCompare(
     });
   };
 
+  // Paid subscribers, straight from User (2026-09-28, per Keenan: "we have 5
+  // paid subs and it's showing none"). Independent of every funnel filter:
+  // anyone who started a Stripe subscription in the range, internal accounts
+  // excluded, attributed to the funnel their events came from.
+  const { isInternalEmail } = await import("@/lib/internal-traffic");
+  const subUsers = (await prisma.user.findMany({
+    where: { stripeSubscriptionId: { not: null }, isAdmin: false, createdAt: { gte: start, lte: end } },
+    select: { id: true, email: true, createdAt: true, subscriptionStatus: true },
+    orderBy: { createdAt: "desc" },
+  })).filter((u: { email: string | null }) => !isInternalEmail(u.email));
+  const subEvents = subUsers.length
+    ? await prisma.onboardingEvent.findMany({
+        where: { userId: { in: subUsers.map((u: { id: string }) => u.id) }, flowVersion: { not: null } },
+        select: { userId: true, flowVersion: true, event: true, value: true, utmSource: true, utmCampaign: true },
+        orderBy: { createdAt: "asc" },
+      })
+    : [];
+  const paid = subUsers.map((u: { id: string; email: string | null; createdAt: Date; subscriptionStatus: string }) => {
+    const ev = subEvents.filter((e: { userId: string | null }) => e.userId === u.id);
+    const flow = ev.find((e: { flowVersion: string | null }) => e.flowVersion && e.flowVersion !== "")?.flowVersion ?? null;
+    const payVal = ev.find((e: { event: string }) => e.event === "funnel_payment_completed")?.value ?? "";
+    const plan = /year|annual/i.test(payVal) ? "yearly" : /month/i.test(payVal) ? "monthly" : null;
+    const src = ev.find((e: { utmSource: string | null }) => e.utmSource);
+    const email = u.email ?? "";
+    return {
+      date: u.createdAt.toISOString(),
+      email: email.replace(/^(.{3}).*(@.*)$/, "$1…$2"),
+      flow,
+      plan,
+      status: u.subscriptionStatus,
+      source: src ? `${src.utmSource}${src.utmCampaign ? ` · ${src.utmCampaign}` : ""}` : "direct",
+    };
+  });
+
   return {
     flag,
     splitOnly,
     traffic,
     targetPerArm: 350,
+    paid,
     funnels,
     tests: { ripple: pairTests("v8", "v9-test"), bwk: pairTests("v8-bwk", "v9-test-bwk") },
   };

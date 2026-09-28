@@ -37,6 +37,15 @@ const H: React.CSSProperties = { fontSize: 11, fontWeight: 700, textTransform: "
 // from an earlier step rather than following the row above.
 function FunnelBars({ steps, compact }: { steps: any[]; compact?: boolean }) {
   const maxCount = Math.max(1, ...steps.map((s: any) => s.count));
+  // The step that loses the most people (largest absolute drop from the step
+  // before it, main path only) gets flagged: that's where to look first.
+  let dropIdx = -1;
+  let dropN = 0;
+  steps.forEach((s: any, i: number) => {
+    if (i === 0 || s.outcome || steps[i - 1].outcome) return;
+    const lost = steps[i - 1].count - s.count;
+    if (lost > dropN) { dropN = lost; dropIdx = i; }
+  });
   const labelW = compact ? 104 : steps.some((s: any) => s.href) ? 190 : 132;
   return (
     <div>
@@ -62,7 +71,7 @@ function FunnelBars({ steps, compact }: { steps: any[]; compact?: boolean }) {
                 <span style={{ color: "var(--acuity-text)", fontSize: 11, fontWeight: 600 }}>{s.count}</span>
               </div>
             </div>
-            <span style={{ width: 44, textAlign: "right", fontSize: 11, color: "rgba(255,255,255,0.45)", fontVariantNumeric: "tabular-nums" }}>{i > 0 ? `${s.stepConversion}%` : ""}</span>
+            <span style={{ width: 44, textAlign: "right", fontSize: 11, color: i === dropIdx ? "var(--acuity-bad)" : "rgba(255,255,255,0.45)", fontWeight: i === dropIdx ? 700 : 400, fontVariantNumeric: "tabular-nums" }} title={i === dropIdx ? `Biggest drop: ${dropN} people lost here` : undefined}>{i > 0 ? `${s.stepConversion}%` : ""}{i === dropIdx ? " \u25bc" : ""}</span>
             <span style={{ width: 40, textAlign: "right", fontSize: 10, color: "rgba(255,255,255,0.25)", fontVariantNumeric: "tabular-nums" }}>{i > 0 ? `${s.overallConversion}%` : ""}</span>
           </div>
         );
@@ -169,6 +178,114 @@ const COLUMN_LABEL: Record<keyof typeof FUNNELS, { title: string; arm: string }>
   testbwk: { title: "BWK", arm: "Test" },
 };
 
+const FUNNEL_COLOR: Record<keyof typeof FUNNELS, string> = {
+  ripple: "#f59f7c",
+  test: "#8f7cf5",
+  bwk: "#5fb3d9",
+  testbwk: "#6fd3a1",
+};
+const FLOW_TO_KEY: Record<string, keyof typeof FUNNELS> = { v8: "ripple", "v9-test": "test", "v8-bwk": "bwk", "v9-test-bwk": "testbwk" };
+
+/** Paid subscribers from the subscription records themselves, so this can
+ *  never read zero while real people are paying (2026-09-28). */
+function PaidCard({ paid }: { paid: any[] }) {
+  const byFunnel = (Object.keys(FUNNELS) as (keyof typeof FUNNELS)[]).map((fk) => ({ fk, n: paid.filter((p) => FLOW_TO_KEY[p.flow] === fk).length }));
+  const other = paid.filter((p) => !FLOW_TO_KEY[p.flow]).length;
+  const yearly = paid.filter((p) => p.plan === "yearly").length;
+  return (
+    <div style={{ background: "var(--acuity-card-bg)", borderRadius: 12, padding: 16 }}>
+      <div style={{ display: "flex", alignItems: "baseline", gap: 14, flexWrap: "wrap" }}>
+        <div>
+          <div style={H}>Paid subscribers (card on file)</div>
+          <div style={{ fontSize: 40, fontWeight: 800, lineHeight: 1, color: "var(--acuity-text)" }}>{paid.length}</div>
+          <div style={{ fontSize: 11, color: "rgba(255,255,255,0.4)", marginTop: 4 }}>{yearly} yearly · {paid.length - yearly} monthly or unknown</div>
+        </div>
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginLeft: "auto" }}>
+          {byFunnel.map(({ fk, n }) => (
+            <div key={fk} style={{ background: "var(--acuity-bg-inset)", borderRadius: 10, padding: "8px 12px", minWidth: 110, borderLeft: `3px solid ${FUNNEL_COLOR[fk]}` }}>
+              <div style={{ fontSize: 22, fontWeight: 800, color: "var(--acuity-text)" }}>{n}</div>
+              <div style={{ fontSize: 11, color: "rgba(255,255,255,0.5)" }}>{COLUMN_LABEL[fk].title} {COLUMN_LABEL[fk].arm.toLowerCase()} <span style={{ opacity: 0.6 }}>{FUNNELS[fk].path}</span></div>
+            </div>
+          ))}
+          {other > 0 && (
+            <div style={{ background: "var(--acuity-bg-inset)", borderRadius: 10, padding: "8px 12px", minWidth: 90 }}>
+              <div style={{ fontSize: 22, fontWeight: 800, color: "var(--acuity-text)" }}>{other}</div>
+              <div style={{ fontSize: 11, color: "rgba(255,255,255,0.5)" }}>Other / app</div>
+            </div>
+          )}
+        </div>
+      </div>
+      {paid.length > 0 && (
+        <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12, marginTop: 14 }}>
+          <tbody>
+            {paid.map((p, i) => {
+              const fk = FLOW_TO_KEY[p.flow];
+              return (
+                <tr key={i} style={{ borderTop: "1px solid rgba(255,255,255,0.05)" }}>
+                  <td style={{ padding: "6px 4px", color: "rgba(255,255,255,0.45)", whiteSpace: "nowrap" }}>{new Date(p.date).toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}</td>
+                  <td style={{ padding: "6px 4px", color: "var(--acuity-text-sec)" }}>{p.email}</td>
+                  <td style={{ padding: "6px 4px" }}>
+                    <span style={{ display: "inline-block", width: 8, height: 8, borderRadius: 4, background: fk ? FUNNEL_COLOR[fk] : "#888", marginRight: 6 }} />
+                    <span style={{ color: "var(--acuity-text-sec)" }}>{fk ? `${COLUMN_LABEL[fk].title} ${COLUMN_LABEL[fk].arm.toLowerCase()}` : p.flow ?? "unknown"}</span>
+                  </td>
+                  <td style={{ padding: "6px 4px", color: "var(--acuity-text-sec)" }}>{p.plan ?? "-"}</td>
+                  <td style={{ padding: "6px 4px", color: "rgba(255,255,255,0.4)" }}>{p.status}</td>
+                  <td style={{ padding: "6px 4px", color: "rgba(255,255,255,0.35)", maxWidth: 260, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.source}</td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      )}
+    </div>
+  );
+}
+
+/** Every milestone as a row of bars, one bar per funnel, sized by the share
+ *  of that funnel's visitors who got there. */
+function MilestoneChart({ funnels, cols }: { funnels: Record<string, any>; cols: (keyof typeof FUNNELS)[] }) {
+  const rows = funnels[cols[0]].milestones as any[];
+  return (
+    <div style={{ background: "var(--acuity-card-bg)", borderRadius: 12, padding: 16 }}>
+      <div style={{ display: "flex", gap: 14, flexWrap: "wrap", marginBottom: 14 }}>
+        {cols.map((fk) => (
+          <span key={fk} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: "var(--acuity-text-sec)" }}>
+            <span style={{ width: 12, height: 12, borderRadius: 3, background: FUNNEL_COLOR[fk] }} />
+            {COLUMN_LABEL[fk].title} {COLUMN_LABEL[fk].arm.toLowerCase()} <span style={{ opacity: 0.5 }}>{FUNNELS[fk].path} · {funnels[fk].sessions} visitors</span>
+          </span>
+        ))}
+      </div>
+      {rows.map((row, ri) => (
+        <div key={row.key} style={{ display: "grid", gridTemplateColumns: "150px 1fr", gap: 10, alignItems: "center", padding: "7px 0", borderTop: ri ? "1px solid rgba(255,255,255,0.05)" : "none" }}>
+          <div style={{ fontSize: 12, color: row.branch ? "rgba(255,255,255,0.45)" : "var(--acuity-text-sec)", fontWeight: row.key === "trial" ? 700 : 500 }}>
+            {row.branch ? "\u21b3 " : ""}{row.label}
+          </div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
+            {cols.map((fk) => {
+              const c = funnels[fk].milestones[ri];
+              const w = ri === 0 ? (funnels[fk].sessions > 0 ? 100 : 0) : c.pctOfLanded;
+              return (
+                <div key={fk} style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  <div style={{ flex: 1, height: 16, background: "rgba(255,255,255,0.04)", borderRadius: 4, overflow: "hidden" }}>
+                    <div style={{ width: `${Math.max(c.count > 0 ? 1.5 : 0, w)}%`, height: "100%", background: FUNNEL_COLOR[fk], opacity: row.branch ? 0.7 : 1, borderRadius: 4 }} />
+                  </div>
+                  <span style={{ width: 190, flexShrink: 0, whiteSpace: "nowrap", fontSize: 11, color: "var(--acuity-text-sec)", fontVariantNumeric: "tabular-nums", textAlign: "right" }}>
+                    <b style={{ color: "var(--acuity-text)" }}>{c.count}</b>
+                    {ri > 0 && <> · {c.pctOfLanded}%{c.pctOfPrev !== null && <span style={{ opacity: 0.5 }}> ({c.pctOfPrev}% prev)</span>}</>}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      ))}
+      <div style={{ fontSize: 11, color: "rgba(255,255,255,0.3)", marginTop: 10, lineHeight: 1.5 }}>
+        Bar = share of that funnel&rsquo;s visitors who reached the step. (prev) = share of the step before it; ↳ rows branch from the paywall or the gate. The gate is account creation on the normal funnels and the email step on the test funnels. One signed-in person counts once, even across a Stripe return.
+      </div>
+    </div>
+  );
+}
+
 function SplitStatus({ flag }: { flag: { exists: boolean; enabled: boolean; updatedAt: string | null } }) {
   const on = flag.enabled;
   const since = flag.updatedAt ? new Date(flag.updatedAt).toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }) : null;
@@ -211,7 +328,7 @@ function PairVerdicts({ tests, target, title }: { tests: any[]; target: number; 
 }
 
 function NativeSteps({ start, end, traffic, fk }: { start: string; end: string; traffic: Traffic; fk: keyof typeof FUNNELS }) {
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(true);
   const [data, setData] = useState<any>(null);
   const [error, setError] = useState<string | null>(null);
   useEffect(() => {
@@ -248,11 +365,6 @@ function CompareView({ start, end, traffic, mode }: { start: string; end: string
 
   const cols = COMPARE_COLUMNS[mode];
   const funnel = (fk: keyof typeof FUNNELS) => data.funnels.find((f: any) => f.flow === FUNNELS[fk].flow);
-  const rows = funnel(cols[0]).milestones as any[];
-  const twoWay = cols.length === 2;
-  const bothLanded = twoWay && cols.every((fk) => funnel(fk).sessions > 0);
-  const cellW = twoWay ? 150 : 118;
-  const TH: React.CSSProperties = { padding: "8px 10px", fontSize: 11, textAlign: "right", color: "var(--acuity-text-sec)", fontWeight: 600, borderBottom: "1px solid rgba(255,255,255,0.08)", minWidth: cellW };
   const splitOn = data.splitOnly;
 
   return (
@@ -266,57 +378,13 @@ function CompareView({ start, end, traffic, mode }: { start: string; end: string
         </label>
       </div>
 
-      <div style={{ background: "var(--acuity-card-bg)", borderRadius: 12, padding: 16, overflowX: "auto" }}>
-        <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
-          <thead>
-            <tr>
-              <th style={{ ...TH, textAlign: "left", minWidth: 150 }}>Milestone</th>
-              {cols.map((fk) => (
-                <th key={fk} style={TH}>
-                  <div style={{ color: "var(--acuity-text)", fontSize: 12 }}>{COLUMN_LABEL[fk].title} · {COLUMN_LABEL[fk].arm}</div>
-                  <div style={{ fontWeight: 500, opacity: 0.55 }}>{FUNNELS[fk].path}</div>
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((row, ri) => {
-              const cells = cols.map((fk) => funnel(fk).milestones[ri]);
-              // Better arm per row (2-way only, needs both arms to have visitors).
-              const best = bothLanded && ri > 0 && cells[0].pctOfLanded !== cells[1].pctOfLanded
-                ? (cells[0].pctOfLanded > cells[1].pctOfLanded ? 0 : 1) : -1;
-              return (
-                <tr key={row.key}>
-                  <td style={{ padding: "8px 10px", borderBottom: "1px solid rgba(255,255,255,0.04)", color: row.branch ? "rgba(255,255,255,0.45)" : "var(--acuity-text-sec)", whiteSpace: "nowrap" }}>
-                    {row.branch ? "\u21b3 " : ""}{row.label}
-                  </td>
-                  {cells.map((c: any, ci: number) => (
-                    <td key={ci} style={{
-                      padding: "8px 10px", textAlign: "right", borderBottom: "1px solid rgba(255,255,255,0.04)", fontVariantNumeric: "tabular-nums",
-                      background: best === ci ? "color-mix(in oklch, var(--acuity-good) 12%, transparent)" : undefined,
-                    }}>
-                      <span style={{ color: "var(--acuity-text)", fontWeight: 700 }}>{c.count}</span>
-                      {ri > 0 && (
-                        <>
-                          <span style={{ color: best === ci ? "var(--acuity-good)" : "var(--acuity-text-sec)", marginLeft: 6 }}>{c.pctOfLanded}%</span>
-                          <div style={{ fontSize: 10, color: "rgba(255,255,255,0.3)" }} title={`vs ${c.prevLabel}`}>{c.pctOfPrev}% of prev</div>
-                        </>
-                      )}
-                    </td>
-                  ))}
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-        <div style={{ fontSize: 11, color: "rgba(255,255,255,0.3)", marginTop: 10, lineHeight: 1.5 }}>
-          Big % = share of that funnel&rsquo;s visitors who reached the milestone. Small % = vs the step before it (↳ rows branch from the paywall or the gate). The gate is account creation on the normal funnels and the email step on the test funnels.
-          {" "}{cols.map((fk) => {
-            const f = funnel(fk);
-            return `${COLUMN_LABEL[fk].title} ${COLUMN_LABEL[fk].arm.toLowerCase()}: ${f.excludedByTraffic} hidden by the traffic filter${splitOn ? `, ${f.excludedBySplit} direct (non-split) visits hidden` : ""}.`;
-          }).join(" ")}
+      <PaidCard paid={data.paid ?? []} />
+      <MilestoneChart funnels={Object.fromEntries(cols.map((fk) => [fk, funnel(fk)]))} cols={cols} />
+      {splitOn && (
+        <div style={{ fontSize: 11, color: "rgba(255,255,255,0.35)" }}>
+          Split visitors only: {cols.map((fk) => `${COLUMN_LABEL[fk].title} ${COLUMN_LABEL[fk].arm.toLowerCase()} ${funnel(fk).excludedBySplit} hidden`).join(" · ")}
         </div>
-      </div>
+      )}
 
       {mode !== "cmp-bwk" && <PairVerdicts tests={data.tests.ripple} target={data.targetPerArm} title={mode === "cmp-all" ? "Ripple: normal vs test" : undefined} />}
       {mode !== "cmp-ripple" && <PairVerdicts tests={data.tests.bwk} target={data.targetPerArm} title={mode === "cmp-all" ? "BWK: normal vs test" : undefined} />}

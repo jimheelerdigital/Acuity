@@ -7,6 +7,32 @@
 
 ---
 
+## [2026-09-28] — Funnel dashboard shows real paid subscribers and every step visually
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** (see git log: "fix: Show real paid subscribers and a visual funnel in admin")
+
+### In plain English (for Keenan)
+The Funnel page now opens with a "Paid subscribers" card that reads the actual subscriptions, so it can never show zero when people are paying. Today it shows 5, split by funnel, with who, when, which plan and which ad. Below it, each milestone is a row of coloured bars, one per funnel. Every funnel also lists every screen, with the biggest drop-off flagged in red. It had shown no paid subscribers because it defaulted to counting only visitors who came through the split, which started on 09-27 at 23:09 UTC, after 4 of the 5 had already paid.
+
+### Technical changes (for Jimmy)
+- `apps/web/src/app/api/admin/metrics/route.ts` (`getFunnelCompare`):
+  - `splitOnly` now defaults to off (opt-in with `split=on`).
+  - Sessions sharing a userId within a flow are merged. A Stripe return or reload started a new session, which added a "Landed" and orphaned the trial.
+  - New `paid[]`: Users with `stripeSubscriptionId`, created in range, non-admin and non-internal, attributed to their funnel flowVersion, plan and source.
+- `apps/web/src/app/admin/tabs/FunnelAnalyticsTab.tsx`:
+  - New `PaidCard` and `MilestoneChart`, replacing the milestone table; per-funnel colours.
+  - `NativeSteps` (every screen) is open by default.
+  - `FunnelBars` flags the step losing the most people.
+
+### Manual steps needed
+None.
+
+### Notes
+- Verified locally against the prod DB with an admin session: 5 paid (Ripple normal 2 monthly, BWK normal 2 monthly, BWK test 1 yearly). Trial milestones per funnel match.
+- The test funnels are losing people at screen 1: /start-test 1 of 17, /start-test-bwk 5 of 25, against about 37% and 29% on the normal funnels. Event mapping checked; it's real.
+
 ## [2026-09-28] — Test funnel ends by sending them straight to the app
 
 **Requested by:** Keenan
