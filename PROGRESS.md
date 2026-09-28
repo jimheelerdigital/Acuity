@@ -436,6 +436,11 @@ Every social post is now written by Claude Opus 5.5. That covers the slide text,
   - 09-28 hardening (Keenan: "adjust this so we don't run into future issues"):
     - DoP Lite test jobs sat "queued" for 20+ min on the dev API. The video builder now gives the primary model 10 min per batch, then resubmits any undelivered or failed slides once on `POST_VIDEO_FALLBACK_MODEL` (the other of DoP Lite / Kling 2.5 Turbo Pro; env `HIGGSFIELD_FALLBACK_MODEL`) and waits up to 12 min.
     - The daily health check (14:00 UTC, 2h before the first IG/FB slot) re-runs lanes that produced no post and rebuilds video-lane posts with a failed or animation-less video. It emails only when it had to fix something.
+  - 09-28 Higgsfield models:
+    - DoP Lite is dead on the dev API. Jobs are accepted and stay "queued" forever on both hosts and both auth styles (probe via `hf-probe/`), and DoP is absent from Higgsfield's current model list. It is not a credit issue: the dev API balance pays for Kling fine.
+    - Keenan: Kling 2.5 Turbo Standard is the backup.
+    - The primary is now the cheapest working model: Hailuo 2.3 Standard until Oct 1 ($0.0117/s promo, ~$0.07 per 6s clip, 768x1364), then Kling 2.5 Turbo Standard ($0.0231/s, ~$0.12 per 5s clip, 720p), with Hailuo as the backup after Oct 1.
+    - Both were verified with real test clips.
   - Local timings on this laptop are unreliable (it sleeps mid-run); measure CPU time instead.
 - Tested locally: `assemblePostVideo` on mixed live/still input (20.1s, 1080x1920, correct transitions). A text layer over the base matches the finished slide within JPEG noise. A real BWK packet for 2026-09-26 built with 63 files / 33 MB and correct download headers, and the email rendered.
 

@@ -41,27 +41,34 @@ export interface VideoBuildMarker {
 
 const BUCKET = "content-factory";
 
-/**
- * Primary Higgsfield model for post videos; HIGGSFIELD_LIVING_MODEL overrides.
- * DoP Lite since 2026-09-29's run (per Keenan, after Kling 2.5 Turbo Pro's
- * ~$0.19/clip — $0.35 after Oct 1: "go back to using DOP lite and lets see
- * if we can get away with that"). Kling: "kling-video/v2.5-turbo/pro/image-to-video".
- */
-export const POST_VIDEO_MODEL =
-  process.env.HIGGSFIELD_LIVING_MODEL?.trim() || "higgsfield-ai/dop/lite";
+const HAILUO_STD = "minimax/hailuo-2.3/standard/image-to-video";
+const KLING_STD = "kling-video/v2.5-turbo/standard/image-to-video";
+/** Hailuo's 75%-off promo ends here; after it, Kling 2.5 Standard is cheapest. */
+const HAILUO_PROMO_ENDS = Date.parse("2026-10-01T00:00:00Z");
+const hailuoIsCheapest = () => Date.now() < HAILUO_PROMO_ENDS;
 
 /**
- * Second model for clips the primary didn't deliver (2026-09-28: DoP Lite
- * jobs sat "queued" for 20+ minutes on the dev API). Unfinished or failed
- * slides are resubmitted here once, so a slow or broken model costs a few
- * minutes — never the whole night's animation. HIGGSFIELD_FALLBACK_MODEL
- * overrides; default is the other of DoP Lite / Kling 2.5 Turbo Pro.
+ * Post-video models (2026-09-28, per Keenan: "just use standard kling 2.5
+ * as the backup. whats the lowest model that higgsfield can run"). The
+ * cheapest working image-to-video model leads, the other backs it up:
+ * - until Oct 1: Hailuo 2.3 Standard ($0.0117/s promo, ~$0.07 per 6s clip,
+ *   768x1364) → Kling 2.5 Turbo Standard ($0.0231/s, ~$0.12 per 5s, 720p);
+ * - from Oct 1 (Hailuo back to $0.047/s): Kling 2.5 Standard → Hailuo.
+ * DoP Lite is dead on the dev API (jobs never leave "queued"; it's gone
+ * from Higgsfield's model list); Kling 2.5 Turbo Pro 1080p is ~$0.19→$0.35.
+ * HIGGSFIELD_LIVING_MODEL / HIGGSFIELD_FALLBACK_MODEL override either.
+ */
+export const POST_VIDEO_MODEL =
+  process.env.HIGGSFIELD_LIVING_MODEL?.trim() || (hailuoIsCheapest() ? HAILUO_STD : KLING_STD);
+
+/**
+ * Second model for clips the primary didn't deliver in time (failed
+ * submit, failed clip, or still queued): unfinished slides are
+ * resubmitted here once, so a slow or broken model costs a few minutes —
+ * never the whole night's animation.
  */
 export const POST_VIDEO_FALLBACK_MODEL =
-  process.env.HIGGSFIELD_FALLBACK_MODEL?.trim() ||
-  (POST_VIDEO_MODEL.startsWith("higgsfield-ai/dop")
-    ? "kling-video/v2.5-turbo/pro/image-to-video"
-    : "higgsfield-ai/dop/lite");
+  process.env.HIGGSFIELD_FALLBACK_MODEL?.trim() || (hailuoIsCheapest() ? KLING_STD : HAILUO_STD);
 
 /** Poll rounds (30s each) per model attempt: primary 10 min, fallback 12 min. */
 export const POST_VIDEO_ROUNDS = [20, 24];
