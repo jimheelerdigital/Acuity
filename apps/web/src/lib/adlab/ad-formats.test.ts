@@ -7,6 +7,7 @@ import {
   AD_SLOTS,
   PHOTO_FORMATS,
   videoTemplatesForWeek,
+  hookStylesForWeek,
   parseVideoAds,
   SAY_CATCH_FORMAT,
   buildAdImagePrompt,
@@ -125,5 +126,20 @@ describe("weekly video ads (2026-09-29)", () => {
     const prompt = buildAdImagePrompt("video-pattern_weeks", { headline: "e", description: "d", cta: "SIGN_UP", imageScene: "", video, videoUrl: "https://x/v.mp4" }, "women");
     expect(decodeAdCopy(prompt).video?.weeks).toHaveLength(3);
     expect(decodeAdCopy(prompt).videoUrl).toBe("https://x/v.mp4");
+  });
+});
+
+describe("opening hook styles (2026-09-29)", () => {
+  it("uses 3 different hook styles a week and rotates them", () => {
+    const a = hookStylesForWeek(new Date("2026-10-04"));
+    const b = hookStylesForWeek(new Date("2026-10-11"));
+    expect(new Set(a).size).toBe(3);
+    expect(a).not.toEqual(b);
+  });
+  it("falls back to a caption when a style's fields are missing", () => {
+    const raw = JSON.stringify({ videos: [
+      { template: "voice_to_list", hookStyle: "number", theme: "t", hypothesis: "h", hook: "things on my fridge", endHeadline: "e", openerScene: "fridge", primaryText: "p", description: "d", said: "sign the form", caught: ["a", "b", "c"] },
+    ] });
+    expect(parseVideoAds(raw, ["voice_to_list"])[0].script.hookStyle).toBe("caption");
   });
 });

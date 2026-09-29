@@ -7,6 +7,34 @@
 
 ---
 
+## [2026-09-29] — Video ads open with 4 attention-grabbing hook styles, as one cohesive story
+
+- **Requested by:** Keenan
+- **Committed by:** Claude Code
+- **Commit hash:** (see git log — "feat: Add opening hook styles and cohesive footage to video ads")
+
+### In plain English (for Keenan)
+Each video ad now grabs attention in the first second with one of four opening styles, and words are on screen from the very first frame:
+- phone notifications dropping in
+- a giant number stamping on
+- a "POV" line
+- a bold caption
+
+Each ad is also one story: the Higgsfield footage shows the moment, the hook is the thought in that moment, and the animation turns what they said about that exact moment into their list, habit or report. The footage stays behind the animation (blurred) instead of cutting to a flat colour.
+
+### Technical changes (for Jimmy)
+- apps/web/src/lib/adlab/ad-video.ts: `HOOK_STYLES` (caption, pov, number, notifications); `VideoScript.hookStyle` / `bigNumber` / `notifications`. Adds a punch-in zoom on the first 0.4s of footage, iOS-style notification banners, a stamped number with a shadow, and a POV chip. The first element is visible at frame 0. The section backdrop is the opener's last frame, blurred and tinted in the lane colour. Layers that overhang the canvas are cropped before compositing.
+- apps/web/src/lib/adlab/weekly-batch.ts: `hookStylesForWeek()` gives 3 styles a week, rotating. The video prompt now has the one-story/cohesion rules and per-style hook briefs, and the parser falls back to caption when a style's fields are missing. The Higgsfield opener prompt asks for motion from the very first frame.
+- ad-formats.test.ts: 2 new tests (15 passing).
+
+### Manual steps needed
+- [ ] After deploy: resync Inngest (`curl -X PUT https://goripple.io/api/inngest`) (Claude, done in-session if the deploy is green)
+- [ ] Hit Remake on both lanes for a batch with the new openers (Keenan)
+
+### Notes
+- The 4 finished examples emailed today used hand-written scripts plus Higgsfield app clips (Seedance 2.5). The weekly batch writes its own scripts and uses the API's image-to-video model.
+- "Two more lanes" was clarified as the opening hooks inside the video ads, so no new ad audiences were added.
+
 ## [2026-09-29] — Video ads open on Higgsfield footage and animate smoothly
 
 - **Requested by:** Keenan

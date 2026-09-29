@@ -81,6 +81,12 @@ export interface VideoScript {
   endHeadline: string;
   /** The real-looking moment the Higgsfield opener shows (no text, no faces). */
   openerScene?: string;
+  /** How the first seconds grab attention (see HOOK_STYLES). */
+  hookStyle?: "caption" | "pov" | "number" | "notifications";
+  /** number style: the giant number (e.g. "23", "4th"). */
+  bigNumber?: string;
+  /** notifications style: 2–3 banners that drop in over the footage. */
+  notifications?: { from: string; text: string }[];
   // voice_to_list
   said?: string;
   caught?: string[];
@@ -337,18 +343,66 @@ const centred = (b: { width: number }) => Math.round((W - b.width) / 2);
 // ─── Intro (Higgsfield opener or big hook) → section ─────────────────────
 
 /**
+ * Opening hook styles (2026-09-29, per Keenan: "come up with different
+ * opening hooks. the goal is CAPTURE ATTENTION IMMEDIATELY" + "it must be
+ * cohesive"). Every style has words on screen from frame 0 (no fade-in
+ * delay) and motion in the first half-second:
+ *  - caption:       the hook slams in over the footage (punch scale).
+ *  - pov:           a "POV:" chip + the line, native TikTok/Reels grammar.
+ *  - number:        a giant number stamps in, the rest of the line follows.
+ *  - notifications: phone notifications drop in one after another — the
+ *                   exact things the animation later turns into a list.
+ */
+export const HOOK_STYLES = ["caption", "pov", "number", "notifications"] as const;
+export type HookStyle = (typeof HOOK_STYLES)[number];
+
+/** Punch-in: the first 0.4s of footage starts zoomed and settles (motion at frame 0). */
+async function punchIn(frames: Buffer[]): Promise<Buffer[]> {
+  const n = Math.min(frames.length, 12);
+  const out = [...frames];
+  for (let i = 0; i < n; i++) {
+    const s = lerp(1.14, 1, easeOut(i / n));
+    const w = Math.round(W * s), h = Math.round(H * s);
+    out[i] = await sharp(frames[i]).resize(w, h).extract({ left: Math.round((w - W) / 2), top: Math.round((h - H) / 2), width: W, height: H }).jpeg({ quality: 92 }).toBuffer();
+  }
+  return out;
+}
+
+/** An iOS-style notification banner. */
+async function notificationCard(sender: string, body: string): Promise<Buffer> {
+  const w = W - 100;
+  const pad = 34;
+  const icon = 88;
+  const title = await txt(`${esc(sender)}  <span foreground="#6E6E73" font_desc="Poppins Medium 26">now</span>`, { weight: "Bold", size: 36, color: "#111111", width: w - icon - pad * 3 });
+  const msg = await txt(esc(body), { weight: "Medium", size: 36, color: "#1C1C1E", width: w - icon - pad * 3, spacing: 4 });
+  const h = Math.max(icon, title.height + 6 + msg.height) + pad * 2;
+  const iconSvg = svg(icon, icon, `<rect width="${icon}" height="${icon}" rx="${icon * 0.23}" fill="#34C759"/><path d="M${icon * 0.26} ${icon * 0.36}h${icon * 0.48}a6 6 0 0 1 6 6v${icon * 0.16}a6 6 0 0 1 -6 6h-${icon * 0.26}l-${icon * 0.12} ${icon * 0.1}v-${icon * 0.1}h-${icon * 0.1}a6 6 0 0 1 -6 -6v-${icon * 0.16}a6 6 0 0 1 6 -6z" fill="#FFFFFF"/>`);
+  return sharp({ create: { width: w, height: h, channels: 4, background: { r: 0, g: 0, b: 0, alpha: 0 } } })
+    .composite([
+      { input: roundedRect(w, h, 34, "#F4F4F6", 0.94), top: 0, left: 0 },
+      { input: iconSvg, top: pad, left: pad },
+      { input: title.buffer, top: pad, left: pad * 2 + icon },
+      { input: msg.buffer, top: pad + title.height + 6, left: pad * 2 + icon },
+    ])
+    .png()
+    .toBuffer();
+}
+
+/**
  * Opens the ad and lands the small hook at the top of the section.
- * With `openerFrames`: ~3s of footage with the hook as a white caption, then
- * the footage fades out while the caption glides up and turns into the
- * section's hook. Without: the big hook pops in on the plain background and
- * glides up the same way.
+ * With `openerFrames`: ~3s of footage under the chosen hook style, then the
+ * footage dissolves into its own blurred, tinted version (the backdrop for
+ * the rest of the ad — one continuous piece) while the hook glides up.
+ * Without: the big hook punches in on the plain background and glides up.
  */
 async function intro(
   tl: Timeline,
   p: Palette,
-  hook: string,
+  s: VideoScript,
   openerFrames: Buffer[] | null
 ): Promise<{ layers: Layer[]; bottom: number }> {
+  const hook = s.hook;
+  const style: HookStyle = openerFrames?.length ? (s.hookStyle ?? "caption") : "caption";
   const bigSize = 84;
   const smallSize = 54;
   const ratio = smallSize / bigSize;
@@ -359,60 +413,101 @@ async function intro(
   const smallLayer: Layer = { input: small.buffer, top: ZONE_TOP, left: centred(small) };
 
   let bigLayer: Layer;
-  let caption: Layer[] = [];
+  let overlay: Layer[] = [];
   let lastUnder: Buffer | undefined;
 
   if (openerFrames?.length) {
-    // White caption on a soft dark box, lower-middle, like a native caption.
+    const frames = await punchIn(openerFrames);
+    // The hook caption: white on a soft dark box, lower-middle.
     const white = await txt(esc(hook), { weight: "Bold", size: bigSize, color: "#FFFFFF", align: "centre", spacing: 4 });
     const boxW = Math.min(W - 80, white.width + 90);
     const boxH = white.height + 70;
-    const boxTop = Math.round(H * 0.56 - boxH / 2);
-    const box: Layer = { input: roundedRect(boxW, boxH, 36, "#000000", 0.5), top: boxTop, left: Math.round((W - boxW) / 2) };
+    const boxTop = Math.round(H * 0.6 - boxH / 2);
+    const box: Layer = { input: roundedRect(boxW, boxH, 36, "#000000", 0.55), top: boxTop, left: Math.round((W - boxW) / 2) };
     const cap: Layer = { input: white.buffer, top: boxTop + 35, left: centred(white) };
-    caption = [box, cap];
     bigLayer = { input: bigTheme.buffer, top: cap.top, left: centred(bigTheme) };
-    for (let i = 0; i < openerFrames.length; i++) {
-      const t = i / FPS;
-      const o = easeOut((t - 0.25) / 0.45);
-      const layers = o > 0 ? await Promise.all(caption.map((l) => entering(l, o, 30))) : [];
-      tl.push(layers, 1, 0, openerFrames[i]);
+    overlay = [box, cap];
+
+    // Style-specific extras that sit above the caption.
+    const extras: { layer: Layer; at: number; kind: "drop" | "stamp" }[] = [];
+    if (style === "pov") {
+      const chip = await txt("POV", { weight: "Bold", size: 50, color: p.ctaText, tracking: true, align: "centre", width: 300 });
+      const cw = chip.width + 70, ch = chip.height + 28;
+      const chipTop = boxTop - ch - 22;
+      const chipBg: Layer = { input: roundedRect(cw, ch, ch / 2, p.accent), top: chipTop, left: Math.round((W - cw) / 2) };
+      extras.push({ layer: chipBg, at: 0, kind: "stamp" }, { layer: { input: chip.buffer, top: chipTop + 14, left: centred(chip) }, at: 0, kind: "stamp" });
+    } else if (style === "number" && s.bigNumber) {
+      const num = await txt(esc(s.bigNumber), { weight: "Bold", size: 260, color: "#FFFFFF", align: "centre", width: W - 100 });
+      // Soft dark shadow so the number reads on busy footage.
+      const shade = await txt(esc(s.bigNumber), { weight: "Bold", size: 260, color: "#000000", align: "centre", width: W - 100 });
+      const pad = 40;
+      const shadow = await sharp(shade.buffer)
+        .extend({ top: pad, bottom: pad, left: pad, right: pad, background: { r: 0, g: 0, b: 0, alpha: 0 } })
+        .blur(16)
+        .png()
+        .toBuffer();
+      const numTop = boxTop - num.height - 10;
+      extras.push(
+        { layer: { input: await fade(shadow, 0.75), top: numTop - pad + 8, left: centred(num) - pad }, at: 0, kind: "stamp" },
+        { layer: { input: num.buffer, top: numTop, left: centred(num) }, at: 0, kind: "stamp" }
+      );
+    } else if (style === "notifications" && s.notifications?.length) {
+      let ny = ZONE_TOP + 20;
+      for (const [i, note] of s.notifications.slice(0, 3).entries()) {
+        const card = await notificationCard(note.from, note.text);
+        const d = await dims(card);
+        if (ny + d.h > boxTop - 24) break;
+        extras.push({ layer: { input: card, top: ny, left: Math.round((W - d.w) / 2) }, at: i * 0.45, kind: "drop" });
+        ny += d.h + 18;
+      }
     }
-    lastUnder = openerFrames[openerFrames.length - 1];
+
+    for (let i = 0; i < frames.length; i++) {
+      const t = i / FPS;
+      const layers: Layer[] = [];
+      for (const x of extras) {
+        // +0.35 head start: whatever lands first is already on screen at frame 0.
+        const k = (t - x.at) / 0.3 + (x.at === 0 ? 0.35 : 0);
+        if (k < 0) continue;
+        if (x.kind === "stamp") layers.push(await scaleAbout(x.layer, lerp(1.5, 1, easeOut(k)), easeOut(k * 2)));
+        else layers.push({ ...x.layer, input: await fade(x.layer.input, easeOut(k * 1.5)), top: Math.round(x.layer.top - (1 - easeBack(k)) * 120) });
+      }
+      // Caption: on screen from frame 0 with a punch (the notifications
+      // style lets the first banner lead, then the caption lands).
+      const capAt = style === "notifications" && extras.length ? extras.length * 0.45 : 0;
+      const k = (t - capAt) / 0.22 + (capAt === 0 ? 0.4 : 0);
+      if (k >= 0) for (const l of overlay) layers.push(await scaleAbout(l, lerp(1.18, 1, easeOut(k)), clamp01(k * 3)));
+      tl.push(layers, 1, 0, frames[i]);
+    }
+    overlay = [...extras.map((x) => x.layer), ...overlay];
+    lastUnder = frames[frames.length - 1];
   } else {
     bigLayer = { input: bigTheme.buffer, top: Math.round((H - bigTheme.height) / 2) - 40, left: centred(bigTheme) };
-    await tl.anim(0.45, async (t) => [await entering(bigLayer, easeOut(t))]);
+    await tl.anim(0.3, async (t) => [await scaleAbout(bigLayer, lerp(1.2, 1, easeOut(t)), clamp01(t * 3))]);
     tl.push([bigLayer], Math.round(1.3 * FPS), 0);
-    // Keep the intro frames out of the section's centring.
     tl.frames.forEach((f) => (f.weight = 0));
   }
 
-  // Glide: shrink + move the hook to the top; footage (if any) fades away;
-  // the caption box dissolves and the white caption cross-fades to theme ink.
+  // Glide: the footage dissolves into its blurred/tinted self (the section
+  // backdrop, drawn underneath by the encoder), the overlay fades, and the
+  // hook shrinks up into place in the theme ink.
   tl.sectionStart = tl.frames.length;
   const n = Math.round(0.6 * FPS);
   for (let i = 1; i <= n; i++) {
     const t = i / n;
     const e = easeInOut(t);
-    const s = lerp(1, ratio, e);
+    const sc = lerp(1, ratio, e);
     const top = Math.round(lerp(bigLayer.top, ZONE_TOP, e));
     const layers: Layer[] = [];
     if (lastUnder) {
-      // Footage fades to the page colour (drawn as a fading full-bleed layer).
       layers.push({ input: await fade(lastUnder, 1 - e), top: 0, left: 0, fixed: true });
-      const [box, cap] = caption;
-      const bs = await scaled(box.input, s);
-      const bd = await dims(bs);
-      layers.push({ input: await fade(bs, 1 - e), top: top - 35 * s, left: Math.round((W - bd.w) / 2) });
-      const cs = await scaled(cap.input, s);
-      const cd = await dims(cs);
-      layers.push({ input: await fade(cs, 1 - e), top, left: Math.round((W - cd.w) / 2) });
+      for (const l of overlay) layers.push({ ...l, input: await fade(l.input, 1 - Math.min(1, e * 1.6)) });
     }
-    const ts = await scaled(bigLayer.input, s);
+    const ts = await scaled(bigLayer.input, sc);
     const td = await dims(ts);
     layers.push({ input: lastUnder ? await fade(ts, e) : ts, top, left: Math.round((W - td.w) / 2) });
     layers.push({ ...brandLayer, input: await fade(brandLayer.input, e) });
-    tl.push(layers.map((l) => ({ ...l, top: Math.round(l.top) })), 1, e);
+    tl.push(layers, 1, e);
   }
   const layers = [smallLayer, brandLayer];
   tl.push(layers, 1, 1);
@@ -671,7 +766,9 @@ async function tWeeklyReport(tl: Timeline, p: Palette, s: VideoScript, top: Laye
     if (!m) return frac >= 1 ? v : "";
     return `${Math.round(Number(m[1]) * frac)}${frac >= 1 ? m[2] : ""}`;
   };
-  const sample = await txt("0", { weight: "Bold", size: 72, color: p.accent, width: tileW - 20, align: "centre" });
+  // Measure the tallest final value (a "2/5" slash runs deeper than "0").
+  const finals = await Promise.all(stats.map((st) => txt(esc(st.value), { weight: "Bold", size: 72, color: p.accent, width: tileW - 20, align: "centre" })));
+  const sample = finals.reduce((a, b) => (b.height > a.height ? b : a));
   const tileH = sample.height + Math.max(...labels.map((l) => l.height)) + 60;
   const tiles: Layer[] = stats.map((_, i) => ({ input: roundedRect(tileW, tileH, 26, p.card), top: y, left: SIDE + i * (tileW + gap) }));
   const tileLabels: Layer[] = labels.map((l, i) => ({ input: l.buffer, top: y + 28 + sample.height + 6, left: SIDE + i * (tileW + gap) + Math.round((tileW - l.width) / 2) }));
@@ -943,7 +1040,7 @@ export async function renderVideoAd(
     }
 
     const tl = new Timeline();
-    const { layers: top, bottom } = await intro(tl, p, script.hook, opener);
+    const { layers: top, bottom } = await intro(tl, p, script, opener);
     switch (script.template) {
       case "voice_to_list": await tVoiceToList(tl, p, script, top, bottom); break;
       case "habit_week": await tHabitWeek(tl, p, script, top, bottom); break;
@@ -984,10 +1081,34 @@ export async function renderVideoAd(
     );
 
     const bg = await sharp({ create: { width: W, height: H, channels: 3, background: p.bg } }).png().toBuffer();
+    // Cohesive backdrop (2026-09-29, per Keenan: "it must be cohesive"): once
+    // the opener ends, the same footage stays behind the animation — blurred
+    // and tinted in the lane colour — so it reads as one piece, not a clip
+    // stapled to a slideshow.
+    const backdrop = opener?.length
+      ? await sharp(opener[opener.length - 1])
+          .blur(28)
+          .composite([{ input: roundedRect(W, H, 0, p.bg, p.dark ? 0.84 : 0.86), top: 0, left: 0 }])
+          .jpeg({ quality: 92 })
+          .toBuffer()
+      : bg;
     let posterStory: Buffer | null = null;
+    // Layers may overhang the frame (a stamp scaling in from 1.5×, a banner
+    // dropping from above); sharp rejects those, so crop each to the canvas.
+    const onCanvas = async ({ input, top, left }: Layer) => {
+      const t = Math.round(top), l = Math.round(left);
+      const d = await dims(input);
+      if (t >= 0 && l >= 0 && t + d.h <= H && l + d.w <= W) return { input, top: t, left: l };
+      const x0 = Math.max(0, l), y0 = Math.max(0, t);
+      const x1 = Math.min(W, l + d.w), y1 = Math.min(H, t + d.h);
+      if (x1 - x0 < 1 || y1 - y0 < 1) return null;
+      const cropped = await sharp(input).extract({ left: x0 - l, top: y0 - t, width: x1 - x0, height: y1 - y0 }).png().toBuffer();
+      return { input: cropped, top: y0, left: x0 };
+    };
     const draw = async (f: Frame) => {
-      const base = f.under ? f.under : bg;
-      return sharp(base).composite(f.layers.map(({ input, top, left }) => ({ input, top: Math.round(top), left: Math.round(left) }))).jpeg({ quality: 93 }).toBuffer();
+      const base = f.under ? f.under : backdrop;
+      const layers = (await Promise.all(f.layers.map(onCanvas))).filter((x): x is { input: Buffer; top: number; left: number } => !!x);
+      return sharp(base).composite(layers).jpeg({ quality: 93 }).toBuffer();
     };
     await runFfmpeg(bin, args, async (stdin) => {
       const write = (b: Buffer) =>

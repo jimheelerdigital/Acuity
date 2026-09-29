@@ -27,7 +27,7 @@ import { AD_COPY_MODELS, callAdLabClaude, extractJson } from "@/lib/adlab/claude
 import { lastJsonText } from "@/lib/content-factory/claude-client";
 import { AD_CLAIM_GUARDRAIL, PRODUCT_CATEGORY, VOICE_PRINCIPLE, productTruth } from "@/lib/positioning";
 import { displayMonthly } from "@/lib/pricing";
-import { VIDEO_TEMPLATES, validateVideoScript, type VideoScript, type VideoTemplate } from "@/lib/adlab/ad-video";
+import { HOOK_STYLES, VIDEO_TEMPLATES, validateVideoScript, type HookStyle, type VideoScript, type VideoTemplate } from "@/lib/adlab/ad-video";
 import { SAFE_ZONE_RULES, SOURCE_SIZE, cutPlacements, renderAppProofPlacements, renderSayCatchPlacements, renderTextWallPlacements, renderWeeklyReportPlacements } from "@/lib/adlab/ad-render";
 
 // ─── Groups ───────────────────────────────────────────────────────────────
@@ -739,6 +739,19 @@ export function videoTemplatesForWeek(date = new Date()): VideoTemplate[] {
   return ["voice_to_list", a, b];
 }
 
+/** Three different opening-hook styles per week, rotating. */
+export function hookStylesForWeek(date = new Date()): HookStyle[] {
+  const week = Math.floor(date.getTime() / (7 * 86_400_000));
+  return [0, 1, 2].map((k) => HOOK_STYLES[(week + k) % HOOK_STYLES.length]);
+}
+
+const HOOK_STYLE_BRIEFS: Record<HookStyle, string> = {
+  caption: "CAPTION: the hook alone slams onto the footage. Write the line that makes her stop scrolling: a specific first-person confession or moment (\"I forgot the field trip form. Again.\", \"Snoozed the 5:30 alarm. 4th time.\").",
+  pov: "POV: a 'POV' chip sits above the hook, so the hook completes it in second person: a specific, recognisable moment (\"it's 7:45 and you're the only one who knows where the form is\", \"your 4th 'tomorrow' this week\"). Don't write 'POV' in the hook itself.",
+  number: "NUMBER: a giant number stamps in first, then the hook finishes the sentence. Fill bigNumber (≤4 chars, e.g. \"23\", \"4th\", \"0/5\") and write the hook as what follows it (\"things I remembered this week. Nobody else did.\").",
+  notifications: "NOTIFICATIONS: 2–3 phone notifications drop in over the footage, then the hook lands. Fill notifications (2–3 {from ≤14 chars, a person or app like 'Emma', 'Mom', 'Dentist', 'Coach Dave'; text ≤42 chars, casual, lowercase ok}) with the exact things the animation later turns into her list. Hook ≤36 chars.",
+};
+
 const VIDEO_TEMPLATE_BRIEFS: Record<VideoTemplate, string> = {
   voice_to_list:
     "VOICE → LIST. Their spoken sentence types out word by word in a recording card, then 'Ripple caught' items pop in and get ticked. Fields: said (≤150 chars, messy and specific, real errands/names/days, the way people actually talk), caught (exactly 3–4 lines ≤38 chars: tasks with the dates they said, plus at most one habit or repeat — only things in `said`).",
@@ -769,6 +782,9 @@ const SUBMIT_VIDEOS_TOOL = {
             hook: { type: "string" },
             endHeadline: { type: "string" },
             openerScene: { type: "string" },
+            hookStyle: { type: "string", enum: [...HOOK_STYLES] },
+            bigNumber: { type: "string" },
+            notifications: { type: "array", items: { type: "object", properties: { from: { type: "string" }, text: { type: "string" } }, required: ["from", "text"] } },
             primaryText: { type: "string" },
             description: { type: "string" },
             said: { type: "string" },
@@ -825,6 +841,14 @@ export function parseVideoAds(raw: string, templates: VideoTemplate[]): VideoAdD
       hook: clip(v.hook, 60) ?? "",
       endHeadline: clip(v.endHeadline, 48) ?? "",
       openerScene: clip(v.openerScene, 300),
+      hookStyle: (HOOK_STYLES as readonly string[]).includes(v.hookStyle as string) ? (v.hookStyle as HookStyle) : "caption",
+      bigNumber: clip(v.bigNumber, 5),
+      notifications: Array.isArray(v.notifications)
+        ? (v.notifications as { from?: unknown; text?: unknown }[])
+            .map((n) => ({ from: clip(n.from, 18) ?? "", text: clip(n.text, 60) ?? "" }))
+            .filter((n) => n.from && n.text)
+            .slice(0, 3)
+        : undefined,
       said: clip(v.said, 180),
       caught: Array.isArray(v.caught) ? (v.caught as unknown[]).map((x) => clip(x, 46) ?? "").filter(Boolean).slice(0, 4) : undefined,
       habit: clip(v.habit, 22),
@@ -852,6 +876,8 @@ export function parseVideoAds(raw: string, templates: VideoTemplate[]): VideoAdD
       total: typeof v.total === "number" ? Math.round(v.total) : undefined,
       insight: clip(v.insight, 90),
     };
+    if (script.hookStyle === "number" && !script.bigNumber) script.hookStyle = "caption";
+    if (script.hookStyle === "notifications" && (script.notifications?.length ?? 0) < 2) script.hookStyle = "caption";
     const problem = validateVideoScript(script);
     if (problem) {
       console.warn(`[adlab-weekly] dropped ${template} video: ${problem}`);
@@ -1029,14 +1055,23 @@ Call the submit_ads tool IMMEDIATELY. Do not write any analysis, plan, draft or 
   // Video scripts run in parallel with the two image halves; a failure
   // here only costs the week its videos, never the image batch.
   const videoTemplates = videoTemplatesForWeek();
+  const hookStyles = hookStylesForWeek();
   const videoPrompt = `Write ${videoTemplates.length} ANIMATED VIDEO ad scripts for this lane, one per template, in this order: ${videoTemplates.join(", ")}.
 Each video is a ~12–15s silent-readable animation (music underneath, no voiceover) that shows the viewer THEIR OWN WORDS turning into a to-do list, a tracked habit, a pattern or a weekly report. Nothing else is on screen, so the specifics carry the ad: real errands, names, days, excuses — the way this audience actually talks (use the Reddit themes and phrases). Every number is one person's believable week, never a claim about users.
 
-TEMPLATES:
-${videoTemplates.map((t) => `- ${t}: ${VIDEO_TEMPLATE_BRIEFS[t]}`).join("\n")}
+STRUCTURE — one continuous story, not a clip stapled to a slideshow:
+1. 0–3s: real-looking footage of ONE specific moment (openerScene) with the opening hook on screen from the very first frame.
+2. The footage stays behind, blurred, while the animation shows what they SAID about that exact moment turning into a list / habit / pattern / report.
+3. End card.
+COHESION (non-negotiable): the footage, the hook and the animation are the same moment and the same person. Every concrete thing in the footage shows up in the words (a permission slip on the counter → "Sign Emma's field trip form"; a snoozed 5:30 alarm → the gym day Ripple flags; a fridge full of sticky notes → the items being counted). The hook is their thought in that exact moment.
+ATTENTION (the whole goal of the first second): specific beats clever. Name a real moment, a number, a confession, or a thing they'll recognise from their own week. No slow build, no generic mood, no questions about feelings.
+
+TEMPLATES + OPENING HOOK STYLE (in this order):
+${videoTemplates.map((t, i) => `- ${t} with hookStyle "${hookStyles[i]}": ${VIDEO_TEMPLATE_BRIEFS[t]}\n    Hook style: ${HOOK_STYLE_BRIEFS[hookStyles[i]]}`).join("\n")}
 
 COMMON FIELDS (every video):
-- hook: ≤44 chars, the first thing on screen (thumb-stop). A specific situation or confession in first person ("I said I'd walk every day.", "The list in my head, out loud"). Never a feeling-state question, never age.
+- hook: ≤44 chars, on screen from frame 0 over the footage; follow the video's hook style. Never a feeling-state question, never age.
+- hookStyle: copy the style given for the template.
 - openerScene: ≤200 chars. The ad OPENS on ~3s of real-looking footage behind the hook (generated by a video model), then cuts to the animation. Describe that moment so it matches the hook: a specific everyday PLACE with real objects, hands, or a person seen from behind — never a face (e.g. "car in the school pickup line, permission slip and keys on the passenger seat, her hands let go of the wheel"; "gym bag by the apartment door at dawn, his hand reaches for it and stops"). One simple motion. No text, no screens with readable text, no logos.
 - endHeadline: ≤34 chars, end card + Meta headline, outcome-led and literal ("Say it. Ripple sorts it.", "See what keeps coming up.").
 - primaryText: ≤125 chars: hook/scene, then one literal line on what Ripple does. No price.
@@ -1355,7 +1390,7 @@ export async function submitVideoOpener(creativeId: string): Promise<{ submitted
       startImageUrl,
       model: POST_VIDEO_MODEL,
       duration: 5,
-      prompt: `Handheld phone footage, realistic and unpolished, slight natural camera sway. ${scene} One simple, natural motion. Faces never visible. No text appears.`,
+      prompt: `Handheld phone footage, realistic and unpolished, with motion from the very first frame and a quick handheld push-in. ${scene} One clear, natural action that starts immediately. Faces never visible. No text appears.`,
     });
     await saveAdCopy(creativeId, creative.generationPrompt, { ...copy, openerRequestId: requestId, openerModel: POST_VIDEO_MODEL });
     return { submitted: true };
