@@ -24,8 +24,14 @@ export const dynamic = "force-dynamic";
 export const maxDuration = 300;
 
 export async function POST(req: NextRequest) {
-  const guard = await requireAdmin();
-  if (!guard.ok) return guard.response;
+  // Auth: admin session OR `Authorization: Bearer ${CRON_SECRET}` (2026-09-29,
+  // same as ads/launch) — launch creates the ads paused; this turns them on.
+  const bearer = req.headers.get("authorization");
+  const cronSecret = process.env.CRON_SECRET;
+  if (!(cronSecret && bearer === `Bearer ${cronSecret}`)) {
+    const guard = await requireAdmin();
+    if (!guard.ok) return guard.response;
+  }
 
   const { experimentId } = await req.json();
 
