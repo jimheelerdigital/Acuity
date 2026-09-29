@@ -481,6 +481,7 @@ model User {
   onboardingEvents OnboardingEvent[]
   userAchievements UserAchievement[]
   consentRecords   ConsentRecord[]
+  mcpAccessTokens  McpAccessToken[]
 
   updatedAt                 DateTime  @default(now()) @updatedAt
   // v10 spec §9 Day-2 nudge. One per user, ever. Idempotency lives in a
@@ -3315,4 +3316,59 @@ model NicheMemo {
 
   @@unique([weekOf])
   @@index([createdAt(sort: Desc)])
+}
+
+
+/// Per-user, revocable access token for the Ripple MCP server (1.8,
+/// "bring your own AI"). The token authenticates an external MCP client
+/// (Claude Desktop, Cursor, ChatGPT, etc.) to the read-only tools at
+/// /api/mcp so the user can point their OWN assistant at their OWN journal.
+///
+/// Pro-gated at issue time AND re-checked on every MCP request (see
+/// lib/mcp-token.ts + api/mcp/route.ts) — a token minted while Pro that
+/// later lapses to FREE stops working without needing revocation.
+///
+/// SECURITY: only a SHA-256 hash of the plaintext token is stored. The
+/// plaintext is shown to the user exactly once, at creation, and never
+/// again — not by us, not in any API response, not in logs. Verify is a
+/// single indexed lookup by hash, so a DB read never yields a usable
+/// credential. The token itself carries 256 bits of CSPRNG entropy, so a
+/// fast hash (SHA-256) is appropriate here — unlike a password, there is
+/// nothing to brute-force.
+model McpAccessToken {
+  id     String @id @default(cuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  /// SHA-256 hex of the full plaintext token. @unique so verify is one
+  /// indexed lookup and two tokens can never collide.
+  tokenHash String @unique
+
+  /// Non-secret display prefix, e.g. "rpl_mcp_ab12". The secret entropy
+  /// lives in the withheld suffix, so this is safe to store + show and can
+  /// never reconstruct the token. Lets a user tell their tokens apart.
+  prefix String
+
+  /// Optional user-supplied label ("Claude Desktop", "work laptop").
+  name String?
+
+  createdAt DateTime @default(now())
+
+  /// Bumped (best-effort, coarse — see mcp-token.ts throttle) on a
+  /// successful verify so the user can see "last used 3m ago" and spot a
+  /// stale token to revoke.
+  lastUsedAt DateTime?
+
+  /// Set when the user revokes. A revoked token fails verify immediately
+  /// and permanently. We keep the row rather than deleting it so revoke is
+  /// auditable and "last used" history survives.
+  revokedAt DateTime?
+
+  /// Optional hard expiry. Null = revoke-only lifecycle (no auto-expiry).
+  /// Present now so future "90-day tokens" need no migration.
+  expiresAt DateTime?
+
+  // Verify path filters `revokedAt: null` for a user; list path scopes by
+  // user. Composite covers both.
+  @@index([userId, revokedAt])
 }
