@@ -49,6 +49,10 @@ interface GroupConfig {
   overlayValueProps: [string, string, string];
   /** Flat background color direction for typographic formats. */
   cardBackground: string;
+  /** Photo styles rotated across a batch, one per ad (2026-09-29). */
+  visualStyles: string[];
+  /** Background palettes rotated across the typographic formats. */
+  cardPalettes: string[];
 }
 
 // Product truth comes from lib/positioning.ts (2026-09-29, per Keenan: "AI
@@ -144,6 +148,26 @@ Show what she'll see and get done with Ripple, and the better, lighter life it p
       "A weekly report about you",
     ],
     cardBackground: "warm cream paper background with a subtle terracotta accent",
+    visualStyles: [
+      "Bright, airy natural-daylight lifestyle photography: white walls, soft greens, clean and candid, like a sunny weekday morning.",
+      "Authentic iPhone snapshot, UGC style: slightly imperfect framing, on-camera flash or window light, real everyday clutter, feels posted by a real mom, not a brand.",
+      "Overhead flat-lay shot straight down on a kitchen counter or table, crisp and organized, soft pastel colors, lots of real objects laid out.",
+      "Close-up of hands holding a phone in a real moment (car steering wheel at school pickup, grocery cart, desk), shallow depth of field, natural light.",
+      "Bold solid-color studio background (coral, mustard or teal), one real object in sharp focus, high-key product-ad lighting, punchy and modern.",
+      "Golden-hour outdoor photography: porch steps, driveway or a neighborhood walk, warm sun flare, relaxed and hopeful.",
+      "Cozy evening lamplight interior, muted warm tones (amber, cream, terracotta), quiet and intimate.",
+      "Clean minimal Scandinavian interior in soft morning light, neutral tones, calm and uncluttered.",
+      "Documentary black-and-white photography with a single bright color accent on the key object.",
+      "Editorial paper-cutout collage illustration with real paper textures and bold shapes, playful but grown-up.",
+    ],
+    cardPalettes: [
+      "warm cream paper background with a subtle terracotta accent",
+      "soft blush pink background with deep burgundy type",
+      "sage green background with off-white type",
+      "bright coral background with white type",
+      "pale sky blue background with navy type",
+      "mustard yellow background with charcoal type",
+    ],
   },
   men: {
     key: "men",
@@ -193,6 +217,26 @@ Show the mechanism: spoken debrief → tracked habits → visible pattern → ke
       "A weekly honest scoreboard",
     ],
     cardBackground: "near-black charcoal background with a single warm amber accent",
+    visualStyles: [
+      "Dark, moody cinematic photography: low-key light, deep shadows, desaturated with one warm accent.",
+      "Bright gym daylight sports photography: chalk dust in the air, sweat, high contrast, energetic.",
+      "Gritty city street at dawn, blue hour, wet pavement and first light, documentary feel.",
+      "Authentic phone snapshot, UGC style: a messy desk, a car interior or a gym bag by the door, imperfect framing, real.",
+      "Stark studio shot on a black background with an electric orange accent light, one object, bold and graphic.",
+      "Overhead flat-lay of everyday gear on concrete (phone, keys, watch, headphones, wallet), sharp and organized.",
+      "Outdoor adventure at sunrise: a trail, a ridge or a coastline, wide angle, cold air and effort.",
+      "Focused workspace in natural window light: laptop, coffee, a plan on paper, clean and serious.",
+      "Black-and-white documentary photography, grainy and honest, strong shadows.",
+      "Neon night city: rain, reflections, magenta and cyan light, cinematic.",
+    ],
+    cardPalettes: [
+      "near-black charcoal background with a single warm amber accent",
+      "bone white background with heavy black type",
+      "deep navy background with bright orange type",
+      "olive green background with cream type",
+      "concrete grey background with black type and one red accent",
+      "electric blue background with white type",
+    ],
   },
 };
 
@@ -230,6 +274,11 @@ export interface AdImageCopy {
   said?: string;
   /** What Ripple pulls out of `said`: tasks, habits, promises, patterns. */
   caught?: string[];
+  /** Visual variety (2026-09-29, per Keenan: "the photos all look the exact
+   *  same style"). One style per ad from the lane's pool; optional so older
+   *  creatives rebuild with the lane default. */
+  visualStyle?: string;
+  cardPalette?: string;
 }
 
 // The extra copy fields aren't DB columns, so they ride in the stored
@@ -237,7 +286,7 @@ export interface AdImageCopy {
 // anything reaches the image model; the regen path parses it back.
 const AD_COPY_TAG = "[[AD_COPY:";
 export function encodeAdCopy(c: AdImageCopy): string {
-  const extra = { solutionLine: c.solutionLine, benefits: c.benefits, said: c.said, caught: c.caught };
+  const extra = { solutionLine: c.solutionLine, benefits: c.benefits, said: c.said, caught: c.caught, visualStyle: c.visualStyle, cardPalette: c.cardPalette };
   return `\n${AD_COPY_TAG}${JSON.stringify(extra)}]]`;
 }
 export function decodeAdCopy(prompt: string | null | undefined): Partial<AdImageCopy> {
@@ -285,7 +334,7 @@ export const AD_FORMATS: Array<{ key: string; build: AdFormatBuilder; offered?: 
     // 1. Pain photo + hook + the fix — the scene is the pain moment
     key: "hook-overlay",
     build: (c, g) => `Direct-response social media ad, vertical 2:3 portrait.
-Background photograph: ${g.photoStyle} Scene — show THIS exact moment of the problem, happening, so a viewer recognizes their own life in it: ${c.imageScene} Composed with generous negative space and a subtle dark gradient behind the text areas for legibility.
+Background photograph: ${c.visualStyle ?? g.photoStyle} Scene — show THIS exact moment of the problem, happening, so a viewer recognizes their own life in it: ${c.imageScene} Composed with generous negative space and a subtle dark gradient behind the text areas for legibility.
 Text baked into the image:
 - Large bold headline across the upper third: "${c.headline}"
 - Medium-weight line in the lower third, above the button: "${c.solutionLine ?? c.description}"
@@ -297,7 +346,7 @@ ${EXACT_TEXT_RULES}`,
     key: "notes-app",
     build: (c, g) => {
       const b = benefitsFor(c, g);
-      return `Social media ad styled like a clean screenshot of a minimal phone notes app on a plain ${g.cardBackground}. Native, un-designed, screenshot-like feel — this intentionally does NOT look like a polished ad.
+      return `Social media ad styled like a clean screenshot of a minimal phone notes app on a plain ${c.cardPalette ?? g.cardBackground}. Native, un-designed, screenshot-like feel — this intentionally does NOT look like a polished ad.
 The note contains, top to bottom:
 - Note title in bold: "${c.headline}"
 - Three checklist lines, each with a small checkbox: "${b[0]}", "${b[1]}", "${b[2]}"
@@ -308,7 +357,7 @@ ${EXACT_TEXT_RULES}`;
   {
     // 3. Bold statement card — the pain big, the fix beneath it
     key: "statement-card",
-    build: (c, g) => `Typographic direct-response social ad, vertical 2:3 portrait, on a flat ${g.cardBackground}. No photograph — typography IS the creative.
+    build: (c, g) => `Typographic direct-response social ad, vertical 2:3 portrait, on a flat ${c.cardPalette ?? g.cardBackground}. No photograph — typography IS the creative.
 Text baked into the image:
 - Huge bold statement filling most of the frame: "${c.headline}"
 - Smaller supporting line beneath it: "${c.solutionLine ?? c.description}"
@@ -322,7 +371,7 @@ ${EXACT_TEXT_RULES}`,
     build: (c, g) => {
       const b = benefitsFor(c, g);
       return `Direct-response social media ad, vertical 2:3 portrait.
-Background photograph, heavily darkened/softened so text dominates: ${g.photoStyle} Scene — the moment of the problem: ${c.imageScene}
+Background photograph, heavily darkened/softened so text dominates: ${c.visualStyle ?? g.photoStyle} Scene — the moment of the problem: ${c.imageScene}
 Text baked into the image:
 - Bold headline at top: "${c.headline}"
 - Three lines below it, each preceded by a small checkmark: "${b[0]}", "${b[1]}", "${b[2]}"
@@ -336,7 +385,7 @@ ${EXACT_TEXT_RULES}`;
     key: "app-in-scene",
     offered: false,
     build: (c, g) => `Direct-response social media ad for a voice journaling app, vertical 2:3 portrait.
-Background photograph: ${g.photoStyle} A smartphone rests naturally in the scene (on a table or held, hands only), its screen showing an extremely minimal dark app interface: a large round record button and a soft audio waveform — no readable UI text on the phone screen.
+Background photograph: ${c.visualStyle ?? g.photoStyle} A smartphone rests naturally in the scene (on a table or held, hands only), its screen showing an extremely minimal dark app interface: a large round record button and a soft audio waveform — no readable UI text on the phone screen.
 Text baked into the image:
 - Large bold headline across the top: "${c.headline}"
 - Medium-weight line above the button: "${c.solutionLine ?? c.description}"
@@ -728,8 +777,13 @@ Call the submit_ads tool IMMEDIATELY. Do not write any analysis, plan, draft or 
   });
 
   const creativeIds: string[] = [];
+  const styleOffset = Math.floor(Math.random() * 1000);
   for (const [adIndex, ad] of ads.slice(0, 10).entries()) {
     const formatKey = ad.format ?? resolveAdFormat(adIndex).key;
+    // One visual style + palette per ad, rotated from a random start so
+    // neither the ads in a batch nor consecutive weeks share a look.
+    const visualStyle = g.visualStyles[(styleOffset + adIndex) % g.visualStyles.length];
+    const cardPalette = g.cardPalettes[(styleOffset + adIndex) % g.cardPalettes.length];
     // SIGN_UP everywhere (2026-09-24): ~$68/trial vs ~$123 for LEARN_MORE
     // in our own history. The prompt asks for it; this guarantees it.
     ad.cta = "SIGN_UP";
@@ -754,7 +808,7 @@ Call the submit_ads tool IMMEDIATELY. Do not write any analysis, plan, draft or 
         description: ad.description,
         cta: ad.cta,
         formatKey,
-        generationPrompt: buildAdImagePrompt(formatKey, ad, groupKey),
+        generationPrompt: buildAdImagePrompt(formatKey, { ...ad, visualStyle, cardPalette }, groupKey),
         complianceStatus: "pending",
         approved: false,
       },

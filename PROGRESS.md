@@ -7,6 +7,32 @@
 
 ---
 
+## [2026-09-29] — Each weekly ad gets its own visual style
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** (see git log: "feat: Give each weekly ad its own visual style")
+
+### In plain English (for Keenan)
+All 10 ads in a batch looked like the same photo shoot, because each lane had one fixed photo style. Each lane now has 10 distinct looks, rotated so every ad in a batch gets a different one, with a random starting point so weeks differ too:
+- **Ripple:** bright daylight, iPhone snapshot, kitchen flat-lay, hands with phone, bold color studio, golden hour, cozy lamplight, Scandinavian morning, black-and-white, paper collage.
+- **BWK:** dark cinematic, gym daylight, dawn city, phone snapshot, black-and-orange studio, gear flat-lay, sunrise trail, workspace, black-and-white, neon night.
+
+Text-card ads also rotate through 6 color palettes per lane.
+
+### Technical changes (for Jimmy)
+- `apps/web/src/lib/adlab/weekly-batch.ts`:
+  - `GroupConfig.visualStyles` and `cardPalettes`; `AdImageCopy.visualStyle` and `cardPalette`.
+  - Photo formats use `c.visualStyle ?? g.photoStyle`; card formats use `c.cardPalette ?? g.cardBackground`.
+  - Per-ad assignment uses a random offset in `createBatchForGroup`.
+  - `encodeAdCopy` persists both fields, so regenerated images keep their style.
+
+### Manual steps needed
+None. Takes effect on the next Remake or Sunday batch.
+
+### Notes
+- Keenan has asked for deep research into which app ads convert best, to rebuild the pipeline around it. That's next.
+
 ## [2026-09-29] — Ripple and BWK posting restored; Mythicals posts at 1pm / 3pm / 5pm Central
 
 **Requested by:** Keenan
