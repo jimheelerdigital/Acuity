@@ -22,7 +22,9 @@ const SHARED_GOALS = `WHAT A POST HAS TO DO, in order:
 2. Earn every swipe. Each slide pays off on its own and makes the next one feel necessary. A slide that restates the one before it loses the reader.
 3. Earn a save or a send. People save what they want to come back to and send what says something they couldn't. Specific beats general: a real detail, a number, a named moment, a line that is true in a way the reader hasn't seen put into words. Our saves are near zero across every lane, so this is the biggest gap to close.
 4. Earn a comment. Comments come from recognition ("this is me"), from a question the reader genuinely wants to answer, or from a take they want to agree or argue with. Posts that invite recognition get comments on our accounts; posts that only look pretty get views and silence.
-5. Build the account. Every post should sound like the same person wrote it, so a reader who likes one post follows for the next.`;
+5. Build the account. Every post should sound like the same person wrote it, so a reader who likes one post follows for the next.
+
+BEFORE YOU ANSWER, read every line the way the reader will: fast, on a phone, over a photo. Fix any word that doesn't belong or any sentence that doesn't make plain sense, and check that the cover makes complete sense by itself without the slides. One odd line is enough to lose the reader's trust in the whole post.`;
 
 export const COPY_OBJECTIVES: Record<CopyBrand, string> = {
   ripple: `YOU ARE WRITING FOR RIPPLE — an Instagram, Facebook and TikTok account for women roughly 40–50 who carry the mental load for everyone around them: work, kids, a partner, aging parents, the invisible list that never ends. They are capable, busy and reflective. They are not productivity hackers and not 22-year-old wellness fans. What they want most is to feel seen, and to feel lighter.

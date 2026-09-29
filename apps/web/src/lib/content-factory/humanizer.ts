@@ -124,6 +124,8 @@ export async function humanizePass<T>(opts: {
 
 Use judgment, not a find-and-replace. A string with a real tell (a pattern from the library below) gets the smallest rewrite that removes it. A string that is already clean comes back exactly as it was, byte for byte; rewriting good copy only flattens it. Several patterns together are a strong signal; one plain short sentence is usually fine.
 
+Also fix outright errors even when no pattern fires: a wrong or misplaced word ("nobody felt ready on the foreleg"), a typo, a sentence that doesn't make plain sense, or a title that reads as nonsense on its own. Replace the word or line with what the writer clearly meant, in the same voice and length.
+
 When you rewrite a string, keep it doing the same job:
 - Same meaning. Add no fact, claim, number, name or quote that was not there.
 - Same size, so it still fits its slide: roughly the same length and word count.
