@@ -30,12 +30,15 @@ export interface ChoiceOption {
   name: string;
   lore: string;
   scene: string;
+  /** Signature action for the video clip (2026-09-29: animations were "basically just zooming in"). */
+  motion: string;
 }
 
 export interface ChoiceTopic {
   slug: string;
   title: string;
   coverScene: string;
+  coverMotion: string;
   options: ChoiceOption[];
   endCard: string;
   captionQuestion: string;
@@ -88,8 +91,10 @@ YOUR JOB: write one "which would you choose?" post.
   - "name": 2-4 words in Title Case, legendary-sounding and easy to type in a comment ("The Storm Wyvern", "Kitsune of Nine Flames"). No numbers; the renderer adds them.
   - "lore": one line, 6-12 words, giving one vivid, specific reason to pick it: what it does, what it guards, what it costs, what it says about you. Never a pile of adjectives.
   - "scene": one or two sentences describing the image for this option: the creature or fighter as the clear hero, its colors, silhouette, pose, and a setting that matches it. The five scenes must look completely different from each other (different element, color palette, silhouette, environment and time of day), so the choice is visual as well as written.
+  - "motion": what it DOES in a five-second video clip made from that image: one signature, dramatic action with visible movement, written as a single sentence (the wyvern rears back, snaps its wings wide and roars as lightning flickers behind it; the rhino lowers its armored head, paws the ground and charges straight at the camera; the kirin turns its head toward the viewer and its glowing mane ripples as mist rolls past). Big, physical, true to the creature, and possible from the pose in the scene; the creature stays in frame.
 - The five options must be genuinely different kinds of choice (a loyal one, a wild one, a patient one, a terrifying one, a wise one), so that picking one says something about the person picking. All five should be tempting; none is the obvious joke or throwaway.
 - "coverScene": the cover image: an epic establishing shot that sets up the question without showing all five options (a lone rider on a ridge looking out at a stormy sky full of shapes, an armory hall, a vast lair entrance).
+- "coverMotion": one sentence of dramatic movement for the cover's five-second clip (storm clouds churn and a huge shadow sweeps across the ridge; torches flare as the great doors grind open).
 - "endCard": the closing line, 2-6 words, ALL-CAPS ready, asking for their pick. Vary it every post ("WHICH ONE IS YOURS?", "COMMENT YOUR NUMBER.", "CHOOSE WISELY.", "ONE CHANCE. PICK."); never reuse a recent end card.
 - "captionQuestion": one short caption question that gets a pick AND a reason in the comments ("Which one, and what would you name it?").
 - Creatures of legend from any culture are welcome, and so are original inventions. Keep them respectful and not gory. No emojis.
@@ -98,7 +103,8 @@ OUTPUT (JSON):
 {
   "title": "...",
   "coverScene": "...",
-  "options": [{ "name": "...", "lore": "...", "scene": "..." }],
+  "coverMotion": "...",
+  "options": [{ "name": "...", "lore": "...", "scene": "...", "motion": "..." }],
   "endCard": "...",
   "captionQuestion": "..."
 }
@@ -157,7 +163,12 @@ export async function generateChoiceTopic(opts: {
   };
   const options = (parsed.options ?? [])
     .filter((o) => typeof o?.name === "string" && typeof o?.lore === "string" && typeof o?.scene === "string")
-    .map((o) => ({ name: o.name!.trim(), lore: o.lore!.trim(), scene: o.scene!.trim() }))
+    .map((o) => ({
+      name: o.name!.trim(),
+      lore: o.lore!.trim(),
+      scene: o.scene!.trim(),
+      motion: typeof o.motion === "string" ? o.motion.trim() : "",
+    }))
     .slice(0, 5);
   const title = (parsed.title ?? "").trim();
   if (!title || options.length < 5 || !parsed.coverScene) {
@@ -204,6 +215,7 @@ export async function generateChoiceTopic(opts: {
     slug,
     title: gatedTitle,
     coverScene: parsed.coverScene.trim(),
+    coverMotion: typeof parsed.coverMotion === "string" ? parsed.coverMotion.trim() : "",
     options: gatedOptions,
     endCard,
     captionQuestion,
@@ -221,6 +233,15 @@ export function buildMythicImagePrompt(scene: string, kind: "cover" | "option"):
     "Shot like a prestige fantasy film: real weather, real light, tactile detail in scales, fur, feathers, armor and stone, believable anatomy, dramatic but natural lighting, rich color, tack-sharp focus on the subject.",
     "Not a cartoon, not anime, not a video-game render, not a painting or illustration. No text, letters, numbers, logos or watermarks anywhere in the image. Nothing gory.",
   ].join("\n");
+}
+
+/**
+ * The stored imagePrompt carries the clip's action on a "MOTION:" line so
+ * the post-video builder can animate the creature doing it (see
+ * living-reel.ts livingMotionPrompt, action mode).
+ */
+export function withMotion(imagePrompt: string, motion: string): string {
+  return motion ? `${imagePrompt}\nMOTION: ${motion}` : imagePrompt;
 }
 
 /** Hashtag caption used until the caption writer replaces it at publish time. */

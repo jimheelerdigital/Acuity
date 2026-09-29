@@ -716,7 +716,8 @@ export const carouselDailyCronFn = inngest.createFunction(
           overlay,
           `carousels/${dateStr}/${topic.slug}/slide-cover.jpg`
         );
-        return { imageUrl, rawImageUrl, overlayText: topic.title, imagePrompt: prompt };
+        const { withMotion } = await import("@/lib/content-factory/choice-lane");
+        return { imageUrl, rawImageUrl, overlayText: topic.title, imagePrompt: withMotion(prompt, topic.coverMotion) };
       });
 
       const choiceSlides: { imageUrl: string; rawImageUrl: string; overlayText: string; imagePrompt: string }[] = [];
@@ -743,7 +744,13 @@ export const carouselDailyCronFn = inngest.createFunction(
               overlay,
               `carousels/${dateStr}/${topic.slug}/slide-${i + 1}-option.jpg`
             );
-            return { imageUrl, rawImageUrl, overlayText: `${i + 1}. ${o.name}\n\n${o.lore}`, imagePrompt: prompt };
+            const { withMotion } = await import("@/lib/content-factory/choice-lane");
+            return {
+              imageUrl,
+              rawImageUrl,
+              overlayText: `${i + 1}. ${o.name}\n\n${o.lore}`,
+              imagePrompt: withMotion(prompt, o.motion),
+            };
           })
         );
       }

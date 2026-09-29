@@ -177,7 +177,8 @@ export const carouselPostVideoFn = inngest.createFunction(
         return {
           baseUrl: await up(`living/${postId}/base-${i}.jpg`, base, "image/jpeg"),
           layerUrl,
-          prompt: livingMotionPrompt(s.imagePrompt, { person: s.person }),
+          // Legendary Mythicals: the creature itself acts (action mode).
+          prompt: livingMotionPrompt(s.imagePrompt, { person: s.person, action: plan.brand === "mythicals" }),
         };
       });
     }

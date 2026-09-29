@@ -42,7 +42,32 @@ function ffmpegPath(): string | null {
  * any verb it is given, so the prompt only asks for movement that already
  * belongs in the photo and pins everything else.
  */
-export function livingMotionPrompt(imagePrompt: string, opts: { person?: boolean } = {}): string {
+export function livingMotionPrompt(
+  imagePrompt: string,
+  opts: { person?: boolean; action?: boolean } = {}
+): string {
+  // ACTION mode (2026-09-29, Legendary Mythicals — per Keenan: "the
+  // animations for the mythical beasts are pretty weak... it's basically
+  // just zooming in"). The ambient template below asks for near-stillness;
+  // creature posts need the subject itself to move. The writer stores the
+  // action on a "MOTION:" line of the image prompt.
+  if (opts.action) {
+    const motion = imagePrompt.match(/^MOTION:\s*(.+)$/m)?.[1]?.trim();
+    const scene = (imagePrompt.split("\n")[0] ?? "")
+      .replace(/^A breathtaking, hyper-real cinematic film still, vertical composition:\s*/i, "")
+      .slice(0, 300);
+    return [
+      "Epic cinematic fantasy film shot.",
+      scene ? `Scene: ${scene}` : "",
+      motion
+        ? `Action: ${motion}`
+        : "Action: the creature or fighter comes alive with powerful, natural movement: it breathes, turns its head toward the camera, shifts its weight and moves its wings, tail, mane or cloak as it would in life.",
+      "The movement is big, physical and continuous, with real weight and momentum, and it starts right away. The camera moves dynamically with it (a slow orbit, a low tracking move, or a push toward the subject).",
+      "Keep the subject's design, colors, armor and setting exactly as in the image. The subject stays in frame. No text, no new creatures or people, no scene cuts.",
+    ]
+      .filter(Boolean)
+      .join(" ");
+  }
   const firstLine = imagePrompt.split("\n")[0] ?? "";
   // Avatar slides carry the brand's recurring person (attached as a
   // "reference photo"), even when the scene line says "no people" — drop
