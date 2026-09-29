@@ -52,7 +52,11 @@ There's a new third account, Legendary Mythicals (@legendarymythicals). Three ti
   - `fantasy-men` set to RETIRED.
 
 ### Manual steps needed
-- [ ] Create the Legendary Mythicals Instagram, Facebook Page and TikTok (@legendarymythicals); then give Claude the Meta access so it can connect them, same steps as BWK. Once they're in Vercel, set `MYTHICALS_META_START` to that day (Keenan)
+- [x] Legendary Mythicals Instagram + Facebook Page created and connected 2026-09-29.
+  - Page 1251155438091197, IG @legendarymythicals 17841427781675932.
+  - Never-expiring Page token in Vercel as `META_MYTHICALS_ACCESS_TOKEN`, plus `_IG_USER_ID`, `_FB_PAGE_ID`, and `MYTHICALS_META_START=2026-09-29`.
+  - The token lacks `read_insights`, so FB view counts stay blank here, same as the other brands.
+- [ ] TikTok @legendarymythicals: manual posting from the per-post emails, like the other brands (Keenan)
 - [ ] Upload epic/cinematic tracks to the `music/mythicals` folder in the content-factory bucket, e.g. from Meta's Sound Collection (Keenan)
 
 ### Notes
