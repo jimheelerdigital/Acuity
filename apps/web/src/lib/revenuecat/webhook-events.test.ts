@@ -1,8 +1,12 @@
 import { describe, expect, it, vi } from "vitest";
 
 import {
+  candidateUserIds,
   decideRcWebhookAction,
+  decideTransferResync,
+  isRcAnonymousId,
   rcDecisionToUpdateData,
+  transferUserIds,
   type RcWebhookDecision,
   type RcWebhookEvent,
   type UserStateForRcEvent,
@@ -421,5 +425,106 @@ describe("rcDecisionToUpdateData", () => {
       decideRcWebhookAction(ev({ type: "EXPIRATION" }), user(), NOW)
     );
     expect(rcDecisionToUpdateData(d, NOW)).not.toHaveProperty("trialEndsAt");
+  });
+});
+
+
+// ─── Alias-aware user resolution + TRANSFER re-sync ─────────────────────────
+
+const ANON = "$RCAnonymousID:a8f364dff7b849b3b7393890add10371";
+
+describe("candidateUserIds", () => {
+  it("skips the anonymous primary id and finds the real User id in aliases", () => {
+    // The shape RC produced in the 2026-09-29 TestFlight test: anonymous
+    // configure at launch, logIn(user.id) later → anon stays primary.
+    expect(
+      candidateUserIds(ev({ app_user_id: ANON, original_app_user_id: ANON, aliases: [ANON, "cmp2real"] }))
+    ).toEqual(["cmp2real"]);
+  });
+
+  it("prefers app_user_id when it is real, and dedupes", () => {
+    expect(
+      candidateUserIds(ev({ app_user_id: "u1", aliases: ["u1", ANON, "u2"], original_app_user_id: "u1" }))
+    ).toEqual(["u1", "u2"]);
+  });
+
+  it("returns nothing for a purely anonymous customer", () => {
+    expect(candidateUserIds(ev({ app_user_id: ANON, aliases: [ANON], original_app_user_id: ANON }))).toEqual([]);
+    expect(isRcAnonymousId(ANON)).toBe(true);
+  });
+});
+
+describe("transferUserIds", () => {
+  it("collects both sides, drops anonymous ids", () => {
+    expect(
+      transferUserIds(ev({ type: "TRANSFER", transferred_from: ["old1"], transferred_to: [ANON, "new1"] }))
+    ).toEqual(["new1", "old1"]);
+  });
+});
+
+describe("decideTransferResync", () => {
+  const rcState = (over: Record<string, unknown> = {}) => ({
+    subscriptionStatus: "PRO",
+    trialEndsAt: null,
+    stripeFirstFailureAt: null,
+    subscriptionSource: "apple",
+    ...over,
+  });
+
+  it("promotes the account the subscription moved TO", () => {
+    const d = expectSetStatus(
+      decideTransferResync(user({ id: "new1", subscriptionStatus: "FREE", subscriptionSource: null }), rcState())
+    );
+    expect(d.nextStatus).toBe("PRO");
+    expect(d.source).toBe("apple");
+  });
+
+  it("demotes the account the subscription moved FROM (store source)", () => {
+    const d = expectSetStatus(
+      decideTransferResync(
+        user({ id: "old1", subscriptionStatus: "PRO", subscriptionSource: "apple" }),
+        rcState({ subscriptionStatus: "FREE", subscriptionSource: null })
+      )
+    );
+    expect(d.nextStatus).toBe("FREE");
+    // FREE leaves subscriptionSource as-is (guard 2).
+    expect(d.source).toBeNull();
+  });
+
+  it("never touches a comp row", () => {
+    expect(
+      decideTransferResync(user({ subscriptionSource: "comp" }), rcState({ subscriptionStatus: "FREE" })).action
+    ).toBe("skip-comp");
+  });
+
+  it("never demotes a Stripe row (RC is blind to Stripe)", () => {
+    expect(
+      decideTransferResync(
+        user({ subscriptionStatus: "PRO", subscriptionSource: "stripe" }),
+        rcState({ subscriptionStatus: "FREE", subscriptionSource: null })
+      ).action
+    ).toBe("log-only");
+  });
+
+  it("does nothing when RC can't answer — an outage is never a downgrade", () => {
+    expect(decideTransferResync(user(), null).action).toBe("log-only");
+  });
+
+  it("is a no-op when already in sync", () => {
+    expect(
+      decideTransferResync(user({ subscriptionStatus: "PRO", subscriptionSource: "apple" }), rcState()).action
+    ).toBe("log-only");
+  });
+
+  it("carries trialEndsAt for a store trial", () => {
+    const ends = new Date("2026-10-06T00:00:00Z");
+    const d = expectSetStatus(
+      decideTransferResync(
+        user({ subscriptionStatus: "FREE", subscriptionSource: null }),
+        rcState({ subscriptionStatus: "TRIAL", trialEndsAt: ends })
+      )
+    );
+    expect(d.nextStatus).toBe("TRIAL");
+    expect(d.trialEndsAt).toEqual(ends);
   });
 });

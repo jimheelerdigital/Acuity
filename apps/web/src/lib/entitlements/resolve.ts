@@ -191,19 +191,21 @@ export async function resolveEntitlement(
       if (dbState && isActiveAppManagedTrial(dbState, now)) {
         safeLog.info("entitlements.app-trial-overlay", { userId });
         state = dbState;
-      } else if (dbState && isActiveProviderBackedPro(dbState)) {
-        // ── PROVIDER-BACKED PRO OVERLAY (load-bearing) ───────────────
-        // RC has no live view of web/Stripe subscription renewals, and a
-        // receipt-imported sub expires at the imported period end — so RC
-        // can report FREE for a customer whose Stripe/Apple/Google sub is
-        // still active and paid. The provider webhooks keep that PRO row
-        // current in the DB (and clear it on cancel/expiry), so a PRO row
-        // with a real provider source means the user should have access.
-        // RC saying FREE must NOT revoke access the provider of record still
-        // backs — the same union as the trial overlay, for paid subs. Only
-        // consulted when RC says FREE.
+      } else if (dbState && isRcInvisiblePro(dbState)) {
+        // ── RC-INVISIBLE PRO OVERLAY (load-bearing) ──────────────
+        // RC has no live view of Stripe/web renewals (no Stripe integration;
+        // receipt-imported subs expire at the imported period end), so RC can
+        // report FREE for a Stripe customer who is still active and paid. The
+        // Stripe webhooks keep that PRO row current in the DB. Comp grants are
+        // app-owned and invisible to RC too. For those sources ONLY, RC saying
+        // FREE must not revoke access.
+        //
+        // Deliberately NOT apple / google_play: RC observes store purchases
+        // live, so its FREE is authoritative there. Trusting a stale DB PRO
+        // for a store source would let one store subscription unlock several
+        // accounts (a TRANSFER moves the sub in RC but leaves the old row PRO).
         // See docs/REVENUECAT_MIGRATION.md §Stripe.
-        safeLog.info("entitlements.provider-pro-overlay", {
+        safeLog.info("entitlements.rc-invisible-pro-overlay", {
           userId,
           source: dbState.subscriptionSource,
         });
@@ -246,22 +248,23 @@ export function isActiveAppManagedTrial(
 }
 
 /**
- * Is this state an active PROVIDER-BACKED PRO subscription — Stripe, Apple,
- * Google Play, or a comp grant (any real, non-null PRO source)?
+ * Is this an active PRO that RevenueCat cannot see — a Stripe (web) sub or a
+ * comp grant?
  *
- * RevenueCat is not a live mirror of web/Stripe billing here: there is no
- * Stripe integration, and receipt-imported subscriptions expire at the
- * period end that was imported. So RC can legitimately report FREE for a
- * customer whose subscription is still active with the provider of record.
- * The provider webhooks keep `subscriptionStatus = "PRO"` only while the sub
- * is active and clear it on cancel/expiry, so a PRO row with a real source
- * is authoritative for "should have access". The overlay trusts it rather
- * than let RC's incomplete view revoke a paying customer.
+ * RC mirrors App Store / Play purchases live, so for those sources RC's own
+ * answer wins. It has no live view of Stripe billing and never knows about
+ * app-issued comps, so for exactly those two sources the DB row (kept current
+ * by the Stripe webhooks / the comp tooling) is authoritative.
  *
  * Exported for the overlay tests.
  */
-export function isActiveProviderBackedPro(state: EntitlementState): boolean {
-  return state.subscriptionStatus === "PRO" && state.subscriptionSource !== null;
+const RC_INVISIBLE_SOURCES = new Set(["stripe", "comp"]);
+export function isRcInvisiblePro(state: EntitlementState): boolean {
+  return (
+    state.subscriptionStatus === "PRO" &&
+    state.subscriptionSource !== null &&
+    RC_INVISIBLE_SOURCES.has(state.subscriptionSource)
+  );
 }
 
 /**

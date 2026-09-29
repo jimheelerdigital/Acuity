@@ -39,6 +39,8 @@ import "server-only";
 
 import { RC_ENTITLEMENT_PRO, rcStoreToSource } from "@acuity/shared";
 
+import type { EntitlementState } from "@/lib/entitlements/resolve";
+
 // ─── RC event payload ────────────────────────────────────────────────
 
 /** RC webhook event types we handle. Unknown types are logged, not acted on. */
@@ -368,4 +370,100 @@ export function rcDecisionToUpdateData(
   }
 
   return data;
+}
+
+
+// ─── User resolution across RC aliases ────────────────────────────────────
+
+/** RC's placeholder id for a pre-login customer — never one of our User ids. */
+export function isRcAnonymousId(id: string): boolean {
+  return id.startsWith("$RCAnonymousID:");
+}
+
+function realIds(ids: Array<string | null | undefined>): string[] {
+  const out: string[] = [];
+  for (const id of ids) {
+    if (typeof id !== "string") continue;
+    const v = id.trim();
+    if (!v || isRcAnonymousId(v) || out.includes(v)) continue;
+    out.push(v);
+  }
+  return out;
+}
+
+/**
+ * Every id on the event that could be our `User.id`, in preference order.
+ *
+ * The app configures RC anonymously at launch (so the onboarding paywall can
+ * sell before an account exists) and calls `Purchases.logIn(user.id)` later.
+ * RC then keeps the anonymous id as the customer's primary id with our id as
+ * an alias — so an event can arrive with `app_user_id = $RCAnonymousID:…`
+ * while `aliases` carries the real User id. Matching `app_user_id` alone drops
+ * every purchase made before login.
+ */
+export function candidateUserIds(event: RcWebhookEvent): string[] {
+  return realIds([
+    event.app_user_id,
+    ...(event.aliases ?? []),
+    event.original_app_user_id,
+  ]);
+}
+
+/** TRANSFER: every non-anonymous id on either side of the move. */
+export function transferUserIds(event: RcWebhookEvent): string[] {
+  return realIds([
+    ...(event.transferred_to ?? []),
+    ...(event.transferred_from ?? []),
+    ...(event.aliases ?? []),
+  ]);
+}
+
+/**
+ * TRANSFER re-sync: map RC's CURRENT state for one affected user onto an action.
+ *
+ * A TRANSFER moves a store subscription between app accounts. The event does
+ * not say what each side should end up as, but RC (the source of truth) does,
+ * so we re-read RC per user and write that. Guards:
+ *   - comp rows are never touched (app-owned, invisible to RC);
+ *   - a Stripe row is never demoted — RC cannot see Stripe, so its FREE there
+ *     is not evidence of anything (transfers only move store receipts anyway);
+ *   - RC unreachable → do nothing (an RC problem must never look like a
+ *     downgrade).
+ */
+export function decideTransferResync(
+  user: UserStateForRcEvent,
+  rc: EntitlementState | null
+): RcWebhookDecision {
+  if (user.subscriptionSource === "comp") {
+    return { action: "skip-comp", reason: "transfer re-sync: comp row left untouched" };
+  }
+  if (rc === null) {
+    return { action: "log-only", reason: "transfer re-sync: RC could not answer; no change" };
+  }
+  const next = rc.subscriptionStatus;
+  if (next !== "PRO" && next !== "TRIAL" && next !== "FREE") {
+    return { action: "log-only", reason: `transfer re-sync: unexpected RC status ${next}` };
+  }
+  if (next === "FREE" && user.subscriptionSource === "stripe") {
+    return {
+      action: "log-only",
+      reason: "transfer re-sync: RC blind to Stripe; Stripe row left to Stripe webhooks",
+    };
+  }
+  const nextSource = next === "FREE" ? null : rc.subscriptionSource;
+  if (
+    next === user.subscriptionStatus &&
+    (nextSource === null || nextSource === user.subscriptionSource)
+  ) {
+    return { action: "log-only", reason: "transfer re-sync: already in sync" };
+  }
+  return {
+    action: "set-status",
+    nextStatus: next,
+    trialEndsAt: next === "TRIAL" ? rc.trialEndsAt : null,
+    source: nextSource,
+    stampBillingIssue: false,
+    clearBillingIssue: false,
+    reason: `transfer re-sync from RC (${user.subscriptionStatus} → ${next})`,
+  };
 }

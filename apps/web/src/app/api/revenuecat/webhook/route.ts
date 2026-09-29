@@ -26,9 +26,13 @@ import { NextRequest, NextResponse } from "next/server";
  */
 
 import { rcCredentials, rcFlags } from "@/lib/revenuecat/flags";
+import { fetchRcEntitlementState } from "@/lib/revenuecat/client";
 import {
+  candidateUserIds,
   decideRcWebhookAction,
+  decideTransferResync,
   rcDecisionToUpdateData,
+  transferUserIds,
   type RcWebhookBody,
   type RcWebhookEvent,
 } from "@/lib/revenuecat/webhook-events";
@@ -107,7 +111,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     // wouldn't tell us anything about correctness.
     let user = null;
     try {
-      user = await loadUser(appUserId);
+      user = await loadUser(event);
     } catch (err) {
       safeLog.warn("revenuecat.webhook.observe-user-lookup-failed", {
         err: err instanceof Error ? err.message : String(err),
@@ -171,7 +175,14 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     }
   }
 
-  const user = await loadUser(appUserId);
+  // TRANSFER moves a store subscription between app accounts. The event alone
+  // doesn't say where each side should land, so re-read RC (the source of
+  // truth) for every affected account and write that.
+  if ((event.type ?? "").trim().toUpperCase() === "TRANSFER") {
+    return applyTransferResync(event);
+  }
+
+  const user = await loadUser(event);
   const decision = decideRcWebhookAction(event, user);
 
   if (decision.action !== "set-status") {
@@ -256,18 +267,87 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 }
 
 /**
- * Resolve the RC `app_user_id` to a User row.
+ * Resolve an RC event to a User row, across RC aliases.
  *
- * `app_user_id` is our `User.id` because the mobile client calls
- * `Purchases.logIn(user.id)` at account creation. A subscriber that RC only
- * knows by an anonymous id (bought before signing up) will not match — that
- * is correct, and the claim happens when the alias is created.
+ * `Purchases.logIn(user.id)` makes our id an alias of the RC customer, but a
+ * customer that started anonymous (onboarding paywall, purchase before
+ * account) keeps `$RCAnonymousID:…` as its primary id — so events can arrive
+ * with that as `app_user_id` and our id only in `aliases`. We try every real
+ * id on the event in preference order (see `candidateUserIds`).
  */
-async function loadUser(appUserId: string | null) {
-  if (!appUserId) return null;
+async function loadUser(event: RcWebhookEvent) {
+  const ids = candidateUserIds(event);
+  if (ids.length === 0) return null;
   const { prisma } = await import("@/lib/prisma");
-  return prisma.user.findUnique({
-    where: { id: appUserId },
+  const rows = await prisma.user.findMany({
+    where: { id: { in: ids } },
     select: { id: true, subscriptionStatus: true, subscriptionSource: true },
   });
+  for (const id of ids) {
+    const hit = rows.find((r) => r.id === id);
+    if (hit) return hit;
+  }
+  return null;
+}
+
+/**
+ * Apply a TRANSFER by re-syncing every affected account from RC's current
+ * state. Decision per user lives in `decideTransferResync` (pure, tested).
+ */
+async function applyTransferResync(event: RcWebhookEvent): Promise<NextResponse> {
+  const { prisma } = await import("@/lib/prisma");
+  const ids = transferUserIds(event);
+  const users =
+    ids.length === 0
+      ? []
+      : await prisma.user.findMany({
+          where: { id: { in: ids } },
+          select: { id: true, subscriptionStatus: true, subscriptionSource: true },
+        });
+
+  const results: Array<Record<string, unknown>> = [];
+  try {
+    for (const u of users) {
+      const rc = await fetchRcEntitlementState(u.id);
+      const d = decideTransferResync(u, rc);
+      if (d.action !== "set-status") {
+        results.push({ userId: u.id, action: d.action, reason: d.reason });
+        continue;
+      }
+      const res = await prisma.user.updateMany({
+        where:
+          d.nextStatus === "FREE"
+            ? { id: u.id, subscriptionSource: { not: "comp" } }
+            : { id: u.id },
+        data: rcDecisionToUpdateData(d),
+      });
+      results.push({
+        userId: u.id,
+        action: res.count > 0 ? "set-status" : "guarded-noop",
+        nextStatus: d.nextStatus,
+        reason: d.reason,
+      });
+    }
+  } catch (err) {
+    safeLog.error("revenuecat.webhook.transfer-resync-failed", err, {
+      eventId: event.id ?? null,
+    });
+    // 500 so RC retries; drop the dedup row first or the retry is swallowed.
+    if (event.id) {
+      try {
+        await prisma.revenueCatEvent.delete({ where: { id: event.id } });
+      } catch {
+        /* best effort */
+      }
+    }
+    return NextResponse.json({ error: "transfer-resync-failed" }, { status: 500 });
+  }
+
+  safeLog.info("revenuecat.webhook.transfer-resynced", {
+    eventId: event.id ?? null,
+    ids,
+    matched: users.length,
+    results,
+  });
+  return NextResponse.json({ received: true, action: "transfer-resync", results });
 }
