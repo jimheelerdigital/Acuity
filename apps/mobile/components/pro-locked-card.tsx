@@ -12,6 +12,17 @@ import {
 import { HeroCard } from "@/components/acuity";
 import { useTheme } from "@/contexts/theme-context";
 import { isIapEnabled } from "@/lib/iap-config";
+import { rcFlags } from "@/lib/revenuecat/flags";
+
+// In-app subscribe entry-point visibility. Rail-aware and identical to the
+// subscribe screen + restore button: RC shows it on iOS + Android; the
+// legacy StoreKit path is iOS-only and still gated on isIapEnabled().
+function showInAppSubscribeEntry(): boolean {
+  const rcPurchases = rcFlags().RC_SDK_PURCHASES;
+  return rcPurchases
+    ? Platform.OS === "ios" || Platform.OS === "android"
+    : Platform.OS === "ios" && isIapEnabled();
+}
 
 /**
  * Mobile mirror of `apps/web/src/components/pro-locked-card.tsx`.
@@ -56,7 +67,7 @@ export function ProLockedCard({
   const { tokens } = useTheme();
   const copy = FREE_TIER_LOCKED_COPY[surfaceId];
   const href = freeTierUpgradeUrl(API_BASE_URL, surfaceId);
-  const showInAppSubscribe = Platform.OS === "ios" && isIapEnabled();
+  const showInAppSubscribe = showInAppSubscribeEntry();
 
   const onContinueOnWeb = async () => {
     try {
@@ -179,7 +190,7 @@ export function ProLockedFooter({ style }: { style?: object }) {
   const { tokens } = useTheme();
   const copy = FREE_TIER_LOCKED_COPY.entry_detail_footer;
   const href = freeTierUpgradeUrl(API_BASE_URL, "entry_detail_footer");
-  const showInAppSubscribe = Platform.OS === "ios" && isIapEnabled();
+  const showInAppSubscribe = showInAppSubscribeEntry();
 
   const onContinueOnWeb = async () => {
     try {

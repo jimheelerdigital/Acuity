@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Linking, Pressable, ScrollView, Text, View } from "react-native";
+import { Alert, Linking, Pressable, ScrollView, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { router } from "expo-router";
 
@@ -20,8 +20,15 @@ import {
 } from "@/lib/onboarding-v10/paywall-config";
 import { V10_BRANCHES, type V10Branch } from "@/lib/onboarding-v10/branches";
 import { getStoredTryExtraction } from "@/lib/try-session";
-import { LEGACY_TIER, V2_TIER } from "@acuity/shared";
+import { DEFAULT_PRICING_CONFIG, LEGACY_TIER, V2_TIER } from "@acuity/shared";
 import { isNewPricingEnabled } from "@/lib/feature-flags";
+import {
+  getProOffering,
+  purchaseProPackage,
+  restoreProPurchases,
+  type RcOfferingPackages,
+} from "@/lib/revenuecat";
+import { rcFlags } from "@/lib/revenuecat/flags";
 
 /**
  * Screen 6 — Paywall (light, single screen).
@@ -69,9 +76,33 @@ export default function V10Paywall() {
   const [plan, setPlan] = useState<Plan>("annual");
   const [branch, setBranch] = useState<V10Branch | null>(null);
   const [taskCount, setTaskCount] = useState<number | null>(null);
+  // RevenueCat purchase rail. When on, the CTA buys the offering package on
+  // the ANONYMOUS RC identity (no account yet); auth-context aliases it to
+  // the real User.id at the account step. Inert while the flag is off — the
+  // CTA keeps its record-intent-and-advance behaviour.
+  const rcPurchases = rcFlags().RC_SDK_PURCHASES;
+  const [rcOffering, setRcOffering] = useState<RcOfferingPackages | null>(null);
+  const [busy, setBusy] = useState(false);
 
   const tier = isNewPricingEnabled() ? V2_TIER : LEGACY_TIER;
   const copy = useMemo(() => buildPaywallCopy(tier), [tier]);
+
+  // Load the RC offering so the CTA has a package to purchase. Only when the
+  // RC rail is on; otherwise this never touches the native module.
+  useEffect(() => {
+    if (!rcPurchases) return;
+    let cancelled = false;
+    void (async () => {
+      const offering = await getProOffering(
+        { paidSince: null },
+        { ...DEFAULT_PRICING_CONFIG, newPricingEnabled: isNewPricingEnabled() }
+      );
+      if (!cancelled) setRcOffering(offering);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [rcPurchases]);
 
   useEffect(() => {
     let cancelled = false;
@@ -108,24 +139,69 @@ export default function V10Paywall() {
     trackV10("v10_plan_toggled", { plan: next });
   }, []);
 
-  const onPurchase = useCallback(() => {
-    // ── NOT YET IMPLEMENTED — deliberately not stubbed as success ─────
-    //
-    // The real implementation must, in this order:
-    //   1. purchaseProduct() against the platform product id for `plan`
-    //      on the ANONYMOUS RevenueCat identity (no account exists yet).
-    //   2. Let the entitlement land on that anonymous id.
-    //   3. On the later account step, Purchases.logIn(user.id) aliases the
-    //      anonymous id — this is what makes purchase-before-account
-    //      idempotent, and it is already wired in auth-context.tsx.
-    //
-    // Faking a success here would hand someone a paid experience they were
-    // never charged for and produce a purchase event with no receipt behind
-    // it, which is worse than an honest "not ready".
+  const onPurchase = useCallback(async () => {
+    // ── RevenueCat rail ──────────────────────────────────────────────
+    // Buy the offering package on the ANONYMOUS RC identity. The entitlement
+    // lands on that anon id; on the account step auth-context calls
+    // identifyRevenueCatUser(user.id) which ALIASES it to the real account
+    // (purchase-before-account). Only advance as paid on a real success —
+    // never fake it, which would grant access with no receipt behind it.
+    if (rcPurchases) {
+      const pkg = plan === "annual" ? rcOffering?.annual : rcOffering?.monthly;
+      if (!pkg || busy) return;
+      setBusy(true);
+      try {
+        const result = await purchaseProPackage(pkg);
+        if (result.status === "cancelled") return;
+        if (result.status === "success") {
+          trackV10("v10_plan_decision", { decision: plan });
+          await setV10PlanDecision(plan);
+          router.push("/onboarding-new/account");
+          return;
+        }
+        Alert.alert(
+          "Purchase didn't go through",
+          result.status === "error"
+            ? result.message
+            : "Purchases are unavailable right now. Please try again."
+        );
+      } finally {
+        setBusy(false);
+      }
+      return;
+    }
+
+    // ── Fallback (RC purchases off) ──────────────────────────────────
+    // Record the plan INTENT (not an entitlement) and advance; actual
+    // conversion happens later via web checkout. setV10PlanDecision is
+    // explicitly not a receipt — see lib/onboarding-v10/state.ts.
     trackV10("v10_plan_decision", { decision: plan });
     void setV10PlanDecision(plan);
     router.push("/onboarding-new/account");
-  }, [plan]);
+  }, [plan, rcPurchases, rcOffering, busy]);
+
+  const handleRestore = useCallback(async () => {
+    trackV10("v10_plan_decision", { decision: "restore_attempted" });
+    // In-app restore only applies on the RC rail; with it off there is no
+    // native entitlement to restore before an account exists.
+    if (!rcPurchases || busy) return;
+    setBusy(true);
+    try {
+      const hasPro = await restoreProPurchases();
+      if (hasPro) {
+        // Entitlement is on the store account and aliases to the real
+        // User.id at the account step. Advance there.
+        router.push("/onboarding-new/account");
+        return;
+      }
+      Alert.alert(
+        "No purchases to restore",
+        "We didn't find a Ripple Pro subscription to restore on this store account."
+      );
+    } finally {
+      setBusy(false);
+    }
+  }, [rcPurchases, busy]);
 
   const onContinueFree = useCallback(() => {
     trackV10("v10_plan_decision", { decision: "free" });
@@ -241,7 +317,13 @@ export default function V10Paywall() {
         </View>
 
         {/* ── Z6 CTA ─────────────────────────────────────────────── */}
-        <FunnelCta label={cta.label} onPress={onPurchase} tokens={tokens} onCoral />
+        <FunnelCta
+          label={cta.label}
+          onPress={onPurchase}
+          tokens={tokens}
+          busy={busy}
+          onCoral
+        />
         <Text
           style={{
             fontFamily: tokens.fontSans,
@@ -284,7 +366,7 @@ export default function V10Paywall() {
             gap: 6,
           }}
         >
-          <FooterLink label="Restore Purchases" onPress={onRestore} tokens={tokens} />
+          <FooterLink label="Restore Purchases" onPress={handleRestore} tokens={tokens} />
           <Dot tokens={tokens} />
           <FooterLink
             label="Terms"
@@ -504,13 +586,4 @@ function Dot({ tokens: _tokens }: { tokens: Tokens }) {
   );
 }
 
-/**
- * Restore is required by App Review on any screen selling a subscription,
- * and it must work BEFORE an account exists — a user reinstalling has an
- * entitlement on their store account and no Ripple session yet.
- *
- * Wired in the purchase slice alongside onPurchase().
- */
-function onRestore() {
-  trackV10("v10_plan_decision", { decision: "restore_attempted" });
-}
+

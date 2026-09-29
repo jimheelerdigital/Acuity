@@ -13,7 +13,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-import { CALENDAR_INTEGRATION_ENABLED } from "@acuity/shared";
+import { CALENDAR_INTEGRATION_ENABLED, DEFAULT_PRICING_CONFIG } from "@acuity/shared";
 
 import { GradientCheckbox } from "@/components/acuity/GradientCheckbox";
 import { RestorePurchasesButton } from "@/components/restore-purchases-button";
@@ -38,8 +38,19 @@ import {
   IAP_MONTHLY_PRODUCT_ID,
   isIapEnabled,
 } from "@/lib/iap-config";
+import {
+  getProOffering,
+  purchaseProPackage,
+  type RcOfferingPackages,
+} from "@/lib/revenuecat";
+import { rcFlags } from "@/lib/revenuecat/flags";
 import type { AcuityTokens } from "@/lib/theme/tokens";
-import { displayAnnual, displayMonthly, displayTier } from "@/lib/pricing";
+import {
+  displayAnnual,
+  displayMonthly,
+  displayTier,
+  newPricingEnabled,
+} from "@/lib/pricing";
 
 type Tier = "monthly" | "annual";
 
@@ -82,6 +93,10 @@ export default function SubscribeScreen() {
     monthly: IapProduct | null;
     annual: IapProduct | null;
   }>({ monthly: null, annual: null });
+  // RevenueCat offering — populated instead of `products` when the RC
+  // purchase rail is on. Holds the RC Package objects (opaque here) plus
+  // the store-localized price strings for display.
+  const [rcOffering, setRcOffering] = useState<RcOfferingPackages | null>(null);
   const [selectedTier, setSelectedTier] = useState<Tier>("monthly");
   const [loadState, setLoadState] = useState<"idle" | "loading" | "error">(
     "loading"
@@ -94,23 +109,67 @@ export default function SubscribeScreen() {
   // before initiating the StoreKit flow.
   const [acknowledged, setAcknowledged] = useState(false);
 
-  const flagOn = isIapEnabled();
+  // Which purchase rail is live. RC takes precedence when its flag is on;
+  // otherwise the legacy StoreKit path. `flagOn` gates the whole native
+  // paywall — either rail being on shows it; neither shows UnavailableScreen.
+  const rcPurchases = rcFlags().RC_SDK_PURCHASES;
+  const flagOn = rcPurchases || isIapEnabled();
   const isIos = Platform.OS === "ios";
   // Native IAP now ships on iOS + Android (Play Billing). Web stays Stripe.
   const supportsIap = isIos || Platform.OS === "android";
 
+  // StoreKit-rail product for the selected tier (used only by that rail).
   const selectedProduct =
     selectedTier === "monthly" ? products.monthly : products.annual;
-  const selectedFallbackPrice =
-    selectedTier === "monthly"
-      ? MONTHLY_FALLBACK_PRICE
-      : ANNUAL_FALLBACK_PRICE;
+
+  // Rail-agnostic availability + display price for each tier. RC reads from
+  // the offering packages; StoreKit from the fetched products.
+  const monthlyAvailable = rcPurchases
+    ? !!rcOffering?.monthly
+    : !!products.monthly;
+  const annualAvailable = rcPurchases
+    ? !!rcOffering?.annual
+    : !!products.annual;
+  const selectedAvailable =
+    selectedTier === "monthly" ? monthlyAvailable : annualAvailable;
+  const monthlyPriceLabel =
+    (rcPurchases ? rcOffering?.monthlyPrice : products.monthly?.localizedPrice) ??
+    MONTHLY_FALLBACK_PRICE;
+  const annualPriceLabel =
+    (rcPurchases ? rcOffering?.annualPrice : products.annual?.localizedPrice) ??
+    ANNUAL_FALLBACK_PRICE;
+  const selectedPriceLabel =
+    selectedTier === "monthly" ? monthlyPriceLabel : annualPriceLabel;
   const selectedPeriodLabel = selectedTier === "monthly" ? "month" : "year";
 
   const loadProducts = useCallback(async () => {
     setLoadState("loading");
     setErrorMsg(null);
     try {
+      // ── RevenueCat rail ──────────────────────────────────────────
+      // Fetch the offering RC serves this user. paidSince:null + the live
+      // pricing config resolves a NEW prospect to the current-price
+      // ("default") offering; getProOffering falls back to RC's `current`
+      // offering if the tier-specific one isn't configured.
+      if (rcPurchases) {
+        const offering = await getProOffering(
+          { paidSince: null },
+          { ...DEFAULT_PRICING_CONFIG, newPricingEnabled: newPricingEnabled() }
+        );
+        if (!offering || (!offering.monthly && !offering.annual)) {
+          setLoadState("error");
+          return;
+        }
+        setRcOffering(offering);
+        setSelectedTier((current) => {
+          if (current === "annual" && !offering.annual) return "monthly";
+          if (current === "monthly" && !offering.monthly) return "annual";
+          return current;
+        });
+        setLoadState("idle");
+        return;
+      }
+
       const ok = await initIap();
       if (!ok) {
         setLoadState("error");
@@ -136,7 +195,7 @@ export default function SubscribeScreen() {
       console.warn("[subscribe] load failed:", err);
       setLoadState("error");
     }
-  }, []);
+  }, [rcPurchases]);
 
   useEffect(() => {
     if (!flagOn || !supportsIap) return;
@@ -144,6 +203,10 @@ export default function SubscribeScreen() {
   }, [flagOn, isIos, loadProducts]);
 
   useEffect(() => {
+    // Auto-recover on mount is StoreKit-only. On the RC rail, entitlement
+    // recovery already happens via identifyRevenueCatUser() on sign-in, and
+    // an explicit Restore lives in the footer — so skip this path.
+    if (rcPurchases) return;
     if (!flagOn || !supportsIap) return;
     if (user?.subscriptionStatus === "PRO") return;
     let cancelled = false;
@@ -162,17 +225,73 @@ export default function SubscribeScreen() {
     return () => {
       cancelled = true;
     };
-  }, [flagOn, isIos, user?.subscriptionStatus, refresh, router]);
+  }, [rcPurchases, flagOn, isIos, user?.subscriptionStatus, refresh, router]);
 
   const handlePurchase = async () => {
     if (purchasing) return;
+    if (!acknowledged) {
+      // Button is disabled in this state; guard the entry point too.
+      return;
+    }
+
+    // ── RevenueCat rail ──────────────────────────────────────────────
+    // Buy the offering PACKAGE and let RC's webhook write the entitlement
+    // server-side (source-of-truth). No verify-receipt round-trip — that
+    // belongs to the StoreKit rail below.
+    if (rcPurchases) {
+      const pkg =
+        selectedTier === "monthly" ? rcOffering?.monthly : rcOffering?.annual;
+      if (!pkg) return;
+      setPurchasing(true);
+      setErrorMsg(null);
+      // 14-day-withdrawal acknowledgement recorded BEFORE the purchase,
+      // same as the StoreKit path — abort rather than take money without
+      // the acknowledgement on file.
+      try {
+        await recordConsent({
+          consentType: "distance_contract_immediate_performance",
+          granted: true,
+          consentText: WITHDRAWAL_CONSENT_TEXT,
+          wordingVersion: WITHDRAWAL_WORDING_VERSION,
+          plan: selectedTier,
+        });
+      } catch {
+        setErrorMsg(
+          "Couldn't record your acknowledgement. Check your connection and try again."
+        );
+        setPurchasing(false);
+        return;
+      }
+      try {
+        const result = await purchaseProPackage(pkg);
+        if (result.status === "cancelled") return;
+        if (result.status === "disabled") {
+          setErrorMsg(
+            "Purchases are unavailable right now. Please try again later."
+          );
+          return;
+        }
+        if (result.status === "error") {
+          setErrorMsg(result.message);
+          return;
+        }
+        setErrorMsg(null);
+        await refresh();
+        Alert.alert(
+          "Welcome to Ripple Pro",
+          "Your subscription is active. New entries will get the full debrief.",
+          [{ text: "OK", onPress: () => router.back() }]
+        );
+      } finally {
+        setPurchasing(false);
+      }
+      return;
+    }
+
+    // ── StoreKit rail (legacy, until the RC cutover completes) ────────
     if (!selectedProduct) {
       // Defensive — the button is disabled when this is true, but
       // guard the entry point in case stale state slips through.
-      return;
-    }
-    if (!acknowledged) {
-      // Button is disabled in this state; guard the entry point too.
       return;
     }
     const productId =
@@ -373,19 +492,19 @@ export default function SubscribeScreen() {
               </Pressable>
             </View>
           )}
-          {loadState === "idle" && products.monthly && (
+          {loadState === "idle" && monthlyAvailable && (
             <TierCard
               tier="monthly"
-              product={products.monthly}
+              priceLabel={monthlyPriceLabel}
               selected={selectedTier === "monthly"}
               onSelect={() => setSelectedTier("monthly")}
               tokens={tokens}
             />
           )}
-          {loadState === "idle" && products.annual && (
+          {loadState === "idle" && annualAvailable && (
             <TierCard
               tier="annual"
-              product={products.annual}
+              priceLabel={annualPriceLabel}
               selected={selectedTier === "annual"}
               onSelect={() => setSelectedTier("annual")}
               tokens={tokens}
@@ -481,14 +600,14 @@ export default function SubscribeScreen() {
             disabled={
               purchasing ||
               loadState !== "idle" ||
-              !selectedProduct ||
+              !selectedAvailable ||
               !acknowledged
             }
             className="rounded-full py-4 items-center"
             style={{
               backgroundColor: tokens.primary,
               opacity:
-                purchasing || !selectedProduct || !acknowledged ? 0.7 : 1,
+                purchasing || !selectedAvailable || !acknowledged ? 0.7 : 1,
               shadowColor: tokens.glowPrimary.color,
               shadowOffset: { width: 0, height: 0 },
               shadowRadius: tokens.glowPrimary.radius,
@@ -504,7 +623,7 @@ export default function SubscribeScreen() {
                 style={{ color: "#FFFFFF" }}
               >
                 Subscribe —{" "}
-                {selectedProduct?.localizedPrice ?? selectedFallbackPrice}/
+                {selectedPriceLabel}/
                 {selectedPeriodLabel}
               </Text>
             )}
@@ -541,7 +660,7 @@ export default function SubscribeScreen() {
             end of the current period. Your account will be charged
             for renewal within 24 hours prior to the end of the
             current period at{" "}
-            {selectedProduct?.localizedPrice ?? selectedFallbackPrice}/
+            {selectedPriceLabel}/
             {selectedPeriodLabel}. You can manage and cancel your
             subscriptions by going to your account settings on the
             App Store after purchase.
@@ -591,13 +710,13 @@ export default function SubscribeScreen() {
 
 function TierCard({
   tier,
-  product,
+  priceLabel,
   selected,
   onSelect,
   tokens,
 }: {
   tier: Tier;
-  product: IapProduct;
+  priceLabel: string;
   selected: boolean;
   onSelect: () => void;
   tokens: AcuityTokens;
@@ -656,7 +775,7 @@ function TierCard({
         className="mt-1 text-3xl font-bold"
         style={{ color: tokens.text }}
       >
-        {product.localizedPrice}
+        {priceLabel}
         <Text
           className="text-base font-normal"
           style={{ color: tokens.textTer }}
