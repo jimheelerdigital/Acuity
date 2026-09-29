@@ -61,8 +61,11 @@ export function livingMotionPrompt(
       scene ? `Scene: ${scene}` : "",
       motion
         ? `Action: ${motion}`
-        : "Action: the creature or fighter comes alive with powerful, natural movement: it breathes, turns its head toward the camera, shifts its weight and moves its wings, tail, mane or cloak as it would in life.",
-      "The movement is big, physical and continuous, with real weight and momentum, and it starts right away. The camera moves dynamically with it (a slow orbit, a low tracking move, or a push toward the subject).",
+        : "Action: the creature or fighter comes alive with natural movement: it breathes, turns its head toward the camera, shifts its weight and moves its wings, tail, mane or cloak as it would in life.",
+      // Tuned 2026-09-29 (per Keenan: the first war-mount post "was perfect",
+      // the next two "a bit too much movement which made it look slightly
+      // unrealistic"): one clear action at real-world speed, gentle camera.
+      "Keep the movement realistic and measured: one clear action at natural, real-world speed, like footage of a real animal or actor. Nothing frantic, no sudden lunges, no morphing. The camera moves slowly and steadily (a gentle push-in or a slight drift).",
       "Keep the subject's design, colors, armor and setting exactly as in the image. The subject stays in frame. No text, no new creatures or people, no scene cuts.",
     ]
       .filter(Boolean)
