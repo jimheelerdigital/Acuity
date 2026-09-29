@@ -4,6 +4,8 @@ vi.mock("@/lib/prisma", () => ({ prisma: {} }));
 
 import {
   AD_FORMAT_KEYS,
+  AD_SLOTS,
+  PHOTO_FORMATS,
   SAY_CATCH_FORMAT,
   buildAdImagePrompt,
   decodeAdCopy,
@@ -75,5 +77,26 @@ describe("parseBatchAds", () => {
   it("still fails when most ads are broken", () => {
     const ads = Array.from({ length: 10 }, (_, i) => ad(i < 6 ? { headline: undefined } : {}));
     expect(() => parseBatchAds(JSON.stringify(ads))).toThrow(/only 4 valid/);
+  });
+});
+
+describe("weekly slots (2026-09-29 research rebuild)", () => {
+  it("every slot uses an offered format", () => {
+    for (const sl of AD_SLOTS) expect(AD_FORMAT_KEYS).toContain(sl.format);
+  });
+  it("a batch spans at least 6 format families with at most one photo slot", () => {
+    expect(AD_SLOTS).toHaveLength(10);
+    expect(new Set(AD_SLOTS.map((sl) => sl.format)).size).toBeGreaterThanOrEqual(6);
+    expect(AD_SLOTS.filter((sl) => PHOTO_FORMATS.includes(sl.format)).length).toBeLessThanOrEqual(1);
+  });
+  it("parses text-wall and weekly-report copy", () => {
+    const base = { theme: "t", hypothesis: "h", targetPersona: "p", valueSurface: "mechanism", headline: "Things only I remember", primaryText: "x", description: "d", cta: "SIGN_UP", imageScene: "n/a", solutionLine: "s", benefits: ["a", "b", "c"], said: "s", caught: ["a", "b", "c"] };
+    const raw = JSON.stringify({ ads: [
+      { ...base, archetype: "confession", lines: ["one", "two", "three", ""] },
+      { ...base, archetype: "pattern_reveal", stats: [{ value: "14", label: "handled" }, { value: "3", label: "slipped" }, { value: "4 wks", label: "same worry" }], insight: "Money came up every Sunday." },
+    ] });
+    const ads = parseBatchAds(raw, 2);
+    expect(ads[0].lines).toEqual(["one", "two", "three"]);
+    expect(ads[1].stats).toHaveLength(3);
   });
 });

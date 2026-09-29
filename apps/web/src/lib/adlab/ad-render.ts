@@ -436,3 +436,215 @@ export async function renderSayCatchPlacements(
   ]);
   return { feed, story };
 }
+
+// ─── Text-wall + weekly-report formats (2026-09-29, per Keenan: "do advanced
+// deep research into app conversion and find which ads convert the best and
+// rebuild the pipeline around that") ────────────────────────────────────
+//
+// reports/Subscription app ad creative conversion.md: plain, phone-native
+// statics (text walls, notes, infographics) win far more often than polished
+// or recognisably-AI imagery (Motion: text-only 11.6% hit rate vs 6.9% for
+// high production). Both are drawn in code so every word is exact and
+// nothing looks generated.
+
+/** iOS-Notes-style first-person story: title + 4–8 short lines + CTA. */
+export interface TextWallCopy {
+  headline: string;
+  lines: string[];
+  ctaLabel: string;
+}
+
+const NOTES: Record<BatchGroupKey, { bg: string; text: string; sub: string; chrome: string }> = {
+  women: { bg: "#FFFFFF", text: "#1C1C1E", sub: "#8E8E93", chrome: "#D9A21B" },
+  men: { bg: "#1C1C1E", text: "#F2F2F7", sub: "#8E8E93", chrome: "#E5A823" },
+};
+
+async function renderTextWall(
+  groupKey: BatchGroupKey,
+  copy: TextWallCopy,
+  size: { w: number; h: number },
+  story: boolean
+): Promise<Buffer> {
+  const n = NOTES[groupKey];
+  const t = THEME[groupKey];
+  const bold = await ensureFontFile("Bold");
+  const medium = await ensureFontFile("Medium");
+  const k = story ? 1.12 : 1;
+  const top = story ? 250 : 64;
+  const bottom = story ? 340 : 56;
+  const side = 72;
+  const w = size.w - side * 2;
+
+  const blocks: { input: Buffer; y: number; left: number }[] = [];
+  let y = 0;
+  const chrome = await textBlock(
+    `<span font_desc="Poppins Medium ${Math.round(30 * k)}" foreground="${n.chrome}">‹ Notes</span>`,
+    medium, w, 0, "left"
+  );
+  blocks.push({ input: chrome.buffer, y, left: side - 8 });
+  y += chrome.height + Math.round(34 * k);
+  const title = await textBlock(
+    `<span font_desc="Poppins Bold ${Math.round(52 * k)}" foreground="${n.text}">${esc(copy.headline)}</span>`,
+    bold, w, 0, "left"
+  );
+  blocks.push({ input: title.buffer, y, left: side });
+  y += title.height + Math.round(12 * k);
+  const date = await textBlock(
+    `<span font_desc="Poppins Medium ${Math.round(24 * k)}" foreground="${n.sub}">${new Date().toLocaleDateString("en-US", { month: "long", day: "numeric" })}</span>`,
+    medium, w, 0, "left"
+  );
+  blocks.push({ input: date.buffer, y, left: side });
+  y += date.height + Math.round(30 * k);
+
+  // Shrink the body until the stack fits above the CTA.
+  const pillReserve = Math.round(150 * k);
+  const avail = size.h - top - bottom - pillReserve;
+  let fontPx = Math.round(40 * k);
+  let paras: { buffer: Buffer; width: number; height: number }[] = [];
+  let paraGap = 0;
+  for (;;) {
+    paras = await Promise.all(copy.lines.map((line) => textBlock(
+      `<span font_desc="Poppins Medium ${fontPx}" foreground="${n.text}">${esc(line)}</span>`,
+      medium, w, Math.round(fontPx * 0.22), "left"
+    )));
+    paraGap = Math.round(fontPx * 0.8);
+    const bodyH = paras.reduce((sum, p) => sum + p.height, 0) + paraGap * (paras.length - 1);
+    if (y + bodyH <= avail || fontPx <= 24) break;
+    fontPx -= 2;
+  }
+  for (const p of paras) {
+    blocks.push({ input: p.buffer, y, left: side });
+    y += p.height + paraGap;
+  }
+
+  const cta = await textBlock(
+    `<span font_desc="Poppins Bold ${Math.round(36 * k)}" foreground="${t.ctaText}">${esc(copy.ctaLabel)}</span>`,
+    bold, 600, 0
+  );
+  const pillW = Math.min(size.w - 200, cta.width + 130);
+  const pillH = cta.height + 46;
+  const pillTop = size.h - bottom - pillH;
+
+  const composites = blocks.map((b) => ({ input: b.input, top: top + b.y, left: b.left }));
+  composites.push({ input: roundedRect(pillW, pillH, pillH / 2, t.accent), top: pillTop, left: Math.round((size.w - pillW) / 2) });
+  composites.push({ input: cta.buffer, top: pillTop + Math.round((pillH - cta.height) / 2), left: Math.round((size.w - cta.width) / 2) });
+  return sharp({ create: { width: size.w, height: size.h, channels: 3, background: n.bg } })
+    .composite(composites)
+    .jpeg({ quality: 92 })
+    .toBuffer();
+}
+
+export async function renderTextWallPlacements(
+  groupKey: BatchGroupKey,
+  copy: TextWallCopy
+): Promise<{ feed: Buffer; story: Buffer }> {
+  const [feed, story] = await Promise.all([
+    renderTextWall(groupKey, copy, FEED, false),
+    renderTextWall(groupKey, copy, STORY, true),
+  ]);
+  return { feed, story };
+}
+
+/** Weekly-report infographic: hook, three stat tiles, one insight, CTA. */
+export interface WeeklyReportCopy {
+  headline: string;
+  stats: { value: string; label: string }[];
+  insight: string;
+  ctaLabel: string;
+}
+
+async function renderWeeklyReport(
+  groupKey: BatchGroupKey,
+  copy: WeeklyReportCopy,
+  size: { w: number; h: number },
+  story: boolean
+): Promise<Buffer> {
+  const t = THEME[groupKey];
+  const bold = await ensureFontFile("Bold");
+  const medium = await ensureFontFile("Medium");
+  const k = story ? 1.32 : 1.15;
+  const top = story ? 250 : 64;
+  const bottom = story ? 340 : 56;
+  const side = 64;
+  const cardW = size.w - side * 2;
+  const cardFill = groupKey === "men" ? "#1C1C1E" : "#FFFFFF";
+
+  const blocks: { input: Buffer; y: number; left: number }[] = [];
+  let y = 0;
+  const kicker = await textBlock(
+    `<span font_desc="Poppins Bold ${Math.round(25 * k)}" foreground="${t.accent}" letter_spacing="2048">MY WEEK IN RIPPLE</span>`,
+    bold, cardW, 0
+  );
+  blocks.push({ input: kicker.buffer, y, left: Math.round((size.w - kicker.width) / 2) });
+  y += kicker.height + Math.round(22 * k);
+  const head = await textBlock(
+    `<span font_desc="Poppins Bold ${Math.round(58 * k)}" foreground="${t.text}">${esc(copy.headline)}</span>`,
+    bold, cardW, 0
+  );
+  blocks.push({ input: head.buffer, y, left: Math.round((size.w - head.width) / 2) });
+  y += head.height + Math.round(44 * k);
+
+  // Three stat tiles in a row.
+  const gap = 20;
+  const tiles = copy.stats.slice(0, 3);
+  const tileW = Math.floor((cardW - gap * (tiles.length - 1)) / tiles.length);
+  const values = await Promise.all(tiles.map((s) => textBlock(
+    `<span font_desc="Poppins Bold ${Math.round(66 * k)}" foreground="${t.accent}">${esc(s.value)}</span>`, bold, tileW - 24, 0)));
+  const labels = await Promise.all(tiles.map((s) => textBlock(
+    `<span font_desc="Poppins Medium ${Math.round(25 * k)}" foreground="${t.sub}">${esc(s.label)}</span>`, medium, tileW - 32, 2)));
+  const tileH = Math.max(...values.map((v) => v.height)) + Math.max(...labels.map((l) => l.height)) + Math.round(64 * k);
+  tiles.forEach((_, i) => {
+    const left = side + i * (tileW + gap);
+    blocks.push({ input: roundedRect(tileW, tileH, 26, cardFill), y, left });
+    blocks.push({ input: values[i].buffer, y: y + Math.round(26 * k), left: left + Math.round((tileW - values[i].width) / 2) });
+    blocks.push({ input: labels[i].buffer, y: y + Math.round(26 * k) + values[i].height + 8, left: left + Math.round((tileW - labels[i].width) / 2) });
+  });
+  y += tileH + Math.round(28 * k);
+
+  // Insight callout with an accent bar.
+  const pad = 36;
+  const label = await textBlock(
+    `<span font_desc="Poppins Bold ${Math.round(23 * k)}" foreground="${t.accent}" letter_spacing="2048">WHAT RIPPLE NOTICED</span>`,
+    bold, cardW - pad * 2, 0, "left"
+  );
+  const ins = await textBlock(
+    `<span font_desc="Poppins Medium ${Math.round(36 * k)}" foreground="${t.text}">${esc(copy.insight)}</span>`,
+    medium, cardW - pad * 2 - 10, 8, "left"
+  );
+  const insH = label.height + 14 + ins.height + pad * 2;
+  blocks.push({ input: roundedRect(cardW, insH, 26, cardFill), y, left: side });
+  blocks.push({ input: roundedRect(8, insH - 40, 4, t.accent), y: y + 20, left: side + 16 });
+  blocks.push({ input: label.buffer, y: y + pad, left: side + pad + 10 });
+  blocks.push({ input: ins.buffer, y: y + pad + label.height + 14, left: side + pad + 10 });
+  y += insH;
+  const stackH = y;
+
+  const cta = await textBlock(
+    `<span font_desc="Poppins Bold ${Math.round(38 * k)}" foreground="${t.ctaText}">${esc(copy.ctaLabel)}</span>`,
+    bold, 600, 0
+  );
+  const pillW = Math.min(size.w - 200, cta.width + 130);
+  const pillH = cta.height + 48;
+  const pillTop = size.h - bottom - pillH;
+  const avail = pillTop - Math.round(36 * k) - top;
+  const offset = top + Math.max(0, Math.round((avail - stackH) / 2));
+
+  const composites = blocks.map((b) => ({ input: b.input, top: offset + b.y, left: b.left }));
+  composites.push({ input: roundedRect(pillW, pillH, pillH / 2, t.accent), top: pillTop, left: Math.round((size.w - pillW) / 2) });
+  composites.push({ input: cta.buffer, top: pillTop + Math.round((pillH - cta.height) / 2), left: Math.round((size.w - cta.width) / 2) });
+  return sharp({ create: { width: size.w, height: size.h, channels: 3, background: t.bg } })
+    .composite(composites)
+    .jpeg({ quality: 92 })
+    .toBuffer();
+}
+
+export async function renderWeeklyReportPlacements(
+  groupKey: BatchGroupKey,
+  copy: WeeklyReportCopy
+): Promise<{ feed: Buffer; story: Buffer }> {
+  const [feed, story] = await Promise.all([
+    renderWeeklyReport(groupKey, copy, FEED, false),
+    renderWeeklyReport(groupKey, copy, STORY, true),
+  ]);
+  return { feed, story };
+}

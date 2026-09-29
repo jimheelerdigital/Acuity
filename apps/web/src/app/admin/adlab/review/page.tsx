@@ -391,6 +391,12 @@ function GroupSection({ group, onLaunched }: { group: Group; onLaunched: () => v
         <div>
           <h2 className="text-lg font-semibold text-white">{group.projectName}</h2>
           <p className="text-xs text-acuity-text-ter mt-0.5">{exp.topicBrief}</p>
+          <p className="text-xs text-acuity-text-sec mt-1 max-w-2xl">
+            How to pick: #1 = the most specific ad that shows what Ripple does within a second. #2 = a
+            different angle AND a different format from #1 (alternate weeks: a new format / an extension
+            of the current best ad). Skip anything a competitor could run unchanged, or where the image
+            outshines the words.
+          </p>
         </div>
         <div className="flex flex-col items-end gap-1 shrink-0">
           <span className="text-xs text-acuity-text-ter">

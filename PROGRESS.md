@@ -7,6 +7,35 @@
 
 ---
 
+## [2026-09-29] — Weekly ads rebuilt around what converts for subscription apps
+
+- **Requested by:** Keenan
+- **Committed by:** Claude Code
+- **Commit hash:** (see git log — "feat: Rebuild weekly ad batch around conversion research")
+
+### In plain English (for Keenan)
+The weekly ad batch now follows the research on what actually converts for apps like ours: plain, phone-native ads that show exactly what Ripple does (a note written in your own words, a "my week in Ripple" report card, the say-it → Ripple-catches-it demo), instead of mostly AI photos with a mood line on top. Each batch now covers at least 6 different ad formats, 3 of the 10 build on our current best ad, and at most 1–2 use a photo, which never shows a fake person.
+
+### Technical changes (for Jimmy)
+- apps/web/src/lib/adlab/ad-render.ts: two new code-drawn formats (exact text, no image model) — `renderTextWallPlacements` (iOS-Notes-style first-person note) and `renderWeeklyReportPlacements` (3 stat tiles + "what Ripple noticed"), both feed 4:5 + story 9:16.
+- apps/web/src/lib/adlab/weekly-batch.ts: `AD_ARCHETYPES` replaced by `AD_SLOTS` — 10 fixed slots, each a hook template + a fixed format with per-lane examples (input→output ×2, pattern reveal, confession, invisible list, versus-usual, proof-in-app, 2 iterations of the lane's current best ad, offer/photo). Slot decides the format in code; missing copy falls back to statement-card; photo formats capped at 2. New copy fields `lines`, `stats`, `insight` (+ `imageScene`) ride in the AD_COPY tag. Prompt rewritten: research findings, 125-char primary text in fixed order (hook → literal mechanism), new hard rules (no feeling-state questions, no age/life-stage references, no invented proof). Photo styles rewritten to places/objects only, no people. Removed "hormones" pain point. researchNotes now also records `format:`.
+- apps/web/src/lib/adlab/learning.ts: `renderLearningForBatch(learning, { slotted: true })` swaps the exploit/explore count for slot-based guidance.
+- apps/web/src/lib/adlab/compliance.ts: reviewer now sees the words baked into the image; age/life-stage and feeling-state questions are FAIL; replaced the obsolete 20%-text rule (which would have failed every notes ad) with an invented-proof rule.
+- apps/web/src/app/admin/adlab/review/page.tsx: "how to pick" guidance above each lane.
+- ad-formats.test.ts: slot + parsing tests (10 passing).
+- reports/Subscription app ad creative conversion.md + research_notes/ folder: the research behind it.
+
+### Manual steps needed
+- [ ] Hit Remake on both lanes in /admin/adlab/review to get batches from the new generator, then pick 2 per lane (Keenan)
+- [ ] Meta Ads Manager: make sure Advantage+ creative "text improvements" is OFF on the evergreen ad sets — it can rewrite copy into policy violations (Keenan)
+- [ ] Events Manager: check the pixel/domain for any "health and wellness" restriction flag (Keenan)
+
+### Notes
+- CTA stays SIGN_UP ("Start free trial") even though the research says "Learn more" is the norm for quiz funnels — our own history had SIGN_UP at about half the cost per trial.
+- Not changed (needs Keenan's call): the research suggests retiring a "winner" once its cost per trial runs >1.5x target and capping each lane at 6–8 active ads. The current rule is still "never pause winners".
+- Video formats (screen-recording demos, faceless voiceover, UGC, Reels-native) are the next step; the cheapest bridge is animating a winning say-catch card through the existing Higgsfield/Kling setup, starting with BWK.
+- No review/testimonial format: we have no permissioned real reviews, and invented ones are banned.
+
 ## [2026-09-29] — Each weekly ad gets its own visual style
 
 **Requested by:** Keenan

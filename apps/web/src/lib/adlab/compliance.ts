@@ -11,12 +11,13 @@
 
 import { prisma } from "@/lib/prisma";
 import { callAdLabClaude, extractJson } from "@/lib/adlab/claude";
+import { decodeAdCopy } from "@/lib/adlab/weekly-batch";
 
 export const COMPLIANCE_SYSTEM_PROMPT = `You are a Meta advertising compliance reviewer and brand voice auditor for Ripple, an AI voice journaling app. Review each ad creative against Meta's Advertising Standards and the brand voice rules provided. Be strict on Meta policy violations (these get ads rejected and waste money). Be helpful on brand voice issues (flag but don't block). Return ONLY valid JSON, no markdown.
 
 ## META ADVERTISING STANDARDS (violations = FAIL):
 
-1. Personal Attributes: No phrasing that asserts or implies personal attributes. "Are you depressed?", "Do you struggle with anxiety?", "As someone with ADHD" — these ALL get rejected. "You" statements about pain points are fine ("You feel stuck"), but direct health/mental health claims about the user are not ("You have anxiety").
+1. Personal Attributes: No phrasing that asserts or implies personal attributes. "Are you depressed?", "Do you struggle with anxiety?", "As someone with ADHD" — these ALL get rejected. "You" statements about pain points are fine ("You feel stuck"), but direct health/mental health claims about the user are not ("You have anxiety"). Feeling-state or condition QUESTIONS also count ("Overwhelmed?", "Burned out?", "Stressed out, mama?"). Implying the reader's age or life stage is also a personal attribute ("women over 40 like you", "in your 40s", "midlife", "menopause", "hormones") — FAIL.
 
 2. Before/After Claims: No claims that imply guaranteed health/wellness results ("In 30 days you'll feel like a new person"). Subtle implication is allowed ("See what changes"), direct promises are not.
 
@@ -26,7 +27,7 @@ export const COMPLIANCE_SYSTEM_PROMPT = `You are a Meta advertising compliance r
 
 5. Meta Platform References: No references to "Facebook", "Instagram", "Meta" by name in ad copy.
 
-6. Image Text Ratio: If the creative describes overlaid text covering more than ~20% of the image area, flag it (Meta deprioritizes text-heavy images in delivery).
+6. Invented proof: No made-up user counts, star ratings, reviews, testimonials attributed to real-sounding people, or press mentions. An illustrative example of one person's week ("14 things handled, 3 slipped") is fine. (Text-heavy images are NOT a violation — Meta retired the 20% text rule, and native text/notes ads are our preferred format.)
 
 7. Landing Page: Ads for Ripple must link to goripple.io domain.
 
@@ -76,6 +77,22 @@ export interface ComplianceVerdict {
   issues: ComplianceIssue[];
 }
 
+/** Words baked into the image (notes, report, say-catch) — the reviewer
+ *  must see them too, not just the Meta text fields. */
+function imageCopyFor(generationPrompt: string | null | undefined): string {
+  const x = decodeAdCopy(generationPrompt);
+  const parts = [
+    x.solutionLine && `Solution line: ${x.solutionLine}`,
+    x.benefits?.length && `Checklist: ${x.benefits.join(" / ")}`,
+    x.said && `"You say it": ${x.said}`,
+    x.caught?.length && `"Ripple catches it": ${x.caught.join(" / ")}`,
+    x.lines?.length && `Note text: ${x.lines.join(" / ")}`,
+    x.stats?.length && `Stats: ${x.stats.map((st) => `${st.value} ${st.label}`).join(" / ")}`,
+    x.insight && `Insight: ${x.insight}`,
+  ].filter(Boolean);
+  return parts.length ? `\nText in the image: ${parts.join(" | ")}` : "";
+}
+
 export async function checkCreativesBatch(
   creatives: CreativeForReview[]
 ): Promise<ComplianceVerdict[]> {
@@ -87,7 +104,7 @@ Type: ${c.creativeType}
 Headline: ${c.headline}
 Primary Text: ${c.primaryText}
 Description: ${c.description}
-CTA: ${c.cta}${c.creativeType === "video" && c.generationPrompt ? `\nVideo Script: ${c.generationPrompt}` : ""}`;
+CTA: ${c.cta}${c.creativeType === "video" && c.generationPrompt ? `\nVideo Script: ${c.generationPrompt}` : ""}${imageCopyFor(c.generationPrompt)}`;
     })
     .join("\n\n");
 

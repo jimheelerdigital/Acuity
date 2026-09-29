@@ -537,7 +537,8 @@ export async function getLatestLearning(
  * usable history (first weeks) so the batch runs exactly as before.
  */
 export function renderLearningForBatch(
-  learning: { stats: LearningStats; brief: LearningBrief | null } | null
+  learning: { stats: LearningStats; brief: LearningBrief | null } | null,
+  opts?: { slotted?: boolean }
 ): { section: string; exploitCount: number } {
   if (!learning || learning.stats.top.length === 0) return { section: "", exploitCount: 0 };
   const { stats, brief } = learning;
@@ -570,10 +571,12 @@ ${renderStatsForPrompt(stats)}
 
 ${briefText}
 
-EXPLOIT / EXPLORE SPLIT (data confidence: ${stats.confidence.toUpperCase()}):
+${opts?.slotted
+  ? `HOW TO USE THIS (data confidence: ${stats.confidence.toUpperCase()}): the iterate_* slots extend the current best ad; every other slot applies the winning patterns above to a new concept. No ad may use a pattern listed under AVOID / WHAT LOST.`
+  : `EXPLOIT / EXPLORE SPLIT (data confidence: ${stats.confidence.toUpperCase()}):
 - Exactly ${exploitCount} ads are "exploit": apply the winning patterns above to this week's Reddit themes — same hook style / register / structure that won, new pain and new words. Never copy a past headline verbatim.
 - The other ${10 - exploitCount} are "explore": deliberately test something the data hasn't proven yet (a new value surface, emotional register, format, or one of WORTH TESTING NEXT).
-- No ad may use a pattern listed under AVOID / WHAT LOST.`;
+- No ad may use a pattern listed under AVOID / WHAT LOST.`}`;
 
   return { section, exploitCount };
 }

@@ -26,7 +26,7 @@ import { AD_COPY_MODELS, callAdLabClaude, extractJson } from "@/lib/adlab/claude
 import { lastJsonText } from "@/lib/content-factory/claude-client";
 import { AD_CLAIM_GUARDRAIL, PRODUCT_CATEGORY, VOICE_PRINCIPLE, productTruth } from "@/lib/positioning";
 import { displayMonthly } from "@/lib/pricing";
-import { SAFE_ZONE_RULES, SOURCE_SIZE, cutPlacements, renderAppProofPlacements, renderSayCatchPlacements } from "@/lib/adlab/ad-render";
+import { SAFE_ZONE_RULES, SOURCE_SIZE, cutPlacements, renderAppProofPlacements, renderSayCatchPlacements, renderTextWallPlacements, renderWeeklyReportPlacements } from "@/lib/adlab/ad-render";
 
 // ─── Groups ───────────────────────────────────────────────────────────────
 
@@ -61,19 +61,106 @@ interface GroupConfig {
 // ads say what Ripple actually does.
 const PRODUCT_TRUTH = productTruth();
 
-/** Ad types (2026-09-29): every ad in a batch uses a DIFFERENT one, so the
- *  10 options are genuinely different ads, not 10 rewrites of one shape. */
-const AD_ARCHETYPES: Array<{ key: string; how: string }> = [
-  { key: "plain_promise", how: "Literal and clear, like the best-performing app ads: say exactly what Ripple does in the headline (\"Say it out loud. Get your to-do list.\"). Name 2-3 everyday things people use it for in the body." },
-  { key: "pain_fix", how: "Headline names one concrete pain in their words; body says exactly what Ripple does about it." },
-  { key: "say_catch_demo", how: "Show the mechanism: one realistic thing they'd say out loud → what Ripple pulled out of it (tasks with dates, a skipped habit, a repeat). Use format say-catch." },
-  { key: "scenario", how: "One specific moment with a time and place (the school pickup line, the drive home, 11pm at the kitchen counter) and how Ripple fits into that exact moment." },
-  { key: "versus", how: "Contrast with what they use now (sticky notes, the notes app, a planner they abandoned, keeping it all in their head) and the one thing Ripple does that those can't." },
-  { key: "weekly_report", how: "Lead with ONE specific, believable insight a weekly report surfaced (\"work stress showed up every Monday and was gone by Friday\"). Use format app-proof or statement-card." },
-  { key: "use_list", how: "A list of the everyday things people actually say to Ripple and what it does with each (appointments, school forms, gym, money, the thing they keep putting off)." },
-  { key: "question", how: "Open with a question that makes them count or picture something (\"How many things are you holding in your head right now?\"), then answer with what Ripple does." },
-  { key: "objection", how: "Answer a real doubt head-on: \"another app to keep up with?\", \"I don't write things down\", \"I don't have time for this\" — and why Ripple is different (you just talk)." },
-  { key: "identity", how: "Who it's for, as a recognisable person and their week (the one who remembers everything for everyone / the guy who keeps saying 'tomorrow'), and what Ripple takes off them." },
+export const APP_PROOF_FORMAT = "app-proof";
+export const SAY_CATCH_FORMAT = "say-catch";
+export const TEXT_WALL_FORMAT = "text-wall";
+export const WEEKLY_REPORT_FORMAT = "weekly-report";
+/** Formats drawn by the image model on an AI photo. Research (2026-09-29):
+ *  recognisably-AI imagery underperforms, so a batch carries at most 2. */
+export const PHOTO_FORMATS = ["hook-overlay", "checklist-photo"];
+
+/**
+ * The 10 weekly slots (2026-09-29 rebuild, per Keenan: "do advanced deep
+ * research into app conversion and find which ads convert the best and
+ * rebuild the pipeline around that" — reports/Subscription app ad creative
+ * conversion.md). Each slot fixes a proven hook template AND a format, so a
+ * batch always spans 6+ format families and never collapses into ten
+ * restyles of one idea (post-Andromeda, near-copies deliver like one ad).
+ * Slots 1–7 are new concepts; 8–10 extend the lane's current best line.
+ * AI photos: slot 10 only (plus slot 9 when the winner itself was a photo).
+ */
+export interface AdSlot {
+  key: string;
+  format: string;
+  iteration?: boolean;
+  how: string;
+  women: string;
+  men: string;
+}
+
+export const AD_SLOTS: AdSlot[] = [
+  {
+    key: "input_output",
+    format: SAY_CATCH_FORMAT,
+    how: "LITERAL INPUT → OUTPUT (the Letterly pattern, our strongest mechanism ad). `said` is a messy, specific thing they'd really say; `caught` is exactly what Ripple pulled out of it (tasks with the dates they said, a habit missed, a repeat). Headline names the everyday situation, not a mood.",
+    women: `Headline: "The list in my head, finally on paper". Said: "renew the car registration, email the school about Friday, I'm always the one who remembers".`,
+    men: `Headline: "Said it once. Now it's a list." Said: "finish the deck, call Dad back, lift tomorrow, less phone".`,
+  },
+  {
+    key: "input_output_2",
+    format: SAY_CATCH_FORMAT,
+    how: "A SECOND input → output ad in a completely different life moment and area from the first (e.g. money, work, family logistics, health habits, a friendship). Different headline shape.",
+    women: `Headline: "I said it in the car. Ripple kept it."`,
+    men: `Headline: "Your notes app doesn't notice you skipped."`,
+  },
+  {
+    key: "pattern_reveal",
+    format: WEEKLY_REPORT_FORMAT,
+    how: "PATTERN REVEAL — our own proven winner family (\"Same patterns. Different year.\", \"Two years of noticing\"). Lead with ONE specific, believable thing Ripple noticed across weeks. Fill `stats` (3 tiles, value ≤6 chars e.g. \"14\", \"3/5\", \"4 wks\"; label ≤18 chars) and `insight` (≤90 chars, what Ripple noticed, concrete).",
+    women: `Headline: "Same worry, 4 weeks running". Stats: 14 things handled / 3 slipped / 4 wks same worry. Insight: "Money came up every Sunday. Gone by Wednesday."`,
+    men: `Headline: "2 promises kept out of 5". Stats: 2/5 promises kept / 4 gym days missed / 6x said 'tomorrow'. Insight: "Said 'tomorrow' about the same call 6 times."`,
+  },
+  {
+    key: "confession",
+    format: TEXT_WALL_FORMAT,
+    how: "INNER-VOICE CONFESSION as a phone note (the Opal pattern + the text-wall format). First person, specific small admissions with real nouns and days, then what Ripple did, then what changed. `lines`: 4–7 lines, each ≤70 chars, plain and conversational.",
+    women: `Headline: "Things only I remember". Lines: "The dentist is Tuesday. Emma's form is due Friday." / "I said all of it out loud on the drive home." / "Ripple turned it into my list, with the dates." / "Three weeks in a row, the same thing came up: no time for me."`,
+    men: `Headline: "What I said I'd do". Lines: "Gym Monday. Didn't go." / "Gym Wednesday. Didn't go." / "Said it out loud to Ripple both times." / "Week 3 it flagged it: missed 4 days running." / "Went Thursday."`,
+  },
+  {
+    key: "invisible_list",
+    format: "notes-app",
+    how: "THE INVISIBLE LIST, MADE VISIBLE. Headline makes the unseen load countable (a number or a quoted phrase). `benefits` = 3 concrete things Ripple did with it.",
+    women: `Headline: "All 23 things, finally written down"`,
+    men: `Headline: "Every promise I made myself this month"`,
+  },
+  {
+    key: "versus_usual",
+    format: "statement-card",
+    how: "CONTRAST WITH THE USUAL TOOL (planner, notes app, sticky notes, keeping it in your head): the one thing Ripple does that those can't — it notices. Blunt and specific.",
+    women: `Headline: "My planner never noticed I kept moving the same thing."`,
+    men: `Headline: "Discipline is remembering what you told yourself."`,
+  },
+  {
+    key: "proof_in_app",
+    format: APP_PROOF_FORMAT,
+    how: "PROOF IN THE APP: a hook that the real screenshot proves (women: the Life Matrix, 6 life areas scored over time; men: the Theme Map of what keeps coming up). `description` ≤60 chars says what the screenshot shows.",
+    women: `Headline: "See which part of your life keeps slipping"`,
+    men: `Headline: "Scoreboard for the life you said you wanted"`,
+  },
+  {
+    key: "iterate_new_format",
+    format: TEXT_WALL_FORMAT,
+    iteration: true,
+    how: "ITERATION A of our CURRENT BEST AD (below): keep its winning line/idea almost word for word as the headline, and tell it as a first-person phone note (`lines`).",
+    women: "",
+    men: "",
+  },
+  {
+    key: "iterate_new_scene",
+    format: SAY_CATCH_FORMAT,
+    iteration: true,
+    how: "ITERATION B of our CURRENT BEST AD: same promise and headline idea, a brand-new opening scene — a different concrete moment in `said`/`caught`.",
+    women: "",
+    men: "",
+  },
+  {
+    key: "offer_or_photo",
+    format: "hook-overlay",
+    how: "OFFER TEST on a real-looking photo: the headline leads with the free trial (\"Try it free for 7 days: ...\" + the concrete thing Ripple does; never the price). imageScene = a PLACE or OBJECTS only (a kitchen counter with a phone and car keys, a car dashboard at school pickup, a desk with a half-crossed list, a gym bench) — no people, no faces.",
+    women: `Headline: "7 days free: say it, Ripple sorts it"`,
+    men: `Headline: "7 days free. See every promise you kept."`,
+  },
 ];
 
 /** Phrases the last batches wore out (2026-09-29 audit of the live ads). */
@@ -120,7 +207,6 @@ Show what she'll see and get done with Ripple, and the better, lighter life it p
       painPoints: [
         "carrying the entire household's mental load with no one tracking her",
         "wants to be left alone and feels guilty for it",
-        "emotions feel too big and hard to trust (hormones vs. self)",
         "the quiet realization that her own life keeps getting deferred",
         "keeps everything in her head until it spills over",
       ],
@@ -148,17 +234,16 @@ Show what she'll see and get done with Ripple, and the better, lighter life it p
       "A weekly report about you",
     ],
     cardBackground: "warm cream paper background with a subtle terracotta accent",
+    // Setting, never subject (2026-09-29 research: recognisably-AI people
+    // and glossy stock mood read as ads and underperform). Real places and
+    // objects, shot like a phone photo.
     visualStyles: [
-      "Bright, airy natural-daylight lifestyle photography: white walls, soft greens, clean and candid, like a sunny weekday morning.",
-      "Authentic iPhone snapshot, UGC style: slightly imperfect framing, on-camera flash or window light, real everyday clutter, feels posted by a real mom, not a brand.",
-      "Overhead flat-lay shot straight down on a kitchen counter or table, crisp and organized, soft pastel colors, lots of real objects laid out.",
-      "Close-up of hands holding a phone in a real moment (car steering wheel at school pickup, grocery cart, desk), shallow depth of field, natural light.",
-      "Bold solid-color studio background (coral, mustard or teal), one real object in sharp focus, high-key product-ad lighting, punchy and modern.",
-      "Golden-hour outdoor photography: porch steps, driveway or a neighborhood walk, warm sun flare, relaxed and hopeful.",
-      "Cozy evening lamplight interior, muted warm tones (amber, cream, terracotta), quiet and intimate.",
-      "Clean minimal Scandinavian interior in soft morning light, neutral tones, calm and uncluttered.",
-      "Documentary black-and-white photography with a single bright color accent on the key object.",
-      "Editorial paper-cutout collage illustration with real paper textures and bold shapes, playful but grown-up.",
+      "Candid iPhone photo, natural window light, slightly imperfect framing — looks posted by a real person, not a brand.",
+      "Overhead phone shot straight down on a real kitchen counter or table, everyday clutter left in, soft daylight.",
+      "Car interior at school pickup, shot from the driver's seat on a phone: dashboard, keys, a coffee in the cupholder, daylight.",
+      "Bright, airy weekday-morning daylight, white walls and soft greens, clean and candid.",
+      "Bold solid-color studio background (coral, mustard or teal), one real everyday object in sharp focus, punchy product-ad lighting.",
+      "Warm late-afternoon light across a real lived-in living room, unstaged.",
     ],
     cardPalettes: [
       "warm cream paper background with a subtle terracotta accent",
@@ -218,16 +303,12 @@ Show the mechanism: spoken debrief → tracked habits → visible pattern → ke
     ],
     cardBackground: "near-black charcoal background with a single warm amber accent",
     visualStyles: [
-      "Dark, moody cinematic photography: low-key light, deep shadows, desaturated with one warm accent.",
-      "Bright gym daylight sports photography: chalk dust in the air, sweat, high contrast, energetic.",
-      "Gritty city street at dawn, blue hour, wet pavement and first light, documentary feel.",
-      "Authentic phone snapshot, UGC style: a messy desk, a car interior or a gym bag by the door, imperfect framing, real.",
-      "Stark studio shot on a black background with an electric orange accent light, one object, bold and graphic.",
+      "Candid phone snapshot, UGC style: a messy desk, a car interior or a gym bag by the door, imperfect framing, real.",
+      "Bright gym daylight: an empty bench, chalk, a water bottle, high contrast, no people.",
       "Overhead flat-lay of everyday gear on concrete (phone, keys, watch, headphones, wallet), sharp and organized.",
-      "Outdoor adventure at sunrise: a trail, a ridge or a coastline, wide angle, cold air and effort.",
-      "Focused workspace in natural window light: laptop, coffee, a plan on paper, clean and serious.",
-      "Black-and-white documentary photography, grainy and honest, strong shadows.",
-      "Neon night city: rain, reflections, magenta and cyan light, cinematic.",
+      "Focused workspace in natural window light: laptop, coffee, a plan on paper with half the items crossed out.",
+      "Stark studio shot on a black background with an electric orange accent light, one real object, bold and graphic.",
+      "Early-morning apartment kitchen, blue-hour light through the window, real and unstaged.",
     ],
     cardPalettes: [
       "near-black charcoal background with a single warm amber accent",
@@ -279,6 +360,11 @@ export interface AdImageCopy {
    *  creatives rebuild with the lane default. */
   visualStyle?: string;
   cardPalette?: string;
+  /** text-wall format: the first-person note, 4–8 short lines. */
+  lines?: string[];
+  /** weekly-report format: three stat tiles + one insight. */
+  stats?: { value: string; label: string }[];
+  insight?: string;
 }
 
 // The extra copy fields aren't DB columns, so they ride in the stored
@@ -286,7 +372,7 @@ export interface AdImageCopy {
 // anything reaches the image model; the regen path parses it back.
 const AD_COPY_TAG = "[[AD_COPY:";
 export function encodeAdCopy(c: AdImageCopy): string {
-  const extra = { solutionLine: c.solutionLine, benefits: c.benefits, said: c.said, caught: c.caught, visualStyle: c.visualStyle, cardPalette: c.cardPalette };
+  const extra = { solutionLine: c.solutionLine, benefits: c.benefits, said: c.said, caught: c.caught, visualStyle: c.visualStyle, cardPalette: c.cardPalette, lines: c.lines, stats: c.stats, insight: c.insight, imageScene: c.imageScene || undefined };
   return `\n${AD_COPY_TAG}${JSON.stringify(extra)}]]`;
 }
 export function decodeAdCopy(prompt: string | null | undefined): Partial<AdImageCopy> {
@@ -317,8 +403,7 @@ const EXACT_TEXT_RULES = `TEXT RENDERING RULES (critical):
 
 type AdFormatBuilder = (copy: AdImageCopy, g: GroupConfig) => string;
 
-export const APP_PROOF_FORMAT = "app-proof";
-export const SAY_CATCH_FORMAT = "say-catch";
+
 
 /**
  * key → prompt builder. Order defines the rotation across a batch.
@@ -334,7 +419,7 @@ export const AD_FORMATS: Array<{ key: string; build: AdFormatBuilder; offered?: 
     // 1. Pain photo + hook + the fix — the scene is the pain moment
     key: "hook-overlay",
     build: (c, g) => `Direct-response social media ad, vertical 2:3 portrait.
-Background photograph: ${c.visualStyle ?? g.photoStyle} Scene — show THIS exact moment of the problem, happening, so a viewer recognizes their own life in it: ${c.imageScene} Composed with generous negative space and a subtle dark gradient behind the text areas for legibility.
+Background photograph: ${c.visualStyle ?? g.photoStyle} Scene — a real place or real objects that make THIS situation recognisable, no people, no faces, no bodies: ${c.imageScene} It must look like a real phone photo, not an AI render or a stock image. Composed with generous negative space and a subtle dark gradient behind the text areas for legibility.
 Text baked into the image:
 - Large bold headline across the upper third: "${c.headline}"
 - Medium-weight line in the lower third, above the button: "${c.solutionLine ?? c.description}"
@@ -371,7 +456,7 @@ ${EXACT_TEXT_RULES}`,
     build: (c, g) => {
       const b = benefitsFor(c, g);
       return `Direct-response social media ad, vertical 2:3 portrait.
-Background photograph, heavily darkened/softened so text dominates: ${c.visualStyle ?? g.photoStyle} Scene — the moment of the problem: ${c.imageScene}
+Background photograph, heavily darkened/softened so text dominates: ${c.visualStyle ?? g.photoStyle} Scene — a real place or objects, no people: ${c.imageScene}
 Text baked into the image:
 - Bold headline at top: "${c.headline}"
 - Three lines below it, each preceded by a small checkmark: "${b[0]}", "${b[1]}", "${b[2]}"
@@ -406,6 +491,18 @@ ${EXACT_TEXT_RULES}`,
     // which can't draw our UI; this "prompt" is only a stored marker.
     key: APP_PROOF_FORMAT,
     build: (c) => `APP_PROOF (composed in code, no image model): headline "${c.headline}", subline "${c.description}", CTA "${ctaLabel(c.cta)}".`,
+  },
+  {
+    // 8. Text wall (2026-09-29, research) — a first-person story as a phone
+    // note. Composed in code (ad-render.ts); marker only.
+    key: TEXT_WALL_FORMAT,
+    build: (c) => `TEXT_WALL (composed in code, no image model): headline "${c.headline}".`,
+  },
+  {
+    // 9. Weekly report (2026-09-29, research) — the pattern-reveal winner
+    // family as an infographic: three stats + what Ripple noticed.
+    key: WEEKLY_REPORT_FORMAT,
+    build: (c) => `WEEKLY_REPORT (composed in code, no image model): headline "${c.headline}".`,
   },
 ];
 
@@ -516,6 +613,13 @@ const BatchAdSchema = z.object({
   format: z.enum(AD_FORMAT_KEYS).optional(),
   archetype: z.string().max(40).optional(),
   strategy: z.enum(["exploit", "explore"]).optional(),
+  // Research rebuild (2026-09-29): text-wall + weekly-report copy.
+  lines: z.array(z.string().max(110)).optional().transform((l) => l?.filter((x) => x.trim()).slice(0, 8)),
+  stats: z
+    .array(z.object({ value: z.string().max(10), label: z.string().max(30) }))
+    .optional()
+    .transform((st) => st?.slice(0, 3)),
+  insight: z.string().max(140).optional(),
 });
 
 /** JSON schema for the submit_ads tool (structured output, 2026-09-29). */
@@ -546,6 +650,12 @@ const SUBMIT_ADS_TOOL = {
             caught: { type: "array", items: { type: "string" } },
             format: { type: "string", enum: [...AD_FORMAT_KEYS] },
             strategy: { type: "string", enum: ["exploit", "explore"] },
+            lines: { type: "array", items: { type: "string" } },
+            stats: {
+              type: "array",
+              items: { type: "object", properties: { value: { type: "string" }, label: { type: "string" } }, required: ["value", "label"] },
+            },
+            insight: { type: "string" },
           },
           required: ["theme", "hypothesis", "targetPersona", "valueSurface", "archetype", "headline", "primaryText", "description", "cta", "imageScene", "solutionLine", "benefits", "said", "caught", "format", "strategy"],
         },
@@ -630,15 +740,12 @@ export async function createBatchForGroup(
   // means the batch runs on Reddit research alone, as before.
   const { getLatestLearning, renderLearningForBatch } = await import("@/lib/adlab/learning");
   const learning = await getLatestLearning(groupKey).catch(() => null);
-  const { section: learningSection, exploitCount } = renderLearningForBatch(learning);
+  const { section: learningSection } = renderLearningForBatch(learning, { slotted: true });
   const { getLatestCompetitorBrief, renderCompetitorBriefForBatch } = await import(
     "@/lib/adlab/competitor-research"
   );
   const competitorBrief = await getLatestCompetitorBrief(groupKey).catch(() => null);
   const competitorSection = renderCompetitorBriefForBatch(competitorBrief);
-  const preferredFormats = (learning?.brief?.preferredFormats ?? []).filter((f) =>
-    AD_FORMAT_KEYS.includes(f)
-  );
   const digestDate = digest.date.toISOString().slice(0, 10);
   const weekLabel = new Date().toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
 
@@ -652,15 +759,28 @@ export async function createBatchForGroup(
     take: 60,
   });
   const recentBlock = recentCreatives.length
-    ? `\nOUR RECENT ADS FOR THIS AUDIENCE (never reuse or closely paraphrase any of these headlines or openings; find NEW words and NEW angles):\n${recentCreatives.map((c) => `- ${c.headline} — ${c.primaryText.replace(/\s+/g, " ").slice(0, 90)}`).join("\n")}\n`
+    ? `\nOUR RECENT ADS FOR THIS AUDIENCE (never reuse or closely paraphrase any of these headlines or openings in the new-concept slots; find NEW words and NEW angles. The iterate_* slots are the one exception):\n${recentCreatives.map((c) => `- ${c.headline} — ${c.primaryText.replace(/\s+/g, " ").slice(0, 90)}`).join("\n")}\n`
     : "";
 
-  const systemPrompt = `You are an expert direct-response Meta ads copywriter. Generate 10 COMPLETE, DISTINCT ad creatives grounded in real audience research.
+  // The lane's current best ad (slots 8–9 iterate it). Our own trial data
+  // first; the proven women's line as a fallback before there is any.
+  const bestPerf = learning?.stats.top[0];
+  const bestAd = bestPerf
+    ? { headline: bestPerf.headline, primaryText: bestPerf.primaryText, format: bestPerf.formatKey }
+    : groupKey === "women"
+      ? { headline: "Same patterns. Different year.", primaryText: "Ripple shows you what keeps coming up in your own words, week after week.", format: "statement-card" }
+      : null;
+  const bestAdBlock = bestAd
+    ? `CURRENT BEST AD FOR THIS LANE (slots iterate_new_format and iterate_new_scene extend it — reusing its line there is REQUIRED, not repetition):\n- Headline: "${bestAd.headline}"\n- Primary text: "${bestAd.primaryText.replace(/\s+/g, " ").slice(0, 200)}"\n- Format it ran in: ${bestAd.format}\n`
+    : `CURRENT BEST AD FOR THIS LANE: none proven yet. Treat the iterate_* slots as extra new concepts: iterate_new_format = a pattern-reveal told as a phone note; iterate_new_scene = another input → output demo in a new life area.\n`;
 
-THE TWO JOBS OF EVERY AD (non-negotiable, per the owner — our ads were too vague):
-1. A stranger must understand WHAT RIPPLE IS AND DOES within the headline + first line. Ripple is ${PRODUCT_CATEGORY}. Show it concretely: you talk, it turns what you said into your to-do list / tracks your habits / shows what keeps coming up / sends your weekly report. Plain words, no metaphors standing in for the product. Naming the category ("AI habit tracker", "voice journal", "life optimizer") is good when it fits.
-2. It must name WHICH PAIN it solves, concretely, in the audience's own words, and point at the better life on the other side of it (more done, habits kept, clearer head).
-Clever, moody lines that don't say what the product does are WRONG. When in doubt, be literal.
+  const systemPrompt = `You are an expert direct-response Meta ads copywriter for a subscription app. Write complete static ad creatives grounded in real audience research AND in what the research says converts for subscription apps.
+
+WHAT CONVERTS (our research, reports/Subscription app ad creative conversion.md — follow it):
+- Plain, phone-native, literal ads beat polished mood work. Text-only / native-looking statics win about 1.7x as often as high-production ads. The category's longest-running ads are ONE plain benefit or proof line, kept for months.
+- Our own winners were concrete and showed a real insight ("Two years of noticing", "Same patterns. Different year."). Generic moody lines lose. Show the insight, not the mood.
+- Every ad needs: (1) a SPECIFIC scene or hook with a concrete noun, number or quoted phrase; (2) ONE literal line on what Ripple does; (3) a result. A stranger must know what Ripple is and does within the headline + first line.
+- Nobody else in the category shows people their own words turned into a list and a pattern. That demo and pattern-reveal territory is ours: lean on it.
 
 PRODUCT (ground truth — never claim beyond this):
 ${PRODUCT_TRUTH}
@@ -670,63 +790,51 @@ AUDIENCE: ${g.audienceLabel}
 BRAND VOICE:
 ${g.brandVoiceGuide}
 
-USPs (pick the one that best answers each pain — don't cram them all in):
+USPs (pick the one that best answers each ad — don't cram them all in):
 ${JSON.stringify(g.usps, null, 2)}
 
 BANNED PHRASES (never use): ${SHARED_BANNED.join(", ")}
-OVERUSED — do not use (\"patterns\" at most once across all 10): ${OVERUSED_PHRASES.join(", ")}
+OVERUSED — do not use ("patterns" at most once across all 10): ${OVERUSED_PHRASES.join(", ")}
 ${recentBlock}
-AD TYPES — use EACH of these exactly once across the 10 ads (set "archetype" to the key):
-${AD_ARCHETYPES.map((a) => `- ${a.key}: ${a.how}`).join("\n")}
+${bestAdBlock}
+THE 10 SLOTS — every slot has a FIXED hook template and a FIXED format. Write the ad for the slot you are given; set "archetype" to the slot key.
+${AD_SLOTS.map((sl) => `- ${sl.key} [format: ${sl.format}]: ${sl.how}${sl[groupKey] ? `\n    Example for this lane (write your OWN, don't copy): ${sl[groupKey]}` : ""}`).join("\n")}
 ${learningSection ? `\n${learningSection}\n` : ""}${competitorSection ? `\n${competitorSection}\n` : ""}
-THIS WEEK'S REDDIT AUDIENCE PULSE (real distilled pain from the audience's own threads — every ad MUST be rooted in exactly one of these themes):
+THIS WEEK'S REDDIT AUDIENCE PULSE (real distilled pain from the audience's own threads — root every new-concept ad in one of these themes, in their own words):
 ${themes.map((t, i) => `${i + 1}. THEME: ${t.theme}\n   WHY IT'S LIVE THIS WEEK: ${t.why}\n   SUGGESTED ANGLE: ${t.angle}\n   THEIR OWN PHRASES: ${(t.phrases ?? []).join(" | ")}`).join("\n\n")}
 
-VALUE SURFACE DEFINITIONS:
-- problem: Lead with the pain the user already feels
-- outcome: Lead with the result they want
-- social_proof: Lead with what others have experienced
-- mechanism: Lead with how the product works
-- story: Lead with a narrative arc
-- comparison: Lead with contrast to alternatives
-- identity: Lead with who the user is/wants to be
-- urgency: Lead with scarcity or time pressure
+VALUE SURFACE DEFINITIONS (label each ad with the closest): problem, outcome, social_proof, mechanism, story, comparison, identity, urgency.
 
-REQUIREMENTS:
-- EXACTLY 10 ads. Each rooted in a DIFFERENT theme where possible (reuse a theme only if there are fewer than 10).
-- The 10 must span at least 6 different valueSurface values, and use all 10 AD TYPES above (one each) — every ad must feel like a different ad, not a rewrite. Vary sentence length, tone (warm, blunt, playful, matter-of-fact) and opening words; no two ads may start the same way.
-- THE BRIDGE IS THE AD (non-negotiable, per the owner: ads must tie the user's pain to what Ripple does and how it solves it). Every ad has three beats: (1) the PAIN, named in the audience's own words so a stranger instantly knows which problem this is; (2) the MECHANISM — the specific thing Ripple does about that exact pain (pulls the tasks out of what you say, checks off the habit you mentioned, tracks the promise you made, names the pattern that repeats, scores the life area that's slipping, writes the weekly report); (3) the RESULT for them. Clever abstract lines that don't name a problem ("Same week. Different eyes.", "Silence is where the work is.") are WRONG.
-- headline: HARD max 40 characters, count them (mobile truncation). Plain words. Depending on the ad type it states the pain OR what Ripple does (plain_promise, use_list) — never an abstract mood line. Test: could someone who has never heard of Ripple tell what problem or product this is about?
-- solutionLine: max 90 characters. What Ripple concretely does about THIS headline's pain, as a plain statement ("Say it once. Ripple turns it into your to-do list and keeps it."). Must name a real feature from PRODUCT. No durations.
-- benefits: exactly 3 lines, each max 40 characters, each a concrete thing Ripple does for THIS pain (not generic, not repeated across ads).
-- said: max 140 characters. One realistic thing this person would actually say out loud in a debrief, in their voice, with specifics (names, days, errands, excuses) that show this ad's pain.
-- caught: exactly 3 lines, each max 44 characters — what Ripple pulls out of "said": tasks ("Sign Emma's permission slip — Friday"), habits ("Habit missed: gym, 3rd time"), promises, or a pattern ("Third week in a row: no time for you"). Only things "said" actually contains.
-- primaryText: 1-2 sentences, HARD max 125 characters — Meta cuts to "…more" after that and compliance flags anything longer.
-- description: max 100 characters.
-- cta: always "SIGN_UP" (renders as "Start free trial"). In our own data SIGN_UP ads produced trial starts at roughly half the cost of LEARN_MORE.
-- imageScene: 1-2 sentences showing THIS ad's pain as a concrete moment happening (e.g. a kitchen counter buried in permission slips, a calendar and sticky notes at 11pm; a gym bag untouched by the door at 7am, a phone lit in a dark bedroom at 2am), matching the brand's photography style. NOT generic mood (no lone coffee cups, candles, or empty notebooks). Scene only — text is composed separately. No faces.
-- format: the image format carrying this ad, one of: ${AD_FORMAT_KEYS.join(", ")}. hook-overlay = photo of the pain moment + the pain headline + the solution line + CTA; notes-app = native-looking phone-notes checklist (pain as title, benefits as checklist — "ugly ad"); statement-card = typography only (pain big, solution line beneath); checklist-photo = pain headline + the 3 benefits over a darkened pain photo; say-catch = the mechanism in one glance: "You say it:" (said) → "Ripple catches it:" (caught) → solution line; app-proof = the pain headline above a REAL screenshot of the app (${groupKey === "women" ? "the Life Matrix: 6 life areas scored over time" : "the Theme Map: the recurring themes in what he says"}) — the description becomes the one-line subline saying what the screenshot proves (≤60 chars). Use say-catch for at least 2 of the 10 (always for say_catch_demo) and app-proof for at least 1. Use at least 5 different formats across the 10.${preferredFormats.length ? ` Our data favors: ${preferredFormats.join(", ")} — give these most exploit ads.` : ""}
-- No recording-duration claims anywhere ("a minute", "60 seconds", "one minute a day"), never "brain dump". "Voice journal" is fine as part of the category.
+FIELD RULES:
+- headline: HARD max 40 characters, count them. It is the biggest text on the image AND the Meta headline. It must contain a concrete noun, number or quoted phrase. Names a SITUATION, never the reader's state or condition.
+- primaryText: HARD max 125 characters, fixed order: the hook/scene first, then ONE literal mechanism line ("You talk. Ripple turns it into your to-do list and shows what keeps coming up."). No price.
+- description: max 100 characters (app-proof: ≤60, says what the screenshot shows).
+- solutionLine: max 90 characters, what Ripple concretely does about THIS ad's situation. Must name a real feature from PRODUCT.
+- benefits: exactly 3 lines, each max 40 characters, concrete things Ripple does for this situation.
+- said: max 140 characters, a realistic, specific thing this person would say out loud (names, days, errands, excuses).
+- caught: exactly 3 lines, each max 44 characters — tasks with dates, habits missed, promises, or a repeat, all actually contained in "said".
+- lines: text-wall slots ONLY — 4–7 first-person lines, each ≤70 characters. Omit elsewhere.
+- stats + insight: weekly-report slots ONLY — exactly 3 stats {value ≤6 chars, label ≤18 chars} and insight ≤90 chars. Believable, small, specific numbers — an example of one person's week, never a claim about users. Omit elsewhere.
+- imageScene: 1 sentence. Only used by photo formats: a PLACE or OBJECTS (a kitchen counter with a phone and car keys, a car dashboard, a desk with a half-crossed list, a gym bag by the door). No people, no faces, no hands in focus, no moody stock lighting. For non-photo formats write "n/a".
+- cta: always "SIGN_UP".
+- format: copy the slot's format exactly.
+- strategy: "exploit" for the iterate_* slots, "explore" for the rest.
+
+HARD RULES (Meta policy + brand — violations get ads rejected):
+- NEVER imply the reader has a condition or feeling state — including as a QUESTION. Banned: "Overwhelmed?", "Burned out?", "Stressed?", "anxious", "your anxiety", "depressed", "exhausted mom?". Name the situation instead ("23 things in your head", "the dentist is Tuesday").
+- NEVER reference the reader's age or life stage in copy ("over 40", "in your 40s", "midlife", "menopause", "hormones", "at your age"). Age lives in targeting only.
+- No health or mental-health outcome claims, no before/after transformation, no invented user counts, ratings, reviews, testimonials or press.
+- No recording-duration claims, never "brain dump", never a fixed time of day for recording ("nightly", "before bed").
 - CLAIMS: ${AD_CLAIM_GUARDRAIL}
-- strategy: "exploit" or "explore"${exploitCount ? ` — exactly ${exploitCount} exploit (see EXPLOIT / EXPLORE SPLIT)` : ` — no performance history yet, mark all "explore"`}.
 
-META POLICY (violations get ads rejected — follow strictly):
-- NEVER use 'you/your' in a way that implies a personal attribute (health condition, mental state, finances). "You feel stuck" is fine; "your anxiety" is not.
-- NEVER reference medical/mental-health conditions as belonging to the reader.
-- NEVER use before/after transformation framing or promise wellness outcomes.
-- Use third-person or general framing for sensitive topics: "Most people forget what they promised themselves by Thursday."
-
-Submit the ads with the submit_ads tool: exactly 10 objects with keys: theme, hypothesis, targetPersona, valueSurface, archetype, headline, primaryText, description, cta, imageScene, solutionLine, benefits, said, caught, format, strategy`;
+Submit the ads with the submit_ads tool.`;
 
   // Two parallel requests of 5 (2026-09-29): one 10-ad reply from Sonnet
-  // 5.5 hit the 12,000-token output cap every time (it reasons at length
-  // before answering), so the JSON was cut off. Each half gets its own 5 ad
-  // types (all 10 across the batch) and its own slice of the Reddit themes,
-  // and must call the tool straight away.
-  const halves = [AD_ARCHETYPES.slice(0, 5), AD_ARCHETYPES.slice(5)];
+  // 5.5 hit the output cap every time. Each half writes 5 slots.
+  const halves = [AD_SLOTS.slice(0, 5), AD_SLOTS.slice(5)];
   const themeSlices = [themes.slice(0, Math.ceil(themes.length / 2)), themes.slice(Math.ceil(themes.length / 2))];
   const halfPrompt = (i: number) =>
-    `This request covers ${halves[i].length} of this week's 10 ads (the batch is split into two requests). Write exactly ${halves[i].length} ads, one for each of these ad types: ${halves[i].map((t) => t.key).join(", ")}. Root them in these Reddit themes: ${themeSlices[i].map((t) => t.theme).join(" | ") || "any of the themes above"}.
+    `This request covers ${halves[i].length} of this week's 10 ads (the batch is split into two requests). Write exactly ${halves[i].length} ads, one per slot, in this order: ${halves[i].map((sl) => `${sl.key} (format ${sl.format})`).join(", ")}. Root the new-concept ads in these Reddit themes: ${themeSlices[i].map((t) => t.theme).join(" | ") || "any of the themes above"}. Every ad must differ from the others in angle AND life moment.
 Call the submit_ads tool IMMEDIATELY. Do not write any analysis, plan, draft or commentary before or after the tool call; think silently and put everything into the tool input.`;
 
   const generateHalf = async (i: number): Promise<z.infer<typeof BatchAdSchema>[]> => {
@@ -765,7 +873,7 @@ Call the submit_ads tool IMMEDIATELY. Do not write any analysis, plan, draft or 
   const experiment = await prisma.adLabExperiment.create({
     data: {
       projectId,
-      topicBrief: `Weekly Reddit-grounded batch (${weekLabel}) — 10 ads from the ${digestDate} audience pulse for ${g.audienceLabel}. Each ad bridges one Reddit pain theme to what Ripple does.`,
+      topicBrief: `Weekly batch (${weekLabel}) — 10 ads for ${g.audienceLabel}: 7 new concepts across 6+ formats and 3 extending the current best ad, rooted in the ${digestDate} audience pulse.`,
       status: "awaiting_approval",
       campaignName: `${g.projectName} | Reddit batch ${weekLabel}`,
       // Informational: launches go into the group's evergreen ad set, which
@@ -778,8 +886,25 @@ Call the submit_ads tool IMMEDIATELY. Do not write any analysis, plan, draft or 
 
   const creativeIds: string[] = [];
   const styleOffset = Math.floor(Math.random() * 1000);
+  // Each ad → its slot (by the archetype key the model echoed, else by
+  // position). The slot decides the format, not the model; if the copy a
+  // code-drawn format needs is missing, fall back to a statement card.
+  const usedSlots = new Set<string>();
+  let photoCount = 0;
   for (const [adIndex, ad] of ads.slice(0, 10).entries()) {
-    const formatKey = ad.format ?? resolveAdFormat(adIndex).key;
+    const slot =
+      AD_SLOTS.find((sl) => sl.key === ad.archetype && !usedSlots.has(sl.key)) ??
+      AD_SLOTS.find((sl, i) => i >= adIndex && !usedSlots.has(sl.key)) ??
+      AD_SLOTS.find((sl) => !usedSlots.has(sl.key));
+    if (slot) usedSlots.add(slot.key);
+    let formatKey = slot?.format ?? ad.format ?? "statement-card";
+    // Iteration B keeps the winner's own format when it was a photo ad.
+    if (slot?.key === "iterate_new_scene" && bestAd && PHOTO_FORMATS.includes(bestAd.format)) formatKey = bestAd.format;
+    if (formatKey === TEXT_WALL_FORMAT && !(ad.lines && ad.lines.length >= 3)) formatKey = "statement-card";
+    if (formatKey === WEEKLY_REPORT_FORMAT && !(ad.stats && ad.stats.length === 3 && ad.insight)) formatKey = "statement-card";
+    if (PHOTO_FORMATS.includes(formatKey) && ++photoCount > 2) formatKey = "statement-card";
+    ad.archetype = slot?.key ?? ad.archetype;
+    ad.strategy = slot?.iteration ? "exploit" : "explore";
     // One visual style + palette per ad, rotated from a random start so
     // neither the ads in a batch nor consecutive weeks share a look.
     const visualStyle = g.visualStyles[(styleOffset + adIndex) % g.visualStyles.length];
@@ -795,7 +920,7 @@ Call the submit_ads tool IMMEDIATELY. Do not write any analysis, plan, draft or 
         targetPersona: ad.targetPersona,
         valueSurface: ad.valueSurface,
         // "| strategy:" is parsed back by lib/adlab/learning.ts — keep format
-        researchNotes: `Reddit theme (${digestDate}): ${ad.theme} | strategy: ${strategy}${ad.archetype ? ` | type: ${ad.archetype}` : ""}`,
+        researchNotes: `Reddit theme (${digestDate}): ${ad.theme} | strategy: ${strategy}${ad.archetype ? ` | type: ${ad.archetype}` : ""} | format: ${formatKey}`,
         score: 5,
       },
     });
@@ -867,6 +992,17 @@ export async function generateBatchImage(
         solution: extra.solutionLine ?? creative.description,
         ctaLabel: ctaLabel(creative.cta),
       });
+    } else if (creative.formatKey === TEXT_WALL_FORMAT || creative.formatKey === WEEKLY_REPORT_FORMAT) {
+      const tags = creative.angle.experiment.campaignTags;
+      const groupKey: BatchGroupKey = tags.includes("men") ? "men" : "women";
+      const extra = decodeAdCopy(creative.generationPrompt);
+      if (creative.formatKey === TEXT_WALL_FORMAT) {
+        if (!extra.lines?.length) throw new Error("text-wall creative has no lines");
+        placements = await renderTextWallPlacements(groupKey, { headline: creative.headline, lines: extra.lines, ctaLabel: ctaLabel(creative.cta) });
+      } else {
+        if (!extra.stats?.length || !extra.insight) throw new Error("weekly-report creative has no stats/insight");
+        placements = await renderWeeklyReportPlacements(groupKey, { headline: creative.headline, stats: extra.stats, insight: extra.insight, ctaLabel: ctaLabel(creative.cta) });
+      }
     } else if (creative.formatKey === APP_PROOF_FORMAT) {
       const tags = creative.angle.experiment.campaignTags;
       const groupKey: BatchGroupKey = tags.includes("men") ? "men" : "women";
