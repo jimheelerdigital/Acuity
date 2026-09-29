@@ -79,4 +79,6 @@ export type TrialEmailKey =
   | "nr_winback_1"
   | "nr_winback_2"
   | "nr_winback_3"
-  | "app_access_rescue";
+  | "app_access_rescue"
+  | "app_first_record_1"
+  | "app_first_record_2";

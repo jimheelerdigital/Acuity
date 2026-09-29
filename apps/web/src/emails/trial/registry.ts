@@ -57,6 +57,7 @@ import { keepMomentum } from "./keep-momentum";
 import { trialEnding } from "./trial-ending";
 import { welcomeDay0 } from "./welcome-day0";
 import { appAccessRescue } from "./app-access-rescue";
+import { appFirstRecord1, appFirstRecord2 } from "./app-first-record";
 
 export const TRIAL_EMAIL_TEMPLATES: Record<TrialEmailKey, TrialEmailTemplate> =
   {
@@ -107,6 +108,8 @@ export const TRIAL_EMAIL_TEMPLATES: Record<TrialEmailKey, TrialEmailTemplate> =
     nr_winback_2: nrWinback2,
     nr_winback_3: nrWinback3,
     app_access_rescue: appAccessRescue,
+    app_first_record_1: appFirstRecord1,
+    app_first_record_2: appFirstRecord2,
   };
 
 export type { TrialEmailKey, TrialEmailTemplate } from "./types";

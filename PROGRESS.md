@@ -7,6 +7,32 @@
 
 ---
 
+## [2026-09-29] — Nudge people who get into the app but don't record
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** (see git log: "feat: Email a first-debrief prompt to people in the app who haven't recorded")
+
+### In plain English (for Keenan)
+Web buyers are now getting into the app (Britney signed in 4 minutes after paying), but none of them had recorded. The app shows a paid newcomer only "No entries yet. Tap the record button above to start", which needs an app update to change. So email now does the guiding:
+- **About an hour after someone first signs into the app without recording**, they get "You're in. Now say one thing": tap record, say three things on your plate this week, with an example of what Ripple gives back.
+- **A day later**, if they still haven't recorded, a shorter follow-up.
+
+Paying customers also now get the regular "you haven't recorded yet" emails. They were left out before.
+
+### Technical changes (for Jimmy)
+- New `apps/web/src/emails/trial/app-first-record.ts`: `app_first_record_1` and `app_first_record_2`, registered in types, registry and email-enabled, and added to `APP_ACCESS_EMAIL_KEYS` (backup sign-in link).
+- `apps/web/src/inngest/functions/recovery-email-orchestrator.ts`: new "in the app, not recording" stage.
+  - Keyed on each user's first `app_signed_in` (last 96h), `totalRecordings = 0`, non-internal.
+  - #1 at 1–48h; #2 at 24–96h, only after #1.
+  - `never_recorded_24h`/`48h` now include PRO (were TRIAL/FREE only).
+
+### Manual steps needed
+None.
+
+### Notes
+- State on 09-29: 3 web signups had signed into the app (Britney paid today, Aug paid, Blessen free), all with 0 recordings. The real fix is an app update that opens a first-time paid user straight into a guided first recording, pending the app-release decision with Jimmy.
+
 ## [2026-09-29] — "New signup" emails skip our own test accounts
 
 **Requested by:** Keenan

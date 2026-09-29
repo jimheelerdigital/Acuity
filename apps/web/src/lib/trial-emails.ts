@@ -176,6 +176,8 @@ export const APP_ACCESS_EMAIL_KEYS = new Set<string>([
   "nr_winback_2",
   "nr_winback_3",
   "app_access_rescue",
+  "app_first_record_1",
+  "app_first_record_2",
 ]);
 
 export async function sendTrialEmail(

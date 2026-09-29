@@ -414,6 +414,39 @@ export const recoveryEmailOrchestratorFn = inngest.createFunction(
       }
 
       // ═══════════════════════════════════════════════════════════
+      // IN THE APP, NOT RECORDING (2026-09-29, per Keenan). Keyed on the
+      // first app sign-in (lib/mobile-session.ts logs app_signed_in), any
+      // plan including paid. #1 ~1h after sign-in, #2 ~1 day after.
+      // ═══════════════════════════════════════════════════════════
+      if (hasGlobalBudget() || config.dryRun) {
+        const { isInternalEmail } = await import("@/lib/internal-traffic");
+        const signIns = await prisma.onboardingEvent.findMany({
+          where: { event: "app_signed_in", createdAt: { gte: new Date(now.getTime() - 96 * 3600_000) } },
+          select: { userId: true, createdAt: true },
+          orderBy: { createdAt: "asc" },
+        });
+        const firstSignIn = new Map<string, Date>();
+        for (const s of signIns) if (s.userId && !firstSignIn.has(s.userId)) firstSignIn.set(s.userId, s.createdAt);
+        const candidates = firstSignIn.size
+          ? await prisma.user.findMany({
+              where: { id: { in: [...firstSignIn.keys()] }, totalRecordings: 0, isAdmin: false },
+              select: { id: true, email: true },
+            })
+          : [];
+        for (const u of candidates) {
+          if (!hasGlobalBudget() && !config.dryRun) break;
+          if (isInternalEmail(u.email)) continue;
+          const ageH = (now.getTime() - firstSignIn.get(u.id)!.getTime()) / 3600_000;
+          const sent1 = await prisma.trialEmailLog.findUnique({
+            where: { userId_emailKey: { userId: u.id, emailKey: "app_first_record_1" } },
+            select: { id: true },
+          });
+          if (!sent1 && ageH >= 1 && ageH < 48) await trySend(u.id, "app_first_record_1");
+          else if (sent1 && ageH >= 24 && ageH < 96) await trySend(u.id, "app_first_record_2");
+        }
+      }
+
+      // ═══════════════════════════════════════════════════════════
       // 13–16. NEVER RECORDED (FORWARD-ONLY)
       //    Forward-only guard: createdAt must be after enablement.
       // ═══════════════════════════════════════════════════════════
@@ -425,7 +458,8 @@ export const recoveryEmailOrchestratorFn = inngest.createFunction(
         // days, so no expired trial falls inside these windows.
         const nr24h = await prisma.user.findMany({
           where: {
-            subscriptionStatus: { in: ["TRIAL", "FREE"] },
+            // PRO too (2026-09-29): paid web buyers were getting no nudge.
+            subscriptionStatus: { in: ["TRIAL", "FREE", "PRO"] },
             totalRecordings: 0,
             createdAt: {
               gte: new Date(now.getTime() - 48 * 60 * 60 * 1000),
@@ -444,7 +478,8 @@ export const recoveryEmailOrchestratorFn = inngest.createFunction(
         // #14 — 48h: created 44–96h ago (TRIAL or FREE, see #13)
         const nr48h = await prisma.user.findMany({
           where: {
-            subscriptionStatus: { in: ["TRIAL", "FREE"] },
+            // PRO too (2026-09-29): paid web buyers were getting no nudge.
+            subscriptionStatus: { in: ["TRIAL", "FREE", "PRO"] },
             totalRecordings: 0,
             createdAt: {
               gte: new Date(now.getTime() - 96 * 60 * 60 * 1000),
