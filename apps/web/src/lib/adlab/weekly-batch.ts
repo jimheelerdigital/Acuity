@@ -23,6 +23,7 @@ import type { Prisma } from "@prisma/client";
 
 import { prisma } from "@/lib/prisma";
 import { AD_COPY_MODELS, callAdLabClaude, extractJson } from "@/lib/adlab/claude";
+import { lastJsonText } from "@/lib/content-factory/claude-client";
 import { AD_CLAIM_GUARDRAIL, PRODUCT_CATEGORY, VOICE_PRINCIPLE, productTruth } from "@/lib/positioning";
 import { displayMonthly } from "@/lib/pricing";
 import { SAFE_ZONE_RULES, SOURCE_SIZE, cutPlacements, renderAppProofPlacements, renderSayCatchPlacements } from "@/lib/adlab/ad-render";
@@ -475,7 +476,17 @@ const BatchAdSchema = z.object({
  * than 6 survive.
  */
 export function parseBatchAds(raw: string): z.infer<typeof BatchAdSchema>[] {
-  const arr = JSON.parse(extractJson(raw));
+  // Sonnet 5.5 can reason in text and write the JSON LAST (or draft one
+  // first), so prefer the last complete JSON array in the reply
+  // (content-factory lastJsonText), then fall back to the old extraction.
+  const jsonText = (() => {
+    const last = lastJsonText(raw);
+    try {
+      if (Array.isArray(JSON.parse(last))) return last;
+    } catch {}
+    return extractJson(raw);
+  })();
+  const arr = JSON.parse(jsonText);
   if (!Array.isArray(arr)) throw new Error("batch copy is not a JSON array");
   const ok: z.infer<typeof BatchAdSchema>[] = [];
   const problems: string[] = [];
