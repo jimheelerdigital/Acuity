@@ -689,7 +689,7 @@ Submit the ads with the submit_ads tool: exactly 10 objects with keys: theme, hy
       models: AD_COPY_MODELS,
       outputTool: SUBMIT_ADS_TOOL,
       systemPrompt,
-      userPrompt: `${userPrompt}\n\nIMPORTANT: Your previous response failed validation: ${err1 instanceof Error ? err1.message.slice(0, 500) : String(err1)}\nReturn EXACTLY 10 objects with ALL required keys (theme, hypothesis, targetPersona, valueSurface, headline, primaryText, description, cta, imageScene, solutionLine, benefits (3), said, caught (3), format, strategy). valueSurface must be one of: ${VALUE_SURFACES.join(", ")}.`,
+      userPrompt: `${userPrompt}\n\nIMPORTANT: Your previous response failed validation: ${err1 instanceof Error ? err1.message.slice(0, 500) : String(err1)}\nSubmit them with the submit_ads tool (do NOT write the JSON as text). EXACTLY 10 objects with ALL required keys (theme, hypothesis, targetPersona, valueSurface, headline, primaryText, description, cta, imageScene, solutionLine, benefits (3), said, caught (3), format, strategy). valueSurface must be one of: ${VALUE_SURFACES.join(", ")}.`,
       maxTokens: 12000,
     });
     ads = parseBatchAds(raw2);

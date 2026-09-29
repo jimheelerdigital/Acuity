@@ -21,8 +21,9 @@ interface AdLabClaudeParams {
    *  doesn't exist (404). Defaults to the legacy single model. */
   models?: string[];
   /** Structured output (2026-09-29): force a tool call with this JSON schema
-   *  and return the tool input as JSON text. Guarantees valid JSON — the
-   *  first Sonnet 5.5 weekly batches failed on an unescaped quote. */
+   *  and return the tool input as JSON text (valid by construction). The
+   *  first Sonnet 5.5 weekly batches failed on an unescaped quote. Offered
+   *  with tool_choice auto (5.5 can't be forced); falls back to text. */
   outputTool?: { name: string; description: string; schema: Record<string, unknown> };
 }
 
@@ -61,8 +62,11 @@ async function callOnce(params: Omit<AdLabClaudeParams, "models"> & { model: str
       messages: [{ role: "user", content: userPrompt }],
       ...(outputTool
         ? {
+            // "auto", not a forced tool: Sonnet 5.5 rejects tool_choice
+            // type "tool"/"any" (400, 2026-09-29). The prompt tells it to use
+            // the tool; a plain-text reply falls through to text parsing.
             tools: [{ name: outputTool.name, description: outputTool.description, input_schema: outputTool.schema as { type: "object" } }],
-            tool_choice: { type: "tool" as const, name: outputTool.name },
+            tool_choice: { type: "auto" as const },
           }
         : {}),
     });
@@ -88,8 +92,8 @@ async function callOnce(params: Omit<AdLabClaudeParams, "models"> & { model: str
 
     if (outputTool) {
       const tool = response.content.find((b) => b.type === "tool_use") as { input?: unknown } | undefined;
-      if (!tool?.input) throw new Error(`no ${outputTool.name} tool call in reply (stop_reason: ${response.stop_reason})`);
-      return JSON.stringify(tool.input);
+      if (tool?.input) return JSON.stringify(tool.input);
+      console.warn(`[adlab-claude] ${purpose}: no ${outputTool.name} tool call (stop_reason: ${response.stop_reason}) — parsing text`);
     }
 
     return response.content

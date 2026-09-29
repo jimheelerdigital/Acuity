@@ -29,6 +29,7 @@ The first ad batches from the new writer failed for both lanes ("Expected ',' or
 
 ### Notes
 - Error seen: "Expected ',' or '}' after property value in JSON at position 11204", for both lanes, on the first runs with Sonnet 5.5 and the rewritten prompt.
+- Follow-up the same day: Sonnet 5.5 rejects a forced tool call (`tool_choice` type "tool"/"any", 400). The tool is now offered with `tool_choice: auto`; the prompt and retry tell it to use the tool, and a text reply falls back to `lastJsonText`.
 
 ## [2026-09-29] — Nudge people who get into the app but don't record
 
