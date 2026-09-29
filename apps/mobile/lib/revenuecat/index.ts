@@ -1,8 +1,10 @@
 import { Platform } from "react-native";
 
 import {
+  LEGACY_TIER,
   RC_ENTITLEMENT_PRO,
   RC_PACKAGES,
+  V2_TIER,
   offeringIdForTier,
   pricingTierFor,
   rcConfigureMode,
@@ -277,6 +279,68 @@ export async function hasProEntitlement(): Promise<boolean | null> {
     return Boolean(info.entitlements.active[RC_ENTITLEMENT_PRO]);
   } catch (err) {
     log("getCustomerInfo failed", err);
+    return null;
+  }
+}
+
+// ─── Active plan (for the "Current plan" paywall state) ──────────────
+
+export type ProPlanInterval = "monthly" | "annual";
+
+export interface ActiveProPlan {
+  productId: string;
+  interval: ProPlanInterval;
+  /**
+   * Where the subscription is billed. Only "app_store" / "play_store" plans
+   * can be changed with an in-app purchase; a "stripe" (web) or
+   * "promotional" plan must never be offered an in-app buy (double billing).
+   */
+  store: "app_store" | "play_store" | "stripe" | "other";
+}
+
+/** Map a store product id or Stripe price id onto monthly / annual. */
+export function intervalForProduct(productId: string): ProPlanInterval {
+  for (const tier of [V2_TIER, LEGACY_TIER]) {
+    for (const interval of ["monthly", "annual"] as const) {
+      const p = tier.products[interval];
+      if (productId === p.apple || productId === p.google || productId === p.stripe) {
+        return interval;
+      }
+    }
+  }
+  // Play subscriptions can come back as "product:baseplan"; promos carry
+  // "yearly"/"annual" in the id. Anything else reads as monthly.
+  return /annual|yearly|year/i.test(productId) ? "annual" : "monthly";
+}
+
+function normalizeStore(store: unknown): ActiveProPlan["store"] {
+  const s = String(store ?? "").toUpperCase();
+  if (s === "APP_STORE" || s === "MAC_APP_STORE") return "app_store";
+  if (s === "PLAY_STORE") return "play_store";
+  if (s === "STRIPE" || s === "RC_BILLING") return "stripe";
+  return "other";
+}
+
+/**
+ * The customer's active Pro plan according to RevenueCat on this device, or
+ * null when not Pro / RC unavailable. Read straight from RC (not our DB) so
+ * the paywall reflects transfers and fresh purchases immediately.
+ */
+export async function getActiveProPlan(): Promise<ActiveProPlan | null> {
+  if (!configured) return null;
+  const mod = await loadPurchases();
+  if (!mod) return null;
+  try {
+    const info = await mod.default.getCustomerInfo();
+    const ent = info.entitlements.active[RC_ENTITLEMENT_PRO];
+    if (!ent) return null;
+    return {
+      productId: ent.productIdentifier,
+      interval: intervalForProduct(ent.productIdentifier),
+      store: normalizeStore(ent.store),
+    };
+  } catch (err) {
+    log("getActiveProPlan failed", err);
     return null;
   }
 }

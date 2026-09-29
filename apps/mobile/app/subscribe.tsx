@@ -13,7 +13,14 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-import { CALENDAR_INTEGRATION_ENABLED, DEFAULT_PRICING_CONFIG } from "@acuity/shared";
+import {
+  CALENDAR_INTEGRATION_ENABLED,
+  DEFAULT_PRICING_CONFIG,
+  LEGACY_TIER,
+  V2_TIER,
+  annualSavingsPct,
+  type PricingTier,
+} from "@acuity/shared";
 
 import { GradientCheckbox } from "@/components/acuity/GradientCheckbox";
 import { RestorePurchasesButton } from "@/components/restore-purchases-button";
@@ -39,8 +46,10 @@ import {
   isIapEnabled,
 } from "@/lib/iap-config";
 import {
+  getActiveProPlan,
   getProOffering,
   purchaseProPackage,
+  type ActiveProPlan,
   type RcOfferingPackages,
 } from "@/lib/revenuecat";
 import { rcFlags } from "@/lib/revenuecat/flags";
@@ -51,6 +60,10 @@ import {
   displayTier,
   newPricingEnabled,
 } from "@/lib/pricing";
+import {
+  fetchCustomerPricingTier,
+  type CustomerPricingTier,
+} from "@/lib/pricing-tier";
 
 type Tier = "monthly" | "annual";
 
@@ -108,6 +121,11 @@ export default function SubscribeScreen() {
   // blocks the purchase until ticked, and we write a ConsentRecord
   // before initiating the StoreKit flow.
   const [acknowledged, setAcknowledged] = useState(false);
+  // RC rail only: the customer's active Pro plan (read from RC on-device, so
+  // transfers + fresh purchases show immediately) and the price tier the
+  // server says they get (legacy customers keep $4.99 / $39.99).
+  const [currentPlan, setCurrentPlan] = useState<ActiveProPlan | null>(null);
+  const [pricingTier, setPricingTier] = useState<CustomerPricingTier>("v2");
 
   // Which purchase rail is live. RC takes precedence when its flag is on;
   // otherwise the legacy StoreKit path. `flagOn` gates the whole native
@@ -142,6 +160,24 @@ export default function SubscribeScreen() {
     selectedTier === "monthly" ? monthlyPriceLabel : annualPriceLabel;
   const selectedPeriodLabel = selectedTier === "monthly" ? "month" : "year";
 
+  // -- Already-Pro state (RC rail) --------------------------------------
+  // Only App Store / Play plans can change with an in-app purchase. A web
+  // (Stripe) or promotional plan must never be offered an in-app buy -- that
+  // would bill the customer twice.
+  const planInApp =
+    currentPlan !== null &&
+    (currentPlan.store === "app_store" || currentPlan.store === "play_store");
+  const canUpgradeToAnnual =
+    rcPurchases && planInApp && currentPlan?.interval === "monthly" && annualAvailable;
+  const alreadyProNoPurchase =
+    rcPurchases && currentPlan !== null && !canUpgradeToAnnual;
+  // Savings badge follows whichever tier is on screen (legacy vs v2).
+  const tierCatalog: PricingTier = rcPurchases
+    ? pricingTier === "legacy"
+      ? LEGACY_TIER
+      : V2_TIER
+    : displayTier();
+
   const loadProducts = useCallback(async () => {
     setLoadState("loading");
     setErrorMsg(null);
@@ -152,8 +188,19 @@ export default function SubscribeScreen() {
       // ("default") offering; getProOffering falls back to RC's `current`
       // offering if the tier-specific one isn't configured.
       if (rcPurchases) {
+        const [tier, plan] = await Promise.all([
+          fetchCustomerPricingTier(),
+          getActiveProPlan(),
+        ]);
+        setPricingTier(tier);
+        setCurrentPlan(plan);
+        // Legacy customers get the `grandfathered` offering ($4.99/$39.99);
+        // everyone else the current one. legacyUnknownStart is the shared
+        // resolver's "grandfather this user" input.
         const offering = await getProOffering(
-          { paidSince: null },
+          tier === "legacy"
+            ? { paidSince: null, legacyUnknownStart: true }
+            : { paidSince: null },
           { ...DEFAULT_PRICING_CONFIG, newPricingEnabled: newPricingEnabled() }
         );
         if (!offering || (!offering.monthly && !offering.annual)) {
@@ -162,6 +209,8 @@ export default function SubscribeScreen() {
         }
         setRcOffering(offering);
         setSelectedTier((current) => {
+          // A monthly subscriber is here to upgrade: preselect annual.
+          if (plan?.interval === "monthly" && offering.annual) return "annual";
           if (current === "annual" && !offering.annual) return "monthly";
           if (current === "monthly" && !offering.monthly) return "annual";
           return current;
@@ -277,9 +326,13 @@ export default function SubscribeScreen() {
         }
         setErrorMsg(null);
         await refresh();
+        const upgraded =
+          currentPlan?.interval === "monthly" && selectedTier === "annual";
         Alert.alert(
-          "Welcome to Ripple Pro",
-          "Your subscription is active. New entries will get the full debrief.",
+          upgraded ? "You’re on annual now" : "Welcome to Ripple Pro",
+          upgraded
+            ? "Your plan is now annual. The store adjusts billing for any unused monthly time."
+            : "Your subscription is active. New entries will get the full debrief.",
           [{ text: "OK", onPress: () => router.back() }]
         );
       } finally {
@@ -497,7 +550,11 @@ export default function SubscribeScreen() {
               tier="monthly"
               priceLabel={monthlyPriceLabel}
               selected={selectedTier === "monthly"}
-              onSelect={() => setSelectedTier("monthly")}
+              current={currentPlan?.interval === "monthly"}
+              catalog={tierCatalog}
+              onSelect={() => {
+                if (currentPlan?.interval !== "monthly") setSelectedTier("monthly");
+              }}
               tokens={tokens}
             />
           )}
@@ -506,7 +563,11 @@ export default function SubscribeScreen() {
               tier="annual"
               priceLabel={annualPriceLabel}
               selected={selectedTier === "annual"}
-              onSelect={() => setSelectedTier("annual")}
+              current={currentPlan?.interval === "annual"}
+              catalog={tierCatalog}
+              onSelect={() => {
+                if (currentPlan?.interval !== "annual") setSelectedTier("annual");
+              }}
               tokens={tokens}
             />
           )}
@@ -557,6 +618,46 @@ export default function SubscribeScreen() {
         )}
 
         <View className="mt-auto pt-10 gap-3">
+          {alreadyProNoPurchase ? (
+            <View
+              className="rounded-xl border p-4"
+              style={{
+                borderColor: `${tokens.primary}55`,
+                backgroundColor: `${tokens.primary}12`,
+              }}
+            >
+              <View className="flex-row items-center gap-2">
+                <Ionicons name="checkmark-circle" size={18} color={tokens.primary} />
+                <Text className="text-sm font-semibold" style={{ color: tokens.text }}>
+                  {planInApp && currentPlan?.interval === "annual"
+                    ? "You’re on the annual plan"
+                    : "You’re already Pro"}
+                </Text>
+              </View>
+              <Text
+                className="mt-2 text-xs leading-relaxed"
+                style={{ color: tokens.textSec }}
+              >
+                {planInApp
+                  ? Platform.OS === "ios"
+                    ? "Thanks for being a Pro member. Manage or cancel any time in iOS Settings → Apple ID → Subscriptions."
+                    : "Thanks for being a Pro member. Manage or cancel any time in Google Play → Subscriptions."
+                  : currentPlan?.store === "stripe"
+                    ? "Your subscription is billed on the web. Manage it any time at goripple.io/account."
+                    : "Your Pro access is active on this account."}
+              </Text>
+            </View>
+          ) : (
+          <>
+          {canUpgradeToAnnual && (
+            <Text
+              className="text-xs text-center font-semibold"
+              style={{ color: tokens.primaryHi }}
+            >
+              You’re on monthly. Switch to annual and save{" "}
+              {annualSavingsPct(tierCatalog)}%.
+            </Text>
+          )}
           {/* 14-day-withdrawal acknowledgement — unticked by default,
               blocks Subscribe until ticked (Consumer Contracts Regs
               2013 Reg. 36–37). A ConsentRecord is written before the
@@ -622,7 +723,7 @@ export default function SubscribeScreen() {
                 className="text-sm font-semibold"
                 style={{ color: "#FFFFFF" }}
               >
-                Subscribe —{" "}
+                {canUpgradeToAnnual ? "Upgrade to annual — " : "Subscribe — "}
                 {selectedPriceLabel}/
                 {selectedPeriodLabel}
               </Text>
@@ -642,6 +743,8 @@ export default function SubscribeScreen() {
               Continue on web
             </Text>
           </Pressable>
+          </>
+          )}
 
           <RestorePurchasesButton onRestored={async () => {
             await refresh();
@@ -712,12 +815,18 @@ function TierCard({
   tier,
   priceLabel,
   selected,
+  current = false,
+  catalog,
   onSelect,
   tokens,
 }: {
   tier: Tier;
   priceLabel: string;
   selected: boolean;
+  /** This is the plan the customer is on right now. */
+  current?: boolean;
+  /** The price tier on screen (legacy or v2); drives the savings badge. */
+  catalog: PricingTier;
   onSelect: () => void;
   tokens: AcuityTokens;
 }) {
@@ -727,7 +836,7 @@ function TierCard({
   // Computed from the active pricing tier (shared catalog) so the badge is
   // correct for whichever price is live — legacy ($39.99, ~33%) or v2
   // ($89.99, ~25%) — instead of a hardcoded placeholder.
-  const tierCopy = displayTier();
+  const tierCopy = catalog;
   const monthlyRunRate = tierCopy.monthlyCents * 12;
   const savePct =
     monthlyRunRate > 0
@@ -740,7 +849,10 @@ function TierCard({
     <Pressable
       onPress={onSelect}
       accessibilityRole="button"
-      accessibilityState={{ selected }}
+      accessibilityState={{ selected, disabled: current }}
+      accessibilityLabel={
+        current ? `${isAnnual ? "Annual" : "Monthly"}, your current plan` : undefined
+      }
       className="rounded-2xl p-5"
       style={{
         borderWidth: selected ? 2 : 1,
@@ -757,7 +869,19 @@ function TierCard({
         >
           {isAnnual ? "Annual" : "Monthly"}
         </Text>
-        {isAnnual && (
+        {current ? (
+          <View
+            className="rounded-full px-2 py-0.5 border"
+            style={{ borderColor: tokens.primary }}
+          >
+            <Text
+              className="text-[10px] font-bold uppercase tracking-widest"
+              style={{ color: tokens.primary }}
+            >
+              Current plan
+            </Text>
+          </View>
+        ) : isAnnual && (
           <View
             className="rounded-full px-2 py-0.5"
             style={{ backgroundColor: tokens.primary }}
