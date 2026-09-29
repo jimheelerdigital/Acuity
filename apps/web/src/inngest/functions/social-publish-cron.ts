@@ -172,6 +172,41 @@ export const socialPublishCronFn = inngest.createFunction(
         return slot;
       };
 
+      // Legendary Mythicals: fixed 1pm / 3pm / 5pm Central slots — the
+      // Nth post of a day takes the Nth free slot (per platform), extras
+      // roll to the next day's slots.
+      const mythTaken = new Map<string, Set<number>>();
+      const mythicalsSlot = async (platform: QueuePlatform, generatedFor: Date) => {
+        const { MYTHICALS_SLOTS_CT, centralWallTimeToUtc } = await import(
+          "@/lib/content-factory/social-publish"
+        );
+        for (let dayOffset = 0; dayOffset < 7; dayOffset++) {
+          const day = new Date(generatedFor.getTime() + dayOffset * 86_400_000).toISOString().slice(0, 10);
+          const key = `${platform}:${day}`;
+          if (!mythTaken.has(key)) {
+            const dayStart = centralWallTimeToUtc(day, 0);
+            const existing = await prisma.socialPublish.findMany({
+              where: {
+                platform,
+                accountKey: "mythicals",
+                scheduledAt: { gte: dayStart, lt: new Date(dayStart.getTime() + 86_400_000) },
+              },
+              select: { scheduledAt: true },
+            });
+            mythTaken.set(key, new Set(existing.map((e) => e.scheduledAt.getTime())));
+          }
+          const taken = mythTaken.get(key)!;
+          for (const hour of MYTHICALS_SLOTS_CT) {
+            const t = centralWallTimeToUtc(day, hour);
+            if (!taken.has(t.getTime())) {
+              taken.add(t.getTime());
+              return t;
+            }
+          }
+        }
+        return new Date();
+      };
+
       const rows: {
         carouselPostId: string;
         platform: QueuePlatform;
@@ -210,7 +245,10 @@ export const socialPublishCronFn = inngest.createFunction(
             carouselPostId: post.id,
             platform,
             accountKey: brand,
-            scheduledAt: await nextSlot(platform, brand),
+            scheduledAt:
+              brand === "mythicals"
+                ? await mythicalsSlot(platform, post.generatedFor)
+                : await nextSlot(platform, brand),
           });
         }
       }

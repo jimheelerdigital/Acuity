@@ -242,6 +242,33 @@ export function clampToWindow(t: Date, platform: SocialPlatform): Date {
   return new Date(openWallMs - off);
 }
 
+/**
+ * Legendary Mythicals posts at fixed Central-time slots (2026-09-29, per
+ * Keenan: "spread the posts out every 2 hours starting at 1pm, 3pm, 5pm
+ * cst"), same time on every platform, instead of the rolling windows.
+ */
+export const MYTHICALS_SLOTS_CT = [13, 15, 17];
+
+/** UTC instant for a wall-clock hour on a calendar day in America/Chicago (DST-safe). */
+export function centralWallTimeToUtc(day: string, hour: number): Date {
+  const guess = new Date(`${day}T${String(hour).padStart(2, "0")}:00:00Z`);
+  const parts = Object.fromEntries(
+    new Intl.DateTimeFormat("en-US", {
+      timeZone: "America/Chicago",
+      hour12: false,
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+    })
+      .formatToParts(guess)
+      .map((p) => [p.type, p.value])
+  );
+  const asCt = Date.UTC(+parts.year, +parts.month - 1, +parts.day, +parts.hour % 24, +parts.minute);
+  return new Date(guess.getTime() + (guess.getTime() - asCt));
+}
+
 export interface SocialAccount {
   key: SocialAccountKey;
   accessToken: string;

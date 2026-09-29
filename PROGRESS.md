@@ -7,6 +7,30 @@
 
 ---
 
+## [2026-09-29] — Ripple and BWK posting restored; Mythicals posts at 1pm / 3pm / 5pm Central
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** (this commit)
+
+### In plain English (for Keenan)
+Nothing from Ripple or Build With Key posted to Instagram or Facebook today. Facebook ended the login session their posting access was tied to (it said the "session has been invalidated because the user changed their password or Facebook has changed the session for security reasons"). Both now have fresh access that doesn't depend on a login session, and today's missed posts are going out again. Legendary Mythicals now posts at fixed times: 1pm, 3pm and 5pm Central.
+
+### Technical changes (for Jimmy)
+- Vercel `IG_ACCESS_TOKEN` (Ripple) and `META_BWK_ACCESS_TOKEN` (BWK) replaced with never-expiring Page tokens. They were minted from Keenan's long-lived user token (expires 2026-11-28), debug_token `type PAGE, expires_at 0`.
+- Today's FAILED/PENDING Ripple + BWK rows were reset and re-slotted.
+- `social-publish.ts`: `MYTHICALS_SLOTS_CT = [13, 15, 17]`, `centralWallTimeToUtc()` (DST-safe).
+- `social-publish-cron.ts`: mythicals rows get the Nth free Central slot of the post's day (per platform); extras roll to the next day. Other brands keep the rolling windows.
+
+### Manual steps needed
+- [ ] Longer-term: move all three brands to a Business Manager **system user** token. It isn't tied to anyone's login, so a password change or a Facebook session reset can't knock out posting again (Keenan + Claude)
+
+### Notes
+- Page tokens minted from a user token can still be invalidated if that user's sessions are revoked (password change, security reset). A system user token is the durable fix.
+- The daily health check emails on FAILED rows, but it runs at 14:00 UTC, before the first slot, so today's failures surfaced only through Keenan noticing.
+
+---
+
 ## [2026-09-29] — Weekly ad batches can't fail on broken JSON anymore
 
 **Requested by:** Keenan
