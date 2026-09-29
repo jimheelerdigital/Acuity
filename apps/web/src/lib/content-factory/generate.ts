@@ -1,6 +1,6 @@
 import type { ContentBriefing, ContentPiece } from "@prisma/client";
 
-import { callContentClaude } from "./claude-client";
+import { callContentClaude, lastJsonText } from "./claude-client";
 import { humanizePass, HUMAN_VOICE_RULES } from "./humanizer";
 import { displayMonthly } from "@/lib/pricing";
 
@@ -400,12 +400,6 @@ Respond in JSON format:
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
 export function extractJson(raw: string): string {
-  // Try to extract JSON from markdown code blocks or raw text
-  const codeBlockMatch = raw.match(/```(?:json)?\s*([\s\S]*?)```/);
-  if (codeBlockMatch) return codeBlockMatch[1].trim();
-  // Fall back to finding first [ or { to last ] or }
-  const start = raw.search(/[\[{]/);
-  const end = Math.max(raw.lastIndexOf("]"), raw.lastIndexOf("}"));
-  if (start !== -1 && end !== -1) return raw.slice(start, end + 1);
-  return raw;
+  // The LAST complete JSON value in the reply (see lastJsonText).
+  return lastJsonText(raw);
 }

@@ -35,6 +35,7 @@ import {
   CONTENT_MODEL,
   CONTENT_INPUT_COST_PER_TOKEN,
   CONTENT_OUTPUT_COST_PER_TOKEN,
+  lastJsonText,
 } from "./claude-client";
 import { ensureFontFile } from "./compose";
 import { HUMAN_VOICE_RULES, humanizePass } from "./humanizer";
@@ -202,10 +203,7 @@ async function generateTimelineGridTopicOnce(
       .filter((b) => b.type === "text")
       .map((b) => b.text)
       .join("");
-    const jsonStr = text
-      .replace(/```json\n?/g, "")
-      .replace(/```\n?/g, "")
-      .trim();
+    const jsonStr = lastJsonText(text);
     const parsed = JSON.parse(jsonStr) as Partial<TimelineGridTopic>;
 
     const title = (parsed.title ?? "").trim();

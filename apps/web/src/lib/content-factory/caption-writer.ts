@@ -28,6 +28,7 @@ import {
   CONTENT_MODEL,
   CONTENT_INPUT_COST_PER_TOKEN,
   CONTENT_OUTPUT_COST_PER_TOKEN,
+  lastJsonText,
 } from "./claude-client";
 
 import { prisma } from "@/lib/prisma";
@@ -138,9 +139,7 @@ EXISTING QUESTION: ${opts.question ?? "(none)"}`,
         },
       })
       .catch(() => {});
-    const s = text.indexOf("{");
-    const e = text.lastIndexOf("}");
-    const parsed = JSON.parse(text.slice(s, e + 1)) as WrittenCaption;
+    const parsed = JSON.parse(lastJsonText(text)) as WrittenCaption;
     if (!parsed.firstLine || !parsed.question || !Array.isArray(parsed.hashtags)) return null;
     return assemble(parsed);
   } catch (err) {

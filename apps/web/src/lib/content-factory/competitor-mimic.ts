@@ -32,6 +32,7 @@ import {
   CONTENT_MODEL,
   CONTENT_INPUT_COST_PER_TOKEN,
   CONTENT_OUTPUT_COST_PER_TOKEN,
+  lastJsonText,
 } from "./claude-client";
 
 const anthropic = contentAnthropic;
@@ -322,7 +323,7 @@ export async function writeMimicBriefs(): Promise<number> {
         .map((b) => b.text)
         .join("");
       const parsed = JSON.parse(
-        text.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim()
+        lastJsonText(text)
       ) as Partial<MimicBrief>;
       if (
         typeof parsed.hook !== "string" ||

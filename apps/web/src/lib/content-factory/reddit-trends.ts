@@ -26,6 +26,7 @@ import {
   CONTENT_MODEL,
   CONTENT_INPUT_COST_PER_TOKEN,
   CONTENT_OUTPUT_COST_PER_TOKEN,
+  lastJsonText,
 } from "./claude-client";
 
 const anthropic = contentAnthropic;
@@ -232,7 +233,7 @@ export async function buildDailyDigest(
       .map((b) => b.text)
       .join("");
     const parsed = JSON.parse(
-      text.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim()
+      lastJsonText(text)
     ) as { themes?: Partial<RedditTheme>[] };
     themes = (parsed.themes ?? [])
       .filter(

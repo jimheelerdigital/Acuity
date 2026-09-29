@@ -276,7 +276,7 @@ export type InferredNiche = {
  */
 export async function inferNiche(): Promise<InferredNiche | null> {
   const { prisma } = await import("@/lib/prisma");
-  const { callContentClaude } = await import("./claude-client");
+  const { callContentClaude, lastJsonText } = await import("./claude-client");
 
   const posts = await prisma.carouselPost.findMany({
     orderBy: { generatedFor: "desc" },
@@ -308,7 +308,7 @@ Return JSON exactly:
   });
 
   try {
-    const parsed = JSON.parse(raw.trim()) as InferredNiche;
+    const parsed = JSON.parse(lastJsonText(raw)) as InferredNiche;
     if (
       typeof parsed.description !== "string" ||
       !Array.isArray(parsed.igHashtags) ||

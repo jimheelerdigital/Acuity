@@ -30,6 +30,7 @@ import {
   CONTENT_MODEL,
   CONTENT_INPUT_COST_PER_TOKEN,
   CONTENT_OUTPUT_COST_PER_TOKEN,
+  lastJsonText,
 } from "./claude-client";
 import sharp from "sharp";
 
@@ -153,7 +154,7 @@ async function generateOnce(
     },
   });
   const text = response.content.filter((b) => b.type === "text").map((b) => b.text).join("");
-  const parsed = JSON.parse(text.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim()) as Partial<PaperGuideTopic>;
+  const parsed = JSON.parse(lastJsonText(text)) as Partial<PaperGuideTopic>;
   const title = (parsed.title ?? "").trim();
   const slides = (parsed.slides ?? [])
     .filter((s) => typeof s?.header === "string" && typeof s?.sub === "string" && Array.isArray(s?.body))

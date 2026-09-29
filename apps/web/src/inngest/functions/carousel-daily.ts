@@ -292,6 +292,23 @@ export const carouselDailyCronFn = inngest.createFunction(
     today.setUTCHours(0, 0, 0, 0);
     const dateStr = today.toISOString().slice(0, 10);
 
+    // DRY RUN (2026-09-28, prompt rewrite testing): generate the lane's
+    // copy only — no images, no post, no email — and save it to
+    // prompt-test-results/<date>/<lane>-<run>.json for review.
+    const dryRun = (event.data as { dryRun?: boolean } | undefined)?.dryRun === true;
+    const saveDryRun = async (lane: string, topic: unknown) =>
+      step.run("save-dry-run", async () => {
+        const { supabase } = await import("@/lib/supabase.server");
+        const { CONTENT_MODEL } = await import("@/lib/content-factory/claude-client");
+        const path = `prompt-test-results/${dateStr}/${lane}-${Date.now()}.json`;
+        await supabase.storage.from("content-factory").upload(
+          path,
+          Buffer.from(JSON.stringify({ lane, model: CONTENT_MODEL, at: new Date().toISOString(), topic }, null, 1)),
+          { contentType: "application/json", upsert: true }
+        );
+        return { dryRun: true, lane, path };
+      });
+
     // ── TIMELINE-GRID lanes (template "grid-timeline", 2026-09-16) ──
     // Per Keenan ("I wanted it to be an entirely new lane like the
     // pictures that I'd send and this looks nothing like them"): the
@@ -350,6 +367,7 @@ export const carouselDailyCronFn = inngest.createFunction(
       logger.info(
         `[carousel-cron] Timeline-grid (${laneKey}) topic: "${topic.title}" (${topic.phases.length} phases)`
       );
+      if (dryRun) return saveDryRun(laneKey, topic);
 
       await step.run("ensure-bucket", async () => {
         const { ensureBucket } = await import(
@@ -559,6 +577,7 @@ export const carouselDailyCronFn = inngest.createFunction(
         return generatePaperGuideTopic(paperLane.spec, recent.map((p) => p.headline), await getLaneFeedback(laneKey));
       });
       logger.info(`[carousel-cron] Paper guide (${laneKey}): "${topic.title}" (${topic.slides.length} steps)`);
+      if (dryRun) return saveDryRun(laneKey, topic);
 
       const paperSlides = await step.run("render-paper-slides", async () => {
         const { ensureBucket, uploadImage } = await import("@/lib/content-factory/carousel-generate");
@@ -671,6 +690,7 @@ export const carouselDailyCronFn = inngest.createFunction(
       logger.info(
         `[carousel-cron] Selfie topic: "${selfie.headline}" (${selfie.steps.length} steps)`
       );
+      if (dryRun) return saveDryRun(bucket, selfie);
 
       await step.run("ensure-bucket", async () => {
         const { ensureBucket } = await import(
@@ -997,6 +1017,7 @@ export const carouselDailyCronFn = inngest.createFunction(
 
       const slug = pq.slug;
       logger.info(`[carousel-cron] Phone-quote (${bucket}): "${pq.hook}"`);
+      if (dryRun) return saveDryRun(bucket, pq);
 
       await step.run("ensure-bucket", async () => {
         const { ensureBucket } = await import(
@@ -1257,6 +1278,7 @@ export const carouselDailyCronFn = inngest.createFunction(
       logger.info(
         `[carousel-cron] Texts (${bucket}): "${tx.hook}" (${tx.messages.length} messages)`
       );
+      if (dryRun) return saveDryRun(bucket, tx);
 
       await step.run("ensure-bucket", async () => {
         const { ensureBucket } = await import(
@@ -1594,6 +1616,7 @@ export const carouselDailyCronFn = inngest.createFunction(
     logger.info(
       `[carousel-cron] Moody-family (${bucket}) topic: "${moody.title}" (${moody.items.length} items)`
     );
+    if (dryRun) return saveDryRun(bucket, moody);
 
     await step.run("ensure-bucket", async () => {
       const { ensureBucket } = await import(

@@ -30,6 +30,7 @@ import {
   CONTENT_MODEL,
   CONTENT_INPUT_COST_PER_TOKEN,
   CONTENT_OUTPUT_COST_PER_TOKEN,
+  lastJsonText,
 } from "./claude-client";
 import type { VoiceoverOptions } from "./story-video";
 import { humanizePass } from "./humanizer";
@@ -226,7 +227,7 @@ Return ONLY valid JSON.`;
       .filter((b) => b.type === "text")
       .map((b) => b.text)
       .join("");
-    const jsonStr = text.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
+    const jsonStr = lastJsonText(text);
     const parsed = JSON.parse(jsonStr) as Record<string, unknown>;
 
     let script = typeof parsed.script === "string" ? parsed.script.trim() : "";

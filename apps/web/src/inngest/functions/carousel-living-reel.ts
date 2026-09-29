@@ -311,17 +311,32 @@ export const livingReelQueueFn = inngest.createFunction(
     const laneRuns = await step.run("claim-lane-requests", async () => {
       const { supabase } = await import("@/lib/supabase.server");
       const { data } = await supabase.storage.from("content-factory").list("lane-requests", { limit: 20 });
-      const claimed: string[] = [];
+      // Body { dryRun: true } = copy only, saved for review (prompt tests).
+      // Files may be named "<lane>" or "<lane>--<tag>" so several tests of
+      // one lane can queue at once.
+      const claimed: { bucket: string; dryRun: boolean }[] = [];
       for (const f of (data ?? []).filter((x) => x.name.endsWith(".json"))) {
-        const { error } = await supabase.storage.from("content-factory").remove([`lane-requests/${f.name}`]);
-        if (!error) claimed.push(f.name.replace(/\.json$/, ""));
+        const path = `lane-requests/${f.name}`;
+        const dl = await supabase.storage.from("content-factory").download(path);
+        const { error } = await supabase.storage.from("content-factory").remove([path]);
+        if (error) continue;
+        let dryRun = false;
+        try {
+          dryRun = dl.data ? (JSON.parse(await dl.data.text()) as { dryRun?: boolean }).dryRun === true : false;
+        } catch {
+          // empty body → a real run
+        }
+        claimed.push({ bucket: f.name.replace(/\.json$/, "").split("--")[0], dryRun });
       }
       return claimed;
     });
     if (laneRuns.length > 0) {
       await step.sendEvent(
         "send-lane-runs",
-        laneRuns.map((bucket) => ({ name: "content-factory/daily.generate" as const, data: { bucket } }))
+        laneRuns.map((r) => ({
+          name: "content-factory/daily.generate" as const,
+          data: r.dryRun ? { bucket: r.bucket, dryRun: true } : { bucket: r.bucket },
+        }))
       );
     }
     // Same drop-a-file trigger for the Higgsfield post video (2026-09-26):

@@ -293,7 +293,7 @@ export const nicheResearchNightlyFn = inngest.createFunction(
       });
       if (candidates.length === 0) return 0;
 
-      const { callContentClaude } = await import(
+      const { callContentClaude, lastJsonText } = await import(
         "@/lib/content-factory/claude-client"
       );
       const raw = await callContentClaude({
@@ -320,7 +320,7 @@ Output strict JSON, no markdown: [{"id": "...", "comment": "..."}, ...] — one 
       let parsed: { id: string; comment: string }[] = [];
       try {
         parsed = JSON.parse(
-          raw.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim()
+          lastJsonText(raw)
         );
       } catch {
         return 0; // bad JSON → skip silently, next night retries
@@ -376,7 +376,7 @@ Output strict JSON, no markdown: [{"id": "...", "comment": "..."}, ...] — one 
       ]);
       if (pendingSuggestions.length >= 9) return 0; // queue is full — review first
 
-      const { callContentClaude } = await import(
+      const { callContentClaude, lastJsonText } = await import(
         "@/lib/content-factory/claude-client"
       );
       const raw = await callContentClaude({
@@ -406,7 +406,7 @@ Output strict JSON, no markdown: [{"headline": "...", "angle": "...", "source": 
       let parsed: { headline: string; angle: string; source?: string }[] = [];
       try {
         parsed = JSON.parse(
-          raw.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim()
+          lastJsonText(raw)
         );
       } catch {
         return 0;

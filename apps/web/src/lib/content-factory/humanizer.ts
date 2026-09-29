@@ -26,6 +26,7 @@ import {
   CONTENT_MODEL,
   CONTENT_INPUT_COST_PER_TOKEN,
   CONTENT_OUTPUT_COST_PER_TOKEN,
+  lastJsonText,
 } from "./claude-client";
 
 const anthropic = contentAnthropic;
@@ -154,7 +155,7 @@ Return ONLY the corrected JSON, no markdown, no commentary.`,
       .filter((b) => b.type === "text")
       .map((b) => b.text)
       .join("");
-    const jsonStr = text.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
+    const jsonStr = lastJsonText(text);
     return JSON.parse(jsonStr) as T;
   } catch (err) {
     await prisma.claudeCallLog.create({

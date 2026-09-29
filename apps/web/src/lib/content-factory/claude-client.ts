@@ -199,3 +199,62 @@ async function loggedCall(params: CallClaudeParams, content: boolean): Promise<s
     throw err;
   }
 }
+
+/**
+ * The JSON answer inside a model reply (2026-09-28, Sonnet 5.5 prompting
+ * guide): asked for JSON in the prompt, Sonnet 5.5 / Opus 5.5 sometimes
+ * work the problem out in text first and write the JSON LAST, or draft a
+ * value before the final one. Parsing the whole reply (or first "{" to
+ * last "}") then fails or grabs the draft. This returns the source text of
+ * the LAST complete top-level JSON value; the input unchanged if none
+ * parses, so the caller's JSON.parse still throws its usual error.
+ */
+export function lastJsonText(reply: string): string {
+  const text = reply.replace(/```(?:json)?/g, "");
+  let last: string | null = null;
+  let i = 0;
+  while (i < text.length) {
+    const ch = text[i];
+    if (ch !== "{" && ch !== "[") {
+      i++;
+      continue;
+    }
+    const end = matchingBracket(text, i);
+    if (end > i) {
+      const candidate = text.slice(i, end + 1);
+      try {
+        JSON.parse(candidate);
+        last = candidate;
+        i = end + 1; // values nested inside this one don't count on their own
+        continue;
+      } catch {
+        // not valid JSON from here — keep scanning
+      }
+    }
+    i++;
+  }
+  return last ?? reply.trim();
+}
+
+/** Index of the bracket closing the one at `start`, string-aware; -1 if unbalanced. */
+function matchingBracket(text: string, start: number): number {
+  let depth = 0;
+  let inString = false;
+  let escaped = false;
+  for (let i = start; i < text.length; i++) {
+    const c = text[i];
+    if (inString) {
+      if (escaped) escaped = false;
+      else if (c === "\\") escaped = true;
+      else if (c === '"') inString = false;
+      continue;
+    }
+    if (c === '"') inString = true;
+    else if (c === "{" || c === "[") depth++;
+    else if (c === "}" || c === "]") {
+      depth--;
+      if (depth === 0) return i;
+    }
+  }
+  return -1;
+}

@@ -11,6 +11,7 @@ import {
   CONTENT_MODEL,
   CONTENT_INPUT_COST_PER_TOKEN,
   CONTENT_OUTPUT_COST_PER_TOKEN,
+  lastJsonText,
 } from "./claude-client";
 import {
   FORCED_STYLE_LANE,
@@ -363,7 +364,7 @@ async function generateSelfieTopicOnce(
       .filter((b) => b.type === "text")
       .map((b) => b.text)
       .join("");
-    const jsonStr = text.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
+    const jsonStr = lastJsonText(text);
     const parsed = JSON.parse(jsonStr);
 
     const steps = (parsed.steps as string[]).filter(
@@ -628,7 +629,7 @@ Return ONLY valid JSON, no other text.`;
       .join("");
 
     // Parse JSON from response (handle potential markdown wrapping)
-    const jsonStr = text.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
+    const jsonStr = lastJsonText(text);
     const parsed = JSON.parse(jsonStr);
 
     // Build slug from headline
