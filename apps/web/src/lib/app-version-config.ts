@@ -77,23 +77,26 @@ const IOS_APP_STORE_ID = "6762633410";
 
 export const APP_VERSION_CONFIG: Record<AppPlatform, AppVersionConfig> = {
   ios: {
-    // No force-update active. v1.0 is the oldest shipped build; setting
-    // this any higher would brick users still on 1.0.x until they
-    // updated. Hold this lever in reserve for critical-bug rollouts.
+    // No force-update active. Hold this lever in reserve for critical-bug
+    // rollouts; raising it bricks anyone below it until they update.
     minimumVersion: "1.0.0",
-    // The version we'd LIKE everyone on. Bump when a new App Store
-    // build ships (currently v1.1 is in review; will become "1.1.0"
-    // once it's released, then "1.2.0" when v1.2 lands).
-    recommendedVersion: "1.1.0",
-    headline: "A new version of Ripple is ready.",
-    body: "We've shipped improvements to the Life Matrix, Theme Map, and the way your insights surface. Update in the App Store to get them.",
+    // 1.9.0 — flip this ONLY when 1.9.0 is released on the App Store
+    // (merging this early would prompt 1.6.0 users to update to a version
+    // that isn't available). Also arms the in-app What's New sheet, which
+    // shows when the running version equals recommendedVersion.
+    recommendedVersion: "1.9.0",
+    headline: "Ripple 1.9 is here.",
+    body: "Ask Your Past Self is now built in, you can connect your own AI to your journal, and Siri does more. Update in the App Store to get it.",
     ctaText: "Update",
     dismissible: true,
     appStoreUrl: `https://apps.apple.com/app/id${IOS_APP_STORE_ID}`,
-    // Empty array (not null) so the modal's "render bullets if any"
-    // branch trips when Jim populates this for v1.2. Add 3-5 bullets
-    // when v1.2 ships — see the procedure in the file header.
-    releaseNotes: [],
+    releaseNotes: [
+      "Ask Your Past Self — now built into the app",
+      "Connect your own AI to your journal (Pro)",
+      "Siri: start a check-in, add a habit, check your streak",
+      "Home Screen and Lock Screen widgets",
+      "See your current plan and upgrade anytime",
+    ],
   },
   // Android placeholder. No Android build is in distribution yet; the
   // mobile client only checks ?platform=ios for now. Kept here so the
