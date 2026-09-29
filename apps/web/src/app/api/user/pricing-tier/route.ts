@@ -1,5 +1,9 @@
 /**
- * GET /api/user/pricing-tier → { tier: "legacy" | "v2" }
+ * GET /api/user/pricing-tier → { tier: "legacy" | "v2", attribution }
+ *
+ * `attribution` is the signup UTM source/campaign, which the app forwards to
+ * RevenueCat as $mediaSource / $campaign so RC charts and Experiments can be
+ * broken down by acquisition channel.
  *
  * Tells the paywall which offering to show this customer (see
  * lib/pricing-tier.ts for the rule). Called only when the paywall opens,
@@ -22,7 +26,13 @@ export async function GET(req: NextRequest) {
   const { prisma } = await import("@/lib/prisma");
   const user = await prisma.user.findUnique({
     where: { id: userId },
-    select: { appleProductId: true, googleProductId: true, stripeSubscriptionId: true },
+    select: {
+      appleProductId: true,
+      googleProductId: true,
+      stripeSubscriptionId: true,
+      signupUtmSource: true,
+      signupUtmCampaign: true,
+    },
   });
   if (!user) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
@@ -50,7 +60,13 @@ export async function GET(req: NextRequest) {
   });
 
   return NextResponse.json(
-    { tier },
+    {
+      tier,
+      attribution: {
+        mediaSource: user.signupUtmSource ?? null,
+        campaign: user.signupUtmCampaign ?? null,
+      },
+    },
     { headers: { "Cache-Control": "private, no-store, max-age=0" } }
   );
 }
