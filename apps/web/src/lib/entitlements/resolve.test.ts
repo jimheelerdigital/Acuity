@@ -396,3 +396,71 @@ describe("isActiveAppManagedTrial", () => {
     expect(isActiveAppManagedTrial(st({ trialEndsAt: NOW }), NOW)).toBe(false);
   });
 });
+
+// ─── Provider-backed PRO overlay (RevenueCat migration) ───────────────
+//
+// RC has no live view of Stripe/web renewals, and receipt-imported subs
+// expire at the imported period end. These tests guard that RC reporting
+// FREE for a still-active provider-backed PRO customer does NOT revoke
+// their access when RC_SOURCE_OF_TRUTH is on.
+describe("provider-backed PRO overlay", () => {
+  const NOW = new Date("2026-10-03T12:00:00Z");
+  const rcFree = {
+    subscriptionStatus: "FREE",
+    trialEndsAt: null,
+    stripeFirstFailureAt: null,
+    subscriptionSource: null,
+  };
+
+  for (const source of ["stripe", "apple", "google_play", "comp"] as const) {
+    it(`keeps a ${source} PRO user entitled even though RC says FREE`, async () => {
+      setFlag("RC_SOURCE_OF_TRUTH", "1");
+      const { resolveEntitlement } = await subject();
+      rcLoadMock.mockResolvedValue(rcFree);
+      findUniqueMock.mockResolvedValue(
+        dbRow({ subscriptionStatus: "PRO", trialEndsAt: null, subscriptionSource: source })
+      );
+      const res = await resolveEntitlement("u1", NOW);
+      expect(res!.entitlement.isActive).toBe(true);
+      expect(res!.entitlement.canExtractEntries).toBe(true);
+      // Overlay uses DB data but the configured source still answered.
+      expect(res!.source).toBe("revenuecat");
+    });
+  }
+
+  it("does NOT overlay a PAST_DUE DB row (no grace — RC FREE stands)", async () => {
+    setFlag("RC_SOURCE_OF_TRUTH", "1");
+    const { resolveEntitlement } = await subject();
+    rcLoadMock.mockResolvedValue(rcFree);
+    findUniqueMock.mockResolvedValue(
+      dbRow({ subscriptionStatus: "PAST_DUE", subscriptionSource: "stripe" })
+    );
+    const res = await resolveEntitlement("u1", NOW);
+    expect(res!.entitlement.isActive).toBe(false);
+  });
+
+  it("does NOT overlay a genuinely FREE user", async () => {
+    setFlag("RC_SOURCE_OF_TRUTH", "1");
+    const { resolveEntitlement } = await subject();
+    rcLoadMock.mockResolvedValue(rcFree);
+    findUniqueMock.mockResolvedValue(
+      dbRow({ subscriptionStatus: "FREE", subscriptionSource: "stripe" })
+    );
+    const res = await resolveEntitlement("u1", NOW);
+    expect(res!.entitlement.canExtractEntries).toBe(false);
+  });
+
+  it("skips the overlay when RC already reports the paid entitlement", async () => {
+    setFlag("RC_SOURCE_OF_TRUTH", "1");
+    const { resolveEntitlement } = await subject();
+    rcLoadMock.mockResolvedValue({
+      subscriptionStatus: "PRO",
+      trialEndsAt: null,
+      stripeFirstFailureAt: null,
+      subscriptionSource: "stripe",
+    });
+    const res = await resolveEntitlement("u1", NOW);
+    expect(res!.entitlement.isActive).toBe(true);
+    expect(findUniqueMock).not.toHaveBeenCalled();
+  });
+});

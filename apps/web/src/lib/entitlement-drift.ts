@@ -359,6 +359,22 @@ export async function scanRcParity(batch = 5): Promise<RcParityResult> {
         continue;
       }
 
+      // Provider-backed PRO (Stripe / Apple / Google Play) that RC doesn't
+      // know about is expected too: RC has no live view of web/Stripe
+      // renewals and receipt-imported subs expire at the imported period
+      // end. The resolver's PROVIDER-BACKED PRO OVERLAY keeps these users'
+      // access when RC says FREE (the provider of record still backs the DB
+      // PRO row), so RC lacking them is NOT a would-lose-access risk. Mirror
+      // the comp + trial exceptions above.
+      const isProviderBackedPro =
+        u.subscriptionStatus === "PRO" &&
+        u.subscriptionSource !== null &&
+        u.subscriptionSource !== "comp";
+      if (isProviderBackedPro && !rcHasPro) {
+        agreeing++;
+        continue;
+      }
+
       if (dbEntitled === rcHasPro) {
         if (rcState.subscriptionStatus === u.subscriptionStatus) {
           agreeing++;

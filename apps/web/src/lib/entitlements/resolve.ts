@@ -191,6 +191,23 @@ export async function resolveEntitlement(
       if (dbState && isActiveAppManagedTrial(dbState, now)) {
         safeLog.info("entitlements.app-trial-overlay", { userId });
         state = dbState;
+      } else if (dbState && isActiveProviderBackedPro(dbState)) {
+        // ── PROVIDER-BACKED PRO OVERLAY (load-bearing) ───────────────
+        // RC has no live view of web/Stripe subscription renewals, and a
+        // receipt-imported sub expires at the imported period end — so RC
+        // can report FREE for a customer whose Stripe/Apple/Google sub is
+        // still active and paid. The provider webhooks keep that PRO row
+        // current in the DB (and clear it on cancel/expiry), so a PRO row
+        // with a real provider source means the user should have access.
+        // RC saying FREE must NOT revoke access the provider of record still
+        // backs — the same union as the trial overlay, for paid subs. Only
+        // consulted when RC says FREE.
+        // See docs/REVENUECAT_MIGRATION.md §Stripe.
+        safeLog.info("entitlements.provider-pro-overlay", {
+          userId,
+          source: dbState.subscriptionSource,
+        });
+        state = dbState;
       }
     }
   } else {
@@ -226,6 +243,25 @@ export function isActiveAppManagedTrial(
   if (state.subscriptionStatus !== "TRIAL") return false;
   if (state.trialEndsAt === null) return true;
   return state.trialEndsAt.getTime() > now.getTime();
+}
+
+/**
+ * Is this state an active PROVIDER-BACKED PRO subscription — Stripe, Apple,
+ * Google Play, or a comp grant (any real, non-null PRO source)?
+ *
+ * RevenueCat is not a live mirror of web/Stripe billing here: there is no
+ * Stripe integration, and receipt-imported subscriptions expire at the
+ * period end that was imported. So RC can legitimately report FREE for a
+ * customer whose subscription is still active with the provider of record.
+ * The provider webhooks keep `subscriptionStatus = "PRO"` only while the sub
+ * is active and clear it on cancel/expiry, so a PRO row with a real source
+ * is authoritative for "should have access". The overlay trusts it rather
+ * than let RC's incomplete view revoke a paying customer.
+ *
+ * Exported for the overlay tests.
+ */
+export function isActiveProviderBackedPro(state: EntitlementState): boolean {
+  return state.subscriptionStatus === "PRO" && state.subscriptionSource !== null;
 }
 
 /**
