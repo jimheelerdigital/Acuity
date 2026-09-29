@@ -121,8 +121,8 @@ const TAB_META: Record<
     // the visible mic button is overlaid above the tab bar. Label "Home"
     // renders identically to siblings so it shares their baseline.
     label: "Home",
-    iconOn: "mic",
-    iconOff: "mic-outline",
+    iconOn: "home",
+    iconOff: "home-outline",
   },
   insights: { label: "Insights", iconOn: "bulb", iconOff: "bulb-outline" },
   entries: { label: "Entries", iconOn: "journal", iconOff: "journal-outline" },
@@ -415,7 +415,7 @@ const RecordOverlayButton = forwardRef<
       >
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel="Record an entry. Long-press to start now, or tap to open Home."
+          accessibilityLabel="Home. Long-press to start recording right away."
           onPress={onPress}
           onLongPress={onLongPress}
           onPressIn={() => setPressed(true)}
@@ -429,7 +429,7 @@ const RecordOverlayButton = forwardRef<
             justifyContent: "center",
           }}
         >
-          <Ionicons name="mic" size={28} color="#FFFFFF" />
+          <Ionicons name="home" size={26} color="#FFFFFF" />
         </Pressable>
       </Animated.View>
     </View>

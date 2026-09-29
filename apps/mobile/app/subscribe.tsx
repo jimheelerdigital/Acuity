@@ -31,6 +31,8 @@ import {
   recordConsent,
   WITHDRAWAL_CONSENT_TEXT,
   WITHDRAWAL_WORDING_VERSION,
+  WITHDRAWAL_PLAN_CHANGE_CONSENT_TEXT,
+  WITHDRAWAL_PLAN_CHANGE_WORDING_VERSION,
 } from "@/lib/consent";
 import {
   getProducts,
@@ -300,8 +302,12 @@ export default function SubscribeScreen() {
         await recordConsent({
           consentType: "distance_contract_immediate_performance",
           granted: true,
-          consentText: WITHDRAWAL_CONSENT_TEXT,
-          wordingVersion: WITHDRAWAL_WORDING_VERSION,
+          consentText: canUpgradeToAnnual
+            ? WITHDRAWAL_PLAN_CHANGE_CONSENT_TEXT
+            : WITHDRAWAL_CONSENT_TEXT,
+          wordingVersion: canUpgradeToAnnual
+            ? WITHDRAWAL_PLAN_CHANGE_WORDING_VERSION
+            : WITHDRAWAL_WORDING_VERSION,
           plan: selectedTier,
         });
       } catch {
@@ -329,9 +335,9 @@ export default function SubscribeScreen() {
         const upgraded =
           currentPlan?.interval === "monthly" && selectedTier === "annual";
         Alert.alert(
-          upgraded ? "You’re on annual now" : "Welcome to Ripple Pro",
+          upgraded ? "Annual plan scheduled" : "Welcome to Ripple Pro",
           upgraded
-            ? "Your plan is now annual. The store adjusts billing for any unused monthly time."
+            ? "You’ll switch to annual when your current month ends. Until then, nothing changes and you won’t be charged again for this month."
             : "Your subscription is active. New entries will get the full debrief.",
           [{ text: "OK", onPress: () => router.back() }]
         );
@@ -655,7 +661,8 @@ export default function SubscribeScreen() {
               style={{ color: tokens.primaryHi }}
             >
               You’re on monthly. Switch to annual and save{" "}
-              {annualSavingsPct(tierCatalog)}%.
+              {annualSavingsPct(tierCatalog)}%. It starts when your current
+              month ends.
             </Text>
           )}
           {/* 14-day-withdrawal acknowledgement — unticked by default,
@@ -673,17 +680,15 @@ export default function SubscribeScreen() {
             <GradientCheckbox
               checked={acknowledged}
               onPress={() => setAcknowledged((v) => !v)}
-              accessibilityLabel="I want my paid features to start now and understand the effect on my 14-day cancellation right"
+              accessibilityLabel={canUpgradeToAnnual ? "I want to switch to annual when my current period ends and understand the effect on my 14-day cancellation right" : "I want my paid features to start now and understand the effect on my 14-day cancellation right"}
             />
             <Text
               className="flex-1 text-xs leading-relaxed"
               style={{ color: tokens.textSec }}
             >
-              I want my paid Ripple features to start now, and I
-              understand that by starting immediately I lose my 14-day
-              right to cancel for any content fully delivered, and that
-              if I cancel within 14 days I&rsquo;ll be refunded less a
-              proportionate amount for the service already provided.
+              {canUpgradeToAnnual
+                ? WITHDRAWAL_PLAN_CHANGE_CONSENT_TEXT
+                : WITHDRAWAL_CONSENT_TEXT}
             </Text>
           </Pressable>
 
@@ -723,7 +728,7 @@ export default function SubscribeScreen() {
                 className="text-sm font-semibold"
                 style={{ color: "#FFFFFF" }}
               >
-                {canUpgradeToAnnual ? "Upgrade to annual — " : "Subscribe — "}
+                {canUpgradeToAnnual ? "Switch to annual — " : "Subscribe — "}
                 {selectedPriceLabel}/
                 {selectedPeriodLabel}
               </Text>

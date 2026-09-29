@@ -33,8 +33,8 @@ export interface TourStepContent {
 
 export const TOUR_STEP_CONTENT: TourStepContent[] = [
   {
-    title: "Record",
-    text: "Long-press the mic anytime to start a new entry. Sixty seconds is enough.",
+    title: "Home",
+    text: "Tap here to come back Home anytime. Long-press it to start a new entry right away. Sixty seconds is enough.",
   },
   {
     title: "Home",

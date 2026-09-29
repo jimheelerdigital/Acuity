@@ -33,6 +33,19 @@ export const WITHDRAWAL_CONSENT_TEXT =
   "content fully delivered, and that if I cancel within 14 days I'll be " +
   "refunded less a proportionate amount for the service already provided.";
 
+// Plan change (monthly → annual) for someone who is ALREADY subscribed.
+// App Store Connect ranks annual BELOW monthly in the "Acuity Pro" group,
+// so Apple treats this as a downgrade: the annual plan starts at the next
+// renewal date, not now. The acknowledgement must say that, or the stored
+// consent text wouldn't match what actually happens.
+export const WITHDRAWAL_PLAN_CHANGE_WORDING_VERSION = "withdrawal-plan-change-v1";
+export const WITHDRAWAL_PLAN_CHANGE_CONSENT_TEXT =
+  "I want to switch to the annual plan when my current billing period " +
+  "ends. I understand that once the annual plan starts I lose my 14-day " +
+  "right to cancel for any content fully delivered, and that if I cancel " +
+  "within 14 days of it starting I'll be refunded less a proportionate " +
+  "amount for the service already provided.";
+
 type RecordArgs = {
   consentType:
     | "special_category_processing"
