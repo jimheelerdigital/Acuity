@@ -88,6 +88,7 @@ There's a new third account, Legendary Mythicals (@legendarymythicals). Three ti
 ### Notes
 - Numbered option slides are a deliberate, lane-only exception to the no-slide-numbering rule; Keenan chose "Number + name" so comments can say "#3".
 - Duo posts (added the same day, Keenan): 1 of the 3 daily Mythicals posts (the 06 UTC run, or `lane-requests/mythic-picks--duo.json`) is "who are you and your bro?". It has 5 numbered PAIRS on a quest or fighting together, and the closing card asks to send it to his bro (shares drive reach). `DUO_RULES` / `DUO_CATEGORIES` live in choice-lane.ts.
+- Places posts (Keenan, same day): the 07 UTC Mythicals run alternates daily between a choice post and a PLACES post. It has 5 legendary locations to go with your bro ("WHICH TAVERN ARE YOU TEARING UP WITH YOUR BRO?"), atmospheric motion, and a send-to-your-bro card. Manual trigger: `lane-requests/mythic-picks--place.json`.
 - Creature videos use an ACTION motion prompt (the writer's `motion` per option); the ambient prompt produced "basically just zooming in". Rebuilt clips measured 2-3x more motion.
 - Logos and the Facebook banner were generated with gpt-image-2 and emailed separately.
 

@@ -136,9 +136,32 @@ const DUO_RULES = `THIS POST IS A DUO POST: "who are you and your bro?" The read
 - "captionQuestion": asks which duo they are and to tag the friend ("Which duo are you two? Tag him.").
 Everything else in the format above still applies.`;
 
+/**
+ * PLACE mode (2026-09-29, per Keenan: "add super cool PLACES to go to...
+ * 'where would you get a beer with bro?' or 'what tavern are you tearing up
+ * with bro?'"). Five legendary locations instead of characters.
+ */
+export const PLACE_CATEGORIES = [
+  "legendary taverns and inns to tear up with your bro",
+  "where you and your bro grab a beer after the quest",
+  "a hideout or base for you and your crew",
+  "an arena or proving ground to fight in together",
+  "a realm or city to explore with your bro",
+  "a feast hall to celebrate the win",
+];
+
+const PLACE_RULES = `THIS POST IS A PLACES POST: the options are five legendary LOCATIONS, not characters. The reader picks where he and his bro are going.
+- "title": the cover question, 4-9 words, ALL-CAPS ready, ending with "?" (shapes like "WHICH TAVERN ARE YOU TEARING UP WITH YOUR BRO?", "WHERE ARE YOU TWO GRABBING A BEER?"; new words every post, never a recent title).
+- Each option is a PLACE: "name" is 2-5 words ("The Drowned Dragon Inn", "Skyforge Mead Hall"). "lore" is one line (6-14 words) about what goes down there: the drinks, the fights, the view, the house rule. Make the five places feel completely different (a rowdy dockside tavern, a quiet mountain hall, a place built into a sleeping giant, a floating sky-market, an underground fight pit), so the pick says something about the pair.
+- "scene": the place itself, an epic, atmospheric shot of its interior or exterior with its own look and light. People only as small background silhouettes, if at all.
+- "motion": calm atmospheric movement in five seconds, at natural speed (firelight flickers and lanterns sway as snow drifts past the door; mist rolls across the torch-lit bridge).
+- "endCard": 2-6 words, ALL-CAPS ready, telling him to send it to his bro or pick the spot; vary it every post ("SEND THIS TO YOUR BRO.", "WHERE ARE WE GOING?", "FIRST ROUND'S ON HIM.").
+- "captionQuestion": asks which spot they're hitting and to tag the friend.
+Everything else in the format above still applies.`;
+
 export async function generateChoiceTopic(opts: {
-  /** "duo" = the who-are-you-and-your-bro variant. */
-  mode?: "choice" | "duo";
+  /** "duo" = who-are-you-and-your-bro; "place" = where you two are going. */
+  mode?: "choice" | "duo" | "place";
   category: string;
   theme?: string;
   recentTitles: string[];
@@ -163,7 +186,7 @@ export async function generateChoiceTopic(opts: {
 
   const response = await contentAnthropic.messages.create({
     max_tokens: 2500,
-    system: `${SYSTEM}${opts.mode === "duo" ? `\n\n${DUO_RULES}` : ""}\n\n${HUMAN_VOICE_RULES}`,
+    system: `${SYSTEM}${opts.mode === "duo" ? `\n\n${DUO_RULES}` : opts.mode === "place" ? `\n\n${PLACE_RULES}` : ""}\n\n${HUMAN_VOICE_RULES}`,
     messages: [{ role: "user", content: user }],
   });
   const tokensIn = response.usage.input_tokens;
@@ -232,7 +255,7 @@ export async function generateChoiceTopic(opts: {
     console.warn("[choice-lane] humanize gate failed — shipping ungated copy:", err);
   }
 
-  const slug = `${opts.mode === "duo" ? "mythic-duo" : "mythic"}-${gatedTitle
+  const slug = `${opts.mode === "duo" ? "mythic-duo" : opts.mode === "place" ? "mythic-place" : "mythic"}-${gatedTitle
     .toLowerCase()
     .replace(/[^a-z0-9\s-]/g, "")
     .trim()

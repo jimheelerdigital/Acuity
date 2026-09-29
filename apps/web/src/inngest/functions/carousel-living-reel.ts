@@ -327,7 +327,11 @@ export const livingReelQueueFn = inngest.createFunction(
           // empty body → a real run
         }
         const [bucket, tag = ""] = f.name.replace(/\.json$/, "").split("--");
-        claimed.push({ bucket, dryRun, mode: tag.startsWith("duo") ? "duo" : undefined });
+        claimed.push({
+          bucket,
+          dryRun,
+          mode: tag.startsWith("duo") ? "duo" : tag.startsWith("place") ? "place" : undefined,
+        });
       }
       return claimed;
     });

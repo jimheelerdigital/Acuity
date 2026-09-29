@@ -660,16 +660,24 @@ export const carouselDailyCronFn = inngest.createFunction(
         : null;
     if (choiceLane) {
       const laneKey = choiceLane.key;
-      // One of the three daily posts is a DUO post ("who are you and your
-      // bro?", 2026-09-29): the 6 UTC run, or any run sent mode "duo".
-      const choiceMode: "choice" | "duo" =
-        (event.data as { mode?: string } | undefined)?.mode === "duo" ||
-        new Date(typeof event.ts === "number" ? event.ts : Date.now()).getUTCHours() === 6
-          ? "duo"
-          : "choice";
+      // Daily mix (2026-09-29, per Keenan): 5 UTC = "which would you
+      // choose?", 6 UTC = DUO ("who are you and your bro?"), 7 UTC =
+      // alternates day by day between a choice post and a PLACES post
+      // ("what tavern are you tearing up with your bro?"). A run sent
+      // mode "duo"/"place" (manual) overrides.
+      const runAt = new Date(typeof event.ts === "number" ? event.ts : Date.now());
+      const forcedMode = (event.data as { mode?: string } | undefined)?.mode;
+      const choiceMode: "choice" | "duo" | "place" =
+        forcedMode === "duo" || forcedMode === "place"
+          ? forcedMode
+          : runAt.getUTCHours() === 6
+            ? "duo"
+            : runAt.getUTCHours() === 7 && Math.floor(runAt.getTime() / 86_400_000) % 2 === 0
+              ? "place"
+              : "choice";
       const topic = await step.run("generate-choice-topic", async () => {
         const { prisma } = await import("@/lib/prisma");
-        const { generateChoiceTopic, rollChoiceCategory, CHOICE_CATEGORIES, DUO_CATEGORIES } = await import(
+        const { generateChoiceTopic, rollChoiceCategory, CHOICE_CATEGORIES, DUO_CATEGORIES, PLACE_CATEGORIES } = await import(
           "@/lib/content-factory/choice-lane"
         );
         const recent = await prisma.carouselPost.findMany({
@@ -692,7 +700,9 @@ export const carouselDailyCronFn = inngest.createFunction(
           category:
             choiceMode === "duo"
               ? DUO_CATEGORIES[Math.floor(Math.random() * DUO_CATEGORIES.length)]
-              : rollChoiceCategory(recentCats),
+              : choiceMode === "place"
+                ? PLACE_CATEGORIES[Math.floor(Math.random() * PLACE_CATEGORIES.length)]
+                : rollChoiceCategory(recentCats),
           theme: choiceLane.spec.theme,
           recentTitles: recent.map((p) => p.headline),
           recentNames,
