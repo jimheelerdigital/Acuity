@@ -7,6 +7,24 @@
 
 ---
 
+## [2026-09-29] — "New signup" emails skip our own test accounts
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** (see git log: "fix: Skip founder signup emails for internal test accounts")
+
+### In plain English (for Keenan)
+Keenan saw 5 registrations on 09-28 but only one "New Ripple signup" email. All 5 emails were sent and accepted by Resend: 3 were real ad signups (one paid yearly) and 2 were Keenan's own test runs. So the missing ones are in Gmail spam, another tab, or were archived. Our own test signups no longer send "New signup" emails at all.
+
+### Technical changes (for Jimmy)
+- `apps/web/src/lib/founder-notifications.ts`: `notifyFoundersOfSignup` returns early for `isInternalEmail(email)` (heelerdigital.com, internal list).
+
+### Manual steps needed
+- [ ] Keenan: search Gmail for `"New Ripple signup" in:anywhere`; if they're in Spam, mark "Not spam" and add a filter for from:hello@goripple.io → never send to Spam.
+
+### Notes
+- FounderNotificationLog doesn't store the Resend message id, and the local Resend key is send-only, so delivery status can't be read from the dev machine. Consider logging `data.id` from the send if this comes up again.
+
 ## [2026-09-29] — Legendary Mythicals: a new "which would you choose?" account, 3 videos a day
 
 **Requested by:** Keenan

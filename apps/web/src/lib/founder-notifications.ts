@@ -42,6 +42,11 @@ export async function notifyFoundersOfSignup(params: {
 
   const { userId, name, email, signupMethod, timestamp, campaign, branch, paymentStatus, utmSource, utmMedium, utmCampaign } = params;
 
+  // Our own test signups aren't "new signups" (2026-09-29): skip internal
+  // accounts, same rule as the funnel stats (lib/internal-traffic.ts).
+  const { isInternalEmail } = await import("@/lib/internal-traffic");
+  if (isInternalEmail(email)) return;
+
   const { prisma } = await import("@/lib/prisma");
   const { getResendClient } = await import("@/lib/resend");
   const {
