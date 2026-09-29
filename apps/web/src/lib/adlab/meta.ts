@@ -321,6 +321,9 @@ export async function createAdCreative(params: AdCreativeParams) {
       page_id: params.pageId,
       video_data: {
         video_id: params.videoId,
+        // Thumbnail (2026-09-29): Meta rejects a video_data creative without
+        // one; weekly video ads upload their payoff frame as imageHash.
+        ...(params.imageHash ? { image_hash: params.imageHash } : params.imageUrl ? { image_url: params.imageUrl } : {}),
         message: params.primaryText,
         title: params.headline,
         link_description: params.description,

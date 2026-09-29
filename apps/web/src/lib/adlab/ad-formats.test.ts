@@ -6,6 +6,8 @@ import {
   AD_FORMAT_KEYS,
   AD_SLOTS,
   PHOTO_FORMATS,
+  videoTemplatesForWeek,
+  parseVideoAds,
   SAY_CATCH_FORMAT,
   buildAdImagePrompt,
   decodeAdCopy,
@@ -98,5 +100,30 @@ describe("weekly slots (2026-09-29 research rebuild)", () => {
     const ads = parseBatchAds(raw, 2);
     expect(ads[0].lines).toEqual(["one", "two", "three"]);
     expect(ads[1].stats).toHaveLength(3);
+  });
+});
+
+describe("weekly video ads (2026-09-29)", () => {
+  it("picks 3 templates a week, always including voice_to_list, rotating the rest", () => {
+    const a = videoTemplatesForWeek(new Date("2026-10-04"));
+    const b = videoTemplatesForWeek(new Date("2026-10-11"));
+    expect(a).toHaveLength(3);
+    expect(new Set(a).size).toBe(3);
+    expect(a[0]).toBe("voice_to_list");
+    expect(a).not.toEqual(b);
+  });
+  it("keeps valid scripts and drops ones a template can't render", () => {
+    const raw = JSON.stringify({ videos: [
+      { template: "voice_to_list", theme: "t", hypothesis: "h", hook: "The list in my head", endHeadline: "Say it. Ripple sorts it.", primaryText: "p", description: "d", said: "renew the registration, email school Friday", caught: ["Renew registration", "Email school — Fri", "Came up again: you remember it all"] },
+      { template: "habit_week", theme: "t", hypothesis: "h", hook: "I said I'd walk", endHeadline: "e", primaryText: "p", description: "d", habit: "Walk", days: [true, false], flag: "x" },
+    ] });
+    const out = parseVideoAds(raw, ["voice_to_list", "habit_week", "pattern_weeks"]);
+    expect(out.map((o) => o.script.template)).toEqual(["voice_to_list"]);
+  });
+  it("round-trips the video script and URL through the AD_COPY tag", () => {
+    const video = { template: "pattern_weeks" as const, hook: "h", endHeadline: "e", weeks: ["a x", "b x", "c x"], phrase: "x", insight: "i" };
+    const prompt = buildAdImagePrompt("video-pattern_weeks", { headline: "e", description: "d", cta: "SIGN_UP", imageScene: "", video, videoUrl: "https://x/v.mp4" }, "women");
+    expect(decodeAdCopy(prompt).video?.weeks).toHaveLength(3);
+    expect(decodeAdCopy(prompt).videoUrl).toBe("https://x/v.mp4");
   });
 });

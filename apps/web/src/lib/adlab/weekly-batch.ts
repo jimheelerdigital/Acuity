@@ -26,6 +26,7 @@ import { AD_COPY_MODELS, callAdLabClaude, extractJson } from "@/lib/adlab/claude
 import { lastJsonText } from "@/lib/content-factory/claude-client";
 import { AD_CLAIM_GUARDRAIL, PRODUCT_CATEGORY, VOICE_PRINCIPLE, productTruth } from "@/lib/positioning";
 import { displayMonthly } from "@/lib/pricing";
+import { VIDEO_TEMPLATES, validateVideoScript, type VideoScript, type VideoTemplate } from "@/lib/adlab/ad-video";
 import { SAFE_ZONE_RULES, SOURCE_SIZE, cutPlacements, renderAppProofPlacements, renderSayCatchPlacements, renderTextWallPlacements, renderWeeklyReportPlacements } from "@/lib/adlab/ad-render";
 
 // ─── Groups ───────────────────────────────────────────────────────────────
@@ -68,6 +69,8 @@ export const WEEKLY_REPORT_FORMAT = "weekly-report";
 /** Formats drawn by the image model on an AI photo. Research (2026-09-29):
  *  recognisably-AI imagery underperforms, so a batch carries at most 2. */
 export const PHOTO_FORMATS = ["hook-overlay", "checklist-photo"];
+/** formatKey prefix for the animated video ads (video-voice_to_list …). */
+export const VIDEO_FORMAT_PREFIX = "video-";
 
 /**
  * The 10 weekly slots (2026-09-29 rebuild, per Keenan: "do advanced deep
@@ -365,6 +368,9 @@ export interface AdImageCopy {
   /** weekly-report format: three stat tiles + one insight. */
   stats?: { value: string; label: string }[];
   insight?: string;
+  /** Video ads (2026-09-29): the animation script, and the rendered MP4. */
+  video?: VideoScript;
+  videoUrl?: string;
 }
 
 // The extra copy fields aren't DB columns, so they ride in the stored
@@ -372,7 +378,7 @@ export interface AdImageCopy {
 // anything reaches the image model; the regen path parses it back.
 const AD_COPY_TAG = "[[AD_COPY:";
 export function encodeAdCopy(c: AdImageCopy): string {
-  const extra = { solutionLine: c.solutionLine, benefits: c.benefits, said: c.said, caught: c.caught, visualStyle: c.visualStyle, cardPalette: c.cardPalette, lines: c.lines, stats: c.stats, insight: c.insight, imageScene: c.imageScene || undefined };
+  const extra = { solutionLine: c.solutionLine, benefits: c.benefits, said: c.said, caught: c.caught, visualStyle: c.visualStyle, cardPalette: c.cardPalette, lines: c.lines, stats: c.stats, insight: c.insight, imageScene: c.imageScene || undefined, video: c.video, videoUrl: c.videoUrl };
   return `\n${AD_COPY_TAG}${JSON.stringify(extra)}]]`;
 }
 export function decodeAdCopy(prompt: string | null | undefined): Partial<AdImageCopy> {
@@ -504,6 +510,13 @@ ${EXACT_TEXT_RULES}`,
     key: WEEKLY_REPORT_FORMAT,
     build: (c) => `WEEKLY_REPORT (composed in code, no image model): headline "${c.headline}".`,
   },
+  // Video ads (2026-09-29) — animated in code (lib/adlab/ad-video.ts), one
+  // key per template. Never offered to the image slots.
+  ...VIDEO_TEMPLATES.map((t) => ({
+    key: `${VIDEO_FORMAT_PREFIX}${t}`,
+    offered: false,
+    build: ((c: AdImageCopy) => `VIDEO_AD ${t} (animated in code, no image model): end headline "${c.headline}".`) as AdFormatBuilder,
+  })),
 ];
 
 function ctaLabel(cta: string): string {
@@ -702,6 +715,151 @@ export function parseBatchAds(raw: string, minValid = 6): z.infer<typeof BatchAd
   return ok;
 }
 
+// ─── Video ads (2026-09-29) ───────────────────────────────────────────────
+//
+// Keenan: "script out and create 5 separate animations that fit the 'show
+// people their own words turned into a to do list and pattern and tracked
+// habits' … each segment should get 3 videos per weekly generation".
+// voice_to_list is the core mechanism, so it's in every week's three; the
+// other two rotate weekly through the remaining four templates.
+
+export const VIDEOS_PER_BATCH = 3;
+
+export function videoTemplatesForWeek(date = new Date()): VideoTemplate[] {
+  const others = VIDEO_TEMPLATES.filter((t) => t !== "voice_to_list");
+  const week = Math.floor(date.getTime() / (7 * 86_400_000));
+  const a = others[week % others.length];
+  const b = others[(week + 1) % others.length];
+  return ["voice_to_list", a, b];
+}
+
+const VIDEO_TEMPLATE_BRIEFS: Record<VideoTemplate, string> = {
+  voice_to_list:
+    "VOICE → LIST. Their spoken sentence types out word by word in a recording card, then 'Ripple caught' items pop in and get ticked. Fields: said (≤150 chars, messy and specific, real errands/names/days, the way people actually talk), caught (exactly 3–4 lines ≤38 chars: tasks with the dates they said, plus at most one habit or repeat — only things in `said`).",
+  habit_week:
+    "HABIT WEEK. A Mon–Sun row for one habit fills in day by day (✓ done / ✗ missed), with what they said on 2 of the missed days, then Ripple's flag. Fields: habit (≤18 chars, e.g. 'Morning walk', 'Gym', 'No phone in bed'), days (exactly 7 booleans, Mon first, with a visible run of misses), quotes (2 items {day: 0–6 index of a MISSED day, text ≤44 chars, their excuse in their words}), flag (≤48 chars, what Ripple noticed, must match `days`, e.g. 'Gym missed 3 days running, always after late meetings'), insight (≤44 chars, the small change it led to).",
+  pattern_weeks:
+    "PATTERN WEEKS. Four weeks of their own debrief lines stack up; the phrase that repeats lights up in every one; then 'Came up 4 weeks in a row'. Fields: weeks (exactly 4 sentences ≤70 chars, different situations, EACH containing `phrase` word for word), phrase (≤24 chars, e.g. 'no time for me', 'tomorrow'), insight (≤70 chars, what seeing it made clear).",
+  weekly_report:
+    "WEEKLY REPORT. Their week report assembles: 3 stats count up, the mood line draws across the week, the top theme, what Ripple noticed. Fields: stats (exactly 3 {value ≤5 chars, starting with a number, e.g. '14', '3', '2/5'; label ≤16 chars}), moods (exactly 7 integers 1–5, Mon–Sun, with a real shape), theme (≤24 chars, what came up most), insight (≤64 chars, one specific observation that matches the moods, e.g. 'Tuesdays are your hardest day, every week').",
+  invisible_list:
+    "INVISIBLE LIST. Everything they said this week piles in with a live counter, then Ripple sorts it into life areas. Fields: items (8–11 {text ≤28 chars, a concrete thing they said; area ≤10 chars from a SHORT set of 4–5 areas like Family, Work, Home, Money, Friends, You}), total (integer 15–30, the full count), insight (≤60 chars, what the sorting showed, as a share, never a per-area count — the bars are scaled from your items so exact counts won't match; e.g. 'Most of it was for someone else. Almost none was for me').",
+};
+
+const SUBMIT_VIDEOS_TOOL = {
+  name: "submit_video_ads",
+  description: "Submit this week's animated video ad scripts.",
+  schema: {
+    type: "object",
+    properties: {
+      videos: {
+        type: "array",
+        items: {
+          type: "object",
+          properties: {
+            template: { type: "string", enum: [...VIDEO_TEMPLATES] },
+            theme: { type: "string" },
+            hypothesis: { type: "string" },
+            hook: { type: "string" },
+            endHeadline: { type: "string" },
+            primaryText: { type: "string" },
+            description: { type: "string" },
+            said: { type: "string" },
+            caught: { type: "array", items: { type: "string" } },
+            habit: { type: "string" },
+            days: { type: "array", items: { type: "boolean" } },
+            quotes: { type: "array", items: { type: "object", properties: { day: { type: "integer" }, text: { type: "string" } }, required: ["day", "text"] } },
+            flag: { type: "string" },
+            weeks: { type: "array", items: { type: "string" } },
+            phrase: { type: "string" },
+            stats: { type: "array", items: { type: "object", properties: { value: { type: "string" }, label: { type: "string" } }, required: ["value", "label"] } },
+            moods: { type: "array", items: { type: "integer" } },
+            theme_label: { type: "string", description: "weekly_report only: the top theme shown on screen" },
+            items: { type: "array", items: { type: "object", properties: { text: { type: "string" }, area: { type: "string" } }, required: ["text", "area"] } },
+            total: { type: "integer" },
+            insight: { type: "string" },
+          },
+          required: ["template", "theme", "hypothesis", "hook", "endHeadline", "primaryText", "description"],
+        },
+      },
+    },
+    required: ["videos"],
+  } as Record<string, unknown>,
+};
+
+interface VideoAdDraft {
+  script: VideoScript;
+  theme: string;
+  hypothesis: string;
+  primaryText: string;
+  description: string;
+}
+
+/** Parse + validate the video tool output; drops scripts a template can't render. */
+export function parseVideoAds(raw: string, templates: VideoTemplate[]): VideoAdDraft[] {
+  const text = (() => {
+    const last = lastJsonText(raw);
+    try {
+      JSON.parse(last);
+      return last;
+    } catch {
+      return extractJson(raw);
+    }
+  })();
+  const parsed = JSON.parse(text);
+  const arr: Record<string, unknown>[] = Array.isArray(parsed) ? parsed : parsed?.videos ?? [];
+  const out: VideoAdDraft[] = [];
+  const clip = (v: unknown, n: number) => (typeof v === "string" ? v.trim().slice(0, n) : undefined);
+  for (const v of arr) {
+    const template = v.template as VideoTemplate;
+    if (!templates.includes(template) || out.some((o) => o.script.template === template)) continue;
+    const script: VideoScript = {
+      template,
+      hook: clip(v.hook, 60) ?? "",
+      endHeadline: clip(v.endHeadline, 48) ?? "",
+      said: clip(v.said, 180),
+      caught: Array.isArray(v.caught) ? (v.caught as unknown[]).map((x) => clip(x, 46) ?? "").filter(Boolean).slice(0, 4) : undefined,
+      habit: clip(v.habit, 22),
+      days: Array.isArray(v.days) ? (v.days as unknown[]).map(Boolean).slice(0, 7) : undefined,
+      quotes: Array.isArray(v.quotes)
+        ? (v.quotes as { day?: unknown; text?: unknown }[])
+            .map((q) => ({ day: Number(q.day), text: clip(q.text, 56) ?? "" }))
+            .filter((q) => q.text && q.day >= 0 && q.day <= 6)
+            .slice(0, 3)
+        : undefined,
+      flag: clip(v.flag, 60),
+      weeks: Array.isArray(v.weeks) ? (v.weeks as unknown[]).map((x) => clip(x, 90) ?? "").filter(Boolean).slice(0, 4) : undefined,
+      phrase: clip(v.phrase, 30),
+      stats: Array.isArray(v.stats)
+        ? (v.stats as { value?: unknown; label?: unknown }[]).map((x) => ({ value: clip(x.value, 6) ?? "", label: clip(x.label, 20) ?? "" })).slice(0, 3)
+        : undefined,
+      moods: Array.isArray(v.moods) ? (v.moods as unknown[]).map((m) => Math.round(Number(m)) || 3).slice(0, 7) : undefined,
+      theme: clip(v.theme_label, 30),
+      items: Array.isArray(v.items)
+        ? (v.items as { text?: unknown; area?: unknown }[])
+            .map((x) => ({ text: clip(x.text, 34) ?? "", area: clip(x.area, 12) ?? "Other" }))
+            .filter((x) => x.text)
+            .slice(0, 12)
+        : undefined,
+      total: typeof v.total === "number" ? Math.round(v.total) : undefined,
+      insight: clip(v.insight, 90),
+    };
+    const problem = validateVideoScript(script);
+    if (problem) {
+      console.warn(`[adlab-weekly] dropped ${template} video: ${problem}`);
+      continue;
+    }
+    out.push({
+      script,
+      theme: clip(v.theme, 200) ?? "",
+      hypothesis: clip(v.hypothesis, 400) ?? "",
+      primaryText: clip(v.primaryText, 200) ?? "",
+      description: clip(v.description, 100) ?? "",
+    });
+  }
+  return out;
+}
+
 interface DigestTheme {
   theme: string;
   why: string;
@@ -860,7 +1018,47 @@ Call the submit_ads tool IMMEDIATELY. Do not write any analysis, plan, draft or 
       return parseBatchAds(raw2, 3);
     }
   };
-  const halvesOut = await Promise.allSettled([generateHalf(0), generateHalf(1)]);
+  // Video scripts run in parallel with the two image halves; a failure
+  // here only costs the week its videos, never the image batch.
+  const videoTemplates = videoTemplatesForWeek();
+  const videoPrompt = `Write ${videoTemplates.length} ANIMATED VIDEO ad scripts for this lane, one per template, in this order: ${videoTemplates.join(", ")}.
+Each video is a ~12–15s silent-readable animation (music underneath, no voiceover) that shows the viewer THEIR OWN WORDS turning into a to-do list, a tracked habit, a pattern or a weekly report. Nothing else is on screen, so the specifics carry the ad: real errands, names, days, excuses — the way this audience actually talks (use the Reddit themes and phrases). Every number is one person's believable week, never a claim about users.
+
+TEMPLATES:
+${videoTemplates.map((t) => `- ${t}: ${VIDEO_TEMPLATE_BRIEFS[t]}`).join("\n")}
+
+COMMON FIELDS (every video):
+- hook: ≤44 chars, the first thing on screen (thumb-stop). A specific situation or confession in first person ("I said I'd walk every day.", "The list in my head, out loud"). Never a feeling-state question, never age.
+- endHeadline: ≤34 chars, end card + Meta headline, outcome-led and literal ("Say it. Ripple sorts it.", "See what keeps coming up.").
+- primaryText: ≤125 chars: hook/scene, then one literal line on what Ripple does. No price.
+- description: ≤60 chars.
+- theme: which Reddit theme it's rooted in. hypothesis: one sentence on why it should convert.
+Only fill the template's own fields (plus the common ones); leave the rest out.
+Call the submit_video_ads tool IMMEDIATELY with no text before or after it.`;
+  const generateVideos = async (): Promise<VideoAdDraft[]> => {
+    const call = (extra = "") =>
+      callAdLabClaude({
+        purpose: `weekly-videos-${groupKey}`,
+        systemPrompt,
+        userPrompt: videoPrompt + extra,
+        maxTokens: 12000,
+        models: AD_COPY_MODELS,
+        outputTool: SUBMIT_VIDEOS_TOOL,
+      });
+    let drafts = parseVideoAds(await call(), videoTemplates);
+    if (drafts.length < videoTemplates.length) {
+      const missing = videoTemplates.filter((t) => !drafts.some((d) => d.script.template === t));
+      const more = parseVideoAds(
+        await call(`\n\nIMPORTANT: the previous attempt was missing valid scripts for: ${missing.join(", ")}. Follow each template's field rules exactly (counts and lengths).`),
+        missing
+      ).filter((d) => !drafts.some((x) => x.script.template === d.script.template));
+      drafts = [...drafts, ...more];
+    }
+    return drafts;
+  };
+  const [videoOut, ...halvesOut] = await Promise.allSettled([generateVideos(), generateHalf(0), generateHalf(1)]);
+  const videoDrafts = videoOut.status === "fulfilled" ? videoOut.value : [];
+  if (videoOut.status === "rejected") console.warn(`[adlab-weekly] ${groupKey} videos failed: ${videoOut.reason instanceof Error ? videoOut.reason.message : videoOut.reason}`);
   const ads: z.infer<typeof BatchAdSchema>[] = halvesOut.flatMap((r) => (r.status === "fulfilled" ? r.value : []));
   if (ads.length < 5) {
     const reasons = halvesOut.map((r) => (r.status === "rejected" ? (r.reason instanceof Error ? r.reason.message : String(r.reason)) : "ok")).join(" | ");
@@ -941,7 +1139,39 @@ Call the submit_ads tool IMMEDIATELY. Do not write any analysis, plan, draft or 
     creativeIds.push(creative.id);
   }
 
-  console.log(`[adlab-weekly] ${groupKey}: experiment ${experiment.id}, ${creativeIds.length} creatives`);
+  // Video ads — rendered (MP4 + poster) by generateBatchImage like any
+  // other creative, so the Inngest image steps cover them too.
+  for (const v of videoDrafts.slice(0, VIDEOS_PER_BATCH)) {
+    const formatKey = `${VIDEO_FORMAT_PREFIX}${v.script.template}`;
+    const angle = await prisma.adLabAngle.create({
+      data: {
+        experimentId: experiment.id,
+        hypothesis: v.hypothesis || `Animated ${v.script.template} demo`,
+        targetPersona: g.audienceLabel,
+        valueSurface: "mechanism",
+        researchNotes: `Reddit theme (${digestDate}): ${v.theme} | strategy: explore | type: video_${v.script.template} | format: ${formatKey}`,
+        score: 5,
+      },
+    });
+    const copy: AdImageCopy = { headline: v.script.endHeadline, description: v.description, cta: "SIGN_UP", imageScene: "", video: v.script };
+    const creative = await prisma.adLabCreative.create({
+      data: {
+        angleId: angle.id,
+        creativeType: "video",
+        headline: v.script.endHeadline,
+        primaryText: v.primaryText,
+        description: v.description,
+        cta: "SIGN_UP",
+        formatKey,
+        generationPrompt: buildAdImagePrompt(formatKey, copy, groupKey),
+        complianceStatus: "pending",
+        approved: false,
+      },
+    });
+    creativeIds.push(creative.id);
+  }
+
+  console.log(`[adlab-weekly] ${groupKey}: experiment ${experiment.id}, ${creativeIds.length} creatives (${Math.min(videoDrafts.length, VIDEOS_PER_BATCH)} video)`);
   return { experimentId: experiment.id, creativeIds, digestDate };
 }
 
@@ -972,6 +1202,10 @@ export async function generateBatchImage(
   });
   if (!creative) return { ok: false, error: "creative not found" };
   if (creative.imageUrl && creative.storyImageUrl && !opts?.force) return { ok: true };
+
+  if (creative.formatKey?.startsWith(VIDEO_FORMAT_PREFIX)) {
+    return generateBatchVideo(creative);
+  }
 
   try {
     // Both placements (2026-09-24): feed 4:5 → imageUrl, story 9:16 →
@@ -1058,6 +1292,60 @@ export async function generateBatchImage(
         where: { id: creativeId },
         data: { complianceNotes: `IMAGE_ERROR: ${msg}`.slice(0, 500) },
       })
+      .catch(() => {});
+    return { ok: false, error: msg };
+  }
+}
+
+/**
+ * Render + upload one video ad (2026-09-29): the MP4 (with a track from the
+ * lane's music library) and its poster frame as imageUrl (feed 4:5) and
+ * storyImageUrl (9:16). The MP4 URL is written back into the AD_COPY tag —
+ * there's no videoUrl column on AdLabCreative, and the launch route reads it
+ * from there.
+ */
+async function generateBatchVideo(creative: {
+  id: string;
+  headline: string;
+  generationPrompt: string | null;
+  angle: { experiment: { campaignTags: string[] } };
+}): Promise<{ ok: boolean; error?: string }> {
+  try {
+    const groupKey: BatchGroupKey = creative.angle.experiment.campaignTags.includes("men") ? "men" : "women";
+    const copy = decodeAdCopy(creative.generationPrompt);
+    if (!copy.video) throw new Error("video creative has no script");
+    const { renderVideoAd } = await import("@/lib/adlab/ad-video");
+    const { pickMusicTrack } = await import("@/lib/content-factory/slideshow-reel");
+    const musicUrl = await pickMusicTrack(null, groupKey === "men" ? "bwk" : "ripple").catch(() => null);
+    const r = await renderVideoAd(groupKey, { ...copy.video, endHeadline: creative.headline }, { musicUrl });
+
+    const { supabase } = await import("@/lib/supabase.server");
+    const stamp = Date.now();
+    const upload = async (name: string, buf: Buffer, contentType: string) => {
+      const { error } = await supabase.storage.from("adlab-creatives").upload(name, buf, { contentType, upsert: true });
+      if (error) throw new Error(`Supabase upload failed: ${error.message}`);
+      return supabase.storage.from("adlab-creatives").getPublicUrl(name).data.publicUrl;
+    };
+    const [videoUrl, imageUrl, storyImageUrl] = await Promise.all([
+      upload(`${creative.id}-video-${stamp}.mp4`, r.mp4, "video/mp4"),
+      upload(`${creative.id}-poster-feed-${stamp}.jpg`, r.posterFeed, "image/jpeg"),
+      upload(`${creative.id}-poster-story-${stamp}.jpg`, r.posterStory, "image/jpeg"),
+    ]);
+    const prompt = creative.generationPrompt ?? "";
+    await prisma.adLabCreative.update({
+      where: { id: creative.id },
+      data: {
+        imageUrl,
+        storyImageUrl,
+        generationPrompt: `${stripAdCopy(prompt)}${encodeAdCopy({ ...(copy as AdImageCopy), videoUrl })}`,
+      },
+    });
+    return { ok: true };
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    console.error(`[adlab-weekly] video failed for ${creative.id}: ${msg}`);
+    await prisma.adLabCreative
+      .update({ where: { id: creative.id }, data: { complianceNotes: `IMAGE_ERROR: ${msg}`.slice(0, 500) } })
       .catch(() => {});
     return { ok: false, error: msg };
   }

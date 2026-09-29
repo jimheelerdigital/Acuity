@@ -10,7 +10,7 @@ import { NextResponse } from "next/server";
 
 import { requireAdmin } from "@/lib/admin-guard";
 import { prisma } from "@/lib/prisma";
-import { BATCH_GROUPS, type BatchGroupKey } from "@/lib/adlab/weekly-batch";
+import { BATCH_GROUPS, decodeAdCopy, type BatchGroupKey } from "@/lib/adlab/weekly-batch";
 import { GROUP_DAILY_BUDGET_CENTS } from "@/lib/adlab/evergreen";
 
 export const dynamic = "force-dynamic";
@@ -49,6 +49,8 @@ export async function GET() {
                   complianceStatus: true,
                   complianceNotes: true,
                   approved: true,
+                  creativeType: true,
+                  generationPrompt: true,
                 },
               },
             },
@@ -66,7 +68,18 @@ export async function GET() {
         // budget is fixed in code (lib/adlab/evergreen.ts).
         defaultBudgetCents: GROUP_DAILY_BUDGET_CENTS[groupKey],
         evergreenBudgetCents: GROUP_DAILY_BUDGET_CENTS[groupKey],
-        experiment,
+        // Video ads (2026-09-29) keep their MP4 URL in the prompt's AD_COPY
+        // tag — surface it and drop the (long, internal) prompt itself.
+        experiment: experiment && {
+          ...experiment,
+          angles: experiment.angles.map((a) => ({
+            ...a,
+            creatives: a.creatives.map(({ generationPrompt, ...c }) => ({
+              ...c,
+              videoUrl: decodeAdCopy(generationPrompt).videoUrl ?? null,
+            })),
+          })),
+        },
       };
     })
   );

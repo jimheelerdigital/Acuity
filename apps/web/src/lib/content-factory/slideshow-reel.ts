@@ -65,11 +65,15 @@ const AUDIO_EXT = /\.(mp3|m4a|aac|wav|ogg|mp4)$/i;
  * Pick a random music track for a lane from the bucket library.
  * Returns the track's public URL, or null when no library exists yet.
  */
-export async function pickMusicTrack(lane: string | null): Promise<string | null> {
+export async function pickMusicTrack(
+  lane: string | null,
+  /** Skip the lane lookup (AdLab video ads pick by brand: "ripple" | "bwk"). */
+  brandOverride?: string
+): Promise<string | null> {
   const { supabase } = await import("@/lib/supabase.server");
   const { laneBrand } = await import("./social-publish");
 
-  const brand = await laneBrand(lane);
+  const brand = brandOverride ?? (await laneBrand(lane));
   const isBwk = brand === "bwk";
   // Supabase Storage paths are case-sensitive and the dashboard-created
   // BWK folder is uppercase — check both spellings.

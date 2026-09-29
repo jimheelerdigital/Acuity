@@ -162,7 +162,7 @@ export const SAFE_ZONE_RULES = `CANVAS + SAFE ZONE (critical): vertical 2:3 port
 
 // ─── App-proof format ─────────────────────────────────────────────────────
 
-const THEME: Record<BatchGroupKey, { bg: string; text: string; sub: string; accent: string; ctaText: string; phone: string }> = {
+export const THEME: Record<BatchGroupKey, { bg: string; text: string; sub: string; accent: string; ctaText: string; phone: string }> = {
   women: {
     bg: "#F6EFE6",
     text: "#2B2522",
@@ -181,9 +181,9 @@ const THEME: Record<BatchGroupKey, { bg: string; text: string; sub: string; acce
   },
 };
 
-const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+export const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 
-async function textBlock(
+export async function textBlock(
   markup: string,
   fontPath: string | null,
   width: number,
@@ -312,7 +312,7 @@ export interface SayCatchCopy {
   ctaLabel: string;
 }
 
-function roundedRect(w: number, h: number, r: number, fill: string, opacity = 1): Buffer {
+export function roundedRect(w: number, h: number, r: number, fill: string, opacity = 1): Buffer {
   return Buffer.from(
     `<svg width="${w}" height="${h}" xmlns="http://www.w3.org/2000/svg"><rect x="0" y="0" width="${w}" height="${h}" rx="${r}" fill="${fill}" fill-opacity="${opacity}"/></svg>`
   );

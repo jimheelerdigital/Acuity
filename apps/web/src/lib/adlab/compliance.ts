@@ -89,6 +89,19 @@ function imageCopyFor(generationPrompt: string | null | undefined): string {
     x.lines?.length && `Note text: ${x.lines.join(" / ")}`,
     x.stats?.length && `Stats: ${x.stats.map((st) => `${st.value} ${st.label}`).join(" / ")}`,
     x.insight && `Insight: ${x.insight}`,
+    x.video && `Video on-screen text: ${[
+      x.video.hook,
+      x.video.said,
+      ...(x.video.caught ?? []),
+      x.video.habit,
+      ...(x.video.quotes ?? []).map((q) => q.text),
+      x.video.flag,
+      ...(x.video.weeks ?? []),
+      ...(x.video.stats ?? []).map((st) => `${st.value} ${st.label}`),
+      x.video.theme,
+      ...(x.video.items ?? []).map((i) => i.text),
+      x.video.insight,
+    ].filter(Boolean).join(" / ")}`,
   ].filter(Boolean);
   return parts.length ? `\nText in the image: ${parts.join(" | ")}` : "";
 }

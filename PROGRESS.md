@@ -7,6 +7,34 @@
 
 ---
 
+## [2026-09-29] — 3 animated video ads per lane in every weekly batch
+
+- **Requested by:** Keenan
+- **Committed by:** Claude Code
+- **Commit hash:** (see git log — "feat: Add animated video ads to the weekly ad batch")
+
+### In plain English (for Keenan)
+Every weekly batch now also includes 3 short video ads per lane (about 12–15 seconds, vertical, with music) that show someone's own words turning into what Ripple does. There are 5 animation styles: a spoken sentence becoming a ticked-off to-do list, a habit week filling in until Ripple flags the missed streak, the same phrase lighting up across four weeks, the weekly report building itself, and a week's "invisible list" being counted and sorted. You preview and pick them on the same review page, up to 2 videos per lane per week on top of the 2 image ads, and launching sends them to Meta as video ads.
+
+### Technical changes (for Jimmy)
+- New apps/web/src/lib/adlab/ad-video.ts: code-drawn animation engine (sharp/Pango frames → ffmpeg-static concat demuxer → 1080×1920 H.264 + AAC). 5 templates: voice_to_list, habit_week, pattern_weeks, weekly_report, invisible_list. `renderVideoAd()` returns the MP4 plus poster frames (4:5 feed thumbnail cut from the feed-safe centre, 9:16 story). Only changed frames are drawn, so renders take ~10s each.
+- apps/web/src/lib/adlab/weekly-batch.ts: `videoTemplatesForWeek()` (voice_to_list every week plus 2 rotating), `SUBMIT_VIDEOS_TOOL` and `parseVideoAds()`. A third parallel Claude call writes the scripts. Each video creative has `creativeType: "video"` and `formatKey: video-<template>`. `generateBatchVideo()` renders and uploads the MP4 and posters to adlab-creatives.
+- No schema change: the script and the MP4 URL ride in the AD_COPY tag of `generationPrompt` (same pattern as the other extra copy fields).
+- Launch route: video creatives read `videoUrl` from the AD_COPY tag, upload it via `meta.uploadVideo`, and upload the poster as the thumbnail. meta.ts `createAdCreative` now sends `image_hash`/`image_url` in `video_data`. The weekly cap is now 2 image + 2 video per lane, in both creatives/[id] and the launch route.
+- Review API and page: return `creativeType` + `videoUrl`; the page shows an inline player, a "▶ Video" badge and separate image/video pick counts.
+- compliance.ts: reviews the video's on-screen text.
+- content-factory/slideshow-reel.ts: `pickMusicTrack(lane, brandOverride?)` (women → music/ripple, men → music/bwk).
+- Tests: 3 new ones in ad-formats.test.ts (13 passing).
+
+### Manual steps needed
+- [ ] Hit Remake on both lanes to get the first batch with videos (Keenan)
+- [ ] First video launch: confirm in Ads Manager that the ad shows the video and not just the thumbnail (Keenan)
+
+### Notes
+- Code-drawn animation rather than Higgsfield/Kling: the ad's whole point is readable, exact text (their words → list), which video models can't render.
+- All content sits in y 300–1600, so the feed's centre 4:5 crop of the 9:16 video loses nothing.
+- Not caused by this change: 6 tests in src/lib/evidence (RevenueCat/pricing: rc-observer-build, v10-paywall-copy, v2-product-ids) are failing on main — Jimmy's area.
+
 ## [2026-09-29] — Weekly ads rebuilt around what converts for subscription apps
 
 - **Requested by:** Keenan

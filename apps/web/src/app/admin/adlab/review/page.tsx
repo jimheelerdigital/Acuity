@@ -29,6 +29,9 @@ interface Creative {
   cta: string;
   imageUrl: string | null;
   storyImageUrl?: string | null;
+  /** Video ads (2026-09-29): "video" + the rendered MP4. */
+  creativeType?: string;
+  videoUrl?: string | null;
   complianceStatus: string;
   complianceNotes: string | null;
   approved: boolean;
@@ -234,6 +237,10 @@ function GroupSection({ group, onLaunched }: { group: Group; onLaunched: () => v
   const approvedCount = allCreatives.filter(
     (c) => creatives.get(c.id) && c.complianceStatus !== "failed"
   ).length;
+  const approvedVideos = allCreatives.filter(
+    (c) => c.creativeType === "video" && creatives.get(c.id) && c.complianceStatus !== "failed"
+  ).length;
+  const videoOptions = allCreatives.filter((c) => c.creativeType === "video").length;
 
   async function toggleApproved(creativeId: string) {
     const next = !creatives.get(creativeId);
@@ -400,7 +407,7 @@ function GroupSection({ group, onLaunched }: { group: Group; onLaunched: () => v
         </div>
         <div className="flex flex-col items-end gap-1 shrink-0">
           <span className="text-xs text-acuity-text-ter">
-            {approvedCount}/2 picked this week · {allCreatives.length} options
+            {approvedCount - approvedVideos}/2 image · {approvedVideos}/2 video picked · {allCreatives.length - videoOptions} image + {videoOptions} video options
           </span>
           <RemakeGroupButton groupKey={group.groupKey} label={group.groupKey} />
         </div>
@@ -414,9 +421,21 @@ function GroupSection({ group, onLaunched }: { group: Group; onLaunched: () => v
           aria-modal="true"
         >
           <div className="flex w-full max-w-5xl flex-col gap-4 py-4" onClick={(e) => e.stopPropagation()}>
+            {preview.videoUrl && (
+              <div className="flex justify-center">
+                <video
+                  src={preview.videoUrl}
+                  controls
+                  autoPlay
+                  loop
+                  playsInline
+                  className="h-[70vh] max-h-[720px] rounded-xl bg-black"
+                />
+              </div>
+            )}
             <div className="flex flex-wrap items-start justify-center gap-6">
               <div>
-                <p className="mb-2 text-center text-[10px] uppercase tracking-wide text-acuity-text-ter">Feed · Instagram / Facebook</p>
+                <p className="mb-2 text-center text-[10px] uppercase tracking-wide text-acuity-text-ter">Feed · Instagram / Facebook{preview.videoUrl ? " · video thumbnail" : ""}</p>
                 <MetaFeedMock creative={preview} />
               </div>
               <div>
@@ -484,11 +503,16 @@ function GroupSection({ group, onLaunched }: { group: Group; onLaunched: () => v
                     <button
                       type="button"
                       onClick={() => setPreview(c)}
-                      className="block cursor-zoom-in"
+                      className="relative block cursor-zoom-in"
                       aria-label={`View full image: ${c.headline}`}
                     >
                       {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img src={c.imageUrl} alt={c.headline} className="w-28 h-[140px] object-cover" />
+                      {c.creativeType === "video" && (
+                        <span className="absolute left-1 top-1 rounded bg-black/75 px-1.5 py-0.5 text-[10px] font-semibold text-white">
+                          ▶ Video
+                        </span>
+                      )}
                     </button>
                   ) : (
                     <ImageOff className="h-6 w-6 text-acuity-text-ter" />

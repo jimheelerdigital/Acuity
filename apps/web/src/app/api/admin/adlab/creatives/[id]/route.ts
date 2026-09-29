@@ -36,18 +36,19 @@ export async function PUT(
 
   // Weekly batches (2026-09-29, per Keenan): he picks at most TWO ads per
   // lane per week to test. Block approving a third in the same batch.
+  // Video ads (2026-09-29) are counted separately: up to 2 image + 2 video.
   if (data.approved === true) {
     const c = await prisma.adLabCreative.findUnique({
       where: { id: params.id },
-      select: { approved: true, angle: { select: { experimentId: true, experiment: { select: { campaignTags: true } } } } },
+      select: { approved: true, creativeType: true, angle: { select: { experimentId: true, experiment: { select: { campaignTags: true } } } } },
     });
     if (c && !c.approved && c.angle.experiment.campaignTags.includes("weekly-reddit-batch")) {
       const already = await prisma.adLabCreative.count({
-        where: { approved: true, angle: { experimentId: c.angle.experimentId } },
+        where: { approved: true, creativeType: c.creativeType, angle: { experimentId: c.angle.experimentId } },
       });
       if (already >= MAX_APPROVED_PER_BATCH) {
         return NextResponse.json(
-          { error: `You can pick at most ${MAX_APPROVED_PER_BATCH} ads per lane each week. Unapprove one first.` },
+          { error: `You can pick at most ${MAX_APPROVED_PER_BATCH} ${c.creativeType === "video" ? "video" : "image"} ads per lane each week. Unapprove one first.` },
           { status: 400 }
         );
       }

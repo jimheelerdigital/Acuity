@@ -21,6 +21,7 @@ import * as meta from "@/lib/adlab/meta";
 import { redactAccessToken } from "@/lib/adlab/meta";
 import { generateLandingPage } from "@/lib/adlab/landing-page";
 import { ensureEvergreenAdSet, weeklyBatchGroup } from "@/lib/adlab/evergreen";
+import { decodeAdCopy } from "@/lib/adlab/weekly-batch";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 300; // 5 min — launching many creatives takes time with rate limiting
@@ -86,8 +87,11 @@ export async function POST(req: NextRequest) {
   );
 
   // Max TWO per lane per week (2026-09-29, per Keenan) for weekly batches.
-  if (experiment.campaignTags?.includes("weekly-reddit-batch") && approvedCreatives.length > 2) {
-    return NextResponse.json({ error: `Pick at most 2 ads per lane this week (${approvedCreatives.length} approved).` }, { status: 400 });
+  // Video ads (2026-09-29) count separately: up to 2 image + 2 video.
+  const approvedVideos = approvedCreatives.filter((c) => c.creativeType === "video").length;
+  const approvedImages = approvedCreatives.length - approvedVideos;
+  if (experiment.campaignTags?.includes("weekly-reddit-batch") && (approvedImages > 2 || approvedVideos > 2)) {
+    return NextResponse.json({ error: `Pick at most 2 image ads and 2 video ads per lane this week (${approvedImages} image, ${approvedVideos} video approved).` }, { status: 400 });
   }
 
   if (approvedCreatives.length === 0) {
@@ -345,16 +349,31 @@ export async function POST(req: NextRequest) {
         let imageHash: string | undefined;
         let videoId: string | undefined;
 
-        if (creativeType === "video" && creative.videoUrl) {
+        // Weekly-batch video ads (2026-09-29) keep their MP4 URL in the
+        // AD_COPY tag of generationPrompt (no DB column); imageUrl is the
+        // poster frame, uploaded below as the video's thumbnail.
+        const videoUrl = creativeType === "video" ? decodeAdCopy(creative.generationPrompt).videoUrl : undefined;
+        if (creativeType === "video" && !videoUrl) {
+          errors.push({ creativeId: creative.id, error: "Video ad has no rendered video yet" });
+          continue;
+        }
+        if (videoUrl) {
           console.log(`[adlab-launch] Uploading video for ${creativeLabel}`);
           try {
             videoId = await withRetry(
-              () => meta.uploadVideo(creative.videoUrl!),
+              () => meta.uploadVideo(videoUrl),
               { label: `Video upload ${creativeLabel}`, retryDelayMs: 10_000 }
             );
           } catch {
             errors.push({ creativeId: creative.id, error: "Video upload failed after 3 retries" });
             continue;
+          }
+          if (creative.imageUrl) {
+            try {
+              imageHash = await withRetry(() => meta.uploadImage(creative.imageUrl!), { label: `Thumbnail upload ${creativeLabel}` });
+            } catch (err) {
+              logMetaError(`Thumbnail upload ${creativeLabel} (Meta will pick a frame)`, err);
+            }
           }
         } else if (creative.imageUrl) {
           console.log(`[adlab-launch] Uploading image for ${creativeLabel}`);
@@ -372,7 +391,7 @@ export async function POST(req: NextRequest) {
         // 9:16 Stories/Reels rendition (2026-09-24) — optional: on failure
         // the ad still launches with the feed image everywhere.
         let storyImageHash: string | undefined;
-        if (imageHash && creative.storyImageUrl) {
+        if (imageHash && !videoId && creative.storyImageUrl) {
           try {
             await delay(1000);
             storyImageHash = await withRetry(
@@ -451,6 +470,8 @@ export async function POST(req: NextRequest) {
               pageId: metaPageId!,
               imageHash,
               videoId,
+              // Thumbnail fallback when the poster upload failed.
+              imageUrl: videoId && !imageHash ? creative.imageUrl ?? undefined : undefined,
               headline: creative.headline,
               primaryText: creative.primaryText,
               description: creative.description,
