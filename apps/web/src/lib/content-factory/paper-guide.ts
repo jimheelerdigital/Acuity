@@ -36,6 +36,7 @@ import sharp from "sharp";
 
 import { HUMAN_VOICE_RULES } from "./humanizer";
 import { withHeadlineRetry } from "./headline-history";
+import { brandForAudience, copyObjectives, type CopyBrand } from "./copy-objectives";
 
 const anthropic = contentAnthropic;
 const CLAUDE_MODEL = CONTENT_MODEL;
@@ -84,25 +85,52 @@ export interface PaperGuideTopic {
   slides: PaperGuideSlide[];
 }
 
-const SYSTEM = `You write "reset guide" photo carousels: plain serif text on a paper background, no images. The reference post that went viral (8.7K saves) read like this:
+// 2026-09-28 (Sonnet 5.5 rewrite, per Keenan): opens with the brand brief
+// from copy-objectives, explains WHY each rule exists, and splits the voice
+// by brand (Ripple = a friend who has been there, BWK = direct commands).
+// Layout limits (≤9-word cover, ≤7 body lines, ~36 chars/line, short time
+// box) are unchanged — the renderer sets one line per string at a fixed size.
+const REFERENCE = `A reference post in this format went viral with 8.7K saves. It is shown only so you can see the shape: a cover promise, then time-boxed steps with real actions. Do not reuse its words, its weekend structure, or its topic.
 
 COVER: "1 weekend can reset your entire 2026"
 FRIDAY NIGHT / Brain cleanse (2 hrs) / Grab a notebook. Set a timer. / Write everything you want this year: • Career moves • Relationships to repair • Skills to learn • Places to visit • Money goals / No organizing. No filtering.
 SATURDAY MORNING / Social media audit (30 minutes) / Look at who you follow. Ask: "Does this make me grow... or distracted?" / Unfollow the ones that don't support who you want to become.
 SATURDAY NIGHT / Systems > motivation / Stop waiting to feel inspired. Build tiny repeatable systems. / Replace "I want to" with "I do this every week."
-THE SUNDAY RESET / 15 mins weekly / Every Sunday evening: • What worked? • What didn't? • What's tomorrow's one focus? / Set a recurring alarm. Small resets prevent big drifts.
+THE SUNDAY RESET / 15 mins weekly / Every Sunday evening: • What worked? • What didn't? • What's tomorrow's one focus? / Set a recurring alarm. Small resets prevent big drifts.`;
 
-What makes it work, and what every post must do:
-- The cover is ONE plain sentence-case promise with a concrete number or span ("1 weekend…", "7 days to…", "The 20-minute Sunday reset", "3 habits that…"). No clickbait, no ALL CAPS, max 9 words.
-- Each step: a HEADER that is a time block or a step name (1-3 words, will be set in caps), a SUB line naming the action with a time box in parentheses, then 2-6 short lines. Bullets start with "• ". Use "" for a blank line between groups.
-- Practical and specific enough to save and actually do: real actions, real questions to ask yourself, real time boxes. No vague advice ("believe in yourself"), no fluff, no hashtags, no emojis.
-- Short words, short lines, like the reference. Max ~40 words per step and at most 7 body lines. Each line fits on one line of the page: max ~36 characters, including the SUB line (keep the time box short: "(20 min)", "(2 hrs)"). Split a longer thought into two lines instead of one long line.
-- American English and US dollars ($), never £ or British spellings.
-- The LAST step is the small recurring habit that keeps the reset going, ending on a one-line takeaway.
-- Never mention any app, brand, or product. Never say "journal", "journaling", or "brain dump". Writing things down or saying them out loud is fine.
-- No invented statistics, no medical or therapy claims.
+const BRAND_VOICE: Record<CopyBrand, string> = {
+  ripple: `VOICE FOR THIS GUIDE: a warm friend who has been exactly where she is and figured out what actually helps. Not an expert, not a coach, not a wellness account. She reads it and thinks "I could do that this week, even with everything else." Lines can be gentle instructions ("Pick one drawer.") but they sound like a friend handing over what worked, never a lecture about what she should be doing. Anchor the steps in her real week: the school forms, the appointments she makes for everyone else, the groceries, the work inbox, the parent who needs a call, her own overdue checkup. Leave room for her: a step that takes something off her plate is worth more than one that adds a new habit.`,
+  bwk: `VOICE FOR THIS GUIDE: direct commands from a man who already runs this system. Short imperative lines ("Open your bank app. List every subscription."). No hype, no pep talk, no therapy language, no "alpha" or hustle clichés. Anchor the steps in his real week: training, sleep, money, work output, the side project, the phone. Use numbers wherever they are true and useful: reps, minutes, dollars, days, counts.`,
+};
 
-Return ONLY JSON: {"title": string, "slug": "kebab-case-slug", "slides": [{"header": string, "sub": string, "body": string[]}]}`;
+function buildSystem(brand: CopyBrand): string {
+  return `${copyObjectives(brand)}
+
+THIS LANE: a "reset guide" carousel. Plain serif text typed onto a sheet of paper, no photos. Slide 1 is the cover; every slide after it is one step of a practical reset the reader can actually run. This format lives or dies on saves: the reader should finish it thinking "I'm doing this," save it, and come back to it when it is time to do it. That only happens when the guide is concrete enough to follow without thinking.
+
+${REFERENCE}
+
+${BRAND_VOICE[brand]}
+
+WHAT A SAVE-WORTHY GUIDE DOES:
+- Every step names a real action with a real object: which list, which app setting, which drawer, which three questions, how many minutes. "Clear your head" is a wish; "Write every open loop on one page, then circle three" is a step.
+- The questions it gives are ones the reader would genuinely stop and answer.
+- Time boxes are honest and small enough to fit into a full life.
+- Each step adds something new. No step restates the one before it.
+- The LAST step is the small recurring habit that keeps the reset going, ending on a one-line takeaway worth remembering.
+- Where it fits, one step can be getting everything out of your head by saying it out loud or writing it down, because that genuinely lightens the load. Never call that "journaling" or a "brain dump".
+
+THE COVER ("title"): one plain, sentence-case promise with a concrete number or span, 9 words at most ("7 days to…", "The 20-minute Sunday reset", "3 habits that…" are shapes, not words to reuse). It must make complete sense on its own and promise exactly what the steps deliver. No clickbait and no ALL CAPS.
+
+EACH STEP ("slides" entries), which the renderer sets line by line at a fixed size:
+- "header": a time block or step name, 1-3 words (it is set in caps).
+- "sub": the action with a short time box in parentheses, like "(20 min)" or "(2 hrs)".
+- "body": 2-6 short lines, at most 7 lines and about 40 words per step. Each line must fit on one printed line, about 36 characters at most (the sub line too), so split a longer thought across two lines. Bullets start with "• ". Use "" for a blank line between groups.
+
+LIMITS, and why: American English and US dollars, since the audience is American. No app, brand or product names, because a guide should work for anyone. No invented statistics and no medical or therapy claims, because we can't stand behind them. No hashtags or emojis on the page.
+
+Return only the JSON object: {"title": string, "slug": "kebab-case-slug", "slides": [{"header": string, "sub": string, "body": string[]}]}`;
+}
 
 export async function generatePaperGuideTopic(
   spec: PaperLaneSpec,
@@ -132,7 +160,7 @@ async function generateOnce(
   const response = await anthropic.messages.create({
     model: CLAUDE_MODEL,
     max_tokens: 2500,
-    system: `${SYSTEM}\n\n${HUMAN_VOICE_RULES}`,
+    system: `${buildSystem(brandForAudience(spec.audience))}\n\n${HUMAN_VOICE_RULES}`,
     messages: [
       {
         role: "user",

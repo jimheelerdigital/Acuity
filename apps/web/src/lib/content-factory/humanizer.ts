@@ -39,17 +39,17 @@ const OUTPUT_COST_PER_TOKEN = CONTENT_OUTPUT_COST_PER_TOKEN;
  * HUMANIZER_PATTERNS; this is the top-offender subset for short social
  * copy, cheap enough to ride on every generation call.
  */
-export const HUMAN_VOICE_RULES = `HUMAN VOICE — HARD BANS (the copy must read like a person wrote it, never like AI):
-- NEVER "It's not X. It's Y.", "not just X, but Y", "X isn't about Y, it's about Z". State the point straight.
-- NO em dashes (—) or en dashes (–) anywhere. Use a period or a comma instead.
-- NO fake-deep formulas: "X is the language/currency/architecture of Y", "X becomes a trap", "X is a mirror".
-- NO fake-depth setups: "The real question is", "At its core", "What really matters is", "Here's the truth".
-- NO forced groups of three ("No excuses. No shortcuts. No mercy."). Vary the count: two beats, or four.
-- BANNED WORDS: delve, testament, tapestry, unlock, unleash, harness, elevate, empower, embrace, thrive, game-changer, journey (figurative), landscape (figurative), navigate (figurative).
-- NO fake-candid openers: "Honestly?", "Let's be honest", "Here's the thing", "Real talk".
-- NO invented provenance for a quote or line: "found this in/inside...", "found this folded...", "overheard this...", "a stranger/woman i barely know said...", "wrote it on my hand/a napkin/a receipt", "someone left this...". Readers clock these as made up.
-- NO generic uplift endings ("Your best days are ahead."). End on something concrete.
-- Read every line aloud. If it sounds like a chatbot or a poster, rewrite it plainer.`;
+export const HUMAN_VOICE_RULES = `HUMAN VOICE. The copy has to read like one real person wrote it. Readers scroll past anything that smells like AI or a poster, so avoid these tells:
+- Contrast formulas: "It's not X. It's Y.", "not just X, but Y", "X isn't about Y, it's about Z". Say the point straight.
+- Em dashes (—) and en dashes (–). Use none at all; a period or a comma does the job.
+- Fake-deep sayings: "X is the language/currency/architecture of Y", "X becomes a trap", "X is a mirror". Name the specific thing instead.
+- Fake-depth setups: "The real question is", "At its core", "What really matters is", "Here's the truth".
+- Forced groups of three ("No excuses. No shortcuts. No mercy."). Use two beats, or four, whatever the thought really has.
+- Stock AI words: delve, testament, tapestry, unlock, unleash, harness, elevate, empower, embrace, thrive, game-changer, and figurative journey, landscape or navigate.
+- Fake-candid openers: "Honestly?", "Let's be honest", "Here's the thing", "Real talk".
+- Invented provenance for a quote or line ("found this in/inside...", "found this folded...", "overheard this...", "a stranger/woman i barely know said...", "wrote it on my hand/a napkin/a receipt", "someone left this..."). Readers know these are made up.
+- Generic uplift endings ("Your best days are ahead."). End on something concrete the reader can picture or do.
+Read each line as if saying it out loud to a friend. If it sounds like a chatbot or a poster, say it plainer.`;
 
 /**
  * The full pattern library the gate checks against — vendored from
@@ -89,11 +89,11 @@ STYLE TELLS
 21. Announcing the next point — watch: let's dive in, let's break this down, here's what you need to know, quick note. State the point, never announce it.
 22. Forced punchlines and stacked dramatic fragments — a row of clipped fragments for drama ("No aesthetic prior. No nostalgia. The old rules were gone."). One short sentence is emphasis; a stack is a tell.
 23. Formulaic sayings — watch: X is the Y of Z, X becomes a trap, X is not a tool but a mirror, the language/currency/architecture of. Replace the saying with the specific claim.
-24. Fake-candid openings — watch: Honestly?, Look, Here's the thing, Let's be honest, Real talk as standalone hooks. ALSO invented provenance stories for a quote or line (added 2026-09-23 — these read as fabricated): found-object framing ("found this in/inside...", "found this folded inside a library book", "someone left this on..."), overheard strangers ("overheard this in a car park", "a woman i barely know said this"), copied-down props ("wrote it on my hand", "wrote this on a napkin"). Rewrite the hook around the writer's own reaction to the words, keeping the same length, case, and trailing "...". A first-person letter or text the writer says they wrote and never sent is the format, not provenance — leave it.
+24. Fake-candid openings — watch: Honestly?, Look, Here's the thing, Let's be honest, Real talk as standalone hooks. ALSO invented provenance stories for a quote or line (these read as fabricated): found-object framing ("found this in/inside...", "found this folded inside a library book", "someone left this on..."), overheard strangers ("overheard this in a car park", "a woman i barely know said this"), copied-down props ("wrote it on my hand", "wrote this on a napkin"). Rewrite the hook around the writer's own reaction to the words, keeping the same length, case, and trailing "...". A first-person letter or text the writer says they wrote and never sent is the format, not provenance — leave it.
 25. Answering objections no one raised — watch: this isn't really about, I'm not saying, to be clear, don't get me wrong, some might say... but.
 26. Rejecting fake alternatives — watch: a tempting approach would be, one might be tempted to, you might think... but. Cut the fake option; state the real point.
 
-FALSE POSITIVES — do NOT flag: short declarative fragments used as the account's deliberate command voice; ALL-CAPS titles; deliberate repeated openings that build pressure; plain dry prose without specific tells; one short sentence for emphasis. When unsure, look for several patterns together before rewriting.`;
+FALSE POSITIVES, leave these alone: short declarative fragments in an account's deliberate command voice; ALL-CAPS titles; all-lowercase lines written that way on purpose; deliberate repeated openings that build pressure; plain dry prose without specific tells; one short sentence for emphasis; specific everyday details (a time on the clock, a school form, a rep count) that are the substance of the post. When unsure, look for several patterns together before rewriting.`;
 
 /**
  * The approval gate. Pass ONLY reader-facing strings (never scene /
@@ -120,18 +120,22 @@ export async function humanizePass<T>(opts: {
       // 2026-09-10: 6000 to fit 15-item pick-list payloads (gate fails
       // open on truncation, but a truncated pass skips real rewrites).
       max_tokens: 6000,
-      system: `You are the final approval gate for social-media copy. You receive strict JSON for one post. Find every string that shows an AI-writing pattern from the library below and rewrite it so a person could have written it. Leave clean strings EXACTLY as they are, byte for byte.
+      system: `You are the last editor before a social post goes live. You receive the post's reader-facing strings as JSON. Your job is to catch the phrasing that makes copy read as AI-written, and fix it so a person could have written it, while keeping the voice, rhythm and meaning the writer chose.
 
-HARD CONSTRAINTS:
-- Return the SAME JSON shape: same keys, same nesting, same array lengths, nothing added or removed.
-- Keep every rewritten string in its role: same approximate length, same case style (ALL-CAPS stays ALL-CAPS, lowercase stays lowercase), a command stays a command, a question stays a question.
-- Never add a fact, claim, number, name, or quote that was not there.
-- Never change what a string says — only how it says it.
-- VOICE to preserve (the rewrite must sound like this, not like neutral prose): ${opts.voice}
+Use judgment, not a find-and-replace. A string with a real tell (a pattern from the library below) gets the smallest rewrite that removes it. A string that is already clean comes back exactly as it was, byte for byte; rewriting good copy only flattens it. Several patterns together are a strong signal; one plain short sentence is usually fine.
+
+When you rewrite a string, keep it doing the same job:
+- Same meaning. Add no fact, claim, number, name or quote that was not there.
+- Same size, so it still fits its slide: roughly the same length and word count.
+- Same form. ALL-CAPS stays ALL-CAPS, all-lowercase stays all-lowercase, Title Case headers stay Title Case, a trailing "..." stays. A command stays a command, a question stays a question.
+- Same voice. The lane's voice is below; the rewrite should sound like it, not like neutral prose.
+Em and en dashes are the one fix that is never optional: the returned text must contain none.
+
+VOICE to preserve: ${opts.voice}
 
 ${HUMANIZER_PATTERNS}
 
-Return ONLY the corrected JSON, no markdown, no commentary.`,
+Return the same JSON you received: same keys, same nesting, same array lengths, nothing added or removed. Return only the JSON.`,
       messages: [{ role: "user", content: JSON.stringify(opts.payload) }],
     });
 

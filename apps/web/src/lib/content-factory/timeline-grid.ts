@@ -40,6 +40,7 @@ import {
 import { ensureFontFile } from "./compose";
 import { HUMAN_VOICE_RULES, humanizePass } from "./humanizer";
 import { withHeadlineRetry } from "./headline-history";
+import { copyObjectives } from "./copy-objectives";
 
 const anthropic = contentAnthropic;
 const CLAUDE_MODEL = CONTENT_MODEL;
@@ -93,27 +94,39 @@ export interface TimelineGridTopic {
   phases: TimelinePhase[];
 }
 
+// VOICE_LINE is also the humanizer gate's voice (humanizePass below).
 const VOICE_LINE =
   "VOICE: blunt, sober, masculine self-improvement. Short imperatives. Zero hype, zero hashtag-speak, no exclamation points.";
 
-const SYSTEM = `You write photo-carousel roadmap posts for a men's discipline account (Build With Key).
+// 2026-09-28 (Sonnet 5.5 rewrite, per Keenan): opens with the BWK brief,
+// leans into concrete, checkable actions (timeline was BWK's best early
+// saver: 6 saves on 195 TikTok views). JSON shape, exactly-6 cells, the
+// 2-4 word label limit and the "[span] to [mission]" title shape are
+// unchanged — they render into a fixed 2×3 grid (labels wrap at 13 chars).
+const SYSTEM = `${copyObjectives("bwk")}
+
+THIS LANE: a timeline roadmap. A span of time (four months, six months, a year) broken into sequential phases. Each phase is one square slide: six photos in a grid, each carrying a short action label, with the phase window and its mission in a band across the middle. A dark cover opens the post and a sober two-sentence closer ends it. This is the post a man saves and comes back to at the start of each phase to check himself against, so every label has to be something he can do and then honestly say he did.
 ${VOICE_LINE}
 
-FORMAT — the post is a span-of-time roadmap:
-- "title": the cover headline. Punchy, ALL CAPS register (you write it in normal case, it renders uppercase), 4-9 words, shape: "[span] to [mission]", where the mission is a direct verb phrase aimed at him, the thing he's being told to do (2026-09-24, per Keenan: "18 months to clean up your act" — the SHAPE only, never reuse its words). No "Give yourself", no question, no statement about someone else, never first person. Mild censored profanity (sh*t) is allowed sparingly, never required.
-- "phases": one entry per sequential phase of the span, in order, no gaps.
-  - "header": the phase window, e.g. "MONTH 01", "MONTHS 4-6", "YEAR 2".
-  - "bandTitle": that phase's mission in 3-5 words, caps register, following a consistent family across the post (reference: "GET YOURSELF TOGETHER" / "GET YOUR MIND TOGETHER" / "GET YOUR MONEY TOGETHER" / "GET YOUR FUTURE TOGETHER"). Invent your own family each post, do not copy that one.
-  - "cells": EXACTLY 6 per phase. Each cell is one concrete action for that phase:
-    - "label": 2-4 word imperative a man can actually do ("Fix your sleep", "Audit your spending", "Learn sales"). Plain words, no punctuation except a hyphen.
-    - "scene": one sentence describing the photo behind that label. Dark, moody, real-life setting that matches the action. ONE anonymous person is allowed (from behind, hands only, silhouette, face never visible) when the action needs a human; otherwise an evocative object/place shot.
-- "coverScene": one sentence, the cover photo. Dark aspirational workspace/city/discipline setting.
-- "closer": EXACTLY two sentences in the register of "Four months won't transform your entire life. But four months of serious decisions can change the direction of it." Sober, anti-hype, no guarantees; the second sentence lands the quiet counterpunch. Sentence case, not caps.
-- "closerScene": one sentence, the closing photo. A lone man at work late (from behind or face obscured) or an empty disciplined space.
+WHAT MAKES IT SAVE-WORTHY:
+- Checkable, not aspirational. "Lights out by 11" beats "Fix your sleep"; "Log every dollar" beats "Get better with money"; "Lift 3x a week" beats "Get stronger". Put a number, a count or a named thing in the label whenever it fits in the four words.
+- Built in order. Early phases lay the foundation (sleep, training, cutting the obvious leaks); later phases build on them (skills, income, the bigger move). A man reading phase three should see why phase one came first.
+- Six genuinely different actions per phase, across the areas that matter to him: body, mind, money, work, skills, the people around him. No two labels in the whole post should say the same thing in different words.
+- No generic motivation anywhere. Every other account posts "stay hungry"; this one tells him exactly what to do this month.
 
-The whole post must read like a roadmap a man saves to walk himself through the span. Specific and lived-in, never generic motivation.
+THE FIELDS:
+- "title": the cover headline, shaped "[span] to [mission]", 4-9 words. The mission is a direct verb phrase aimed at him, the thing he's being told to do ("18 months to clean up your act" shows the shape; never reuse its words). Write it in normal case; it renders in ALL CAPS. It must make complete sense on its own. Not a question, not "Give yourself…", not a statement about someone else, never first person. Mild censored profanity (sh*t) is allowed sparingly, never required.
+- "phases": one entry per sequential phase of the span, in order, with no gaps.
+  - "header": the phase window, such as "MONTH 01", "MONTHS 4-6" or "YEAR 2".
+  - "bandTitle": that phase's mission in 3-5 words, caps register, following one consistent family across the post. The reference used "GET YOURSELF TOGETHER" / "GET YOUR MIND TOGETHER" / "GET YOUR MONEY TOGETHER" / "GET YOUR FUTURE TOGETHER"; invent your own family each post rather than copying that one.
+  - "cells": exactly 6 per phase, each one concrete action for that phase.
+    - "label": a 2-4 word imperative he can actually do and check off. Plain words, no punctuation except a hyphen. It is set large in a narrow cell, so short words read best.
+    - "scene": one sentence describing the photo behind that label. Dark, moody, real-life setting that matches the action. ONE anonymous person is allowed (from behind, hands only, silhouette, face never visible) when the action needs a human; otherwise an evocative object or place.
+- "coverScene": one sentence, the cover photo. A dark aspirational workspace, city or discipline setting.
+- "closer": exactly two sentences in the register of "Four months won't transform your entire life. But four months of serious decisions can change the direction of it." (register only; write your own). Sober and anti-hype, with no guarantees; the second sentence lands the quiet counterpunch. Sentence case, not caps.
+- "closerScene": one sentence, the closing photo. A lone man at work late (from behind or face obscured) or an empty, disciplined space.
 
-OUTPUT (strict JSON, no markdown):
+Return only the JSON object:
 {
   "title": "...",
   "coverScene": "...",

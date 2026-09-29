@@ -28,6 +28,7 @@ import {
   CONTENT_OUTPUT_COST_PER_TOKEN,
   lastJsonText,
 } from "./claude-client";
+import { copyObjectives } from "./copy-objectives";
 
 const anthropic = contentAnthropic;
 const CLAUDE_MODEL = CONTENT_MODEL;
@@ -143,18 +144,32 @@ export async function scrapeBrandSubreddits(
   return out;
 }
 
-const DISTILL_SYSTEM = `You are an audience researcher for a content studio. You are given the post titles trending TODAY across the subreddits where our audience lives, plus the themes that trended over the past week.
+/**
+ * 2026-09-28 (Sonnet 5.5 rewrite): opens with the brand's copyObjectives
+ * so the researcher knows what the themes are FOR (posts readers see
+ * themselves in and comment on), then asks for themes as specific
+ * situations in the audience's own words rather than abstract topics.
+ */
+function distillSystem(brand: "ripple" | "bwk"): string {
+  return `${copyObjectives(brand)}
 
-Distill what this audience is feeling and upvoting RIGHT NOW into ranked themes.
+YOUR JOB TODAY: audience research for the account above. You get the titles of the posts this audience is upvoting today in the online communities where they talk to each other, plus the themes that trended over the past week. Turn them into ranked themes our writers can build posts from.
 
-RULES:
-- Themes must come from the actual titles — real recurring pains, questions, wins, fears. Never invent trends.
-- Blend: a theme that is both hot today AND recurred all week outranks a one-day spike. But include 1-2 genuinely-today spikes if they're strong.
-- "phrases" = the audience's own vocabulary style (words they use for the feeling), NEVER copied sentences from any title.
-- Never mention Reddit, subreddits, or "posts" inside theme/why/angle/phrases — downstream copy must not reveal the source.
+A useful theme is one a reader would recognize herself or himself in on sight. That means:
+- A specific situation, not a category. "the appointment she booked for everyone but herself" is useful; "self-care" is not. "skipping the gym the week after a good streak" is useful; "motivation" is not.
+- Grounded in what the titles actually show: real recurring pains, questions, small wins and fears. Don't invent a trend the titles don't support.
+- Ranked by strength. A theme that is hot today and also recurred through the week outranks a one-day spike, but include one or two strong spikes from today.
 
-OUTPUT (strict JSON, no markdown): {"themes":[{"theme":"...","why":"...","angle":"...","phrases":["..."]}]}
-8-10 themes, ranked strongest first. Keep each field to one tight sentence (phrases: 2-4 short items).`;
+For each theme:
+- "theme": a short name for the specific situation, a few words.
+- "why": one sentence on why it is hitting this audience right now (what they are feeling underneath it).
+- "angle": one sentence on how a post in this account's voice could use it so the reader feels recognized and has something to answer, save or send. Respect the voice: for Ripple that is a mirror that names the feeling (never advice or fixing); for Build With Key it can be a standard or a command.
+- "phrases": 2-4 short fragments in the audience's own vocabulary, the exact everyday words they use for this feeling (a few words each). These are the words that make a reader think "that's me". Never lift a whole title or sentence.
+
+The themes feed public posts, so nothing in any field may mention Reddit, subreddits, communities, threads or "posts". Write about the people and the feeling, not the source.
+
+Return 8-10 themes, strongest first, as {"themes":[{"theme":"...","why":"...","angle":"...","phrases":["..."]}]}. Return only the JSON object.`;
+}
 
 /**
  * Scrape + distill + store today's digest for a brand.
@@ -209,7 +224,7 @@ export async function buildDailyDigest(
     const response = await anthropic.messages.create({
       model: CLAUDE_MODEL,
       max_tokens: 2000,
-      system: DISTILL_SYSTEM,
+      system: distillSystem(brand),
       messages: [{ role: "user", content: userMsg }],
     });
     const tokensIn = response.usage.input_tokens;
@@ -310,11 +325,11 @@ export async function getAudiencePulse(brand: "ripple" | "bwk"): Promise<string>
     if (themes.length > 0) {
       pulse = [
         "",
-        "AUDIENCE PULSE — what this audience is feeling right now (from live audience research):",
+        "AUDIENCE PULSE: what this audience is feeling right now, from live research into what they are saying to each other. Each line is a specific situation, why it lands, a possible angle, and the words they use for it.",
         ...themes.map(
           (t) => `- ${t.theme}: ${t.why} Angle: ${t.angle}${t.phrases.length ? ` (their words: ${t.phrases.join(", ")})` : ""}`
         ),
-        "Let one of these currents inform today's ANGLE if it fits naturally — the lane's own format, theme, and voice rules always come first. Never mention the research, communities, or trends themselves.",
+        "Use this to make today's post feel recognized. If one of these situations fits this lane naturally, let it shape the angle, and borrow their everyday words where they fit, because a reader who sees her own words is the one who comments. The lane's own format, theme and voice rules come first; skip the pulse rather than force it. Never mention the research, communities or trends in the copy.",
       ].join("\n");
     }
   }

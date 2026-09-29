@@ -19,6 +19,7 @@ import {
   CONTENT_OUTPUT_COST_PER_TOKEN,
   lastJsonText,
 } from "./claude-client";
+import { copyObjectives } from "./copy-objectives";
 
 const anthropic = contentAnthropic;
 
@@ -50,37 +51,47 @@ export type VideoScript = {
 };
 
 const SPEAKER: Record<Brand, string> = {
-  ripple: `THE SPEAKER: a woman in her 40s talking straight to camera, one take, like a voice memo to a friend. Her audience is women roughly 40-50 carrying a heavy mental load: the schedules, the appointments, the emotional labor nobody else tracks. She is warm, a little tired, completely honest. She reflects, she never lectures, and she never sells anything.`,
-  bwk: `THE SPEAKER: a man in his 30s-40s talking straight to camera, one take, low and direct. His audience is men quietly rebuilding themselves: discipline, routines, keeping promises to yourself when nobody is watching. He is calm and specific, never a drill sergeant, never a guru, and he never sells anything.`,
+  ripple: `THE SPEAKER: a woman in her 40s talking straight to camera in one take, like a voice memo to a close friend. She is warm, a little tired and completely honest. She is a mirror, not a coach: she names what the viewer is carrying and what she already knows but hasn't said out loud, and she stops there. No advice, no steps, no "you need to", no selling.`,
+  bwk: `THE SPEAKER: a man in his 30s-40s talking straight to camera in one take, low and direct, to younger men building discipline in private. He has done the work and doesn't waste words. He is calm and specific: the time, the count, the habit, the thing he cut. Never a drill sergeant, never a guru, no hype, and he never sells anything.`,
 };
 
+/** Brand language for spoken Ripple scripts (docs/acuity-positioning.md). */
+const RIPPLE_SPOKEN_RULES = `RIPPLE LANGUAGE: she never says "brain dump" (if she talks about saying it all out loud, the word is "debrief"); no habit or ritual is tied to a fixed time ("every night", "before bed", "at 9pm"); no durations for talking or recording ("60 seconds", "five minutes a day"); no app, product, AI or journaling mentions.`;
+
+/**
+ * 2026-09-28 (Sonnet 5.5 rewrite): opens with copyObjectives(brand);
+ * adds the Ripple positioning rules above; themes now carry the pulse's
+ * angle; the close aims at a comment rather than a generic sign-off.
+ */
 function buildSystemPrompt(brand: Brand, themes: ThemeInput[]): string {
   const themeBlock = themes
     .map(
       (t, i) =>
-        `${i + 1}. ${t.theme}: ${t.why}${t.phrases.length ? ` (their words: ${t.phrases.join(", ")})` : ""}`
+        `${i + 1}. ${t.theme}: ${t.why}${t.angle ? ` Angle: ${t.angle}` : ""}${t.phrases.length ? ` (their words: ${t.phrases.join(", ")})` : ""}`
     )
     .join("\n");
-  return `You write short talking-head TikTok scripts.
+  return `${copyObjectives(brand)}
+
+YOUR JOB TODAY: three short talking-head video scripts for this account, read straight to camera. On video the same goals apply, with the first spoken line doing the cover's job: if it doesn't stop the scroll, nothing after it gets heard.
 
 ${SPEAKER[brand]}
-
-WHAT THIS AUDIENCE IS FEELING RIGHT NOW (live audience research, ranked):
+${brand === "ripple" ? `\n${RIPPLE_SPOKEN_RULES}\n` : ""}
+WHAT THIS AUDIENCE IS FEELING RIGHT NOW (ranked, from live research into what they are saying to each other):
 ${themeBlock}
 
-Write EXACTLY 3 scripts. Each script rides a DIFFERENT theme from the list above — pick the 3 strongest. Never mention the research, Reddit, communities, or trends.
+Write exactly 3 scripts, each on a different theme from the list. Pick the three a viewer is most likely to recognize herself or himself in. Their words are there to borrow where they fit. The research itself stays invisible: never mention Reddit, communities, research or trends.
 
-SCRIPT RULES:
-- 30-45 seconds spoken: hook + 3-5 beats + close, about 90-130 words total.
-- "hook" is the first spoken line. It must stop the scroll in under 2 seconds: a confession, a specific moment, or a sentence the viewer would swear was written about them. Never a question like "have you ever...".
-- "beats" are what the speaker says next, in order. Spoken language only: short sentences, contractions, the way people actually talk. Concrete moments and specifics, no advice-column abstractions.
-- "cta" is one soft closing line that lands the feeling or invites a comment. No "follow for more". No links. No product.
-- "title" is a 3-6 word internal label. "theme" is the theme text you picked, copied exactly.
+What each part does:
+- "hook": the first spoken line. It lands in about two seconds: a confession, a specific moment, or a sentence the viewer would swear was about them. A statement, not a question like "have you ever...".
+- "beats": what the speaker says next, in order, 3-5 of them. Spoken language: short sentences, contractions, the way people really talk. Each beat moves forward with a concrete moment or detail; none restates the hook.
+- "cta": one closing line that lands the feeling and gives the viewer something to answer in the comments (for Ripple, recognition; for Build With Key, the standard they are holding). No "follow for more", no links, no product.
+- "title": a 3-6 word internal label. "theme": the theme text you picked, copied exactly.
+The whole script runs about 30-45 seconds read aloud, roughly 90-130 words. That is a length target for the writer; never say a duration in the script.
 
-Return ONLY valid JSON: {"scripts":[{"theme":"...","title":"...","hook":"...","beats":["..."],"cta":"..."}]}`;
+Return {"scripts":[{"theme":"...","title":"...","hook":"...","beats":["..."],"cta":"..."}]}. Return only the JSON object.`;
 }
 
-type ThemeInput = { theme: string; why: string; phrases: string[] };
+type ThemeInput = { theme: string; why: string; angle?: string; phrases: string[] };
 
 /**
  * Generate 3 talking-head scripts for a brand from the freshest pulse
@@ -108,7 +119,7 @@ export async function generateVideoScripts(
         {
           role: "user",
           content:
-            "Write the 3 talking-head scripts now. Return ONLY the JSON.",
+            "Write the 3 talking-head scripts now. Return only the JSON object.",
         },
       ],
     });

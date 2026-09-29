@@ -136,15 +136,18 @@ export async function getLaneFeedback(lane: string): Promise<string | null> {
     .slice(-Math.min(GROUP_SIZE, Math.floor(scored.length / 2)))
     .reverse();
 
+  // 2026-09-28 (Sonnet 5.5 rewrite): wording only. Tells the writer
+  // which signals matter (comments/saves/sends over views) and to repeat
+  // the quality behind a winner, not its words or subject.
   return `
 
-AUDIENCE FEEDBACK — real engagement numbers from this lane's recent posts. This is the ground truth on what this audience rewards.
+AUDIENCE FEEDBACK: real numbers from this lane's recent posts. Comments, saves and shares count far more than views, because they show a reader recognized herself or wanted to keep or send the post.
 
-WORKING (highest engagement — study the emotional angle, specificity, and structure these share):
+WORKING (highest engagement):
 ${top.map(fmt).join("\n")}
 
-NOT WORKING (lowest engagement — do not repeat these angles or structures):
+NOT WORKING (lowest engagement):
 ${bottom.map(fmt).join("\n")}
 
-Lean hard into what separates the working group from the flops. Do NOT copy the winning headlines — take what made them land (the wound they touch, how concrete they are, their energy) and apply it to fresh ground.`;
+How to use this: work out what the working posts share that the others lack. Usually it is how specific the situation is, whether the reader can see herself in it, and whether there is a line she wants to answer or keep. Bring that quality to today's post on a fresh subject. Don't reuse the working headlines or their wording, and don't repeat their exact subject; the audience has already seen them. Treat the not-working posts as angles and structures to steer away from today. The lane's own format and voice rules still come first.`;
 }

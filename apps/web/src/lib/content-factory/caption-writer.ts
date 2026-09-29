@@ -32,6 +32,7 @@ import {
 } from "./claude-client";
 
 import { prisma } from "@/lib/prisma";
+import { copyObjectives } from "./copy-objectives";
 
 const anthropic = contentAnthropic;
 const CLAUDE_MODEL = CONTENT_MODEL;
@@ -50,7 +51,7 @@ const BRAND = {
     tags: "#mentalload #womenover40 #midlife #overthinking #burnout #momlife #selfcare #emotionalhealth #invisiblelabor #journaling",
   },
   bwk: {
-    audience: "young men 18–34 focused on discipline, self-respect and building a life they respect",
+    audience: "young men roughly 18–30 focused on discipline, self-respect and building a life they respect",
     voice:
       "direct, grounded, zero hype — a man who has his act together talking straight. No grindset clichés, no shaming, no guru tone.",
     keywords:
@@ -92,22 +93,25 @@ async function writeCaption(opts: {
     const response = await anthropic.messages.create({
       model: CLAUDE_MODEL,
       max_tokens: 800,
-      system: `You write the caption for one social post (TikTok + Instagram + Facebook) for ${b.audience}.
+      // 2026-09-28 (Sonnet 5.5 rewrite, per Keenan): opens with the brand
+      // brief; the caption's job is now framed as earning the comment
+      // (a first line the slides don't already say + a question she/he
+      // genuinely wants to answer). Same JSON shape and bans as before.
+      system: `${copyObjectives(opts.brand)}
+
+THIS JOB: write the caption under one post that is already made (Instagram, Facebook and TikTok). The reader has just swiped the slides. The caption is where a like turns into a comment, and where search finds the post later.
+READER: ${b.audience}.
 VOICE: ${b.voice}
 
-Write:
-- firstLine: ≤110 characters. Says plainly what this post is about using words this audience actually SEARCHES (pick naturally from: ${b.keywords}). It must read like a human sentence, not a keyword list. Lowercase is fine.
-- secondLine: ≤120 characters, one relatable line that makes her/him feel seen. Optional — return "" if it would be filler.
-- question: ONE thought-provoking question that invites a personal answer in the comments. If an existing question is given and it's good, keep it (you may tighten it).
-- hashtags: exactly 4 — 1 broad + 3 niche, chosen for THIS post (prefer from: ${b.tags}). Never #fyp, #foryou, #viral.
+THE FIELDS:
+- "firstLine" (110 characters at most): add something the slides don't already say. A specific moment, the thought behind the post, the part that usually goes unsaid. Repeating the headline wastes the most-read line of the caption. Use words this audience actually searches for where they fit naturally (${b.keywords}), but it must read like a person talking, never like a keyword list. Lowercase is fine.
+- "secondLine" (120 characters at most, optional): one more line that makes the reader feel seen. Return "" if it would only be filler; a short caption beats a padded one.
+- "question": one question the reader genuinely wants to answer about their own life, the kind someone answers in the comments with a real sentence and not just "yes". It is personal and specific to this post, and easy to answer honestly ("what's the one thing you'd drop tomorrow if nobody would notice?" is the kind, not the words). A yes/no question, a quiz, or "which one are you?" earns little. If an existing question is given and it already does this, keep it or tighten it; if it's generic, replace it.
+- "hashtags": exactly 4, one broad and three niche, chosen for this post (prefer from: ${b.tags}). Never #fyp, #foryou or #viral, which add noise and no reach.
 
-RULES:
-- No app name, no product mention, no "link in bio", no "follow for more", no "save this", no "send this to".
-- Never "brain dump". Never a recording duration ("60 seconds", "one minute"). Never a fixed time of day ("nightly", "before bed", "at 9pm").
-- No medical/mental-health claims about the reader ("your anxiety"). No emojis beyond at most one.
-- No AI tells: no "in a world where", "it's not just X, it's Y", "let's dive in", "journey", "unlock", "transform", "game-changer", em-dash chains.
+LIMITS, and why: no app name, product mention, "link in bio", "follow for more", "save this" or "send this to", because asking reads as marketing and the post has to earn it. Never "brain dump", never a recording duration ("60 seconds", "one minute"), never a fixed time of day ("nightly", "before bed", "at 9pm"). No medical or mental-health claims about the reader ("your anxiety"). At most one emoji. Avoid AI tells like "in a world where", "it's not just X, it's Y", "let's dive in", "journey", "unlock", "transform", "game-changer" and chains of em-dashes.
 
-Return ONLY JSON: {"firstLine": string, "secondLine": string, "question": string, "hashtags": string[]}`,
+Return only the JSON object: {"firstLine": string, "secondLine": string, "question": string, "hashtags": string[]}`,
       messages: [
         {
           role: "user",

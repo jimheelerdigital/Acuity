@@ -34,6 +34,7 @@ import {
 } from "./claude-client";
 import { humanizePass, extractVoice, HUMAN_VOICE_RULES } from "./humanizer";
 import { withHeadlineRetry, fakeCandidFeedback } from "./headline-history";
+import { copyObjectives, brandForAudience, type CopyBrand } from "./copy-objectives";
 
 const anthropic = contentAnthropic;
 const CLAUDE_MODEL = CONTENT_MODEL;
@@ -64,13 +65,17 @@ export interface MoodyTopic {
   items: MoodyItem[];
 }
 
+// 2026-09-28 rewrite (Sonnet 5.5 pass): the women brief moved from
+// "discipline framed as self-respect" to mirror-not-coach per
+// docs/acuity-positioning.md. Each brief keeps a single-line "VOICE:"
+// line because humanizer.extractVoice() reads the first one it finds.
 export const AUDIENCE_BRIEF: Record<MoodyAudience, string> = {
-  men: `AUDIENCE: young aspiring men (18-30) deep in the self-improvement / discipline / "trust the process" niche. They save posts that read like orders from a future self: monk mode, order, focus, momentum, delayed gratification, becoming undeniable.
-VOICE: calm command energy, HIGHLY MOTIVATIONAL — every slide should make him want to stand up and train. Short declarative sentences. No softness, no hedging, no "maybe try". Direct second person. The tone of a mentor who's already made it and doesn't waste words. Never bro-slang, never yelling, never toxic — controlled, austere, certain, relentless.
-TOPICS to rotate: discipline systems, monk mode, dopamine control, morning/evening order, cutting noise, training, focus blocks, silence, patience, becoming hard to distract.`,
-  women: `AUDIENCE: women roughly 40-50 carrying a heavy mental load — always holding it together for everyone else. They save posts that feel like quiet permission to reclaim order and protect their peace.
-VOICE: quiet strength. Short declarative sentences with warmth underneath — a woman who has stopped explaining herself. Direct second person. Never preachy, never girlboss, never clinical. Discipline framed as self-respect: boundaries, resets, saying no, protecting energy, doing less on purpose.
-TOPICS to rotate: protecting your peace, reset rituals, boundaries without guilt, quiet mornings, dropping what drains you, unhurried order, saying no, letting the phone go dark.`,
+  men: `AUDIENCE: men 18-30 working on discipline and self-improvement, mostly in private. They save posts that read like a standard set by the man they are trying to become: order, focus, momentum, delayed gratification, keeping promises to themselves.
+VOICE: calm, certain, austere — a man who has already done the work and doesn't waste words. Short declarative sentences in direct second person, no hedging ("maybe try"), no bro-slang, no yelling, nothing toxic. Every slide should leave him wanting to get up and train or work, because it names something specific he can do today, not because it shouts.
+TOPICS to rotate: discipline systems, monk mode, dopamine control, morning and evening order, cutting noise, training, focus blocks, silence, patience, becoming hard to distract.`,
+  women: `AUDIENCE: women roughly 40-50 carrying a heavy mental load — holding it together for everyone else and keeping the invisible list nobody else sees. They save posts that put words to something they already feel but haven't said out loud.
+VOICE: quiet, warm and plain — a woman who has stopped explaining herself, talking to a friend in short declarative sentences and direct second person. A mirror, not a coach: name what she carries and what she already knows, and leave the choice with her. Never preachy, girlboss, clinical, scolding or prescriptive.
+TOPICS to rotate: the mental load itself, the peace she keeps putting last, resets after a hard stretch, boundaries and the guilt that comes with them, quiet mornings, what she keeps doing out of habit, the no she hasn't said yet, letting the phone go dark.`,
 };
 
 export type WomenScheme = "light" | "dark";
@@ -103,28 +108,30 @@ export const SCENE_BRIEF: Record<MoodyAudience, string> = {
 const buildMoodySystemPrompt = (
   audience: MoodyAudience,
   opts?: { theme?: string; coverRule?: string; sceneBrief?: string }
-) => `You write text for a dark, moody, minimal photo-carousel account. Each post is a cover + 5 item slides of white text centered on cinematic photography.
+) => `You write text for a dark, moody, minimal photo-carousel account. Each post is a cover plus item slides of white text centered on cinematic photography.
 
 ${AUDIENCE_BRIEF[audience]}
 ${opts?.theme ? `\n${opts.theme}\n` : ""}
 ${opts?.sceneBrief ?? SCENE_BRIEF[audience]}
 ${opts?.coverRule ? `\n${opts.coverRule}\n` : ""}
-FORMAT — every item slide is a tight three-part build rendered as: bold HEADER, one italic HOOK line, short BODY. Study this example and match its shape exactly:
+FORMAT — every item slide is a three-part build: a bold HEADER, one italic HOOK line, a short BODY. This example shows the shape only; don't reuse its words or its subject:
 name: "The Reset Day"
 lines[0] (hook): "Order outside builds order inside."
-lines[1] (body): "Once a week, clear everything — room, car, files, notes. Chaos has nowhere to live."
+lines[1] (body): "Once a week, clear everything: room, car, files, notes. Chaos has nowhere to live."
+
+WHAT A STRONG SLIDE DOES: the header names something the reader has lived but never had a word for; the hook reframes it in one line worth screenshotting; the body makes it concrete with a real object, time, count or place. Specific detail is what gets a post saved, and a line the reader recognizes as their own life is what gets a comment.
 
 RULES:
-- "title": the cover text — short, sweet, and impossible to scroll past. 2-4 words, works in ALL CAPS, and it must PULL the reader into the slides: ${audience === "men" ? `a direct COMMAND to the reader (the shape: a strong VERB + an object that names what the slides are about — see COVER COMMAND RULE)` : `either a direct command to act (the shape: VERB + an object that names what the slides are about) or a direct prompt to engage what's inside (the shape: an instruction for HOW to read or answer the slides, often ending "...")`}. Invent the words for THIS post's subject every time. Past covers like "EARN YOUR SILENCE", "HOLD THE LINE", "READ THESE SLOWLY" and "YOU ALREADY KNOW" are SPENT — never reuse them, and never reuse any title from the recent-headlines list. Never a passive label or topic name. No number. A trailing "..." is allowed when it baits the swipe. SENSE CHECK (non-negotiable): the title must make instant, obvious sense COMPLETELY ON ITS OWN — a natural phrase a real person would actually say, and it must fit what the slides deliver. Do NOT stitch together or remix spent titles; if a title reads odd, garbled, or random without the slides ("DON'T LIE NOW"), it is WRONG — write a different one.
-- The request tells you EXACTLY how many items to write. Each item:
-  - "name": the HEADER — a named concept in Title Case, 2-4 words, NO trailing period ("The Reset Day", "Quiet Hours", "The 90% Rule"). It should feel like naming something real the reader never had words for.
-  - "lines": EXACTLY 2 entries.
-    - lines[0]: the HOOK — ONE short sentence that reframes the header and lands completely on its own (it renders in italics under the header). Compressed truth, equations welcome ("Order outside builds order inside.").
-    - lines[1]: the BODY — 1-2 short sentences, concrete and specific, ending on a command or a plain truth. Lists welcome ("room, car, files, notes").
-- HARD LIMIT: each slide's hook + body totals UNDER 30 words. Long = generic = scrolled past. Short = screenshotted and saved. Cut every word that isn't pulling weight.
-- Every sentence short. No commas chained past two. No metaphors that need decoding. Read it out loud — it should sound inevitable, not written.
-- US English. No emojis, no hashtags, no quotes, no advice-verbs like "try to" or "consider". Never mention any app, product, journaling, or AI.
-- "coverScene" and each item's "scene": one concrete sentence describing the photograph (place, light, weather, materials) following SCENES above. Every scene in the post is a DIFFERENT location — vary boldly.
+- "title" is the cover: 2-4 words that work in ALL CAPS and make the reader need the slides. ${audience === "men" ? `Make it a direct command to the reader — a strong verb plus an object that names what the slides are about (the COVER COMMAND RULE sets the full shape).` : `Make it either a direct command to act (a verb plus an object that names what the slides are about) or a direct prompt to engage with what's inside (an instruction for how to read or answer the slides, often ending "...").`} Write new words for this post's subject every time. Sense check: it must make complete sense on its own — a natural phrase a real person would say — and fit what the slides deliver. A title that reads odd or garbled without the slides (a remix like "DON'T LIE NOW") fails; write a different one. Not a passive label or topic name, and no number. A trailing "..." is fine when it pulls the swipe. Spent titles — "EARN YOUR SILENCE", "HOLD THE LINE", "READ THESE SLOWLY", "YOU ALREADY KNOW" — and anything on the recent-headlines list can't be reused or stitched together into something new.
+- Write exactly the number of items the request asks for. Each item:
+  - "name": the HEADER — a named concept in Title Case, 2-4 words, no trailing period ("The Reset Day", "Quiet Hours", "The 90% Rule").
+  - "lines": exactly 2 entries.
+    - lines[0]: the HOOK — one short sentence that reframes the header and stands on its own (it renders in italics). Compressed truth; an equation shape works well.
+    - lines[1]: the BODY — 1-2 short sentences, concrete and specific, ending on ${audience === "men" ? `a command or a plain truth` : `a plain truth, or a short command only when it reads as permission rather than instruction`}. Lists are welcome ("room, car, files, notes").
+- Keep each slide's hook + body under 30 words. Short lines get screenshotted and saved; long ones read as generic and get scrolled past. Cut every word that isn't pulling weight.
+- Short sentences, never more than two commas chained, no metaphors that need decoding. Read aloud, it should sound inevitable rather than written.
+- No slide numbers anywhere. US English. No emojis, hashtags or quotation marks, and no hedging advice-verbs like "try to" or "consider". Don't mention any app, product, journaling or AI.
+- "coverScene" and each item's "scene": one concrete sentence describing the photograph (place, light, weather, materials) following SCENES above. Every scene in the post is a different location — vary boldly.
 
 OUTPUT (strict JSON, no markdown):
 {
@@ -133,7 +140,9 @@ OUTPUT (strict JSON, no markdown):
   "items": [
     { "name": "...", "lines": ["hook", "body"], "scene": "..." }
   ]
-}`;
+}
+
+Return only the JSON object.`;
 
 /**
  * Shared generation core for every moody-family carousel (discipline,
@@ -165,6 +174,12 @@ type MoodyFamilyOpts = {
    *  prompt as angle inspiration. Soft: missing digest / any error =
    *  no block, generation unchanged. */
   brand?: "ripple" | "bwk";
+  /** Which brand brief (copy-objectives.ts) opens the system prompt
+   *  (2026-09-28). Separate from `brand` because some lanes deliberately
+   *  skip the pulse block (mandated reddit/mimic lanes) but still need
+   *  the brief. Falls back to `brand`; neither set = no brief (dormant
+   *  lanes are left as they were). */
+  copyBrand?: CopyBrand;
   /** false = skip the cross-lane headline dedupe (history block +
    *  retry). Only for lanes whose cover title is FIXED by the format
    *  (protocol's "{INTERVAL} OF DISCIPLINE...") — a retry there would
@@ -199,6 +214,8 @@ function insertBeforeJsonTail(user: string, extra: string): string {
 async function generateMoodyFamilyTopicOnce(opts: MoodyFamilyOpts): Promise<MoodyTopic> {
   const { prisma } = await import("@/lib/prisma");
   const start = Date.now();
+  const copyBrand = opts.copyBrand ?? opts.brand;
+  const objectives = copyBrand ? `${copyObjectives(copyBrand)}\n\n` : "";
   let pulse = "";
   if (opts.brand) {
     try {
@@ -215,9 +232,11 @@ async function generateMoodyFamilyTopicOnce(opts: MoodyFamilyOpts): Promise<Mood
     const response = await anthropic.messages.create({
       model: CLAUDE_MODEL,
       max_tokens: opts.maxTokens ?? 2000,
-      // HUMAN_VOICE_RULES (2026-09-04): prevention layer — the full
-      // humanizer gate still runs on the output below.
-      system: `${opts.system}${pulse}\n\n${HUMAN_VOICE_RULES}`,
+      // Brand brief first (2026-09-28, copy-objectives.ts), then the
+      // lane prompt, then the pulse. HUMAN_VOICE_RULES (2026-09-04):
+      // prevention layer — the full humanizer gate still runs on the
+      // output below. extractVoice() still reads opts.system only.
+      system: `${objectives}${opts.system}${pulse}\n\n${HUMAN_VOICE_RULES}`,
       messages: [{ role: "user", content: opts.user }],
     });
 
@@ -373,7 +392,7 @@ function avoidBlock(
 ): string {
   const avoid =
     recentHeadlines.length > 0
-      ? `\n\nRECENT POSTS — this ground is already covered:\n${recentHeadlines.map((h) => `- ${h}`).join("\n")}\nYour post must be genuinely NEW against that list — not the same ideas under a different title. Do not re-teach the same points, reuse the same subjects or numbers, or mirror the same structure. Take an angle the list hasn't touched.`
+      ? `\n\nRECENT POSTS — this ground is already covered:\n${recentHeadlines.map((h) => `- ${h}`).join("\n")}\nMake this post new in substance, not just in wording: take an angle the list hasn't touched, with different subjects, numbers and structure. Readers who saw those posts should learn or recognize something they haven't seen from us.`
       : "";
   // Learning loop (2026-09-14, per Keenan: "it should take feedback on
   // prior posts when building everything out") — real engagement numbers
@@ -403,7 +422,7 @@ const LINE_THEME = `THEME — every post belongs to the HOLD THE LINE family: en
 // add 'pay the price' line, and a 'prove it' one too." All three are
 // moody-family men's lanes sharing the BWK visual DNA + cover-family
 // rotation; each has its own locked theme.
-const WATCHING_THEME = `THEME — every post belongs to the WHEN NO ONE'S WATCHING family: private discipline — what a man does when nobody would ever know either way. Every item is a private test: the bed made in an empty house, the workout that never gets posted, the alarm kept on a free morning, the food logged with no one checking, the promise kept to himself alone at midnight. The tension is always integrity vs audience — who he is when there is no camera, no story, no applause. Rotate the angle every post — the 5am hours nobody sees, standards kept in hotel rooms, what he does after everyone is asleep, the reps counted honestly when lying would be free — so no two posts repeat, but every post is unmistakably about the unwatched hours. Titles live in the family too (style reference: "WHEN NO ONE'S WATCHING..." energy, never those exact words; write new words for this post's angle) without repeating a recent title.`;
+const WATCHING_THEME = `THEME — every post belongs to the WHEN NO ONE'S WATCHING family: private discipline, meaning what a man does when nobody would ever know either way. Each item is one private test he will recognize from his own week: the bed made in an empty house, the workout that never gets posted, the alarm kept on a free morning, the food logged with no one checking, the promise kept to himself alone at midnight. The tension is always integrity against audience — who he is with no camera, no story and no applause. Recognition is the point: he should read a slide and know exactly which of his own moments it means. Rotate the angle every post (the 5am hours nobody sees, standards kept in hotel rooms, what he does after everyone is asleep, reps counted honestly when lying would be free) so no two posts repeat, while every post is unmistakably about the unwatched hours. The cover title stays in the family: a command about the unwatched hours, with the pull of "WHEN NO ONE'S WATCHING..." but never those words, and never a recent title.`;
 
 const PRICE_THEME = `THEME — every post belongs to the PAY THE PRICE family: naming the REAL cost of the life he says he wants — the sleep, the comfort, the nights out declined, the friends who stop calling, the opinions ignored, the years of looking stupid before it works. Each item names ONE price in plain, unsentimental terms: what exactly gets paid, and what paying it buys. No romanticizing — it should read like an itemized bill. EXCEPTION to the last-line rule: the FINAL item's last line must be exactly "Still want it?" — the one place a command becomes a question. Rotate the goal every post — the body, the money, the freedom, the skill, the name — so no two posts repeat. Titles live in the family too (style reference: "PAY THE PRICE." energy, never those exact words; write new words for this post's angle) without repeating a recent title.`;
 
@@ -563,7 +582,7 @@ export const BWK_LANE_FAMILY: Record<string, string> = {
 // be a command to the person reading it, i've noticed those get the best
 // engagement"). Appended to every BWK cover rule so it applies to every
 // BWK lane, and it overrides any softer title shape in a lane prompt.
-export const BWK_COVER_COMMAND_RULE = `COVER COMMAND RULE (overrides any other title shape in this prompt): "title" MUST be a direct COMMAND to the man reading it — an imperative that opens with a strong verb and tells HIM to do something (shapes like "STOP WAITING FOR PERMISSION", "OUTWORK YOUR EXCUSES", "BUILD IT BEFORE THEY NOTICE..." — shapes only, never reuse those words). Never a question, never a label or topic name, never first person, never a statement about other people. 2-6 words, ALL-CAPS ready, a trailing "..." allowed. It must make instant sense on its own and promise exactly what the slides deliver.`;
+export const BWK_COVER_COMMAND_RULE = `COVER COMMAND RULE (this overrides any other title shape in this prompt): "title" is a direct command to the man reading it — an imperative that opens with a strong verb and tells him what to do. Commands are what this audience acts on; they read like an order from the man he wants to become. Shapes only, never these words: "STOP WAITING FOR PERMISSION", "OUTWORK YOUR EXCUSES", "BUILD IT BEFORE THEY NOTICE...". It is never a question, a label or topic name, first person, or a statement about other people. 2-6 words, ready for ALL CAPS, a trailing "..." allowed. Sense check: it must make instant sense on its own and promise exactly what the slides deliver.`;
 
 function pick<T>(xs: T[]): T {
   return xs[Math.floor(Math.random() * xs.length)];
@@ -685,6 +704,7 @@ export async function generateMoodyTopic(
     ),
     user: `Write one new post for the ${men ? "young aspiring men" : "women 40-50"} funnel with exactly ${itemCount} items.${avoidBlock(recentHeadlines, feedback)}\n\nReturn ONLY valid JSON.`,
     slugPrefix: `moody-${audience}`,
+    copyBrand: brandForAudience(audience),
     requireName: true,
     minLines: 2,
     minItems: 4,
@@ -1046,29 +1066,32 @@ const MEMENTO_COVER_RULE = `COVER SCENE RULE: "coverScene" MUST come from the du
 
 const buildMementoWomenSystemPrompt = (
   scheme: WomenScheme
-) => `${WOMEN_PROMPT_HEADER[scheme]} The niche: MEMENTO MORI LIFE-MATH — numbers at the scale of a WHOLE LIFE, each slide ending on a short command to act on it.
+) => `${WOMEN_PROMPT_HEADER[scheme]} The niche: MEMENTO MORI LIFE-MATH — numbers at the scale of a whole life, each slide ending on a short command to act on it.
 
-AUDIENCE: women roughly 40-50 carrying a heavy mental load — always holding it together for everyone else. The numbers must hit HER clock at full scale: weekends left in an average lifetime, times she'll see her parents before they're gone, Christmases left with everyone at the table, healthy years remaining, summers while the kids still come home.
+AUDIENCE: women roughly 40-50 carrying a heavy mental load — holding it together for everyone else. The numbers land on her own clock at full scale: weekends left in an average lifetime, times she'll see her parents before they're gone, Christmases left with everyone at the table, healthy years remaining, summers while the kids still come home.
+VOICE: warm, plain arithmetic said gently — a friend doing the sum out loud, not a lecture. Short sentences, second person. The number does the work; the closing command reads as permission to spend the time on what she loves, never as a scolding.
+
+WHY IT WORKS: a whole-life number she has never actually counted stops the scroll, and the one it makes her think of (her mother, her kids' last summers at home) is what she sends to a sister or a friend. Choose numbers she will feel in her chest, not trivia.
 
 ${MEMENTO_WOMEN_SCENES[scheme]}${scheme === "dark" ? `\n\n${MEMENTO_COVER_RULE}` : ""}
 
-FORMAT — every slide is a tight three-part build rendered as: bold HEADER, one italic HOOK line, short BODY. Match this shape exactly:
+FORMAT — every slide is a three-part build: a bold HEADER, one italic HOOK line, a short BODY. This example shows the shape only; don't reuse its words:
 name: "Weekends Left"
 lines[0] (hook): "At 45, you have about 1,700 weekends left. On average."
 lines[1] (body): "That's the whole number, not this year's. Stop giving them away."
 
 RULES:
-- "title": the cover text — short, sweet, and impossible to scroll past. 2-4 words, works in ALL CAPS, a direct command that pulls her into the slides (the shape: an imperative about counting, time, or looking honestly at the numbers, in new words each post; "DO THE MATH" is spent, never reuse it or any recent title). Never a passive label. No number in the title. A trailing "..." is allowed when it baits the swipe. SENSE CHECK (non-negotiable): the title must make instant, obvious sense COMPLETELY ON ITS OWN — a natural phrase a real person would actually say, and it must fit what the slides deliver. Do NOT stitch together or remix spent titles; if a title reads odd, garbled, or random without the slides, it is WRONG — write a different one.
-- The request tells you EXACTLY how many items to write. Each item:
-  - "name": the HEADER — what is being counted, in Title Case, 2-4 words, NO trailing period ("Weekends Left", "Visits With Mom", "Summers at Home").
-  - "lines": EXACTLY 2 entries.
-    - lines[0]: the HOOK — ONE life-scale number, anchored to her age, measured against an average lifespan or an ending that is coming ("At 45, you have about 1,700 weekends left. On average.", "You'll see your parents about 15 more times before they're gone."). It renders in italics under the header. GO BIG: the number must reframe her whole remaining life, not just this year. Plausible arithmetic from average life expectancy only — never invented statistics, never fake precision, hedge with "about", "~", or "on average".
-    - lines[1]: the BODY — the one-sentence truth behind the number (optional), ending on a 2-5 word command ("Call them tonight.", "Stop giving them away.").
-- HARD LIMIT: each slide's hook + body totals UNDER 30 words.
-- Vary the subject across the slides: weekends left, aging parents, summers or holidays with the kids, healthy years, old friendships, hours lost to the phone. Never two slides on the same subject.
-- Every sentence short. No metaphors that need decoding. It should feel like cold arithmetic, not poetry.
-- US English. No emojis, no hashtags, no quotes, no advice-verbs like "try to". Never mention any app, product, journaling, or AI. Naming death in the slides is allowed ("before they're gone", "until you die") — but never on the cover.
-- "coverScene" and each item's "scene": one concrete sentence describing the photograph (place, light, weather) per SCENES above. Every scene a DIFFERENT location.
+- "title" is the cover: 2-4 words that work in ALL CAPS, a direct command that pulls her into the slides — an imperative about counting, time, or looking honestly at the numbers, in new words each post. Sense check: it must make complete sense on its own — a natural phrase a real person would say — and fit what the slides deliver; a title that reads odd or garbled without the slides fails. Not a passive label, no number. A trailing "..." is fine when it pulls the swipe. "DO THE MATH" is spent, and so is every recent title; don't reuse them or stitch them together.
+- Write exactly the number of items the request asks for. Each item:
+  - "name": the HEADER — what is being counted, in Title Case, 2-4 words, no trailing period ("Weekends Left", "Visits With Mom", "Summers at Home").
+  - "lines": exactly 2 entries.
+    - lines[0]: the HOOK — one life-scale number, anchored to her age and measured against an average lifespan or an ending that is coming ("At 45, you have about 1,700 weekends left. On average.", "You'll see your parents about 15 more times before they're gone."). It renders in italics. Go big: the number should reframe her whole remaining life, not just this year. Use plausible arithmetic from average life expectancy only — no invented statistics or fake precision — and hedge with "about", "~" or "on average", because this audience will check the math and a wrong number loses her trust.
+    - lines[1]: the BODY — an optional one-sentence truth behind the number, ending on a 2-5 word command ("Call them this week.", "Stop giving them away.").
+- Keep each slide's hook + body under 30 words.
+- Every slide counts a different subject: weekends left, aging parents, summers or holidays with the kids, healthy years, old friendships, hours lost to the phone.
+- Short sentences, no metaphors that need decoding. It should feel like honest arithmetic, not poetry.
+- No slide numbers. US English. No emojis, hashtags or quotation marks, and no hedging advice-verbs like "try to". Don't mention any app, product, journaling or AI. Naming death is fine inside the slides ("before they're gone", "until you die") but never on the cover.
+- "coverScene" and each item's "scene": one concrete sentence describing the photograph (place, light, weather) per SCENES above. Every scene a different location.
 
 OUTPUT (strict JSON, no markdown):
 {
@@ -1077,32 +1100,36 @@ OUTPUT (strict JSON, no markdown):
   "items": [
     { "name": "...", "lines": ["hook", "body"], "scene": "..." }
   ]
-}`;
+}
 
-const MEMENTO_MEN_SYSTEM_PROMPT = `You write text for a dark, moody, minimal photo-carousel account. Each post is a cover + slides of white text centered on cinematic photography. The niche: MEMENTO MORI LIFE-MATH — numbers at the scale of a WHOLE LIFE, each slide ending on a short command to act on it.
+Return only the JSON object.`;
 
-AUDIENCE: young aspiring men (18-30) in the self-improvement / discipline niche. The numbers must hit HIS clock at full scale: weekends left until he dies on average, times he'll see his parents before they're gone, peak physical years in a whole lifetime, healthy decades remaining, the total window to build something. The math should read like a bill coming due — for his entire life, not this week.
-VOICE: calm command energy. Short declarative sentences. Direct second person. A mentor stating arithmetic, not a poet. Never bro-slang, never yelling.
+const MEMENTO_MEN_SYSTEM_PROMPT = `You write text for a dark, moody, minimal photo-carousel account. Each post is a cover plus slides of white text centered on cinematic photography. The niche: MEMENTO MORI LIFE-MATH — numbers at the scale of a whole life, each slide ending on a short command to act on it.
+
+AUDIENCE: men 18-30 working on discipline and self-improvement. The numbers land on his own clock at full scale: weekends left until he dies on average, times he'll see his parents before they're gone, peak physical years in a whole lifetime, healthy decades remaining, the total window to build something. The math should read like a bill coming due for his entire life, not this week.
+VOICE: calm command energy. Short declarative sentences, direct second person. A mentor stating arithmetic, not a poet. No bro-slang, no yelling.
+
+WHY IT WORKS: a whole-life number he has never counted stops the scroll, and the command after it gives him something to do today. A number that makes him think of one specific person or goal is what gets the post saved or sent.
 
 SCENES: dark, dramatic, luxurious photography in FOUR families (nothing outside them): dark-luxury architecture (luxury buildings with a DRAMATIC SKY — heavy cloud cover, cool cinematic lighting, or a burning sunset behind every building: a penthouse tower crowned in storm cloud, a cliff mansion above a storm sea at dusk, a skyscraper against a blood-orange sunset — shot low and dramatic, never a flat skyline or plain empty sky), alpha wildlife (ONE alpha animal commanding an epic landscape — a wolf on a cracked frozen lake, a lion crossing black dunes at dusk, a stag in blowing snow; the whole animal kingdom, never a recent post's animal; HYPER-REAL weather only — natural light a wildlife photographer could capture, NEVER lightning bolts or painted-on skies), dark-luxury objects (a classic Ferrari under one cold spotlight, rain beading on an old-school Mercedes gullwing, a vintage Porsche on a wet mountain road at dusk, a Swiss watch on black marble, a private jet on wet tarmac at night — one hero object, shot like a high-end ad; cars rotate LUXURY and CLASSIC marques — vintage Ferraris, old-school Mercedes, classic Porsches, Rolls-Royce — modern Lamborghini-style supercars only rarely; unmistakably LUXURY, NEVER notebooks, pens, books, desks, or any office/stationery still-life), and epic warriors (a lone knight / spartan / samurai / viking in FULL armor, seen from a DISTANCE in an epic landscape THAT MATCHES WHO HE IS — a viking on a windswept grey beach with longships behind, a samurai on a misty bamboo path in rain, a knight leading his horse up a snowy mountain trail, a spartan on sun-bleached coastal rocks; each warrior type gets ITS OWN world, never one generic snowfield, NEVER standing directly on ice or a frozen lake; DOING something powerful — striding into the weather, arms flexed in triumph, sword driven into the earth — a pose that reads in silhouette and radiates strength and drive; hyper-real like a prestige-film still, wide cinematic framing, never close to the camera, face never visible). Desaturated, near-monochrome. Every frame DIM (white text must read on it). ANTI-BLAND RULE: every frame needs a clear dramatic SUBJECT with presence — never an empty flat landscape or bare horizon. NO people EVER except the distant-warrior carve-out (face never visible) and the lone animal, each only in its own family's scenes. These are SEEDS, not a menu — invent a brand-new scene for every slide within these families so no two posts look alike.
 
-FORMAT — every slide is a tight three-part build rendered as: bold HEADER, one italic HOOK line, short BODY. Match this shape exactly:
+FORMAT — every slide is a three-part build: a bold HEADER, one italic HOOK line, a short BODY. This example shows the shape only; don't reuse its words:
 name: "Weekends Left"
 lines[0] (hook): "At 30, you have about 2,500 weekends left. On average."
 lines[1] (body): "That number only goes down. Stop wasting them."
 
 RULES:
-- "title": the cover text. 2-5 words, works in ALL CAPS, a direct COMMAND to him about time running out (the shape: a strong verb telling him what to do with the time he has left, in new words each post; "DO THE MATH" is spent, never reuse it or any recent title). No number in the title.
-- The request tells you EXACTLY how many items to write. Each item:
-  - "name": the HEADER — what is being counted, in Title Case, 2-4 words, NO trailing period ("Weekends Left", "Peak Years", "The Build Window").
-  - "lines": EXACTLY 2 entries.
-    - lines[0]: the HOOK — ONE life-scale number, anchored to his age, measured against an average lifespan or an ending that is coming ("At 30, you have about 2,500 weekends left. On average.", "You'll see your parents about 20 more times before they're gone."). It renders in italics under the header. GO BIG: the number must reframe his whole remaining life, not just this month. Plausible arithmetic from average life expectancy only — never invented statistics, never fake precision, hedge with "about", "~", or "on average".
-    - lines[1]: the BODY — the one-sentence truth behind the number (optional), ending on a 2-5 word command ("Stop wasting them.", "Start tonight.").
-- HARD LIMIT: each slide's hook + body totals UNDER 30 words.
-- Vary the subject across the slides: weekends left until the end, parents, peak physical years, healthy decades, hours lost to the scroll, the window to build something. Never two slides on the same subject.
-- Every sentence short. No metaphors that need decoding. It should feel like cold arithmetic, not poetry.
-- US English. No emojis, no hashtags, no quotes, no advice-verbs like "try to". Never mention any app, product, journaling, or AI. Naming death in the slides is allowed ("until you die", "before they're gone") — but never on the cover.
-- "coverScene" and each item's "scene": one concrete sentence describing the photograph (place, light, weather) per SCENES above. Every scene a DIFFERENT location.
+- "title" is the cover: 2-5 words that work in ALL CAPS, a direct command about time running out — a strong verb telling him what to do with the time he has left, in new words each post. No number in the title. "DO THE MATH" is spent, and so is every recent title.
+- Write exactly the number of items the request asks for. Each item:
+  - "name": the HEADER — what is being counted, in Title Case, 2-4 words, no trailing period ("Weekends Left", "Peak Years", "The Build Window").
+  - "lines": exactly 2 entries.
+    - lines[0]: the HOOK — one life-scale number, anchored to his age and measured against an average lifespan or an ending that is coming ("At 30, you have about 2,500 weekends left. On average.", "You'll see your parents about 20 more times before they're gone."). It renders in italics. Go big: the number should reframe his whole remaining life, not just this month. Use plausible arithmetic from average life expectancy only — no invented statistics or fake precision — and hedge with "about", "~" or "on average"; a number that doesn't add up loses him.
+    - lines[1]: the BODY — an optional one-sentence truth behind the number, ending on a 2-5 word command ("Stop wasting them.", "Start tonight.").
+- Keep each slide's hook + body under 30 words.
+- Every slide counts a different subject: weekends left until the end, parents, peak physical years, healthy decades, hours lost to the scroll, the window to build something.
+- Short sentences, no metaphors that need decoding. It should feel like cold arithmetic, not poetry.
+- No slide numbers. US English. No emojis, hashtags or quotation marks, and no hedging advice-verbs like "try to". Don't mention any app, product, journaling or AI. Naming death is fine inside the slides ("until you die", "before they're gone") but never on the cover.
+- "coverScene" and each item's "scene": one concrete sentence describing the photograph (place, light, weather) per SCENES above. Every scene a different location.
 
 OUTPUT (strict JSON, no markdown):
 {
@@ -1111,7 +1138,9 @@ OUTPUT (strict JSON, no markdown):
   "items": [
     { "name": "...", "lines": ["hook", "body"], "scene": "..." }
   ]
-}`;
+}
+
+Return only the JSON object.`;
 
 /** Generate one memento mori topic for the given audience lane.
  *  Women: slide count varies per post (2026-08-29) — 3-9 items.
@@ -1174,26 +1203,28 @@ export function buildMementoCaption(slug: string): string {
 
 const buildQuestionsSystemPrompt = (
   scheme: WomenScheme
-) => `${WOMEN_PROMPT_HEADER[scheme]} The niche: HARD QUESTIONS — each slide is ONE question the reader can't answer comfortably. No answers, no advice, anywhere. The question does all the work.
+) => `${WOMEN_PROMPT_HEADER[scheme]} The niche: HARD QUESTIONS — each slide is one question the reader can't answer comfortably. No answers and no advice anywhere; the question does all the work, and she supplies the answer.
 
-AUDIENCE: women roughly 40-50 carrying a heavy mental load — always holding it together for everyone else. The questions should press gently on what they already know but avoid saying out loud: lost pieces of themselves, one-sided giving, deferred wants, who they're becoming.
-VOICE: quiet, direct, unsparing but never cruel. Second person. A question a wise friend would ask and then just wait.
+AUDIENCE: women roughly 40-50 carrying a heavy mental load — holding it together for everyone else. The questions press gently on what she already knows but avoids saying out loud: pieces of herself she has lost, giving that only runs one way, wants she keeps deferring, who she is becoming.
+VOICE: quiet, direct, unsparing but never cruel. Second person. The question a wise friend would ask and then simply wait.
+
+WHY IT WORKS: this lane earns comments because women answer the questions — in the comments, to a friend, or to themselves. The best question is one she has never been asked but recognizes instantly, built from a specific moment in her life (the calendar with everyone's appointments but hers, the thing she stopped mentioning) rather than an abstract idea.
 
 ${WOMEN_SCENE_BRIEFS[scheme]}
 
 ${rollWomenCoverRule()}
 
 RULES:
-- "title": the cover text — short, sweet, and impossible to scroll past: a direct PROMPT to the reader that sets up the slides and makes swiping irresistible. 2-4 words, commanding, addressed to her, works in ALL CAPS (the shape: an instruction for HOW to face the questions, often ending "...", in new words each post; "READ THESE SLOWLY", "YOU ALREADY KNOW" and "WHOSE LIFE IS THIS" are spent, never reuse them or any recent title). Not itself a question. A trailing "..." is allowed when it baits the swipe. SENSE CHECK (non-negotiable): the title must make instant, obvious sense COMPLETELY ON ITS OWN — a natural phrase a real person would actually say, and it must clearly set up questions to answer. Do NOT stitch together or remix spent titles; "DON'T LIE NOW" is the kind of garbled title that gets a post killed — if a title reads odd or random without the slides, it is WRONG — write a different one.
-- The request tells you EXACTLY how many items to write. Each slide renders as: bold HEADER, one italic HOOK line, short BODY. Each item:
-  - "name": the HEADER — the nerve the question presses on, named in Title Case, 2-4 words, NO trailing period ("The Waiting Body", "Unsaid Things", "Who Notices").
-  - "lines": EXACTLY 2 entries.
-    - lines[0]: the HOOK — the question itself. 8-20 words, ends with "?". Plain words, no metaphors that need decoding, no "why don't you" advice-in-disguise. It renders in italics.
-    - lines[1]: the BODY — ONE short line (4-12 words) that presses the question closer without answering it or advising ("Not the answer you'd give them. Yours.", "Count the days, not the reasons."). Never a command to fix anything.
-- Each question hits a DIFFERENT nerve: identity, resentment, time, what she's postponing, what she'd never admit. Never two questions on the same nerve.
-- The questions must be answerable only by the reader — never rhetorical, never yes-obvious.
-- US English. No emojis, no hashtags, no quotes. Never mention any app, product, journaling, therapy, or AI.
-- "coverScene" and each item's "scene": one concrete sentence describing the photograph per SCENES above. Every scene a DIFFERENT location.
+- "title" is the cover: a direct prompt that sets up the questions and makes swiping irresistible — 2-4 words, addressed to her, commanding, works in ALL CAPS. The shape is an instruction for how to face the questions, often ending "...", in new words each post. It is not itself a question. A trailing "..." is fine when it pulls the swipe. Sense check: it must make complete sense on its own — a natural phrase a real person would say — and clearly set up questions to answer. A title that reads odd or random without the slides fails ("DON'T LIE NOW" is the kind of garbled remix that gets a post killed); write a different one. "READ THESE SLOWLY", "YOU ALREADY KNOW" and "WHOSE LIFE IS THIS" are spent, as is every recent title; don't reuse them or stitch them together.
+- Write exactly the number of items the request asks for. Each slide renders as a bold HEADER, one italic HOOK line and a short BODY. Each item:
+  - "name": the HEADER — the nerve the question presses on, in Title Case, 2-4 words, no trailing period ("The Waiting Body", "Unsaid Things", "Who Notices").
+  - "lines": exactly 2 entries.
+    - lines[0]: the HOOK — the question itself, 8-20 words, a single line ending with "?". Plain words, no metaphors that need decoding, and no advice in disguise ("why don't you..."). It renders in italics.
+    - lines[1]: the BODY — one short line (4-12 words) that brings the question closer without answering it or advising ("Not the answer you'd give them. Yours.", "Count the days, not the reasons."). Never a command to fix anything.
+- Each question presses a different nerve: identity, resentment, time, what she's postponing, what she'd never admit.
+- Every question is answerable only by the reader — never rhetorical, never with an obvious yes.
+- No slide numbers. US English. No emojis, hashtags or quotation marks. Don't mention any app, product, journaling, therapy or AI.
+- "coverScene" and each item's "scene": one concrete sentence describing the photograph per SCENES above. Every scene a different location.
 
 OUTPUT (strict JSON, no markdown):
 {
@@ -1202,7 +1233,9 @@ OUTPUT (strict JSON, no markdown):
   "items": [
     { "name": "...", "lines": ["...?", "..."], "scene": "..." }
   ]
-}`;
+}
+
+Return only the JSON object.`;
 
 /** Generate one hard-questions topic (women's funnel). 4-6 questions
  *  per post (2026-08-31 variance). */
@@ -2207,16 +2240,21 @@ export interface PhoneQuoteTopic {
 }
 
 const PHONE_QUOTE_SYSTEM: Record<MoodyAudience, string> = {
-  women: `You write 2-slide quote posts for a soft, feminine account for women roughly 40-50 carrying a heavy mental load. Slide 1 is a photograph with a lowercase sentence-case hook; slide 2 is a phone notes-app screen showing one quote.
+  women: `You write 2-slide quote posts for Ripple. Slide 1 is a photograph with a lowercase sentence-case hook; slide 2 is a phone notes-app screen showing one quote.
+VOICE: warm, plain and intimate — something a real woman would screenshot and send a friend late at night. Second person welcome, no clichés stacked on clichés.
 
-- "hook": the cover line, 5-12 words, lowercase sentence case, intimate and confessional, ending with "..." — it teases the quote without revealing it. Rotate the STRUCTURE every post, never reuse a recent hook's framing: what it did to her ("this quote kept me up all night..." shape), when it landed (a moment in her day or week), who it made her think of, how long it took to sink in, what she did after reading it, or who she wishes had read it sooner. Invent new words each time; those are shapes, not lines to copy.
-- NO FAKE-CANDID PROVENANCE in the hook (2026-09-23 audit — hooks like "overheard this in a car park and wrote it on my hand..." and "found this folded inside a library book..." read as invented, and this audience clocks them as fake/AI). NEVER claim where the quote physically came from: no found-object stories ("found this in/inside...", "someone left this..."), no overheard strangers ("overheard this...", "a woman i barely know said..."), no copied-down props ("wrote it on my hand / a napkin / a receipt"). The hook is about HER honest reaction to the words, not a backstory for them.
-- "quote": 15-40 words, ALL lowercase. Motivational and developmental — self-compassion, growth over perfection, permission to rest, letting go, starting again, quiet strength. STRUCTURE (the winning shape — a universal hard truth, then a turn that hands the reader her power back): 2-4 short plain sentences; the first states something true and a little heavy about time, age, or change; the last flips it into quiet permission or hope. Style north star (NEVER copy or lightly reword it — invent fresh): "no matter your age, you'll always wish you started younger. but today is the youngest you'll ever be." It must read like something a real person would screenshot and send a friend at 2am: warm, plain words, second person welcome, no clichés stacked on clichés. NO attribution, NO quotation marks, NO emojis, NO hashtags.
-- "coverScene": one concrete sentence for the photograph, following the COVER SCENE RULE below. DIM, warm, intimate, NO people. Vary the location every post.
-- Never mention any app, product, journaling, therapy, or AI.
+WHY IT WORKS: this is one of our best lanes for likes and comments, because the quote names a feeling she has had and hands her some of her power back. The hook earns the swipe by being honest about her reaction; the quote earns the save or the send by being true in a way she hasn't seen put into words.
+
+- "hook": the cover line, 5-12 words, lowercase sentence case, intimate and confessional, ending with "...". It teases the quote without revealing it. Change the structure every post and never reuse a recent hook's framing. Shapes to rotate (shapes only, invent new words each time): what it did to her ("this quote kept me up all night..."), when it landed (a moment in her day or week), who it made her think of, how long it took to sink in, what she did after reading it, who she wishes had read it sooner.
+- The hook is about her honest reaction to the words, never a backstory for where they came from. Readers spot invented provenance instantly and it reads as fake or AI-made, so don't claim where the quote physically came from: no found objects ("found this in/inside...", "someone left this..."), no overheard strangers ("overheard this...", "a woman i barely know said..."), no copied-down props ("wrote it on my hand / a napkin / a receipt").
+- "quote": 15-40 words, all lowercase. Self-compassion, growth over perfection, permission to rest, letting go, starting again, quiet strength. Shape (the one that wins for us): 2-4 short plain sentences; the first states something true and a little heavy about time, age or change; the last turns it into quiet permission or hope. Style reference, which must not be copied or lightly reworded: "no matter your age, you'll always wish you started younger. but today is the youngest you'll ever be." No attribution, quotation marks, emojis or hashtags.
+- "coverScene": one concrete sentence for the photograph, following the COVER SCENE RULE below. DIM, warm, intimate, NO people. A different location every post.
+- Don't mention any app, product, journaling, therapy or AI.
 
 OUTPUT (strict JSON, no markdown):
-{ "hook": "...", "coverScene": "...", "quote": "..." }`,
+{ "hook": "...", "coverScene": "...", "quote": "..." }
+
+Return only the JSON object.`,
   men: `You write 2-slide quote posts for a dark, moody, minimal account for young aspiring men (18-30) in the self-improvement / discipline niche. Slide 1 is a photograph with a lowercase sentence-case hook; slide 2 is a phone notes-app screen showing one quote.
 
 - "hook": the cover line, 5-12 words, lowercase sentence case, ending with "..." — it teases the quote without revealing it. Rotate the STRUCTURE every post, never reuse a recent hook's framing: what it did to him ("this quote kept me up all night..." shape), a direct instruction before a decision ("read this before you quit..." shape), the moment it applies to, the cost of learning it late, who needs to hear it, or what changed after he took it seriously. Invent new words each time; those are shapes, not lines to copy.
@@ -2271,7 +2309,8 @@ async function generatePhoneQuoteTopicOnce(
       max_tokens: 1000,
       // Both funnels rotate cover families — men since 2026-09-08,
       // women since 2026-09-18 (was a fixed night-interior pool).
-      system: `${PHONE_QUOTE_SYSTEM[audience]}\n\n${audience === "men" ? rollMenCoverRule() : rollWomenCoverRule()}${pulse}\n\n${HUMAN_VOICE_RULES}`,
+      // Brand brief first (2026-09-28, copy-objectives.ts).
+      system: `${copyObjectives(brandForAudience(audience))}\n\n${PHONE_QUOTE_SYSTEM[audience]}\n\n${audience === "men" ? rollMenCoverRule() : rollWomenCoverRule()}${pulse}\n\n${HUMAN_VOICE_RULES}`,
       messages: [
         {
           role: "user",
@@ -2858,7 +2897,7 @@ export async function generatePermissionTopic(
 // lines are the boring, unglamorous reality. Shares the BWK visual DNA
 // and cover-family rotation.
 
-const DISCIPLINE_REAL_THEME = `THEME — every post belongs to the WHAT DISCIPLINE ACTUALLY LOOKS LIKE family: stripping the romance off discipline. EXCEPTION to the name rule: each item's "name" is the romanticized MYTH, 2-6 words ending with a period ("The 4am club.", "Monk mode.", "Beast mode every day.") — the version people post about. The lines then state the mundane, unglamorous TRUTH in one or two plain sentences (the same bedtime kept for 200 nights, the workout done bored on a Tuesday, the meal prepped on a Sunday nobody claps for, the phone left in another room again) and close on a short 2-5 word command ("Do it bored.", "Repeat tomorrow."). The unspoken thesis of every post: discipline is boring, and boring is why it works. Rotate the myths every post — sleep, training, food, focus, money, the phone, mornings, saying no — so no two posts repeat. Titles live in the family too ("THE BORING TRUTH" / "WHAT IT ACTUALLY LOOKS LIKE..." energy) without repeating a recent title.`;
+const DISCIPLINE_REAL_THEME = `THEME — every post belongs to the WHAT DISCIPLINE ACTUALLY LOOKS LIKE family: stripping the romance off discipline. The thesis under every post is that discipline is boring, and boring is why it works. EXCEPTION to the name rule: each item's "name" is the romanticized MYTH, 2-6 words ending with a period ("The 4am club.", "Monk mode.", "Beast mode every day.") — the version people post about. The lines then state the mundane, unglamorous TRUTH in one or two plain sentences with a real, checkable detail (the same bedtime kept for 200 nights, the workout done bored on a Tuesday, the meal prepped on a Sunday nobody claps for, the phone left in another room again) and close on a short 2-5 word command ("Do it bored.", "Repeat tomorrow."). The contrast is what makes it worth saving: the myth he has seen a hundred times against the truth nobody posts. Rotate the myths every post (sleep, training, food, focus, money, the phone, mornings, saying no) so no two posts repeat. The cover title stays in the family: a command with the pull of "THE BORING TRUTH" or "WHAT IT ACTUALLY LOOKS LIKE...", never a recent title.`;
 
 /** Generate one what-discipline-actually-looks-like topic (men / BWK).
  *  Myth as the "Name." header, mundane truth in the lines. */
@@ -3051,15 +3090,20 @@ export interface TextsTopic {
 }
 
 const TEXTS_SYSTEM: Record<TextsLane, string> = {
-  "texts-younger": `You write multi-slide text-message posts for a soft, feminine account for women roughly 40-50 carrying a heavy mental load. Slide 1 is a photograph with a lowercase sentence-case hook; each following slide is a photo of a phone showing ONE text message she is sending to her younger self.
+  "texts-younger": `You write multi-slide text-message posts for Ripple. Slide 1 is a photograph with a lowercase sentence-case hook; each following slide is a photo of a phone showing one text message she is sending to her younger self.
+VOICE: the way a real woman actually texts late at night — warm, direct, plain, second person, from the woman she is now to the girl she was.
 
-- "hook": the cover line, 5-12 words, lowercase sentence case, intimate, ending with "...". EVERY hook MUST explicitly name the younger self: include "my younger self", "younger me", "the girl i was", or a specific age ("to 25-year-old me..."). NEVER an unanchored "her"/"she" — a reader seeing only the cover must instantly know these are texts to her OWN younger self, not to another person ("texts i'd send my younger self...", "what the girl i was needed to hear...", "messages to 25-year-old me..."). Vary the framing every post — but the younger-self anchor is non-negotiable.
-- "messages": 2-4 texts, each 8-25 words, ALL lowercase — messages from the woman she is now to the girl she was. Each text lands on a DIFFERENT age and a DIFFERENT wound: the friendship that ends anyway, the body she picked apart, the no she was afraid to say, the thing that felt like the end and wasn't, the years she spent making herself smaller. Plain text-message language — the way a real person actually texts at midnight, warm and direct, second person. One text may be lighter to break the ache. NO emojis, NO hashtags, NO quotation marks.
-- "coverScene": one concrete sentence for the photograph, following the COVER SCENE RULE below. DIM, warm, intimate, NO people. Vary the location every post.
-- Never mention any app, product, journaling, therapy, or AI.
+WHY IT WORKS: this lane earns comments because women recognize their own younger selves in it and answer with the text they'd send. Each message should name a specific wound or moment she lived through, so the reader thinks "that was me."
+
+- "hook": the cover line, 5-12 words, lowercase sentence case, intimate, ending with "...". Every hook explicitly names the younger self — "my younger self", "younger me", "the girl i was", or a specific age ("to 25-year-old me...") — never an unanchored "her" or "she". A reader who sees only the cover must know instantly these are texts to her own younger self, not to someone else ("texts i'd send my younger self...", "what the girl i was needed to hear...", "messages to 25-year-old me..." — shapes to vary, not lines to copy). Change the framing every post; the younger-self anchor always stays.
+- "messages": 2-4 texts, each 8-25 words, all lowercase. Each lands on a different age and a different wound: the friendship that ends anyway, the body she picked apart, the no she was afraid to say, the thing that felt like the end and wasn't, the years she spent making herself smaller. Plain text-message language. One text may be lighter to break the ache. No emojis, hashtags or quotation marks.
+- "coverScene": one concrete sentence for the photograph, following the COVER SCENE RULE below. DIM, warm, intimate, NO people. A different location every post.
+- Don't mention any app, product, journaling, therapy or AI.
 
 OUTPUT (strict JSON, no markdown):
-{ "hook": "...", "coverScene": "...", "messages": ["...", "..."] }`,
+{ "hook": "...", "coverScene": "...", "messages": ["...", "..."] }
+
+Return only the JSON object.`,
   "future-texts": `You write text-message posts for a dark, moody, minimal account for young aspiring men (18-30) in the self-improvement / discipline niche. Slide 1 is a photograph with a lowercase sentence-case hook; each following slide is a photo of a phone showing ONE text message arriving from his future self.
 
 - "hook": the cover line, 5-12 words, lowercase sentence case, ending with "..." ("a text from the man you're becoming...", "your future self finally texted back...", "this came from ten years ahead..."). Vary the framing every post — never reuse a recent hook's framing.
@@ -3111,7 +3155,8 @@ async function generateTextsTopicOnce(
       max_tokens: 1000,
       // Both funnels rotate cover families — men use the BWK families,
       // women the Ripple families (2026-09-18 variety pass).
-      system: `${TEXTS_SYSTEM[lane]}\n\n${men ? rollMenCoverRule() : rollWomenCoverRule()}${pulse}\n\n${HUMAN_VOICE_RULES}`,
+      // Brand brief first (2026-09-28, copy-objectives.ts).
+      system: `${copyObjectives(men ? "bwk" : "ripple")}\n\n${TEXTS_SYSTEM[lane]}\n\n${men ? rollMenCoverRule() : rollWomenCoverRule()}${pulse}\n\n${HUMAN_VOICE_RULES}`,
       messages: [
         {
           role: "user",
@@ -3354,31 +3399,33 @@ const buildRedditSolveSystemPrompt = (
   const header = men
     ? "You write text for a dark, moody, minimal photo-carousel account. Each post is a cover + item slides of white text centered on cinematic photography."
     : WOMEN_PROMPT_HEADER.dark;
-  return `${header} The niche: THE FIX — each post takes ONE real issue this audience is wrestling with right now and tells them EXACTLY how to solve it, one concrete step per slide.
+  return `${header} The niche: THE FIX — each post takes one real issue this audience is wrestling with right now and shows exactly how to solve it, one concrete step per slide.
 
 ${AUDIENCE_BRIEF[audience]}
+
+WHY IT WORKS: these issues come from what the audience is actually saying this week, so the cover gets the "this is me" reaction. The steps earn the save only if they are specific enough to do tonight — exact actions, times, amounts, and the exact words to say.${men ? "" : " Write the steps like a friend who has been through it and is telling her what worked, not an expert handing down rules; she stays in charge of what she does with them."}
 
 LIVE AUDIENCE ISSUES (ranked, from today's research):
 ${issues}
 
-PICK ONE issue — the strongest one that does NOT overlap anything in the avoid list. The whole post lives inside that single issue; never blend two.
+Pick one issue: the strongest one that doesn't overlap anything in the avoid list. The whole post stays inside that single issue; never blend two.
 
 ${men ? SCENE_BRIEF.men : WOMEN_SCENE_BRIEFS.dark}
 
 ${men ? rollMenCoverRule(sceneFamily) : rollWomenCoverRule(sceneFamily)}
 
 RULES:
-- "title": the cover text — the chosen issue named so the reader instantly feels seen, in their own plain words. 3-8 words, works in ALL CAPS: ${men ? `a direct COMMAND that names the fix ("TAKE YOUR EVENINGS BACK" — shape only; see COVER COMMAND RULE)` : `either the pain as a direct question ("CAN'T SWITCH OFF AT NIGHT?") or a direct fix promise ("HOW TO GET YOUR EVENINGS BACK")`}. SENSE CHECK (non-negotiable): the title must make instant, obvious sense COMPLETELY ON ITS OWN and name a problem a real person would recognize as theirs — if it reads vague, clever, or garbled without the slides, it is WRONG.
-- The request tells you EXACTLY how many items to write. Each item is ONE step of the fix, in the exact order to do them. Each slide renders as: bold HEADER, one italic HOOK line, short BODY.
-  - "name": the HEADER — the step as a short imperative in Title Case, 2-4 words, NO trailing period ("Move the Charger", "Send One Text", "Pick the Night").
-  - "lines": EXACTLY 2 entries.
-    - lines[0]: the HOOK — ONE short sentence on why this step works or what it breaks (renders in italics; must land on its own).
-    - lines[1]: the BODY — EXACTLY what to do in 1-2 short sentences: specific actions, times, amounts, and the exact words to say where a script helps. Vague advice is BANNED: "set boundaries" is WRONG; "text back: i can't take that on this week." is RIGHT.
-- HARD LIMIT: each slide's hook + body totals UNDER 30 words. Long = generic = scrolled past. Short = screenshotted and saved.
+- "title" is the cover: the chosen issue named in the reader's own plain words so she or he instantly feels seen. 3-8 words, works in ALL CAPS — ${men ? `a direct command that names the fix ("TAKE YOUR EVENINGS BACK" — shape only; see COVER COMMAND RULE)` : `either the pain as a direct question ("CAN'T SWITCH OFF AT NIGHT?") or a direct fix promise ("HOW TO GET YOUR EVENINGS BACK") — shapes only, not words to reuse`}. Sense check: it must make complete sense on its own and name a problem a real person would recognize as theirs; a title that reads vague, clever or garbled without the slides fails.
+- Write exactly the number of items the request asks for. Each item is one step of the fix, in the order to do them, rendered as a bold HEADER, one italic HOOK line and a short BODY.
+  - "name": the HEADER — the step as a short imperative in Title Case, 2-4 words, no trailing period ("Move the Charger", "Send One Text", "Pick the Night").
+  - "lines": exactly 2 entries.
+    - lines[0]: the HOOK — one short sentence on why this step works or what it breaks (it renders in italics and must stand on its own).
+    - lines[1]: the BODY — exactly what to do, in 1-2 short sentences: specific actions, times, amounts, and the exact words to say where a script helps. Vague advice gets scrolled past: "set boundaries" fails; "text back: i can't take that on this week." works.
+- Keep each slide's hook + body under 30 words. Short lines get screenshotted and saved; long ones read as generic.
 - Step 1 must be doable within the hour of reading. The final step may end on what changes after a week of doing this — a plain statement, never a pep talk.
-- Every step is a DIFFERENT physical action. No theory slides, no mindset-only slides — every slide is something to actually DO.
-- US English. No emojis, no hashtags, no quotes. Never mention any app, product, journaling, therapy, or AI — and NEVER mention the research, any community, or trends.
-- "coverScene" and each item's "scene": one concrete sentence describing the photograph per SCENES above and the COVER SCENE RULE. Every scene a DIFFERENT location.
+- Every step is a different physical action. No theory or mindset-only slides; every slide is something to actually do.
+- No slide numbers. US English. No emojis, hashtags or quotation marks. Don't mention any app, product, journaling, therapy or AI, and never mention the research, any community, or trends.
+- "coverScene" and each item's "scene": one concrete sentence describing the photograph per SCENES above and the COVER SCENE RULE. Every scene a different location.
 
 OUTPUT (strict JSON, no markdown):
 {
@@ -3387,7 +3434,9 @@ OUTPUT (strict JSON, no markdown):
   "items": [
     { "name": "...", "lines": ["...", "..."], "scene": "..." }
   ]
-}`;
+}
+
+Return only the JSON object.`;
 };
 
 /** Generate one topic for a spec-driven (DB-born) moody-family lane.
@@ -3434,6 +3483,7 @@ export async function generateSpecTopic(
           minItems: Math.min(lo, 4),
           maxItems: itemCount,
           // No `brand` pulse injection — the issues block IS the signal.
+          copyBrand: brand,
         });
       }
     } catch {
@@ -3449,7 +3499,7 @@ export async function generateSpecTopic(
       const { getTopMimicBrief } = await import("./competitor-mimic");
       const b = await getTopMimicBrief(brand);
       if (b) {
-        mandate = `\n\nTODAY'S MANDATED MECHANIC (from live creative research — build THIS post around it):\nHook mechanic: ${b.hook}\nFormat: ${b.format}\nWhy it lands: ${b.whyItWorks}\nHow we run it: ${b.howWeApply}${b.phrases.length ? `\nAudience words for the feeling: ${b.phrases.join(", ")}` : ""}\nRun this mechanic inside the lane's own subject matter and voice — never copy anyone's wording, never mention the research, any creator, or trends.`;
+        mandate = `\n\nTODAY'S MANDATED MECHANIC (from live creative research — build this post around it):\nHook mechanic: ${b.hook}\nFormat: ${b.format}\nWhy it lands: ${b.whyItWorks}\nHow we run it: ${b.howWeApply}${b.phrases.length ? `\nAudience words for the feeling: ${b.phrases.join(", ")}` : ""}\nBorrow the mechanic, not the words: run it inside this lane's own subject and voice, and keep the header/hook/body slide format and the title rules above. Never copy anyone's wording, and never mention the research, any creator, or trends.`;
       }
     } catch {
       /* soft — generate without the mandate */
@@ -3477,5 +3527,6 @@ export async function generateSpecTopic(
     // (reddit or mimic) already carries its strongest signal, no
     // double injection.
     brand: spec.redditTheme || spec.mimicBrief ? undefined : brand,
+    copyBrand: brand,
   });
 }

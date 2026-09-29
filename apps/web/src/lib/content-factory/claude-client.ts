@@ -53,7 +53,11 @@ const THINKING_HEADROOM: Record<ContentEffort, number> = {
 
 type CreateParams = Omit<Anthropic.MessageCreateParamsNonStreaming, "model"> & {
   model?: string;
-  /** Default "medium" (writing). Checks and rewrites pass "low". */
+  /**
+   * Default "high" — Anthropic's starting point for Sonnet 5.5 on
+   * non-latency-sensitive work like copywriting (2026-09-28). Checks and
+   * the humanizer rewrite pass "low".
+   */
   effort?: ContentEffort;
 };
 
@@ -66,7 +70,7 @@ function modelUnavailable(err: unknown): boolean {
 
 async function create(params: CreateParams): Promise<Anthropic.Message> {
   const {
-    effort = "medium",
+    effort = "high",
     max_tokens,
     model: requested,
     temperature: _temperature,

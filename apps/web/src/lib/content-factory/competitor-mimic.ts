@@ -34,6 +34,7 @@ import {
   CONTENT_OUTPUT_COST_PER_TOKEN,
   lastJsonText,
 } from "./claude-client";
+import { copyObjectives } from "./copy-objectives";
 
 const anthropic = contentAnthropic;
 const CLAUDE_MODEL = CONTENT_MODEL;
@@ -250,25 +251,30 @@ export async function scrapeAccount(accountId: string): Promise<number> {
   return posts.length;
 }
 
-const BRIEF_SYSTEM = `You are a creative strategist for a content studio. You are given a competitor's OUTLIER post — one that massively outperformed their baseline — plus a brief on OUR audience and brand voice.
+/**
+ * 2026-09-28 (Sonnet 5.5 rewrite): opens with the brand's copyObjectives
+ * (which replaced the old one-line BRAND_VOICE_BRIEF in the user message)
+ * and asks for the transferable mechanic, with why it earned comments,
+ * saves or sends, rather than a summary of the post.
+ */
+function briefSystem(brand: "ripple" | "bwk"): string {
+  return `${copyObjectives(brand)}
 
-Extract the transferable mechanic so our studio can run the same play in OUR voice. Never copy their words; extract WHY it worked.
+YOUR JOB TODAY: creative strategy for the account above. You get one post from another account in a nearby niche that far outperformed that account's usual numbers. Work out the mechanic that made it work, so our writers can run the same play with our own subject, our own words and our own voice.
 
-RULES:
-- "hook": the opening mechanic in one sentence (the shape, not their words).
-- "format": the structural format in one sentence.
-- "whyItWorks": the psychological reason the audience responded, one sentence.
-- "howWeApply": one or two sentences — the same mechanic translated into OUR brand's register and subject matter.
-- "phrases": 2-4 short audience-vocabulary words/fragments tied to the emotion (never lines from the post).
-- Never mention the creator, any platform, "viral", "trend", or "competitor" in any field — downstream copy must not reveal the source.
+The mechanic is the part that transfers: the shape of the hook, how the post is structured from first line to last, and the reason people stopped, kept going, and then commented, saved or sent it. The topic and the wording do not transfer; they belong to that creator. If the caption is thin, reason from what is there and from the numbers (a high comment count usually means the post asked for recognition or an opinion).
 
-OUTPUT (strict JSON, no markdown): {"hook":"...","format":"...","whyItWorks":"...","howWeApply":"...","phrases":["..."]}`;
+Fields:
+- "hook": the opening mechanic in one sentence, described as a shape ("opens by naming a private habit the reader thinks only she has"), never their words.
+- "format": the structure in one sentence (how many beats, what each one does, how it ends).
+- "whyItWorks": one sentence on what the audience got from it that made them engage: recognition, a usable detail, a line worth sending, a question they wanted to answer.
+- "howWeApply": one or two sentences running the same mechanic on a subject that belongs to our reader, in our voice. For Ripple that means naming what she carries, as a mirror, never advice. For Build With Key it means a concrete standard or command. Be specific enough that a writer could start from it.
+- "phrases": 2-4 short fragments in our audience's everyday vocabulary tied to the feeling (a few words each), never lines from the post.
 
-const BRAND_VOICE_BRIEF: Record<"ripple" | "bwk", string> = {
-  ripple:
-    "OUR BRAND (Ripple): quiet, reflective content for women ~40-50 carrying a heavy mental load. Emotional, personal, never preachy.",
-  bwk: "OUR BRAND (BWK): stark, disciplined content for young men building self-respect. Command register, no fluff.",
-};
+These briefs feed public posts, so no field may mention the creator, any platform, "viral", "trend" or "competitor".
+
+Return {"hook":"...","format":"...","whyItWorks":"...","howWeApply":"...","phrases":["..."]}. Return only the JSON object.`;
+}
 
 /**
  * Write mimic briefs for un-briefed outliers (cost-capped per run).
@@ -288,8 +294,6 @@ export async function writeMimicBriefs(): Promise<number> {
   for (const post of pending) {
     const brand = post.account.brand === "bwk" ? "bwk" : "ripple";
     const userMsg = [
-      BRAND_VOICE_BRIEF[brand],
-      "",
       `OUTLIER POST (${post.account.platform}, niche: ${post.account.niche ?? "unspecified"}):`,
       `Performance: ${post.views.toLocaleString()} views (${post.outlierScore}x their baseline), ${post.likes.toLocaleString()} likes, ${post.comments.toLocaleString()} comments.`,
       `Caption/text: ${post.caption?.slice(0, 1500) || "(no caption — visual-only post)"}`,
@@ -299,8 +303,8 @@ export async function writeMimicBriefs(): Promise<number> {
     try {
       const response = await anthropic.messages.create({
         model: CLAUDE_MODEL,
-        max_tokens: 600,
-        system: BRIEF_SYSTEM,
+        max_tokens: 900,
+        system: briefSystem(brand),
         messages: [{ role: "user", content: userMsg }],
       });
       await prisma.claudeCallLog.create({
@@ -430,12 +434,12 @@ export async function getMimicSignal(brand: "ripple" | "bwk"): Promise<string> {
   if (briefs.length === 0) return "";
   return [
     "",
-    "WHAT'S WINNING WITH THIS AUDIENCE RIGHT NOW (from live creative research):",
+    "WHAT'S WINNING WITH THIS AUDIENCE RIGHT NOW: mechanics from posts in nearby niches that far outperformed their usual numbers.",
     ...briefs.map(
       (b) =>
         `- Hook: ${b.brief.hook} Format: ${b.brief.format} Why: ${b.brief.whyItWorks}`
     ),
-    "Borrow a MECHANIC (hook shape, format, emotional beat) if it fits naturally — the lane's own format, theme, and voice rules always come first. Never copy wording, never mention research, creators, or trends.",
+    "If one of these fits this lane naturally, borrow its mechanic (the hook shape, the structure, the thing that earned the comment or save) and apply it to our own subject in our own words. The lane's own format, theme and voice rules come first; skip these rather than force one. Never reuse another creator's wording, and never mention research, creators or trends in the copy.",
   ].join("\n");
 }
 
