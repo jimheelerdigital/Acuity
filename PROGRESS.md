@@ -7,6 +7,42 @@
 
 ---
 
+## [2026-09-29] — Legendary Mythicals: a new "which would you choose?" account, 3 videos a day
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** (this commit)
+
+### In plain English (for Keenan)
+There's a new third account, Legendary Mythicals (@legendarymythicals). Three times a day it makes a "which would you choose?" video: a question cover ("WHICH BEAST WOULD YOU RIDE?"), five numbered legendary creatures or fighters with one line of lore each, and a closing "which will you choose?" card that changes every post. Each post arrives as its own email right after the BWK and Ripple emails. Auto-posting to its Instagram and Facebook is built but stays off until the accounts are connected. The old hero's-journey fantasy lane on BWK is retired. To stay under $5/day of Higgsfield video, the BWK and Ripple video posts now animate the cover and first slide, and the rest glide with a slow zoom. Mythicals posts animate every option.
+
+### Technical changes (for Jimmy)
+- Third brand `mythicals` (`SocialAccountKey`):
+  - `resolveAccount` uses `META_MYTHICALS_ACCESS_TOKEN` / `_IG_USER_ID` / `_FB_PAGE_ID` (absent = no IG/FB rows).
+  - The publisher only enqueues posts on or after `MYTHICALS_META_START` (unset = never), so no backlog floods the new account.
+  - Email label `[LEGENDARY MYTHICALS]`; per-post email order is BWK → Ripple → Mythicals.
+  - Caption-writer brand block, a `copyObjectives("mythicals")` brief, and music from `music/mythicals` (falls back to BWK's tracks).
+  - No app CTA card: `joinPostVideo` ctaUrl is nullable, and the email CTA, the slideshow fallback and the video builder all skip it for mythicals.
+- New `lib/content-factory/choice-lane.ts`: `generateChoiceTopic` (Sonnet 5.5, humanizer-gated), 12 rolled question categories, `buildMythicImagePrompt`, caption.
+- `carousel-daily.ts`: new `choice` template branch.
+  - Cover (gpt-image-2 high) plus 5 options (medium), each passing the Opus check in the new `fantasy` mode.
+  - Top/bottom text via the new `compose.renderChoiceOverlay`.
+  - A still closing card from the blurred cover; then `queuePostVideo`. Supports `dryRun`.
+- `post-video.ts` `maxAnimatedSlides(brand)`: 2 for main lanes (env `POST_VIDEO_MAX_LIVE`), 6 for mythicals. That's about 36 clips/day, roughly $2.50 on Hailuo now and $4.20 on Kling 2.5 Std after Oct 1.
+- DB:
+  - New ContentLane `mythic-picks` (brand mythicals, template choice, hours 5/6/7 UTC).
+  - `fantasy-men` set to RETIRED.
+
+### Manual steps needed
+- [ ] Create the Legendary Mythicals Instagram, Facebook Page and TikTok (@legendarymythicals); then give Claude the Meta access so it can connect them, same steps as BWK. Once they're in Vercel, set `MYTHICALS_META_START` to that day (Keenan)
+- [ ] Upload epic/cinematic tracks to the `music/mythicals` folder in the content-factory bucket, e.g. from Meta's Sound Collection (Keenan)
+
+### Notes
+- Numbered option slides are a deliberate, lane-only exception to the no-slide-numbering rule; Keenan chose "Number + name" so comments can say "#3".
+- Logos and the Facebook banner were generated with gpt-image-2 and emailed separately.
+
+---
+
 ## [2026-09-29] — New positioning everywhere, rewritten ad writer, pick max 2 ads per lane
 
 **Requested by:** Keenan

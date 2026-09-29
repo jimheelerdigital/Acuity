@@ -2777,7 +2777,7 @@ export async function verifyBakedQuote(
 export async function checkMoodyImageQuality(
   image: Buffer,
   scene: string,
-  opts: { personAllowed: boolean; bakedText?: boolean }
+  opts: { personAllowed: boolean; bakedText?: boolean; fantasy?: boolean }
 ): Promise<{ ok: boolean; reason: string }> {
   try {
     const { default: sharp } = await import("sharp");
@@ -2799,7 +2799,7 @@ export async function checkMoodyImageQuality(
               text: `You are a photo editor checking one AI-generated background photo before it is posted. The intended scene: "${scene}"
 
 FAIL it if ANY of these is clearly true:
-1. It looks like CGI, a 3D render, an illustration, or a painting rather than a real photograph.${/\bdragon/i.test(scene) ? " The scene is deliberately FANTASY: the dragon itself is expected, so judge only whether the frame looks like a hyperreal live-action film still, not whether the creature could exist." : ""}
+1. It looks like CGI, a 3D render, an illustration, or a painting rather than a real photograph.${opts.fantasy || /\bdragon/i.test(scene) ? " The scene is deliberately FANTASY: the creature or legendary figure itself is expected, so judge only whether the frame looks like a hyperreal live-action film still, not whether it could exist." : ""}
 2. There are smeared, melted, garbled, or malformed areas (warped objects, broken anatomy, mangled hands or faces).
 3. ${opts.bakedText ? "Readable text appears anywhere OTHER than the one intended message on the screen, sign, or paper the scene describes (that message itself is expected — do not judge its wording), or there are logos or watermarks." : "Any readable text, letters, numbers, logos, or watermarks appear."}
 4. ${opts.personAllowed ? "More than the people the scene describes appear." : "A person appears, unless the scene explicitly describes a distant armored warrior, a rider, or a statue."}

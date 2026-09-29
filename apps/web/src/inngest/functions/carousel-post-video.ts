@@ -121,8 +121,14 @@ export const carouselPostVideoFn = inngest.createFunction(
     const configured = await step.run("check-higgsfield", async () => {
       return Boolean(process.env.HIGGSFIELD_API_KEY && process.env.HIGGSFIELD_API_SECRET);
     });
+    // Budget: only the first N animatable slides get a clip; the rest
+    // become push-in stills (see maxAnimatedSlides).
+    const { maxAnimatedSlides } = await import("@/lib/content-factory/post-video");
     const liveIdx = configured
-      ? plan.slides.map((s, i) => (s.mode === "live" ? i : -1)).filter((i) => i >= 0)
+      ? plan.slides
+          .map((s, i) => (s.mode === "live" ? i : -1))
+          .filter((i) => i >= 0)
+          .slice(0, maxAnimatedSlides(plan.brand))
       : [];
     logger.info(
       `[post-video] ${postId} (${plan.lane}): ${liveIdx.length} animated / ${plan.slides.length} slides${configured ? "" : " — Higgsfield not configured"}`
@@ -349,7 +355,9 @@ export const carouselPostVideoFn = inngest.createFunction(
       if (!music) throw new Error(`No music track for lane ${plan.lane}`);
       const { buf, seconds } = await joinPostVideo({
         segments: bufs,
-        ctaUrl: `https://goripple.io/cta-slide-${plan.brand}.jpg`,
+        // Legendary Mythicals posts end on their own "which will you
+        // choose?" slide — no app card.
+        ctaUrl: plan.brand === "mythicals" ? null : `https://goripple.io/cta-slide-${plan.brand}.jpg`,
         musicUrl: music,
       });
       console.log(`[post-video] ${postId}: joined in ${Date.now() - t0}ms (${seconds.toFixed(1)}s video)`);

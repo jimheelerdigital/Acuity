@@ -27,7 +27,8 @@ export const carouselDailyDigestFn = inngest.createFunction(
   async ({ event, step, logger }) => {
     // ONE EMAIL PER POST (2026-09-28, per Keenan: "send me individual
     // emails for each post please. one email per post. send BWK posts
-    // first, then ripple posts 2nd"). Once the day's batch is complete —
+    // first, then ripple posts 2nd"; Legendary Mythicals third since
+    // 2026-09-29). Once the day's batch is complete —
     // every lane generated, every video finished (or the 13:00 UTC
     // deadline) — each post gets its own email (caption, slides, video),
     // all BWK posts first, then all Ripple. Per-post emailedAt keeps any
@@ -43,7 +44,9 @@ export const carouselDailyDigestFn = inngest.createFunction(
         const { prisma } = await import("@/lib/prisma");
         const ids: string[] = [];
         const waiting: string[] = [];
-        for (const brand of ["bwk", "ripple"] as const) {
+        // Order (per Keenan): BWK, then Ripple, then Legendary Mythicals
+        // ("give me everything right after bwk and ripple emails").
+        for (const brand of ["bwk", "ripple", "mythicals"] as const) {
           const state = await getDigestState(brand, date);
           const blocker = digestBlocker({ ...state, alreadySent: false }, force);
           if (blocker && blocker !== "no posts") waiting.push(`${brand}: ${blocker}`);

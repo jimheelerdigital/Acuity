@@ -28,6 +28,7 @@ const TO_ADDRESS = process.env.CONTENT_FACTORY_EMAIL_TO ?? "keenan@heelerdigital
 export const BRAND_NAME: Record<SocialAccountKey, string> = {
   bwk: "Build With Key",
   ripple: "Ripple",
+  mythicals: "Legendary Mythicals",
 };
 
 export interface DigestPost {

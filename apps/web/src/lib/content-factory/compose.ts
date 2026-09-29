@@ -2073,3 +2073,60 @@ export async function composeCTASlide(
     .jpeg({ quality: 90 })
     .toBuffer();
 }
+
+/**
+ * CHOICE slide text (2026-09-29, Legendary Mythicals "which would you
+ * choose?" lane): a bold uppercase line near the TOP ("3. THE STORM
+ * WYVERN" / the cover question) and an optional italic lore line near the
+ * BOTTOM, leaving the middle of the frame to the creature or fighter.
+ * Both blocks sit inside the IG/FB 4:5 center-crop window (rows ~285-1635)
+ * and get the usual blurred-shadow legibility treatment.
+ */
+export async function renderChoiceOverlay(opts: {
+  top: string;
+  bottom?: string;
+  /** Top line size: covers run larger than option names. */
+  topSize?: number;
+}): Promise<Buffer> {
+  const maxTextW = OUTPUT_W - PADDING_X * 2;
+  const layers: { input: Buffer; top: number; left: number }[] = [];
+  const block = async (
+    text: string,
+    variant: "Bold" | "MediumItalic",
+    size: number,
+    wrap: number,
+    uppercase: boolean
+  ) => {
+    const fontPath = await ensureFontFile(variant);
+    const font = variant === "Bold" ? "Poppins Bold" : "Poppins Medium Italic";
+    const body = wordWrap(stripUnrenderable(uppercase ? text.toUpperCase() : text), wrap)
+      .map((l) => escapePango(l))
+      .join("\n");
+    const spacing = uppercase ? ` letter_spacing="2048"` : "";
+    const markup = (color: string) =>
+      `<span font_desc="${font} ${size}" foreground="${color}"${spacing}>${body}</span>`;
+    const main = await renderMarkup(markup("#FFFFFF"), fontPath, maxTextW, 12, 8);
+    const shadow = await renderMarkup(markup("#000000"), fontPath, maxTextW, 12, 8);
+    return { main, shadow: await sharp(shadow.buffer).blur(9).png().toBuffer() };
+  };
+
+  const topSize = opts.topSize ?? 56;
+  const t = await block(opts.top, "Bold", topSize, topSize >= 60 ? 16 : 20, true);
+  const tTop = 330;
+  const tLeft = Math.round((OUTPUT_W - t.main.width) / 2);
+  layers.push({ input: t.shadow, top: tTop + 4, left: tLeft + 2 }, { input: t.main.buffer, top: tTop, left: tLeft });
+
+  if (opts.bottom?.trim()) {
+    const b = await block(opts.bottom, "MediumItalic", 44, 28, false);
+    const bTop = 1590 - b.main.height;
+    const bLeft = Math.round((OUTPUT_W - b.main.width) / 2);
+    layers.push({ input: b.shadow, top: bTop + 4, left: bLeft + 2 }, { input: b.main.buffer, top: bTop, left: bLeft });
+  }
+
+  return sharp({
+    create: { width: OUTPUT_W, height: OUTPUT_H, channels: 4, background: { r: 0, g: 0, b: 0, alpha: 0 } },
+  })
+    .composite(layers)
+    .png()
+    .toBuffer();
+}

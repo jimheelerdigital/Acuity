@@ -144,7 +144,11 @@ export function feedCropUrl(imageUrl: string, ar: "4x5" | "1x1" = "4x5"): string
   return `${proxied}?ar=${ar}`;
 }
 
-export type SocialAccountKey = "ripple" | "bwk";
+/**
+ * "mythicals" = Legendary Mythicals (@legendarymythicals), 2026-09-29: its
+ * own account and calendar for the "which would you choose?" lane.
+ */
+export type SocialAccountKey = "ripple" | "bwk" | "mythicals";
 export type SocialPlatform =
   | "instagram"
   | "facebook"
@@ -271,6 +275,18 @@ function rippleAccount(): SocialAccount | null {
   };
 }
 
+/** Legendary Mythicals — dormant until META_MYTHICALS_* exist in Vercel. */
+function mythicalsAccount(): SocialAccount | null {
+  const accessToken = env("META_MYTHICALS_ACCESS_TOKEN");
+  if (!accessToken) return null;
+  return {
+    key: "mythicals",
+    accessToken,
+    igUserId: env("META_MYTHICALS_IG_USER_ID"),
+    fbPageId: env("META_MYTHICALS_FB_PAGE_ID"),
+  };
+}
+
 function bwkAccount(): SocialAccount | null {
   const accessToken = env("META_BWK_ACCESS_TOKEN");
   if (!accessToken) return null;
@@ -312,7 +328,8 @@ export async function laneBrand(
       laneBrandCache = { map: new Map(), at: Date.now() };
     }
   }
-  return laneBrandCache.map.get(lane) === "bwk" ? "bwk" : "ripple";
+  const brand = laneBrandCache.map.get(lane);
+  return brand === "bwk" || brand === "mythicals" ? brand : "ripple";
 }
 
 /**
@@ -324,7 +341,8 @@ export async function laneBrand(
 export async function resolveAccount(
   lane: string | null
 ): Promise<SocialAccount | null> {
-  return (await laneBrand(lane)) === "bwk" ? bwkAccount() : rippleAccount();
+  const brand = await laneBrand(lane);
+  return brand === "bwk" ? bwkAccount() : brand === "mythicals" ? mythicalsAccount() : rippleAccount();
 }
 
 async function graphPost(

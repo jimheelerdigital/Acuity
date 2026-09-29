@@ -617,7 +617,7 @@ export async function generateCheckedMoodyImage(
  */
 export async function generateCheckedImage(
   make: () => Promise<Buffer>,
-  opts: { scene: string; slot: ImageSlot; personAllowed: boolean; bakedText?: boolean }
+  opts: { scene: string; slot: ImageSlot; personAllowed: boolean; bakedText?: boolean; fantasy?: boolean }
 ): Promise<{ buffer: Buffer; qc: string }> {
   const started = Date.now();
   const first = await make();
@@ -625,6 +625,7 @@ export async function generateCheckedImage(
   const verdict = await checkMoodyImageQuality(first, opts.scene, {
     personAllowed: opts.personAllowed,
     bakedText: opts.bakedText,
+    fantasy: opts.fantasy,
   });
   if (verdict.ok) return { buffer: first, qc: verdict.reason };
   console.warn(`[carousel] Image failed quality check (${verdict.reason}) — regenerating once`);

@@ -98,7 +98,7 @@ SATURDAY MORNING / Social media audit (30 minutes) / Look at who you follow. Ask
 SATURDAY NIGHT / Systems > motivation / Stop waiting to feel inspired. Build tiny repeatable systems. / Replace "I want to" with "I do this every week."
 THE SUNDAY RESET / 15 mins weekly / Every Sunday evening: • What worked? • What didn't? • What's tomorrow's one focus? / Set a recurring alarm. Small resets prevent big drifts.`;
 
-const BRAND_VOICE: Record<CopyBrand, string> = {
+const BRAND_VOICE: Record<Exclude<CopyBrand, "mythicals">, string> = {
   ripple: `VOICE FOR THIS GUIDE: a warm friend who has been exactly where she is and figured out what actually helps. Not an expert, not a coach, not a wellness account. She reads it and thinks "I could do that this week, even with everything else." Lines can be gentle instructions ("Pick one drawer.") but they sound like a friend handing over what worked, never a lecture about what she should be doing. Anchor the steps in her real week: the school forms, the appointments she makes for everyone else, the groceries, the work inbox, the parent who needs a call, her own overdue checkup. Leave room for her: a step that takes something off her plate is worth more than one that adds a new habit.`,
   bwk: `VOICE FOR THIS GUIDE: direct commands from a man who already runs this system. Short imperative lines ("Open your bank app. List every subscription."). No hype, no pep talk, no therapy language, no "alpha" or hustle clichés. Anchor the steps in his real week: training, sleep, money, work output, the side project, the phone. Use numbers wherever they are true and useful: reps, minutes, dollars, days, counts.`,
 };
@@ -110,7 +110,7 @@ THIS LANE: a "reset guide" carousel. Plain serif text typed onto a sheet of pape
 
 ${REFERENCE}
 
-${BRAND_VOICE[brand]}
+${BRAND_VOICE[brand === "bwk" ? "bwk" : "ripple"]}
 
 WHAT A SAVE-WORTHY GUIDE DOES:
 - Every step names a real action with a real object: which list, which app setting, which drawer, which three questions, how many minutes. "Clear your head" is a wish; "Write every open loop on one page, then circle three" is a step.

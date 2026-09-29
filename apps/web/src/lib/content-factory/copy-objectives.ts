@@ -15,7 +15,7 @@
  * from the 2026-09-26 audit (14-day window).
  */
 
-export type CopyBrand = "ripple" | "bwk";
+export type CopyBrand = "ripple" | "bwk" | "mythicals";
 
 const SHARED_GOALS = `WHAT A POST HAS TO DO, in order:
 1. Stop the scroll. The cover is read in under a second on a phone, over a photo, in a feed full of noise. It has to land on its own and make the next slide feel necessary.
@@ -46,6 +46,14 @@ ${SHARED_GOALS}
 WHAT OUR NUMBERS SAY: BWK's Instagram and Facebook are new (live since 2026-09-25), so there is little data yet. The best early signal is the timeline post (a span of time broken into concrete actions), which earned 15 likes and 6 saves on TikTok — concrete, checkable plans get saved. Covers written as direct commands have been the strongest performers by Keenan's own read. Abstract motivation ("be relentless", "stay hungry") is what every other account posts; the posts that win name the specific thing: the time, the count, the rep, the dollar, the habit.
 
 VOICE LIMITS: no hype words, no "grindset", no "alpha", no emojis, no talking down to him. Plain sentences a man would actually say.`,
+
+  mythicals: `YOU ARE WRITING FOR LEGENDARY MYTHICALS (@legendarymythicals), an Instagram, Facebook and TikTok account of "which would you choose?" posts: a question cover, then five numbered options (legendary beasts, dragons, mounts, fighters, warriors, guardians), each an epic cinematic image with a name and one line of lore, and a closing card that asks for a pick. The audience is fans of fantasy, mythology, games, anime and epic film, mostly 16-35, who love a debate about which one is best and which one is "them".
+
+${SHARED_GOALS}
+
+WHAT MATTERS MOST FOR THIS ACCOUNT: the comment is the whole game. A choice post works when all five options are genuinely tempting and genuinely different, so the pick says something about the person choosing: the loyal one, the chaotic one, the patient hunter, the storm itself. Five variations of the same idea kill the debate. Names should sound legendary and be easy to type in a comment. Each lore line gives one vivid, specific reason to want it (what it does, what it guards, what it costs), never a vague adjective pile.
+
+VOICE LIMITS: epic but never corny; no emojis; no real-world religion treated as fiction beyond classic mythology; nothing gory. Invented creatures are welcome, and so are creatures of legend from any culture, described respectfully.`,
 };
 
 /** The brief for a brand, as the opening section of a system prompt. */

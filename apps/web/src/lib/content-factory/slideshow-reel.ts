@@ -69,7 +69,8 @@ export async function pickMusicTrack(lane: string | null): Promise<string | null
   const { supabase } = await import("@/lib/supabase.server");
   const { laneBrand } = await import("./social-publish");
 
-  const isBwk = (await laneBrand(lane)) === "bwk";
+  const brand = await laneBrand(lane);
+  const isBwk = brand === "bwk";
   // Supabase Storage paths are case-sensitive and the dashboard-created
   // BWK folder is uppercase — check both spellings.
   // A lane can have its own playlist (2026-09-24): a subfolder named after
@@ -77,7 +78,14 @@ export async function pickMusicTrack(lane: string | null): Promise<string | null
   // tracks; otherwise the brand folder. BWK no longer borrows Ripple's
   // calm lo-fi — BWK has to sound motivational, so an empty BWK library
   // means a silent carousel rather than piano under a discipline post.
-  const brandFolders = isBwk ? ["music/bwk", "music/BWK"] : ["music/ripple"];
+  // Legendary Mythicals (2026-09-29): its own epic/cinematic folder,
+  // borrowing BWK's tracks until Keenan uploads to music/mythicals.
+  const brandFolders =
+    brand === "mythicals"
+      ? ["music/mythicals", "music/bwk", "music/BWK"]
+      : isBwk
+        ? ["music/bwk", "music/BWK"]
+        : ["music/ripple"];
   const folders = [
     ...(lane ? brandFolders.map((f) => `${f}/${lane}`) : []),
     ...brandFolders,

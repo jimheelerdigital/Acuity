@@ -303,30 +303,34 @@ export async function renderSlideSegment(slide: PostVideoSlide, opts: { first: b
  */
 export async function joinPostVideo(opts: {
   segments: { buf: Buffer; seconds: number; still: boolean }[];
-  ctaUrl: string;
+  /** Brand CTA end card; null when the post carries its own closing slide. */
+  ctaUrl: string | null;
   musicUrl: string;
 }): Promise<{ buf: Buffer; seconds: number }> {
   const segs = opts.segments;
   if (segs.length === 0) throw new Error("joinPostVideo: no segments");
   return withTempDir(async (dir) => {
-    const ctaImg = path.join(dir, "cta.jpg");
-    await download(opts.ctaUrl, ctaImg);
-    const ctaSeg = path.join(dir, "cta.mp4");
-    await runFfmpeg([
-      "-loop", "1", "-t", String(CTA_SEC), "-i", ctaImg,
-      "-vf", `scale=${W}:${H}:force_original_aspect_ratio=increase,crop=${W}:${H},fps=30,setsar=1,format=yuv420p,fade=t=in:st=0:d=${DIP_SEC}`,
-      "-t", String(CTA_SEC), ...SEGMENT_ENCODE, ctaSeg,
-    ]);
+    let ctaSeg: string | null = null;
+    if (opts.ctaUrl) {
+      const ctaImg = path.join(dir, "cta.jpg");
+      await download(opts.ctaUrl, ctaImg);
+      ctaSeg = path.join(dir, "cta.mp4");
+      await runFfmpeg([
+        "-loop", "1", "-t", String(CTA_SEC), "-i", ctaImg,
+        "-vf", `scale=${W}:${H}:force_original_aspect_ratio=increase,crop=${W}:${H},fps=30,setsar=1,format=yuv420p,fade=t=in:st=0:d=${DIP_SEC}`,
+        "-t", String(CTA_SEC), ...SEGMENT_ENCODE, ctaSeg,
+      ]);
+    }
     const list: string[] = [];
     segs.forEach((s, i) => {
       const p = path.join(dir, `seg-${i}.mp4`);
       fs.writeFileSync(p, s.buf);
       list.push(`file '${p}'`);
     });
-    list.push(`file '${ctaSeg}'`);
+    if (ctaSeg) list.push(`file '${ctaSeg}'`);
     const listPath = path.join(dir, "list.txt");
     fs.writeFileSync(listPath, list.join("\n"));
-    const t = segs.reduce((a, s) => a + s.seconds, 0) + CTA_SEC;
+    const t = segs.reduce((a, s) => a + s.seconds, 0) + (ctaSeg ? CTA_SEC : 0);
 
     const silent = path.join(dir, "silent.mp4");
     await runFfmpeg(["-f", "concat", "-safe", "0", "-i", listPath, "-c", "copy", silent]);
@@ -351,7 +355,7 @@ export async function assemblePostVideo(opts: {
   slides: PostVideoSlide[];
   /** Length the clips were requested at (the model may return a bit less). */
   clipSeconds?: number;
-  ctaUrl: string;
+  ctaUrl: string | null;
   musicUrl: string;
 }): Promise<{ buf: Buffer; seconds: number }> {
   if (opts.slides.length === 0) throw new Error("assemblePostVideo: no slides");

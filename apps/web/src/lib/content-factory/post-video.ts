@@ -70,6 +70,21 @@ export const POST_VIDEO_MODEL =
 export const POST_VIDEO_FALLBACK_MODEL =
   process.env.HIGGSFIELD_FALLBACK_MODEL?.trim() || (hailuoIsCheapest() ? KLING_STD : HAILUO_STD);
 
+/**
+ * Animated-slide budget per post (2026-09-29, per Keenan: "I don't want to
+ * spend more than $5 a day across lanes"). The cover and first swipe decide
+ * whether someone stops scrolling, so main lanes animate the cover + the
+ * first slide and the rest get the free push-in; Legendary Mythicals
+ * animates everything, because its five options ARE the content.
+ * ~36 clips/day → ~$2.50 on Hailuo (promo), ~$4.20 on Kling 2.5 Std.
+ * POST_VIDEO_MAX_LIVE overrides the main-lane number without a deploy.
+ */
+export function maxAnimatedSlides(brand: string): number {
+  if (brand === "mythicals") return 6;
+  const n = Number(process.env.POST_VIDEO_MAX_LIVE);
+  return Number.isFinite(n) && n > 0 ? n : 2;
+}
+
 /** Poll rounds (30s each) per model attempt: primary 10 min, fallback 12 min. */
 export const POST_VIDEO_ROUNDS = [20, 24];
 

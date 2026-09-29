@@ -58,6 +58,14 @@ const BRAND = {
       "discipline, self improvement, consistency, habits, accountability, dopamine, focus, becoming a better man, mindset, stop procrastinating",
     tags: "#discipline #selfimprovement #consistency #habits #mindset #accountability #selfdiscipline #focus #mensmentalhealth #growth",
   },
+  mythicals: {
+    audience: "fans of fantasy, mythology, legendary creatures and epic warriors — gamers, D&D players, anime and fantasy-film fans",
+    voice:
+      "playful and epic — a friend hyping a debate. Make the choice feel personal and invite a pick and a reason. Never corny, never lore-dumping.",
+    keywords:
+      "mythical creatures, dragons, fantasy art, legendary beasts, mythology, fantasy warriors, which one would you choose, pick your fighter, epic fantasy",
+    tags: "#mythicalcreatures #dragon #fantasyart #mythology #legendary #fantasy #pickone #whichoneareyou #epicfantasy #beasts",
+  },
 } as const;
 
 interface WrittenCaption {
@@ -82,7 +90,7 @@ function assemble(c: WrittenCaption): string {
 }
 
 async function writeCaption(opts: {
-  brand: "ripple" | "bwk";
+  brand: "ripple" | "bwk" | "mythicals";
   headline: string;
   slideText: string[];
   question: string | null;

@@ -190,7 +190,13 @@ export const socialPublishCronFn = inngest.createFunction(
         // backlog (15 posts), which would push new posts back ~a week.
         const bwkBacklog =
           brand === "bwk" && post.generatedFor < BWK_META_START;
-        if (!bwkBacklog && (await resolveAccount(post.lane))) {
+        // Legendary Mythicals (2026-09-29): same fresh start — only posts
+        // generated on/after MYTHICALS_META_START (set the day its Meta
+        // accounts are connected) ever reach IG/FB.
+        const mythStart = process.env.MYTHICALS_META_START?.trim();
+        const mythBacklog =
+          brand === "mythicals" && (!mythStart || post.generatedFor < new Date(`${mythStart}T00:00:00Z`));
+        if (!bwkBacklog && !mythBacklog && (await resolveAccount(post.lane))) {
           platforms.push("instagram", "facebook");
         }
         // Threads + YouTube have their own per-brand creds (2026-09-23)
@@ -319,7 +325,11 @@ export const socialPublishCronFn = inngest.createFunction(
                 return null;
               }
               const { buf, transition } = await renderSlideshowReel(
-                [...reelSlides.map((s) => s.imageUrl), ctaSlideUrl],
+                [
+                  ...reelSlides.map((s) => s.imageUrl),
+                  // Legendary Mythicals posts carry their own closing slide.
+                  ...(brand === "mythicals" ? [] : [ctaSlideUrl]),
+                ],
                 music,
                 // Paper reset guides are ~40 words a slide (2026-09-25).
                 post.lane?.startsWith("reset-guide") ? 6 : undefined

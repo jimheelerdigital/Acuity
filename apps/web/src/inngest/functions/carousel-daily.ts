@@ -641,6 +641,193 @@ export const carouselDailyCronFn = inngest.createFunction(
       return { generated: 1, bucket: laneKey, ...paperResult };
     }
 
+    // ── CHOICE lanes (template "choice", 2026-09-29) ─────────────────
+    // Legendary Mythicals "which would you choose?" posts: a question
+    // cover + 5 numbered options + a varied closing card. Cover and
+    // options keep raw + text layer so the Higgsfield video animates them;
+    // the closing card is a still. See lib/content-factory/choice-lane.ts.
+    const choiceLane =
+      !isLegacyBucket && b
+        ? await step.run("load-choice-lane", async () => {
+            const { prisma } = await import("@/lib/prisma");
+            const row = await prisma.contentLane.findUnique({ where: { key: b } });
+            if (!row || row.status === "RETIRED" || row.template !== "choice") return null;
+            const { parseChoiceLaneSpec } = await import("@/lib/content-factory/choice-lane");
+            const spec = parseChoiceLaneSpec(row.spec);
+            if (!spec) throw new Error(`[carousel-cron] ContentLane "${b}" has an unusable choice spec — fix the row`);
+            return { key: row.key, spec };
+          })
+        : null;
+    if (choiceLane) {
+      const laneKey = choiceLane.key;
+      const topic = await step.run("generate-choice-topic", async () => {
+        const { prisma } = await import("@/lib/prisma");
+        const { generateChoiceTopic, rollChoiceCategory, CHOICE_CATEGORIES } = await import(
+          "@/lib/content-factory/choice-lane"
+        );
+        const recent = await prisma.carouselPost.findMany({
+          where: { generatedFor: { gte: new Date(Date.now() - 30 * 86_400_000) }, lane: laneKey },
+          orderBy: { createdAt: "desc" },
+          select: { headline: true, slides: { select: { overlayText: true, kind: true } } },
+        });
+        // Last 6 posts' categories are inferred from stored headlines' first
+        // slide texts — cheap signal: avoid families whose words recur.
+        const recentText = recent.slice(0, 6).map((p) => p.headline.toLowerCase()).join(" ");
+        const recentCats = CHOICE_CATEGORIES.filter((c) =>
+          c.split(/\W+/).some((w) => w.length > 5 && recentText.includes(w))
+        );
+        const recentNames = recent
+          .flatMap((p) => p.slides.filter((s) => s.kind === "REASON").map((s) => s.overlayText.split("\n")[0]))
+          .filter(Boolean);
+        const { getLaneFeedback } = await import("@/lib/content-factory/performance");
+        return generateChoiceTopic({
+          category: rollChoiceCategory(recentCats),
+          theme: choiceLane.spec.theme,
+          recentTitles: recent.map((p) => p.headline),
+          recentNames,
+          feedback: await getLaneFeedback(laneKey),
+        });
+      });
+      logger.info(`[carousel-cron] Choice (${laneKey}): "${topic.title}" — ${topic.options.map((o) => o.name).join(" / ")}`);
+      if (dryRun) return saveDryRun(laneKey, topic);
+
+      await step.run("ensure-bucket", async () => {
+        const { ensureBucket } = await import("@/lib/content-factory/carousel-generate");
+        await ensureBucket();
+      });
+
+      const choiceCover = await step.run("choice-cover", async () => {
+        const { generateImage, generateCheckedImage, uploadOverlaySlide } = await import(
+          "@/lib/content-factory/carousel-generate"
+        );
+        const { buildMythicImagePrompt } = await import("@/lib/content-factory/choice-lane");
+        const { renderChoiceOverlay } = await import("@/lib/content-factory/compose");
+        const prompt = buildMythicImagePrompt(topic.coverScene, "cover");
+        const { buffer: raw, qc } = await generateCheckedImage(() => generateImage(prompt), {
+          scene: topic.coverScene,
+          slot: "cover",
+          personAllowed: true,
+          fantasy: true,
+        });
+        logger.info(`[carousel-cron] choice cover quality: ${qc}`);
+        const overlay = await renderChoiceOverlay({ top: topic.title, topSize: 66 });
+        const { imageUrl, rawImageUrl } = await uploadOverlaySlide(
+          raw,
+          overlay,
+          `carousels/${dateStr}/${topic.slug}/slide-cover.jpg`
+        );
+        return { imageUrl, rawImageUrl, overlayText: topic.title, imagePrompt: prompt };
+      });
+
+      const choiceSlides: { imageUrl: string; rawImageUrl: string; overlayText: string; imagePrompt: string }[] = [];
+      for (let i = 0; i < topic.options.length; i++) {
+        choiceSlides.push(
+          await step.run(`choice-option-${i}`, async () => {
+            const { generateImage, generateCheckedImage, uploadOverlaySlide } = await import(
+              "@/lib/content-factory/carousel-generate"
+            );
+            const { buildMythicImagePrompt } = await import("@/lib/content-factory/choice-lane");
+            const { renderChoiceOverlay } = await import("@/lib/content-factory/compose");
+            const o = topic.options[i];
+            const prompt = buildMythicImagePrompt(o.scene, "option");
+            const { buffer: raw, qc } = await generateCheckedImage(() => generateImage(prompt, "item"), {
+              scene: o.scene,
+              slot: "item",
+              personAllowed: true,
+              fantasy: true,
+            });
+            logger.info(`[carousel-cron] choice option ${i + 1} quality: ${qc}`);
+            const overlay = await renderChoiceOverlay({ top: `${i + 1}. ${o.name}`, bottom: o.lore });
+            const { imageUrl, rawImageUrl } = await uploadOverlaySlide(
+              raw,
+              overlay,
+              `carousels/${dateStr}/${topic.slug}/slide-${i + 1}-option.jpg`
+            );
+            return { imageUrl, rawImageUrl, overlayText: `${i + 1}. ${o.name}\n\n${o.lore}`, imagePrompt: prompt };
+          })
+        );
+      }
+
+      // Closing card: the cover photo blurred and darkened under the
+      // varied "which will you choose?" line. A still (no raw), so the
+      // video holds it with a slow push-in instead of animating it.
+      const choiceEnd = await step.run("choice-end-card", async () => {
+        const { uploadImage } = await import("@/lib/content-factory/carousel-generate");
+        const { renderMoodyTextOverlay } = await import("@/lib/content-factory/compose");
+        const { default: sharp } = await import("sharp");
+        const res = await fetch(choiceCover.rawImageUrl);
+        if (!res.ok) throw new Error(`Cover raw fetch failed (${res.status})`);
+        const bg = await sharp(Buffer.from(await res.arrayBuffer()))
+          .resize(1080, 1920, { fit: "cover" })
+          .blur(18)
+          .modulate({ brightness: 0.45 })
+          .toBuffer();
+        const overlay = await renderMoodyTextOverlay([topic.endCard], "COVER", "white");
+        const composed = await sharp(bg)
+          .composite([{ input: overlay, top: 0, left: 0 }])
+          .jpeg({ quality: 92, chromaSubsampling: "4:4:4" })
+          .toBuffer();
+        const imageUrl = await uploadImage(composed, `carousels/${dateStr}/${topic.slug}/slide-end.jpg`);
+        return { imageUrl, overlayText: topic.endCard };
+      });
+
+      const choiceResult = await step.run("save-choice", async () => {
+        const { prisma } = await import("@/lib/prisma");
+        const { buildChoiceCaption } = await import("@/lib/content-factory/choice-lane");
+        const { extractHashtags } = await import("@/lib/content-factory/carousel-generate");
+        const caption = buildChoiceCaption(topic.captionQuestion);
+        const post = await prisma.carouselPost.create({
+          data: {
+            topicSlug: topic.slug,
+            headline: topic.title,
+            status: "DRAFT",
+            format: "PHOTO",
+            caption,
+            hashtags: extractHashtags(caption),
+            generatedFor: today,
+            lane: laneKey,
+            slides: {
+              create: [
+                {
+                  order: 0,
+                  kind: "COVER" as const,
+                  overlayText: choiceCover.overlayText,
+                  imagePrompt: choiceCover.imagePrompt,
+                  imageUrl: choiceCover.imageUrl,
+                  rawImageUrl: choiceCover.rawImageUrl,
+                },
+                ...choiceSlides.map((sl, i) => ({
+                  order: i + 1,
+                  kind: "REASON" as const,
+                  overlayText: sl.overlayText,
+                  imagePrompt: sl.imagePrompt,
+                  imageUrl: sl.imageUrl,
+                  rawImageUrl: sl.rawImageUrl,
+                })),
+                {
+                  order: choiceSlides.length + 1,
+                  kind: "REASON" as const,
+                  overlayText: choiceEnd.overlayText,
+                  imagePrompt: "choice-end-card",
+                  imageUrl: choiceEnd.imageUrl,
+                },
+              ],
+            },
+          },
+        });
+        const { queuePostVideo } = await import("@/lib/content-factory/post-video");
+        await queuePostVideo(post.id);
+        return {
+          postId: post.id,
+          slideCount: choiceSlides.length + 2,
+          // Cover high (~25¢) + 5 medium options (~4¢) + checks.
+          estimatedCostCents: 26 + choiceSlides.length * 5 + 2,
+        };
+      });
+      logger.info(`[carousel-cron] Generated choice (${laneKey}) "${topic.title}": ${choiceResult.slideCount} slides`);
+      return { generated: 1, bucket: laneKey, ...choiceResult };
+    }
+
     // ── SELFIE bucket: realistic first-person photo slideshow ──────
     // 2026-08-25, per Keenan; 2026-08-28: ONE selfie per slideshow;
     // killed 2026-08-28, REVIVED 2026-08-30 ("add the selfie carousel

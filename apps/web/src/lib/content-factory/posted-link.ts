@@ -18,7 +18,7 @@ function sign(postId: string, account: string): string {
   return createHmac("sha256", secret).update(`tiktok-posted:${postId}:${account}`).digest("hex").slice(0, 32);
 }
 
-export function tiktokPostedUrl(postId: string, account: "ripple" | "bwk"): string | null {
+export function tiktokPostedUrl(postId: string, account: "ripple" | "bwk" | "mythicals"): string | null {
   if (!process.env.CRON_SECRET) return null;
   const base = process.env.NEXTAUTH_URL || "https://goripple.io";
   const qs = new URLSearchParams({ p: postId, a: account, s: sign(postId, account) });
@@ -33,7 +33,9 @@ export function verifyTiktokPosted(postId: string, account: string, sig: string)
 }
 
 /** Email-safe button HTML, or "" when links can't be signed. */
-export function tiktokPostedButton(postId: string, account: "ripple" | "bwk"): string {
+export function tiktokPostedButton(postId: string, account: "ripple" | "bwk" | "mythicals"): string {
+  // Legendary Mythicals has no TikTok scrape wired yet — no button.
+  if (account === "mythicals") return "";
   const url = tiktokPostedUrl(postId, account);
   if (!url) return "";
   return `<p style="margin:0 0 16px;"><a href="${url}" style="display:inline-block;background:#2E7D5B;color:#fff;font-weight:700;font-size:14px;padding:10px 18px;border-radius:8px;text-decoration:none;">✓ I posted this on TikTok</a></p>`;

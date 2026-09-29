@@ -69,9 +69,8 @@ async function accountLabel(lane: string | null | undefined): Promise<string> {
   // Lanes-as-data (2026-09-15): DB-born lanes carry brand on their
   // ContentLane row — laneBrand checks it (cached, fails safe ripple).
   const { laneBrand } = await import("./social-publish");
-  return (await laneBrand(lane ?? null)) === "bwk"
-    ? "[BUILD WITH KEY]"
-    : "[RIPPLE]";
+  const brand = await laneBrand(lane ?? null);
+  return brand === "bwk" ? "[BUILD WITH KEY]" : brand === "mythicals" ? "[LEGENDARY MYTHICALS]" : "[RIPPLE]";
 }
 
 // ── Auto-publish notifications (2026-09-14, per Keenan: "set up an
@@ -128,6 +127,7 @@ async function ctaSlide(
 ): Promise<{ buf: Buffer; url: string } | null> {
   const { laneBrand } = await import("./social-publish");
   const brand = await laneBrand(lane);
+  if (brand === "mythicals") return null; // posts carry their own closing slide
   const url = `https://goripple.io/cta-slide-${brand}.jpg`;
   try {
     const fs = await import("fs");
