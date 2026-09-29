@@ -522,6 +522,12 @@ export async function generateImageWithReference(
     // Same split as generateImage (2026-09-26, per Keenan): cover
     // "high", inner slides "medium".
     quality: slot === "cover" ? "high" : "medium",
+  }, {
+    // Same budget as generateImage's covers (2026-09-29: an avatar cover
+    // edit with no timeout hung the memento step past the 300s cap twice).
+    // Step retries are the second chance.
+    timeout: slot === "cover" ? 170_000 : 120_000,
+    maxRetries: 0,
   });
   const b64 = response.data?.[0]?.b64_json;
   if (!b64) throw new Error("gpt-image-2 edit returned no image data");
