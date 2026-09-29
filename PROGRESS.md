@@ -445,6 +445,7 @@ Every social post is now written by Claude Opus 5.5. That covers the slide text,
     - `carousel-daily-digest` now sends one email per post via `sendCarouselEmail(id, false, { allLanes: true })`: caption, slides, and the finished video (attached when under the 28MB cap, otherwise linked).
     - All BWK posts go first, then all Ripple, once every lane has generated and every video is done, or at the 13:00 UTC deadline.
     - Carousel lanes trigger the readiness check when they generate. The ZIP digest stays off unless `DIGEST_EMAIL_ENABLED=1`.
+  - 09-28 (Keenan: "change script writing to sonnet 5.5 across all script writing"): `CONTENT_MODEL` → `claude-sonnet-5-5` (released 09-28; $2/$10 per MTok, half of Opus 5.5). This covers slide copy, the humanizer, captions, research → topics, scripts and lane reports. The image checks keep Opus 5.5 via `VISION_MODEL`. Unavailable/refusal fallback is claude-sonnet-5 (claude-opus-5 for the checks). Cost logging is updated to $2/$10.
   - Local timings on this laptop are unreliable (it sleeps mid-run); measure CPU time instead.
 - Tested locally: `assemblePostVideo` on mixed live/still input (20.1s, 1080x1920, correct transitions). A text layer over the base matches the finished slide within JPEG noise. A real BWK packet for 2026-09-26 built with 63 files / 33 MB and correct download headers, and the email rendered.
 

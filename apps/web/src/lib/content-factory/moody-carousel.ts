@@ -29,6 +29,7 @@ import {
   CONTENT_INPUT_COST_PER_TOKEN,
   CONTENT_OUTPUT_COST_PER_TOKEN,
   messageText,
+  VISION_MODEL,
 } from "./claude-client";
 import { humanizePass, extractVoice, HUMAN_VOICE_RULES } from "./humanizer";
 import { withHeadlineRetry, fakeCandidFeedback } from "./headline-history";
@@ -2687,6 +2688,7 @@ export async function verifyBakedQuote(
 ): Promise<boolean> {
   try {
     const response = await anthropic.messages.create({
+      model: VISION_MODEL,
       max_tokens: 10,
       effort: "low",
       messages: [
@@ -2709,7 +2711,7 @@ export async function verifyBakedQuote(
         },
       ],
     });
-    // Opus 5.5 can open with a thinking block — read text blocks only.
+    // Opus 5.5 / Sonnet 5.5 can open with a thinking block — read text blocks only.
     const answer = messageText(response);
     return /^\s*yes\b/i.test(answer);
   } catch (err) {
@@ -2726,11 +2728,12 @@ export async function verifyBakedQuote(
 // image; carousel-generate regenerates once on a FAIL. Fail-OPEN: any
 // error or refusal counts as a pass so the check can never block a post.
 // 2026-09-26 (per Keenan: "opus 5.5 checks all images with a filter to
-// determine if they're good to go"): runs on the content model (Opus 5.5)
+// determine if they're good to go"): runs on VISION_MODEL (Opus 5.5)
 // at low effort for EVERY generated photo — moody, selfie, phone-quote and
 // texts covers, grid cells, and the baked quote/bubble slides (bakedText:
 // the words are expected there, so only stray text elsewhere fails).
-// Sent at 768px wide to keep it cheap.
+// Sent at 768px wide to keep it cheap. Stays on Opus 5.5 (VISION_MODEL)
+// when script writing moved to Sonnet 5.5 (2026-09-28).
 export async function checkMoodyImageQuality(
   image: Buffer,
   scene: string,
@@ -2740,6 +2743,7 @@ export async function checkMoodyImageQuality(
     const { default: sharp } = await import("sharp");
     const small = await sharp(image).resize({ width: 768 }).jpeg({ quality: 85 }).toBuffer();
     const response = await anthropic.messages.create({
+      model: VISION_MODEL,
       max_tokens: 200,
       effort: "low",
       messages: [
