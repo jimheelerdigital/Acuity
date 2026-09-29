@@ -1,4 +1,5 @@
 import { inngest } from "@/inngest/client";
+import { PRODUCT_ONE_LINER, VOICE_PRINCIPLE } from "@/lib/positioning";
 
 /**
  * Nightly niche research (2026-08-24, reworked 2026-08-25) — the data
@@ -299,7 +300,7 @@ export const nicheResearchNightlyFn = inngest.createFunction(
       const raw = await callContentClaude({
         purpose: "niche-engagement-comments",
         maxTokens: 1500,
-        systemPrompt: `You draft Instagram/TikTok comments for Ripple, an AI-powered voice self-reflection app for women 40-50 carrying a heavy mental load. The founder will personally post these from the brand account on other creators' posts in the niche.
+        systemPrompt: `You draft Instagram/TikTok comments for Ripple (${PRODUCT_ONE_LINER}) Audience: women 40-50 carrying a heavy mental load. The founder will personally post these from the brand account on other creators' posts in the niche.
 
 Rules for every comment:
 - Sound like a real woman who genuinely related to the post — warm, specific, human. Reference something concrete from the caption.
@@ -382,7 +383,7 @@ Output strict JSON, no markdown: [{"id": "...", "comment": "..."}, ...] — one 
       const raw = await callContentClaude({
         purpose: "niche-topic-suggestions",
         maxTokens: 1200,
-        systemPrompt: `You suggest Instagram/TikTok carousel topics for Ripple, an AI-powered voice self-reflection app for women 40-50 carrying a heavy mental load. Topics are numbered-list carousels ("7 signs...", "5 ways...").
+        systemPrompt: `You suggest Instagram/TikTok carousel topics for Ripple (${PRODUCT_ONE_LINER}) Audience: women 40-50 carrying a heavy mental load. Topics are numbered-list carousels ("7 signs...", "5 ways...").
 
 You are given captions from posts that went VIRAL in this niche in the last 48 hours. Extract WHY each landed — the emotional angle, hook structure, specificity — and propose fresh topics that ride the same underlying appeal. NEVER copy, translate, or lightly rephrase a viral caption.
 

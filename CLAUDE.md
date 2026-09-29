@@ -156,7 +156,7 @@ Before writing or editing ANY customer-facing copy (landing pages, ad scripts, o
 That file is the canonical positioning and brand reference. It defines who we serve, what we sell, voice rules, and mandatory language rules. When anything conflicts with this file, this file wins.
 
 Key rules to internalize (read the full doc for details):
-- Acuity is an **AI-powered voice self-reflection app**. It's a **mirror, not a coach** — reflect, don't advise.
+- Ripple is an **AI life optimizer: a habit tracker, voice journal and insight tool that helps people change their lives for the better** (Keenan, 2026-09-29). Voice: **on their side**: show what's really going on and help them act on it; never preachy, never medical. Code source of truth: `apps/web/src/lib/positioning.ts`.
 - Our audience is **women ~40–50** carrying a heavy mental load. Write for them, not productivity hackers.
 - ✅ "debrief," "commit to memory" — ❌ "brain dump"
 - ✅ records any time of day — ❌ "nightly," "before bed," any fixed time

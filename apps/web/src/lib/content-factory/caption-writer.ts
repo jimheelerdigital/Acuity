@@ -45,7 +45,7 @@ const BRAND = {
   ripple: {
     audience: "women roughly 40–50 carrying the household's invisible mental load",
     voice:
-      "warm, observational, a mirror not a coach — reflect, never advise or lecture. Short sentences, her own words, specifics over abstractions.",
+      "warm and on her side — name what she is carrying, point at the next small step, never lecture. Short sentences, her own words, specifics over abstractions.",
     keywords:
       "mental load, invisible labor, women over 40, midlife, overthinking, burnout, emotional exhaustion, self care for moms, feeling unseen, journaling",
     tags: "#mentalload #womenover40 #midlife #overthinking #burnout #momlife #selfcare #emotionalhealth #invisiblelabor #journaling",

@@ -294,7 +294,7 @@ function GroupSection({ group, onLaunched }: { group: Group; onLaunched: () => v
     if (
       !confirm(
         evergreen
-          ? `Add ${approvedCount} ad(s) LIVE to the always-on ${group.projectName} campaign?\n\nShared daily budget: $${(budgetCents / 100).toFixed(2)} (fixed — this does not add spend)\nOptimizing for: signups\nDestination: ${destLabel}\n\nThe weakest live ads are paused so the ad set stays at 8 or fewer. New ads start spending immediately.`
+          ? `Add ${approvedCount} ad(s) LIVE to the always-on ${group.projectName} campaign?\n\nShared daily budget: $${(budgetCents / 100).toFixed(2)} (fixed — this does not add spend)\nOptimizing for: signups\nDestination: ${destLabel}\n\nRunning ads are audited: winners stay on, ads clearly not working are paused. New ads start spending immediately.`
           : `Launch ${approvedCount} ad(s) LIVE for ${group.projectName}?\n\nDaily budget: $${(budgetCents / 100).toFixed(2)}\nDestination: ${destLabel}\n\nThis creates the Meta campaign and activates it immediately — it will start spending.`
       )
     ) {
@@ -394,7 +394,7 @@ function GroupSection({ group, onLaunched }: { group: Group; onLaunched: () => v
         </div>
         <div className="flex flex-col items-end gap-1 shrink-0">
           <span className="text-xs text-acuity-text-ter">
-            {approvedCount}/{allCreatives.length} approved
+            {approvedCount}/2 picked this week · {allCreatives.length} options
           </span>
           <RemakeGroupButton groupKey={group.groupKey} label={group.groupKey} />
         </div>

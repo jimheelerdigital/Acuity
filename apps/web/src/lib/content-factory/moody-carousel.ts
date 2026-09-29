@@ -74,7 +74,7 @@ export const AUDIENCE_BRIEF: Record<MoodyAudience, string> = {
 VOICE: calm, certain, austere — a man who has already done the work and doesn't waste words. Short declarative sentences in direct second person, no hedging ("maybe try"), no bro-slang, no yelling, nothing toxic. Every slide should leave him wanting to get up and train or work, because it names something specific he can do today, not because it shouts.
 TOPICS to rotate: discipline systems, monk mode, dopamine control, morning and evening order, cutting noise, training, focus blocks, silence, patience, becoming hard to distract.`,
   women: `AUDIENCE: women roughly 40-50 carrying a heavy mental load — holding it together for everyone else and keeping the invisible list nobody else sees. They save posts that put words to something they already feel but haven't said out loud.
-VOICE: quiet, warm and plain — a woman who has stopped explaining herself, talking to a friend in short declarative sentences and direct second person. A mirror, not a coach: name what she carries and what she already knows, and leave the choice with her. Never preachy, girlboss, clinical, scolding or prescriptive.
+VOICE: quiet, warm and plain — a woman who has stopped explaining herself, talking to a friend in short declarative sentences and direct second person. On her side: name what she carries and what she already knows, and point at the next small step. Never preachy, girlboss, clinical, scolding or prescriptive.
 TOPICS to rotate: the mental load itself, the peace she keeps putting last, resets after a hard stretch, boundaries and the guilt that comes with them, quiet mornings, what she keeps doing out of habit, the no she hasn't said yet, letting the phone go dark.`,
 };
 

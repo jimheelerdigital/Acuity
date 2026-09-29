@@ -2,15 +2,19 @@
 
 **Status:** Canonical / source of truth. This reflects Acuity's *current* positioning and supersedes any older marketing docs that use "brain dump," duration claims ("60-second"), nightly/bedtime framing, or $12.99 pricing. When anything conflicts with this file, this file wins.
 
-**Last updated:** 2026-06-09
+**Last updated:** 2026-09-29 (category + voice updated per Keenan; code source of truth: `apps/web/src/lib/positioning.ts`)
 
 ---
 
 ## What Acuity does
 
-Acuity is an AI-powered voice self-reflection app. The core loop is simple: you record a "debrief" — you talk, out loud, any time of day, about whatever's in your head. Acuity transcribes it, then its AI does the work you'd never do yourself: it pulls out your to-dos, quietly tracks the goals you mentioned, scores your mood, notices patterns across days and weeks, organizes your life into domains, and hands you back a clear weekly narrative of what actually happened. You speak the mess; it gives you back the meaning.
+**Ripple is an AI life optimizer: a habit tracker, voice journal and insight tool that helps people change their lives for the better.** (Category set by Keenan, 2026-09-29.)
 
-The defining principle: **Acuity is a mirror, not a coach.** It doesn't tell you what to do or pile on advice. It reflects you back to yourself more clearly than you can see on your own. That personality drives everything, including the language rules below.
+The core loop is simple: you record a "debrief" — you talk, out loud, any time of day, about whatever's in your head. Acuity transcribes it, then its AI does the work you'd never do yourself: it pulls out your to-dos, quietly tracks the goals you mentioned, scores your mood, notices patterns across days and weeks, organizes your life into domains, and hands you back a clear weekly narrative of what actually happened. You speak the mess; it gives you back the meaning.
+
+The defining principle: **Ripple is on your side.** It shows you what's really going on in your own words (your tasks, habits, mood and patterns) and helps you act on it, so your life actually changes for the better. It is encouraging and practical, never preachy, never lecturing, never medical. (Replaces "a mirror, not a coach", retired 2026-09-29.)
+
+In ads, say plainly what Ripple is and does. "Change your life for the better" and "build better habits" are fine; never promise health or mental-health outcomes or use before/after claims (Meta policy).
 
 ---
 
@@ -74,5 +78,6 @@ These apply to all customer-facing copy — site, ads, app, emails, blog, push n
 - ✅ multi-surface value  ❌ framing the weekly report as the sole conversion moment
 - ❌ no recording-duration claims ("60-second," "90-second," etc.)
 - Pricing: **$9.99/month** (default) and $89.99/year, 7-day free trial. Never lead with annual; never quote stale prices ($4.99, $12.99 eras). Subscribers from before the 2026-09 price change are grandfathered at $4.99/$39.99 — only mention that in copy aimed at EXISTING subscribers.
-- Voice: a **mirror, not a coach** — reflect, don't advise.
+- Category: **AI life optimizer: habit tracker, voice journal and insight tool** that helps people change their lives for the better. "Voice journal" is allowed as part of the category.
+- Voice: **on your side**: show what's really going on and help take the next step; never preachy or medical.
 - Social proof rating line: five stars "on the App Store", no number and no user count (Keenan, 2026-09-24; replaces the old "4.9 stars from 127+ users" line).

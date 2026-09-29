@@ -38,7 +38,7 @@ export default function DeleteAccountPage() {
         <div className="mt-10 space-y-10 text-[15px] leading-relaxed">
           <section>
             <p>
-              Ripple is an AI-powered voice journaling app published by{" "}
+              Ripple is an AI life optimizer (habit tracker, voice journal and insight tool) published by{" "}
               <strong>Heeler Digital LLC</strong>. You can request deletion
               of your Ripple account and the personal data associated with it
               at any time, using either of the options below. There is no

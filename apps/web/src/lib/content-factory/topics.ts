@@ -329,7 +329,7 @@ export const CAROUSEL_TOPICS: CarouselTopic[] = [
   },
   {
     slug: "mirror-not-coach",
-    headline: "Top 5 reasons you need a mirror, not a coach",
+    headline: "Top 5 signs your to-do list lives in your head",
     emotionBeat:
       "she straightens gently and meets the camera dead-on, chin lifting with calm self-recognition and a slow steadying breath",
     style: "hook",

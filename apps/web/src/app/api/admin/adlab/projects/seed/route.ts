@@ -30,7 +30,7 @@ export async function POST() {
 Short paragraphs (max 2 sentences). Tight. Every sentence earns its place.
 Specifics over abstractions.
 No fabricated stats — cite real sources or frame qualitatively.
-Ripple is a daily debrief, not a journal. Never use "journaling" in acquisition copy.
+Ripple is an AI life optimizer: habit tracker, voice journal and insight tool that helps people change their lives for the better. Show what it concretely does.
 The hero conversion driver is the weekly report, not the daily recording.
 Under-claim the AI. Never say "AI-powered" above the fold.
 Use the customer's exact language — if it can't be found in a Reddit thread, it doesn't belong.

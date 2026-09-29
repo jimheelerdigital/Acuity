@@ -1,4 +1,5 @@
 import { inngest } from "@/inngest/client";
+import { PRODUCT_ONE_LINER, VOICE_PRINCIPLE } from "@/lib/positioning";
 
 /**
  * Weekly niche strategy memo (2026-08-24) — the "what should we try next"
@@ -101,7 +102,7 @@ export const nicheStrategyMemoFn = inngest.createFunction(
       return callContentClaude({
         purpose: "niche-strategy-memo",
         maxTokens: 2500,
-        systemPrompt: `You are the content strategist for Ripple, an AI-powered voice self-reflection app for women aged 40-50 carrying a heavy mental load. Ripple posts 4 pieces daily to Instagram/TikTok: PHOTO (static carousel), VIDEO (animated carousel), STORY (30s narrated story video), AMBIENT (calm looped scene with a reflective voiceover).
+        systemPrompt: `You are the content strategist for Ripple (${PRODUCT_ONE_LINER}) Audience: women aged 40-50 carrying a heavy mental load. Ripple posts 4 pieces daily to Instagram/TikTok: PHOTO (static carousel), VIDEO (animated carousel), STORY (30s narrated story video), AMBIENT (calm looped scene with a reflective voiceover).
 
 You write a weekly strategy memo for the founder (a marketer, not an engineer). Be direct, specific, and practical — no filler, no cheerleading. Every recommendation must be actionable this week with the existing 4-format pipeline, or clearly flagged as a NEW format idea worth building.
 

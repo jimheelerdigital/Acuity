@@ -13,6 +13,7 @@
 
 import { inngest } from "@/inngest/client";
 import type { PrismaClient } from "@prisma/client";
+import { PRODUCT_ONE_LINER, VOICE_PRINCIPLE } from "@/lib/positioning";
 
 // ─── Personas for internal linking ──────────────────────────────────────────
 
@@ -1280,7 +1281,7 @@ function buildSystemPrompt(
 ): string {
   const currentYear = new Date().getFullYear();
 
-  return `You are writing a blog post for Ripple, a voice self-reflection app, published under the byline of Keenan Assaraf (cofounder). Write it the way a sharp, busy founder writes on his own blog: direct, specific, occasionally first person, with real opinions.
+  return `You are writing a blog post for Ripple. ${PRODUCT_ONE_LINER} It is published under the byline of Keenan Assaraf (cofounder). Write it the way a sharp, busy founder writes on his own blog: direct, specific, occasionally first person, with real opinions.
 
 CURRENT YEAR: ${currentYear}. Never reference ${currentYear - 1} or ${currentYear - 2} as the current year. All "best of" or "top X in [year]" content must use ${currentYear}. Do not use outdated years in titles, headings, or body copy.
 
@@ -1289,7 +1290,7 @@ PRODUCT CONTEXT:
 - Ripple transcribes it, pulls out the to-dos, quietly tracks goals they mention, scores mood, and surfaces patterns across weeks
 - Life Matrix: six life domains tracked over time
 - Weekly report every Sunday: a written narrative of the user's week
-- Ripple is a mirror, not a coach. It reflects the user back to themselves. It never advises or lectures. Copy about Ripple must do the same: describe, never preach.
+- How Ripple talks: ${VOICE_PRINCIPLE}
 - Call the voice entry a "debrief". NEVER call it a "brain dump".
 - Never claim a recording length ("60-second", "two-minute"). Never frame it as a night or bedtime habit. Any time of day.
 - Do not state pricing or "founding member" scarcity in the post body. Evergreen posts outlive prices and promos, and stale claims read as neglect.
@@ -1516,7 +1517,7 @@ For each topic, set "targetKeyword" to the exact real query it targets (or the c
     purpose: demandGrounded
       ? "auto-blog-topic-generation-gsc"
       : "auto-blog-topic-generation",
-    systemPrompt: `You generate blog topic ideas for Ripple, a voice self-reflection app. You talk instead of typing; it pulls out your tasks, tracks your goals and mood, and writes a weekly report on your patterns.
+    systemPrompt: `You generate blog topic ideas for Ripple. ${PRODUCT_ONE_LINER}
 
 PRIMARY AUDIENCE (at least 60% of topics): women roughly 40 to 50 carrying a heavy mental load. Work, kids' schedules, aging parents, the invisible labor of remembering everything for everyone. They have tried journaling and quit because typing felt like one more chore. Topics for them live in mental load, overwhelm, dropped balls, journaling that never sticks, remembering commitments, feeling scattered.
 

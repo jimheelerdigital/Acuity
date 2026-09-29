@@ -257,7 +257,7 @@ export const V9_FAQ = [
   },
   {
     q: "Is this therapy?",
-    a: "No. Ripple is a mirror, not a coach. It keeps track of what you say and shows you your own patterns. It doesn't give medical advice.",
+    a: "No. Ripple is an AI habit tracker and voice journal: it keeps track of what you say, turns it into your to-do list and shows you your own patterns so you can change what you want to change. It isn't therapy and doesn't give medical advice.",
   },
   {
     q: "Where do my debriefs go?",
@@ -569,7 +569,7 @@ export const BWK_V9: V9Config = {
   faq: [
     { q: "When will I be charged?", a: "Not today. Your 7 days are free. We email you a reminder on day 4, and your plan starts on day 7 unless you cancel." },
     { q: "Can I cancel?", a: "Yes, any time from your account settings. Cancel before day 7 and you pay nothing." },
-    { q: "Is this therapy?", a: "No. Ripple is a mirror, not a coach. It keeps track of what you say and shows you your own patterns. No lectures, no advice." },
+    { q: "Is this therapy?", a: "No. Ripple is an AI habit tracker and voice journal: it keeps track of what you say and shows you your own patterns so you can act on them. No lectures, no medical advice." },
     { q: "Where do my debriefs go?", a: "Into your private account. You can delete any debrief, or your whole account, whenever you want." },
   ],
   stateName: bwkStateName,

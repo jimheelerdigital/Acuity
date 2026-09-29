@@ -21,7 +21,7 @@ When in doubt: pick the quieter, more restrained option. The brand fails by bein
 
 ## 1. Brand vision
 
-Ripple is an **AI-powered voice self-reflection app** — you say what's taking up space in your head, any time of day, and it comes back as a debrief: the tasks, themes and patterns pulled out of your own words, plus a weekly view of what changed and what keeps repeating. It's a **mirror, not a coach** — it reflects, it doesn't advise. The visual language has to feel **atmospheric, refined, restrained, premium-but-warm** — closer to a private notebook in a dim room than to a wellness app. Dark mode is the primary mode. Glow is reserved for the ceremonial moments (mic, orb, primary CTA). Everything else uses soft shadows and hairlines. The product should feel like the difference between staring at a phone and lighting a candle.
+Ripple is an **AI life optimizer: a habit tracker, voice journal and insight tool that helps people change their lives for the better** (2026-09-29) — you say what's taking up space in your head, any time of day, and it comes back as a debrief: the tasks, themes and patterns pulled out of your own words, plus a weekly view of what changed and what keeps repeating. It's **on your side** — it shows you what's really going on and helps you act on it, never preachy. The visual language has to feel **atmospheric, refined, restrained, premium-but-warm** — closer to a private notebook in a dim room than to a wellness app. Dark mode is the primary mode. Glow is reserved for the ceremonial moments (mic, orb, primary CTA). Everything else uses soft shadows and hairlines. The product should feel like the difference between staring at a phone and lighting a candle.
 
 ---
 
@@ -498,7 +498,7 @@ Hard bans across every customer-facing surface:
 
 ### 7.4 Conditional bans
 
-- **"Journaling" / "journal"** — banned in all acquisition copy. Ripple's category is voice self-reflection, not journaling. Allowed only inside a user quote or where SEO intent demands it.
+- **"Journaling" / "journal"** — allowed as part of the category ("voice journal") since 2026-09-29. Don't lead with journaling alone; always pair it with what Ripple does (habits, tasks, insights).
 - **"Brain dump"** — banned everywhere. Was previously the mandated acquisition term; see 7.2.
 - **"Nightly" / "bedtime" / "shutdown ritual" / any fixed time of day** — banned. Ripple records any time of day, and v10 §1 bans ritual framing of the mechanism.
 - **Recording-duration claims** ("60-second", "90-second") — banned. There is no minimum and no countdown.
@@ -514,7 +514,7 @@ If any test fails, rewrite.
 
 ### 7.6 Acuity-specific positioning rules
 
-- **Category** — voice self-reflection. Not journal. Not mood tracker. Not wellness app. (Was "shutdown ritual" — retired 2026-08-20 as ritual/time-of-day framing.)
+- **Category** — AI life optimizer: habit tracker, voice journal and insight tool (2026-09-29, replaces "voice self-reflection"). Not a wellness or mental-health app. (Was "shutdown ritual" — retired 2026-08-20 as ritual/time-of-day framing.)
 - **Hero driver is the weekly report**, not the daily recording. Daily recording is the input; weekly report is the output worth paying for.
 - **Memory is the product, not intelligence.** "Remembers" and "memory" are approved; "insights" and "intelligence" are discouraged.
 - **Never promise therapeutic outcomes.** Acuity is not a medical device. "What happens the other 167 hours of the week" is the approved framing around therapy.

@@ -85,6 +85,11 @@ export async function POST(req: NextRequest) {
     a.creatives.map((c) => ({ ...c, angle: a }))
   );
 
+  // Max TWO per lane per week (2026-09-29, per Keenan) for weekly batches.
+  if (experiment.campaignTags?.includes("weekly-reddit-batch") && approvedCreatives.length > 2) {
+    return NextResponse.json({ error: `Pick at most 2 ads per lane this week (${approvedCreatives.length} approved).` }, { status: 400 });
+  }
+
   if (approvedCreatives.length === 0) {
     return NextResponse.json({ error: "No approved creatives" }, { status: 400 });
   }

@@ -1,5 +1,6 @@
 /**
- * AdLab-specific Claude caller. Uses claude-sonnet-4-6
+ * AdLab-specific Claude caller. Uses claude-sonnet-4-6 unless a call passes
+ * `models` (the weekly ad copy uses AD_COPY_MODELS)
  * and logs all calls to ClaudeCallLog with "adlab-*" purpose prefixes.
  */
 
@@ -16,11 +17,34 @@ interface AdLabClaudeParams {
   systemPrompt: string;
   userPrompt: string;
   maxTokens?: number;
+  /** Models to try in order; the next is used only if the API says a model
+   *  doesn't exist (404). Defaults to the legacy single model. */
+  models?: string[];
 }
 
+/** Weekly ad copy (2026-09-29, per Keenan: use Sonnet 5.5). Falls back to
+ *  Sonnet 5 if 5.5 isn't available to this API key. */
+export const AD_COPY_MODELS = ["claude-sonnet-5-5", "claude-sonnet-5"];
+
 export async function callAdLabClaude(params: AdLabClaudeParams): Promise<string> {
-  const { purpose, systemPrompt, userPrompt, maxTokens = 4000 } = params;
-  const model = "claude-sonnet-4-6";
+  const { models = ["claude-sonnet-4-6"], ...rest } = params;
+  for (let i = 0; i < models.length; i++) {
+    try {
+      return await callOnce({ ...rest, model: models[i] });
+    } catch (err) {
+      const status = (err as { status?: number })?.status;
+      if (status === 404 && i < models.length - 1) {
+        console.warn(`[adlab-claude] model ${models[i]} not available — falling back to ${models[i + 1]}`);
+        continue;
+      }
+      throw err;
+    }
+  }
+  throw new Error("no model available");
+}
+
+async function callOnce(params: Omit<AdLabClaudeParams, "models"> & { model: string }): Promise<string> {
+  const { purpose, systemPrompt, userPrompt, maxTokens = 4000, model } = params;
   const { prisma } = await import("@/lib/prisma");
 
   console.log(`[adlab-claude] Calling model=${model} purpose=${purpose} maxTokens=${maxTokens}`);

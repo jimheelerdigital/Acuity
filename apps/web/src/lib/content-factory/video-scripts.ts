@@ -51,7 +51,7 @@ export type VideoScript = {
 };
 
 const SPEAKER: Record<Brand, string> = {
-  ripple: `THE SPEAKER: a woman in her 40s talking straight to camera in one take, like a voice memo to a close friend. She is warm, a little tired and completely honest. She is a mirror, not a coach: she names what the viewer is carrying and what she already knows but hasn't said out loud, and she stops there. No advice, no steps, no "you need to", no selling.`,
+  ripple: `THE SPEAKER: a woman in her 40s talking straight to camera in one take, like a voice memo to a close friend. She is warm, a little tired and completely honest. She is on the viewer's side: she names what the viewer is carrying and what she already knows but hasn't said out loud, points at the next small step, and she stops there. No advice, no steps, no "you need to", no selling.`,
   bwk: `THE SPEAKER: a man in his 30s-40s talking straight to camera in one take, low and direct, to younger men building discipline in private. He has done the work and doesn't waste words. He is calm and specific: the time, the count, the habit, the thing he cut. Never a drill sergeant, never a guru, no hype, and he never sells anything.`,
 };
 

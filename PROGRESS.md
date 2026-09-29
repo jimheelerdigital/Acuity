@@ -7,6 +7,55 @@
 
 ---
 
+## [2026-09-29] — New positioning everywhere, rewritten ad writer, pick max 2 ads per lane
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** (see git log: "feat: New positioning across generators and a rewritten weekly ad writer")
+
+### In plain English (for Keenan)
+- **New product description everywhere.** Ripple is now "an AI life optimizer: a habit tracker, voice journal and insight tool that helps people change their lives for the better". That covers the ad writer, landing pages, social posts, captions, blog and research prompts, the brand docs and the funnel FAQ. "A mirror, not a coach" is retired; the voice is now "on your side: show what's really going on and help them act on it".
+- **The weekly ad writer is rewritten.** Every ad must say plainly what Ripple is and does, and which pain it solves. Each of the 10 ads per lane uses a different ad type:
+  - a plain promise
+  - pain → fix
+  - "you say it / Ripple catches it" demo
+  - a specific moment
+  - versus what you use now
+  - a weekly-report insight
+  - a list of everyday uses
+  - a question
+  - an objection answered
+  - an identity angle
+  
+  It can't reuse our last 45 days of headlines or the worn-out phrases. It uses Sonnet 5.5, falling back to Sonnet 5 if 5.5 isn't available.
+- **You pick at most 2 ads per lane each week.** Approving a third is blocked, and launch refuses more than 2.
+
+### Technical changes (for Jimmy)
+- New `apps/web/src/lib/positioning.ts`: `PRODUCT_CATEGORY`, `PRODUCT_ONE_LINER`, `PRODUCT_WHAT_IT_DOES`, `productTruth()`, `VOICE_PRINCIPLE`, `AD_CLAIM_GUARDRAIL`.
+- `apps/web/src/lib/adlab/claude.ts`: `callAdLabClaude` accepts `models[]` and falls back on 404. New `AD_COPY_MODELS = ["claude-sonnet-5-5", "claude-sonnet-5"]`.
+- `apps/web/src/lib/adlab/weekly-batch.ts`:
+  - `PRODUCT_TRUTH` now comes from positioning.
+  - New `AD_ARCHETYPES` (10, one per ad) and `OVERUSED_PHRASES`.
+  - A last-45-days headline block for anti-repetition.
+  - An optional `archetype` field, stored in angle `researchNotes` as "| type: x".
+  - Voice guides use `VOICE_PRINCIPLE` and `AD_CLAIM_GUARDRAIL`; maxTokens raised to 12000.
+- `apps/web/src/app/api/admin/adlab/creatives/[id]/route.ts`: blocks a 3rd approval in a weekly batch.
+- `ads/launch/route.ts`: rejects more than 2 approved for weekly batches.
+- `app/admin/adlab/review/page.tsx`: "x/2 picked" counter and audit wording.
+- Positioning text updated in:
+  - `lib/adlab/compliance.ts`, `app/api/admin/adlab/projects/seed/route.ts`
+  - `inngest/functions/auto-blog.ts`, `blog-rewrite-triage.ts`, `niche-strategy-memo.ts`, `niche-research-nightly.ts`
+  - `lib/content-factory/copy-objectives.ts`, `caption-writer.ts`, `moody-carousel.ts`, `video-scripts.ts`, `topics.ts`
+  - `lib/funnel-v9-config.ts` (FAQ), `app/delete-account/page.tsx`
+- Docs: `docs/acuity-positioning.md`, `CLAUDE.md`, `_design/DESIGN_SYSTEM.md` (category, voice, "journal" now allowed as part of the category).
+
+### Manual steps needed
+- [ ] Keenan: after deploy, hit "Remake" on each lane in Admin → AdLab → Review to get a fresh 10-ad batch with the new writer, then pick up to 2 per lane.
+
+### Notes
+- "Sonnet 5.5" couldn't be verified from the dev machine (local Claude key invalid). The fallback means batches still run if the model id doesn't exist. Check `ClaudeCallLog.model` after the first run to see which model was used.
+- Meta policy still bars health or mental-health outcome promises and before/after claims. That's kept as `AD_CLAIM_GUARDRAIL` even with the "change your life for the better" framing.
+
 ## [2026-09-29] — Every post's writing rewritten around what we want posts to achieve
 
 **Requested by:** Keenan

@@ -4,7 +4,7 @@
  * Every Sunday (after the Saturday-night Reddit pulse) this generates
  * 10 ad creatives per audience group — each rooted in a different theme
  * from that week's RedditTrendDigest and explicitly bridging the pain to
- * what Ripple does (AI habit tracker & voice journal with life
+ * what Ripple does (AI life optimizer: habit tracker, voice journal and insight tool; see lib/positioning.ts) — formerly (AI habit tracker & voice journal with life
  * optimization). Two groups, both selling Ripple from the same Meta ad
  * account:
  *   - women: Ripple digest (women ~40–50, mental load / HRT / invisible labor)
@@ -22,7 +22,8 @@ import OpenAI from "openai";
 import type { Prisma } from "@prisma/client";
 
 import { prisma } from "@/lib/prisma";
-import { callAdLabClaude, extractJson } from "@/lib/adlab/claude";
+import { AD_COPY_MODELS, callAdLabClaude, extractJson } from "@/lib/adlab/claude";
+import { AD_CLAIM_GUARDRAIL, PRODUCT_CATEGORY, VOICE_PRINCIPLE, productTruth } from "@/lib/positioning";
 import { displayMonthly } from "@/lib/pricing";
 import { SAFE_ZONE_RULES, SOURCE_SIZE, cutPlacements, renderAppProofPlacements, renderSayCatchPlacements } from "@/lib/adlab/ad-render";
 
@@ -49,7 +50,32 @@ interface GroupConfig {
   cardBackground: string;
 }
 
-const PRODUCT_TRUTH = `Ripple is an AI habit tracker & voice journal with life optimization. What it actually does: you record a voice debrief any time of day; it transcribes, pulls out tasks, tracks habits and goals, detects recurring patterns, scores 6 life domains (Life Matrix), and delivers a weekly narrative report. ${displayMonthly()}/month, 7-day free trial. It does NOT diagnose, treat, or replace therapy. Never claim a specific recording duration.`;
+// Product truth comes from lib/positioning.ts (2026-09-29, per Keenan: "AI
+// life optimizer, habit tracker, voice journal, and insight tool to help
+// people change their lives for the better"), plus the plain mechanics so
+// ads say what Ripple actually does.
+const PRODUCT_TRUTH = productTruth();
+
+/** Ad types (2026-09-29): every ad in a batch uses a DIFFERENT one, so the
+ *  10 options are genuinely different ads, not 10 rewrites of one shape. */
+const AD_ARCHETYPES: Array<{ key: string; how: string }> = [
+  { key: "plain_promise", how: "Literal and clear, like the best-performing app ads: say exactly what Ripple does in the headline (\"Say it out loud. Get your to-do list.\"). Name 2-3 everyday things people use it for in the body." },
+  { key: "pain_fix", how: "Headline names one concrete pain in their words; body says exactly what Ripple does about it." },
+  { key: "say_catch_demo", how: "Show the mechanism: one realistic thing they'd say out loud → what Ripple pulled out of it (tasks with dates, a skipped habit, a repeat). Use format say-catch." },
+  { key: "scenario", how: "One specific moment with a time and place (the school pickup line, the drive home, 11pm at the kitchen counter) and how Ripple fits into that exact moment." },
+  { key: "versus", how: "Contrast with what they use now (sticky notes, the notes app, a planner they abandoned, keeping it all in their head) and the one thing Ripple does that those can't." },
+  { key: "weekly_report", how: "Lead with ONE specific, believable insight a weekly report surfaced (\"work stress showed up every Monday and was gone by Friday\"). Use format app-proof or statement-card." },
+  { key: "use_list", how: "A list of the everyday things people actually say to Ripple and what it does with each (appointments, school forms, gym, money, the thing they keep putting off)." },
+  { key: "question", how: "Open with a question that makes them count or picture something (\"How many things are you holding in your head right now?\"), then answer with what Ripple does." },
+  { key: "objection", how: "Answer a real doubt head-on: \"another app to keep up with?\", \"I don't write things down\", \"I don't have time for this\" — and why Ripple is different (you just talk)." },
+  { key: "identity", how: "Who it's for, as a recognisable person and their week (the one who remembers everything for everyone / the guy who keeps saying 'tomorrow'), and what Ripple takes off them." },
+];
+
+/** Phrases the last batches wore out (2026-09-29 audit of the live ads). */
+const OVERUSED_PHRASES = [
+  "400-word", "Sunday report", "notebook", "nothing came back", "gave nothing back",
+  "a record that", "the week dissolves", "patterns" /* max once per batch */, "written back to them",
+];
 
 const SHARED_BANNED = [
   "unlock",
@@ -75,12 +101,12 @@ export const BATCH_GROUPS: Record<BatchGroupKey, GroupConfig> = {
     projectName: "Ripple — Women 40–50",
     digestBrand: "ripple",
     audienceLabel: "women roughly 40–50 carrying a heavy mental load",
-    brandVoiceGuide: `Warm, observational, a mirror not a coach. Never advise, never lecture — reflect.
+    brandVoiceGuide: `Warm and on her side. ${VOICE_PRINCIPLE}
 Write for a woman ~40–50 carrying the household's invisible mental load. She is smart and tired of being marketed at.
 Short sentences. Specifics over abstractions. Use her own language from Reddit — if she wouldn't say it, cut it.
 Ripple is a daily debrief she records any time of day (never "nightly", never a fixed time).
 Value is multi-surface: tasks captured, mood seen, patterns surfaced, Life Matrix, weekly report.
-Never promise transformation or wellness outcomes. Show what she'll SEE, not who she'll become.`,
+Show what she'll see and get done with Ripple, and the better, lighter life it points to. ${AD_CLAIM_GUARDRAIL}`,
     targetAudience: {
       ageMin: 38,
       ageMax: 55,
@@ -129,7 +155,7 @@ Write for a young man who knows exactly what he should be doing and hates that h
 Short declarative sentences. No motivation-speak, no "grindset" clichés. Respect his intelligence.
 Frame Ripple as the nightly-audit / self-accountability tool: say it out loud, see the pattern, keep the promise. (Never claim a fixed time of day — he records whenever.)
 Never shame him. Name the gap between knowing and doing without moralizing.
-Never promise transformation. Show the mechanism: spoken debrief → tracked habits → visible pattern → kept promises.`,
+Show the mechanism: spoken debrief → tracked habits → visible pattern → kept promises → a life he respects. ${AD_CLAIM_GUARDRAIL}`,
     targetAudience: {
       ageMin: 18,
       ageMax: 34,
@@ -438,6 +464,7 @@ const BatchAdSchema = z.object({
   // Learning loop (2026-09-24): which image format carries this ad, and
   // whether it applies a proven winning pattern or tests something new.
   format: z.enum(AD_FORMAT_KEYS).optional(),
+  archetype: z.string().max(40).optional(),
   strategy: z.enum(["exploit", "explore"]).optional(),
 });
 
@@ -517,7 +544,24 @@ export async function createBatchForGroup(
   const weekLabel = new Date().toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
 
 
+  // Anti-repetition (2026-09-29): the last 45 days of our own ads for this
+  // lane. The generator had been recycling its own headlines week to week.
+  const recentCreatives = await prisma.adLabCreative.findMany({
+    where: { createdAt: { gte: new Date(Date.now() - 45 * 86_400_000) }, angle: { experiment: { projectId } } },
+    select: { headline: true, primaryText: true },
+    orderBy: { createdAt: "desc" },
+    take: 60,
+  });
+  const recentBlock = recentCreatives.length
+    ? `\nOUR RECENT ADS FOR THIS AUDIENCE (never reuse or closely paraphrase any of these headlines or openings; find NEW words and NEW angles):\n${recentCreatives.map((c) => `- ${c.headline} — ${c.primaryText.replace(/\s+/g, " ").slice(0, 90)}`).join("\n")}\n`
+    : "";
+
   const systemPrompt = `You are an expert direct-response Meta ads copywriter. Generate 10 COMPLETE, DISTINCT ad creatives grounded in real audience research.
+
+THE TWO JOBS OF EVERY AD (non-negotiable, per the owner — our ads were too vague):
+1. A stranger must understand WHAT RIPPLE IS AND DOES within the headline + first line. Ripple is ${PRODUCT_CATEGORY}. Show it concretely: you talk, it turns what you said into your to-do list / tracks your habits / shows what keeps coming up / sends your weekly report. Plain words, no metaphors standing in for the product. Naming the category ("AI habit tracker", "voice journal", "life optimizer") is good when it fits.
+2. It must name WHICH PAIN it solves, concretely, in the audience's own words, and point at the better life on the other side of it (more done, habits kept, clearer head).
+Clever, moody lines that don't say what the product does are WRONG. When in doubt, be literal.
 
 PRODUCT (ground truth — never claim beyond this):
 ${PRODUCT_TRUTH}
@@ -531,6 +575,10 @@ USPs (pick the one that best answers each pain — don't cram them all in):
 ${JSON.stringify(g.usps, null, 2)}
 
 BANNED PHRASES (never use): ${SHARED_BANNED.join(", ")}
+OVERUSED — do not use (\"patterns\" at most once across all 10): ${OVERUSED_PHRASES.join(", ")}
+${recentBlock}
+AD TYPES — use EACH of these exactly once across the 10 ads (set "archetype" to the key):
+${AD_ARCHETYPES.map((a) => `- ${a.key}: ${a.how}`).join("\n")}
 ${learningSection ? `\n${learningSection}\n` : ""}${competitorSection ? `\n${competitorSection}\n` : ""}
 THIS WEEK'S REDDIT AUDIENCE PULSE (real distilled pain from the audience's own threads — every ad MUST be rooted in exactly one of these themes):
 ${themes.map((t, i) => `${i + 1}. THEME: ${t.theme}\n   WHY IT'S LIVE THIS WEEK: ${t.why}\n   SUGGESTED ANGLE: ${t.angle}\n   THEIR OWN PHRASES: ${(t.phrases ?? []).join(" | ")}`).join("\n\n")}
@@ -547,9 +595,9 @@ VALUE SURFACE DEFINITIONS:
 
 REQUIREMENTS:
 - EXACTLY 10 ads. Each rooted in a DIFFERENT theme where possible (reuse a theme only if there are fewer than 10).
-- The 10 must span at least 6 different valueSurface values — every ad should feel like a different TYPE of ad, not a rewrite.
+- The 10 must span at least 6 different valueSurface values, and use all 10 AD TYPES above (one each) — every ad must feel like a different ad, not a rewrite. Vary sentence length, tone (warm, blunt, playful, matter-of-fact) and opening words; no two ads may start the same way.
 - THE BRIDGE IS THE AD (non-negotiable, per the owner: ads must tie the user's pain to what Ripple does and how it solves it). Every ad has three beats: (1) the PAIN, named in the audience's own words so a stranger instantly knows which problem this is; (2) the MECHANISM — the specific thing Ripple does about that exact pain (pulls the tasks out of what you say, checks off the habit you mentioned, tracks the promise you made, names the pattern that repeats, scores the life area that's slipping, writes the weekly report); (3) the RESULT for them. Clever abstract lines that don't name a problem ("Same week. Different eyes.", "Silence is where the work is.") are WRONG.
-- headline: the PAIN, HARD max 40 characters, count them (mobile truncation). A concrete, recognizable problem in plain words — ideally their own phrasing. Test: could someone who has never heard of Ripple tell exactly what problem this ad is about?
+- headline: HARD max 40 characters, count them (mobile truncation). Plain words. Depending on the ad type it states the pain OR what Ripple does (plain_promise, use_list) — never an abstract mood line. Test: could someone who has never heard of Ripple tell what problem or product this is about?
 - solutionLine: max 90 characters. What Ripple concretely does about THIS headline's pain, as a plain statement ("Say it once. Ripple turns it into your to-do list and keeps it."). Must name a real feature from PRODUCT. No durations.
 - benefits: exactly 3 lines, each max 40 characters, each a concrete thing Ripple does for THIS pain (not generic, not repeated across ads).
 - said: max 140 characters. One realistic thing this person would actually say out loud in a debrief, in their voice, with specifics (names, days, errands, excuses) that show this ad's pain.
@@ -558,8 +606,9 @@ REQUIREMENTS:
 - description: max 100 characters.
 - cta: always "SIGN_UP" (renders as "Start free trial"). In our own data SIGN_UP ads produced trial starts at roughly half the cost of LEARN_MORE.
 - imageScene: 1-2 sentences showing THIS ad's pain as a concrete moment happening (e.g. a kitchen counter buried in permission slips, a calendar and sticky notes at 11pm; a gym bag untouched by the door at 7am, a phone lit in a dark bedroom at 2am), matching the brand's photography style. NOT generic mood (no lone coffee cups, candles, or empty notebooks). Scene only — text is composed separately. No faces.
-- format: the image format carrying this ad, one of: ${AD_FORMAT_KEYS.join(", ")}. hook-overlay = photo of the pain moment + the pain headline + the solution line + CTA; notes-app = native-looking phone-notes checklist (pain as title, benefits as checklist — "ugly ad"); statement-card = typography only (pain big, solution line beneath); checklist-photo = pain headline + the 3 benefits over a darkened pain photo; say-catch = the mechanism in one glance: "You say it:" (said) → "Ripple catches it:" (caught) → solution line; app-proof = the pain headline above a REAL screenshot of the app (${groupKey === "women" ? "the Life Matrix: 6 life areas scored over time" : "the Theme Map: the recurring themes in what he says"}) — the description becomes the one-line subline saying what the screenshot proves (≤60 chars). Use say-catch for 3 of the 10 and app-proof for 2. Use at least 4 different formats across the 10.${preferredFormats.length ? ` Our data favors: ${preferredFormats.join(", ")} — give these most exploit ads.` : ""}
-- No recording-duration claims anywhere ("a minute", "60 seconds", "one minute a day"), never "journaling"/"journal" as the category, never "brain dump".
+- format: the image format carrying this ad, one of: ${AD_FORMAT_KEYS.join(", ")}. hook-overlay = photo of the pain moment + the pain headline + the solution line + CTA; notes-app = native-looking phone-notes checklist (pain as title, benefits as checklist — "ugly ad"); statement-card = typography only (pain big, solution line beneath); checklist-photo = pain headline + the 3 benefits over a darkened pain photo; say-catch = the mechanism in one glance: "You say it:" (said) → "Ripple catches it:" (caught) → solution line; app-proof = the pain headline above a REAL screenshot of the app (${groupKey === "women" ? "the Life Matrix: 6 life areas scored over time" : "the Theme Map: the recurring themes in what he says"}) — the description becomes the one-line subline saying what the screenshot proves (≤60 chars). Use say-catch for at least 2 of the 10 (always for say_catch_demo) and app-proof for at least 1. Use at least 5 different formats across the 10.${preferredFormats.length ? ` Our data favors: ${preferredFormats.join(", ")} — give these most exploit ads.` : ""}
+- No recording-duration claims anywhere ("a minute", "60 seconds", "one minute a day"), never "brain dump". "Voice journal" is fine as part of the category.
+- CLAIMS: ${AD_CLAIM_GUARDRAIL}
 - strategy: "exploit" or "explore"${exploitCount ? ` — exactly ${exploitCount} exploit (see EXPLOIT / EXPLORE SPLIT)` : ` — no performance history yet, mark all "explore"`}.
 
 META POLICY (violations get ads rejected — follow strictly):
@@ -568,7 +617,7 @@ META POLICY (violations get ads rejected — follow strictly):
 - NEVER use before/after transformation framing or promise wellness outcomes.
 - Use third-person or general framing for sensitive topics: "Most people forget what they promised themselves by Thursday."
 
-Return ONLY a JSON array of exactly 10 objects with keys: theme, hypothesis, targetPersona, valueSurface, headline, primaryText, description, cta, imageScene, solutionLine, benefits, said, caught, format, strategy`;
+Return ONLY a JSON array of exactly 10 objects with keys: theme, hypothesis, targetPersona, valueSurface, archetype, headline, primaryText, description, cta, imageScene, solutionLine, benefits, said, caught, format, strategy`;
 
   const userPrompt = `Generate the 10 ads for this week's batch. Return only the JSON array.`;
 
@@ -578,16 +627,18 @@ Return ONLY a JSON array of exactly 10 objects with keys: theme, hypothesis, tar
       purpose: `weekly-batch-${groupKey}`,
       systemPrompt,
       userPrompt,
-      maxTokens: 8000,
+      maxTokens: 12000,
+      models: AD_COPY_MODELS,
     });
     ads = parseBatchAds(raw);
   } catch (err1) {
     // One retry with error feedback
     const raw2 = await callAdLabClaude({
       purpose: `weekly-batch-${groupKey}-retry`,
+      models: AD_COPY_MODELS,
       systemPrompt,
       userPrompt: `${userPrompt}\n\nIMPORTANT: Your previous response failed validation: ${err1 instanceof Error ? err1.message.slice(0, 500) : String(err1)}\nReturn EXACTLY 10 objects with ALL required keys (theme, hypothesis, targetPersona, valueSurface, headline, primaryText, description, cta, imageScene, solutionLine, benefits (3), said, caught (3), format, strategy). valueSurface must be one of: ${VALUE_SURFACES.join(", ")}.`,
-      maxTokens: 8000,
+      maxTokens: 12000,
     });
     ads = parseBatchAds(raw2);
   }
@@ -623,7 +674,7 @@ Return ONLY a JSON array of exactly 10 objects with keys: theme, hypothesis, tar
         targetPersona: ad.targetPersona,
         valueSurface: ad.valueSurface,
         // "| strategy:" is parsed back by lib/adlab/learning.ts — keep format
-        researchNotes: `Reddit theme (${digestDate}): ${ad.theme} | strategy: ${strategy}`,
+        researchNotes: `Reddit theme (${digestDate}): ${ad.theme} | strategy: ${strategy}${ad.archetype ? ` | type: ${ad.archetype}` : ""}`,
         score: 5,
       },
     });
