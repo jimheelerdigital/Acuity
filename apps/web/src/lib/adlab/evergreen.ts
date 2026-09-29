@@ -23,10 +23,11 @@ import { prisma } from "@/lib/prisma";
 import * as meta from "@/lib/adlab/meta";
 import type { BatchGroupKey } from "@/lib/adlab/weekly-batch";
 
-/** Daily budget per group, cents. Total = $100/day. */
+/** Daily budget per group, cents. Total = $140/day (2026-09-29, per Keenan:
+ *  "let's up our spend an extra 20 for each" — women $60→$80, men $40→$60). */
 export const GROUP_DAILY_BUDGET_CENTS: Record<BatchGroupKey, number> = {
-  women: 6000,
-  men: 4000,
+  women: 8000,
+  men: 6000,
 };
 
 export const GROUP_OPTIMIZATION_EVENT = "COMPLETE_REGISTRATION";
