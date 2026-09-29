@@ -20,6 +20,10 @@ interface AdLabClaudeParams {
   /** Models to try in order; the next is used only if the API says a model
    *  doesn't exist (404). Defaults to the legacy single model. */
   models?: string[];
+  /** Structured output (2026-09-29): force a tool call with this JSON schema
+   *  and return the tool input as JSON text. Guarantees valid JSON — the
+   *  first Sonnet 5.5 weekly batches failed on an unescaped quote. */
+  outputTool?: { name: string; description: string; schema: Record<string, unknown> };
 }
 
 /** Weekly ad copy (2026-09-29, per Keenan: use Sonnet 5.5). Falls back to
@@ -44,7 +48,7 @@ export async function callAdLabClaude(params: AdLabClaudeParams): Promise<string
 }
 
 async function callOnce(params: Omit<AdLabClaudeParams, "models"> & { model: string }): Promise<string> {
-  const { purpose, systemPrompt, userPrompt, maxTokens = 4000, model } = params;
+  const { purpose, systemPrompt, userPrompt, maxTokens = 4000, model, outputTool } = params;
   const { prisma } = await import("@/lib/prisma");
 
   console.log(`[adlab-claude] Calling model=${model} purpose=${purpose} maxTokens=${maxTokens}`);
@@ -55,6 +59,12 @@ async function callOnce(params: Omit<AdLabClaudeParams, "models"> & { model: str
       max_tokens: maxTokens,
       system: systemPrompt,
       messages: [{ role: "user", content: userPrompt }],
+      ...(outputTool
+        ? {
+            tools: [{ name: outputTool.name, description: outputTool.description, input_schema: outputTool.schema as { type: "object" } }],
+            tool_choice: { type: "tool" as const, name: outputTool.name },
+          }
+        : {}),
     });
 
     const durationMs = Date.now() - start;
@@ -75,6 +85,12 @@ async function callOnce(params: Omit<AdLabClaudeParams, "models"> & { model: str
         success: true,
       },
     });
+
+    if (outputTool) {
+      const tool = response.content.find((b) => b.type === "tool_use") as { input?: unknown } | undefined;
+      if (!tool?.input) throw new Error(`no ${outputTool.name} tool call in reply (stop_reason: ${response.stop_reason})`);
+      return JSON.stringify(tool.input);
+    }
 
     return response.content
       .filter((b) => b.type === "text")

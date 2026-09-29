@@ -469,6 +469,43 @@ const BatchAdSchema = z.object({
   strategy: z.enum(["exploit", "explore"]).optional(),
 });
 
+/** JSON schema for the submit_ads tool (structured output, 2026-09-29). */
+const SUBMIT_ADS_TOOL = {
+  name: "submit_ads",
+  description: "Submit exactly 10 ad creatives for this week's batch.",
+  schema: {
+    type: "object",
+    properties: {
+      ads: {
+        type: "array",
+        items: {
+          type: "object",
+          properties: {
+            theme: { type: "string" },
+            hypothesis: { type: "string" },
+            targetPersona: { type: "string" },
+            valueSurface: { type: "string", enum: [...VALUE_SURFACES] },
+            archetype: { type: "string" },
+            headline: { type: "string" },
+            primaryText: { type: "string" },
+            description: { type: "string" },
+            cta: { type: "string" },
+            imageScene: { type: "string" },
+            solutionLine: { type: "string" },
+            benefits: { type: "array", items: { type: "string" } },
+            said: { type: "string" },
+            caught: { type: "array", items: { type: "string" } },
+            format: { type: "string", enum: [...AD_FORMAT_KEYS] },
+            strategy: { type: "string", enum: ["exploit", "explore"] },
+          },
+          required: ["theme", "hypothesis", "targetPersona", "valueSurface", "archetype", "headline", "primaryText", "description", "cta", "imageScene", "solutionLine", "benefits", "said", "caught", "format", "strategy"],
+        },
+      },
+    },
+    required: ["ads"],
+  } as Record<string, unknown>,
+};
+
 /**
  * Per-ad tolerant parse (2026-09-24): the women's batch failed outright
  * because ONE ad put a format name ("app-proof") in valueSurface. Coerce
@@ -482,11 +519,13 @@ export function parseBatchAds(raw: string): z.infer<typeof BatchAdSchema>[] {
   const jsonText = (() => {
     const last = lastJsonText(raw);
     try {
-      if (Array.isArray(JSON.parse(last))) return last;
+      const p = JSON.parse(last);
+      if (Array.isArray(p) || Array.isArray(p?.ads)) return last;
     } catch {}
     return extractJson(raw);
   })();
-  const arr = JSON.parse(jsonText);
+  const parsed = JSON.parse(jsonText);
+  const arr = Array.isArray(parsed) ? parsed : parsed?.ads;
   if (!Array.isArray(arr)) throw new Error("batch copy is not a JSON array");
   const ok: z.infer<typeof BatchAdSchema>[] = [];
   const problems: string[] = [];
@@ -628,9 +667,9 @@ META POLICY (violations get ads rejected — follow strictly):
 - NEVER use before/after transformation framing or promise wellness outcomes.
 - Use third-person or general framing for sensitive topics: "Most people forget what they promised themselves by Thursday."
 
-Return ONLY a JSON array of exactly 10 objects with keys: theme, hypothesis, targetPersona, valueSurface, archetype, headline, primaryText, description, cta, imageScene, solutionLine, benefits, said, caught, format, strategy`;
+Submit the ads with the submit_ads tool: exactly 10 objects with keys: theme, hypothesis, targetPersona, valueSurface, archetype, headline, primaryText, description, cta, imageScene, solutionLine, benefits, said, caught, format, strategy`;
 
-  const userPrompt = `Generate the 10 ads for this week's batch. Return only the JSON array.`;
+  const userPrompt = `Generate the 10 ads for this week's batch and submit them with the submit_ads tool.`;
 
   let ads: z.infer<typeof BatchAdSchema>[];
   try {
@@ -640,6 +679,7 @@ Return ONLY a JSON array of exactly 10 objects with keys: theme, hypothesis, tar
       userPrompt,
       maxTokens: 12000,
       models: AD_COPY_MODELS,
+      outputTool: SUBMIT_ADS_TOOL,
     });
     ads = parseBatchAds(raw);
   } catch (err1) {
@@ -647,6 +687,7 @@ Return ONLY a JSON array of exactly 10 objects with keys: theme, hypothesis, tar
     const raw2 = await callAdLabClaude({
       purpose: `weekly-batch-${groupKey}-retry`,
       models: AD_COPY_MODELS,
+      outputTool: SUBMIT_ADS_TOOL,
       systemPrompt,
       userPrompt: `${userPrompt}\n\nIMPORTANT: Your previous response failed validation: ${err1 instanceof Error ? err1.message.slice(0, 500) : String(err1)}\nReturn EXACTLY 10 objects with ALL required keys (theme, hypothesis, targetPersona, valueSurface, headline, primaryText, description, cta, imageScene, solutionLine, benefits (3), said, caught (3), format, strategy). valueSurface must be one of: ${VALUE_SURFACES.join(", ")}.`,
       maxTokens: 12000,

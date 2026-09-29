@@ -7,6 +7,29 @@
 
 ---
 
+## [2026-09-29] — Weekly ad batches can't fail on broken JSON anymore
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** (see git log: "fix: Get weekly ad batches as structured output so they can't fail on JSON")
+
+### In plain English (for Keenan)
+The first ad batches from the new writer failed for both lanes ("Expected ',' or '}'..."): the AI wrote an ad line with a quotation mark that broke the data format. The writer now submits ads through a structured form the AI can't break, so a stray quote in an ad can't fail the batch again. Hit Remake on both lanes to generate this week's ads.
+
+### Technical changes (for Jimmy)
+- `apps/web/src/lib/adlab/claude.ts`: new `outputTool` option. It forces a tool call (`tool_choice: {type: "tool"}`) with a JSON schema and returns the tool input as JSON text.
+- `apps/web/src/lib/adlab/weekly-batch.ts`:
+  - New `SUBMIT_ADS_TOOL` schema, with enums for valueSurface, format and strategy.
+  - The batch and its retry use it.
+  - `parseBatchAds` accepts `{ads: [...]}` as well as a bare array.
+  - Prompt text updated to match.
+
+### Manual steps needed
+- [ ] Keenan: Admin → AdLab → Review → Remake on both lanes
+
+### Notes
+- Error seen: "Expected ',' or '}' after property value in JSON at position 11204", for both lanes, on the first runs with Sonnet 5.5 and the rewritten prompt.
+
 ## [2026-09-29] — Nudge people who get into the app but don't record
 
 **Requested by:** Keenan
