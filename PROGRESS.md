@@ -7,6 +7,29 @@
 
 ---
 
+## [2026-09-29] — Video ads open on Higgsfield footage and animate smoothly
+
+- **Requested by:** Keenan
+- **Committed by:** Claude Code
+- **Commit hash:** (see git log — "feat: Open video ads on Higgsfield footage and smooth the animation")
+
+### In plain English (for Keenan)
+The weekly video ads now open with about 3 seconds of real-looking footage from Higgsfield (e.g. a car in the school pickup line, a gym bag by the door), with the hook as a caption. The footage then fades out and the hook glides up into the animation. The animation also no longer looks choppy: everything moves at a true 30 frames per second (letter-by-letter typing, sliding items, springy ticks, counting numbers, a line that draws itself).
+
+### Technical changes (for Jimmy)
+- apps/web/src/lib/adlab/ad-video.ts rewritten: per-frame eased animation (easeOut/easeInOut/easeBack), cached fade/scale, frames streamed to ffmpeg via image2pipe at a constant 30fps (CRF 16). Takes an optional `openerClip`: the first 3s are decoded to frames, the hook is drawn as a caption, then crossfaded into the section. `VideoScript.openerScene` added.
+- apps/web/src/lib/adlab/weekly-batch.ts: `submitVideoOpener()` generates a gpt-image-2 still of openerScene and submits Higgsfield image-to-video (POST_VIDEO_MODEL, the same account as the reels). `checkVideoOpener()` polls, then copies the clip into the adlab-creatives bucket. The in-flight state rides in the AD_COPY tag (openerRequestId/openerModel/openerClipUrl/openerFailed). `createBatchForGroup` now returns `videoCreativeIds`; the video tool requires `openerScene`.
+- apps/web/src/inngest/functions/adlab-weekly-batch.ts: new opener-submit steps, then up to 24 × (sleep 30s + check) before the render steps.
+
+### Manual steps needed
+- [ ] After deploy, resync Inngest (`curl -X PUT https://goripple.io/api/inngest`), since the weekly batch function gained steps (Keenan/Claude)
+- [ ] Hit Remake on both lanes to see the first batch with openers (Keenan)
+
+### Notes
+- Openers are best-effort: if Higgsfield fails, or isn't back within ~12 min, that ad renders with the animation-only intro, so the batch never breaks.
+- A render now takes ~5–35s per video. Most of that is the first-run font load plus the typing frames.
+- The test clips emailed today were made with the Higgsfield app (Seedance 2.5, text-to-video). Production uses the API's image-to-video model from post-video.ts.
+
 ## [2026-09-29] — 3 animated video ads per lane in every weekly batch
 
 - **Requested by:** Keenan

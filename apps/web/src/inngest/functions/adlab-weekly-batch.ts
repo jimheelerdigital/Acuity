@@ -84,6 +84,31 @@ export const adlabWeeklyBatchFn = inngest.createFunction(
         continue;
       }
 
+      // 1b. Higgsfield openers for the video ads (2026-09-29, per Keenan:
+      // "an initial hook via higgsfield for the first few seconds followed
+      // by the animation"). Submit all, then check every 30s for up to
+      // ~12 min. Anything not back in time renders with the animation-only
+      // intro, so Higgsfield can slow the batch but never break it.
+      const videoIds = batch.videoCreativeIds ?? [];
+      let pendingOpeners: string[] = [];
+      for (let i = 0; i < videoIds.length; i++) {
+        const r = await step.run(`opener-submit-${groupKey}-${i + 1}`, async () => {
+          const { submitVideoOpener } = await import("@/lib/adlab/weekly-batch");
+          return submitVideoOpener(videoIds[i]);
+        });
+        if (r.submitted) pendingOpeners.push(videoIds[i]);
+      }
+      for (let round = 0; round < 24 && pendingOpeners.length; round++) {
+        await step.sleep(`opener-wait-${groupKey}-${round}`, "30s");
+        const waiting = pendingOpeners;
+        pendingOpeners = await step.run(`opener-check-${groupKey}-${round}`, async () => {
+          const { checkVideoOpener } = await import("@/lib/adlab/weekly-batch");
+          const still: string[] = [];
+          for (const id of waiting) if ((await checkVideoOpener(id)) === "pending") still.push(id);
+          return still;
+        });
+      }
+
       // 2. Images — one step per creative so a single gpt-image-2 call
       // fits Vercel's step budget; generateBatchImage is idempotent
       // (skips if imageUrl set) and soft-fails into complianceNotes.
