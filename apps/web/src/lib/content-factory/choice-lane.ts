@@ -111,7 +111,34 @@ OUTPUT (JSON):
 
 Return only the JSON object.`;
 
+/**
+ * DUO mode (2026-09-29, per Keenan: "'who are you and bro?' where it's two
+ * different characters on a quest or fighting together and then the last
+ * slide says to send to their bro"). Same shape as a choice post — five
+ * numbered options — but every option is a PAIR, and the closing card asks
+ * to send it to a friend (shares are the strongest reach signal).
+ */
+export const DUO_CATEGORIES = [
+  "warrior + beast duos (a rider and their mount, a hunter and their wolf)",
+  "two legendary fighters back to back (knight and samurai, viking and spartan, monk and ranger)",
+  "dragon + rider duos, each pair a different kind of dragon",
+  "unlikely duos: a creature and a warrior from completely different legends",
+  "sibling beasts and twin guardians",
+  "a mage and a fighter on a quest together",
+];
+
+const DUO_RULES = `THIS POST IS A DUO POST: "who are you and your bro?" The reader picks the pair that is him and his best friend, then sends it to that friend.
+- "title": the cover question, 4-8 words, ALL-CAPS ready, ending with "?" (shapes like "WHICH DUO ARE YOU AND YOUR BRO?", "WHO ARE YOU TWO ON THE QUEST?"; new words every post, never a recent title).
+- Each option is a PAIR of two characters: "name" is the duo, 3-7 words with "&" ("The Knight & The Wyvern", "Samurai & Spirit Fox"). "lore" is one line (6-14 words) about what they do together: the quest, the fight, how they cover each other. Make each duo a different friendship dynamic (the reckless one and the one who saves him, two loyal brawlers, the brains and the muscle, the chaos pair, the silent pair) so the pick says something about the friendship.
+- "scene": BOTH characters together in one frame, clearly two figures, mid-quest or fighting side by side, full bodies visible, epic setting matched to them.
+- "motion": what the two do together in five seconds (they turn back to back as the horde closes in; the rider leans forward as the dragon dives through cloud).
+- "endCard": 2-6 words, ALL-CAPS ready, telling him to send it to his bro; vary it every post ("SEND THIS TO YOUR BRO.", "TAG YOUR RIDE OR DIE.", "SEND IT. HE KNOWS.").
+- "captionQuestion": asks which duo they are and to tag the friend ("Which duo are you two? Tag him.").
+Everything else in the format above still applies.`;
+
 export async function generateChoiceTopic(opts: {
+  /** "duo" = the who-are-you-and-your-bro variant. */
+  mode?: "choice" | "duo";
   category: string;
   theme?: string;
   recentTitles: string[];
@@ -136,7 +163,7 @@ export async function generateChoiceTopic(opts: {
 
   const response = await contentAnthropic.messages.create({
     max_tokens: 2500,
-    system: `${SYSTEM}\n\n${HUMAN_VOICE_RULES}`,
+    system: `${SYSTEM}${opts.mode === "duo" ? `\n\n${DUO_RULES}` : ""}\n\n${HUMAN_VOICE_RULES}`,
     messages: [{ role: "user", content: user }],
   });
   const tokensIn = response.usage.input_tokens;
@@ -205,7 +232,7 @@ export async function generateChoiceTopic(opts: {
     console.warn("[choice-lane] humanize gate failed — shipping ungated copy:", err);
   }
 
-  const slug = `mythic-${gatedTitle
+  const slug = `${opts.mode === "duo" ? "mythic-duo" : "mythic"}-${gatedTitle
     .toLowerCase()
     .replace(/[^a-z0-9\s-]/g, "")
     .trim()

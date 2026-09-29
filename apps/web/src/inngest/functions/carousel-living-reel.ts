@@ -314,7 +314,7 @@ export const livingReelQueueFn = inngest.createFunction(
       // Body { dryRun: true } = copy only, saved for review (prompt tests).
       // Files may be named "<lane>" or "<lane>--<tag>" so several tests of
       // one lane can queue at once.
-      const claimed: { bucket: string; dryRun: boolean }[] = [];
+      const claimed: { bucket: string; dryRun: boolean; mode?: string }[] = [];
       for (const f of (data ?? []).filter((x) => x.name.endsWith(".json"))) {
         const path = `lane-requests/${f.name}`;
         const dl = await supabase.storage.from("content-factory").download(path);
@@ -326,7 +326,8 @@ export const livingReelQueueFn = inngest.createFunction(
         } catch {
           // empty body → a real run
         }
-        claimed.push({ bucket: f.name.replace(/\.json$/, "").split("--")[0], dryRun });
+        const [bucket, tag = ""] = f.name.replace(/\.json$/, "").split("--");
+        claimed.push({ bucket, dryRun, mode: tag.startsWith("duo") ? "duo" : undefined });
       }
       return claimed;
     });
@@ -335,7 +336,7 @@ export const livingReelQueueFn = inngest.createFunction(
         "send-lane-runs",
         laneRuns.map((r) => ({
           name: "content-factory/daily.generate" as const,
-          data: r.dryRun ? { bucket: r.bucket, dryRun: true } : { bucket: r.bucket },
+          data: { bucket: r.bucket, ...(r.dryRun ? { dryRun: true } : {}), ...(r.mode ? { mode: r.mode } : {}) },
         }))
       );
     }

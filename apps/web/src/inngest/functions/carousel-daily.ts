@@ -660,9 +660,16 @@ export const carouselDailyCronFn = inngest.createFunction(
         : null;
     if (choiceLane) {
       const laneKey = choiceLane.key;
+      // One of the three daily posts is a DUO post ("who are you and your
+      // bro?", 2026-09-29): the 6 UTC run, or any run sent mode "duo".
+      const choiceMode: "choice" | "duo" =
+        (event.data as { mode?: string } | undefined)?.mode === "duo" ||
+        new Date(typeof event.ts === "number" ? event.ts : Date.now()).getUTCHours() === 6
+          ? "duo"
+          : "choice";
       const topic = await step.run("generate-choice-topic", async () => {
         const { prisma } = await import("@/lib/prisma");
-        const { generateChoiceTopic, rollChoiceCategory, CHOICE_CATEGORIES } = await import(
+        const { generateChoiceTopic, rollChoiceCategory, CHOICE_CATEGORIES, DUO_CATEGORIES } = await import(
           "@/lib/content-factory/choice-lane"
         );
         const recent = await prisma.carouselPost.findMany({
@@ -681,7 +688,11 @@ export const carouselDailyCronFn = inngest.createFunction(
           .filter(Boolean);
         const { getLaneFeedback } = await import("@/lib/content-factory/performance");
         return generateChoiceTopic({
-          category: rollChoiceCategory(recentCats),
+          mode: choiceMode,
+          category:
+            choiceMode === "duo"
+              ? DUO_CATEGORIES[Math.floor(Math.random() * DUO_CATEGORIES.length)]
+              : rollChoiceCategory(recentCats),
           theme: choiceLane.spec.theme,
           recentTitles: recent.map((p) => p.headline),
           recentNames,
