@@ -472,7 +472,7 @@ const BatchAdSchema = z.object({
 /** JSON schema for the submit_ads tool (structured output, 2026-09-29). */
 const SUBMIT_ADS_TOOL = {
   name: "submit_ads",
-  description: "Submit exactly 10 ad creatives for this week's batch.",
+  description: "Submit the requested ad creatives for this week's batch.",
   schema: {
     type: "object",
     properties: {
@@ -512,7 +512,7 @@ const SUBMIT_ADS_TOOL = {
  * that known slip, keep every ad that validates, and only fail when fewer
  * than 6 survive.
  */
-export function parseBatchAds(raw: string): z.infer<typeof BatchAdSchema>[] {
+export function parseBatchAds(raw: string, minValid = 6): z.infer<typeof BatchAdSchema>[] {
   // Sonnet 5.5 can reason in text and write the JSON LAST (or draft one
   // first), so prefer the last complete JSON array in the reply
   // (content-factory lastJsonText), then fall back to the old extraction.
@@ -539,7 +539,7 @@ export function parseBatchAds(raw: string): z.infer<typeof BatchAdSchema>[] {
     else problems.push(`ad ${i + 1}: ${r.error.issues.map((x) => `${x.path.join(".")} ${x.message}`).join("; ")}`);
   });
   if (problems.length) console.warn(`[adlab-weekly] dropped ${problems.length} invalid ad(s): ${problems.join(" | ").slice(0, 800)}`);
-  if (ok.length < 6) throw new Error(`only ${ok.length} valid ads — ${problems.join(" | ").slice(0, 600)}`);
+  if (ok.length < minValid) throw new Error(`only ${ok.length} valid ads — ${problems.join(" | ").slice(0, 600)}`);
   return ok;
 }
 
@@ -669,30 +669,45 @@ META POLICY (violations get ads rejected — follow strictly):
 
 Submit the ads with the submit_ads tool: exactly 10 objects with keys: theme, hypothesis, targetPersona, valueSurface, archetype, headline, primaryText, description, cta, imageScene, solutionLine, benefits, said, caught, format, strategy`;
 
-  const userPrompt = `Generate the 10 ads for this week's batch and submit them with the submit_ads tool.`;
+  // Two parallel requests of 5 (2026-09-29): one 10-ad reply from Sonnet
+  // 5.5 hit the 12,000-token output cap every time (it reasons at length
+  // before answering), so the JSON was cut off. Each half gets its own 5 ad
+  // types (all 10 across the batch) and its own slice of the Reddit themes,
+  // and must call the tool straight away.
+  const halves = [AD_ARCHETYPES.slice(0, 5), AD_ARCHETYPES.slice(5)];
+  const themeSlices = [themes.slice(0, Math.ceil(themes.length / 2)), themes.slice(Math.ceil(themes.length / 2))];
+  const halfPrompt = (i: number) =>
+    `This request covers ${halves[i].length} of this week's 10 ads (the batch is split into two requests). Write exactly ${halves[i].length} ads, one for each of these ad types: ${halves[i].map((t) => t.key).join(", ")}. Root them in these Reddit themes: ${themeSlices[i].map((t) => t.theme).join(" | ") || "any of the themes above"}.
+Call the submit_ads tool IMMEDIATELY. Do not write any analysis, plan, draft or commentary before or after the tool call; think silently and put everything into the tool input.`;
 
-  let ads: z.infer<typeof BatchAdSchema>[];
-  try {
-    const raw = await callAdLabClaude({
-      purpose: `weekly-batch-${groupKey}`,
-      systemPrompt,
-      userPrompt,
-      maxTokens: 12000,
-      models: AD_COPY_MODELS,
-      outputTool: SUBMIT_ADS_TOOL,
-    });
-    ads = parseBatchAds(raw);
-  } catch (err1) {
-    // One retry with error feedback
-    const raw2 = await callAdLabClaude({
-      purpose: `weekly-batch-${groupKey}-retry`,
-      models: AD_COPY_MODELS,
-      outputTool: SUBMIT_ADS_TOOL,
-      systemPrompt,
-      userPrompt: `${userPrompt}\n\nIMPORTANT: Your previous response failed validation: ${err1 instanceof Error ? err1.message.slice(0, 500) : String(err1)}\nSubmit them with the submit_ads tool (do NOT write the JSON as text). EXACTLY 10 objects with ALL required keys (theme, hypothesis, targetPersona, valueSurface, headline, primaryText, description, cta, imageScene, solutionLine, benefits (3), said, caught (3), format, strategy). valueSurface must be one of: ${VALUE_SURFACES.join(", ")}.`,
-      maxTokens: 12000,
-    });
-    ads = parseBatchAds(raw2);
+  const generateHalf = async (i: number): Promise<z.infer<typeof BatchAdSchema>[]> => {
+    try {
+      const raw = await callAdLabClaude({
+        purpose: `weekly-batch-${groupKey}-${i + 1}`,
+        systemPrompt,
+        userPrompt: halfPrompt(i),
+        maxTokens: 16000,
+        models: AD_COPY_MODELS,
+        outputTool: SUBMIT_ADS_TOOL,
+      });
+      return parseBatchAds(raw, 3);
+    } catch (err1) {
+      const raw2 = await callAdLabClaude({
+        purpose: `weekly-batch-${groupKey}-${i + 1}-retry`,
+        models: AD_COPY_MODELS,
+        outputTool: SUBMIT_ADS_TOOL,
+        systemPrompt,
+        userPrompt: `${halfPrompt(i)}\n\nIMPORTANT: the previous attempt failed (${err1 instanceof Error ? err1.message.slice(0, 300) : String(err1)}). Call submit_ads right away with no text at all. Keep every field short. valueSurface must be one of: ${VALUE_SURFACES.join(", ")}.`,
+        maxTokens: 16000,
+      });
+      return parseBatchAds(raw2, 3);
+    }
+  };
+  const halvesOut = await Promise.allSettled([generateHalf(0), generateHalf(1)]);
+  const ads: z.infer<typeof BatchAdSchema>[] = halvesOut.flatMap((r) => (r.status === "fulfilled" ? r.value : []));
+  if (ads.length < 5) {
+    const reasons = halvesOut.map((r) => (r.status === "rejected" ? (r.reason instanceof Error ? r.reason.message : String(r.reason)) : "ok")).join(" | ");
+    throw new Error(`only ${ads.length} valid ads — ${reasons.slice(0, 500)}`);
   }
 
   // Created only once the copy is good (2026-09-24): an experiment made

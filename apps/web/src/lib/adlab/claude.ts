@@ -91,6 +91,11 @@ async function callOnce(params: Omit<AdLabClaudeParams, "models"> & { model: str
     });
 
     if (outputTool) {
+      // A reply cut off at the token cap is never usable, even if a partial
+      // tool call made it in (2026-09-29: every 10-ad Sonnet 5.5 reply hit it).
+      if (response.stop_reason === "max_tokens") {
+        throw new Error(`reply cut off at ${maxTokens} tokens (${outputTool.name})`);
+      }
       const tool = response.content.find((b) => b.type === "tool_use") as { input?: unknown } | undefined;
       if (tool?.input) return JSON.stringify(tool.input);
       console.warn(`[adlab-claude] ${purpose}: no ${outputTool.name} tool call (stop_reason: ${response.stop_reason}) — parsing text`);

@@ -29,6 +29,7 @@ The first ad batches from the new writer failed for both lanes ("Expected ',' or
 
 ### Notes
 - Error seen: "Expected ',' or '}' after property value in JSON at position 11204", for both lanes, on the first runs with Sonnet 5.5 and the rewritten prompt.
+- ACTUAL root cause (found from ClaudeCallLog): every 10-ad Sonnet 5.5 reply stopped at exactly 12,000 output tokens. It reasons at length first, so the JSON was cut off; the unescaped-quote theory was wrong. Fix: the batch is now two parallel requests of 5 ads (5 ad types and half the Reddit themes each), "call submit_ads immediately, no text", maxTokens 16000, per-half retry, and a hard error on stop_reason max_tokens. The batch needs at least 5 valid ads.
 - Follow-up the same day: Sonnet 5.5 rejects a forced tool call (`tool_choice` type "tool"/"any", 400). The tool is now offered with `tool_choice: auto`; the prompt and retry tell it to use the tool, and a text reply falls back to `lastJsonText`.
 
 ## [2026-09-29] — Nudge people who get into the app but don't record
