@@ -7,6 +7,39 @@
 
 ---
 
+## [2026-09-29] — Every post's writing rewritten around what we want posts to achieve
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 3ffc4969, d23fae79 (plus b89c052d, 65dc37aa)
+
+### In plain English (for Keenan)
+All the writing instructions behind every live lane were rewritten, including the older ones, so every post aims at the same goals: stop the scroll, get swiped through, get saved or sent, get a comment, and earn a follow. Each lane now knows who it's writing for and what our own numbers say works, such as recognition getting comments, and specific, usable detail getting saves. Everything is written by Claude Sonnet 5.5. Tested before going live: the new version writes noticeably more specific, lived-in posts (e.g. timeline steps went from "Fix your sleep" to "Lights out by 11"). Every rule you've locked in over the past weeks still applies.
+
+### Technical changes (for Jimmy)
+- New `apps/web/src/lib/content-factory/copy-objectives.ts`: one objectives brief per brand (reader, post goals in order, what engagement data says, brand language, a read-back self-check), prepended to every copy system prompt via `copyObjectives(brand)`.
+- Prompt rewrites, with reasons stated in plain language, reduced ALL-CAPS, output JSON shapes and locked rules unchanged:
+  - `moody-carousel.ts`: shared writer, audience briefs (women brief made mirror-not-coach), BWK command rule, memento, questions, watching, discipline-real, spec lanes, phone-quote, texts-younger. New `copyBrand` option on the shared generator.
+  - `generate-topic.ts` (selfie, one-off), `paper-guide.ts`, `timeline-grid.ts`, `caption-writer.ts`.
+  - `humanizer.ts` (judgment-based gate; also fixes wrong words and nonsense lines), `reddit-trends.ts`, `competitor-mimic.ts`, `video-scripts.ts`, `performance.ts` feedback wording, `lane-intelligence-report.ts` prompt.
+- ContentLane.spec.theme updated in the DB for pulse, pulse-men, muse, muse-men, fantasy-men, timeline, reset-guide and reset-guide-men. This adds save/comment guidance and fixes the "'Name.' header" wording that conflicted with the locked Title Case headers.
+- `claude-client.ts`: `lastJsonText()` reads the last JSON value in a reply (the Sonnet 5.5 guide says it may write working before the JSON), used by every generator. Default writing effort is now `high`.
+- `carousel-daily.ts`: `dryRun` mode (copy only, saved to `prompt-test-results/<date>/<lane>-<run>.json`), triggered by `lane-requests/<lane>--<tag>.json` with body `{"dryRun":true}`.
+- Untouched: image/scene prompts, cover-family rollers, image QA prompts, dormant lanes.
+
+### Manual steps needed
+- None
+
+### Notes
+- Validation: three dry-run rounds across all 16 lanes, every lane generating on Sonnet 5.5:
+  - Baseline: Sonnet 5.5 on the old prompts.
+  - Rewrite: the new prompts.
+  - Final: after adding a read-back check, because the first rewrite round produced one nonsense line ("nobody felt ready on the foreleg") and a weak cover ("TAKE THE METHOD.").
+- Previous DB lane themes are saved in the session scratchpad and summarized here for rollback: the old themes lacked the save/comment sentences; everything else was equivalent.
+- The dormant lanes (sign, aura, versions, unsent, etc.) were left alone deliberately. They never run, and their revival would need Keenan's say anyway.
+
+---
+
 ## [2026-09-28] — Ads Manager on/off changes sync into our system automatically
 
 **Requested by:** Keenan
