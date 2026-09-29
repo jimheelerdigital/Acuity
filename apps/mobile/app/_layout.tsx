@@ -48,6 +48,7 @@ import {
   registerNotificationTapRouting,
 } from "@/lib/notification-routing";
 import { initSentry, setSentryUser } from "@/lib/sentry";
+import { configureRevenueCat } from "@/lib/revenuecat";
 
 // Sentry init at module scope — idempotent on re-import.
 initSentry();
@@ -84,6 +85,26 @@ function AuthGate() {
   // for (push-token refresh, Meta SDK init), so user-object churn from
   // refresh() doesn't re-fire them. See the effect below.
   const pushBootedForRef = useRef<string | null>(null);
+  // Guards the one-shot RevenueCat app-start configure below.
+  const rcBootedRef = useRef(false);
+
+  // RevenueCat: configure the SDK once at launch, with the signed-in
+  // User.id when we have one and an anonymous id otherwise. The anonymous
+  // case is what the onboarding paywall needs — a purchase made before an
+  // account exists lands on the anon id, and auth-context's
+  // identifyRevenueCatUser(user.id) later aliases it to the real account
+  // (purchase-before-account). auth-context alone can't cover this: its
+  // configure effect returns early when there's no user.id.
+  //
+  // Completely inert until the RC flags are on: configureRevenueCat()
+  // returns "disabled" and never loads the native module. Idempotent, so
+  // this and auth-context's per-user call don't double-configure.
+  useEffect(() => {
+    if (loading) return;
+    if (rcBootedRef.current) return;
+    rcBootedRef.current = true;
+    void configureRevenueCat(user?.id ?? null);
+  }, [loading, user?.id]);
 
   // Hide the native splash once auth has resolved AND the routing facts
   // are in. We block on `loading` rather than `user` because a signed-out

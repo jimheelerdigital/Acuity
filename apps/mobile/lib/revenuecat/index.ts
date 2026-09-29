@@ -81,6 +81,7 @@ export type RcConfigureResult =
   | "error";
 
 let configured = false;
+let configuredResult: RcConfigureResult | null = null;
 
 /**
  * Configure the RC SDK. Idempotent — safe to call on every app start.
@@ -101,6 +102,17 @@ export async function configureRevenueCat(
 
   if (mode === "disabled") {
     return "disabled";
+  }
+
+  // Idempotent across the app session. RC's guidance is to call
+  // Purchases.configure exactly once; identity changes after that go
+  // through identifyRevenueCatUser (Purchases.logIn), NOT a second
+  // configure. Both the app-start anonymous configure (app/_layout.tsx)
+  // and auth-context's per-user configure land here, so the first call
+  // wins and later calls return the cached result instead of
+  // re-configuring the native SDK with a different appUserID.
+  if (configured && configuredResult) {
+    return configuredResult;
   }
 
   if (rcUnsafePurchaseConfig(flags)) {
@@ -137,6 +149,7 @@ export async function configureRevenueCat(
         purchasesAreCompletedBy: PURCHASES_ARE_COMPLETED_BY_TYPE.REVENUECAT,
       });
       configured = true;
+      configuredResult = "configured-purchases";
       log("configured — RC completes purchases");
       return "configured-purchases";
     }
@@ -167,6 +180,7 @@ export async function configureRevenueCat(
       },
     });
     configured = true;
+    configuredResult = "configured-observer";
     log("configured — observer mode (our app completes purchases)");
     return "configured-observer";
   } catch (err) {

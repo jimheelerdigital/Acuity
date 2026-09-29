@@ -344,6 +344,21 @@ export async function scanRcParity(batch = 5): Promise<RcParityResult> {
         continue;
       }
 
+      // App-managed free trials (subscriptionStatus TRIAL, no paid source)
+      // are invisible to RC by design — Ripple's trial needs no card, so
+      // there is no transaction for RC to observe. The resolver's trial
+      // overlay (resolveEntitlement, "APP-MANAGED TRIAL OVERLAY") reproduces
+      // the DB trial decision at cutover: when RC says FREE it keeps an
+      // active app-managed trial from the DB. So RC lacking these users is
+      // expected, NOT a would-lose-access risk — counting them as SEV1
+      // overstates cutover danger. Mirror the comp exception above.
+      const isAppManagedTrial =
+        u.subscriptionStatus === "TRIAL" && u.subscriptionSource === null;
+      if (isAppManagedTrial && !rcHasPro) {
+        agreeing++;
+        continue;
+      }
+
       if (dbEntitled === rcHasPro) {
         if (rcState.subscriptionStatus === u.subscriptionStatus) {
           agreeing++;

@@ -33,6 +33,7 @@ import {
 import { TOUR_FORCE_REPLAY_KEY } from "@/hooks/use-tour-trigger";
 import { isObsidianExportEnabled } from "@/lib/feature-flags";
 import { isIapEnabled } from "@/lib/iap-config";
+import { rcFlags } from "@/lib/revenuecat/flags";
 import { exportAll } from "@/lib/obsidian/export";
 import { openSubscriptionPortal } from "@/lib/subscription";
 
@@ -208,11 +209,15 @@ export default function ProfileTab() {
   // 400 NoSubscription, surfacing as a confusing dead-end Alert.
   const canManageStripeSubscription =
     canManageSubscription && isStripeSub && user?.hasStripeCustomer === true;
-  // Phase 3a — show in-app Subscribe entry point for FREE users on
-  // iOS when the build-time IAP flag is on. Falls back to the web
-  // "Manage plan on web" link when the flag is off OR on Android.
+  // Show the in-app Subscribe entry point for FREE users. Rail-aware and
+  // identical to the subscribe screen: the RC rail shows it on iOS +
+  // Android; the legacy StoreKit path is iOS-only and stays gated on
+  // isIapEnabled(). Falls back to "Manage plan on web" when neither is on.
   const showInAppSubscribe =
-    !isPro && Platform.OS === "ios" && isIapEnabled();
+    !isPro &&
+    (rcFlags().RC_SDK_PURCHASES
+      ? Platform.OS === "ios" || Platform.OS === "android"
+      : Platform.OS === "ios" && isIapEnabled());
   // For Apple-source users, route Manage to iOS Settings (Apple's deep
   // link). For Stripe-source users, the existing openSubscriptionPortal
   // flow handles it. Use the itms-apps:// scheme rather than the https
