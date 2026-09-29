@@ -403,7 +403,7 @@ describe("isActiveAppManagedTrial", () => {
 // expire at the imported period end. These tests guard that RC reporting
 // FREE for a still-active provider-backed PRO customer does NOT revoke
 // their access when RC_SOURCE_OF_TRUTH is on.
-describe("provider-backed PRO overlay", () => {
+describe("RC-invisible PRO overlay (stripe + comp only)", () => {
   const NOW = new Date("2026-10-03T12:00:00Z");
   const rcFree = {
     subscriptionStatus: "FREE",
@@ -412,7 +412,7 @@ describe("provider-backed PRO overlay", () => {
     subscriptionSource: null,
   };
 
-  for (const source of ["stripe", "apple", "google_play", "comp"] as const) {
+  for (const source of ["stripe", "comp"] as const) {
     it(`keeps a ${source} PRO user entitled even though RC says FREE`, async () => {
       setFlag("RC_SOURCE_OF_TRUTH", "1");
       const { resolveEntitlement } = await subject();
@@ -425,6 +425,21 @@ describe("provider-backed PRO overlay", () => {
       expect(res!.entitlement.canExtractEntries).toBe(true);
       // Overlay uses DB data but the configured source still answered.
       expect(res!.source).toBe("revenuecat");
+    });
+  }
+
+  for (const source of ["apple", "google_play"] as const) {
+    it(`does NOT keep a ${source} PRO row when RC says FREE (RC sees store purchases live)`, async () => {
+      // Regression guard for the TRANSFER loophole: RC moved the sub to
+      // another account, the old row still says PRO. RC must win.
+      setFlag("RC_SOURCE_OF_TRUTH", "1");
+      const { resolveEntitlement } = await subject();
+      rcLoadMock.mockResolvedValue(rcFree);
+      findUniqueMock.mockResolvedValue(
+        dbRow({ subscriptionStatus: "PRO", trialEndsAt: null, subscriptionSource: source })
+      );
+      const res = await resolveEntitlement("u1", NOW);
+      expect(res!.entitlement.isActive).toBe(false);
     });
   }
 
