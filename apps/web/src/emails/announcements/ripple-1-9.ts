@@ -143,7 +143,7 @@ export function ripple19Announcement(v: Ripple19Vars): {
         alt: "Your Ripple journal connected read-only to your own AI assistant",
         title: "Bring your own AI",
         pro: true,
-        body: `Already use an AI assistant like Claude or ChatGPT? You can now give it read-only access to your journal, so it can answer with your real life in mind. It can’t change anything, and you can turn it off anytime. Set it up from <a href="${ACCOUNT_URL}" style="color:#C4451C;text-decoration:underline;">your account at goripple.io</a>.`,
+        body: `Already use an AI assistant? You can now give it read-only access to your journal, so it can answer with your real life in mind. It can’t change anything, and you can turn it off anytime. Set it up from <a href="${ACCOUNT_URL}" style="color:#C4451C;text-decoration:underline;">your account at goripple.io</a>.`,
       })}
 
       <tr>
