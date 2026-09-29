@@ -371,8 +371,9 @@ export async function POST(req: NextRequest) {
               () => meta.uploadVideo(videoUrl),
               { label: `Video upload ${creativeLabel}`, retryDelayMs: 10_000 }
             );
-          } catch {
-            errors.push({ creativeId: creative.id, error: "Video upload failed after 3 retries" });
+          } catch (err) {
+            logMetaError(`Video upload ${creativeLabel}`, err);
+            errors.push({ creativeId: creative.id, error: `Video upload failed after 3 retries: ${err instanceof Error ? err.message : extractErrorDetail(err)}`.slice(0, 600) });
             continue;
           }
           if (creative.imageUrl) {

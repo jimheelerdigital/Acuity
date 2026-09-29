@@ -284,27 +284,42 @@ export async function uploadImage(imageUrl: string): Promise<string> {
   return hash;
 }
 
+/**
+ * Upload a video to the ad account by URL (Meta fetches it).
+ * 2026-09-29: rewritten against the Graph API directly — the SDK path failed
+ * every attempt on the first video-ad launch and its error never surfaced.
+ * Now Meta's real error message is thrown, and the "processed yet?" poll is
+ * best-effort (Meta keeps processing after we return; creative creation
+ * works with a still-processing video).
+ */
 export async function uploadVideo(videoUrl: string): Promise<string> {
-  await getApi();
-  const account = await getAdAccount();
-
-  const video = await account.createAdVideo([], {
-    file_url: videoUrl,
-  });
-
-  const videoId = video?.id;
-  if (!videoId) throw new Error("Failed to get video ID from Meta upload");
-
-  // Poll until video is processed (Meta needs ~30-60s)
+  const token = process.env.META_ACCESS_TOKEN;
+  const accountId = process.env.META_AD_ACCOUNT_ID;
+  if (!token || !accountId) throw new Error("META_ACCESS_TOKEN / META_AD_ACCOUNT_ID not configured");
+  const version = process.env.META_API_VERSION || "v25.0";
+  const act = accountId.startsWith("act_") ? accountId : `act_${accountId}`;
+  const body = new URLSearchParams({ file_url: videoUrl, access_token: token });
+  const res = await fetch(`https://graph.facebook.com/${version}/${act}/advideos`, { method: "POST", body });
+  const data = (await res.json().catch(() => ({}))) as { id?: string; error?: { message?: string; code?: number; error_subcode?: number; error_user_msg?: string } };
+  if (!res.ok || !data.id) {
+    const e = data.error;
+    throw new Error(
+      `Meta video upload failed (${res.status}): ${redactAccessToken(e?.error_user_msg || e?.message || JSON.stringify(data)).slice(0, 400)}${e?.code ? ` [code ${e.code}${e.error_subcode ? `/${e.error_subcode}` : ""}]` : ""}`
+    );
+  }
+  const videoId = data.id;
   for (let i = 0; i < 12; i++) {
     await new Promise((r) => setTimeout(r, 5_000));
-    const bizSdk = await getBizSdk();
-    const v = new bizSdk.AdVideo(videoId);
-    const status = await v.get(["status"]);
-    if (status?.status?.video_status === "ready") return videoId;
+    try {
+      const st = await fetch(`https://graph.facebook.com/${version}/${videoId}?fields=status&access_token=${encodeURIComponent(token)}`);
+      const j = (await st.json()) as { status?: { video_status?: string } };
+      if (j.status?.video_status === "ready") return videoId;
+      if (j.status?.video_status === "error") throw new Error("Meta could not process the video");
+    } catch (err) {
+      if (err instanceof Error && err.message.startsWith("Meta could not")) throw err;
+      // status check hiccup: keep waiting
+    }
   }
-
-  // Return anyway — Meta may still process it
   return videoId;
 }
 
