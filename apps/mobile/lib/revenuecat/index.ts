@@ -345,6 +345,80 @@ export async function getActiveProPlan(): Promise<ActiveProPlan | null> {
   }
 }
 
+// ─── Attributes + offering selection (Targeting / Experiments) ───────
+
+/**
+ * RevenueCat Experiments and Targeting only work when the app shows RC's
+ * CURRENT offering — RC decides it server-side per customer (experiment
+ * variant first, then Targeting rules, then the project default). So the
+ * paywall must never ask for an offering by name.
+ *
+ * The one exception is a safety net for legacy (grandfathered) customers:
+ * if the Targeting rule `pricing_tier = legacy -> grandfathered` is ever
+ * missing or misconfigured, RC would hand them current pricing. For them we
+ * fall back to the `grandfathered` offering by id. Legacy customers are
+ * never in experiments, so this costs nothing.
+ */
+type OfferingsLike = {
+  current: { identifier: string } | null;
+  all: Record<string, unknown>;
+};
+export function pickOffering<T extends OfferingsLike>(
+  offerings: T,
+  wantedId: string
+): T["current"] {
+  const current = offerings.current;
+  if (wantedId === "grandfathered" && current?.identifier !== "grandfathered") {
+    const g = offerings.all["grandfathered"] as T["current"] | undefined;
+    if (g) return g;
+  }
+  return current;
+}
+
+/**
+ * Push the customer attributes RevenueCat keys on — `pricing_tier` (drives
+ * the grandfathered Targeting rule) and attribution ($mediaSource,
+ * $campaign) for funnel breakdowns — then force RC to re-evaluate offerings
+ * so Targeting sees the new values in THIS session (RC otherwise syncs
+ * attributes only on foreground/background).
+ */
+export async function syncRevenueCatAttributes(
+  attrs: Record<string, string | null>
+): Promise<void> {
+  if (!configured) return;
+  const mod = await loadPurchases();
+  if (!mod) return;
+  try {
+    await mod.default.setAttributes(attrs);
+    await mod.default.syncAttributesAndOfferingsIfNeeded();
+  } catch (err) {
+    log("syncRevenueCatAttributes failed", err);
+  }
+}
+
+/**
+ * The raw offering for a RevenueCat Paywall (RevenueCatUI.Paywall renders
+ * the paywall attached to it in the dashboard). Same selection rule as
+ * pickOffering.
+ */
+export async function getPaywallOffering(
+  tier: "legacy" | "v2"
+): Promise<import("react-native-purchases").PurchasesOffering | null> {
+  if (!rcFlags().RC_SDK_PURCHASES) return null;
+  const mod = await loadPurchases();
+  if (!mod) return null;
+  try {
+    const offerings = await mod.default.getOfferings();
+    return pickOffering(
+      offerings,
+      tier === "legacy" ? "grandfathered" : "default"
+    );
+  } catch (err) {
+    log("getPaywallOffering failed", err);
+    return null;
+  }
+}
+
 // ─── Purchase flow (behind RC_SDK_PURCHASES) ─────────────────────────
 
 export interface RcOfferingPackages {
@@ -379,7 +453,7 @@ export async function getProOffering(
     const tier = pricingTierFor(grandfather, pricingConfig);
     const wantedId = offeringIdForTier(tier);
     const offerings = await mod.default.getOfferings();
-    const offering = offerings.all[wantedId] ?? offerings.current;
+    const offering = pickOffering(offerings, wantedId);
     if (!offering) {
       log(`no offering found for id=${wantedId} and no current offering`);
       return null;

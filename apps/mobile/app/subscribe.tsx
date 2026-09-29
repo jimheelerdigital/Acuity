@@ -22,7 +22,10 @@ import {
   type PricingTier,
 } from "@acuity/shared";
 
+import type { PurchasesOffering } from "react-native-purchases";
+
 import { GradientCheckbox } from "@/components/acuity/GradientCheckbox";
+import { RcPaywall } from "@/components/paywall/RcPaywall";
 import { RestorePurchasesButton } from "@/components/restore-purchases-button";
 import { useAuth } from "@/contexts/auth-context";
 import { useTheme } from "@/contexts/theme-context";
@@ -50,6 +53,7 @@ import {
 import {
   getActiveProPlan,
   getProOffering,
+  getPaywallOffering,
   purchaseProPackage,
   type ActiveProPlan,
   type RcOfferingPackages,
@@ -112,6 +116,10 @@ export default function SubscribeScreen() {
   // purchase rail is on. Holds the RC Package objects (opaque here) plus
   // the store-localized price strings for display.
   const [rcOffering, setRcOffering] = useState<RcOfferingPackages | null>(null);
+  // RevenueCat Paywall offering — used for customers who are NOT yet Pro.
+  // Existing subscribers keep the current-plan / switch-to-annual screen.
+  const [paywallOffering, setPaywallOffering] =
+    useState<PurchasesOffering | null>(null);
   const [selectedTier, setSelectedTier] = useState<Tier>("monthly");
   const [loadState, setLoadState] = useState<"idle" | "loading" | "error">(
     "loading"
@@ -196,6 +204,17 @@ export default function SubscribeScreen() {
         ]);
         setPricingTier(tier);
         setCurrentPlan(plan);
+        if (!plan) {
+          // Not subscribed: show the RevenueCat Paywall for RC's current
+          // offering (Experiments + Targeting decide which one).
+          const pw = await getPaywallOffering(tier);
+          if (pw) {
+            setPaywallOffering(pw);
+            setLoadState("idle");
+            return;
+          }
+          // No offering from RC → fall through to the built-in screen.
+        }
         // Legacy customers get the `grandfathered` offering ($4.99/$39.99);
         // everyone else the current one. legacyUnknownStart is the shared
         // resolver's "grandfather this user" input.
@@ -447,6 +466,38 @@ export default function SubscribeScreen() {
       setPurchasing(false);
     }
   };
+
+  if (rcPurchases && paywallOffering && !currentPlan) {
+    return (
+      <View style={{ flex: 1, backgroundColor: tokens.bg }}>
+        <RcPaywall
+          offering={paywallOffering}
+          signedIn={!!user}
+          style={{ flex: 1 }}
+          onPurchased={async () => {
+            await refresh();
+            Alert.alert(
+              "Welcome to Ripple Pro",
+              "Your subscription is active. New entries will get the full debrief.",
+              [{ text: "OK", onPress: () => router.back() }]
+            );
+          }}
+          onRestored={async (hasPro) => {
+            if (hasPro) {
+              await refresh();
+              router.back();
+              return;
+            }
+            Alert.alert(
+              "No purchases to restore",
+              "We didn't find a Ripple Pro subscription on this store account."
+            );
+          }}
+          onDismiss={() => router.back()}
+        />
+      </View>
+    );
+  }
 
   if (!flagOn || !supportsIap) {
     return (

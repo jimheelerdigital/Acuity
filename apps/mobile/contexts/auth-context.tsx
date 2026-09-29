@@ -23,7 +23,10 @@ import {
   configureRevenueCat,
   identifyRevenueCatUser,
   logOutRevenueCatUser,
+  syncRevenueCatAttributes,
 } from "@/lib/revenuecat";
+import { flushPendingWithdrawalAck } from "@/lib/paywall-consent";
+import { fetchCustomerRcProfile } from "@/lib/pricing-tier";
 import {
   IDLE_EXPIRY_MS,
   decideSessionGate,
@@ -337,6 +340,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const mode = await configureRevenueCat(user.id);
       if (cancelled || mode === "disabled") return;
       await identifyRevenueCatUser(user.id);
+      if (cancelled) return;
+      // A 14-day-withdrawal acknowledgement captured before the account
+      // existed (onboarding purchase) is written to the ledger now.
+      await flushPendingWithdrawalAck();
+      // Attributes RevenueCat Targeting / Experiments / charts key on:
+      // pricing_tier routes legacy customers to the grandfathered offering;
+      // $mediaSource / $campaign break the funnel down by channel.
+      const profile = await fetchCustomerRcProfile();
+      if (cancelled) return;
+      await syncRevenueCatAttributes({
+        pricing_tier: profile.tier,
+        ...(profile.mediaSource ? { $mediaSource: profile.mediaSource } : {}),
+        ...(profile.campaign ? { $campaign: profile.campaign } : {}),
+      });
     })();
     return () => {
       cancelled = true;

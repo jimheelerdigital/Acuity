@@ -24,11 +24,15 @@ import { DEFAULT_PRICING_CONFIG, LEGACY_TIER, V2_TIER } from "@acuity/shared";
 import { isNewPricingEnabled } from "@/lib/feature-flags";
 import {
   getProOffering,
+  getPaywallOffering,
   purchaseProPackage,
   restoreProPurchases,
   type RcOfferingPackages,
 } from "@/lib/revenuecat";
 import { rcFlags } from "@/lib/revenuecat/flags";
+import { RcPaywall } from "@/components/paywall/RcPaywall";
+import type { PurchasesOffering } from "react-native-purchases";
+import { CustomVariableValue } from "react-native-purchases-ui";
 
 /**
  * Screen 6 — Paywall (light, single screen).
@@ -82,6 +86,10 @@ export default function V10Paywall() {
   // CTA keeps its record-intent-and-advance behaviour.
   const rcPurchases = rcFlags().RC_SDK_PURCHASES;
   const [rcOffering, setRcOffering] = useState<RcOfferingPackages | null>(null);
+  // RevenueCat Paywall (designed/tested in the RC dashboard). When RC serves
+  // an offering we render its paywall; otherwise the built-in screen below
+  // stays as the fallback.
+  const [pwOffering, setPwOffering] = useState<PurchasesOffering | null>(null);
   const [busy, setBusy] = useState(false);
 
   const tier = isNewPricingEnabled() ? V2_TIER : LEGACY_TIER;
@@ -93,11 +101,17 @@ export default function V10Paywall() {
     if (!rcPurchases) return;
     let cancelled = false;
     void (async () => {
-      const offering = await getProOffering(
-        { paidSince: null },
-        { ...DEFAULT_PRICING_CONFIG, newPricingEnabled: isNewPricingEnabled() }
-      );
-      if (!cancelled) setRcOffering(offering);
+      const [offering, pw] = await Promise.all([
+        getProOffering(
+          { paidSince: null },
+          { ...DEFAULT_PRICING_CONFIG, newPricingEnabled: isNewPricingEnabled() }
+        ),
+        // A brand-new prospect has no legacy history → current pricing.
+        getPaywallOffering("v2"),
+      ]);
+      if (cancelled) return;
+      setRcOffering(offering);
+      setPwOffering(pw);
     })();
     return () => {
       cancelled = true;
@@ -208,6 +222,45 @@ export default function V10Paywall() {
     void setV10PlanDecision("free");
     router.push("/onboarding-new/account");
   }, []);
+
+  if (rcPurchases && pwOffering) {
+    return (
+      <View style={{ flex: 1, backgroundColor: "#ffffff" }}>
+        <RcPaywall
+          offering={pwOffering}
+          signedIn={false}
+          style={{ flex: 1 }}
+          customVariables={{
+            // Personalization for the RC paywall copy:
+            //   {{ custom.header }}       e.g. "You mentioned 4 things to do."
+            //   {{ custom.observation }}  the branch observation line
+            header: CustomVariableValue.string(headerFor(taskCount)),
+            observation: CustomVariableValue.string(
+              branch ? V10_BRANCHES[branch].paywallObservation : DEFAULT_OBSERVATION
+            ),
+          }}
+          onPurchased={(_info, pkg) => {
+            const decided: Plan =
+              pkg?.packageType === "MONTHLY" ? "monthly" : "annual";
+            trackV10("v10_plan_decision", { decision: decided });
+            void setV10PlanDecision(decided);
+            router.push("/onboarding-new/account");
+          }}
+          onRestored={(hasPro) => {
+            if (hasPro) {
+              router.push("/onboarding-new/account");
+              return;
+            }
+            Alert.alert(
+              "No purchases to restore",
+              "We didn't find a Ripple Pro subscription to restore on this store account."
+            );
+          }}
+          onDismiss={onContinueFree}
+        />
+      </View>
+    );
+  }
 
   const cta = copy.cta(plan);
   const timeline = copy.timeline(plan);
