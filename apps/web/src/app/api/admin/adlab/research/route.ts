@@ -75,7 +75,6 @@ PROJECT CONFIG:
 - Brand voice: ${project.brandVoiceGuide}
 - Target audience: ${JSON.stringify(audience, null, 2)}
 - USPs: ${JSON.stringify(project.usps)}
-- Banned phrases (never use): ${(project.bannedPhrases ?? []).join(", ")}
 ${Array.isArray(learnedPatterns) && learnedPatterns.length > 0 ? `\nPast winning patterns from this project (use as priors, not constraints):\n${JSON.stringify(learnedPatterns, null, 2)}` : ""}
 
 VALUE SURFACE DEFINITIONS:

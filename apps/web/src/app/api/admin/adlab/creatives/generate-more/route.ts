@@ -242,7 +242,6 @@ PROJECT:
 - Product: ${project.name}
 - Brand voice: ${project.brandVoiceGuide}
 - USPs: ${JSON.stringify(project.usps)}
-- Banned phrases: ${project.bannedPhrases.join(", ")}
 
 ANGLE:
 - Hypothesis: ${angle.hypothesis}

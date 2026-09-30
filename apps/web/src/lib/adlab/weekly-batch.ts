@@ -167,29 +167,6 @@ export const AD_SLOTS: AdSlot[] = [
   },
 ];
 
-/** Phrases the last batches wore out (2026-09-29 audit of the live ads). */
-const OVERUSED_PHRASES = [
-  "400-word", "Sunday report", "notebook", "nothing came back", "gave nothing back",
-  "a record that", "the week dissolves", "patterns" /* max once per batch */, "written back to them",
-];
-
-const SHARED_BANNED = [
-  "unlock",
-  "elevate",
-  "journey",
-  "transform",
-  "AI-powered",
-  "seamless",
-  "game-changer",
-  "in today's fast-paced world",
-  "revolutionize",
-  "harness the power of",
-  "empower",
-  "cutting-edge",
-  "leverage",
-  "brain dump",
-];
-
 export const BATCH_GROUPS: Record<BatchGroupKey, GroupConfig> = {
   women: {
     key: "women",
@@ -578,7 +555,9 @@ export async function ensureGroupProject(groupKey: BatchGroupKey): Promise<{ id:
       brandVoiceGuide: g.brandVoiceGuide,
       targetAudience: g.targetAudience as Prisma.InputJsonValue,
       usps: g.usps,
-      bannedPhrases: SHARED_BANNED,
+      // Banned-phrase list removed 2026-09-30 (per Keenan: "get rid of the
+      // banned phrases doc in the ads builder").
+      bannedPhrases: [],
       imageStylePrompt: g.imageStylePrompt,
       logoUrl: base?.logoUrl ?? "https://goripple.io/icon-512.png",
       targetCplCents: base?.targetCplCents ?? 500,
@@ -985,8 +964,6 @@ ${g.brandVoiceGuide}
 USPs (pick the one that best answers each ad — don't cram them all in):
 ${JSON.stringify(g.usps, null, 2)}
 
-BANNED PHRASES (never use): ${SHARED_BANNED.join(", ")}
-OVERUSED — do not use ("patterns" at most once across all 10): ${OVERUSED_PHRASES.join(", ")}
 ${recentBlock}
 ${bestAdBlock}
 THE 10 SLOTS — every slot has a FIXED hook template and a FIXED format. Write the ad for the slot you are given; set "archetype" to the slot key.

@@ -7,6 +7,26 @@
 
 ---
 
+## [2026-09-30] — Banned-phrases list removed from the ads builder
+
+- **Requested by:** Keenan
+- **Committed by:** Claude Code
+- **Commit hash:** (see git log — "content: Remove the banned-phrases list from the ads builder")
+
+### In plain English (for Keenan)
+The ad writer no longer gets the list of "never use these words" phrases (unlock, journey, transform, AI-powered, and so on) or the "overused phrases" list. You found they were making the ads worse. The real rules stay: no feeling-state questions, no age references, no health claims, never "brain dump", no recording-length claims.
+
+### Technical changes (for Jimmy)
+- apps/web/src/lib/adlab/weekly-batch.ts: removed `SHARED_BANNED`, `OVERUSED_PHRASES` and both prompt lines; new group projects seed `bannedPhrases: []`.
+- apps/web/src/app/api/admin/adlab/research/route.ts, creatives/generate/route.ts, creatives/generate-more/route.ts: removed the "Banned phrases" prompt line.
+- DB: `AdLabProject.bannedPhrases` emptied on all 4 projects. The column stays; the project form can still set a list, but no generator reads it now.
+
+### Manual steps needed
+- None
+
+### Notes
+- The humanizer was never part of the ads builder. It only runs in the content factory (organic posts), where another session is adding Jev in front of it. Not touched here.
+
 ## [2026-09-30] — Ads optimize for paid trials; ad-matched first screen; email-only signup; password step; pay-in-Safari button
 
 - **Requested by:** Keenan
