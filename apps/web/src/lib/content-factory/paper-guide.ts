@@ -141,6 +141,25 @@ export async function generatePaperGuideTopic(
     label: "paper-guide-topic",
     generate: (extra) => generateOnce(spec, recentHeadlines, feedback, extra),
     headlineOf: (t) => t.title,
+    // Jev best-of-5 cover pick (2026-09-30). The slug stays as-is: it is
+    // the model's topic slug, not derived from the title.
+    bestCover: {
+      brand: brandForAudience(spec.audience),
+      lane: `paper-guide-${spec.audience}`,
+      rules:
+        'The cover of a typed "reset guide" on paper: one plain, sentence-case promise with a concrete number or span, 9 words at most ("7 days to...", "The 20-minute Sunday reset", "3 habits that..." are shapes, not words to reuse). It promises exactly what the steps deliver. No clickbait, no ALL CAPS, no app or brand names.',
+      contextOf: (t) =>
+        t.slides
+          .map((sl) => `${sl.header} / ${sl.sub} / ${sl.body.filter(Boolean).join(" ")}`)
+          .join("\n"),
+      setHeadline: (t, title) => {
+        const letters = title.replace(/[^A-Za-z]/g, "");
+        const w = title.split(/\s+/).filter(Boolean).length;
+        if (w > 9 || w < 3 || !/\d|\b(one|two|three|four|five|six|seven|weekend|week|month|day|night|hour|minute)s?\b/i.test(title)) return t;
+        if (letters.length > 0 && letters === letters.toUpperCase()) return t;
+        return { ...t, title };
+      },
+    },
   });
 }
 

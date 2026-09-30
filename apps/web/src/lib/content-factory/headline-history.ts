@@ -102,6 +102,139 @@ export function repeatHeadlineFeedback(h: string): string {
 }
 
 /**
+ * Near-duplicate IDEA check (Jev #4, 2026-09-30). The exact-match check
+ * above misses "REST IS NOT A REWARD" vs "YOU DON'T HAVE TO EARN REST":
+ * different words, same post. Jev picks which recent headline (if any)
+ * makes the same point; a confident match is a rejection. Fails open
+ * (null) when Jev is off or errors. Returns the matched headline.
+ */
+const NEAR_DUP_POOL = 60;
+const NEAR_DUP_MIN_P = 0.6;
+const NEAR_DUP_PAIR_MIN = 0.7;
+const OVERLAP_MIN = 0.75;
+
+function words(h: string): Set<string> {
+  return new Set(normalizeHeadline(h).split(" ").filter((w) => w.length > 2));
+}
+
+/**
+ * Tested 2026-09-30 on 60 real headlines: Jev's Choice alone mixes up
+ * format-alike titles (two "which X guards your..." posts at p≈0.59), and
+ * its pairwise yes/no alone is over-eager (≈0.7 for loosely related
+ * lines). So a match needs BOTH to agree; plain rewordings ("SEE THE PART
+ * NOBODY FILMS NOW") are caught in code by word overlap instead.
+ */
+export async function nearDuplicateOf(h: string): Promise<string | null> {
+  const candidate = h.trim();
+  if (!candidate) return null;
+  const { headlines } = await loadHistory();
+  const n = normalizeHeadline(candidate);
+  const pool = headlines
+    .filter((x) => normalizeHeadline(x) !== n)
+    .slice(0, NEAR_DUP_POOL);
+  if (pool.length === 0) return null;
+
+  const cw = words(candidate);
+  for (const x of pool) {
+    const xw = words(x);
+    if (cw.size < 2 || xw.size < 2) continue;
+    let shared = 0;
+    for (const w of cw) if (xw.has(w)) shared++;
+    if (shared / Math.min(cw.size, xw.size) >= OVERLAP_MIN) return x;
+  }
+
+  const { askJev, choiceOf } = await import("./jev");
+  const criteria: Record<string, string | null> = {
+    none: "No headline in the list makes the same point as the candidate; the candidate is a new idea",
+  };
+  pool.forEach((x, i) => (criteria[`h${i}`] = x));
+  const r = await askJev(
+    "near-duplicate-headline",
+    { candidate },
+    {
+      match: {
+        type: "choice",
+        instructions:
+          "Which of these past social post headlines makes the SAME core point as `candidate`, even if the wording is different? Choose none unless a reader would feel they had already seen this exact post.",
+        criteria,
+      },
+    }
+  );
+  const c = choiceOf(r, "match");
+  if (!c || c.choice === "none" || c.p < NEAR_DUP_MIN_P) return null;
+  const past = criteria[c.choice];
+  if (!past) return null;
+  const confirm = await askJev(
+    "near-duplicate-confirm",
+    { candidate },
+    {
+      same: {
+        type: "noul",
+        instructions: {
+          past,
+          question:
+            "Do `candidate` and `past` make the same point, so a reader who saw `past` would feel this is the same post again?",
+        },
+      },
+    }
+  );
+  const { noulOf } = await import("./jev");
+  const same = noulOf(confirm, "same");
+  return same !== null && same >= NEAR_DUP_PAIR_MIN ? past : null;
+}
+
+/** Retry feedback for a headline Jev judged to be the same idea as a recent one. */
+export function nearDuplicateFeedback(h: string, match: string): string {
+  return `\n\nREJECTED: your last cover headline "${h}" makes the same point as a recent post ("${match}"). Pick a genuinely different idea or angle for this post, not a rewording, and keep the rest of the post fresh too.`;
+}
+
+/**
+ * Optional best-of-5 cover step (Jev #1). After the headline is accepted,
+ * cover-picker writes alternatives in the same form, Jev scores all of
+ * them, and the winner replaces the headline via setHeadline.
+ */
+export interface BestCoverOpts<T> {
+  brand: import("./copy-objectives").CopyBrand;
+  lane: string;
+  /** Form constraints the alternatives must keep (length, case, command vs question). */
+  rules?: string;
+  /** The post body the cover introduces (slide text), for context. */
+  contextOf: (result: T) => string;
+  /** Return the result with the cover headline replaced everywhere it appears. */
+  setHeadline: (result: T, headline: string) => T;
+}
+
+async function applyBestCover<T>(
+  label: string,
+  result: T,
+  headlineOf: (r: T) => string,
+  cover: BestCoverOpts<T> | undefined
+): Promise<T> {
+  if (!cover) return result;
+  try {
+    const { pickBestCover } = await import("./cover-picker");
+    const current = headlineOf(result);
+    const picked = await pickBestCover({
+      label,
+      brand: cover.brand,
+      lane: cover.lane,
+      current,
+      context: cover.contextOf(result),
+      rules: cover.rules,
+    });
+    if (!picked || picked.headline.trim() === current.trim()) return result;
+    console.log(`[headline-history] ${label}: best-of-5 cover "${current}" -> "${picked.headline}"`);
+    return cover.setHeadline(result, picked.headline);
+  } catch (err) {
+    console.warn(
+      `[headline-history] ${label}: best-of-5 cover failed — keeping the writer's headline:`,
+      err instanceof Error ? err.message : err
+    );
+    return result;
+  }
+}
+
+/**
  * Record a headline this process just accepted, so parallel lanes
  * running in the same warm process see it before the cache refreshes.
  */
@@ -141,20 +274,30 @@ export async function withHeadlineRetry<T>(opts: {
   headlineOf: (result: T) => string;
   /** Optional extra check — return retry feedback to reject, null to accept. */
   reject?: (result: T) => string | null;
+  /** Optional Jev best-of-5 cover pick, run on the accepted result. */
+  bestCover?: BestCoverOpts<T>;
 }): Promise<T> {
   const block = await recentHeadlinesPromptBlock();
   const problem = async (r: T): Promise<string | null> => {
     const h = opts.headlineOf(r);
     if (await isRecentHeadline(h)) return repeatHeadlineFeedback(h);
-    return opts.reject?.(r) ?? null;
+    const own = opts.reject?.(r) ?? null;
+    if (own) return own;
+    const { copyFlagFor } = await import("./humanizer");
+    const flagged = copyFlagFor(h);
+    if (flagged) return flagged;
+    const near = await nearDuplicateOf(h);
+    return near ? nearDuplicateFeedback(h, near) : null;
+  };
+  const finish = async (r: T): Promise<T> => {
+    const out = await applyBestCover(opts.label, r, opts.headlineOf, opts.bestCover);
+    noteHeadlineUsed(opts.headlineOf(out));
+    return out;
   };
 
   const first = await opts.generate(block);
   const firstProblem = await problem(first);
-  if (!firstProblem) {
-    noteHeadlineUsed(opts.headlineOf(first));
-    return first;
-  }
+  if (!firstProblem) return finish(first);
   console.warn(
     `[headline-history] ${opts.label}: rejected "${opts.headlineOf(first)}" — retrying once`
   );
@@ -165,14 +308,12 @@ export async function withHeadlineRetry<T>(opts: {
         `[headline-history] ${opts.label}: retry also rejected ("${opts.headlineOf(second)}") — shipping anyway`
       );
     }
-    noteHeadlineUsed(opts.headlineOf(second));
-    return second;
+    return finish(second);
   } catch (err) {
     console.warn(
       `[headline-history] ${opts.label}: retry failed — shipping the first draft:`,
       err instanceof Error ? err.message : err
     );
-    noteHeadlineUsed(opts.headlineOf(first));
-    return first;
+    return finish(first);
   }
 }

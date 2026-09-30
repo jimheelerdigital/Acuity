@@ -195,12 +195,62 @@ type MoodyFamilyOpts = {
  */
 async function generateMoodyFamilyTopic(opts: MoodyFamilyOpts): Promise<MoodyTopic> {
   if (opts.headlineDedupe === false) return generateMoodyFamilyTopicOnce(opts);
+  const brand = opts.copyBrand ?? opts.brand;
   return withHeadlineRetry({
     label: opts.purpose,
     generate: (extra) =>
       generateMoodyFamilyTopicOnce({ ...opts, user: insertBeforeJsonTail(opts.user, extra) }),
     headlineOf: (t) => t.title,
+    // Jev best-of-5 cover pick (2026-09-30). Lanes with no brand brief
+    // (dormant lanes) are left alone. The cover rules are lifted from the
+    // lane's own system prompt so every lane keeps its own title shape.
+    bestCover: brand
+      ? {
+          brand,
+          lane: opts.slugPrefix,
+          rules: moodyTitleRules(opts.system),
+          contextOf: (t) =>
+            t.items
+              .map((it) => [it.name, ...it.lines].filter(Boolean).join(": "))
+              .join("\n"),
+          setHeadline: (t, title) => {
+            if (!moodyTitleFitsTemplate(t.title, title)) return t;
+            return { ...t, title, slug: `${opts.slugPrefix}-${moodySlug(title)}` };
+          },
+        }
+      : undefined,
   });
+}
+
+function moodySlug(title: string): string {
+  return title
+    .toLowerCase()
+    .replace(/[^a-z0-9\s-]/g, "")
+    .trim()
+    .replace(/\s+/g, "-")
+    .slice(0, 60);
+}
+
+/** The lane's "title" bullet(s) plus the BWK command rule when present. */
+function moodyTitleRules(system: string): string {
+  const lines = system
+    .split("\n")
+    .map((l) => l.trim())
+    .filter((l) => /^- "title"/.test(l));
+  if (system.includes("COVER COMMAND RULE")) lines.push(BWK_COVER_COMMAND_RULE);
+  return lines.join("\n");
+}
+
+/** Fixed-template lanes (taught / nobody) must keep their template; every
+ *  title stays a short cover (max 9 words, no number unless the original had one). */
+function moodyTitleFitsTemplate(original: string, next: string): boolean {
+  const words = next.split(/\s+/).filter(Boolean).length;
+  if (words < 2 || words > 9) return false;
+  if (/\d/.test(next) && !/\d/.test(original)) return false;
+  if (/^nobody tells you\b/i.test(original) && !/^nobody tells you\b/i.test(next)) return false;
+  if (/^what\b.*\btaught me\W*$/i.test(original) && !/^what\b.*\btaught me\W*$/i.test(next))
+    return false;
+  return true;
 }
 
 /** Splice `extra` in ahead of the closing "Return ONLY valid JSON." line. */
@@ -2282,7 +2332,24 @@ export async function generatePhoneQuoteTopic(
       generatePhoneQuoteTopicOnce(audience, recentHeadlines, feedback, extra),
     headlineOf: (t) => t.hook,
     reject: (t) => fakeCandidFeedback(t.hook),
+    // Jev best-of-5 cover pick (2026-09-30) on the cover hook.
+    bestCover: {
+      brand: brandForAudience(audience),
+      lane: audience === "men" ? "phone-quote-men" : "phone-quote",
+      rules: `The cover hook of a 2-slide post (photo cover, then a phone notes-app screen showing the quote). 5-12 words, all lowercase sentence case, ending with "...". It teases the quote without revealing it and is about ${audience === "men" ? "his" : "her"} honest reaction to the words (what it did to ${audience === "men" ? "him" : "her"}, when it landed, who it made ${audience === "men" ? "him" : "her"} think of, what changed after${audience === "men" ? ", or a direct instruction before a decision like \"read this before you quit...\"" : ""}). Never invent where the quote came from: no found objects, no overheard strangers, nothing written on a hand, napkin or receipt.`,
+      contextOf: (t) => `The quote on slide 2: ${t.quote}`,
+      setHeadline: (t, hook) =>
+        hookFits(hook) && !fakeCandidFeedback(hook)
+          ? { ...t, hook, slug: `${audience === "men" ? "phone-quote-men" : "phone-quote"}-${moodySlug(hook)}` }
+          : t,
+    },
   });
+}
+
+/** Phone-quote / letter / texts cover hooks: 5-12 words ending in "...". */
+function hookFits(hook: string): boolean {
+  const w = hook.split(/\s+/).filter(Boolean).length;
+  return w >= 4 && w <= 12 && /(\.\.\.|…)$/.test(hook.trim());
 }
 
 async function generatePhoneQuoteTopicOnce(
@@ -2951,6 +3018,18 @@ export async function generateLetterTopic(
     label: "letter-carousel-topic",
     generate: (extra) => generateLetterTopicOnce(recentHeadlines, feedback, extra),
     headlineOf: (t) => t.hook,
+    // Jev best-of-5 cover pick (2026-09-30) on the cover hook.
+    bestCover: {
+      brand: "ripple",
+      lane: "letter",
+      rules:
+        'The cover hook of a 2-slide post (photo cover, then a handwritten letter she never sent). 5-12 words, all lowercase sentence case, intimate and confessional, ending with "...". It frames the letter as unsent without revealing what it says ("i wrote this and never sent it..." is the shape, never those words). Never invent a found-object or overheard backstory.',
+      contextOf: (t) => `The unsent letter on slide 2: ${t.quote}`,
+      setHeadline: (t, hook) =>
+        hookFits(hook) && !fakeCandidFeedback(hook)
+          ? { ...t, hook, slug: `letter-${moodySlug(hook)}` }
+          : t,
+    },
   });
 }
 
@@ -3126,6 +3205,24 @@ export async function generateTextsTopic(
     label: `${lane}-topic`,
     generate: (extra) => generateTextsTopicOnce(lane, recentHeadlines, feedback, extra),
     headlineOf: (t) => t.hook,
+    // Jev best-of-5 cover pick (2026-09-30) on the cover hook.
+    bestCover: {
+      brand: lane === "future-texts" ? "bwk" : "ripple",
+      lane,
+      rules:
+        lane === "future-texts"
+          ? 'The cover hook of a text-message post: slides show texts arriving from his future self. 5-12 words, all lowercase sentence case, ending with "...". It must say plainly that these are texts from his future self or the man he is becoming ("a text from the man you\'re becoming..." is the shape, never those words).'
+          : 'The cover hook of a text-message post: slides show texts she sends to her younger self. 5-12 words, all lowercase sentence case, intimate, ending with "...". It must explicitly name the younger self ("my younger self", "younger me", "the girl i was", or a specific age like "25-year-old me"), never an unanchored "her" or "she".',
+      contextOf: (t) => t.messages.map((m, i) => `Text ${i + 1}: ${m}`).join("\n"),
+      setHeadline: (t, hook) => {
+        if (!hookFits(hook)) return t;
+        const anchored =
+          lane === "future-texts"
+            ? /\b(future|becoming|ahead|later|older)\b/i.test(hook)
+            : /\b(younger|girl i was|\d{1,2}[- ]year[- ]old)\b/i.test(hook);
+        return anchored ? { ...t, hook, slug: `${lane}-${moodySlug(hook)}` } : t;
+      },
+    },
   });
 }
 

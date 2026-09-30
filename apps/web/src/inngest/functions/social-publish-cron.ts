@@ -125,6 +125,52 @@ export const socialPublishCronFn = inngest.createFunction(
       });
       if (candidates.length === 0) return 0;
 
+      // ── Jev #2 publish gate (2026-09-30, per Keenan: "post roughly the
+      // best 12 of 18 instead of cutting lanes"). Each Ripple/BWK
+      // brand-day is ranked once, when all its lanes are in or at 13:00
+      // UTC, and its bottom third is HELD (emailed, never auto-posted).
+      // Until ranked, the day's posts wait here — windows open at noon ET,
+      // so no slot moves. Mythicals is never gated. Off/erroring Jev →
+      // "open"/fail-open, i.e. exactly the old behavior. See publish-gate.ts.
+      const { publishGateEnabled, resolveDayGate } = await import(
+        "@/lib/content-factory/publish-gate"
+      );
+      const { laneBrand: brandOfLane } = await import(
+        "@/lib/content-factory/social-publish"
+      );
+      const gated = new Set<string>();
+      if (publishGateEnabled()) {
+        const gates = new Map<string, Awaited<ReturnType<typeof resolveDayGate>>>();
+        for (const post of candidates) {
+          const brand = await brandOfLane(post.lane);
+          const date = post.generatedFor.toISOString().slice(0, 10);
+          const key = `${brand}:${date}`;
+          if (!gates.has(key)) {
+            try {
+              gates.set(key, await resolveDayGate(brand, date));
+            } catch (err) {
+              console.error(
+                `[social-publish] publish gate failed for ${key} — failing open: ${err instanceof Error ? err.message : err}`
+              );
+              gates.set(key, { state: "open", reason: "gate error" });
+            }
+          }
+          const gate = gates.get(key)!;
+          if (gate.state === "pending" || (gate.state === "ranked" && gate.held.has(post.id))) {
+            gated.add(post.id);
+          }
+        }
+        for (const [key, gate] of gates) {
+          if (gate.state === "pending") {
+            console.log(`[social-publish] ${key} waiting for the publish gate (missing lanes: ${gate.missingLanes.join(", ")})`);
+          } else if (gate.state === "ranked" && gate.held.size > 0) {
+            console.log(`[social-publish] ${key} publish gate holding ${gate.held.size}/${gate.marker.n} post(s)`);
+          }
+        }
+      }
+      const ready = candidates.filter((c) => !gated.has(c.id));
+      if (ready.length === 0) return 0;
+
       const {
         resolveAccount,
         laneBrand,
@@ -213,7 +259,7 @@ export const socialPublishCronFn = inngest.createFunction(
         accountKey: string;
         scheduledAt: Date;
       }[] = [];
-      for (const post of candidates) {
+      for (const post of ready) {
         // null for BWK lanes until META_BWK_* creds exist (2026-09-14,
         // per Keenan: "don't post bwk posts across insta/facebook yet").
         // With the TikTok inbox retired (2026-09-16), BWK posts enqueue
@@ -257,11 +303,11 @@ export const socialPublishCronFn = inngest.createFunction(
         skipDuplicates: true,
       });
       console.log(
-        `[social-publish] Enqueued ${candidates.length} post(s): ${candidates
+        `[social-publish] Enqueued ${ready.length} post(s): ${ready
           .map((c) => `${c.lane}/${c.headline}`)
           .join(" | ")}`
       );
-      return candidates.length;
+      return ready.length;
     });
 
     // ── 2. PUBLISH: fire everything that's due ──────────────────────

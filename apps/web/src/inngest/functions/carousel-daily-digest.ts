@@ -61,6 +61,27 @@ export const carouselDailyDigestFn = inngest.createFunction(
         return { ids: ids.filter((id) => open.has(id)), waiting };
       });
       if (order.waiting.length) return { date, waiting: order.waiting };
+      // Jev #2 publish gate (2026-09-30): the batch is complete here, so
+      // rank each brand-day now (if the social cron hasn't yet) — held
+      // posts' emails then carry the "HELD by Jev" label — and kick the
+      // social scan so the kept posts queue right away. Fail open.
+      if (order.ids.length) {
+        await step.run("publish-gate", async () => {
+          const { publishGateEnabled, resolveDayGate } = await import("@/lib/content-factory/publish-gate");
+          if (!publishGateEnabled()) return "off";
+          const out: string[] = [];
+          for (const brand of ["bwk", "ripple"] as const) {
+            try {
+              const g = await resolveDayGate(brand, date, { force: true });
+              out.push(`${brand}: ${g.state}${g.state === "ranked" ? ` (held ${g.held.size}/${g.marker.n})` : ""}`);
+            } catch (err) {
+              out.push(`${brand}: error ${err instanceof Error ? err.message : err}`);
+            }
+          }
+          await inngest.send({ name: "content-factory/social.publish", data: {} }).catch(() => undefined);
+          return out.join("; ");
+        });
+      }
       for (const id of order.ids) {
         await step.run(`email-${id}`, async () => {
           const { sendCarouselEmail } = await import("@/lib/content-factory/email");

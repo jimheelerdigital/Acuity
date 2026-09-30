@@ -7,6 +7,60 @@
 
 ---
 
+## [2026-09-30] — Jev decision layer live; humanizer removed; Mythicals slides show names only
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 46d82015
+
+### In plain English (for Keenan)
+The post writer is no longer followed by a second AI that "humanized" (and dulled) every post. A fast judging model (Jev) now does the checking instead:
+- It picks the best of five cover lines on every post.
+- It posts roughly the best two-thirds of each day's Ripple and BWK posts. Held ones still get emailed to you, marked HELD, so you can post them by hand, and no lane gets held two days running.
+- It sends back posts whose lines don't make sense or repeat a recent idea.
+- It filters the Reddit and competitor research before topics are written.
+- It rejects Mythicals posts whose five picks are near-copies or throwaways.
+
+Mythicals slides now show just the number and name, and "places" posts show the place instead of a creature.
+
+### Technical changes (for Jimmy)
+- New `lib/content-factory/jev.ts`: fail-open TypeSafe client (`POST api.typesafe.ai/v1/systemone`, Bearer `JEV_API_KEY`, model `jev-latest`, 10s timeout, 1 retry on 429/529, logs to ClaudeCallLog as `jev:<purpose>` with `model "jev"`).
+- #1 New `lib/content-factory/cover-picker.ts`:
+  - `pickBestCover` has Sonnet write 4 alternative covers in the lane's form, then one Jev call scores the 5 covers on scroll-stop, save/send and makes-sense (composite 0.55/0.3/0.15, +0.03 to the original).
+  - Wired through the new `bestCover` option on `withHeadlineRetry` in generate-topic, quote-loop, moody-carousel (family core + phone-quote/letter/texts), timeline-grid and paper-guide.
+  - Mythicals uses `withBestTitle` in choice-lane.
+- #2 New `lib/content-factory/publish-gate.ts`:
+  - One Jev call per brand-day ranks the posts; the top ceil(2/3·n) are kept. The Ripple coach-tone question is weighted −0.5.
+  - Rotation: a lane held yesterday keeps its best post today.
+  - Ranking runs once all lanes have landed or at 13:00 UTC, before any posting window. Mythicals is exempt.
+  - Decisions are stored in bucket `content-factory` at `publish-gate/<date>-<brand>.json`.
+  - `social-publish-cron.ts` scan skips pending and held posts; `carousel-daily-digest.ts` forces ranking before emails; `email.ts` adds the HELD label.
+  - Switch: `JEV_PUBLISH_GATE=0` turns it off.
+- #3 `humanizer.ts`:
+  - `humanizePass` no longer calls Claude (rewrite removed). It now removes dashes in code and runs a Jev sense check plus a code check for banned phrases.
+  - Flags reach `withHeadlineRetry` via `copyFlagFor`, and the writer regenerates once.
+  - `HUMAN_VOICE_RULES` prompt block cut to the dash and fake-provenance locks.
+- #4 `headline-history.ts` `nearDuplicateOf`: word-overlap check in code, then a Jev Choice over the last 60 headlines (p≥0.6) confirmed by a pairwise Noul (≥0.7).
+- #5 New `lib/content-factory/research-triage.ts`:
+  - Hooked into `reddit-trends.ts` `buildDailyDigest`: drops off-limits (≥0.7) and off-audience (<0.3) threads, ranks by relatability.
+  - Hooked into `competitor-mimic.ts` `writeMimicBriefs`: pool of 40, drops promo posts (≥0.5), best 8 go to the brief.
+- #6 `choice-lane.ts`: Jev twin (≥0.8, 2+ options) and throwaway (<0.25) checks, with one rewrite that names the problem.
+- Mythicals:
+  - Option slides render the name only (no lore line); `carousel-daily.ts`.
+  - Places mode: `buildMythicImagePrompt(scene, kind, mode)` frames the location, and `PLACE_RULES` scene/coverScene rules are rewritten.
+  - `living-reel.ts` scene-strip regex now covers both place and creature prompts.
+- Env: `JEV_API_KEY` added to Vercel production (sensitive).
+
+### Manual steps needed
+- [ ] None required. Tomorrow's first gated day (10-01): check the HELD-labelled emails and tell Claude if a held post should have shipped (Keenan)
+
+### Notes
+- Backtest (67 Ripple IG posts, Spearman vs engagement rate): about 0.32 with final weights. Nearly all of the signal is the "does it lecture her" question (−0.35). Jev's scroll-stop, save and makes-sense scores showed no signal on real engagement. The data is noisy (about 1 like per post), and the weights were tuned on the same data, so treat the number as optimistic.
+- BWK has no backtest data. Its holds rest on components with no proven signal. Revisit after two weeks of BWK metrics.
+- Jev Choice over many options spreads probability thin, and a Jev pairwise yes/no is over-eager (about 0.7 for loosely related lines). The near-duplicate check therefore needs both to agree.
+- The twin question must say "ignoring what every option must share". Without it, a mage-duo post (all options mages by design) flagged at 0.8.
+- Local ANTHROPIC key is still dead (401). The cover-picker Sonnet path was tested with a stubbed reply; first real run is in prod. Look for `[cover-picker]` log lines.
+- 09-30 posts were queued before this deploy, so the gate leaves that day alone.
+
 ## [2026-09-30] — Banned-phrases list removed from the ads builder
 
 - **Requested by:** Keenan

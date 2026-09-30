@@ -258,6 +258,19 @@ export async function generateSelfieTopic(
       /^\s*this is how i\b/i.test(t.headline)
         ? `\n\nREJECTED: your headline "${t.headline}" opens with "this is how i", which every past post used. Pick a different opener structure from the list.`
         : null,
+    // Jev best-of-5 cover pick (2026-09-30).
+    bestCover: {
+      brand: "ripple",
+      lane: "selfie",
+      rules:
+        "First person, lowercase-leaning, under 55 characters, no emojis, no number needed. Broad enough that a million tired women think \"that's me\" (running on empty, saying yes to everything, never a minute alone), never a niche micro-habit. Never opens with \"this is how i\". Rotate among: the turning moment, before and after in one line, a plain confession, result first, the permission she gave herself, a question she asked herself, a time marker, what she'd tell a friend.",
+      contextOf: (t) =>
+        t.steps.map((s, i) => `${s}${t.details[i] ? `: ${t.details[i]}` : ""}`).join("\n"),
+      setHeadline: (t, headline) =>
+        headline.length > 60 || /^\s*this is how i\b/i.test(headline)
+          ? t
+          : { ...t, headline, slug: slugify(headline) },
+    },
   });
 }
 
@@ -487,7 +500,32 @@ export async function generateTopic(
     label: "carousel-topic",
     generate: (extra) => generateTopicOnce(recentHeadlines, opts, extra),
     headlineOf: (t) => t.headline,
+    // Jev best-of-5 cover pick (2026-09-30). The number must still match
+    // the item count, so setHeadline re-checks it and keeps the original
+    // on any mismatch.
+    bestCover: {
+      brand: "ripple",
+      lane: opts?.archetype ? `carousel-${opts.archetype}` : "carousel",
+      rules:
+        "A numbered list headline: starts with the same number as the current cover (it must equal the item count), then a dead-simple, broad plain phrase (\"X signs...\", \"X ways...\", \"X reasons...\", \"X things...\", \"X habits...\", \"X reminders...\"). No subordinate clause, no poetic turn, no clever accusation, no filler words like \"today\" or \"right now\". Under about 40 characters, no emojis, not all caps, sentence case with a lowercase phrase. A stranger could repeat it after hearing it once.",
+      contextOf: (t) =>
+        t.reasons.map((r, i) => `${r}${t.details?.[i] ? `: ${t.details[i]}` : ""}`).join("\n"),
+      setHeadline: (t, headline) => {
+        const n = headline.match(/^\s*(\d+)\b/);
+        if (!n || Number(n[1]) !== t.reasons.length || headline.length > 50) return t;
+        return { ...t, headline, slug: slugify(headline) };
+      },
+    },
   });
+}
+
+/** Same slug rule the generators use on the model's headline. */
+function slugify(headline: string): string {
+  return headline
+    .toLowerCase()
+    .replace(/[^a-z0-9\s-]/g, "")
+    .replace(/\s+/g, "-")
+    .slice(0, 60);
 }
 
 async function generateTopicOnce(

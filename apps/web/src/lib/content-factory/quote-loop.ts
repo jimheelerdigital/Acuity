@@ -32,6 +32,7 @@ import {
 import { AUDIENCE_BRIEF, SCENE_BRIEF, type MoodyAudience } from "./moody-carousel";
 import { humanizePass, HUMAN_VOICE_RULES } from "./humanizer";
 import { withHeadlineRetry } from "./headline-history";
+import { brandForAudience } from "./copy-objectives";
 
 const anthropic = contentAnthropic;
 const CLAUDE_MODEL = CONTENT_MODEL;
@@ -108,7 +109,31 @@ export async function generateQuoteConcept(
     label: `quote-loop-concept-${audience}`,
     generate: (extra) => generateQuoteConceptOnce(audience, avoid, extra),
     headlineOf: (c) => c.quote,
+    // Jev best-of-5 (2026-09-30): the quote IS the cover — the only text
+    // on the video — so the whole line is what gets picked.
+    bestCover: {
+      brand: brandForAudience(audience),
+      lane: `quote-${audience}`,
+      rules:
+        "The quote is the ONLY text in the video: one short devastating line burned over a looping dark scene. 6-16 words, no attribution, no quotation marks. It stings with recognition, a compressed truth the viewer already suspects about themselves. Short declarative words, second person or plain statement, no metaphors that need decoding, no rhymes, no clichés, no advice-verbs (\"try to\", \"remember to\"). Never mentions an app, product, journaling or AI.",
+      contextOf: (c) =>
+        `A single-line quote video. The quote's subject: ${c.theme}. The looping scene behind it: ${c.scene}`,
+      setHeadline: (c, quote) => {
+        const w = quote.split(/\s+/).length;
+        if (w < 4 || w > 20) return c;
+        return { ...c, quote, slug: `quote-${audience}-${quoteSlug(quote)}` };
+      },
+    },
   });
+}
+
+function quoteSlug(quote: string): string {
+  return quote
+    .toLowerCase()
+    .replace(/[^a-z0-9\s-]/g, "")
+    .trim()
+    .replace(/\s+/g, "-")
+    .slice(0, 48);
 }
 
 async function generateQuoteConceptOnce(

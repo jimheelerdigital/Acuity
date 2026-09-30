@@ -378,12 +378,24 @@ export async function sendCarouselEmail(
   const { laneBrand: brandOf } = await import("./social-publish");
   const postedButton = tiktokPostedButton(post.id, await brandOf(post.lane ?? null));
 
+  // Jev #2 publish gate (2026-09-30): a held post is never auto-posted to
+  // IG/FB — say so up top so Keenan can post it by hand if he disagrees.
+  const { gateHoldLabel } = await import("./publish-gate");
+  const held = await gateHoldLabel(post.id, post.lane ?? null, post.generatedFor);
+  const heldBanner = held
+    ? `<div style="background:#3A1F1F;border:1px solid #E06C75;border-radius:12px;padding:12px 16px;margin:0 0 16px;">
+      <p style="font-size:14px;color:#E06C75;font-weight:700;margin:0 0 4px;">${escapeHtml(held)}</p>
+      <p style="font-size:12px;color:#DDD;margin:0;">Not auto-posted to Instagram/Facebook. Post it by hand if you disagree.</p>
+    </div>`
+    : "";
+
   const html = `
 <!DOCTYPE html>
 <html>
 <head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
 <body style="margin:0;padding:0;background:#111;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
   <div style="max-width:500px;margin:0 auto;padding:20px;">
+    ${heldBanner}
     <h1 style="font-size:20px;color:#FBFAF6;margin:0 0 4px;">${escapeHtml(post.headline)}</h1>
     <p style="font-size:12px;color:#888;margin:0 0 16px;">
       ${escapeHtml(lane)} · ${escapeHtml(dateStr)} · ${post.slides.length} slides
@@ -430,6 +442,7 @@ export async function sendCarouselEmail(
 
   // ── Plain text ──────────────────────────────────────────────────
   const text = [
+    ...(held ? [`${held} — not auto-posted to Instagram/Facebook. Post it by hand if you disagree.`, ""] : []),
     post.headline,
     `${lane} · ${dateStr} · ${post.slides.length} slides`,
     "",
@@ -448,7 +461,7 @@ export async function sendCarouselEmail(
   const emailPayload: Parameters<typeof resend.emails.send>[0] = {
     from: FROM_ADDRESS,
     to: TO_ADDRESS,
-    subject: `${await accountLabel(post.lane)} ${post.headline} — ${dateStr}`,
+    subject: `${held ? `[${held}] ` : ""}${await accountLabel(post.lane)} ${post.headline} — ${dateStr}`,
     html,
     text,
   };

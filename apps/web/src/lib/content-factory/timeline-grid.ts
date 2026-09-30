@@ -149,7 +149,38 @@ export async function generateTimelineGridTopic(
     generate: (extra) =>
       generateTimelineGridTopicOnce(spec, recentHeadlines, feedback, extra),
     headlineOf: (t) => t.title,
+    // Jev best-of-5 cover pick (2026-09-30). The span has to stay the same
+    // (the phases are built on it), so setHeadline keeps the original
+    // unless the new title opens with the identical "[span] to".
+    bestCover: {
+      brand: "bwk",
+      lane: "timeline",
+      rules:
+        'Shaped "[span] to [mission]", 4-9 words, keeping EXACTLY the same span as the current cover (the phases are built on it). The mission is a direct verb phrase aimed at him, the thing he is being told to do. Normal case (it renders in ALL CAPS). Not a question, not "Give yourself...", not about someone else, never first person. No hype words.',
+      contextOf: (t) =>
+        [
+          ...t.phases.map(
+            (p) => `${p.header} ${p.bandTitle}: ${p.cells.map((c) => c.label).join(", ")}`
+          ),
+          `Closer: ${t.closer}`,
+        ].join("\n"),
+      setHeadline: (t, title) => {
+        const span = (h: string) => h.toLowerCase().match(/^(.+?)\s+to\s+/)?.[1]?.trim();
+        const w = title.split(/\s+/).filter(Boolean).length;
+        if (!span(t.title) || span(title) !== span(t.title) || w < 4 || w > 10) return t;
+        return { ...t, title, slug: timelineSlug(title) };
+      },
+    },
   });
+}
+
+function timelineSlug(title: string): string {
+  return `timeline-${title
+    .toLowerCase()
+    .replace(/[^a-z0-9\s-]/g, "")
+    .trim()
+    .replace(/\s+/g, "-")
+    .slice(0, 60)}`;
 }
 
 async function generateTimelineGridTopicOnce(

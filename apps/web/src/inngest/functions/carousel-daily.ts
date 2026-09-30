@@ -723,7 +723,7 @@ export const carouselDailyCronFn = inngest.createFunction(
         );
         const { buildMythicImagePrompt } = await import("@/lib/content-factory/choice-lane");
         const { renderChoiceOverlay } = await import("@/lib/content-factory/compose");
-        const prompt = buildMythicImagePrompt(topic.coverScene, "cover");
+        const prompt = buildMythicImagePrompt(topic.coverScene, "cover", choiceMode);
         const { buffer: raw, qc } = await generateCheckedImage(() => generateImage(prompt), {
           scene: topic.coverScene,
           slot: "cover",
@@ -751,7 +751,7 @@ export const carouselDailyCronFn = inngest.createFunction(
             const { buildMythicImagePrompt } = await import("@/lib/content-factory/choice-lane");
             const { renderChoiceOverlay } = await import("@/lib/content-factory/compose");
             const o = topic.options[i];
-            const prompt = buildMythicImagePrompt(o.scene, "option");
+            const prompt = buildMythicImagePrompt(o.scene, "option", choiceMode);
             const { buffer: raw, qc } = await generateCheckedImage(() => generateImage(prompt, "item"), {
               scene: o.scene,
               slot: "item",
@@ -759,7 +759,11 @@ export const carouselDailyCronFn = inngest.createFunction(
               fantasy: true,
             });
             logger.info(`[carousel-cron] choice option ${i + 1} quality: ${qc}`);
-            const overlay = await renderChoiceOverlay({ top: `${i + 1}. ${o.name}`, bottom: o.lore });
+            // Name only on the slide (2026-09-30, per Keenan: "it doesn't need
+            // a description. just place the name of the beast on there").
+            // The lore line is still written (it keeps the five picks distinct and
+            // feeds the diversity check) but is no longer shown.
+            const overlay = await renderChoiceOverlay({ top: `${i + 1}. ${o.name}` });
             const { imageUrl, rawImageUrl } = await uploadOverlaySlide(
               raw,
               overlay,
@@ -769,7 +773,7 @@ export const carouselDailyCronFn = inngest.createFunction(
             return {
               imageUrl,
               rawImageUrl,
-              overlayText: `${i + 1}. ${o.name}\n\n${o.lore}`,
+              overlayText: `${i + 1}. ${o.name}`,
               imagePrompt: withMotion(prompt, o.motion),
             };
           })

@@ -52,6 +52,8 @@ const OUTLIER_MULTIPLE = 3;
 const OUTLIER_MIN_VIEWS = 10_000;
 /** Max new briefs written per run (cost guard). */
 const MAX_BRIEFS_PER_RUN = 8;
+/** Candidates Jev screens before the MAX_BRIEFS_PER_RUN cut (Jev #5). */
+const TRIAGE_POOL = 40;
 
 export interface MimicBrief {
   /** The hook mechanic in one sentence ("opens on a contradiction..."). */
@@ -283,12 +285,44 @@ Return {"hook":"...","format":"...","whyItWorks":"...","howWeApply":"...","phras
 export async function writeMimicBriefs(): Promise<number> {
   const { prisma } = await import("@/lib/prisma");
   // briefAt null ⇔ no brief written yet (set together, so one filter).
-  const pending = await prisma.competitorPost.findMany({
+  // Jev #5 (2026-09-30): pull a wider pool, let Jev drop ad/product/
+  // giveaway posts and rank the rest by how learnable the format is for
+  // our brand, then brief the best MAX_BRIEFS_PER_RUN. Jev off/failed ⇒
+  // the first MAX_BRIEFS_PER_RUN by outlierScore, exactly as before.
+  // Dropped promo posts stay un-briefed and are simply re-screened (and
+  // dropped again) next run — cheap, and no schema change needed.
+  const pool = await prisma.competitorPost.findMany({
     where: { isOutlier: true, briefAt: null },
     orderBy: { outlierScore: "desc" },
-    take: MAX_BRIEFS_PER_RUN,
+    take: TRIAGE_POOL,
     include: { account: true },
   });
+  let pending = pool.slice(0, MAX_BRIEFS_PER_RUN);
+  try {
+    const { triageCompetitorPosts } = await import("./research-triage");
+    const t = await triageCompetitorPosts(
+      pool.map((p) => ({
+        id: p.id,
+        brand: p.account.brand === "bwk" ? ("bwk" as const) : ("ripple" as const),
+        platform: p.account.platform,
+        handle: p.account.handle,
+        niche: p.account.niche,
+        caption: p.caption,
+        views: p.views,
+        likes: p.likes,
+        comments: p.comments,
+        shares: p.shares,
+        outlierScore: p.outlierScore,
+      })),
+      MAX_BRIEFS_PER_RUN
+    );
+    if (t) {
+      const byId = new Map(pool.map((p) => [p.id, p]));
+      pending = t.ids.map((id) => byId.get(id)!).filter(Boolean);
+    }
+  } catch (e) {
+    console.warn("[competitor-mimic] triage failed — using outlier order", e);
+  }
 
   let written = 0;
   for (const post of pending) {

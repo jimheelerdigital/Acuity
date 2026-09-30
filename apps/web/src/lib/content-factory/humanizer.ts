@@ -13,49 +13,26 @@
  * 1. HUMAN_VOICE_RULES — a short prevention block appended to every
  *    live topic-generation system prompt so the first draft avoids the
  *    worst tells.
- * 2. humanizePass() — the gate. After a topic is generated and
- *    validated, its reader-facing strings go through one more Claude
- *    call against the FULL pattern library. Same-shape JSON comes back;
- *    the caller merges and re-validates. FAILS OPEN: if the gate call
- *    errors, the original (prompt-side-ruled) copy ships rather than
- *    killing the overnight run — the failure is logged to ClaudeCallLog.
+ * 2. humanizePass() — was a Claude rewrite pass over every post; since
+ *    2026-09-30 it no longer rewrites anything (see below). It is now a
+ *    deterministic dash fix plus a Jev flag-only check that sends bad
+ *    copy back to the writer.
  */
-
-import {
-  contentAnthropic,
-  CONTENT_MODEL,
-  CONTENT_INPUT_COST_PER_TOKEN,
-  CONTENT_OUTPUT_COST_PER_TOKEN,
-  lastJsonText,
-} from "./claude-client";
-
-const anthropic = contentAnthropic;
-const CLAUDE_MODEL = CONTENT_MODEL;
-const INPUT_COST_PER_TOKEN = CONTENT_INPUT_COST_PER_TOKEN;
-const OUTPUT_COST_PER_TOKEN = CONTENT_OUTPUT_COST_PER_TOKEN;
 
 /**
- * Short prevention block for system prompts. The full library lives in
- * HUMANIZER_PATTERNS; this is the top-offender subset for short social
- * copy, cheap enough to ride on every generation call.
+ * Prompt block appended to every writer. Cut to the two locked style rules
+ * on 2026-09-30 (Keenan: the humanizer is "making our posts sound less sharp
+ * and more dumb"). The old block banned punchy fragment stacks, triads and
+ * contrasts, which flattened the voice; writers now follow their lane's own
+ * voice. HUMANIZER_PATTERNS below is kept for reference only; nothing uses it.
  */
-export const HUMAN_VOICE_RULES = `HUMAN VOICE. The copy has to read like one real person wrote it. Readers scroll past anything that smells like AI or a poster, so avoid these tells:
-- Contrast formulas: "It's not X. It's Y.", "not just X, but Y", "X isn't about Y, it's about Z". Say the point straight.
-- Em dashes (—) and en dashes (–). Use none at all; a period or a comma does the job.
-- Fake-deep sayings: "X is the language/currency/architecture of Y", "X becomes a trap", "X is a mirror". Name the specific thing instead.
-- Fake-depth setups: "The real question is", "At its core", "What really matters is", "Here's the truth".
-- Forced groups of three ("No excuses. No shortcuts. No mercy."). Use two beats, or four, whatever the thought really has.
-- Stock AI words: delve, testament, tapestry, unlock, unleash, harness, elevate, empower, embrace, thrive, game-changer, and figurative journey, landscape or navigate.
-- Fake-candid openers: "Honestly?", "Let's be honest", "Here's the thing", "Real talk".
-- Invented provenance for a quote or line ("found this in/inside...", "found this folded...", "overheard this...", "a stranger/woman i barely know said...", "wrote it on my hand/a napkin/a receipt", "someone left this..."). Readers know these are made up.
-- Generic uplift endings ("Your best days are ahead."). End on something concrete the reader can picture or do.
-Read each line as if saying it out loud to a friend. If it sounds like a chatbot or a poster, say it plainer.`;
+export const HUMAN_VOICE_RULES = `STYLE LOCKS: no em dashes (—) or en dashes (–) anywhere. Never invent where a quote or line came from ("found this...", "overheard...", "a stranger said...", "wrote it on a napkin").`;
 
 /**
  * The full pattern library the gate checks against — vendored from
  * blader/humanizer SKILL.md (prose patterns only).
  */
-const HUMANIZER_PATTERNS = `AI-WRITING PATTERNS TO FIND AND FIX (from Wikipedia's "Signs of AI writing"):
+export const HUMANIZER_PATTERNS = `AI-WRITING PATTERNS TO FIND AND FIX (from Wikipedia's "Signs of AI writing"):
 
 CONTENT PATTERNS
 1. Inflated importance claims — watch: stands/serves as, is a testament/reminder, vital/crucial/pivotal/key role/moment, underscores/highlights its importance, reflects broader, symbolizing its enduring/lasting, setting the stage for, marks a shift, key turning point, evolving landscape, indelible mark, deeply rooted. Ordinary details claimed as major change or legacy.
@@ -96,88 +73,114 @@ STYLE TELLS
 FALSE POSITIVES, leave these alone: short declarative fragments in an account's deliberate command voice; ALL-CAPS titles; all-lowercase lines written that way on purpose; deliberate repeated openings that build pressure; plain dry prose without specific tells; one short sentence for emphasis; specific everyday details (a time on the clock, a school form, a rep count) that are the substance of the post. When unsure, look for several patterns together before rewriting.`;
 
 /**
- * The approval gate. Pass ONLY reader-facing strings (never scene /
- * coverScene image directions — churn there wastes money and can break
- * image markers). Returns the same-shape JSON with AI-pattern strings
- * rewritten; clean strings come back untouched. Throws only after
- * logging — callers are expected to catch and fail open.
+ * The copy check every writer calls after generating (2026-09-30).
+ *
+ * The Sonnet REWRITE pass is gone — per Keenan: "eliminate the humanizer
+ * step on script writing and content writing. it's making our content
+ * worse". Nothing rewrites the writer's copy any more. What remains:
+ *
+ * 1. A deterministic dash fix (em/en dashes are a locked rule, done in
+ *    code, never by a model).
+ * 2. A sense check (#3 of the Jev build): Jev flags a wrong word, typo
+ *    or line that doesn't make plain sense; code flags banned brand
+ *    language and fixed-time language. Deliberately NO "sounds like AI"
+ *    judging; that was the humanizer's job and it dulled the copy. Flags are recorded against the post's strings;
+ *    withHeadlineRetry() sees them through copyFlagFor() and sends the
+ *    post back to the WRITER once with the problem named, instead of a
+ *    second model rewriting it.
+ *
+ * Same signature as before so all writers keep calling it unchanged.
+ * Never throws; with Jev off it just returns the payload (dash-fixed).
  */
+const FLAG_THRESHOLD = 0.8;
+const BANNED_RE = /\bbrain[- ]?dump|\bnightly\b|\bbefore bed\b|\bevery night\b/i;
+
+/** Normalized string → retry feedback, for strings from flagged payloads. */
+const copyFlags = new Map<string, string>();
+
+function normKey(s: string): string {
+  return s.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+}
+
+/** Retry feedback when `headline` belongs to a payload the copy check flagged, else null. */
+export function copyFlagFor(headline: string): string | null {
+  return copyFlags.get(normKey(headline)) ?? null;
+}
+
+function mapStrings<T>(v: T, fn: (s: string) => string): T {
+  if (typeof v === "string") return fn(v) as unknown as T;
+  if (Array.isArray(v)) return v.map((x) => mapStrings(x, fn)) as unknown as T;
+  if (v && typeof v === "object") {
+    const out: Record<string, unknown> = {};
+    for (const [k, x] of Object.entries(v)) out[k] = mapStrings(x, fn);
+    return out as T;
+  }
+  return v;
+}
+
+function collectStrings(v: unknown, into: string[] = []): string[] {
+  if (typeof v === "string") into.push(v);
+  else if (Array.isArray(v)) v.forEach((x) => collectStrings(x, into));
+  else if (v && typeof v === "object") Object.values(v).forEach((x) => collectStrings(x, into));
+  return into;
+}
+
+/** Deterministic em/en dash removal: " — " reads as a comma pause. */
+export function stripDashes(s: string): string {
+  return s
+    .replace(/\s*[—–]\s*(?=\S)/g, ", ")
+    .replace(/\s*[—–]\s*$/g, "")
+    .replace(/,\s*,/g, ",");
+}
+
 export async function humanizePass<T>(opts: {
   /** ClaudeCallLog purpose, e.g. "humanize:moody-topic". */
   purpose: string;
-  /** The lane's VOICE line — the rewrite must stay inside this voice. */
+  /** The lane's VOICE line (context for the check). */
   voice: string;
   /** JSON payload of reader-facing strings. */
   payload: T;
 }): Promise<T> {
-  const { prisma } = await import("@/lib/prisma");
-  const start = Date.now();
-  try {
-    const response = await anthropic.messages.create({
-      model: CLAUDE_MODEL,
-      // Rewrite pass: low effort keeps the generate step inside its time cap.
-      effort: "low",
-      // 2026-09-10: 6000 to fit 15-item pick-list payloads (gate fails
-      // open on truncation, but a truncated pass skips real rewrites).
-      max_tokens: 6000,
-      system: `You are the last editor before a social post goes live. You receive the post's reader-facing strings as JSON. Your job is to catch the phrasing that makes copy read as AI-written, and fix it so a person could have written it, while keeping the voice, rhythm and meaning the writer chose.
+  const payload = mapStrings(opts.payload, stripDashes);
+  const lines = collectStrings(payload).filter((s) => s.trim());
+  if (lines.length === 0) return payload;
 
-Use judgment, not a find-and-replace. A string with a real tell (a pattern from the library below) gets the smallest rewrite that removes it. A string that is already clean comes back exactly as it was, byte for byte; rewriting good copy only flattens it. Several patterns together are a strong signal; one plain short sentence is usually fine.
-
-Also fix outright errors even when no pattern fires: a wrong or misplaced word ("nobody felt ready on the foreleg"), a typo, a sentence that doesn't make plain sense, or a title that reads as nonsense on its own. Replace the word or line with what the writer clearly meant, in the same voice and length.
-
-When you rewrite a string, keep it doing the same job:
-- Same meaning. Add no fact, claim, number, name or quote that was not there.
-- Same size, so it still fits its slide: roughly the same length and word count.
-- Same form. ALL-CAPS stays ALL-CAPS, all-lowercase stays all-lowercase, Title Case headers stay Title Case, a trailing "..." stays. A command stays a command, a question stays a question.
-- Same voice. The lane's voice is below; the rewrite should sound like it, not like neutral prose.
-Em and en dashes are the one fix that is never optional: the returned text must contain none.
-
-VOICE to preserve: ${opts.voice}
-
-${HUMANIZER_PATTERNS}
-
-Return the same JSON you received: same keys, same nesting, same array lengths, nothing added or removed. Return only the JSON.`,
-      messages: [{ role: "user", content: JSON.stringify(opts.payload) }],
-    });
-
-    const tokensIn = response.usage.input_tokens;
-    const tokensOut = response.usage.output_tokens;
-    await prisma.claudeCallLog.create({
-      data: {
-        purpose: opts.purpose,
-        model: CLAUDE_MODEL,
-        tokensIn,
-        tokensOut,
-        costCents: Math.ceil(
-          (tokensIn * INPUT_COST_PER_TOKEN + tokensOut * OUTPUT_COST_PER_TOKEN) * 100
-        ),
-        durationMs: Date.now() - start,
-        success: true,
-      },
-    });
-
-    const text = response.content
-      .filter((b) => b.type === "text")
-      .map((b) => b.text)
-      .join("");
-    const jsonStr = lastJsonText(text);
-    return JSON.parse(jsonStr) as T;
-  } catch (err) {
-    await prisma.claudeCallLog.create({
-      data: {
-        purpose: opts.purpose,
-        model: CLAUDE_MODEL,
-        tokensIn: 0,
-        tokensOut: 0,
-        costCents: 0,
-        durationMs: Date.now() - start,
-        success: false,
-        errorMessage: err instanceof Error ? err.message : "Unknown error",
-      },
-    });
-    throw err;
+  const problems: string[] = [];
+  const banned = lines.find((l) => BANNED_RE.test(l));
+  if (banned) {
+    problems.push(
+      `"${banned}" uses banned language (never "brain dump", never a fixed time like "nightly" or "before bed")`
+    );
   }
+
+  try {
+    const { askJev, noulOf } = await import("./jev");
+    const r = await askJev(
+      opts.purpose.replace(/^humanize:/, "copy-check:"),
+      { voice: opts.voice, copy: lines },
+      {
+        nonsense: {
+          type: "noul",
+          instructions:
+            "Does any line in `copy` contain a wrong or out-of-place word, a typo, a garbled phrase, or a sentence that does not make plain sense to a native English speaker?",
+        },
+      }
+    );
+    const nonsense = noulOf(r, "nonsense");
+    if (nonsense !== null && nonsense >= FLAG_THRESHOLD)
+      problems.push("a line has a wrong word, typo or sentence that doesn't make plain sense");
+    console.log(
+      `[copy-check] ${opts.purpose}: nonsense=${nonsense?.toFixed(2)}${problems.length ? " FLAGGED" : ""}`
+    );
+  } catch (err) {
+    console.warn(`[copy-check] ${opts.purpose} failed open:`, err instanceof Error ? err.message : err);
+  }
+
+  if (problems.length) {
+    const feedback = `\n\nREJECTED by the copy check: ${problems.join("; ")}. Rewrite the post fixing this, same format and rules.`;
+    for (const l of lines) if (l.length <= 160) copyFlags.set(normKey(l), feedback);
+  }
+  return payload;
 }
 
 /** Pull the VOICE line out of a lane's system prompt so the gate keeps the house voice. */

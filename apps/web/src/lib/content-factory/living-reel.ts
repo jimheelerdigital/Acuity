@@ -54,7 +54,7 @@ export function livingMotionPrompt(
   if (opts.action) {
     const motion = imagePrompt.match(/^MOTION:\s*(.+)$/m)?.[1]?.trim();
     const scene = (imagePrompt.split("\n")[0] ?? "")
-      .replace(/^A breathtaking, hyper-real cinematic film still, vertical composition:\s*/i, "")
+      .replace(/^A breathtaking, hyper-real cinematic (film still|establishing shot), vertical composition:\s*/i, "")
       .slice(0, 300);
     return [
       "Epic cinematic fantasy film shot.",

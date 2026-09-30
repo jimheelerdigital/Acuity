@@ -189,6 +189,21 @@ export async function buildDailyDigest(
     return 0;
   }
 
+  // Jev #5 (2026-09-30): drop off-limits / off-audience threads and put
+  // the most post-able ones first before Claude sees them. Null (Jev off
+  // or failed) or a triage that leaves too little = the raw scrape, as
+  // before. sourcePosts below still stores the raw scrape for audit.
+  let forClaude = scraped;
+  try {
+    const { triageRedditThreads } = await import("./research-triage");
+    const t = await triageRedditThreads(brand, scraped);
+    const kept = t ? t.scraped.reduce((n, s) => n + s.titles.length, 0) : 0;
+    if (t && kept >= 10) forClaude = t.scraped;
+    else if (t) console.warn(`[reddit-trends] ${brand}: triage kept only ${kept} — using raw scrape`);
+  } catch (e) {
+    console.warn(`[reddit-trends] ${brand}: triage failed — using raw scrape`, e);
+  }
+
   const today = new Date();
   today.setUTCHours(0, 0, 0, 0);
   const weekAgo = new Date(today.getTime() - 7 * 24 * 3600 * 1000);
@@ -208,7 +223,7 @@ export async function buildDailyDigest(
     `AUDIENCE: ${AUDIENCE_BRIEF[brand]}`,
     "",
     "TODAY'S TRENDING TITLES:",
-    ...scraped.map(
+    ...forClaude.map(
       (s) => `\n[community ${s.subreddit}]\n${s.titles.map((t) => `- ${t}`).join("\n")}`
     ),
     "",

@@ -24,7 +24,7 @@ import {
   lastJsonText,
 } from "./claude-client";
 import { copyObjectives } from "./copy-objectives";
-import { humanizePass, HUMAN_VOICE_RULES } from "./humanizer";
+import { humanizePass, HUMAN_VOICE_RULES, copyFlagFor } from "./humanizer";
 
 export interface ChoiceOption {
   name: string;
@@ -153,13 +153,14 @@ export const PLACE_CATEGORIES = [
 const PLACE_RULES = `THIS POST IS A PLACES POST: the options are five legendary LOCATIONS, not characters. The reader picks where he and his bro are going.
 - "title": the cover question, 4-9 words, ALL-CAPS ready, ending with "?" (shapes like "WHICH TAVERN ARE YOU TEARING UP WITH YOUR BRO?", "WHERE ARE YOU TWO GRABBING A BEER?"; new words every post, never a recent title).
 - Each option is a PLACE: "name" is 2-5 words ("The Drowned Dragon Inn", "Skyforge Mead Hall"). "lore" is one line (6-14 words) about what goes down there: the drinks, the fights, the view, the house rule. Make the five places feel completely different (a rowdy dockside tavern, a quiet mountain hall, a place built into a sleeping giant, a floating sky-market, an underground fight pit), so the pick says something about the pair.
-- "scene": the place itself, an epic, atmospheric shot of its interior or exterior with its own look and light. People only as small background silhouettes, if at all.
+- "scene": the PLACE is the subject, never a creature or hero. Describe the architecture, the room or the landscape filling the frame: the long feast tables, the carved pillars, the hearth, the view, the light. No creature, beast, hero or character in the foreground or as the focus; at most a few tiny, distant figures to show scale. (2026-09-30, per Keenan: the "where are you feasting" post showed creatures instead of the places.)
+- "coverScene": the most inviting of these places, or a sweeping establishing shot of a legendary place, with no hero or creature as the subject.
 - "motion": calm atmospheric movement in five seconds, at natural speed (firelight flickers and lanterns sway as snow drifts past the door; mist rolls across the torch-lit bridge).
 - "endCard": 2-6 words, ALL-CAPS ready, telling him to send it to his bro or pick the spot; vary it every post ("SEND THIS TO YOUR BRO.", "WHERE ARE WE GOING?", "FIRST ROUND'S ON HIM.").
 - "captionQuestion": asks which spot they're hitting and to tag the friend.
-Everything else in the format above still applies.`;
+Where these rules differ from the format above (scene, coverScene, motion), THESE win: a places post never makes a creature or hero the subject of an image. Everything else in the format above still applies.`;
 
-export async function generateChoiceTopic(opts: {
+type ChoiceTopicOpts = {
   /** "duo" = who-are-you-and-your-bro; "place" = where you two are going. */
   mode?: "choice" | "duo" | "place";
   category: string;
@@ -167,7 +168,129 @@ export async function generateChoiceTopic(opts: {
   recentTitles: string[];
   recentNames: string[];
   feedback?: string | null;
-}): Promise<ChoiceTopic> {
+};
+
+/**
+ * Write a choice/duo/place post, then check the five options with Jev
+ * (#6, 2026-09-30): a post only works when all five are tempting AND
+ * different, so near-twins ("Frost Dragon" next to "Ice Wyrm") and a
+ * throwaway option each earn ONE rewrite with the problem named. Also
+ * honors the copy check's flags. Fails open: Jev off or erroring ships
+ * the first draft, and a failed rewrite ships the first draft.
+ */
+export async function generateChoiceTopic(opts: ChoiceTopicOpts): Promise<ChoiceTopic> {
+  return withBestTitle(await generateChoiceTopicChecked(opts), opts.mode ?? "choice");
+}
+
+/**
+ * Best-of-5 cover question (Jev #1): Sonnet writes four more cover
+ * questions for the same five options, Jev scores all five, the top one
+ * ships. Fails open to the writer's title.
+ */
+async function withBestTitle(topic: ChoiceTopic, mode: "choice" | "duo" | "place"): Promise<ChoiceTopic> {
+  try {
+    const { pickBestCover } = await import("./cover-picker");
+    const picked = await pickBestCover({
+      label: `mythic-${mode}`,
+      brand: "mythicals",
+      lane: `mythic-picks:${mode}`,
+      current: topic.title,
+      context: `Five options on the slides: ${topic.options.map((o) => `${o.name} (${o.lore})`).join("; ")}`,
+      rules:
+        mode === "duo"
+          ? "A cover question, 4-9 words, ALL CAPS, ending with \"?\", asking which duo the reader and his bro are."
+          : mode === "place"
+            ? "A cover question, 4-9 words, ALL CAPS, ending with \"?\", asking where the reader and his bro are going (a tavern, hall or legendary place)."
+            : "A cover question, 4-9 words, ALL CAPS, ending with \"?\", asking which of the five the reader would choose or which one is him.",
+    });
+    const h = picked?.headline.trim();
+    if (!h || h === topic.title || !h.endsWith("?")) return topic;
+    const prefix = topic.slug.match(/^mythic(-duo|-place)?/)?.[0] ?? "mythic";
+    const slug = `${prefix}-${h.toLowerCase().replace(/[^a-z0-9\s-]/g, "").trim().replace(/\s+/g, "-").slice(0, 50)}`;
+    console.log(`[choice-lane] best-of-5 cover "${topic.title}" -> "${h}"`);
+    return { ...topic, title: h, slug };
+  } catch (err) {
+    console.warn("[choice-lane] best-of-5 cover failed — keeping the writer's title:", err instanceof Error ? err.message : err);
+    return topic;
+  }
+}
+
+async function generateChoiceTopicChecked(opts: ChoiceTopicOpts): Promise<ChoiceTopic> {
+  const first = await generateChoiceTopicOnce(opts);
+  const firstProblems = await choiceTopicProblems(first);
+  if (firstProblems.length === 0) return first;
+  console.warn(`[choice-lane] "${first.title}" rejected: ${firstProblems.join("; ")} — rewriting once`);
+  try {
+    const second = await generateChoiceTopicOnce({
+      ...opts,
+      feedback: `${opts.feedback ?? ""}\n\nREJECTED DRAFT "${first.title}" (${first.options
+        .map((o) => o.name)
+        .join(", ")}): ${firstProblems.join("; ")}. Write a new post that fixes this: five options that are each tempting and clearly different from each other.`,
+    });
+    const secondProblems = await choiceTopicProblems(second);
+    if (secondProblems.length > firstProblems.length) {
+      console.warn(`[choice-lane] rewrite was worse (${secondProblems.join("; ")}) — shipping the first draft`);
+      return first;
+    }
+    return second;
+  } catch (err) {
+    console.warn("[choice-lane] rewrite failed — shipping the first draft:", err instanceof Error ? err.message : err);
+    return first;
+  }
+}
+
+const TWIN_THRESHOLD = 0.8;
+const THROWAWAY_THRESHOLD = 0.25;
+
+async function choiceTopicProblems(topic: ChoiceTopic): Promise<string[]> {
+  const problems: string[] = [];
+  const flag = copyFlagFor(topic.title);
+  if (flag) problems.push("the copy check flagged the text (a line that doesn't make plain sense)");
+  const { askJev, noulOf, scoreOf } = await import("./jev");
+  const questions: Parameters<typeof askJev>[2] = {};
+  topic.options.forEach((_, i) => {
+    questions[`twin_${i}`] = {
+      type: "noul",
+      instructions: `Ignoring what every option must share to answer \`question\`, is \`options[${i}]\` nearly a copy of one OTHER entry in \`options\`: the same element, look and idea under a different name (like a frost dragon next to an ice wyrm)?`,
+    };
+    questions[`tempt_${i}`] = {
+      type: "score",
+      instructions: `How much would a fantasy fan reading \`question\` want to pick \`options[${i}]\`?`,
+      criteria: [
+        "Not at all: a dull or throwaway pick nobody would choose",
+        "A little: fine but forgettable next to the others",
+        "Clearly: a pick plenty of people would argue for",
+        "Hugely: the one people would fight about in the comments",
+      ],
+    };
+  });
+  const r = await askJev(
+    "choice-diversity",
+    { question: topic.title, options: topic.options.map((o) => ({ name: o.name, lore: o.lore })) },
+    questions
+  );
+  if (!r) return problems;
+  const twins: string[] = [];
+  const weak: string[] = [];
+  topic.options.forEach((o, i) => {
+    const t = noulOf(r, `twin_${i}`);
+    const s = scoreOf(r, `tempt_${i}`);
+    if (t !== null && t >= TWIN_THRESHOLD) twins.push(o.name);
+    if (s !== null && s < THROWAWAY_THRESHOLD) weak.push(o.name);
+  });
+  console.log(
+    `[choice-lane] Jev check "${topic.title}": ` +
+      topic.options
+        .map((o, i) => `${o.name} twin=${noulOf(r, `twin_${i}`)?.toFixed(2)} tempt=${scoreOf(r, `tempt_${i}`)?.toFixed(2)}`)
+        .join(" | ")
+  );
+  // One twin flag alone can be the model noticing its partner; two or more is a real pair.
+  if (twins.length >= 2) problems.push(`these options are too alike: ${twins.join(", ")}`);
+  if (weak.length) problems.push(`these options are throwaways nobody would pick: ${weak.join(", ")}`);
+  return problems;
+}
+
+async function generateChoiceTopicOnce(opts: ChoiceTopicOpts): Promise<ChoiceTopic> {
   const { prisma } = await import("@/lib/prisma");
   const start = Date.now();
   const user = [
@@ -229,7 +352,8 @@ export async function generateChoiceTopic(opts: {
   let gatedTitle = title;
   let gatedOptions = options;
 
-  // Humanizer gate on reader-facing text (never scenes). Fails open.
+  // Copy check on reader-facing text (never scenes): dash fix + Jev flags,
+  // no rewriting since 2026-09-30. Fails open.
   try {
     const gated = await humanizePass({
       purpose: "humanize:choice-topic",
@@ -273,12 +397,30 @@ export async function generateChoiceTopic(opts: {
   };
 }
 
-/** Image prompt for a cover or option: hyper-real epic film still, subject in the middle band. */
-export function buildMythicImagePrompt(scene: string, kind: "cover" | "option"): string {
+/**
+ * Image prompt for a cover or option: hyper-real epic film still, subject
+ * in the middle band. Places posts frame the LOCATION as the subject.
+ */
+export function buildMythicImagePrompt(
+  scene: string,
+  kind: "cover" | "option",
+  mode: "choice" | "duo" | "place" = "choice"
+): string {
+  if (mode === "place") {
+    return [
+      `A breathtaking, hyper-real cinematic establishing shot, vertical composition: ${scene}`,
+      "The PLACE itself is the subject: its architecture, interior or landscape fills the frame, rich with detail and inviting atmosphere. No creature, beast, hero or character as the subject or in the foreground; at most a few tiny, distant figures for scale.",
+      kind === "option"
+        ? "Keep open atmosphere in the top fifth of the frame (the place's name is added there later)."
+        : "Keep open atmosphere in the top quarter (the title is added there later).",
+      "Shot like a prestige fantasy film: real weather, real light, tactile detail in wood, stone, fire, water and fabric, dramatic but natural lighting, rich color, tack-sharp focus.",
+      "Not a cartoon, not anime, not a video-game render, not a painting or illustration. No text, letters, numbers, logos or watermarks anywhere in the image. Nothing gory.",
+    ].join("\n");
+  }
   return [
     `A breathtaking, hyper-real cinematic film still, vertical composition: ${scene}`,
     kind === "option"
-      ? "The creature or fighter is the unmistakable hero of the frame, shown whole and centered in the MIDDLE of the image, with open sky or atmosphere in the top fifth and bottom fifth of the frame (text is added there later)."
+      ? "The creature or fighter is the unmistakable hero of the frame, shown whole and centered in the MIDDLE of the image, with open sky or atmosphere in the top fifth of the frame (its name is added there later)."
       : "Epic scale and depth; the main subject sits in the middle of the frame, with open atmosphere in the top quarter and bottom fifth (the title is added at the top later).",
     "Shot like a prestige fantasy film: real weather, real light, tactile detail in scales, fur, feathers, armor and stone, believable anatomy, dramatic but natural lighting, rich color, tack-sharp focus on the subject.",
     "Not a cartoon, not anime, not a video-game render, not a painting or illustration. No text, letters, numbers, logos or watermarks anywhere in the image. Nothing gory.",
