@@ -6,6 +6,7 @@ import { StartBwkPageClient } from "./client";
 import { BWK_ENTRY_QUESTION, BWK_ENTRY_INTRO, BWK_FUNNEL_CONFIG } from "@/lib/funnel-config-bwk";
 import { FunnelSsrEntry } from "@/components/funnel-ssr-entry";
 import { S1_YESNO } from "@/lib/funnel-s1-test";
+import { adMatchedIntro } from "@/lib/funnel-ad-match";
 import { FSPLIT_COOKIE, isFunnelSplitOn, normalArmScript, pickArm, testFunnelUrl } from "@/lib/funnel-split";
 
 export const metadata: Metadata = {
@@ -54,14 +55,17 @@ export default async function StartBwkPage({
     );
   }
 
+
+  // Ad-matched screen 1: the tapped ad's own hook + say/catch example.
+  const entryIntro = await adMatchedIntro(searchParams.utm_content, BWK_ENTRY_INTRO);
   return (
     <>
       {armScript}
       {bodyBg}
-      <FunnelSsrEntry question={BWK_ENTRY_QUESTION} intro={BWK_ENTRY_INTRO} theme="dusk" totalSteps={BWK_FUNNEL_CONFIG.STEP_ORDER.length} yesno={S1_YESNO["v8-bwk"]} />
+      <FunnelSsrEntry question={BWK_ENTRY_QUESTION} intro={entryIntro} theme="dusk" totalSteps={BWK_FUNNEL_CONFIG.STEP_ORDER.length} yesno={S1_YESNO["v8-bwk"]} />
 
       {/* Client component hydrates on top — hides SSR content and takes over */}
-      <StartBwkPageClient />
+      <StartBwkPageClient entryIntro={entryIntro} />
     </>
   );
 }

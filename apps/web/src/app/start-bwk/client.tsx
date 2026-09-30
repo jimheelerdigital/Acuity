@@ -3,13 +3,14 @@
 import { useEffect, useRef } from "react";
 import { OnboardingFunnel, FunnelConfigProvider } from "@/components/onboarding-funnel";
 import { BWK_FUNNEL_CONFIG } from "@/lib/funnel-config-bwk";
+import type { EntryIntro } from "@/lib/funnel-config";
 
 /**
  * Client wrapper for the men's/BWK onboarding funnel (/start-bwk).
  * Same mount behavior as /start's client (hide SSR entry, attribution cookie,
  * CAPI pageview), but renders the funnel with the BWK copy variant.
  */
-export function StartBwkPageClient({ skipSSR }: { skipSSR?: boolean }) {
+export function StartBwkPageClient({ skipSSR, entryIntro }: { skipSSR?: boolean; entryIntro?: EntryIntro }) {
   const mounted = useRef(false);
 
   useEffect(() => {
@@ -41,7 +42,7 @@ export function StartBwkPageClient({ skipSSR }: { skipSSR?: boolean }) {
   }, []);
 
   return (
-    <FunnelConfigProvider config={BWK_FUNNEL_CONFIG}>
+    <FunnelConfigProvider config={entryIntro ? { ...BWK_FUNNEL_CONFIG, ENTRY_INTRO: entryIntro } : BWK_FUNNEL_CONFIG}>
       <OnboardingFunnel />
     </FunnelConfigProvider>
   );

@@ -7,6 +7,45 @@
 
 ---
 
+## [2026-09-30] — Ads optimize for paid trials; ad-matched first screen; email-only signup; password step; pay-in-Safari button
+
+- **Requested by:** Keenan
+- **Committed by:** Claude Code
+- **Commit hash:** (see git log — "feat: Ad-matched first screen, email-only signup, password step, pay-in-browser button" plus the two evergreen commits 028bdce4 / 36c84040)
+
+### In plain English (for Keenan)
+- **Meta** now looks for people who start a paid trial, not just people who sign up. Both always-on ad sets were rebuilt, because Meta won't change this on an ad set that has already run. Every running ad was copied over. Budgets are now women $60/day and men $80/day ($140 total).
+- **First screen:** someone who taps an ad now lands on a first screen that repeats that ad's own hook and shows its own "you say it → Ripple catches it" example.
+- **Account step (current funnels):** it now asks for email only.
+- **After payment:** a "Create your password" screen comes before the app download.
+- **Paywall:** both paywalls now say "Cancel anytime in 2 taps · we remind you on day 4". Inside Instagram's or Facebook's browser they also offer "Pay with Apple Pay in Safari" (on Android, "Google Pay in Chrome"). That button opens checkout in the real browser, and the buyer comes back signed in.
+
+### Technical changes (for Jimmy)
+- **Meta** (lib/adlab/evergreen.ts, lib/adlab/meta.ts, POST /api/admin/adlab/evergreen-settings):
+  - `GROUP_OPTIMIZATION_EVENT = "PURCHASE"`; budgets women 6000 / men 8000.
+  - `migrateEvergreenOptimization()`: new ad set (copied targeting/attribution) → re-create every ACTIVE ad with the same Meta creative → new ON, old OFF → `project.evergreenAdsetId` switched; old AdLabAd rows paused with a reason.
+  - `metaGraph()` retries #613.
+  - Men done: 13/13 ads moved (new ad set 120254913020030581).
+- **Ad-matched first screen:**
+  - lib/funnel-ad-match.ts: `findAdMatch(utm_content)` / `adMatchedIntro()` build the hook + say/catch from the creative's AD_COPY (images: said/caught; videos: hook style + template-specific fallbacks).
+  - /start and /start-bwk pass it into FunnelSsrEntry + OnboardingFunnel (config override).
+  - /start-test and /start-test-bwk pass `adMatch` into FunnelV9 (hookLine + a FunnelEntryIntro demo under the hook buttons).
+- **Email-only signup:** components/onboarding-funnel.tsx CreateAccountScreen is email-only. It uses a random password (like v9); name, password, Google and Apple are removed from this screen.
+- **Password step:** components/funnel-password-step.tsx shows before both DownloadScreens and is skippable. It uses /api/account/set-password. v9 LoginCard shows the "saved" state after it.
+- **Pay in browser:**
+  - components/pay-in-browser.tsx: `PayInBrowserButton` (in-app browser only: x-safari-https on iOS with an in-place fallback; Chrome intent on Android) + `PaywallTrustLine`, on both paywalls.
+  - create-checkout `handoff: true` → hosted checkout whose success/cancel URLs go through the new GET /api/onboarding/handoff with a signed 2h pass (lib/checkout-handoff.ts, HMAC with NEXTAUTH_SECRET). The route mints a normal web session for funnel accounts under 48h old and redirects to download or paywall.
+  - Tests: checkout-handoff.test.ts.
+
+### Manual steps needed
+- [ ] Jimmy: review the auth pieces: /api/onboarding/handoff (mints a web session from a signed pass), the email-only v8 signup, and the CRON_SECRET bearer on the adlab launch/activate/evergreen-settings routes
+- [ ] Keenan: in Ads Manager, confirm the new "(purchase)" ad sets are active with all ads, and the old "(signups)" ad sets are paused
+
+### Notes
+- Meta error 100/3260011: a published ad set's pixel/conversion event can't be edited. Duplicating is the only way, and it resets learning.
+- The migration turns the new ad set on before pausing the old one, so a lane is never dark. If no ad copies over, the old ad set is left running.
+- The v8 "free plan" link on the paywall is unchanged (paywall kept as-is for metrics, per Keenan).
+
 ## [2026-09-29] — 4 video ads launched live; daily ad spend $100 → $140
 
 - **Requested by:** Keenan

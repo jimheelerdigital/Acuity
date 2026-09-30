@@ -305,6 +305,9 @@ export interface V9Config {
   flowVersion: string;
   path: string;
   theme: "light" | "dusk";
+  /** Ad-matched screen 1 (2026-09-30): the tapped ad's say/catch example,
+   *  shown under the hook buttons. Set per request by FunnelV9's adMatch. */
+  adDemo?: { said: string; caught: { text: string; kind: "task" | "pattern" }[] };
   hookLine: string;
   steps: V9Step[];
   stepLabels: Record<string, string>;

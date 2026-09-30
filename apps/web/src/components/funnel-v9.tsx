@@ -25,6 +25,10 @@
 import { loadStripeJs } from "@/lib/stripe-embedded";
 import { consumeTestArrival } from "@/lib/funnel-split-shared";
 import { MoodAvatar } from "@/components/mood-avatar";
+import { FunnelEntryIntro } from "@/components/funnel-entry-intro";
+import { PayInBrowserButton, PaywallTrustLine } from "@/components/pay-in-browser";
+import { PasswordStep, passwordStepDone } from "@/components/funnel-password-step";
+import type { AdMatch } from "@/lib/funnel-ad-match";
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { signIn } from "next-auth/react";
@@ -166,8 +170,18 @@ const CSS = `
 @media (prefers-reduced-motion: reduce) { .v9 * { animation: none !important; transition: none !important; } }
 `;
 
-export function FunnelV9({ brand = "ripple" }: { brand?: V9Brand }) {
-  const C = V9_CONFIGS[brand];
+export function FunnelV9({ brand = "ripple", adMatch }: { brand?: V9Brand; adMatch?: AdMatch | null }) {
+  // Ad-matched screen 1 (2026-09-30): the tapped ad's hook replaces the
+  // generic hook line, and its say/catch example shows under the buttons.
+  const C = useMemo<V9Config>(() => {
+    const base = V9_CONFIGS[brand];
+    if (!adMatch) return base;
+    return {
+      ...base,
+      hookLine: adMatch.headline || base.hookLine,
+      ...(adMatch.said && adMatch.caught ? { adDemo: { said: adMatch.said, caught: adMatch.caught } } : {}),
+    };
+  }, [brand, adMatch]);
   // Per-brand session state so /start-test and /start-test-bwk never mix.
   const stateKey = `${STATE_KEY}_${C.brand}`;
   const [stepId, setStepId] = useState<string>("hook");
@@ -864,6 +878,16 @@ function StatementScreen({ step, answers, setAnswers, next, track }: ViewProps &
           Not really
         </button>
       </div>
+
+      {isHook && C.adDemo && (
+        <div className="up" style={{ animationDelay: "200ms" }}>
+          <FunnelEntryIntro
+            intro={{ headline: C.hookLine, said: C.adDemo.said, caught: C.adDemo.caught, quizLine: "" }}
+            theme={lux ? "dusk" : "light"}
+            part="bottom"
+          />
+        </div>
+      )}
 
       {isHook && !lux && (
         <div className="up mt-4" style={{ animationDelay: "250ms" }}>
@@ -1685,6 +1709,8 @@ function PaywallScreen({ plan, setPlan, next, go, track, firstName, answers }: V
         <p className="mt-2 text-center text-[12px] text-acuity-text-sec tabular-nums">
           <span className="font-semibold text-acuity-text">$0 today.</span> Then {after}, renews automatically. Cancel any time.
         </p>
+        <PaywallTrustLine className="mt-1" />
+        <PayInBrowserButton interval={plan} funnel={C.path} track={track} className="mt-3" />
       </BottomBar>
     </div>
   );
@@ -1825,6 +1851,8 @@ function DownloadScreen({ answers, firstName, paid, track }: ViewProps) {
     }
   });
   const [gaveUp, setGaveUp] = useState(false);
+  // Password step between checkout and the app (2026-09-30).
+  const [pwDone, setPwDone] = useState(() => (typeof window === "undefined" ? false : passwordStepDone()));
   useEffect(() => {
     if (!returning) return;
     const t = window.setTimeout(() => setGaveUp(true), 10_000);
@@ -1848,6 +1876,7 @@ function DownloadScreen({ answers, firstName, paid, track }: ViewProps) {
       </div>
     );
   }
+  if (!pwDone) return <PasswordStep onDone={() => setPwDone(true)} track={track} />;
   return <GetTheApp answers={answers} firstName={firstName} paid={paid} track={track} />;
 }
 
@@ -1957,6 +1986,15 @@ function LoginCard({ email, track }: { email: string; track: ViewProps["track"] 
   const [pw, setPw] = useState("");
   const [state, setState] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const [msg, setMsg] = useState<string | null>(null);
+  // Set on the password step just before this screen: say so, don't ask again.
+  useEffect(() => {
+    try {
+      if (sessionStorage.getItem("acuity_pw_step_done") === "1") {
+        setState("saved");
+        setMsg("Use your email and password in the app, or the link we emailed you.");
+      }
+    } catch {}
+  }, []);
   const save = async () => {
     setState("saving");
     setMsg(null);

@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 
 import { FunnelV9 } from "@/components/funnel-v9";
+import { findAdMatch } from "@/lib/funnel-ad-match";
 
 export const metadata: Metadata = {
   title: "Start Free Trial — Ripple",
@@ -14,6 +15,12 @@ export const metadata: Metadata = {
  * Next renders it on the server too, so screen 1 is in the initial HTML
  * and visible before JS loads in the FB/IG in-app browser.
  */
-export default function StartTestPage() {
-  return <FunnelV9 />;
+export default async function StartTestPage({
+  searchParams,
+}: {
+  searchParams: { [key: string]: string | string[] | undefined };
+}) {
+  // Ad-matched screen 1 (2026-09-30): the tapped ad's hook + say/catch.
+  const adMatch = await findAdMatch(searchParams.utm_content);
+  return <FunnelV9 adMatch={adMatch} />;
 }

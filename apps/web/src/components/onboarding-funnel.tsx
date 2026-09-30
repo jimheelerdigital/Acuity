@@ -12,6 +12,8 @@ import { detectBrowserEnv, useAppStoreCta, WebviewBreakout } from "@/components/
 import { PRE_TAP_KEY } from "@/components/funnel-ssr-entry";
 import { readS1Variant, S1_YESNO, type S1Variant } from "@/lib/funnel-s1-test";
 import { FunnelEntryIntro } from "@/components/funnel-entry-intro";
+import { PayInBrowserButton, PaywallTrustLine } from "@/components/pay-in-browser";
+import { PasswordStep, passwordStepDone } from "@/components/funnel-password-step";
 import { APP_STORE_RATING_LABEL } from "@/lib/social-proof";
 import {
   type Branch,
@@ -1886,6 +1888,13 @@ function TimelineScreen({ branch, answers, onContinue, track }: { branch: Branch
 
 // ─── Create Account Screen (Screen 16 — v3 account-first flow) ────────────
 
+/** Random throwaway password for the email-only account step. */
+function randomFunnelPassword(): string {
+  const bytes = new Uint8Array(18);
+  crypto.getRandomValues(bytes);
+  return `Rp-${Array.from(bytes, (b) => b.toString(36).padStart(2, "0")).join("")}`;
+}
+
 function CreateAccountScreen({ branch, answers, track, onAccountCreated }: {
   branch: Branch | null;
   answers: Record<string, string | string[]>;
@@ -1995,12 +2004,11 @@ function CreateAccountScreen({ branch, answers, track, onAccountCreated }: {
       track("funnel_email_signup_failed", { value: `validation:invalid_email|${envDiag}` });
       return;
     }
-    if (signupPassword.length < 8) {
-      setSignupError("Password must be at least 8 characters.");
-      track("funnel_signup_failed", { value: "validation:password_short", method: "email" });
-      track("funnel_email_signup_failed", { value: `validation:password_short|${envDiag}` });
-      return;
-    }
+    // Email only (2026-09-30, per Keenan: "ONLY asked for email ... then
+    // paywall and THEN create password step"). The account gets a random
+    // password she never sees (same as /start-test); she sets her own on
+    // the password step after checkout (/api/account/set-password).
+    const password = signupPassword || randomFunnelPassword();
 
     track("funnel_signup_started", { value: "email" });
     track("funnel_email_signup_submitted", { value: envDiag });
@@ -2018,7 +2026,7 @@ function CreateAccountScreen({ branch, answers, track, onAccountCreated }: {
       };
       const res = await fetch("/api/auth/signup", {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: signupEmail.trim(), password: signupPassword, name: signupName.trim(), attribution }),
+        body: JSON.stringify({ email: signupEmail.trim(), password, name: signupName.trim(), attribution }),
       });
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
@@ -2049,7 +2057,7 @@ function CreateAccountScreen({ branch, answers, track, onAccountCreated }: {
       // Guard so TrackCompleteRegistration on the savings step doesn't double-fire
       try { sessionStorage.setItem("acuity_reg_pixel_fired", "1"); } catch {}
 
-      const result = await signIn("credentials", { email: signupEmail.trim(), password: signupPassword, redirect: false });
+      const result = await signIn("credentials", { email: signupEmail.trim(), password, redirect: false });
       if (result?.ok) {
         track("funnel_email_signup_success", { value: envDiag });
         onAccountCreated();
@@ -2190,18 +2198,8 @@ function CreateAccountScreen({ branch, answers, track, onAccountCreated }: {
 
   const emailForm = (
     <form onSubmit={handleSignup} className="space-y-3">
-      <input type="text" value={signupName} onChange={(e) => setSignupName(e.target.value)} placeholder="First name (optional)" autoComplete="given-name"
+      <input type="email" value={signupEmail} onChange={(e) => setSignupEmail(e.target.value)} placeholder="Your email" autoComplete="email" inputMode="email"
         className={inputClass} />
-      <input type="email" value={signupEmail} onChange={(e) => setSignupEmail(e.target.value)} placeholder="Email address" autoComplete="email" inputMode="email"
-        className={inputClass} />
-      <div className="relative">
-        <input type={showPassword ? "text" : "password"} value={signupPassword} onChange={(e) => setSignupPassword(e.target.value)} placeholder="Password (8+ characters)" autoComplete="new-password"
-          className={`${inputClass} pr-16`} />
-        <button type="button" onClick={() => setShowPassword(!showPassword)}
-          className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-acuity-text-ter hover:text-acuity-text font-medium">
-          {showPassword ? "Hide" : "Show"}
-        </button>
-      </div>
 
       {signupError && (
         <div className={`text-xs px-1 rounded-lg ${accountCreatedButSigninFailed ? "f-sub p-3 text-acuity-good" : "text-acuity-bad"}`}>
@@ -2228,7 +2226,7 @@ function CreateAccountScreen({ branch, answers, track, onAccountCreated }: {
             <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg>
             Creating your account...
           </span>
-        ) : "Create my free account"}
+        ) : "Continue"}
       </button>
     </form>
   );
@@ -2238,7 +2236,7 @@ function CreateAccountScreen({ branch, answers, track, onAccountCreated }: {
       <div className="max-w-md w-full funnel-screen">
         <section className="text-center mb-7">
           <h2 className="text-[22px] sm:text-[28px] font-bold tracking-tight leading-snug">{headline}</h2>
-          <p className="text-[15px] text-acuity-text-sec mt-3">Create your account. Next, start your 7 days of Pro free.</p>
+          <p className="text-[15px] text-acuity-text-sec mt-3">Just your email to save your results. Next, start your 7 days of Pro free.</p>
         </section>
 
         {/* Social proof — auto-rotating testimonials */}
@@ -2253,19 +2251,9 @@ function CreateAccountScreen({ branch, answers, track, onAccountCreated }: {
         {/* In FB/IG in-app browsers email leads (it never fails there);
             everywhere else the one-tap buttons lead (Apple, then Google).
             Both are offered in both. */}
-        {inApp ? (
-          <>
-            {emailForm}
-            {divider}
-            {oauthButtons}
-          </>
-        ) : (
-          <>
-            {oauthButtons}
-            {divider}
-            {emailForm}
-          </>
-        )}
+        {/* Email only (2026-09-30): one field, one button. Google/Apple were
+            dropped with the password field; the password comes after checkout. */}
+        {emailForm}
 
         <p className="text-xs text-acuity-text-ter text-center mt-6">
           Already have an account?{" "}
@@ -2438,6 +2426,8 @@ function SavingsScreen({ branch, answers: _answers, track, selectedPlan, onPlanC
             <span className="font-semibold text-acuity-text">$0 today.</span> We&rsquo;ll email you before you&rsquo;re charged.
             <span className="block">Then {afterTrialPrice}. Cancel anytime from your account.</span>
           </p>
+          <PaywallTrustLine className="mt-1" />
+          <PayInBrowserButton interval={selectedPlan} funnel={cfg.path} track={(e, v) => track(e, { value: v })} className="mt-2.5" />
           <button onClick={onSkip} disabled={loading}
             className="w-full mt-2 py-1.5 text-[14px] font-medium text-acuity-text-sec underline-offset-4 hover:underline disabled:opacity-50">
             Continue with the free plan
@@ -2543,6 +2533,8 @@ function DownloadScreen({ track, paymentConfirmed, selectedPlan }: {
 }) {
   const { data: session, status: authStatus } = useSession();
   const [testimonialIdx, setTestimonialIdx] = useState(0);
+  // Password step between checkout and the app (2026-09-30).
+  const [pwDone, setPwDone] = useState(() => (typeof window === "undefined" ? false : passwordStepDone()));
   // One-tap app sign-in (2026-09-28): web signups downloaded the app, landed
   // in its new-user sign-up and never reached the account they made here.
   // Email the signed-in link on arrival (once per browser session).
@@ -2628,6 +2620,10 @@ function DownloadScreen({ track, paymentConfirmed, selectedPlan }: {
   }, []);
 
   const planPrice = selectedPlan === "yearly" ? displayAnnual() + "/yr" : displayMonthly() + "/mo";
+
+  if (!pwDone && authStatus === "authenticated") {
+    return <PasswordStep onDone={() => setPwDone(true)} track={(e, v) => track(e, v ? { value: v } : undefined)} />;
+  }
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center px-6 text-acuity-text">

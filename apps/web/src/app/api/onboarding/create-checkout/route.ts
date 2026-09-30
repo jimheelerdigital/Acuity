@@ -42,11 +42,16 @@ export async function POST(req: NextRequest) {
   // on our own paywall, with Apple Pay / Google Pay at the top and the card
   // form below. Returns a client secret instead of a redirect URL.
   let embedded = false;
+  // handoff (2026-09-30): the "Pay with Apple Pay in Safari" button — a
+  // hosted checkout opened in the real browser. Its return URLs carry a
+  // signed pass so the buyer lands signed in (lib/checkout-handoff.ts).
+  let handoff = false;
   try {
-    const body = (await req.json()) as { interval?: Interval; funnel?: string; embedded?: boolean } | null;
+    const body = (await req.json()) as { interval?: Interval; funnel?: string; embedded?: boolean; handoff?: boolean } | null;
     if (body?.interval === "yearly") interval = "yearly";
     if (body?.funnel && FUNNEL_PATHS.has(body.funnel)) funnelPath = body.funnel;
-    embedded = body?.embedded === true;
+    handoff = body?.handoff === true;
+    embedded = body?.embedded === true && !handoff;
   } catch {}
 
   // Use PRICING config which includes env-var fallbacks for local dev
@@ -83,8 +88,13 @@ export async function POST(req: NextRequest) {
     });
 
     const returnUrl = `${process.env.NEXTAUTH_URL}${funnelPath}?step=download&payment=success&session_id={CHECKOUT_SESSION_ID}`;
+    const { signHandoff } = await import("@/lib/checkout-handoff");
+    const pass = handoff ? encodeURIComponent(signHandoff(session.user.id)) : "";
+    const handoffBase = `${process.env.NEXTAUTH_URL}/api/onboarding/handoff?t=${pass}&f=${encodeURIComponent(funnelPath)}`;
     const checkoutSession = await stripe.checkout.sessions.create({
-      ...(embedded
+      ...(handoff
+        ? { success_url: `${handoffBase}&to=download&session_id={CHECKOUT_SESSION_ID}`, cancel_url: `${handoffBase}&to=paywall` }
+        : embedded
         ? { ui_mode: "embedded" as const, return_url: returnUrl }
         : {
             success_url: returnUrl,
@@ -110,7 +120,7 @@ export async function POST(req: NextRequest) {
         trial_period_days: trialDays,
         metadata: { userId: session.user.id, interval, source: "onboarding_funnel" },
       },
-      metadata: { userId: session.user.id, interval, source: "onboarding_funnel" },
+      metadata: { userId: session.user.id, interval, source: "onboarding_funnel", ...(handoff ? { handoff: "browser" } : {}) },
     });
 
     if (embedded) {

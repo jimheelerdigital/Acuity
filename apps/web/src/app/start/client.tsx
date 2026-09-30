@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import { OnboardingFunnel } from "@/components/onboarding-funnel";
+import { FunnelConfigProvider, OnboardingFunnel } from "@/components/onboarding-funnel";
+import { DEFAULT_FUNNEL_CONFIG, type EntryIntro } from "@/lib/funnel-config";
 
 /**
  * Client wrapper for the onboarding funnel. On mount:
@@ -11,7 +12,7 @@ import { OnboardingFunnel } from "@/components/onboarding-funnel";
  * The SSR entry question stays visible until this component mounts,
  * ensuring content is visible even on slow connections.
  */
-export function StartPageClient({ skipSSR }: { skipSSR?: boolean }) {
+export function StartPageClient({ skipSSR, entryIntro }: { skipSSR?: boolean; entryIntro?: EntryIntro }) {
   const mounted = useRef(false);
 
   useEffect(() => {
@@ -42,5 +43,11 @@ export function StartPageClient({ skipSSR }: { skipSSR?: boolean }) {
     }
   }, []);
 
-  return <OnboardingFunnel />;
+  // Ad-matched screen 1 (2026-09-30): the server built this ad's intro.
+  if (!entryIntro) return <OnboardingFunnel />;
+  return (
+    <FunnelConfigProvider config={{ ...DEFAULT_FUNNEL_CONFIG, ENTRY_INTRO: entryIntro }}>
+      <OnboardingFunnel />
+    </FunnelConfigProvider>
+  );
 }

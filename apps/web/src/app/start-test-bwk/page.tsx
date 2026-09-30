@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 
 import { FunnelV9 } from "@/components/funnel-v9";
+import { findAdMatch } from "@/lib/funnel-ad-match";
 
 export const metadata: Metadata = {
   title: "Start Free Trial — Ripple",
@@ -14,8 +15,12 @@ export const metadata: Metadata = {
  * /start-test, with BWK copy (lib/funnel-v9-config.ts → BWK_V9).
  */
 
-export default function StartTestBwkPage() {
-  return (
-    <FunnelV9 brand="bwk" />
-  );
+export default async function StartTestBwkPage({
+  searchParams,
+}: {
+  searchParams: { [key: string]: string | string[] | undefined };
+}) {
+  // Ad-matched screen 1 (2026-09-30): the tapped ad's hook + say/catch.
+  const adMatch = await findAdMatch(searchParams.utm_content);
+  return <FunnelV9 brand="bwk" adMatch={adMatch} />;
 }

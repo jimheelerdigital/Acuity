@@ -6,6 +6,7 @@ import { StartPageClient } from "./client";
 import { ENTRY_QUESTION, ENTRY_INTRO, DEFAULT_FUNNEL_CONFIG } from "@/lib/funnel-config";
 import { FunnelSsrEntry } from "@/components/funnel-ssr-entry";
 import { S1_YESNO } from "@/lib/funnel-s1-test";
+import { adMatchedIntro } from "@/lib/funnel-ad-match";
 import { FSPLIT_COOKIE, isFunnelSplitOn, normalArmScript, pickArm, testFunnelUrl } from "@/lib/funnel-split";
 
 export const metadata: Metadata = {
@@ -48,13 +49,16 @@ export default async function StartPage({
     );
   }
 
+
+  // Ad-matched screen 1: the tapped ad's own hook + say/catch example.
+  const entryIntro = await adMatchedIntro(searchParams.utm_content, ENTRY_INTRO);
   return (
     <>
       {armScript}
-      <FunnelSsrEntry question={ENTRY_QUESTION} intro={ENTRY_INTRO} theme="light" totalSteps={DEFAULT_FUNNEL_CONFIG.STEP_ORDER.length} yesno={S1_YESNO["v8"]} />
+      <FunnelSsrEntry question={ENTRY_QUESTION} intro={entryIntro} theme="light" totalSteps={DEFAULT_FUNNEL_CONFIG.STEP_ORDER.length} yesno={S1_YESNO["v8"]} />
 
       {/* Client component hydrates on top — hides SSR content and takes over */}
-      <StartPageClient />
+      <StartPageClient entryIntro={entryIntro} />
     </>
   );
 }
