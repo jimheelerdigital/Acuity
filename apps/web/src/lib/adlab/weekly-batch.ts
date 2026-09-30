@@ -55,6 +55,10 @@ interface GroupConfig {
   visualStyles: string[];
   /** Background palettes rotated across the typographic formats. */
   cardPalettes: string[];
+  /** Everyday specifics most of THIS lane's audience lives (2026-09-30). */
+  commonSpecifics: string;
+  /** What makes this lane's ads unlike the other lane's ("" = none). */
+  laneRule: string;
 }
 
 // Product truth comes from lib/positioning.ts (2026-09-29, per Keenan: "AI
@@ -167,6 +171,90 @@ export const AD_SLOTS: AdSlot[] = [
   },
 ];
 
+/**
+ * The men's lane gets its own slots (2026-09-30, per Keenan: "men lane ads
+ * are pretty generic still … not much to distinguish it from female lane").
+ * Same research rules, but built around BWK: habits kept vs broken, the
+ * weekly scoreboard, streaks, excuses and the pattern behind them — the
+ * to-do list is secondary. Formats stay as varied (7 families, 1 photo).
+ */
+export const MEN_SLOTS: AdSlot[] = [
+  {
+    key: "scoreboard",
+    format: WEEKLY_REPORT_FORMAT,
+    how: "YOUR WEEK, SCORED. The weekly report as a scoreboard: stats = promises kept (e.g. \"2/5\"), gym days (\"3/5\"), how often he said 'tomorrow' (\"6x\"); insight = the one pattern behind the misses. Headline is the score.",
+    women: "",
+    men: `Headline: "Your week, scored: 2 of 5 kept". Stats: 2/5 promises kept / 3 gym days / 6x said 'tomorrow'. Insight: "Every missed workout came after a night past 1am."`,
+  },
+  {
+    key: "excuse_audit",
+    format: SAY_CATCH_FORMAT,
+    how: "EXCUSE AUDIT. `said` = his real excuses said out loud in a debrief; `caught` = what Ripple logged: the excuse and how many times, the habit missed, the pattern behind it. Headline quotes the excuse with a count.",
+    women: "",
+    men: `Headline: "'Too tired.' 4th time this week." Said: "skipped the gym again, too tired, and I'll start the side project Monday".`,
+  },
+  {
+    key: "streak",
+    format: TEXT_WALL_FORMAT,
+    how: "THE STREAK NOTE. First-person phone note: the day count, where it always breaks, what Ripple flagged, what changed. `lines`: 4–6 short lines ≤70 chars, blunt.",
+    women: "",
+    men: `Headline: "Day 1 is easy. Day 23 is where it breaks." Lines: "Day 1: lifted, read, no phone in bed." / "Day 9: skipped reading. Said it out loud anyway." / "Day 23: Ripple flagged it — every break is a Friday."`,
+  },
+  {
+    key: "command",
+    format: "statement-card",
+    how: "COMMAND CARD (BWK voice). One blunt command or identity line + one literal line on what Ripple does for him. No hype.",
+    women: "",
+    men: `Headline: "Keep score on yourself." Solution line: "Say what you did and didn't. Ripple tracks it and shows the pattern."`,
+  },
+  {
+    key: "motivation_vs_record",
+    format: "notes-app",
+    how: "MOTIVATION VS A RECORD. Motivation fades; a record doesn't. `benefits` = 3 concrete things Ripple tracks for him.",
+    women: "",
+    men: `Headline: "Motivation fades. A record doesn't."`,
+  },
+  {
+    key: "nobody_watching",
+    format: SAY_CATCH_FORMAT,
+    how: "NOBODY'S WATCHING — except the record. `said` = him being honest about the week nobody saw; `caught` = the promises kept and broken, and the repeat. A different life area from excuse_audit (money, screen time, the side project, sleep, diet).",
+    women: "",
+    men: `Headline: "Nobody checks. So Ripple does." Said: "said I'd save 200 this month, spent it on takeout again, and 4 hours on my phone yesterday".`,
+  },
+  {
+    key: "proof_in_app",
+    format: APP_PROOF_FORMAT,
+    how: "PROOF IN THE APP: a hook the real screenshot proves (the Theme Map of what keeps coming up in what he says). `description` ≤60 chars says what it shows.",
+    women: "",
+    men: `Headline: "'Tomorrow' came up 9 times this month"`,
+  },
+  {
+    key: "iterate_new_format",
+    format: TEXT_WALL_FORMAT,
+    iteration: true,
+    how: "ITERATION A of our CURRENT BEST AD (below): keep its winning line/idea almost word for word as the headline, told as a blunt first-person phone note (`lines`).",
+    women: "",
+    men: "",
+  },
+  {
+    key: "iterate_new_scene",
+    format: SAY_CATCH_FORMAT,
+    iteration: true,
+    how: "ITERATION B of our CURRENT BEST AD: same promise and headline idea, a brand-new moment in `said`/`caught` from HIS week (gym, alarm, phone, money, side project).",
+    women: "",
+    men: "",
+  },
+  {
+    key: "offer_or_photo",
+    format: "hook-overlay",
+    how: "OFFER TEST on a real-looking photo: the headline leads with the free trial + the concrete thing Ripple does; never the price. imageScene = a PLACE or OBJECTS only (an empty gym bench at 6am, a phone face-down on a desk next to a half-crossed plan, running shoes by the door) — no people, no faces.",
+    women: "",
+    men: `Headline: "7 days free. Keep score on yourself."`,
+  },
+];
+
+export const SLOTS_BY_LANE: Record<BatchGroupKey, AdSlot[]> = { women: AD_SLOTS, men: MEN_SLOTS };
+
 export const BATCH_GROUPS: Record<BatchGroupKey, GroupConfig> = {
   women: {
     key: "women",
@@ -234,6 +322,9 @@ Show what she'll see and get done with Ripple, and the better, lighter life it p
       "pale sky blue background with navy type",
       "mustard yellow background with charcoal type",
     ],
+    commonSpecifics:
+      "the school form, the dentist, the grocery run, the work deadline, the missed workout, the thing you said you'd start \"tomorrow\", the list in your head at 11pm",
+    laneRule: "",
   },
   men: {
     key: "men",
@@ -299,6 +390,10 @@ Show the mechanism: spoken debrief → tracked habits → visible pattern → ke
       "concrete grey background with black type and one red accent",
       "electric blue background with white type",
     ],
+    commonSpecifics:
+      "the 5:30 alarm he snoozed, the gym day he skipped, 4 hours of screen time, the side project he hasn't touched, \"starting Monday\", the savings goal, the diet that broke Friday night, the book on the nightstand, the deadline he pushed again",
+    laneRule:
+      "THIS IS THE MEN'S LANE (BWK). It must NOT read like the women's ads: no family errands or household logistics as the scene (no birthdays, school forms, landlord emails, grocery runs). Lead with HABITS kept vs broken, the SCOREBOARD of his week, streaks, excuses and the pattern behind them; the to-do list is secondary. Voice: short, direct, blunt — second person or blunt first person; commands are fine (\"Keep score.\"); respect, never shame; no hype, no 'grindset'. The mechanism line says what Ripple does for HIM: he says what he did and didn't do, Ripple tracks the habits, flags the misses and shows the pattern. Vary it; never open every primary text with 'Say it out loud'.",
   },
 };
 
@@ -903,6 +998,8 @@ export async function createBatchForGroup(
   groupKey: BatchGroupKey
 ): Promise<{ experimentId: string; creativeIds: string[]; videoCreativeIds: string[]; digestDate: string }> {
   const g = BATCH_GROUPS[groupKey];
+  // Each lane has its own slots (2026-09-30): the men's are BWK-shaped.
+  const SLOTS = SLOTS_BY_LANE[groupKey];
   const { id: projectId } = await ensureGroupProject(groupKey);
   const project = await prisma.adLabProject.findUniqueOrThrow({ where: { id: projectId } });
 
@@ -965,8 +1062,8 @@ WHAT CONVERTS (our research, reports/Subscription app ad creative conversion.md 
 - Plain, phone-native, literal ads beat polished mood work. Text-only / native-looking statics win about 1.7x as often as high-production ads. The category's longest-running ads are ONE plain benefit or proof line, kept for months.
 - Our own winners were concrete and showed a real insight ("Two years of noticing", "Same patterns. Different year."). Generic moody lines lose. Show the insight, not the mood.
 - Every ad needs: (1) a SPECIFIC scene or hook with a concrete noun, number or quoted phrase; (2) ONE literal line on what Ripple does; (3) a result. A stranger must know what Ripple is and does within the headline + first line.
-- Nobody else in the category shows people their own words turned into a list and a pattern. That demo and pattern-reveal territory is ours: lean on it.
-- SPECIFIC **AND COMMON** (2026-09-30 — the last batch went niche: "the dryer noise since March", "the $212 vet charge", "I asked 3 groups"). A detail only works if MOST of this audience lived it this week and recognises it in one second: the school form, the dentist, the grocery run, the work deadline, the missed workout, the thing you said you'd start "tomorrow", the list in your head at 11pm. Never an unusual one-off situation, an odd dollar amount, a specific appliance, a medical or prescription detail, or a major life decision (divorce, leaving a job, a diagnosis). Specific enough to feel real, common enough that anyone nods. The headline alone must make sense to a stranger scrolling past.
+${g.laneRule ? `- ${g.laneRule}\n` : ""}- Nobody else in the category shows people their own words turned into a list and a pattern. That demo and pattern-reveal territory is ours: lean on it.
+- SPECIFIC **AND COMMON** (2026-09-30 — the last batch went niche: "the dryer noise since March", "the $212 vet charge", "I asked 3 groups"). A detail only works if MOST of this audience lived it this week and recognises it in one second: ${g.commonSpecifics}. Never an unusual one-off situation, an odd dollar amount, a specific appliance, a medical or prescription detail, or a major life decision (divorce, leaving a job, a diagnosis). Specific enough to feel real, common enough that anyone nods. The headline alone must make sense to a stranger scrolling past.
 
 PRODUCT (ground truth — never claim beyond this):
 ${PRODUCT_TRUTH}
@@ -982,7 +1079,7 @@ ${JSON.stringify(g.usps, null, 2)}
 ${recentBlock}
 ${bestAdBlock}
 THE 10 SLOTS — every slot has a FIXED hook template and a FIXED format. Write the ad for the slot you are given; set "archetype" to the slot key.
-${AD_SLOTS.map((sl) => `- ${sl.key} [format: ${sl.format}]: ${sl.how}${sl[groupKey] ? `\n    Example for this lane (write your OWN, don't copy): ${sl[groupKey]}` : ""}`).join("\n")}
+${SLOTS.map((sl) => `- ${sl.key} [format: ${sl.format}]: ${sl.how}${sl[groupKey] ? `\n    Example for this lane (write your OWN, don't copy): ${sl[groupKey]}` : ""}`).join("\n")}
 ${learningSection ? `\n${learningSection}\n` : ""}${competitorSection ? `\n${competitorSection}\n` : ""}
 THIS WEEK'S REDDIT AUDIENCE PULSE (real distilled pain from the audience's own threads — root every new-concept ad in one of these themes, in their own words). Use a theme only through its EVERYDAY, widely shared side; skip medical/medication, relationship-ending or other major-life-decision themes entirely, and never lift a one-off story detail from a thread:
 ${themes.map((t, i) => `${i + 1}. THEME: ${t.theme}\n   WHY IT'S LIVE THIS WEEK: ${t.why}\n   SUGGESTED ANGLE: ${t.angle}\n   THEIR OWN PHRASES: ${(t.phrases ?? []).join(" | ")}`).join("\n\n")}
@@ -1018,7 +1115,7 @@ Submit the ads with the submit_ads tool.`;
   // written in four parallel requests of 2–3 slots each (one big reply hit
   // the output cap), then Jev picks the best draft per slot.
   const VARIANTS = VARIANTS_PER_SLOT;
-  const halves = [AD_SLOTS.slice(0, 3), AD_SLOTS.slice(3, 6), AD_SLOTS.slice(6, 8), AD_SLOTS.slice(8)];
+  const halves = [SLOTS.slice(0, 3), SLOTS.slice(3, 6), SLOTS.slice(6, 8), SLOTS.slice(8)];
   const per = Math.ceil(themes.length / halves.length);
   const themeSlices = halves.map((_, i) => themes.slice(i * per, (i + 1) * per));
   const halfPrompt = (i: number) =>
@@ -1069,7 +1166,7 @@ Call the submit_ads tool IMMEDIATELY. Do not write any analysis, plan, draft or 
   const videoTemplates = videoTemplatesForWeek();
   const hookStyles = hookStylesForWeek();
   const videoPrompt = `Write ${videoTemplates.length * VIDEO_VARIANTS} ANIMATED VIDEO ad scripts for this lane: ${VIDEO_VARIANTS} genuinely different scripts per template (different moment, hook and footage each), templates in this order: ${videoTemplates.join(", ")}. The scripts are scored and only the strongest per template is made.
-Each video is a ~12–15s silent-readable animation (music underneath, no voiceover) that shows the viewer THEIR OWN WORDS turning into a to-do list, a tracked habit, a pattern or a weekly report. Nothing else is on screen, so the specifics carry the ad: everyday errands, days and excuses MOST of this audience lives every week (school forms, the dentist, groceries, a work deadline, the gym, "tomorrow") — never an unusual one-off, a medical detail or a major life decision. Every number is one person's believable week, never a claim about users.
+Each video is a ~12–15s silent-readable animation (music underneath, no voiceover) that shows the viewer THEIR OWN WORDS turning into a to-do list, a tracked habit, a pattern or a weekly report. Nothing else is on screen, so the specifics carry the ad: everyday specifics MOST of this audience lives every week (${g.commonSpecifics})${g.laneRule ? ". " + g.laneRule : ""} — never an unusual one-off, a medical detail or a major life decision. Every number is one person's believable week, never a claim about users.
 
 STRUCTURE — one continuous story, not a clip stapled to a slideshow:
 1. 0–3s: real-looking footage of ONE specific moment (openerScene) with the opening hook on screen from the very first frame.
@@ -1146,7 +1243,7 @@ Call the submit_video_ads tool IMMEDIATELY with no text before or after it.`;
   // echo the live winner, so Jev's duplicate flag doesn't count against
   // them; every slot skips drafts that near-copy an ad already picked here.
   const picked: string[] = [];
-  for (const slot of AD_SLOTS) {
+  for (const slot of SLOTS) {
     const idx = drafts
       .map((d, i) => (d.archetype === slot.key ? i : -1))
       .filter((i) => i >= 0 && !picked.some((h) => nearCopy(h, drafts[i].headline)));
@@ -1204,9 +1301,9 @@ Call the submit_video_ads tool IMMEDIATELY with no text before or after it.`;
   let photoCount = 0;
   for (const [adIndex, ad] of ads.slice(0, 10).entries()) {
     const slot =
-      AD_SLOTS.find((sl) => sl.key === ad.archetype && !usedSlots.has(sl.key)) ??
-      AD_SLOTS.find((sl, i) => i >= adIndex && !usedSlots.has(sl.key)) ??
-      AD_SLOTS.find((sl) => !usedSlots.has(sl.key));
+      SLOTS.find((sl) => sl.key === ad.archetype && !usedSlots.has(sl.key)) ??
+      SLOTS.find((sl, i) => i >= adIndex && !usedSlots.has(sl.key)) ??
+      SLOTS.find((sl) => !usedSlots.has(sl.key));
     if (slot) usedSlots.add(slot.key);
     let formatKey = slot?.format ?? ad.format ?? "statement-card";
     // Iteration B keeps the winner's own format when it was a photo ad.

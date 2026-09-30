@@ -5,6 +5,7 @@ vi.mock("@/lib/prisma", () => ({ prisma: {} }));
 import {
   AD_FORMAT_KEYS,
   AD_SLOTS,
+  MEN_SLOTS,
   PHOTO_FORMATS,
   videoTemplatesForWeek,
   hookStylesForWeek,
@@ -151,5 +152,16 @@ describe("Jev draft picking (2026-09-30)", () => {
     expect(pickBest(["a", "b", "c"], [v(0.4), v(0.9, false), v(0.7)]).item).toBe("c");
     expect(pickBest(["a", "b"], [null, null]).item).toBe("a");
     expect(pickBest(["a", "b"], [v(0.2, false), v(0.5, false)]).item).toBe("b");
+  });
+});
+
+describe("men's lane slots (2026-09-30)", () => {
+  it("are BWK-shaped, valid and as varied as the women's", () => {
+    expect(MEN_SLOTS).toHaveLength(10);
+    for (const sl of MEN_SLOTS) expect(AD_FORMAT_KEYS).toContain(sl.format);
+    expect(new Set(MEN_SLOTS.map((sl) => sl.format)).size).toBeGreaterThanOrEqual(6);
+    expect(MEN_SLOTS.filter((sl) => PHOTO_FORMATS.includes(sl.format)).length).toBeLessThanOrEqual(1);
+    expect(MEN_SLOTS.map((s) => s.key)).toContain("scoreboard");
+    expect(MEN_SLOTS.filter((s) => s.iteration)).toHaveLength(2);
   });
 });

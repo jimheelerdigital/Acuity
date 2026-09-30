@@ -144,6 +144,29 @@ Mythicals slides now show just the number and name, and "places" posts show the 
 - Local ANTHROPIC key is still dead (401). The cover-picker Sonnet path was tested with a stubbed reply; first real run is in prod. Look for `[cover-picker]` log lines.
 - 09-30 posts were queued before this deploy, so the gate leaves that day alone.
 
+## [2026-09-30] — Men's ads get their own BWK playbook
+
+- **Requested by:** Keenan
+- **Committed by:** Claude Code
+- **Commit hash:** (see git log — "feat: Give the men's ad lane its own BWK slots and voice")
+
+### In plain English (for Keenan)
+The men's ads came out as generic to-do ads, with the same formats and lines as the women's lane (Mom's birthday, the landlord email). The men's lane now has its own playbook:
+- **What it writes:** "your week, scored", excuse audits ("'Too tired.' 4th time this week"), streak notes, blunt BWK command cards, "motivation fades, a record doesn't", "nobody checks, so Ripple does".
+- **Specifics:** men's everyday details (the snoozed 5:30 alarm, the skipped gym day, screen time, the untouched side project, "starting Monday").
+- **Rule:** it must not read like the women's ads. It leads with habits, the scoreboard and patterns, and the to-do list comes second.
+
+### Technical changes (for Jimmy)
+- weekly-batch.ts: `MEN_SLOTS` (10 slots, 7 format families, 1 photo) and `SLOTS_BY_LANE`; createBatchForGroup uses the lane's slots everywhere (prompt, request chunks, Jev picking, slot assignment).
+- GroupConfig gains `commonSpecifics` and `laneRule`; the image and video prompts use them in place of the hard-coded women's examples.
+- Test: men's slots are valid, ≥6 formats, ≤1 photo, 2 iteration slots.
+
+### Manual steps needed
+- [ ] Keenan: Remake the men's lane to get BWK-shaped ads (this morning's men's batch was made before this)
+
+### Notes
+- Visuals are still shared (the men's code-drawn formats use the dark/amber theme). A BWK-style heavy display font for men's cards would be the next step if they still look too similar.
+
 ## [2026-09-30] — Ads stay specific but everyday; Jev checks relatability; review shows Jev scores
 
 - **Requested by:** Keenan
