@@ -63,6 +63,7 @@ const BWK_LANES = new Set([
   "phone-quote-men",
   "discipline-real",
   "future-texts",
+  "voiced-bwk",
 ]);
 async function accountLabel(lane: string | null | undefined): Promise<string> {
   if (lane && BWK_LANES.has(lane)) return "[BUILD WITH KEY]";

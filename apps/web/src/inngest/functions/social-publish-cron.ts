@@ -142,6 +142,8 @@ export const socialPublishCronFn = inngest.createFunction(
       if (publishGateEnabled()) {
         const gates = new Map<string, Awaited<ReturnType<typeof resolveDayGate>>>();
         for (const post of candidates) {
+          // Voiced videos are approved by Keenan one at a time — never ranked or held.
+          if (post.lane?.startsWith("voiced-")) continue;
           const brand = await brandOfLane(post.lane);
           const date = post.generatedFor.toISOString().slice(0, 10);
           const key = `${brand}:${date}`;

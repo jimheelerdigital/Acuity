@@ -1836,14 +1836,16 @@ export async function buildAdaptiveScrim(base: Buffer, overlayPng: Buffer): Prom
  * blurred dark shadow so it reads on any footage.
  */
 export async function renderCaptionPng(
-  text: string
+  text: string,
+  /** Font size; voiced reels use 84 so captions read on a phone (2026-09-30). */
+  size = 58
 ): Promise<{ buffer: Buffer; width: number; height: number }> {
   const fontPath = await ensureFontFile("Bold");
-  const lines = wordWrap(text, 24);
+  const lines = wordWrap(text, size > 70 ? 16 : 24);
   const maxTextW = OUTPUT_W - PADDING_X * 2;
 
-  const shadowMarkup = buildLinesMarkup(lines, 58, "#111111", "#111111");
-  const mainMarkup = buildLinesMarkup(lines, 58, "#FFFFFF", "#FFFFFF");
+  const shadowMarkup = buildLinesMarkup(lines, size, "#111111", "#111111");
+  const mainMarkup = buildLinesMarkup(lines, size, "#FFFFFF", "#FFFFFF");
   const shadow = await renderMarkup(shadowMarkup, fontPath, maxTextW, 10, 10);
   const main = await renderMarkup(mainMarkup, fontPath, maxTextW, 10, 10);
   const blurredShadow = await sharp(shadow.buffer).blur(6).png().toBuffer();

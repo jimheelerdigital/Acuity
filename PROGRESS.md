@@ -7,6 +7,59 @@
 
 ---
 
+## [2026-09-30] — Daily voiced videos: Keenan records, the system builds the video
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** see "feat: Add daily voiced video pipeline built around Keenan's recordings"
+
+### In plain English (for Keenan)
+Every day at 12:00 UTC you get two scripts by email, one for Ripple and one for BWK, written to be read aloud with the pauses marked. Record one on your phone and upload it from the button in the email. The system then builds a video around your voice:
+- an AI-animated shot for each line, cut to your pace
+- captions timed to your words
+- music underneath
+
+You get the finished video with an Approve button, and it posts to Instagram and Facebook only after you approve. It costs about $1 per video.
+
+### Technical changes (for Jimmy)
+- New `lib/content-factory/voiced.ts`:
+  - HMAC link tokens (CRON_SECRET)
+  - storage state in `content-factory/voiced/<date>/<brand>/`
+  - Sonnet 5.5 spoken-script writer with shot list and pacing marks, then the Jev sense check
+  - script, ready and failure emails
+  - `approveVoiced`
+- New `lib/content-factory/voiced-video.ts`:
+  - voice cleanup: loudnorm, silence trim, highpass
+  - Whisper word timestamps, fuzzy-aligned to script lines
+  - 1-4 word captions as PNG overlays at 84pt
+  - per-shot segments (clip trimmed, or slowed up to 1.5x then held; push-in still if a clip is missing)
+  - concat, then a separate music mix about 15 dB under the voice
+- New `inngest/functions/voiced-video.ts`, registered in `app/api/inngest/route.ts`:
+  - `voicedScriptDailyFn`: cron `0 12 * * *` plus `content-factory/voiced.script`
+  - `voicedClipsFn`: `content-factory/voiced.clips`; pre-renders the gpt-image-2 shots and Higgsfield clips after the script is sent
+  - `voicedBuildFn`: `content-factory/voiced.build`
+- New public pages and routes: `app/voiced/[date]/[brand]` (mobile upload and approve page), `api/voiced/upload-url` (Supabase signed upload), `api/voiced/recorded`, `api/voiced/approve` (POST-only, so email link scanners can't approve).
+- New `api/admin/voiced/run-script`: CRON_SECRET/admin trigger that fires the script writer now.
+- `social-publish.ts`: `voiced-ripple` and `voiced-bwk` added to AUTO_LANES; `voiced-bwk` added to BWK_LANES.
+- `social-publish-cron.ts`: voiced lanes skip the Jev publish gate.
+- `email.ts`: BWK label for `voiced-bwk`.
+- `compose.ts`: `renderCaptionPng(text, size=58)` gains a size parameter.
+- On approve:
+  1. The video is copied to `reels/voiced-<date>-<brand>.mp4` and its marker set to done.
+  2. Then a CarouselPost is created in lane `voiced-<brand>` with a fixed id, so approving twice can't post twice.
+  3. `social.publish` fires, and the post goes out at the next open slot.
+- No schema change and no new env vars (optional `VOICED_BASE_URL`).
+
+### Manual steps needed
+- [ ] Inngest resync after deploy (`curl -X PUT https://goripple.io/api/inngest`). New cron and functions. (Claude, done in the same session)
+- [ ] Record today's two scripts from the emails (Keenan)
+
+### Notes
+- Higgsfield is deliberately used here even though animation is off for Ripple and BWK posts. Keenan chose "AI - higgsfield generated content that matches the script" for these videos.
+- The build half was tested locally end to end (a macOS `say` voice with an ad-lib, placeholder clips): 49 of 52 words aligned, 20s at 1080x1920, voice at -18.6 dB and music at -34 dB.
+- Not tested locally (dead Anthropic key, and no image or video spend): the script writer, the shot rendering, and the approve-to-publish handoff. The first real run is in prod.
+- Cost is about $1.05 per video (6 Kling clips, 6 gpt-image-2 medium shots, Opus checks). Shots are pre-generated, so an unrecorded script still costs about $1.
+- An approved post only publishes if its script date is within the publisher's 3-day window.
+
 ## [2026-09-30] — Higgsfield animation off for BWK too (Mythicals only)
 **Requested by:** Keenan
 **Committed by:** Claude Code

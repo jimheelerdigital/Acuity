@@ -42,6 +42,8 @@ export const BWK_LANES = [
   "phone-quote-men",
   "discipline-real",
   "future-texts",
+  // Voiced daily videos (2026-09-30): Keenan-recorded, approved by hand.
+  "voiced-bwk",
 ] as const;
 
 /**
@@ -67,6 +69,9 @@ export const AUTO_LANES = [
   "letter",
   "discipline-real",
   "future-texts",
+  // Voiced daily videos (2026-09-30) — rows exist only once Keenan approves.
+  "voiced-ripple",
+  "voiced-bwk",
 ] as const;
 
 /**
