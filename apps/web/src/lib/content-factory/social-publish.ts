@@ -100,6 +100,9 @@ export const CAROUSEL_LANES: readonly string[] = [
   "texts-younger",
   "reset-guide-men",
   "timeline",
+  // 2026-09-30 per Keenan: each brand = 2 pick videos + 2 photo posts a
+  // day; memento-men is one of BWK's two photo lanes now.
+  "memento-men",
 ];
 
 /**

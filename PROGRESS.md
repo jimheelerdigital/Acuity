@@ -7,6 +7,35 @@
 
 ---
 
+## [2026-09-30] — Each brand = 2 pick videos + 2 photo posts a day
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** see "feat: Run two pick videos per brand and make memento-men a carousel"
+
+### In plain English (for Keenan)
+Ripple and BWK now each post 4 times a day: 2 of the new "which one is you?" videos, plus 2 photo posts.
+- Ripple's photo posts: selfie and reset guide.
+- BWK's photo posts: memento and reset guide.
+
+Questions (Ripple) and muse (BWK) are switched off. Mythicals stays at 3 a day.
+
+### Technical changes (for Jimmy)
+- DB:
+  - `questions` and `muse-men` RETIRED.
+  - `pick-ripple` and `pick-bwk` hoursUtc set to [6, 8], two runs a day. The second run gets the first post's title in `recentTitles`, and each post has its own topicSlug, so the unique key holds.
+- `lib/content-factory/social-publish.ts`: `memento-men` added to CAROUSEL_LANES, so it posts as a photo carousel with no video build.
+- Roster:
+  - Ripple: selfie@5, reset-guide@6, pick-ripple@6/8
+  - BWK: memento-men@5, reset-guide-men@7, pick-bwk@6/8
+  - Mythicals: @5/6/7
+- The Jev hold gate: pick lanes are exempt, and a brand-day with 2 or fewer gated posts is never gated, so all 4 per brand post.
+
+### Manual steps needed
+- None
+
+### Notes
+- Photo lanes were chosen by Keenan: selfie over Jev's pick (questions), and memento-men over Jev's pick (muse-men).
+
 ## [2026-09-30] — BWK and Ripple brand briefs rewritten: make them feel where they're going
 **Requested by:** Keenan
 **Committed by:** Claude Code
