@@ -515,6 +515,40 @@ export async function updateAdSetOptimization(adsetId: string, pixelId: string, 
   }
 }
 
+/**
+ * Raw Graph API call with Meta's real error, retrying the #613 "1 call per
+ * 30 seconds" object-edit limit (2026-09-30).
+ */
+export async function metaGraph(
+  path: string,
+  method: "GET" | "POST" = "GET",
+  params: Record<string, unknown> = {}
+): Promise<Record<string, unknown>> {
+  const token = process.env.META_ACCESS_TOKEN;
+  if (!token) throw new Error("META_ACCESS_TOKEN not configured");
+  const version = process.env.META_API_VERSION || "v25.0";
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    const q = new URLSearchParams({ access_token: token });
+    for (const [k, v] of Object.entries(params)) q.set(k, typeof v === "string" ? v : JSON.stringify(v));
+    const url = `https://graph.facebook.com/${version}/${path}`;
+    const res = method === "GET" ? await fetch(`${url}?${q}`) : await fetch(url, { method: "POST", body: q });
+    const data = (await res.json().catch(() => ({}))) as Record<string, unknown> & { error?: { message?: string; error_user_msg?: string; code?: number; error_subcode?: number } };
+    if (res.ok && !data.error) return data;
+    const e = data.error;
+    if (e?.code === 613 && attempt < 3) {
+      await new Promise((r) => setTimeout(r, 32_000));
+      continue;
+    }
+    throw new Error(`Meta ${method} ${path.split("?")[0]} failed (${res.status}): ${redactAccessToken(e?.error_user_msg || e?.message || JSON.stringify(data)).slice(0, 400)}${e?.code ? ` [code ${e.code}${e.error_subcode ? `/${e.error_subcode}` : ""}]` : ""}`);
+  }
+  throw new Error("unreachable");
+}
+
+export function adAccountPath(): string {
+  const accountId = process.env.META_AD_ACCOUNT_ID ?? "";
+  return accountId.startsWith("act_") ? accountId : `act_${accountId}`;
+}
+
 /** Read an ad set's current budget + optimization target (for verification). */
 export async function getAdSetSettings(adsetId: string): Promise<Record<string, unknown>> {
   const token = process.env.META_ACCESS_TOKEN;

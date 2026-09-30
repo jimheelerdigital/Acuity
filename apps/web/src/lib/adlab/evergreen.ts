@@ -51,8 +51,8 @@ const GROUP_NAMES: Record<BatchGroupKey, string> = {
 };
 
 /**
- * Push the code's budget + optimization event onto both live evergreen ad
- * sets (2026-09-30). Per-group results; one lane failing (e.g. Meta refusing
+ * Push the code's daily budget onto both live evergreen ad sets (2026-09-30)
+ * and report what Meta now shows. Per-group results; one lane failing (e.g. Meta refusing
  * Purchase optimization) doesn't stop the other.
  */
 export async function applyEvergreenSettings(): Promise<Record<string, unknown>> {
@@ -70,16 +70,106 @@ export async function applyEvergreenSettings(): Promise<Record<string, unknown>>
     } catch (err) {
       r.budget = err instanceof Error ? err.message : String(err);
     }
-    try {
-      await meta.updateAdSetOptimization(project.evergreenAdsetId, project.metaPixelId, GROUP_OPTIMIZATION_EVENT);
-      r.optimization = "ok";
-    } catch (err) {
-      r.optimization = err instanceof Error ? err.message : String(err);
-    }
+    // The optimization event can't be edited on a published ad set (Meta
+    // 100/3260011) — changing it is migrateEvergreenOptimization's job.
     r.now = await meta.getAdSetSettings(project.evergreenAdsetId).catch((err) => String(err));
     out[groupKey] = r;
   }
   return out;
+}
+
+/**
+ * Move a lane onto a Purchase-optimized ad set (2026-09-30, per Keenan:
+ * "start to optimize for purchase"). Meta refuses to change a published ad
+ * set's conversion event ("create a new ad set"), so this:
+ *   1. copies the old ad set's exact targeting/attribution into a new ad set
+ *      in the same campaign, optimizing for GROUP_OPTIMIZATION_EVENT;
+ *   2. re-creates every ad Meta shows as ACTIVE in the old ad set inside the
+ *      new one, reusing the same Meta creative (same asset, copy and
+ *      utm_content link, so attribution by creative is unchanged);
+ *   3. activates the new ad set, THEN pauses the old one (never both off);
+ *   4. points the project + AdLabAd rows at the new ad set (old rows paused
+ *      with a reason, so their history stays).
+ * Idempotent: a lane already on the target event is skipped.
+ */
+export async function migrateEvergreenOptimization(groupKey: BatchGroupKey): Promise<Record<string, unknown>> {
+  const slug = groupKey === "women" ? "ripple-women" : "ripple-men";
+  const project = await prisma.adLabProject.findUniqueOrThrow({ where: { slug } });
+  const oldId = project.evergreenAdsetId;
+  if (!oldId || !project.metaPixelId) return { error: "no evergreen ad set / pixel" };
+  const old = await meta.metaGraph(oldId, "GET", {
+    fields: "name,campaign_id,targeting,promoted_object,attribution_spec,effective_status",
+  });
+  const promoted = old.promoted_object as { custom_event_type?: string } | undefined;
+  if (promoted?.custom_event_type === GROUP_OPTIMIZATION_EVENT) return { skipped: `already ${GROUP_OPTIMIZATION_EVENT}`, adsetId: oldId };
+
+  // 1. New ad set, same targeting, Purchase optimization, paused for now.
+  const created = await meta.metaGraph(`${meta.adAccountPath()}/adsets`, "POST", {
+    name: `${GROUP_NAMES[groupKey].replace("(signups)", "(purchase)")} | ad set`,
+    campaign_id: old.campaign_id as string,
+    daily_budget: String(GROUP_DAILY_BUDGET_CENTS[groupKey]),
+    optimization_goal: "OFFSITE_CONVERSIONS",
+    billing_event: "IMPRESSIONS",
+    bid_strategy: "LOWEST_COST_WITHOUT_CAP",
+    destination_type: "WEBSITE",
+    promoted_object: { pixel_id: project.metaPixelId, custom_event_type: GROUP_OPTIMIZATION_EVENT },
+    targeting: old.targeting,
+    ...(old.attribution_spec ? { attribution_spec: old.attribution_spec } : {}),
+    status: "PAUSED",
+  });
+  const newId = created.id as string;
+
+  // 2. Copy every running ad.
+  const list = await meta.metaGraph(`${oldId}/ads`, "GET", { fields: "id,name,effective_status,creative{id}", limit: "100" });
+  const running = ((list.data as { id: string; name: string; effective_status: string; creative?: { id: string } }[]) ?? []).filter(
+    (a) => a.effective_status === "ACTIVE" && a.creative?.id
+  );
+  const moved: { from: string; to: string }[] = [];
+  const failed: { ad: string; error: string }[] = [];
+  for (const a of running) {
+    try {
+      const ad = await meta.metaGraph(`${meta.adAccountPath()}/ads`, "POST", {
+        name: a.name,
+        adset_id: newId,
+        creative: { creative_id: a.creative!.id },
+        status: "ACTIVE",
+      });
+      const newAdId = ad.id as string;
+      moved.push({ from: a.id, to: newAdId });
+      const row = await prisma.adLabAd.findFirst({ where: { metaAdId: a.id } });
+      if (row) {
+        await prisma.adLabAd.create({
+          data: {
+            creativeId: row.creativeId,
+            metaCampaignId: old.campaign_id as string,
+            metaAdsetId: newId,
+            metaAdId: newAdId,
+            status: "live",
+            launchedAt: new Date(),
+            dailyBudgetCents: GROUP_DAILY_BUDGET_CENTS[groupKey],
+          },
+        });
+        await prisma.adLabAd.update({
+          where: { id: row.id },
+          data: { status: "paused", decisionReason: `Moved to the ${GROUP_OPTIMIZATION_EVENT}-optimized ad set ${newId} as ad ${newAdId} (2026-09-30)` },
+        });
+      }
+    } catch (err) {
+      failed.push({ ad: a.id, error: err instanceof Error ? err.message : String(err) });
+    }
+  }
+  if (moved.length === 0) {
+    // Nothing made it across — leave the old ad set running untouched.
+    return { error: "no ads could be copied; old ad set left running", newAdsetId: newId, failed };
+  }
+
+  // 3. New on, then old off.
+  await meta.metaGraph(newId, "POST", { status: "ACTIVE" });
+  await meta.metaGraph(oldId, "POST", { status: "PAUSED" });
+
+  // 4. Point the lane at the new ad set.
+  await prisma.adLabProject.update({ where: { id: project.id }, data: { evergreenAdsetId: newId } });
+  return { oldAdsetId: oldId, newAdsetId: newId, moved: moved.length, of: running.length, failed };
 }
 
 /** Weekly-batch experiments carry their group as a campaign tag. */

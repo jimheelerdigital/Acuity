@@ -13,6 +13,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/admin-guard";
 
 export const dynamic = "force-dynamic";
+export const maxDuration = 300;
 
 export async function POST(req: NextRequest) {
   const bearer = req.headers.get("authorization");
@@ -21,6 +22,12 @@ export async function POST(req: NextRequest) {
     const guard = await requireAdmin();
     if (!guard.ok) return guard.response;
   }
-  const { applyEvergreenSettings } = await import("@/lib/adlab/evergreen");
+  const body = (await req.json().catch(() => ({}))) as { migrate?: "women" | "men" };
+  const { applyEvergreenSettings, migrateEvergreenOptimization } = await import("@/lib/adlab/evergreen");
+  // { migrate: "women" | "men" }: move that lane to a new ad set optimized
+  // for GROUP_OPTIMIZATION_EVENT (Meta won't edit a published ad set's event).
+  if (body.migrate === "women" || body.migrate === "men") {
+    return NextResponse.json(await migrateEvergreenOptimization(body.migrate));
+  }
   return NextResponse.json(await applyEvergreenSettings());
 }
