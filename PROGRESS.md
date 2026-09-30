@@ -7,6 +7,31 @@
 
 ---
 
+## [2026-09-30] — BWK pick options are exact luxury picks; all options must be specific
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** see "fix: Make pick-lane options specific and BWK options luxury"
+
+### In plain English (for Keenan)
+BWK pick posts now use exact luxury names: a Porsche 911 GT3 RS or a Rolls-Royce Cullinan, not "The Black Sedan" or a paid-off Civic. On both brands, every option has to be a specific, real thing rather than a vague category.
+
+### Technical changes (for Jimmy)
+- `lib/content-factory/pick-lane.ts`:
+  - BWK `CORE` now leads with the luxury life (exact cars, watches, homes, cities).
+  - The options prompt gets a specificity rule for both brands, plus a BWK luxury rule with example models, watches and places (no badges or logos in the images).
+  - `narrowOptions` adds Jev Nouls `specific_i` (both brands) and `lux_i` (BWK). Options scoring below 0.5 go to the back and only fill leftover slots.
+
+### Manual steps needed
+- None
+
+### Notes
+- Jev test, "WHICH CAR ARE YOU WORKING TOWARD?":
+  - Generic options scored specific 0.02-0.07: Black Sedan, First New Car, Desert Rig.
+  - The Civic scored specific 0.89 but lux 0.10.
+  - The named luxury models scored specific 0.97+ and lux 0.89+. The 5 kept were exactly the luxury models.
+- Jev reads the lux question's "answer yes if not a possession" clause literally-poorly: mentor archetypes scored lux 0.40-0.53. The top-up fallback still keeps the best archetypes, so no harm.
+- CONFLICT to resolve: the shared BWK brief in `copy-objectives.ts` says "never selling a lifestyle", which pulls every BWK lane away from luxury. Only the pick lane overrides it so far; the brief was sent to Keenan to decide.
+
 ## [2026-09-30] — Pick posts must be about the audience's real life (no trivia)
 **Requested by:** Keenan
 **Committed by:** Claude Code

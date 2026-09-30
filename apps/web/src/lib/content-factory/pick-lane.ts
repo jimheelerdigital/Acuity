@@ -97,7 +97,7 @@ const CORE: Record<PickBrand, string> = {
   ripple:
     "the mental load she carries for everyone; being the one who remembers and holds it all together; wanting an hour where nobody needs her; the roles she plays (mother, partner, daughter caring for aging parents, the friend everyone leans on); the season of life she is in and who she is becoming at 40-50; rest, escape and time that is only hers; saying no and taking something back for herself; her friendships.",
   bwk:
-    "discipline and the habits he is building; training; money, work and ambition (what he is working toward: the car, the home, the business); the man he is becoming; the mentors and role models he learns from; the friends and brothers in his corner; his mornings and routines; where he builds his life; the hard things he chooses on purpose.",
+    "the LUXURY life he is working toward (exact luxury cars, watches, homes, cities); discipline and the habits he is building; training; money, work and ambition; the man he is becoming; the mentors and role models he learns from; the friends and brothers in his corner; his mornings and routines; where he builds his life; the hard things he chooses on purpose.",
 };
 
 const OFF_BRAND =
@@ -130,6 +130,8 @@ const CORE_MIN = 0.6; // tested 09-30: approved concepts 0.82-0.95, trivia 0.18-
 // Tested 2026-09-30: real near-copies score ~0.6-0.7 in a 9-option batch
 // ("Car in the Driveway" vs "Parked Car at Target": 0.64 / 0.60).
 const TWIN_MIN = 0.6;
+const SPECIFIC_MIN = 0.5;
+const LUX_MIN = 0.5;
 
 // ─── Sonnet calls ───────────────────────────────────────────────────
 
@@ -221,6 +223,11 @@ YOUR JOB: write the options for one "which one is you?" post whose question is g
     brand === "bwk"
       ? "\n- Every option is something he would be PROUD to pick or is working toward: an ambition, a standard, a kind of man. Never a list of his failures or bad habits."
       : "\n- Every option is a version of her own life she would recognize and feel seen by, told with warmth, never a list of her failings."
+  }
+- Every option is SPECIFIC and real: an exact make and model, a named watch, a named city or place, a clearly drawn person or moment. Never a generic category ("The Black Sedan", "The First New Car", "A Walk Alone", "The Desert Rig").${
+    brand === "bwk"
+      ? `\n- BWK's world is aspirational LUXURY (2026-09-30, per Keenan: "bwk is about luxury cars"). When the question is about something he could own or a place he could live or go, every option is the exact high-end thing by name: cars like the Porsche 911 GT3 RS, Mercedes-AMG G63, Rolls-Royce Cullinan, Aston Martin DB12, Ferrari Roma, Lamborghini Urus, McLaren 750S, Bentley Continental GT, Range Rover SV; watches like the Rolex Submariner, Audemars Piguet Royal Oak, Patek Philippe Nautilus; cities and places like Monaco, Dubai Marina, a Tokyo penthouse, Lake Como. These are examples, pick fresh ones. Never economy, used or ordinary choices. The "lore" line says what picking it says about the man. The scene shows that exact car, watch or place, hyperreal, with no badges, logos or text.`
+      : ""
   }
 - Stay on the post's subject, which is about: ${CORE[brand]} ${OFF_BRAND}
 - "coverScene": the cover photograph: an inviting scene that sets up the question without showing the options. Keep the top quarter of the frame calm (the title sits there).
@@ -319,6 +326,16 @@ export async function narrowOptions(
       instructions: `How much would the reader described in \`audience\`, reading \`question\`, want to pick \`options[${i}]\`?`,
       criteria: PICK_LEVELS,
     };
+    questions[`specific_${i}`] = {
+      type: "noul",
+      instructions: `Is \`options[${i}]\` a specific, exact thing (an exact make and model, a named watch, a named city or place, a clearly drawn person or moment) rather than a generic category like "a black sedan" or "a new car"?`,
+    };
+    if (brand === "bwk") {
+      questions[`lux_${i}`] = {
+        type: "noul",
+        instructions: `Would a young man see \`options[${i}]\` as a luxury, high-end, aspirational choice? If \`question\` is not about a possession or place (for example a mentor or a habit), answer yes.`,
+      };
+    }
     questions[`twin_${i}`] = {
       type: "noul",
       instructions: `Ignoring what every option must share to answer \`question\`, is \`options[${i}]\` nearly a copy of one OTHER entry in \`options\`: the same idea, place or look under a different name?`,
@@ -335,8 +352,13 @@ export async function narrowOptions(
     i,
     want: scoreOf(r, `want_${i}`) ?? 0,
     twin: noulOf(r, `twin_${i}`) ?? 0,
+    specific: noulOf(r, `specific_${i}`) ?? 1,
+    lux: brand === "bwk" ? noulOf(r, `lux_${i}`) ?? 1 : 1,
   }));
-  const byWant = [...scored].sort((a, b) => b.want - a.want);
+  // Generic or (BWK) non-luxury options go to the back of the line: they
+  // only fill slots when too few good ones exist.
+  const good = (x: { specific: number; lux: number }) => x.specific >= SPECIFIC_MIN && x.lux >= LUX_MIN;
+  const byWant = [...scored].sort((a, b) => Number(good(b)) - Number(good(a)) || b.want - a.want);
   const chosen: typeof scored = [];
   let twinKept = false;
   for (const s of byWant) {
@@ -354,7 +376,7 @@ export async function narrowOptions(
   }
   const keepSet = new Set(chosen.map((c) => c.i));
   const table = scored
-    .map((s) => `${keepSet.has(s.i) ? "*" : " "} want=${s.want.toFixed(2)} twin=${s.twin.toFixed(2)}  ${s.o.name}`)
+    .map((s) => `${keepSet.has(s.i) ? "*" : " "} want=${s.want.toFixed(2)} twin=${s.twin.toFixed(2)} specific=${s.specific.toFixed(2)} lux=${s.lux.toFixed(2)}  ${s.o.name}`)
     .join("\n");
   return { options: scored.filter((s) => keepSet.has(s.i)).map((s) => s.o), table };
 }
