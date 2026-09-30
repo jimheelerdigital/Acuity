@@ -7,6 +7,31 @@
 
 ---
 
+## [2026-09-30] — Ripple and BWK cut to 2 pick videos a day (2-week reach test)
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** see "chore: Log the 2-week pick-only reach test"
+
+### In plain English (for Keenan)
+Ripple and BWK posts were getting about 3-4 views each on Instagram, while the new Legendary Mythicals account gets about 200 with the "which one is you?" format. For the next two weeks, Ripple and BWK each post only 2 of those pick videos a day. The photo posts are paused, not deleted, so we can see whether the format fixes reach.
+
+### Technical changes (for Jimmy)
+- DB only:
+  - `selfie`, `reset-guide`, `memento-men` and `reset-guide-men` set to RETIRED, with "PAUSED ... revisit ~2026-10-14" in `origin`.
+  - Live roster: pick-ripple@6/8, pick-bwk@6/8, mythic-picks@5/6/7.
+- Daily volume: Ripple 2, BWK 2, Mythicals 3.
+
+### Manual steps needed
+- [ ] ~2026-10-14: compare pick-video reach on Ripple/BWK against the baseline below, and decide which photo lanes to reactivate (Claude + Keenan)
+
+### Notes
+- Baseline, last 20 IG posts (median views / best post):
+  - Ripple: 4 / 35.
+  - BWK: 3 / 9.
+  - Mythicals: 200 / 291, reach 183-253, mostly non-followers.
+- Keenan checked IG Account Status: both Ripple and BWK are eligible for recommendations, so there is no account-level penalty. Decided against new accounts and against deleting accounts.
+- FB metrics still aren't collected (the read_insights permission is pending), so the comparison is IG only.
+
 ## [2026-09-30] — Each brand = 2 pick videos + 2 photo posts a day
 **Requested by:** Keenan
 **Committed by:** Claude Code
