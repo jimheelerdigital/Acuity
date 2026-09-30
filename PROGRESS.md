@@ -7,6 +7,35 @@
 
 ---
 
+## [2026-09-30] — Ripple cut to its top 4 lanes (Jev-ranked)
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** see "chore: Log the Ripple top-4 lane cut"
+
+### In plain English (for Keenan)
+Ripple now posts 4 kinds of post a day instead of 6: questions, reset guide, pulse and phone quote. Selfie and texts to your younger self are switched off, because they were the two weakest producers on Jev's ranking.
+
+### Technical changes (for Jimmy)
+- DB only: ContentLane `selfie` and `texts-younger` set to RETIRED with the reason in `origin`.
+- Live roster:
+  - Ripple (4): phone-quote@6, questions@6, reset-guide@6, pulse@7
+  - BWK (4): memento-men@5, muse-men@7, reset-guide-men@7, timeline@7
+  - Mythicals (3): mythic-picks@5/6/7
+- 11 posts/day before the hold gate.
+
+### Manual steps needed
+- None
+
+### Notes
+- Method: 30 days of Ripple SocialPublish metrics per lane. Code turned them into buckets relative to the best lane ("at or near the best", "about half", "well below"). Jev then gave each lane a Score for keep-value, plus a Choice for which lane to cut first.
+- Scores: questions 0.78, reset-guide 0.55, pulse 0.45, phone-quote 0.36, texts-younger 0.33, selfie 0.31. Selfie was the cut-first pick (p=0.56).
+- GOTCHA: Jev's verdict flipped entirely with the input framing. A first run with rank-based "top/middle/bottom third" buckets (ties broken badly, all-zero FB counted as "top") said to cut reset-guide and questions. For Jev rankings, compute buckets relative to the best lane, drop fields with no data, and include follows and profile visits.
+- Close calls:
+  - phone-quote vs texts-younger was near a tie (0.36 vs 0.33). The two lanes overlap, so keeping one is fine.
+  - reset-guide rests on only 4 measured posts.
+- FB metrics are all 0 for Ripple, so FB numbers aren't being pulled (read_insights still pending).
+- Hold gate: with 4 Ripple posts/day, keepCount holds 1 Ripple post/day.
+
 ## [2026-09-30] — BWK command covers must name the topic
 **Requested by:** Keenan
 **Committed by:** Claude Code
