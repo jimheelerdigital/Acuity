@@ -419,6 +419,25 @@ export async function getPaywallOffering(
   }
 }
 
+/**
+ * Apple's in-app "Manage subscriptions" sheet (StoreKit, via RevenueCat).
+ * Returns false when RC isn't configured so the caller can fall back to a
+ * link. Preferred over the itms-apps:// deep link, which didn't open for
+ * Jimmy on build 146 and never shows sandbox/TestFlight subscriptions.
+ */
+export async function showManageSubscriptions(): Promise<boolean> {
+  if (!configured) return false;
+  const mod = await loadPurchases();
+  if (!mod) return false;
+  try {
+    await mod.default.showManageSubscriptions();
+    return true;
+  } catch (err) {
+    log("showManageSubscriptions failed", err);
+    return false;
+  }
+}
+
 // ─── Purchase flow (behind RC_SDK_PURCHASES) ─────────────────────────
 
 export interface RcOfferingPackages {

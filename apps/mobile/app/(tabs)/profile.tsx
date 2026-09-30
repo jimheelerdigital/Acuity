@@ -34,6 +34,7 @@ import { TOUR_FORCE_REPLAY_KEY } from "@/hooks/use-tour-trigger";
 import { isObsidianExportEnabled } from "@/lib/feature-flags";
 import { isIapEnabled } from "@/lib/iap-config";
 import { rcFlags } from "@/lib/revenuecat/flags";
+import { showManageSubscriptions } from "@/lib/revenuecat";
 import { exportAll } from "@/lib/obsidian/export";
 import { openSubscriptionPortal } from "@/lib/subscription";
 
@@ -224,8 +225,12 @@ export default function ProfileTab() {
   // universal link so iOS jumps straight into the App Store account's
   // Subscriptions screen reliably (the https link can bounce through
   // Safari first on some iOS versions).
-  const handleManageAppleSubscription = () => {
-    void Linking.openURL("itms-apps://apps.apple.com/account/subscriptions");
+  const handleManageAppleSubscription = async () => {
+    // Apple's own manage-subscriptions sheet, in-app (works in TestFlight
+    // sandbox too). Falls back to the App Store account link when RevenueCat
+    // isn't configured.
+    if (await showManageSubscriptions()) return;
+    void Linking.openURL("https://apps.apple.com/account/subscriptions");
   };
 
   // Days remaining on the current paid period — used by the delete

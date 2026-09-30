@@ -86,6 +86,7 @@ import {
   isIapProductId,
   type IapProductId,
 } from "@/lib/iap-config";
+import { rcFlags } from "@/lib/revenuecat/flags";
 
 /**
  * react-native-iap dynamic import. Imported lazily so a build that
@@ -827,6 +828,12 @@ export async function recoverPurchasesIfNeeded(
   options?: { force?: boolean }
 ): Promise<RestoreOutcome> {
   const force = options?.force === true;
+  // RevenueCat builds: RevenueCat owns restores and purchase ownership. This
+  // legacy path posts the device's StoreKit receipt to /api/iap/verify-receipt,
+  // which assigns the Apple subscription to WHOEVER is signed in — so signing a
+  // second Ripple account in on the same Apple ID silently "converted" it
+  // (2026-09-30, build 146). The explicit Restore button already uses RC.
+  if (rcFlags().RC_SDK_PURCHASES) return { kind: "none" };
   if (Platform.OS !== "ios") return { kind: "none" };
   if (!isIapEnabled()) return { kind: "none" };
   if (recoveryInFlight) return { kind: "none" };
