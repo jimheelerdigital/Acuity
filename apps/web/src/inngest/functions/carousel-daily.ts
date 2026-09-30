@@ -808,9 +808,11 @@ export const carouselDailyCronFn = inngest.createFunction(
               imageUrl,
               // Pick lanes animate ONLY the cover: an option slide with no raw
               // image is planned as a free slow-zoom still by the video builder.
-              rawImageUrl: pickBrand ? null : rawImageUrl,
+              // Every slide animates on pick lanes too (2026-09-30, per Keenan:
+              // "it also didn't animate every slide which it needs to").
+              rawImageUrl,
               overlayText: `${i + 1}. ${o.name}`,
-              imagePrompt: pickBrand ? prompt : withMotion(prompt, o.motion),
+              imagePrompt: withMotion(prompt, o.motion),
             };
           })
         );

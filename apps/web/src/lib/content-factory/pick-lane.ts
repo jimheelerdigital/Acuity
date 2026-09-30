@@ -57,6 +57,8 @@ export interface PickOptionDraft {
   name: string;
   lore: string;
   scene: string;
+  /** Calm realistic action for this option's animated clip (every slide animates since 2026-09-30). */
+  motion?: string;
 }
 
 /** Seed concepts (Keenan approved these 2026-09-30); the writer invents fresh ones in their spirit. */
@@ -219,6 +221,7 @@ YOUR JOB: write the options for one "which one is you?" post whose question is g
   - "name": 1-5 words in Title Case, the label on the slide ("The Car in the Driveway", "Empty Gym at 5am"). Easy to recognize and to type as a number in a comment. No numbers; the renderer adds them.
   - "lore": one line on why someone picks this one and what it says about them (used for the caption and ranking, never shown on the slide).
   - "scene": one or two sentences describing a REAL photograph for this option: the place or thing itself, its light and mood. Keep it clean: no stray props added for "story" (no laptops, notebooks, books, mugs, cups, bags, phones or papers) unless the option is literally about that object. The nine scenes must look different from each other (setting, time of day, palette). ${people}
+  - "motion": one sentence of calm, realistic movement for this option's five-second clip, true to the scene (waves roll in below the terrace as the light fades; rain streaks the window as traffic moves far below; steam curls from the bath as the candle flickers). Nothing fast.
 - Every option must be a real, tempting answer; none is a joke or a throwaway, and no two are the same idea in different words.${
     brand === "bwk"
       ? "\n- Every option is something he would be PROUD to pick or is working toward: an ambition, a standard, a kind of man. Never a list of his failures or bad habits."
@@ -239,7 +242,7 @@ No emojis.
 ${HUMAN_VOICE_RULES}
 
 OUTPUT (JSON):
-{ "title": "...", "coverScene": "...", "coverMotion": "...", "options": [{ "name": "...", "lore": "...", "scene": "..." }], "endCard": "...", "captionQuestion": "..." }`;
+{ "title": "...", "coverScene": "...", "coverMotion": "...", "options": [{ "name": "...", "lore": "...", "scene": "...", "motion": "..." }], "endCard": "...", "captionQuestion": "..." }`;
 }
 
 // ─── Jev selection (pure logic, exported for tests) ──────────────────
@@ -447,7 +450,12 @@ export async function generatePickTopic(opts: {
     };
     const options = (raw.options ?? [])
       .filter((o) => typeof o?.name === "string" && typeof o?.scene === "string")
-      .map((o) => ({ name: o.name!.trim(), lore: typeof o.lore === "string" ? o.lore.trim() : "", scene: o.scene!.trim() }));
+      .map((o) => ({
+        name: o.name!.trim(),
+        lore: typeof o.lore === "string" ? o.lore.trim() : "",
+        scene: o.scene!.trim(),
+        motion: typeof o.motion === "string" ? o.motion.trim() : "",
+      }));
     const title = (raw.title ?? concept.question).trim();
     if (options.length < 5 || !raw.coverScene) {
       throw new Error(`pick options unusable for ${brand}: ${options.length} options, coverScene=${!!raw.coverScene}`);
@@ -498,7 +506,7 @@ export async function generatePickTopic(opts: {
     title: draft.title,
     coverScene: draft.coverScene,
     coverMotion: draft.coverMotion,
-    options: narrowed.options.map((o) => ({ name: o.name, lore: o.lore, scene: o.scene, motion: "" })),
+    options: narrowed.options.map((o) => ({ name: o.name, lore: o.lore, scene: o.scene, motion: o.motion ?? "" })),
     endCard: draft.endCard,
     captionQuestion: draft.captionQuestion,
     category: concept.question,

@@ -7,6 +7,29 @@
 
 ---
 
+## [2026-09-30] — Pick videos: every slide animated, no Ripple/BWK end card for 2 weeks
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** see "feat: Animate every pick-video slide and drop the app card"
+
+### In plain English (for Keenan)
+The "which one is you?" videos now animate every slide, cover and all five picks, like Mythicals. For the two-week reach test they also end on the pick question, without the Ripple or BWK app card.
+
+### Technical changes (for Jimmy)
+- `lib/content-factory/post-video.ts`: `maxAnimatedSlides` returns 6 for `pick-*` lanes (was 1).
+- `inngest/functions/carousel-daily.ts`:
+  - pick-lane option slides now keep `rawImageUrl`, so they are animatable
+  - `imagePrompt` carries the option's `MOTION:` line
+- `lib/content-factory/pick-lane.ts`: each option gets a `motion` line, written, parsed and passed through.
+- `inngest/functions/carousel-post-video.ts`: `ctaUrl` is null for `pick-*` lanes unless `PICK_CTA=1`.
+- Tonight's two pick posts were rebuilt with the new settings before posting: their option slides' `rawImageUrl` was backfilled from the stored `-raw.jpg`, and a rebuild was requested via `video-requests/`.
+
+### Manual steps needed
+- [ ] ~2026-10-14: decide whether to bring the app card back (set `PICK_CTA=1` in Vercel) (Keenan)
+
+### Notes
+- Cost: about 6 Kling clips per post at about $0.12, so about $0.72 in clips plus about $0.55 in images and checks, about $1.30 per post. At 4 pick posts a day that's about $5 a day, plus Mythicals at about $2 a day.
+
 ## [2026-09-30] — Pick videos: cleaner photos, recognizable names, end cards that make sense
 **Requested by:** Keenan
 **Committed by:** Claude Code

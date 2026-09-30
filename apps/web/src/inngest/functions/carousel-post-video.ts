@@ -362,7 +362,14 @@ export const carouselPostVideoFn = inngest.createFunction(
         segments: bufs,
         // Legendary Mythicals posts end on their own "which will you
         // choose?" slide — no app card.
-        ctaUrl: plan.brand === "mythicals" ? null : `https://goripple.io/cta-slide-${plan.brand}.jpg`,
+        // Pick lanes skip the Ripple/BWK app card for the 2-week reach test
+        // (2026-09-30, per Keenan: "for these first 2 weeks of posts, let's
+        // NOT include the ripple callout end slide ... same with bwk").
+        // PICK_CTA=1 turns it back on.
+        ctaUrl:
+          plan.brand === "mythicals" || (plan.lane?.startsWith("pick-") && process.env.PICK_CTA !== "1")
+            ? null
+            : `https://goripple.io/cta-slide-${plan.brand}.jpg`,
         musicUrl: music,
       });
       console.log(`[post-video] ${postId}: joined in ${Date.now() - t0}ms (${seconds.toFixed(1)}s video)`);

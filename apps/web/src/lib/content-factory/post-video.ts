@@ -83,14 +83,16 @@ export const POST_VIDEO_FALLBACK_MODEL =
  * keep them as normal slow zoom posts of pictures that you cut together.
  * no higgsfield integration. it's not worth the cost for ripple"). Every
  * Ripple slide becomes a free push-in still; no Higgsfield call is made.
- * Ripple/BWK "which one is you?" pick lanes (pick-*, 2026-09-30): always
- * 1, the cover. Their option slides keep no raw image, so they are
- * slow-zoom stills regardless. Checked before the brand override.
+ * Ripple/BWK "which one is you?" pick lanes (pick-*, 2026-09-30): every
+ * slide (cover + five picks), like Mythicals. Checked before the brand
+ * override.
  * Per-brand override: POST_VIDEO_MAX_LIVE_<BRAND> (e.g.
  * POST_VIDEO_MAX_LIVE_BWK=2 turns BWK back on; needs a redeploy to apply).
  */
 export function maxAnimatedSlides(brand: string, lane?: string | null): number {
-  if (lane?.startsWith("pick-")) return 1;
+  // Every slide (cover + 5 picks) since 2026-09-30 per Keenan: "it also
+  // didn't animate every slide which it needs to". ~6 clips/post.
+  if (lane?.startsWith("pick-")) return 6;
   const perBrand = process.env[`POST_VIDEO_MAX_LIVE_${brand.toUpperCase()}`];
   if (perBrand !== undefined && perBrand.trim() !== "") {
     const b = Number(perBrand);
