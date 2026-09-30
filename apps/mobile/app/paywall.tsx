@@ -1,5 +1,5 @@
 import { Ionicons } from "@expo/vector-icons";
-import { useRouter } from "expo-router";
+import { Redirect, useRouter } from "expo-router";
 import * as WebBrowser from "expo-web-browser";
 import { Platform } from "react-native";
 import { useState } from "react";
@@ -16,6 +16,7 @@ import { RestorePurchasesButton } from "@/components/restore-purchases-button";
 import { useTheme } from "@/contexts/theme-context";
 import { api } from "@/lib/api";
 import { isIapEnabled } from "@/lib/iap-config";
+import { rcFlags } from "@/lib/revenuecat/flags";
 import type { AcuityTokens } from "@/lib/theme/tokens";
 import { displayMonthly } from "@/lib/pricing";
 
@@ -36,7 +37,22 @@ import { displayMonthly } from "@/lib/pricing";
  * can dismiss with a swipe-down or the secondary button without
  * losing their place in the tab stack.
  */
+/**
+ * RevenueCat builds (RC_SDK_PURCHASES on): every paywall entry point —
+ * trial-ended from record.tsx, the v10 Home card — lands on the
+ * RevenueCat-driven paywall in /subscribe, on iOS AND Android. That keeps
+ * one paywall surface, controlled from the RC dashboard (offerings,
+ * targeting, experiments), instead of this interstitial that sent Android
+ * straight to web checkout. Non-RC builds keep the legacy screen below.
+ */
 export default function PaywallScreen() {
+  if (rcFlags().RC_SDK_PURCHASES) {
+    return <Redirect href="/subscribe" />;
+  }
+  return <LegacyPaywallScreen />;
+}
+
+function LegacyPaywallScreen() {
   const router = useRouter();
   const { tokens } = useTheme();
   const [opening, setOpening] = useState(false);

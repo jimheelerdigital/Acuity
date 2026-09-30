@@ -46,7 +46,8 @@
         "EXPO_PUBLIC_HABITS": "true",
         "EXPO_PUBLIC_RC_IOS_KEY": "appl_OiPWlxyTKxSsBGnaFdXiOqsgeOT",
         "EXPO_PUBLIC_RC_ANDROID_KEY": "goog_LpHyZxOdnrjVfxTMRjoVfCjnEft",
-        "EXPO_PUBLIC_RC_SDK_PURCHASES": "1"
+        "EXPO_PUBLIC_RC_SDK_PURCHASES": "1",
+        "EXPO_PUBLIC_ONBOARDING_V10": "true"
       },
       "ios": {
         "resourceClass": "m-medium"
