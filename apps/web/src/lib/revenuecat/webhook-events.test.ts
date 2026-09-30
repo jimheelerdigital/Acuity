@@ -491,6 +491,37 @@ describe("decideTransferResync", () => {
     expect(d.source).toBeNull();
   });
 
+  it("releases the old account's store ids so a legacy store notice can't re-grant it", () => {
+    const d = expectSetStatus(
+      decideTransferResync(
+        user({ id: "old1", subscriptionStatus: "PRO", subscriptionSource: "apple" }),
+        rcState({ subscriptionStatus: "FREE", subscriptionSource: null })
+      )
+    );
+    expect(d.releaseStoreOwnership).toBe(true);
+    const data = rcDecisionToUpdateData(d);
+    expect(data.appleOriginalTransactionId).toBeNull();
+    expect(data.googlePurchaseToken).toBeNull();
+  });
+
+  it("still releases store ids when the old account is already FREE", () => {
+    const d = expectSetStatus(
+      decideTransferResync(
+        user({ id: "old1", subscriptionStatus: "FREE", subscriptionSource: null }),
+        rcState({ subscriptionStatus: "FREE", subscriptionSource: null })
+      )
+    );
+    expect(d.releaseStoreOwnership).toBe(true);
+  });
+
+  it("never releases store ids for the account that received the subscription", () => {
+    const d = expectSetStatus(
+      decideTransferResync(user({ id: "new1", subscriptionStatus: "FREE", subscriptionSource: null }), rcState())
+    );
+    expect(d.releaseStoreOwnership).toBeFalsy();
+    expect(rcDecisionToUpdateData(d)).not.toHaveProperty("appleOriginalTransactionId");
+  });
+
   it("never touches a comp row", () => {
     expect(
       decideTransferResync(user({ subscriptionSource: "comp" }), rcState({ subscriptionStatus: "FREE" })).action
