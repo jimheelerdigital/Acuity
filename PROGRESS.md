@@ -7,6 +7,30 @@
 
 ---
 
+## [2026-09-30] — BWK command covers must name the topic
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** see "fix: Require BWK command covers to name their topic"
+
+### In plain English (for Keenan)
+BWK covers stay as commands, but each command now has to name what the post is about ("OWN YOUR FIRST HOUR", "STOP SPENDING TO FEEL BETTER"), not an abstract order like "EARN YOUR SILENCE" that only makes sense after the slides. Jev's cover check backs this up the same way it does for Ripple.
+
+### Technical changes (for Jimmy)
+- `lib/content-factory/moody-carousel.ts`: `BWK_COVER_COMMAND_RULE` rewritten.
+  - The command must be a strong verb plus the named subject.
+  - Stranger test: a reader of the cover alone can say what the post is about.
+  - Abstract commands are banned ("EARN YOUR SILENCE", "KEEP THE QUIET", "HOLD THE LINE").
+  - Length is now 3-7 words (was 2-6), and the rule overrides lane word counts.
+- The Jev backstop needs no change: the cover-picker cover-only clarity check (below 0.3 can't win) is brand-agnostic.
+- `bwk-themes.test.ts` still passes.
+
+### Manual steps needed
+- None
+
+### Notes
+- Jev clarity scores are relative to the batch. In a 40-cover batch everything scored about 0.2. In batches of 5 (the size cover-picker uses), clear commands scored 0.49-0.86 and cryptic ones 0.14-0.19. Always ask it in small batches.
+- On BWK's last 10 covers, 8 of 10 fell under 0.3. Sent to Keenan to judge whether Jev is doing its job.
+
 ## [2026-09-30] — Ripple covers say what the post is about (no more cryptic commands)
 **Requested by:** Keenan
 **Committed by:** Claude Code
