@@ -600,7 +600,7 @@ export async function GET(req: NextRequest) {
     const sections: string[] = [
       `# AdLab Daily Report — ${dateStr}`,
       `Metrics synced: ${syncResults.filter((r) => r.success).length}/${syncResults.length} ads`,
-      `Optimizing: paid trials (main $60 women / $80 men + $15/day test ad set each) · Kills: ${DECISIONS_ENABLED ? "ON" : "OFF"} · Auto-scale: ${AUTOSCALE_ENABLED ? "ON" : "OFF (winners flagged)"}`,
+      `Optimizing: paid trials (main $60 women / $40 men + $15/day test ad set each) · Kills: ${DECISIONS_ENABLED ? "ON" : "OFF"} · Auto-scale: ${AUTOSCALE_ENABLED ? "ON" : "OFF (winners flagged)"}`,
     ];
 
     // Kills

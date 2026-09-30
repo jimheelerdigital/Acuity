@@ -23,12 +23,13 @@ import { prisma } from "@/lib/prisma";
 import * as meta from "@/lib/adlab/meta";
 import type { BatchGroupKey } from "@/lib/adlab/weekly-batch";
 
-/** Daily budget per group, cents. Total = $140/day. 2026-09-30, per Keenan:
- *  "move the extra 20 to men instead of women" — women $60, men $80 (men was
- *  ~$52 per paid trial vs ~$140 for women over the prior 14 days). */
+/** MAIN ad set daily budget per group, cents. 2026-09-30, per Keenan:
+ *  "trim main ad sets to be $100 total again, with test ads at $30/day …
+ *  $40 BWK $60 Ripple". Plus TEST_DAILY_BUDGET_CENTS ($15) per lane's test
+ *  ad set = $130/day total. */
 export const GROUP_DAILY_BUDGET_CENTS: Record<BatchGroupKey, number> = {
   women: 6000,
-  men: 8000,
+  men: 4000,
 };
 
 /** 2026-09-30, per Keenan: "start to optimize for purchase". Was
@@ -387,6 +388,7 @@ export async function makeRoomInAdSet(
 // The test ad set is found by name inside the lane's campaign (no schema
 // column), created on first use with the main ad set's exact targeting.
 
+/** Per lane: $15 × 2 lanes = the $30/day test budget. */
 export const TEST_DAILY_BUDGET_CENTS = 1500;
 export const TEST_DAYS = 7;
 const TEST_SUFFIX = "| test ad set";

@@ -103,6 +103,7 @@ Mythicals slides now show just the number and name, and "places" posts show the 
 - [ ] Jimmy: review the CRON_SECRET-bearer admin routes (evergreen-settings, jev-check).
 
 ### Notes
+- Budgets (Keenan, same day): main ad sets back to $100/day total (Ripple women $60, BWK men $40) plus $15/day per test ad set, so $130/day overall.
 - Vercel has `JEV_API_KEY` (added 2026-09-30), not `OPENROUTER_API_KEY`; the client accepts either.
 - Jev never writes and never touches budgets or pausing. It only chooses between Claude's drafts. With Jev off or failing, the batch uses the first draft per slot as before.
 - Test ad sets optimize for PURCHASE like the main ones. At $15/day Meta barely learns there, so ads are judged on our own funnel data (signups and paid trials by utm_content).
