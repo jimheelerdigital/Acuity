@@ -125,13 +125,14 @@ export const socialHealthCheckFn = inngest.createFunction(
       {
         const { supabase } = await import("@/lib/supabase.server");
         const { laneWantsReel } = await import("@/lib/content-factory/social-publish");
-        const { readVideoMarker } = await import("@/lib/content-factory/post-video");
+        const { readVideoMarker, maxAnimatedSlides } = await import("@/lib/content-factory/post-video");
         const today = new Date();
         today.setUTCHours(0, 0, 0, 0);
         const lanes = await prisma.contentLane.findMany({
           where: { status: { not: "RETIRED" } },
-          select: { key: true, hoursUtc: true },
+          select: { key: true, hoursUtc: true, brand: true },
         });
+        const brandOf = new Map(lanes.map((l) => [l.key, l.brand]));
         const posts = await prisma.carouselPost.findMany({
           where: { generatedFor: today },
           select: { id: true, lane: true },
@@ -150,7 +151,11 @@ export const socialHealthCheckFn = inngest.createFunction(
         for (const p of posts) {
           if (!laneWantsReel(p.lane)) continue;
           const m = await readVideoMarker(p.id);
-          const bad = !m || m.status === "failed" || (m.status === "done" && m.source !== "higgsfield");
+          // Brands with no animation budget (Ripple since 09-30) ship stills
+          // videos on purpose: only a missing or failed build is broken.
+          const wantsAnimation = maxAnimatedSlides(brandOf.get(p.lane ?? "") ?? "ripple") > 0;
+          const bad =
+            !m || m.status === "failed" || (wantsAnimation && m.status === "done" && m.source !== "higgsfield");
           if (!bad) continue;
           broken.push(`${p.lane} (${m ? m.status : "no build"}${m?.error ? `: ${m.error.slice(0, 80)}` : ""})`);
           await supabase.storage
@@ -158,7 +163,7 @@ export const socialHealthCheckFn = inngest.createFunction(
             .upload(`video-requests/${p.id}.json`, Buffer.from("{}"), { contentType: "application/json", upsert: true });
         }
         if (broken.length) {
-          out.push(`${broken.length} post(s) have no Higgsfield animation yet — rebuilding now: ${broken.join("; ")}`);
+          out.push(`${broken.length} post video(s) failed or are missing their animation — rebuilding now: ${broken.join("; ")}`);
         }
       }
 

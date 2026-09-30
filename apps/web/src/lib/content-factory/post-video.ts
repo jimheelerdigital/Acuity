@@ -78,9 +78,22 @@ export const POST_VIDEO_FALLBACK_MODEL =
  * animates everything, because its five options ARE the content.
  * ~36 clips/day → ~$2.50 on Hailuo (promo), ~$4.20 on Kling 2.5 Std.
  * POST_VIDEO_MAX_LIVE overrides the main-lane number without a deploy.
+ *
+ * RIPPLE = 0 (2026-09-30, per Keenan: "turn off higgsfield animation ...
+ * keep them as normal slow zoom posts of pictures that you cut together.
+ * no higgsfield integration. it's not worth the cost for ripple"). Every
+ * Ripple slide becomes a free push-in still; no Higgsfield call is made.
+ * Per-brand override: POST_VIDEO_MAX_LIVE_<BRAND> (e.g.
+ * POST_VIDEO_MAX_LIVE_BWK=0 turns BWK off too; needs a redeploy to apply).
  */
 export function maxAnimatedSlides(brand: string): number {
+  const perBrand = process.env[`POST_VIDEO_MAX_LIVE_${brand.toUpperCase()}`];
+  if (perBrand !== undefined && perBrand.trim() !== "") {
+    const b = Number(perBrand);
+    if (Number.isFinite(b) && b >= 0) return b;
+  }
   if (brand === "mythicals") return 6;
+  if (brand === "ripple") return 0;
   const n = Number(process.env.POST_VIDEO_MAX_LIVE);
   return Number.isFinite(n) && n > 0 ? n : 2;
 }

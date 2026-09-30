@@ -7,6 +7,31 @@
 
 ---
 
+## [2026-09-30] — Higgsfield animation off for Ripple (slow-zoom photo videos instead)
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** see "feat: Turn off Higgsfield animation for Ripple posts"
+
+### In plain English (for Keenan)
+Ripple videos no longer pay for AI animation. They're now the photos slowly zooming, cut together to music. BWK and Mythicals keep their animation for now. BWK can be switched to the same zoom-only look with one Vercel setting, no code change.
+
+### Technical changes (for Jimmy)
+- `lib/content-factory/post-video.ts` `maxAnimatedSlides`:
+  - Ripple now returns 0, so every slide is a push-in still and no Higgsfield job is submitted.
+  - New per-brand override: `POST_VIDEO_MAX_LIVE_<BRAND>` (e.g. `POST_VIDEO_MAX_LIVE_BWK=0`).
+- `inngest/functions/social-health-check.ts`: the morning self-heal no longer counts a "stills" video as broken for brands with a zero animation budget, so there's no endless rebuild. It still rebuilds missing or failed videos.
+- Of the current Ripple lanes, only `questions` builds a video. Selfie, reset-guide and phone-quote are carousel-only (CAROUSEL_LANES), so they're unaffected.
+
+### Manual steps needed
+- [ ] To turn BWK animation off as well: add `POST_VIDEO_MAX_LIVE_BWK=0` in Vercel production, then redeploy (Keenan, if decided)
+
+### Notes
+- Estimated spend at the current budget (2 clips per main-lane post, 6 per Mythicals post): Hailuo promo about $0.07 a clip until 2026-10-01, then Kling 2.5 Std about $0.12.
+  - Ripple saving: about $0.25 a day (1 lane × 2 clips).
+  - BWK (memento-men and muse-men, 4 clips a day): about $0.47 a day, about $14 a month on Kling.
+  - Mythicals (18 clips a day): about $2.10 a day.
+- The zero-clip path is the same one used when Higgsfield keys are missing, and its marker source is "stills".
+
 ## [2026-09-30] — Ripple lanes corrected: selfie back, texts-younger off
 **Requested by:** Keenan
 **Committed by:** Claude Code
