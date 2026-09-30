@@ -18,6 +18,8 @@
  *                                            which does not allow
  *                                            blob: and breaks sign-in)
  *       img-src      https: (wildcard covers *.supabase.co storage)
+ *       media-src    https://*.supabase.co  (AdLab video ads in the
+ *                                            review preview, 2026-09-30)
  *
  *   Google OAuth (sign-in)
  *       connect-src  https://accounts.google.com      (OIDC discovery)
@@ -100,7 +102,10 @@ const CSP_DIRECTIVES = [
   "font-src 'self' data: https://fonts.gstatic.com",
   // Images + media
   "img-src 'self' data: blob: https: https://*.googleusercontent.com https://www.facebook.com https://*.facebook.com https://*.fbcdn.net https://*.google-analytics.com",
-  "media-src 'self' blob:",
+  // Supabase storage for media (2026-09-30): AdLab video ads play in the
+  // /admin/adlab/review preview straight from the adlab-creatives bucket;
+  // with only 'self' the browser blocked them (player stuck at 0:00).
+  "media-src 'self' blob: https://*.supabase.co",
   // Connections — APIs called from the browser
   "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://*.posthog.com https://*.hotjar.com https://*.hotjar.io https://www.google-analytics.com https://api.stripe.com https://checkout.stripe.com https://r.stripe.com https://*.stripe.com https://www.facebook.com https://*.facebook.com https://connect.facebook.net https://*.facebook.net https://*.fbcdn.net https://t.contentsquare.net https://accounts.google.com https://oauth2.googleapis.com https://*.sentry.io https://*.ingest.sentry.io",
   // Frames (Stripe Checkout embeds an iframe)
