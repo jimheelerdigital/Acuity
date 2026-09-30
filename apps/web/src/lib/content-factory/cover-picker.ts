@@ -43,11 +43,21 @@ const SONNET_TIMEOUT_MS = 45_000;
 const CONTEXT_CHARS = 1500;
 
 /** Composite weights — kept in code (Jev is weak at arithmetic). */
-const W_SCROLL = 0.55;
-const W_SAVE = 0.3;
-const W_SENSE = 0.15;
+const W_SCROLL = 0.45;
+const W_SAVE = 0.25;
+const W_SENSE = 0.1;
+const W_CLEAR = 0.2;
 /** A candidate Jev thinks doesn't make sense on its own can never win. */
 const MIN_SENSE = 0.5;
+/**
+ * COVER-ONLY clarity (2026-09-30, after Keenan on "NAME YOUR UNPAID JOBS":
+ * "who would click on that. that makes no sense"). The sense question sees
+ * the post, so a cryptic cover passes because the slides explain it. This
+ * one is asked with ONLY the cover lines in state. Tested: cryptic covers
+ * ("SIT DOWN FOR THESE...", "HAND ONE BACK") score ≤0.16, clear ones
+ * 0.44-0.78, so below 0.3 can never win.
+ */
+const MIN_CLEAR = 0.3;
 /** The writer's original only loses to a clearly better line. */
 const INCUMBENT_BONUS = 0.03;
 
@@ -212,7 +222,7 @@ export async function scoreCovers(input: {
   brand: CopyBrand;
   context: string;
   candidates: string[];
-}): Promise<{ text: string; scroll: number; save: number; sense: number; score: number }[] | null> {
+}): Promise<{ text: string; scroll: number; save: number; sense: number; clear: number; score: number }[] | null> {
   const questions: Record<string, JevQuestion> = {};
   input.candidates.forEach((_, i) => {
     questions[`scroll_${i}`] = {
@@ -230,27 +240,43 @@ export async function scoreCovers(input: {
       instructions: `Does \`candidates[${i}]\` make complete sense on its own as the cover of the post described in \`post\`?`,
     };
   });
-  const r = await askJev(
-    `cover-pick:${input.label}`,
-    {
-      audience: AUDIENCE[input.brand],
-      post: input.context.slice(0, CONTEXT_CHARS),
-      candidates: input.candidates,
-    },
-    questions
-  );
-  if (!r) return null;
+  const clearQuestions: Record<string, JevQuestion> = {};
+  input.candidates.forEach((_, i) => {
+    clearQuestions[`clear_${i}`] = {
+      type: "noul",
+      instructions: `Reading ONLY \`covers[${i}]\` as an Instagram post cover, with nothing else to go on, can a stranger tell what the post is about?`,
+      criteria: {
+        true: "Yes: the cover alone clearly names the topic or situation",
+        false: "No: it is vague, cryptic or a command whose subject only makes sense after reading the post",
+      },
+    };
+  });
+  const [r, rc] = await Promise.all([
+    askJev(
+      `cover-pick:${input.label}`,
+      {
+        audience: AUDIENCE[input.brand],
+        post: input.context.slice(0, CONTEXT_CHARS),
+        candidates: input.candidates,
+      },
+      questions
+    ),
+    askJev(`cover-clear:${input.label}`, { covers: input.candidates }, clearQuestions),
+  ]);
+  if (!r || !rc) return null;
   const rows = input.candidates.map((text, i) => {
     const scroll = scoreOf(r, `scroll_${i}`);
     const save = scoreOf(r, `save_${i}`);
     const sense = noulOf(r, `sense_${i}`);
-    if (scroll == null || save == null || sense == null) return null;
+    const clear = noulOf(rc, `clear_${i}`);
+    if (scroll == null || save == null || sense == null || clear == null) return null;
     return {
       text,
       scroll,
       save,
       sense,
-      score: W_SCROLL * scroll + W_SAVE * save + W_SENSE * sense,
+      clear,
+      score: W_SCROLL * scroll + W_SAVE * save + W_SENSE * sense + W_CLEAR * clear,
     };
   });
   if (rows.some((x) => x == null)) return null;
@@ -284,7 +310,7 @@ export async function pickBestCover(input: PickBestCoverInput): Promise<PickBest
     let best = -1;
     let bestScore = -Infinity;
     rows.forEach((row, i) => {
-      if (row.sense < MIN_SENSE) return;
+      if (row.sense < MIN_SENSE || row.clear < MIN_CLEAR) return;
       const s = row.score + (i === 0 ? INCUMBENT_BONUS : 0);
       if (s > bestScore) {
         bestScore = s;
@@ -296,7 +322,7 @@ export async function pickBestCover(input: PickBestCoverInput): Promise<PickBest
     const table = rows
       .map(
         (row, i) =>
-          `  ${i === best ? "*" : " "} ${row.score.toFixed(3)}${i === 0 ? `(+${INCUMBENT_BONUS})` : "       "} scroll=${row.scroll.toFixed(2)} save=${row.save.toFixed(2)} sense=${row.sense.toFixed(2)}${row.sense < MIN_SENSE ? " INELIGIBLE" : ""}  ${i === 0 ? "[original] " : ""}${row.text}`
+          `  ${i === best ? "*" : " "} ${row.score.toFixed(3)}${i === 0 ? `(+${INCUMBENT_BONUS})` : "       "} scroll=${row.scroll.toFixed(2)} save=${row.save.toFixed(2)} sense=${row.sense.toFixed(2)} clear=${row.clear.toFixed(2)}${row.sense < MIN_SENSE || row.clear < MIN_CLEAR ? " INELIGIBLE" : ""}  ${i === 0 ? "[original] " : ""}${row.text}`
       )
       .join("\n");
     console.log(

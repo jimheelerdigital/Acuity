@@ -122,7 +122,7 @@ lines[1] (body): "Once a week, clear everything: room, car, files, notes. Chaos 
 WHAT A STRONG SLIDE DOES: the header names something the reader has lived but never had a word for; the hook reframes it in one line worth screenshotting; the body makes it concrete with a real object, time, count or place. Specific detail is what gets a post saved, and a line the reader recognizes as their own life is what gets a comment.
 
 RULES:
-- "title" is the cover: 2-4 words that work in ALL CAPS and make the reader need the slides. ${audience === "men" ? `Make it a direct command to the reader — a strong verb plus an object that names what the slides are about (the COVER COMMAND RULE sets the full shape).` : `Make it either a direct command to act (a verb plus an object that names what the slides are about) or a direct prompt to engage with what's inside (an instruction for how to read or answer the slides, often ending "...").`} Write new words for this post's subject every time. Sense check: it must make complete sense on its own — a natural phrase a real person would say — and fit what the slides deliver. A title that reads odd or garbled without the slides (a remix like "DON'T LIE NOW") fails; write a different one. Not a passive label or topic name, and no number. A trailing "..." is fine when it pulls the swipe. Spent titles — "EARN YOUR SILENCE", "HOLD THE LINE", "READ THESE SLOWLY", "YOU ALREADY KNOW" — and anything on the recent-headlines list can't be reused or stitched together into something new.
+- "title" is the cover: 2-4 words that work in ALL CAPS and make the reader need the slides. ${audience === "men" ? `Make it a direct command to the reader — a strong verb plus an object that names what the slides are about (the COVER COMMAND RULE sets the full shape).` : `Follow the COVER RULE below: plain words that tell her what the post is about (4-9 words; this overrides the 2-4 word count above).\n\n${RIPPLE_COVER_RULE}`} Write new words for this post's subject every time. Sense check: it must make complete sense on its own — a natural phrase a real person would say — and fit what the slides deliver. A title that reads odd or garbled without the slides (a remix like "DON'T LIE NOW") fails; write a different one. Not a passive label or topic name, and no number. A trailing "..." is fine when it pulls the swipe. Spent titles — "EARN YOUR SILENCE", "HOLD THE LINE", "READ THESE SLOWLY", "YOU ALREADY KNOW" — and anything on the recent-headlines list can't be reused or stitched together into something new.
 - Write exactly the number of items the request asks for. Each item:
   - "name": the HEADER — a named concept in Title Case, 2-4 words, no trailing period ("The Reset Day", "Quiet Hours", "The 90% Rule").
   - "lines": exactly 2 entries.
@@ -628,6 +628,17 @@ export const BWK_LANE_FAMILY: Record<string, string> = {
   "fantasy-men": "fantasy hero",
 };
 
+// Ripple cover rule (2026-09-30, per Keenan on "NAME YOUR UNPAID JOBS":
+// "who would click on that. that makes no sense"). Ripple covers had been
+// told to be 2-4 word commands / "instructions for how to face the
+// questions", which produced cryptic covers ("SIT DOWN FOR THESE...",
+// "COUNT WHO YOU REMEMBER..."). Her covers now say what the post is about.
+export const RIPPLE_COVER_RULE = `COVER RULE (this overrides any other title shape in this prompt): "title" tells her in plain words exactly what this post is about, so she recognizes her own life in it within one second and wants the slides. 4-9 words, works in ALL CAPS. Use one of these shapes:
+  - a statement that names what she carries or feels ("THE JOBS NOBODY PAYS YOU FOR", "YOU'RE THE ONLY ONE WHO NOTICES", "EVERYTHING YOU REMEMBER SO NOBODY ELSE HAS TO");
+  - a direct question naming her situation ("STILL SAYING YES WHEN YOU MEAN NO?", "WHEN DID YOU LAST DO SOMETHING JUST FOR YOU?");
+  - for a questions post, what the questions are for ("QUESTIONS FOR WHEN NOBODY ASKS HOW YOU ARE").
+These are shapes, not words to reuse. The test: a stranger who reads ONLY the cover could say what the post is about. Never a bare command with no clear subject ("NAME YOUR UNPAID JOBS", "SIT DOWN FOR THESE...", "HAND ONE BACK", "TAKE YOUR TIME..."), never a clever or cryptic phrase that only makes sense after the slides, never a label or topic name. No number.`;
+
 // Cover command rule (2026-09-24, per Keenan: "all cover slides need to
 // be a command to the person reading it, i've noticed those get the best
 // engagement"). Appended to every BWK cover rule so it applies to every
@@ -722,7 +733,7 @@ function rollWomenCoverRule(forcedFamily?: string): string {
   const itemRule = forced
     ? `FAMILY LOCK: EVERY item scene in this post must ALSO come from the ${fam.name} family — the whole post lives in one visual world, with each slide a DIFFERENT freshly-invented scene inside it.`
     : `Item scenes follow the normal SCENES brief with the same rule: every scene invented fresh, never copied from the examples.`;
-  return `COVER SCENE RULE: "coverScene" MUST come from the ${fam.name} family — ${fam.brief} Soft, feminine, DIM, warm, intimate, NO people. The examples are SEEDS, not a menu: INVENT a brand-new scene inside this family that has never appeared before — choose a fresh subject, setting, season, weather, time, and vantage so no two covers are ever alike. ${itemRule}`;
+  return `COVER SCENE RULE: "coverScene" MUST come from the ${fam.name} family — ${fam.brief} Soft, feminine, DIM, warm, intimate, NO people. The examples are SEEDS, not a menu: INVENT a brand-new scene inside this family that has never appeared before — choose a fresh subject, setting, season, weather, time, and vantage so no two covers are ever alike. The cover scene should also quietly hint at what THIS post is about (for a post about the unpaid jobs she does: a kitchen counter with a half-written list, a school form and a set of keys), never a random pretty still life unrelated to the title. ${itemRule}`;
 }
 
 /** Generate one moody-carousel topic for the given audience funnel.
@@ -1265,7 +1276,7 @@ ${WOMEN_SCENE_BRIEFS[scheme]}
 ${rollWomenCoverRule()}
 
 RULES:
-- "title" is the cover: a direct prompt that sets up the questions and makes swiping irresistible — 2-4 words, addressed to her, commanding, works in ALL CAPS. The shape is an instruction for how to face the questions, often ending "...", in new words each post. It is not itself a question. A trailing "..." is fine when it pulls the swipe. Sense check: it must make complete sense on its own — a natural phrase a real person would say — and clearly set up questions to answer. A title that reads odd or random without the slides fails ("DON'T LIE NOW" is the kind of garbled remix that gets a post killed); write a different one. "READ THESE SLOWLY", "YOU ALREADY KNOW" and "WHOSE LIFE IS THIS" are spent, as is every recent title; don't reuse them or stitch them together.
+- "title" is the cover. ${RIPPLE_COVER_RULE} For this post it names what the questions are about or when she needs them ("QUESTIONS FOR WHEN NOBODY ASKS HOW YOU ARE", "WHAT YOU'D SAY IF SOMEONE FINALLY ASKED"). "READ THESE SLOWLY", "YOU ALREADY KNOW" and "WHOSE LIFE IS THIS" are spent, as is every recent title.
 - Write exactly the number of items the request asks for. Each slide renders as a bold HEADER, one italic HOOK line and a short BODY. Each item:
   - "name": the HEADER — the nerve the question presses on, in Title Case, 2-4 words, no trailing period ("The Waiting Body", "Unsaid Things", "Who Notices").
   - "lines": exactly 2 entries.

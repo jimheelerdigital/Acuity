@@ -7,6 +7,36 @@
 
 ---
 
+## [2026-09-30] — Ripple covers say what the post is about (no more cryptic commands)
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** see "fix: Make Ripple covers name the topic instead of cryptic commands"
+
+### In plain English (for Keenan)
+Ripple covers like "NAME YOUR UNPAID JOBS" or "SIT DOWN FOR THESE..." didn't tell anyone what the post was about. Covers now have to name her situation in plain words, like "THE JOBS NOBODY PAYS YOU FOR" or "STILL SAYING YES WHEN YOU MEAN NO?". Jev now rejects any cover a stranger couldn't understand on its own, and the cover photo has to relate to the topic instead of being a random still life.
+
+### Technical changes (for Jimmy)
+- `lib/content-factory/moody-carousel.ts`:
+  - New exported `RIPPLE_COVER_RULE`: 4-9 words, a recognition statement, a direct question, or (for the questions lane) what the questions are for; bare commands are banned.
+  - The rule replaced the women "direct command / instruction for how to read the slides" branch in `buildMoodySystemPrompt` and the questions-lane "commanding prompt" title rule.
+  - `rollWomenCoverRule`: the cover scene must hint at this post's subject.
+- `lib/content-factory/cover-picker.ts`:
+  - New cover-only clarity Noul, asked in a second parallel Jev call whose state holds only the cover lines.
+  - A candidate scoring below 0.3 on it can't win.
+  - Weights are now scroll 0.45 / save 0.25 / sense 0.1 / clear 0.2.
+
+### Manual steps needed
+- None
+
+### Notes
+- Root cause: the Ripple prompts had been given the BWK command-cover shape ("2-4 words ... a direct command ... or an instruction for how to read the slides, often ending ..."). BWK keeps its command covers.
+- Why a separate call: the old "makes sense" check had the post in its state, so the slides made a cryptic cover look fine.
+- Jev clarity test on real covers:
+  - Cryptic commands scored 0.08-0.16.
+  - Good covers scored 0.44-0.78.
+  - "NAME YOUR UNPAID JOBS" still scored 0.60, so the prompt rule is the main fix and Jev is the backstop.
+- The example post was from muse, which was already retired today.
+
 ## [2026-09-30] — Five lanes cut on Jev's lane audit (18 → 13 posts a day)
 **Requested by:** Keenan
 **Committed by:** Claude Code
