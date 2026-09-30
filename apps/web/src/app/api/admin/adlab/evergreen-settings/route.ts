@@ -22,8 +22,20 @@ export async function POST(req: NextRequest) {
     const guard = await requireAdmin();
     if (!guard.ok) return guard.response;
   }
-  const body = (await req.json().catch(() => ({}))) as { migrate?: "women" | "men"; setupTest?: boolean };
-  const { applyEvergreenSettings, migrateEvergreenOptimization, ensureTestAdSet, trimMainAdSet } = await import("@/lib/adlab/evergreen");
+  const body = (await req.json().catch(() => ({}))) as {
+    migrate?: "women" | "men";
+    setupTest?: boolean;
+    toTest?: { group: "women" | "men"; creativeId: string }[];
+  };
+  const { applyEvergreenSettings, migrateEvergreenOptimization, ensureTestAdSet, trimMainAdSet, sendToTest } = await import("@/lib/adlab/evergreen");
+  // { toTest: [{ group, creativeId }] }: give existing creatives a fresh test week.
+  if (body.toTest?.length) {
+    const out: Record<string, unknown> = {};
+    for (const t of body.toTest) {
+      out[t.creativeId] = await sendToTest(t.group, t.creativeId).catch((err) => ({ error: String(err).slice(0, 300) }));
+    }
+    return NextResponse.json(out);
+  }
   // { setupTest: true } (2026-09-30): create/confirm each lane's $15/day test
   // ad set and cap each main ad set at 8 live ads.
   if (body.setupTest) {

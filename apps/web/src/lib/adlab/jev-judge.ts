@@ -13,7 +13,7 @@
  *   duplicate  noul   same idea as an ad already live
  *   winner     score  likelihood of starting a trial, judged against OUR
  *                     proven winners and losers (by paid trials)
- * viable = policyRisk < 0.5 and duplicate < 0.6.
+ * viable = policyRisk < 0.8 and duplicate < 0.7 (tuned on the first live check).
  * rank   = 0.55·winner + 0.2·concrete + 0.25·clear.
  * The best viable draft per slot becomes the ad; nothing else is rendered.
  *
@@ -78,7 +78,9 @@ function verdictFrom(r: JevResult | null): JevVerdict | null {
     duplicate: duplicate!,
     winner: winner!,
     rank,
-    viable: policyRisk! < 0.5 && duplicate! < 0.6,
+    // Cutoffs from the first live check (2026-09-30): a clean, specific
+    // draft scored policyRisk 0.54 / duplicate 0.49, a real violator 0.97.
+    viable: policyRisk! < 0.8 && duplicate! < 0.7,
   };
 }
 

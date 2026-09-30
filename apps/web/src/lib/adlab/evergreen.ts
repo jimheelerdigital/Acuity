@@ -475,6 +475,31 @@ export async function trimMainAdSet(groupKey: BatchGroupKey): Promise<{ paused: 
 }
 
 /**
+ * Put an existing creative into its lane's test ad set for a fresh test week
+ * (2026-09-30: two video ads launched straight into MAIN were capped out
+ * after ~12h with almost no spend — they deserve a fair week in TEST).
+ * Reuses the creative's Meta creative from its most recent ad.
+ */
+export async function sendToTest(groupKey: BatchGroupKey, creativeId: string): Promise<string> {
+  const test = await ensureTestAdSet(groupKey);
+  const last = await prisma.adLabAd.findFirst({ where: { creativeId, metaAdId: { not: null } }, orderBy: { launchedAt: "desc" } });
+  if (!last?.metaAdId) throw new Error(`no Meta ad for creative ${creativeId}`);
+  const src = await meta.metaGraph(last.metaAdId, "GET", { fields: "name,creative{id}" });
+  const metaCreative = (src.creative as { id?: string } | undefined)?.id;
+  if (!metaCreative) throw new Error("no Meta creative");
+  const made = await meta.metaGraph(`${meta.adAccountPath()}/ads`, "POST", {
+    name: String(src.name ?? creativeId),
+    adset_id: test.adsetId,
+    creative: { creative_id: metaCreative },
+    status: "ACTIVE",
+  });
+  await prisma.adLabAd.create({
+    data: { creativeId, metaCampaignId: test.campaignId, metaAdsetId: test.adsetId, metaAdId: made.id as string, status: "live", launchedAt: new Date(), dailyBudgetCents: TEST_DAILY_BUDGET_CENTS },
+  });
+  return made.id as string;
+}
+
+/**
  * Daily: finish test weeks. Winners move from TEST to MAIN (same Meta
  * creative), everything else that has had its week stops. Then MAIN is
  * re-capped. Ads still inside their week are left alone (the normal audit
