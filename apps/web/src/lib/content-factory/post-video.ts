@@ -84,7 +84,7 @@ export const POST_VIDEO_FALLBACK_MODEL =
  * no higgsfield integration. it's not worth the cost for ripple"). Every
  * Ripple slide becomes a free push-in still; no Higgsfield call is made.
  * Per-brand override: POST_VIDEO_MAX_LIVE_<BRAND> (e.g.
- * POST_VIDEO_MAX_LIVE_BWK=0 turns BWK off too; needs a redeploy to apply).
+ * POST_VIDEO_MAX_LIVE_BWK=2 turns BWK back on; needs a redeploy to apply).
  */
 export function maxAnimatedSlides(brand: string): number {
   const perBrand = process.env[`POST_VIDEO_MAX_LIVE_${brand.toUpperCase()}`];
@@ -92,10 +92,9 @@ export function maxAnimatedSlides(brand: string): number {
     const b = Number(perBrand);
     if (Number.isFinite(b) && b >= 0) return b;
   }
-  if (brand === "mythicals") return 6;
-  if (brand === "ripple") return 0;
-  const n = Number(process.env.POST_VIDEO_MAX_LIVE);
-  return Number.isFinite(n) && n > 0 ? n : 2;
+  // BWK too, same day ("do the same for BWK actually. the only one that
+  // should be animated is the fantasy one"). Only Mythicals animates.
+  return brand === "mythicals" ? 6 : 0;
 }
 
 /** Poll rounds (30s each) per model attempt: primary 10 min, fallback 12 min. */

@@ -7,6 +7,27 @@
 
 ---
 
+## [2026-09-30] — Higgsfield animation off for BWK too (Mythicals only)
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** see "feat: Limit Higgsfield animation to Mythicals only"
+
+### In plain English (for Keenan)
+BWK videos are now slow-zoom photo cuts too, like Ripple. Legendary Mythicals is the only brand that still pays for AI animation.
+
+### Technical changes (for Jimmy)
+- `lib/content-factory/post-video.ts` `maxAnimatedSlides`: returns 6 for mythicals and 0 for every other brand.
+  - The `POST_VIDEO_MAX_LIVE` main-lane knob is gone.
+  - `POST_VIDEO_MAX_LIVE_<BRAND>` still overrides per brand (e.g. `POST_VIDEO_MAX_LIVE_BWK=2`, then redeploy).
+- The health check needs no change: its zero-budget rule from the Ripple commit covers BWK.
+
+### Manual steps needed
+- None
+
+### Notes
+- This saves about $0.47 a day on Kling (4 BWK clips a day); Mythicals stays at about $2.10 a day.
+- Keenan wants to rethink engagement videos for Ripple and BWK (auto script, visuals and voiceover). That's the next conversation, not started.
+
 ## [2026-09-30] — Higgsfield animation off for Ripple (slow-zoom photo videos instead)
 **Requested by:** Keenan
 **Committed by:** Claude Code
