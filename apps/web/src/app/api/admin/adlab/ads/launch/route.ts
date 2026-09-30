@@ -233,8 +233,13 @@ export async function POST(req: NextRequest) {
     try {
       const eg = await ensureEvergreenAdSet(evergreenGroup, project.id);
       campaignId = eg.campaignId;
-      adsetId = eg.adsetId;
-      console.log(`[adlab-launch] Evergreen ${evergreenGroup}: campaign ${campaignId}, ad set ${adsetId}${eg.created ? " (created)" : ""}`);
+      // New weekly picks go to the lane's $15/day TEST ad set first
+      // (2026-09-30, per Keenan). After their test week the daily cron moves
+      // winners into the main ad set (lib/adlab/evergreen.ts graduateTestAds).
+      const { ensureTestAdSet } = await import("@/lib/adlab/evergreen");
+      const test = await ensureTestAdSet(evergreenGroup);
+      adsetId = test.adsetId;
+      console.log(`[adlab-launch] Evergreen ${evergreenGroup}: campaign ${campaignId}, TEST ad set ${adsetId}${test.created ? " (created)" : ""} (main ${eg.adsetId})`);
     } catch (err) {
       logMetaError("Evergreen campaign/ad set", err);
       return NextResponse.json(
@@ -242,8 +247,8 @@ export async function POST(req: NextRequest) {
         { status: 500 }
       );
     }
-    const { GROUP_DAILY_BUDGET_CENTS } = await import("@/lib/adlab/evergreen");
-    adsetBudget = GROUP_DAILY_BUDGET_CENTS[evergreenGroup];
+    const { TEST_DAILY_BUDGET_CENTS } = await import("@/lib/adlab/evergreen");
+    adsetBudget = TEST_DAILY_BUDGET_CENTS;
     campaignName = experiment.campaignName ?? `${project.name} | evergreen`;
     await prisma.adLabExperiment.update({
       where: { id: experimentId },

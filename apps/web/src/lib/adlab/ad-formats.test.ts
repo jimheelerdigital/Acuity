@@ -143,3 +143,13 @@ describe("opening hook styles (2026-09-29)", () => {
     expect(parseVideoAds(raw, ["voice_to_list"])[0].script.hookStyle).toBe("caption");
   });
 });
+
+describe("Jev draft picking (2026-09-30)", () => {
+  it("picks the highest-ranked viable draft, and falls back to the first without Jev", async () => {
+    const { pickBest } = await import("./jev-judge");
+    const v = (rank: number, viable = true) => ({ concrete: 1, clear: 1, policyRisk: viable ? 0.1 : 0.9, duplicate: 0.1, winner: rank, rank, viable });
+    expect(pickBest(["a", "b", "c"], [v(0.4), v(0.9, false), v(0.7)]).item).toBe("c");
+    expect(pickBest(["a", "b"], [null, null]).item).toBe("a");
+    expect(pickBest(["a", "b"], [v(0.2, false), v(0.5, false)]).item).toBe("b");
+  });
+});

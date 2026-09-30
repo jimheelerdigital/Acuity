@@ -354,6 +354,8 @@ export interface AdImageCopy {
   openerModel?: string;
   openerClipUrl?: string;
   openerFailed?: string;
+  /** Jev's verdict on this draft (2026-09-30) — kept for the learning loop. */
+  jev?: import("@/lib/adlab/jev-judge").JevVerdict;
 }
 
 // The extra copy fields aren't DB columns, so they ride in the stored
@@ -361,7 +363,7 @@ export interface AdImageCopy {
 // anything reaches the image model; the regen path parses it back.
 const AD_COPY_TAG = "[[AD_COPY:";
 export function encodeAdCopy(c: AdImageCopy): string {
-  const extra = { solutionLine: c.solutionLine, benefits: c.benefits, said: c.said, caught: c.caught, visualStyle: c.visualStyle, cardPalette: c.cardPalette, lines: c.lines, stats: c.stats, insight: c.insight, imageScene: c.imageScene || undefined, video: c.video, videoUrl: c.videoUrl, openerRequestId: c.openerRequestId, openerModel: c.openerModel, openerClipUrl: c.openerClipUrl, openerFailed: c.openerFailed };
+  const extra = { solutionLine: c.solutionLine, benefits: c.benefits, said: c.said, caught: c.caught, visualStyle: c.visualStyle, cardPalette: c.cardPalette, lines: c.lines, stats: c.stats, insight: c.insight, imageScene: c.imageScene || undefined, video: c.video, videoUrl: c.videoUrl, openerRequestId: c.openerRequestId, openerModel: c.openerModel, openerClipUrl: c.openerClipUrl, openerFailed: c.openerFailed, jev: c.jev };
   return `\n${AD_COPY_TAG}${JSON.stringify(extra)}]]`;
 }
 export function decodeAdCopy(prompt: string | null | undefined): Partial<AdImageCopy> {
@@ -709,6 +711,9 @@ export function parseBatchAds(raw: string, minValid = 6): z.infer<typeof BatchAd
 // other two rotate weekly through the remaining four templates.
 
 export const VIDEOS_PER_BATCH = 3;
+/** Drafts per image slot / per video template that Jev chooses between. */
+export const VARIANTS_PER_SLOT = 3;
+export const VIDEO_VARIANTS = 2;
 
 export function videoTemplatesForWeek(date = new Date()): VideoTemplate[] {
   const others = VIDEO_TEMPLATES.filter((t) => t !== "voice_to_list");
@@ -798,7 +803,7 @@ interface VideoAdDraft {
 }
 
 /** Parse + validate the video tool output; drops scripts a template can't render. */
-export function parseVideoAds(raw: string, templates: VideoTemplate[]): VideoAdDraft[] {
+export function parseVideoAds(raw: string, templates: VideoTemplate[], perTemplate = 1): VideoAdDraft[] {
   const text = (() => {
     const last = lastJsonText(raw);
     try {
@@ -814,7 +819,7 @@ export function parseVideoAds(raw: string, templates: VideoTemplate[]): VideoAdD
   const clip = (v: unknown, n: number) => (typeof v === "string" ? v.trim().slice(0, n) : undefined);
   for (const v of arr) {
     const template = v.template as VideoTemplate;
-    if (!templates.includes(template) || out.some((o) => o.script.template === template)) continue;
+    if (!templates.includes(template) || out.filter((o) => o.script.template === template).length >= perTemplate) continue;
     const script: VideoScript = {
       template,
       hook: clip(v.hook, 60) ?? "",
@@ -998,12 +1003,16 @@ HARD RULES (Meta policy + brand — violations get ads rejected):
 
 Submit the ads with the submit_ads tool.`;
 
-  // Two parallel requests of 5 (2026-09-29): one 10-ad reply from Sonnet
-  // 5.5 hit the output cap every time. Each half writes 5 slots.
-  const halves = [AD_SLOTS.slice(0, 5), AD_SLOTS.slice(5)];
-  const themeSlices = [themes.slice(0, Math.ceil(themes.length / 2)), themes.slice(Math.ceil(themes.length / 2))];
+  // Drafts for Jev (2026-09-30, per Keenan: "create multiple different ad
+  // scripts that run into jev first"): VARIANTS_PER_SLOT drafts per slot,
+  // written in four parallel requests of 2–3 slots each (one big reply hit
+  // the output cap), then Jev picks the best draft per slot.
+  const VARIANTS = VARIANTS_PER_SLOT;
+  const halves = [AD_SLOTS.slice(0, 3), AD_SLOTS.slice(3, 6), AD_SLOTS.slice(6, 8), AD_SLOTS.slice(8)];
+  const per = Math.ceil(themes.length / halves.length);
+  const themeSlices = halves.map((_, i) => themes.slice(i * per, (i + 1) * per));
   const halfPrompt = (i: number) =>
-    `This request covers ${halves[i].length} of this week's 10 ads (the batch is split into two requests). Write exactly ${halves[i].length} ads, one per slot, in this order: ${halves[i].map((sl) => `${sl.key} (format ${sl.format})`).join(", ")}. Root the new-concept ads in these Reddit themes: ${themeSlices[i].map((t) => t.theme).join(" | ") || "any of the themes above"}. Every ad must differ from the others in angle AND life moment.
+    `This request covers ${halves[i].length} of this week's 10 slots (the batch is split into ${halves.length} requests). For EACH slot write ${VARIANTS} genuinely different drafts (a different hook, a different life moment, a different opening line each time), so ${halves[i].length * VARIANTS} ads in total. Set "archetype" to the slot key on every draft. The drafts are scored and only the strongest one per slot becomes an ad, so make each one a real contender, not a small rewording. Slots, in order: ${halves[i].map((sl) => `${sl.key} (format ${sl.format})`).join(", ")}. Root the new-concept drafts in these Reddit themes: ${themeSlices[i].map((t) => t.theme).join(" | ") || "any of the themes above"}.
 Call the submit_ads tool IMMEDIATELY. Do not write any analysis, plan, draft or commentary before or after the tool call; think silently and put everything into the tool input.`;
 
   const generateHalf = async (i: number): Promise<z.infer<typeof BatchAdSchema>[]> => {
@@ -1016,7 +1025,7 @@ Call the submit_ads tool IMMEDIATELY. Do not write any analysis, plan, draft or 
         models: AD_COPY_MODELS,
         outputTool: SUBMIT_ADS_TOOL,
       });
-      return parseBatchAds(raw, 3);
+      return parseBatchAds(raw, halves[i].length).map((ad, k) => tagSlot(ad, i, k));
     } catch (err1) {
       const raw2 = await callAdLabClaude({
         purpose: `weekly-batch-${groupKey}-${i + 1}-retry`,
@@ -1026,14 +1035,22 @@ Call the submit_ads tool IMMEDIATELY. Do not write any analysis, plan, draft or 
         userPrompt: `${halfPrompt(i)}\n\nIMPORTANT: the previous attempt failed (${err1 instanceof Error ? err1.message.slice(0, 300) : String(err1)}). Call submit_ads right away with no text at all. Keep every field short. valueSurface must be one of: ${VALUE_SURFACES.join(", ")}.`,
         maxTokens: 16000,
       });
-      return parseBatchAds(raw2, 3);
+      return parseBatchAds(raw2, halves[i].length).map((ad, k) => tagSlot(ad, i, k));
     }
+  };
+  // A draft whose archetype isn't one of its request's slots is assigned by
+  // position (drafts come in slot order, VARIANTS per slot).
+  const tagSlot = (ad: z.infer<typeof BatchAdSchema>, i: number, k: number) => {
+    if (!halves[i].some((sl) => sl.key === ad.archetype)) {
+      ad.archetype = halves[i][Math.min(halves[i].length - 1, Math.floor(k / VARIANTS))].key;
+    }
+    return ad;
   };
   // Video scripts run in parallel with the two image halves; a failure
   // here only costs the week its videos, never the image batch.
   const videoTemplates = videoTemplatesForWeek();
   const hookStyles = hookStylesForWeek();
-  const videoPrompt = `Write ${videoTemplates.length} ANIMATED VIDEO ad scripts for this lane, one per template, in this order: ${videoTemplates.join(", ")}.
+  const videoPrompt = `Write ${videoTemplates.length * VIDEO_VARIANTS} ANIMATED VIDEO ad scripts for this lane: ${VIDEO_VARIANTS} genuinely different scripts per template (different moment, hook and footage each), templates in this order: ${videoTemplates.join(", ")}. The scripts are scored and only the strongest per template is made.
 Each video is a ~12–15s silent-readable animation (music underneath, no voiceover) that shows the viewer THEIR OWN WORDS turning into a to-do list, a tracked habit, a pattern or a weekly report. Nothing else is on screen, so the specifics carry the ad: real errands, names, days, excuses — the way this audience actually talks (use the Reddit themes and phrases). Every number is one person's believable week, never a claim about users.
 
 STRUCTURE — one continuous story, not a clip stapled to a slideshow:
@@ -1062,11 +1079,11 @@ Call the submit_video_ads tool IMMEDIATELY with no text before or after it.`;
         purpose: `weekly-videos-${groupKey}`,
         systemPrompt,
         userPrompt: videoPrompt + extra,
-        maxTokens: 12000,
+        maxTokens: 16000,
         models: AD_COPY_MODELS,
         outputTool: SUBMIT_VIDEOS_TOOL,
       });
-    let drafts = parseVideoAds(await call(), videoTemplates);
+    let drafts = parseVideoAds(await call(), videoTemplates, VIDEO_VARIANTS);
     if (drafts.length < videoTemplates.length) {
       const missing = videoTemplates.filter((t) => !drafts.some((d) => d.script.template === t));
       const more = parseVideoAds(
@@ -1077,10 +1094,59 @@ Call the submit_video_ads tool IMMEDIATELY with no text before or after it.`;
     }
     return drafts;
   };
-  const [videoOut, ...halvesOut] = await Promise.allSettled([generateVideos(), generateHalf(0), generateHalf(1)]);
-  const videoDrafts = videoOut.status === "fulfilled" ? videoOut.value : [];
+  const [videoOut, ...halvesOut] = await Promise.allSettled([generateVideos(), ...halves.map((_, i) => generateHalf(i))]);
+  const videoCandidates = videoOut.status === "fulfilled" ? videoOut.value : [];
   if (videoOut.status === "rejected") console.warn(`[adlab-weekly] ${groupKey} videos failed: ${videoOut.reason instanceof Error ? videoOut.reason.message : videoOut.reason}`);
-  const ads: z.infer<typeof BatchAdSchema>[] = halvesOut.flatMap((r) => (r.status === "fulfilled" ? r.value : []));
+  const drafts: z.infer<typeof BatchAdSchema>[] = halvesOut.flatMap((r) => (r.status === "fulfilled" ? r.value : []));
+
+  // ── Jev picks the winners (2026-09-30) ──
+  const { judgeDrafts, pickBest, jevCalibration } = await import("@/lib/adlab/jev-judge");
+  const liveHeadlines = (
+    await prisma.adLabAd.findMany({
+      where: { status: { in: ["live", "scaled"] }, creative: { angle: { experiment: { projectId } } } },
+      select: { creative: { select: { headline: true } } },
+    })
+  ).map((a) => a.creative.headline);
+  const exampleOf = (c: { headline: string; primaryText: string; trials: number; signups: number; spendCents: number }) => ({
+    headline: c.headline,
+    primaryText: c.primaryText.slice(0, 160),
+    result: `${c.trials} paid trials, ${c.signups} signups on $${(c.spendCents / 100).toFixed(0)}`,
+  });
+  const jevCtx = {
+    lane: groupKey,
+    audience: g.audienceLabel,
+    winners: (learning?.stats.top ?? []).slice(0, 6).map(exampleOf),
+    losers: (learning?.stats.bottom ?? []).slice(0, 6).map(exampleOf),
+    liveHeadlines,
+  };
+  const onScreenOf = (d: z.infer<typeof BatchAdSchema>) =>
+    [d.solutionLine, d.said, ...(d.caught ?? []), ...(d.lines ?? []), ...(d.stats ?? []).map((x) => `${x.value} ${x.label}`), d.insight].filter((x): x is string => !!x);
+  const verdicts = await judgeDrafts(jevCtx, drafts.map((d) => ({ format: d.format ?? "", headline: d.headline, primaryText: d.primaryText, onScreen: onScreenOf(d) })));
+  const jevOf = new Map<z.infer<typeof BatchAdSchema>, import("@/lib/adlab/jev-judge").JevVerdict | null>();
+  const ads: z.infer<typeof BatchAdSchema>[] = [];
+  for (const slot of AD_SLOTS) {
+    const idx = drafts.map((d, i) => (d.archetype === slot.key ? i : -1)).filter((i) => i >= 0);
+    if (idx.length === 0) continue;
+    const pick = pickBest(idx.map((i) => drafts[i]), idx.map((i) => verdicts[i]));
+    jevOf.set(pick.item, pick.verdict);
+    ads.push(pick.item);
+  }
+  const judgedCount = verdicts.filter(Boolean).length;
+  const vVerdicts = await judgeDrafts(
+    jevCtx,
+    videoCandidates.map((v) => ({ format: `video-${v.script.template}`, headline: v.script.hook, primaryText: v.primaryText, onScreen: [v.script.endHeadline, v.script.said, ...(v.script.caught ?? []), v.script.flag, v.script.insight].filter((x): x is string => !!x) }))
+  );
+  const videoDrafts: VideoAdDraft[] = [];
+  const videoJev = new Map<VideoAdDraft, import("@/lib/adlab/jev-judge").JevVerdict | null>();
+  for (const t of videoTemplates) {
+    const idx = videoCandidates.map((v, i) => (v.script.template === t ? i : -1)).filter((i) => i >= 0);
+    if (idx.length === 0) continue;
+    const pick = pickBest(idx.map((i) => videoCandidates[i]), idx.map((i) => vVerdicts[i]));
+    videoJev.set(pick.item, pick.verdict);
+    videoDrafts.push(pick.item);
+  }
+  const calibration = await jevCalibration(projectId).catch(() => null);
+  console.log(`[adlab-weekly] ${groupKey}: Jev judged ${judgedCount}/${drafts.length} drafts + ${vVerdicts.filter(Boolean).length}/${videoCandidates.length} video scripts${calibration ? ` — ${calibration}` : ""}`);
   if (ads.length < 5) {
     const reasons = halvesOut.map((r) => (r.status === "rejected" ? (r.reason instanceof Error ? r.reason.message : String(r.reason)) : "ok")).join(" | ");
     throw new Error(`only ${ads.length} valid ads — ${reasons.slice(0, 500)}`);
@@ -1092,7 +1158,7 @@ Call the submit_video_ads tool IMMEDIATELY with no text before or after it.`;
   const experiment = await prisma.adLabExperiment.create({
     data: {
       projectId,
-      topicBrief: `Weekly batch (${weekLabel}) — 10 ads for ${g.audienceLabel}: 7 new concepts across 6+ formats and 3 extending the current best ad, rooted in the ${digestDate} audience pulse.`,
+      topicBrief: `Weekly batch (${weekLabel}) — ${ads.length} ads for ${g.audienceLabel}, ${judgedCount ? `each the Jev-picked best of ~${VARIANTS} drafts` : "Jev unavailable, first draft per slot"}: 7 new concepts across 6+ formats and 3 extending the current best ad, rooted in the ${digestDate} audience pulse.${calibration ? ` ${calibration}` : ""}`,
       status: "awaiting_approval",
       campaignName: `${g.projectName} | Reddit batch ${weekLabel}`,
       // Informational: launches go into the group's evergreen ad set, which
@@ -1140,7 +1206,7 @@ Call the submit_video_ads tool IMMEDIATELY with no text before or after it.`;
         targetPersona: ad.targetPersona,
         valueSurface: ad.valueSurface,
         // "| strategy:" is parsed back by lib/adlab/learning.ts — keep format
-        researchNotes: `Reddit theme (${digestDate}): ${ad.theme} | strategy: ${strategy}${ad.archetype ? ` | type: ${ad.archetype}` : ""} | format: ${formatKey}`,
+        researchNotes: `Reddit theme (${digestDate}): ${ad.theme} | strategy: ${strategy}${ad.archetype ? ` | type: ${ad.archetype}` : ""} | format: ${formatKey}${jevOf.get(ad) ? ` | jev: ${jevOf.get(ad)!.rank.toFixed(2)} best of ${jevOf.get(ad)!.of}` : ""}`,
         score: 5,
       },
     });
@@ -1153,7 +1219,7 @@ Call the submit_video_ads tool IMMEDIATELY with no text before or after it.`;
         description: ad.description,
         cta: ad.cta,
         formatKey,
-        generationPrompt: buildAdImagePrompt(formatKey, { ...ad, visualStyle, cardPalette }, groupKey),
+        generationPrompt: buildAdImagePrompt(formatKey, { ...ad, visualStyle, cardPalette, jev: jevOf.get(ad) ?? undefined }, groupKey),
         complianceStatus: "pending",
         approved: false,
       },
@@ -1175,7 +1241,7 @@ Call the submit_video_ads tool IMMEDIATELY with no text before or after it.`;
         score: 5,
       },
     });
-    const copy: AdImageCopy = { headline: v.script.endHeadline, description: v.description, cta: "SIGN_UP", imageScene: "", video: v.script };
+    const copy: AdImageCopy = { headline: v.script.endHeadline, description: v.description, cta: "SIGN_UP", imageScene: "", video: v.script, jev: videoJev.get(v) ?? undefined };
     const creative = await prisma.adLabCreative.create({
       data: {
         angleId: angle.id,

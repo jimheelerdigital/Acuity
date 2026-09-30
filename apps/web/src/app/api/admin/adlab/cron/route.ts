@@ -580,6 +580,19 @@ export async function GET(req: NextRequest) {
     }
   }
 
+  // ── Step 3b: Test ad sets (2026-09-30) ─────────────────────────────
+  // Ads that finished their test week: winners move to the main ad set,
+  // the rest stop; then the main ad set is re-capped at 8 live.
+  const testWeek: Record<string, Record<string, unknown>> = {};
+  try {
+    const { graduateTestAds } = await import("@/lib/adlab/evergreen");
+    for (const g of ["women", "men"] as const) {
+      testWeek[g] = await graduateTestAds(g).catch((err) => ({ error: String(err).slice(0, 200) }));
+    }
+  } catch (err) {
+    console.error("[adlab-cron] test-week graduation failed:", err);
+  }
+
   // ── Step 4: Build + send daily email ──────────────────────────────
   try {
     const { sendEmailOrThrow } = await import("@/lib/resend");
@@ -587,7 +600,7 @@ export async function GET(req: NextRequest) {
     const sections: string[] = [
       `# AdLab Daily Report — ${dateStr}`,
       `Metrics synced: ${syncResults.filter((r) => r.success).length}/${syncResults.length} ads`,
-      `Optimizing: signups (evergreen $60 women / $40 men) · Kills: ${DECISIONS_ENABLED ? "ON" : "OFF"} · Auto-scale: ${AUTOSCALE_ENABLED ? "ON" : "OFF (winners flagged)"}`,
+      `Optimizing: paid trials (main $60 women / $80 men + $15/day test ad set each) · Kills: ${DECISIONS_ENABLED ? "ON" : "OFF"} · Auto-scale: ${AUTOSCALE_ENABLED ? "ON" : "OFF (winners flagged)"}`,
     ];
 
     // Kills
@@ -643,6 +656,21 @@ export async function GET(req: NextRequest) {
         .forEach((s) => sections.push(
           `${s.adId.slice(0, 8)} | ${$(s.spend)} | ${s.imps.toLocaleString()} | ${s.clicks} | ${s.ctr.toFixed(2)}% | ${s.conv} | ${s.cpl ? $(s.cpl) : "—"} | ${s.freq.toFixed(1)} | ${s.outcome}`,
         ));
+    }
+
+    // Test-week results
+    const tw = Object.entries(testWeek);
+    if (tw.length) {
+      sections.push(`\n## 🧪 Test ad sets`);
+      for (const [g, r] of tw) {
+        const grad = (r.graduated as string[] | undefined) ?? [];
+        const stop = (r.stopped as string[] | undefined) ?? [];
+        const trim = r.mainTrim as { paused?: { headline: string; reason: string }[]; live?: number } | undefined;
+        sections.push(`- ${g}: ${r.error ? `ERROR ${r.error}` : `${r.inTest ?? 0} still in their test week · main ad set ${trim?.live ?? "?"} live`}`);
+        grad.forEach((x) => sections.push(`  - ✅ moved to main: ${x}`));
+        stop.forEach((x) => sections.push(`  - ⏹ stopped after test week: ${x}`));
+        (trim?.paused ?? []).forEach((x) => sections.push(`  - ⏸ paused in main (cap 8): ${x.headline} — ${x.reason}`));
+      }
     }
 
     // Summary line

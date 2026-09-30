@@ -266,22 +266,32 @@ const LOW_CTR_MIN_IMPRESSIONS = 1500;
 
 export type AdVerdict = "winner" | "not_working" | "keep";
 
-export async function makeRoomInAdSet(
-  adsetId: string,
-  _incoming: number
-): Promise<{
-  retired: Array<{ adId: string; reason: string }>;
-  failed: string[];
-  audit: Array<{ adId: string; verdict: AdVerdict; reason: string }>;
-}> {
-  const live = await prisma.adLabAd.findMany({
-    where: { metaAdsetId: adsetId, status: { in: ["live", "scaled"] } },
-    include: { metrics: true },
-  });
-  if (live.length === 0) return { retired: [], failed: [], audit: [] };
+export interface CreativeJudgement {
+  verdict: AdVerdict;
+  reason: string;
+  spendCents: number;
+  signups: number;
+  trials: number;
+  impressions: number;
+}
 
+/**
+ * Verdict per creative (2026-09-30: aggregated across ALL of a creative's
+ * AdLabAd rows — the Purchase migration and test→main graduation give one
+ * creative several Meta ads, and judging only the newest row would wipe its
+ * history). Signups = the higher of Meta-reported conversions and our own
+ * funnel_account_created sessions; trials = our funnel_payment_completed
+ * (first payments, not renewals), matched on utm_content = creative id.
+ */
+export async function judgeCreatives(creativeIds: string[]): Promise<Map<string, CreativeJudgement>> {
+  const out = new Map<string, CreativeJudgement>();
+  if (creativeIds.length === 0) return out;
+  const rows = await prisma.adLabAd.findMany({
+    where: { creativeId: { in: creativeIds } },
+    select: { creativeId: true, launchedAt: true, metrics: { select: { spendCents: true, impressions: true, clicks: true, conversions: true } } },
+  });
   const ev = await prisma.onboardingEvent.findMany({
-    where: { utmContent: { in: live.map((a) => a.creativeId) }, isBot: false, event: { in: ["funnel_account_created", "funnel_payment_completed"] } },
+    where: { utmContent: { in: creativeIds }, isBot: false, event: { in: ["funnel_account_created", "funnel_payment_completed"] } },
     select: { utmContent: true, event: true, sessionToken: true, value: true },
   });
   const ours = new Map<string, { accounts: Set<string>; trials: Set<string> }>();
@@ -292,54 +302,231 @@ export async function makeRoomInAdSet(
     if (e.event === "funnel_payment_completed" && !(e.value ?? "").endsWith(":renewal")) o.trials.add(key);
     ours.set(e.utmContent!, o);
   }
-
   const now = Date.now();
   const $ = (c: number) => `$${(c / 100).toFixed(2)}`;
-  const audit = live.map((ad) => {
-    const spend = ad.metrics.reduce((n, m) => n + m.spendCents, 0);
-    const imps = ad.metrics.reduce((n, m) => n + m.impressions, 0);
-    const clicks = ad.metrics.reduce((n, m) => n + m.clicks, 0);
-    const metaConv = ad.metrics.reduce((n, m) => n + m.conversions, 0);
-    const o = ours.get(ad.creativeId);
+  for (const id of creativeIds) {
+    const mine = rows.filter((r) => r.creativeId === id);
+    const ms = mine.flatMap((r) => r.metrics);
+    const spend = ms.reduce((n, m) => n + m.spendCents, 0);
+    const imps = ms.reduce((n, m) => n + m.impressions, 0);
+    const clicks = ms.reduce((n, m) => n + m.clicks, 0);
+    const metaConv = ms.reduce((n, m) => n + m.conversions, 0);
+    const o = ours.get(id);
     const signups = Math.max(metaConv, o?.accounts.size ?? 0);
     const trials = o?.trials.size ?? 0;
-    const hours = ad.launchedAt ? (now - ad.launchedAt.getTime()) / 3_600_000 : 0;
+    const first = mine.map((r) => r.launchedAt?.getTime() ?? now).reduce((a, b) => Math.min(a, b), now);
+    const hours = (now - first) / 3_600_000;
     const ctr = imps > 0 ? (clicks / imps) * 100 : 0;
     const summary = `${signups} signups, ${trials} trials, ${$(spend)} spent, ${ctr.toFixed(2)}% CTR over ${imps} impressions`;
-
     let verdict: AdVerdict = "keep";
     let why = "not enough evidence yet";
     if (trials > 0 || (signups >= WINNER_MIN_SIGNUPS && spend / signups <= WINNER_MAX_CPL_CENTS)) {
       verdict = "winner";
-      why = trials > 0 ? "produced a paid trial" : `${signups} signups at ${$(spend / signups)} each`;
+      why = trials > 0 ? `produced ${trials} paid trial${trials > 1 ? "s" : ""}` : `${signups} signups at ${$(spend / signups)} each`;
     } else if (spend >= JUDGE_MIN_SPEND_CENTS && hours >= JUDGE_MIN_HOURS) {
       if (signups === 0 && spend >= DEAD_SPEND_CENTS) { verdict = "not_working"; why = `${$(spend)} spent with no signups`; }
       else if (signups > 0 && spend / signups > BAD_CPL_CENTS) { verdict = "not_working"; why = `${$(spend / signups)} per signup (over $40)`; }
       else if (signups === 0 && imps >= LOW_CTR_MIN_IMPRESSIONS && ctr < LOW_CTR_PCT) { verdict = "not_working"; why = `${ctr.toFixed(2)}% click rate, no signups`; }
       else why = "working well enough to keep";
     }
-    return { ad, verdict, reason: `${why} (${summary})` };
+    out.set(id, { verdict, reason: `${why} (${summary})`, spendCents: spend, signups, trials, impressions: imps });
+  }
+  return out;
+}
+
+async function pauseAd(ad: { id: string; metaAdId: string | null }, status: "paused" | "killed", reason: string, decision: "kill" | "maintain" = "kill") {
+  if (ad.metaAdId) await meta.setStatus(ad.metaAdId, "ad", "PAUSED");
+  await prisma.adLabAd.update({ where: { id: ad.id }, data: { status, decisionReason: reason } });
+  await prisma.adLabDecision.create({ data: { adId: ad.id, decisionType: decision, rationale: reason } }).catch(() => {});
+}
+
+export async function makeRoomInAdSet(
+  adsetId: string,
+  _incoming: number
+): Promise<{
+  retired: Array<{ adId: string; reason: string }>;
+  failed: string[];
+  audit: Array<{ adId: string; verdict: AdVerdict; reason: string }>;
+}> {
+  const live = await prisma.adLabAd.findMany({
+    where: { metaAdsetId: adsetId, status: { in: ["live", "scaled"] } },
+    select: { id: true, metaAdId: true, creativeId: true },
   });
+  if (live.length === 0) return { retired: [], failed: [], audit: [] };
+  const judged = await judgeCreatives([...new Set(live.map((a) => a.creativeId))]);
+  const audit = live.map((ad) => ({ ad, ...judged.get(ad.creativeId)! }));
 
   const retired: Array<{ adId: string; reason: string }> = [];
   const failed: string[] = [];
   for (const r of audit.filter((x) => x.verdict === "not_working")) {
     const reason = `AUDIT on new upload: not working — ${r.reason}.`;
     try {
-      if (r.ad.metaAdId) await meta.setStatus(r.ad.metaAdId, "ad", "PAUSED");
-      await prisma.adLabAd.update({ where: { id: r.ad.id }, data: { status: "killed", decisionReason: reason } });
-      await prisma.adLabDecision.create({ data: { adId: r.ad.id, decisionType: "kill", rationale: reason } });
+      await pauseAd(r.ad, "killed", reason);
       retired.push({ adId: r.ad.id, reason });
     } catch (err) {
       console.error(`[adlab-evergreen] failed to pause ${r.ad.metaAdId}:`, err);
       failed.push(r.ad.id);
     }
   }
-  const stillLive = live.length - retired.length;
-  if (stillLive + _incoming > MAX_ACTIVE_ADS) {
-    console.warn(`[adlab-evergreen] ${adsetId}: ${stillLive + _incoming} live ads after upload (cap ${MAX_ACTIVE_ADS}) — nothing else was paused because the rest are winners or still being judged`);
-  }
   return { retired, failed, audit: audit.map((r) => ({ adId: r.ad.id, verdict: r.verdict, reason: r.reason })) };
+}
+
+// ─── Test ad set + graduation (2026-09-30, per Keenan: "add a $15/day test
+// ad set per lane and for the week leading up to it, which caps the main ad
+// set to 8 live ads and then tests from the micro ad set") ─────────────────
+//
+// Each lane's campaign has two ad sets:
+//   MAIN  the proven ads, capped at MAX_ACTIVE_ADS (8) live. Winners are
+//         never paused for room; only non-winners give way.
+//   TEST  $15/day. Each week's approved ads launch HERE, so a new idea gets
+//         spend of its own instead of starving next to the current favourite.
+// After TEST_DAYS in test (checked daily by the cron): a winner is copied
+// into MAIN (same Meta creative) and stopped in test; anything else is
+// stopped ("didn't prove itself"). Ads clearly not working stop earlier via
+// the normal audit. Both ad sets optimize for GROUP_OPTIMIZATION_EVENT.
+// The test ad set is found by name inside the lane's campaign (no schema
+// column), created on first use with the main ad set's exact targeting.
+
+export const TEST_DAILY_BUDGET_CENTS = 1500;
+export const TEST_DAYS = 7;
+const TEST_SUFFIX = "| test ad set";
+
+async function laneProject(groupKey: BatchGroupKey) {
+  return prisma.adLabProject.findUniqueOrThrow({ where: { slug: groupKey === "women" ? "ripple-women" : "ripple-men" } });
+}
+
+/** The lane's test ad set id, created (ACTIVE, $15/day) if missing. */
+export async function ensureTestAdSet(groupKey: BatchGroupKey): Promise<{ campaignId: string; adsetId: string; created: boolean }> {
+  const project = await laneProject(groupKey);
+  if (!project.evergreenCampaignId || !project.evergreenAdsetId || !project.metaPixelId) {
+    throw new Error(`${groupKey}: no evergreen campaign/ad set yet`);
+  }
+  const list = await meta.metaGraph(`${project.evergreenCampaignId}/adsets`, "GET", { fields: "id,name,effective_status", limit: "50" });
+  const found = ((list.data as { id: string; name: string; effective_status: string }[]) ?? []).find(
+    (a) => a.name.endsWith(TEST_SUFFIX) && !["DELETED", "ARCHIVED"].includes(a.effective_status)
+  );
+  if (found) {
+    if (found.effective_status !== "ACTIVE") await meta.metaGraph(found.id, "POST", { status: "ACTIVE" });
+    return { campaignId: project.evergreenCampaignId, adsetId: found.id, created: false };
+  }
+  const main = await meta.metaGraph(project.evergreenAdsetId, "GET", { fields: "targeting,attribution_spec" });
+  const created = await meta.metaGraph(`${meta.adAccountPath()}/adsets`, "POST", {
+    name: `${GROUP_NAMES[groupKey].replace("(signups)", "(purchase)")} ${TEST_SUFFIX}`,
+    campaign_id: project.evergreenCampaignId,
+    daily_budget: String(TEST_DAILY_BUDGET_CENTS),
+    optimization_goal: "OFFSITE_CONVERSIONS",
+    billing_event: "IMPRESSIONS",
+    bid_strategy: "LOWEST_COST_WITHOUT_CAP",
+    destination_type: "WEBSITE",
+    promoted_object: { pixel_id: project.metaPixelId, custom_event_type: GROUP_OPTIMIZATION_EVENT },
+    targeting: main.targeting,
+    ...(main.attribution_spec ? { attribution_spec: main.attribution_spec } : {}),
+    status: "ACTIVE",
+  });
+  return { campaignId: project.evergreenCampaignId, adsetId: created.id as string, created: true };
+}
+
+/**
+ * Bring MAIN down to MAX_ACTIVE_ADS: pause non-winners, weakest first —
+ * not-working, then repeated headlines (Meta treats near-copies as one ad),
+ * then the ones Meta gives the least spend. Winners are never paused.
+ */
+export async function trimMainAdSet(groupKey: BatchGroupKey): Promise<{ paused: { headline: string; reason: string }[]; live: number }> {
+  const project = await laneProject(groupKey);
+  if (!project.evergreenAdsetId) return { paused: [], live: 0 };
+  const live = await prisma.adLabAd.findMany({
+    where: { metaAdsetId: project.evergreenAdsetId, status: { in: ["live", "scaled"] } },
+    select: { id: true, metaAdId: true, creativeId: true, creative: { select: { headline: true } } },
+  });
+  if (live.length <= MAX_ACTIVE_ADS) return { paused: [], live: live.length };
+  const judged = await judgeCreatives([...new Set(live.map((a) => a.creativeId))]);
+  const norm = (h: string) => h.toLowerCase().replace(/[^a-z0-9 ]/g, "").trim();
+  const seen = new Map<string, number>();
+  const ranked = live
+    .map((a) => ({ a, j: judged.get(a.creativeId)! }))
+    .sort((x, y) => (y.j.trials - x.j.trials) || (y.j.signups - x.j.signups) || (y.j.spendCents - x.j.spendCents));
+  const order = ranked.map(({ a, j }) => {
+    const k = norm(a.creative.headline);
+    const dup = (seen.get(k) ?? 0) > 0;
+    seen.set(k, (seen.get(k) ?? 0) + 1);
+    const weakness = j.verdict === "winner" ? -1 : j.verdict === "not_working" ? 3 : dup ? 2 : 1;
+    return { a, j, dup, weakness };
+  });
+  // Weakest first; within a tier, least spend (Meta's own vote) first.
+  const candidates = order
+    .filter((x) => x.weakness >= 1)
+    .sort((x, y) => (y.weakness - x.weakness) || (x.j.spendCents - y.j.spendCents));
+  const paused: { headline: string; reason: string }[] = [];
+  let count = live.length;
+  for (const c of candidates) {
+    if (count <= MAX_ACTIVE_ADS) break;
+    const why = c.j.verdict === "not_working" ? `not working — ${c.j.reason}` : c.dup ? `duplicate of a live ad with the same headline (${c.j.reason})` : `main ad set capped at ${MAX_ACTIVE_ADS}; lowest spend share (${c.j.reason})`;
+    try {
+      await pauseAd(c.a, "paused", `MAIN CAP (2026-09-30): ${why}`, "maintain");
+      paused.push({ headline: c.a.creative.headline, reason: why });
+      count--;
+    } catch (err) {
+      console.error(`[adlab-evergreen] trim pause failed ${c.a.metaAdId}:`, err);
+    }
+  }
+  return { paused, live: count };
+}
+
+/**
+ * Daily: finish test weeks. Winners move from TEST to MAIN (same Meta
+ * creative), everything else that has had its week stops. Then MAIN is
+ * re-capped. Ads still inside their week are left alone (the normal audit
+ * still stops ones clearly not working).
+ */
+export async function graduateTestAds(groupKey: BatchGroupKey): Promise<Record<string, unknown>> {
+  const project = await laneProject(groupKey);
+  if (!project.evergreenAdsetId || !project.evergreenCampaignId) return { skipped: "no evergreen ad set" };
+  const test = await ensureTestAdSet(groupKey).catch((err) => ({ error: String(err) }));
+  if ("error" in test) return { error: test.error };
+  const inTest = await prisma.adLabAd.findMany({
+    where: { metaAdsetId: test.adsetId, status: { in: ["live", "scaled"] } },
+    select: { id: true, metaAdId: true, creativeId: true, launchedAt: true, creative: { select: { headline: true } } },
+  });
+  const due = inTest.filter((a) => a.launchedAt && Date.now() - a.launchedAt.getTime() >= TEST_DAYS * 86_400_000);
+  const judged = await judgeCreatives([...new Set(due.map((a) => a.creativeId))]);
+  const graduated: string[] = [];
+  const stopped: string[] = [];
+  for (const a of due) {
+    const j = judged.get(a.creativeId)!;
+    try {
+      if (j.verdict === "winner" && a.metaAdId) {
+        const src = await meta.metaGraph(a.metaAdId, "GET", { fields: "name,creative{id}" });
+        const creativeId = (src.creative as { id?: string } | undefined)?.id;
+        if (!creativeId) throw new Error("no Meta creative on test ad");
+        const made = await meta.metaGraph(`${meta.adAccountPath()}/ads`, "POST", {
+          name: String(src.name ?? a.creative.headline),
+          adset_id: project.evergreenAdsetId,
+          creative: { creative_id: creativeId },
+          status: "ACTIVE",
+        });
+        await prisma.adLabAd.create({
+          data: {
+            creativeId: a.creativeId,
+            metaCampaignId: project.evergreenCampaignId,
+            metaAdsetId: project.evergreenAdsetId,
+            metaAdId: made.id as string,
+            status: "live",
+            launchedAt: new Date(),
+            dailyBudgetCents: GROUP_DAILY_BUDGET_CENTS[groupKey],
+          },
+        });
+        await pauseAd(a, "paused", `GRADUATED to main ad set after its test week: ${j.reason}`, "maintain");
+        graduated.push(`${a.creative.headline} — ${j.reason}`);
+      } else {
+        await pauseAd(a, "killed", `TEST WEEK over, didn't prove itself: ${j.reason}`);
+        stopped.push(`${a.creative.headline} — ${j.reason}`);
+      }
+    } catch (err) {
+      console.error(`[adlab-evergreen] graduation failed for ${a.metaAdId}:`, err);
+    }
+  }
+  const trim = await trimMainAdSet(groupKey);
+  return { testAdsetId: test.adsetId, inTest: inTest.length - due.length, graduated, stopped, mainTrim: trim };
 }
 
 /** All evergreen ad set ids — the engine must never raise their budgets. */

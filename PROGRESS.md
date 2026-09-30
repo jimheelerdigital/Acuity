@@ -61,6 +61,52 @@ Mythicals slides now show just the number and name, and "places" posts show the 
 - Local ANTHROPIC key is still dead (401). The cover-picker Sonnet path was tested with a stubbed reply; first real run is in prod. Look for `[cover-picker]` log lines.
 - 09-30 posts were queued before this deploy, so the gate leaves that day alone.
 
+## [2026-09-30] — $15/day test ad sets, main capped at 8, and Jev picks the ads
+
+- **Requested by:** Keenan
+- **Committed by:** Claude Code
+- **Commit hash:** (see git log — "feat: Test ad sets with weekly graduation, and Jev-judged ad drafts")
+
+### In plain English (for Keenan)
+- **Test ad set per lane:** each lane now has a $15/day test ad set. Each week's approved ads run there for their first week. Ads that prove themselves (a paid trial, or 3+ signups at $25 or less each) then move into the main ad set, and the rest stop.
+- **Main ad set:** capped at 8 live ads. Winners are never paused; the weakest non-winners and duplicate headlines give way.
+- **Jev picks the ads:** the ad writer now writes 3 drafts per slot and 2 per video, and Jev judges every draft on five things:
+  - a concrete detail
+  - clear about what Ripple does
+  - policy risk
+  - duplicate of a live ad
+  - likelihood of starting a trial, compared with our own real winners and losers
+
+  Only the best draft per slot is turned into an ad.
+- **Jev learns:** those winner/loser examples update from our results every week. Every ad keeps its Jev score, and each batch reports whether Jev's top picks actually produced more trials.
+
+### Technical changes (for Jimmy)
+- **lib/adlab/evergreen.ts:**
+  - `judgeCreatives()`: verdicts aggregated across ALL AdLabAd rows of a creative, since the migration and graduation create several rows per creative; `makeRoomInAdSet` uses it.
+  - `ensureTestAdSet()`: found by name in the lane's campaign, otherwise created at $15/day, PURCHASE, with the main ad set's targeting.
+  - `trimMainAdSet()`: cap `MAX_ACTIVE_ADS`=8.
+  - `graduateTestAds()`: after TEST_DAYS=7 the same Meta creative goes to main, or the ad is stopped.
+- **Launch route:** weekly-batch launches go to the TEST ad set.
+- **Daily cron:** runs `graduateTestAds` for both lanes and reports it in the daily email.
+- **evergreen-settings route:** `{ setupTest: true }`.
+- **lib/adlab/jev.ts:** Jev client. It uses OPENROUTER_API_KEY or JEV_API_KEY: `sk-or-` keys go to OpenRouter's decisions endpoint (typesafe/jev-1.13), others to TypeSafe's endpoint. It fails open.
+- **lib/adlab/jev-judge.ts:** `judgeDraft`/`judgeDrafts` (5 questions per draft, one call), `pickBest`, `jevCalibration()`.
+- **weekly-batch.ts:**
+  - `VARIANTS_PER_SLOT`=3 over 4 parallel requests; `VIDEO_VARIANTS`=2.
+  - Jev picks per slot and per template; the verdict is stored in the AD_COPY tag (`jev`) and in researchNotes.
+  - Calibration goes into the batch brief.
+- **New POST /api/admin/adlab/jev-check** (live sanity check).
+- **Tests:** pickBest.
+
+### Manual steps needed
+- [ ] Keenan: hit Remake on both lanes. The first Jev-judged batch lands in the review page, and approved ads launch into the test ad sets.
+- [ ] Jimmy: review the CRON_SECRET-bearer admin routes (evergreen-settings, jev-check).
+
+### Notes
+- Vercel has `JEV_API_KEY` (added 2026-09-30), not `OPENROUTER_API_KEY`; the client accepts either.
+- Jev never writes and never touches budgets or pausing. It only chooses between Claude's drafts. With Jev off or failing, the batch uses the first draft per slot as before.
+- Test ad sets optimize for PURCHASE like the main ones. At $15/day Meta barely learns there, so ads are judged on our own funnel data (signups and paid trials by utm_content).
+
 ## [2026-09-30] — Banned-phrases list removed from the ads builder
 
 - **Requested by:** Keenan
