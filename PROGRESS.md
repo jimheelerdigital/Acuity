@@ -10,7 +10,7 @@
 ## [2026-09-30] — Jev decision layer live; humanizer removed; Mythicals slides show names only
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 46d82015
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 The post writer is no longer followed by a second AI that "humanized" (and dulled) every post. A fast judging model (Jev) now does the checking instead:
@@ -2593,7 +2593,7 @@ The Sunday ad batch now learns. Before it writes the week's 20 ads, it checks ho
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 4ccb2c98
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 The ad system finally polices itself. Every morning it pulls each live ad's real numbers from Meta, kills clear losers (ads burning money with no clicks, terrible click rates, or no signups), flags winners for you to approve a budget increase, and emails you a full report — kills, near-kills, and a stats table for every live ad. This engine was actually built back in May but never switched on; today it was audited, hardened, and scheduled. Also cleaned up 139 old test ads from May that the database still thought were running.
@@ -2646,7 +2646,7 @@ Discovered that while the site has been DISPLAYING $9.99/month since the Sept 2 
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** f2ea9d74
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 Three cleanups from the funnel audit. First, every place we promised users "60 seconds" is gone — the commit screen now says "one debrief a day," and the same fix landed on signup, the how-it-works section, the try page, two trial emails, and two push notifications. We keep the low-effort promise without training people to record thin 60-second entries that make their weekly report worse. Second, Facebook now only hears "StartTrial" when someone actually starts a paid trial through Stripe checkout — not when they merely create a free account. Before this, Meta was optimizing your ad delivery toward people who create accounts but never enter a card. Third, the paywall's Pro feature list now includes habit tracking ("habits you mention get checked off automatically — streaks build themselves"), which the app really does. Per your call: the $19.99/$199 anchor pricing, the "before bed" testimonial, and the therapy price comparison all stay.
@@ -2674,7 +2674,7 @@ Three cleanups from the funnel audit. First, every place we promised users "60 s
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 1103c141
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 You asked whether the site shows $9.99/mo and $89.99/yr. The main landing page and checkout already did (the new-pricing flag is on in production), but a bunch of secondary surfaces still used the old $4.99/$39.99 numbers: the onboarding paywall showed wrong "you save" math ($15/mo and $159/yr savings instead of $10 and $109), the /upgrade page savings badge was stale, our Facebook ad tracking was reporting each signup as worth $4.99 instead of $9.99 (which makes Meta optimize toward cheaper-looking conversions), a testimonial on the therapy landing page quoted $4.99, and the AI that writes our blog posts and weekly ads was still being told the product costs $4.99. All fixed — every surface now reads pricing from one source of truth, so a future price change updates everywhere automatically. Also updated your 3 remaining outreach Gmail drafts and the directory-pack draft to quote $9.99/$89.99.
@@ -2704,7 +2704,7 @@ You asked whether the site shows $9.99/mo and $89.99/yr. The main landing page a
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 491b2247
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 The first weekly ad batch came out as pretty mood photos with no headline, no value props, and no call to action baked into the image — they looked like art, not ads. Now every batch image is built like a real Meta ad: five proven formats rotate across the 10 ads (photo with a big hook headline + CTA button, a notes-app-style "ugly ad" with a checklist, a bold text-only statement card, a checklist over a photo, and a phone-in-scene shot), each with the exact ad headline, short value props, and a CTA button rendered in the creative itself. This week's 20 already-generated ads are being regenerated in the new formats right now — copy stays the same, only the images change. Also fixed the compliance checker that was stamping every ad with a useless "check failed" warning: it was running out of room mid-answer; now it completes and gives real per-ad verdicts.
@@ -2731,7 +2731,7 @@ The first weekly ad batch came out as pretty mood photos with no headline, no va
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 1103c141
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 The site now has a research page other blogs can cite and link to — real findings from 1,117 voice journal entries (people record at every hour of the day, mood dips midweek, 65% of entries contain a to-do). This is the "link magnet" for the backlink phase of the SEO plan. Alongside it, 7 ready-to-go drafts are sitting in your Gmail: 6 personalized pitches to journaling-app roundup sites, and 1 directory-submission pack with paste-ready copy for 8 app directories. Nothing was sent — you review and send.
@@ -2761,7 +2761,7 @@ The site now has a research page other blogs can cite and link to — real findi
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 1d1b9c6f
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 Follow-up to this morning's founder-alert fix. The same "email service rejects the send but the code records it as sent" bug pattern existed in every other email the system sends — welcome emails, trial reminder emails, password resets, weekly digests, the admin send-email tool, and more. All of them are working today, but if any ever started failing, nobody would know, exactly like the month of lost founder alerts. Now every email send in the system checks the email service's answer: failures get logged truthfully, retried where a retry system exists, and admin tools report real success/failure counts instead of always claiming success.
@@ -2786,7 +2786,7 @@ None
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** d054a7fd
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 This week's ad batch failed when run from the laptop because the Claude API key stored locally is dead — the working key only exists on the live server. There's now a button-press equivalent: a secure endpoint on the live site that kicks off the exact same batch (10 women's ads + 10 men's ads, images, compliance check, review email) using the server's working keys. Also: the two funnels (/start and /start-bwk) now report themselves separately in analytics, so once ads are running you can see which funnel converts better instead of the data being blended together.
@@ -2810,7 +2810,7 @@ None — batch was triggered via the new endpoint this session; verify results a
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 33e48452
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 There's now a second onboarding funnel at goripple.io/start-bwk written for the men's/BWK audience. Same 17-screen structure as /start (quiz → pain mirror → pattern result → timeline → account → paywall), but every screen speaks to men: too much coming at him, repeating the same arguments, can't shut his brain off at night, the gap between knowing and doing, and the "I'm good" front. The women's funnel at /start is completely untouched. Also fixed a bug where a man who signed up with Google or Apple partway through /start-bwk would have been dumped back into the women's funnel — he now stays in his own. The Weekly Review page in AdLab now pre-fills each group's destination with the right funnel (men → /start-bwk, women → /start) so you don't have to type URLs when launching.
@@ -2838,7 +2838,7 @@ There's now a second onboarding funnel at goripple.io/start-bwk written for the 
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 3ceb5944
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 Every Sunday morning, the system now takes Saturday night's Reddit audience research and turns it into 20 complete ad creatives — 10 aimed at women carrying the mental load (from the Ripple communities) and 10 aimed at young men focused on discipline (from the BWK communities). Each ad has copy, an image, and a compliance check, and each one is rooted in a real pain theme people were talking about that week. You get an email, open the new "Weekly Review" page in AdLab, approve the ads you like, set the daily budget, pick where clicks go (your own funnel URL for each group, or straight to the App Store), and hit Launch. Nothing spends a cent until you click that button — the click creates the Meta campaign and turns it on in one go.
@@ -2872,7 +2872,7 @@ Every Sunday morning, the system now takes Saturday night's Reddit audience rese
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 738c0212
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 The weekly Reddit audience scrape (and the talking-head script email that rides along with it) now runs Saturday at 11:59pm Central instead of Sunday night. That means the fresh audience-pain digest and the script email are waiting in your inbox when you sit down for Sunday admin work — and it lines up with the upcoming Sunday ad-creative generation, which will build ads from that same fresh digest.
@@ -2894,7 +2894,7 @@ The weekly Reddit audience scrape (and the talking-head script email that rides 
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** debb9cd5
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 Since August 25, none of the "new signup" or "new payment" alert emails ever reached you or Jimmy — the email service was rejecting them because it wasn't authorized to send from the new goripple.io address, and a bug made the system record every rejected email as "sent," so nothing flagged it. Several behind-the-scenes health alarms (Stripe webhook health, subscription drift, security audit) were muted by the same problem. You authorized goripple.io in the Resend dashboard and created a new API key today; a live test email from hello@goripple.io landed in your inbox. The alerts now send again, failures can no longer masquerade as successes, and replying to any of these alert emails goes to keenan@heelerdigital.com instead of bouncing.
@@ -2922,7 +2922,7 @@ Since August 25, none of the "new signup" or "new payment" alert emails ever rea
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 5a89cb42
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 The Facebook videos were still looking soft even though the file we upload is sharp — Facebook was putting them through its harshest old-style "feed video" compression. From now on the same videos are published as Facebook Reels instead, which get Facebook's modern full-screen player and noticeably better quality (this is already how Instagram gets them, which is why IG looked fine). If the Reels upload ever fails, the system automatically falls back to the old method so nothing gets stuck unpublished.
@@ -2950,7 +2950,7 @@ The Facebook videos were still looking soft even though the file we upload is sh
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** f8919bab
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 Two changes to how the blog grows from here. First, new post topics now come from real Google demand: the system reads what people actually search for and finds our site for, skips anything we already cover, and only queues topics with proven interest. The 66 old machine-brainstormed topic ideas were retired and replaced with 10 topics backed by real search data (the biggest: "is Notion good for journaling", where we already rank on page 1-2 with no post targeting it). Second, publishing drops from 7 posts a week to 3 (Mon/Wed/Fri) — fewer, better-aimed posts instead of the volume that created the 50 dead posts we just pruned. Separately, every Sunday morning you'll now get an email with the site's search performance: impressions, clicks, and ranking position over the last 12 weeks, plus the top queries and pages and how they moved week-over-week. A test copy was sent to your inbox today.
@@ -2980,7 +2980,7 @@ Two changes to how the blog grows from here. First, new post topics now come fro
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 89c125fb
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 The blog went through its first data-driven cleanup. The 50 posts nobody was finding were removed and their old links now forward permanently to the closest surviving article, so no dead ends. Every post still using the old Acuity name (74 of them) now says Ripple. The 41 posts that show up in Google searches but weren't earning clicks were rewritten to target the exact searches they already appear for, each with a sharper title, a clean comparison table, an FAQ section, and a proper search-result description. All blog posts also now show a Home › Blog › Post breadcrumb trail, and browser tab titles read "Post Title | Ripple". Everything is live.
@@ -3007,7 +3007,7 @@ The blog went through its first data-driven cleanup. The 50 posts nobody was fin
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 9f0ea64f
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 The full audit found the blog IS indexed by Google (154 pages) but ranks for almost nothing — 441 impressions and 5 clicks in 30 days — because posts target searches nobody makes, while the searches people do make need more site authority than a 2-month-old domain has. The system that pings search engines about new posts had failed silently on every attempt for 60 days; it's replaced with one that works (IndexNow, for Bing and friends — Google finds posts via the sitemap it already reads daily). The www version of the site no longer counts as a duplicate site, and new blog URLs stop getting chopped mid-word. Search Console access is now wired up locally, which surfaced the first-ever real ranking data and sets up the data-driven content triage next.
@@ -3035,7 +3035,7 @@ The full audit found the blog IS indexed by Google (154 pages) but ranks for alm
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** bc842f4d
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 We found why the blog gets no Google traffic. Every Google Search Console integration was still pointed at the old getacuity.io domain, so the system has been flying blind for months: performance syncs returned zeros, the pruner couldn't tell indexed posts from ignored ones, and all 60 attempts to ask Google to index new posts were rejected. On top of that, 84 posts still had getacuity.io URLs stored in the database, the FAQ rich-result markup was being silently deleted before publishing, every post linked to the same 3 related articles, and the AI prompt was producing samey, robotic posts with stale pricing and fake scarcity baked in. All of that is fixed and deployed. One thing still blocks everything, and only you can do it: Google has never been told our service account may see goripple.io data (it can still only see the dead getacuity.io property). Until you add it in Search Console, Google keeps ignoring us.
@@ -3065,7 +3065,7 @@ We found why the blog gets no Google traffic. Every Google Search Console integr
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** c0036db6
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 Carousel slides with a named point no longer render as a long centered wall of text. They now match the reference posts you sent: a bold headline ("The Reset Day"), one italic hook line under it, and one or two short sentences — left-aligned like an editorial card. The AI is also hard-limited to under 30 words per slide across every lane, so the copy stays sharp and screenshot-worthy instead of long-winded and generic.
@@ -3090,7 +3090,7 @@ Carousel slides with a named point no longer render as a long centered wall of t
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** f1f95ba0
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 Auto-published Instagram and Facebook feed posts were going out in the tall TikTok shape, which those platforms shrink and letterbox. The publisher now sends properly center-cropped 4:5 versions that fill the feed screen. Emails and TikTok keep the original tall format, and reels stay tall too (that's correct for reels).
@@ -3114,7 +3114,7 @@ None (live on next deploy — no schema change, no regeneration of existing slid
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 6f852955
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 Every carousel email now attaches the branded end slide as the final numbered slide, so it can be posted as the last slide every time without hunting for the file. Also fixed a bug where emails could silently fail to send while the system still marked them as sent — that's how a batch of "sent" posts never arrived.
@@ -3136,7 +3136,7 @@ None.
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 06117b42
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 The branded end slides looked low quality, so both were rebuilt at double resolution (2160×3840) over 4K-upscaled backgrounds. Same approved layouts, now crisp.
@@ -3157,7 +3157,7 @@ None.
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 2b5a3500
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 Every slideshow reel we publish now closes on a branded final slide with the Ripple logo and a button-style download CTA. BWK reels get the dark-mode version ("Your AI life optimizer." / "Tracks your habits. Gives you insights on how to be a better you." / "Download in our bio"); Ripple reels get the light orange version ("Take the load off." / "Ripple, your daily life optimizer." / "Download at the link in our bio"). Viewers who watch to the end now always see who made the content and how to get the app.
@@ -3182,7 +3182,7 @@ Every slideshow reel we publish now closes on a branded final slide with the Rip
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 5680ee3a
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 The Run-now button on the Audience Pulse tab was handing the job to a background system that was silently ignoring it — you clicked, it said "queued," and nothing ever happened. The button now does the work itself: click it, leave the tab open a few minutes, and it builds both brands' digests and emails you the script report directly.
@@ -3255,7 +3255,7 @@ Also: the test suite is fully green for the first time in a while (659 of 659). 
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 2b5a3500
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 Every slideshow reel we publish now closes on a branded final slide with the Ripple logo and a button-style download CTA. BWK reels get the dark-mode version ("Your AI life optimizer." / "Tracks your habits. Gives you insights on how to be a better you." / "Download in our bio"); Ripple reels get the light orange version ("Take the load off." / "Ripple, your daily life optimizer." / "Download at the link in our bio"). Viewers who watch to the end now always see who made the content and how to get the app.
@@ -3280,7 +3280,7 @@ Every slideshow reel we publish now closes on a branded final slide with the Rip
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 5680ee3a
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 The Run-now button on the Audience Pulse tab was handing the job to a background system that was silently ignoring it — you clicked, it said "queued," and nothing ever happened. The button now does the work itself: click it, leave the tab open a few minutes, and it builds both brands' digests and emails you the script report directly.
@@ -3334,7 +3334,7 @@ This morning production silently rolled back a week: a deploy went out from a ma
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** d3a28310
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 You can now trigger the Reddit audience-pulse digest (and the talking-head script email that rides along with it) on demand from the admin dashboard — Audience Pulse tab, "Run now" button — instead of waiting for the Monday morning run.
@@ -3356,7 +3356,7 @@ You can now trigger the Reddit audience-pulse digest (and the talking-head scrip
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 7a367b5b
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 Every Monday, right after the weekly Reddit audience research runs, you now get an email with 3 camera-ready talking-head TikTok scripts per brand (Ripple and BWK). Each script rides one of that week's strongest audience themes: a scroll-stopping opening line, a few spoken beats, and a soft close, written in each brand's voice. Read them to camera like a voice memo, one take.
@@ -3405,7 +3405,7 @@ Two cost cuts. First, the image bill (~$16/day) drops by more than half: cover p
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 7f5b2fd3
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 We were maxing out our Apify plan because the competitor scrape ran every day and the niche hashtag research ran every night. All three research scrapers (competitor accounts, niche hashtag research, niche discovery) now run once a month and pull 10 posts per account or hashtag instead of 15–20. This drops Apify usage from roughly 11,500 scraped items a month to about 300, so the plan limit should never trip again. The manual "Scrape now" buttons in the admin still work any time you want fresh data on demand.
@@ -3432,7 +3432,7 @@ We were maxing out our Apify plan because the competitor scrape ran every day an
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 64394d6b
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 The Pulse lanes (the ones built from what our audiences are talking about on Reddit) used to squeeze the day's hot topic into the lane's usual reflective format. Now every one of those posts is built as its own thing in one consistent shape: the cover names the exact issue people are wrestling with ("CAN'T SWITCH OFF AT NIGHT?"), and each following slide is one concrete step of how to solve it — specific actions, exact times, even the exact words to say. Vague advice like "set boundaries" is explicitly banned; the prompt demands things like the actual text message to send.
@@ -3457,7 +3457,7 @@ None — takes effect on the next nightly generation after deploy.
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** a2a80455
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 Ripple's photos kept coming out as the same warm lamplit-interior theme (tea, silk, candles) because every lane pulled from one scene pool. Now every Ripple post rolls one of five distinct visual worlds for its cover — quiet home after dark, night gardens, dusk water, evening city, or a warm still-life — and the slides inside a post must mix at least three of those worlds. Same soft feminine brand, far more visual variety, exactly like the rotation that already keeps BWK's covers fresh.
@@ -3485,7 +3485,7 @@ None — takes effect on the next nightly generation after deploy.
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 0233b75c
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 The texts-younger lane produced a cover hook — "the text i keep sending her" — that read like someone texting an ex, not texting their younger self. The AI is now required to name the younger self in every single cover hook ("my younger self", "younger me", "the girl i was", or a specific age), so nobody seeing the cover can misread who the texts are for.
@@ -3509,7 +3509,7 @@ None — takes effect on the next texts-younger generation after deploy.
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 7379a135
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 Facebook and Instagram posts were firing as early as 6am Pacific because the Facebook posting window opened at 9am Eastern — and since the day's queue is built overnight, the first post always went out the moment the window opened. Both windows now open at noon Eastern (9am Pacific), so nothing ships before 9am anywhere in the continental US. Posting still ends at the same times (Facebook 3pm PT, Instagram 4pm PT). Today's already-queued posts were also rescheduled directly, so the fix took effect immediately — the last early posts were this morning's two.
@@ -3566,7 +3566,7 @@ There's a new "Top Videos" tab in the admin's Trends section, plus a daily email
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 91dc2d47
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 The admin dashboard keeps its new futuristic glass look but drops the neon. Colors are now a muted steel-cyan and dusk-violet instead of electric glow, the grid floor is gone, and the whole thing feels cleaner and more premium. In exchange, there's more motion: cards fade up one after another when a tab opens, tab switches animate, clickable cards lift slightly on hover, and the background tints drift very slowly. Nothing about what the dashboard shows or does changed — only how it looks and moves.
@@ -3646,7 +3646,7 @@ The admin dashboard is now the futuristic command center you asked for: deep-spa
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** c966140f
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 You can now feed the system TikTok and Instagram handles of accounts that are crushing it in niches like ours. Every night it scrapes their recent posts, spots the breakouts (anything doing 3x or better that account's normal views), and Claude writes a "mimic brief" for each one — what the hook mechanic is, what format it uses, why it lands, and how we'd run the same play in our own voice. All 9 daily lanes see the top briefs as background inspiration, and two brand-new lanes (one Ripple, one BWK) build their entire daily post around the single strongest brief — rotating through briefs so they never repeat. Nothing is ever copied word-for-word and the posts never mention the source account or that any research happened. If the scraper token isn't set up yet, everything just generates normally without the competitor signal.
@@ -3679,7 +3679,7 @@ You can now feed the system TikTok and Instagram handles of accounts that are cr
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 0d595a96
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 Every morning, an hour before the first post generates, the system now reads the top posts from the Reddit communities where our two audiences actually hang out, and distills what they're talking about into a ranked list of themes per brand. All 9 daily lanes now see that list as background inspiration — they keep their own format and voice, but lean toward subjects the audience is genuinely worked up about today. On top of that, two brand-new lanes (one Ripple, one BWK, posting at hour 7) take the single strongest theme of the day and write their whole post about it — a "freelance" lane that covers whatever the audience cares about most, fully auto-posted like the others. The posts never mention Reddit or any community. Separately, per your cost instruction: only the first image of every carousel uses the newest (most expensive) image model now; every inner slide uses the older model at roughly a fifth of the cost. One deliberate exception — the slides with words baked INTO the image (the phone-quote quote screen and the texts bubbles) stay on the newer model, because the older one botches lettering often enough that the retries would eat the savings.
@@ -3714,7 +3714,7 @@ Every morning, an hour before the first post generates, the system now reads the
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** f4ee9e31
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 The Timeline lane's first post ("HOLD THE LINE") came out looking like every other dark-quote BWK post instead of the collage account you screenshotted — the lane had the right content idea but rendered through the generic template. The lane is now a faithful rebuild of that reference format: a bold cover slide ("4 MONTHS TO GET YOUR SH*T TOGETHER" style), then one collage slide per phase — six small dark photos in a 2×3 grid, each stamped with a short action label like "Fix your sleep" or "Train consistently", with an italic serif title band across the middle seam ("MONTH 01 / GET YOURSELF TOGETHER") — and a closing slide with a sober two-sentence reframe. Every post invents its own time span and roadmap so the lane never repeats itself. It still emails you for manual TikTok posting and never auto-posts.
@@ -3742,7 +3742,7 @@ None — lane row updated via script this session; deploy done.
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 1e875ab2
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 The Reels we auto-post to Instagram and Facebook were coming out blurry — but the video files we create are pixel-sharp (verified frame-by-frame on today's selfie reel). The blur happens when Meta re-compresses every uploaded Reel: our files were so efficiently compressed (~1.4 Mbps) that Meta's second pass turned the text to mush. Reels now upload as much heavier files (~8 Mbps, still tiny by platform limits), which survive Meta's re-compression visibly sharper. Note: Meta also serves lower-quality versions to pages with low engagement, so some softness on the Facebook page may remain until engagement builds.
@@ -3763,7 +3763,7 @@ None — takes effect on the next reel render after deploy.
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 1bc036eb
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 The content machine slimmed way down, on purpose. Research showed our near-zero views weren't caused by HOW we post (APIs aren't penalized) but by posting 8-10 templated posts a day on small accounts — the algorithms read that as mass production and stop showing anyone. So: Ripple now runs 5 lanes a day (Selfie, Texts to Younger Self, Phone Quote, Answer Honestly, Memento) that all still auto-post to Instagram and Facebook, and BWK runs 4 (Memento, Timeline, No One's Watching, Discipline). The TikTok inbox-draft system is gone — it kept hitting TikTok's ~5-pending-drafts-per-day spam cap and jamming the inbox. Instead, the ONLY emails Keenan gets now are the 7 lanes he posts to TikTok by hand (Ripple: Selfie, Texts to Younger Self, Answer Honestly; BWK: all 4). The TikTok metrics scraping plan was scrapped along with it.
@@ -3794,7 +3794,7 @@ The content machine slimmed way down, on purpose. Research showed our near-zero 
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** fa483e44
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 Every Sunday morning you'll get an email that grades every content lane on its last 45 days of real engagement — with TikTok counted extra because that's where we win. It uses medians, so one lucky viral post can't hide a weak lane. The report names kill candidates (only lanes with at least 8 measured posts can be nominated — young lanes get a fair shot), tells you whether each TESTING lane deserves promotion, and pitches exactly 3 new lane ideas complete with sample hooks and a ready-to-use theme. You decide; nothing is ever killed or launched automatically. Acting on a decision is one click on the lanes admin page.
@@ -3821,7 +3821,7 @@ Every Sunday morning you'll get an email that grades every content lane on its l
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** a82c4396
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 Until now, which content lanes run each night was hard-coded — adding or removing a lane meant a code change and a deploy. Now the daily roster lives in the database, and there's a new admin page at /admin/content-factory/lanes where you can retire an underperforming lane (it stops generating that same night), revive it later, or birth a brand-new lane by writing its theme in a form — new lanes run through the same proven generation pipeline that powers the current lanes. This is the machinery half of the weekly self-optimizing lane system we agreed on: the upcoming Sunday report will propose kills and births, and you execute them here. All 14 current lanes were migrated in unchanged — tonight's generation is identical to yesterday's.
@@ -3852,7 +3852,7 @@ Until now, which content lanes run each night was hard-coded — adding or remov
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 4a3fff5c
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 TikTok is our best-performing platform but the only one whose numbers weren't coming back into the system — the learning loop that decides which topics to make more of was flying blind on exactly the channel where we win. Now, every night, the system pulls view/like/comment/share counts for both TikTok accounts and matches each video back to the draft it came from. Since you post drafts manually from the TikTok inbox, the system matches by the title it stamped on each draft (plus posting time). Drafts you never posted are treated as "no data," never as "zero views," so they can't drag a topic's score down unfairly. Two one-time steps needed from you (below) before the first numbers flow.
@@ -3879,7 +3879,7 @@ TikTok is our best-performing platform but the only one whose numbers weren't co
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** bb73b614
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 The first TikTok draft delivery exposed a leftover: posts generated before we retired the old "pick-list" format still carried 3 identical cover images plus 15 item images, and the auto-publisher was shipping all 18. Now any old-format post gets cut down at publish time to 1 cover + the first 6 items — the shape we agreed on — before it goes to TikTok, Instagram, or Facebook. Newer posts are unaffected. 7 old-format posts were still waiting in the TikTok queue; they'll all deliver in the trimmed shape.
@@ -3903,7 +3903,7 @@ The first TikTok draft delivery exposed a leftover: posts generated before we re
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** a8f7ef54
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 Instead of every music Reel using the same slide transition, each new Reel now picks one of five styles at random (the smooth swipe, a crisp swipe, a circle reveal, a clock-sweep, and a sliced wipe). Which style each post used is saved with the post, so once engagement numbers come in we can see which transition audiences respond to and lock in the winner. Separately, TikTok is officially live: both accounts (Ripple + buildwithkey) are connected and all 37 queued drafts are being delivered to the TikTok inboxes today — the first two landed at 5:00pm ET.
@@ -3931,7 +3931,7 @@ None. (No db push needed — column already live and declared.)
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** a6f511f5
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 Future music Reels hold each slide for 3.5 seconds (up from 3.3), the slow zoom-in effect is gone (slides are now perfectly still), and slides change with a smooth swipe — like someone flicking through a real carousel — instead of a plain fade.
@@ -3953,7 +3953,7 @@ None.
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 1d5b4738
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 Auto-published posts no longer fire at whatever odd hour they were generated — every platform now has its own US prime-time window (Eastern Time). Instagram posts go out between 11am and 7pm ET, Facebook between 9am and 6pm ET, and TikTok drafts land in your inbox between 7 and 10am ET so you have the whole day to add audio and post them. Posts queued outside a window wait for the next opening; posts within a window keep a stagger so the accounts never dump everything at once. The ~43 posts already waiting in the queue were re-slotted into these windows too.
@@ -3976,7 +3976,7 @@ None.
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 036131d6
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 Each slide in the auto-published music Reels (Instagram Reels + Facebook videos) now stays on screen for 3.3 seconds instead of 2.5, giving viewers more time to read before the crossfade. An 8-slide post goes from ~17s to ~23s.
@@ -3997,7 +3997,7 @@ None.
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 0010c933
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 Every time the auto-publisher successfully posts something — an Instagram post, a Facebook post, or a draft delivered to a TikTok inbox — you get an email listing exactly what went out: the platform, which brand (Ripple or Build With Key), the post headline, and a direct link to the live post (TikTok drafts say "open the TikTok app inbox" instead, since drafts have no public link yet). If one publishing run ships several things at once, they're bundled into one email instead of flooding your inbox.
@@ -4020,7 +4020,7 @@ None.
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** a3101e06
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 The content factory now learns from its own results. Every night it pulls the real engagement numbers (views, likes, comments, shares — and saves on Instagram) for auto-published Facebook posts, alongside the Instagram numbers it was already pulling. Then, when it generates the next day's topics, each lane's generator is shown that lane's recent winners and flops — with the actual numbers — and is told to lean into what worked and avoid what flopped. Saves and shares count far more than views, because those are what the algorithms reward with reach. New lanes are unaffected until they have at least 4 posts with real numbers, so nothing changes until there's something to learn from.
@@ -4049,7 +4049,7 @@ None — schema already pushed to prod, no new env vars, no cron/trigger changes
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 1fe2a25d
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 Build With Key posts no longer fall back to Ripple's Instagram and Facebook pages — men's content will never appear on the women's-audience Ripple accounts. Until BWK gets its own IG/FB accounts, BWK posts go only to the BWK TikTok inbox (as photo slideshows, same as Ripple's TikTok posts). The moment BWK Meta account credentials are added to Vercel, BWK Instagram/Facebook posting turns on by itself — no code changes needed.
@@ -4176,7 +4176,7 @@ The four BWK pick-list lanes (memento-men, moody-men, watching, protocol) no lon
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 22507a14
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 Locked in the per-platform format split: Instagram/Facebook get the music videos (content intact), TikTok gets photo slideshow drafts — because TikTok's photo mode is where its suggested/auto audio lives. Now EVERY auto-published post (not just memento/selfie) drops its slide images into your TikTok inbox as a ready-to-post photo draft; you open it, TikTok suggests a sound, you paste the caption and post. After the TikTok app audit passes, Phase 2 makes these fully hands-off with TikTok auto-adding music.
@@ -4233,7 +4233,7 @@ The memento and selfie slideshow videos that auto-post to Instagram and Facebook
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 3ccffce3
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 Two things. (1) Music is now part of auto-posting: since Instagram's API flatly refuses to add music to photo carousels, the memento and selfie lanes get their slides turned into a short vertical video — each image holds a couple seconds with a subtle zoom and crossfade, and a random track from your music library plays underneath — posted as an Instagram Reel and a Facebook video. The other auto lanes (questions and both quote lanes) stay as swipeable silent carousels, and the engagement tracker will show which format performs better so we can move lanes between formats with evidence. If your music library is empty, posts fall back to the silent carousel — nothing ever gets stuck. (2) The Meta credentials are minted and verified: a permanent access token with full posting permission for ripplevoice and the Ripple Facebook page — this also finally turns on the nightly engagement tracker that had been silently skipping since August because the token was never added.
@@ -4261,7 +4261,7 @@ Two things. (1) Music is now part of auto-posting: since Instagram's API flatly 
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 856219ff
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 The first piece of full posting automation is built: a background job that takes the finished nightly carousels and posts them straight to Instagram (as a swipeable carousel) and the Facebook page (as a multi-photo post) — captions included — with zero monthly cost, using Meta's own free API instead of a $150/mo service. Posts trickle out 45 minutes apart instead of dumping all at once. When a post goes live on Instagram, its link is saved automatically, so the existing engagement tracker starts pulling views/likes/saves for it with no pasting needed. IMPORTANT: nothing posts yet — the whole system is switched off until you flip one setting, so tonight's content flows to your email exactly as before.
@@ -4322,7 +4322,7 @@ ALTER TABLE "SocialPublish" ADD CONSTRAINT "SocialPublish_carouselPostId_fkey" F
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 543cd0d8
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 Three changes. (1) Quote posts no longer paste text onto a blank white panel — the AI image model now paints the letters directly into the poster, sign, phone screen, car dash, billboard, or flip phone, so the words share the photo's lighting, angle, and texture: one cohesive picture, no white box. A second AI then reads the finished image and confirms every word came out spelled right before it ships; if it can't confirm, the slide is flagged "PROOFREAD BEFORE POSTING" so you know to double-check it. (2) Warrior covers now get a landscape that matches who the warrior is — viking on a windswept beach, samurai on a misty bamboo path, knight leading his horse up a mountain trail — never the same generic snowfield, and nobody standing on ice. (3) Animal covers ban fake lightning and painted-looking skies — only weather a real wildlife photographer could capture.
@@ -4346,7 +4346,7 @@ Three changes. (1) Quote posts no longer paste text onto a blank white panel —
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** dc4a4cd3
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 All six quote surfaces (phone, flip phone, car dash, billboard, sign, poster) already blend the text into the photo the same way — that was confirmed. The one gap was the safety net: if the AI photo came back without a usable screen area twice in a row, the system shipped the old drawn-phone or flat Notes look, which doesn't blend. Now it rolls a different surface and tries twice more first, so a non-blended quote slide should almost never ship again.
@@ -4368,7 +4368,7 @@ All six quote surfaces (phone, flip phone, car dash, billboard, sign, poster) al
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 04cf05cc
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 The quote posts (both Ripple and BWK) now match the car-dash TikTok you sent. The car version renders as a real Bluetooth Audio media screen — red "Bluetooth Audio" header, Source button, Bluetooth badge, track progress bar with times, RAND/RPT/pause/Sound buttons — with the quote sitting where the song title would be, so it blends right into the photo. A poster surface joined the rotation (framed poster on a wall, bus-stop poster case) alongside the phone, flip phone, billboard, and sign. And the quote wording itself now follows the reference style: all lowercase, a hard truth about time first, then a hopeful turn ("no matter your age..." energy).
@@ -4391,7 +4391,7 @@ The quote posts (both Ripple and BWK) now match the car-dash TikTok you sent. Th
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 816f996e
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 The "moody men" lane (the STAY INVISIBLE. / GUARD THE QUIET. silence-themed posts) is back in the nightly rotation — it had been cut this morning. Like the other three core BWK lanes, it now arrives as a pick-list: 3 candidate cover photos plus 15 item slides so you curate the keepers. It generates at 3am CDT alongside the women's memento post, so BWK is now 5 posts a night, 10 total.
@@ -4414,7 +4414,7 @@ The "moody men" lane (the STAY INVISIBLE. / GUARD THE QUIET. silence-themed post
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** d2079491
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 Three changes from the lane review. First, the price ("COLLECT YOUR DEBTS.") and prove lanes are dead — no more nightly posts from them. Second, the three core BWK lanes (memento mori, when-no-one's-watching, timeline) now come as pick-lists: each email delivers 3 candidate cover photos plus 15 item slides, so you pick the covers and slides that actually look good instead of getting whatever the machine chose. Third, the car images shift from Lambo-style supercars to luxury and classic cars — vintage Ferraris, old-school Mercedes, classic Porsches, Rolls-Royce — anything timeless and inspiring.
@@ -4439,7 +4439,7 @@ Three changes from the lane review. First, the price ("COLLECT YOUR DEBTS.") and
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 834c2663
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 Three fixes from reviewing the new round. Notebook/pen/desk images are banned from BWK — object shots must be unmistakable luxury (cars, watches, private jets). Every building image must have a dramatic sky behind it: heavy cloud cover, cool cinematic lighting, or a sunset — never a plain empty sky. And the timeline posts changed format: the cover now reads exactly "100 DAYS OF DISCIPLINE..." (or whichever interval) and the slides show how much progress a man can actually make in that time — believable math and expected results for each area of life (body, bank account, skill, mind).
@@ -4459,7 +4459,7 @@ Three fixes from reviewing the new round. Notebook/pen/desk images are banned fr
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** b65f66d5
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 The warrior images now have to show the warrior doing something powerful — striding alone into the storm, arms flexed in triumph, driving a sword into the frozen ground — never just standing there. The goal baked into the prompt: every frame should radiate strength, consistency, and drive, the kind of image that makes a man want to get to work. Distance, snow, and hidden-face rules stay.
@@ -4477,7 +4477,7 @@ The warrior images now have to show the warrior doing something powerful — str
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 70e2401c
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 The first knight posts had the warriors too close to the camera and looked rough. The knight image family is now "epic warriors": any legendary warrior — knight, spartan, samurai, viking — in full silver or gold armor, always shot from a distance in a huge snowy, stormy landscape so the atmosphere and scale carry the image. Never a close-up, never a visible face.
@@ -4497,7 +4497,7 @@ The first knight posts had the warriors too close to the camera and looked rough
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 1996c68e
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 BWK photos were coming out bland — flat empty landscapes with nothing commanding the frame. Every BWK image now comes from exactly four families: dark-luxury architecture, super-cool landscapes with one alpha animal as the hero, dark-luxury objects (cars, watches), and a brand-new medieval-knight family (hyperreal weathered armor, visor down, face never visible). Every frame must have a clear dramatic subject — empty marsh covers are banned. There's also a new way to request a themed one-off post where every slide lives in one family, like an all-knight post.
@@ -4519,7 +4519,7 @@ BWK photos were coming out bland — flat empty landscapes with nothing commandi
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** f30e523d
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 The BWK side of the nightly content run changed shape. The "earn your silence" posts are retired and replaced by men's memento mori time-math posts. "Hold the line" became "when no one's watching" — private discipline tests nobody sees. The protocol posts no longer always say 30 days: each one rolls 30 days, 100 days, 365 days, 2 years, or 5 years, and the cover is now a question like "if you locked in for 100 days, who would you be on the other side?" Two brand-new lanes were added on top: "pay the price" (each slide names the real cost of the life he wants, ending on "still want it?") and "prove it" (each slide turns a claim like "I want the money" into what today has to look like). BWK goes from 4 to 6 posts per night — 11 total across both accounts.
@@ -4543,7 +4543,7 @@ The BWK side of the nightly content run changed shape. The "earn your silence" p
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** b4bf572c
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 The billboard/phone/car-dash quote images no longer look like a sticker slapped on top of the photo. The text now picks up the photo's own lighting — its gradients, glow, and color tint show through the panel — plus a hint of softness and film grain, so it reads like the words were actually photographed in the scene.
@@ -4565,7 +4565,7 @@ The billboard/phone/car-dash quote images no longer look like a sticker slapped 
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 4b132b58
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 Slides used to be numbered ("1. ... 2. ... 3. ...") on the discipline, hold-the-line, and protocol posts. Since you review every post and sometimes cut a slide or two before posting, the numbering would expose the gap. Now slides just show the short bold header ("Reset day.") and the text — you can drop any slide and the post still reads clean. The numbered list in your email stays, since that helps you pick which slides to cut.
@@ -4587,7 +4587,7 @@ Slides used to be numbered ("1. ... 2. ... 3. ...") on the discipline, hold-the-
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** d3bdfdad
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 Per your "unlimited amounts — every post should be a unique image": the scene system doesn't pick from a fixed list — the AI writes a brand-new scene description for every single image, so the library is infinite. What changed: BWK now rotates 18 different visual worlds instead of 9 (added: the forge, empty fight gyms, candlelit monasteries, night stadium tracks, motorcycles/cars in the dark, hourglasses and clocks, desert roads, frozen lakes, and dark libraries), the wildlife family opens to the entire animal kingdom instead of five examples, and every scene instruction now carries a hard rule: the examples are seeds only — invent something never used before, every slide, every post.
@@ -4611,7 +4611,7 @@ Per your "unlimited amounts — every post should be a unique image": the scene 
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 1c1f681e
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 Per your ask for way more picture variety: BWK posts can now open on and use dramatic stoic statues (rain-soaked marble, hard spotlight), lone apex animals (a wolf in snow, a lion in rain, a stag on a ridge), and old-money still-lifes (a watch on leather, a chessboard, a fountain pen on a ledger) — alongside the existing buildings, gyms, nature, and streets. Ripple posts can now use letter-writing scenes (blank stationery and a pen in lamplight — the paper is always blank so nothing can be misspelled) and quiet-house rooms that carry emotional weight (the kitchen after everyone's asleep, a made bed in a kid's old room, a porch light left on). These are new looks inside the existing daily posts, not new lanes — your posting volume doesn't change.
@@ -4635,7 +4635,7 @@ Per your ask for way more picture variety: BWK posts can now open on and use dra
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** f3494cbb
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 You flagged a flip-phone quote post where the phone was small in a wide shot and the quote was too tiny to read. Two fixes: the AI is now told to shoot every quote scene as a close-up where the screen dominates the picture ("never a wide shot"), and our code now measures the screen it finds — if it's too small to hold readable text, it throws the scene away and generates a new one instead of shipping an unreadable post.
@@ -4656,7 +4656,7 @@ You flagged a flip-phone quote post where the phone was small in a wide shot and
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 3b61f64b
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 You flagged that almost every BWK post was starting with a building. That happened because one lane was literally locked to skyscraper covers (from when the skyscraper post did big numbers) and the AI's scene instructions listed buildings first, so it kept defaulting there. Now every BWK cover rolls one of six looks per post — storm skyscraper, late-night grind (glowing laptop / empty gym), raw nature (no buildings at all), dark bedroom or car looking out at night, empty rain-soaked streets, and a moody coastline. The skyscraper still shows up, but as one in six instead of nearly every post. Ripple's covers are untouched.
@@ -4679,7 +4679,7 @@ You flagged that almost every BWK post was starting with a building. That happen
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 4d59d00e
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 You said the drawn phone looked "way too generic" — so the quote slide is now built into the environment, the way you asked. The AI photographs a real scene that contains a blank glowing screen — a phone in someone's hand, an open flip phone, a car dashboard display, a billboard on a street, or a letterboard sign outside a shop (it rotates randomly, warm cozy scenes for Ripple, dark moody ones for BWK) — and our code finds that blank screen in the photo and types the quote onto it. A phone in a hand shows a real incoming text from a friend, complete with the message bubble and typing bar. The words are still drawn by our own code, never by the AI, so they can never be misspelled. If the AI botches the screen (tilted, missing), the system retries once, then quietly falls back to the previous phone look so the daily post always ships.
@@ -4704,7 +4704,7 @@ You said the drawn phone looked "way too generic" — so the quote slide is now 
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 1103c141
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 The phone-quote lane's second slide is no longer a full-screen Notes page — it's now a photo: a realistic iPhone sitting in a dim, softly blurred scene (warm lamp-lit rooms for Ripple, dark city/desk scenes for BWK), with the Notes screen and your quote showing on the phone's display. The quote is baked into the image. The scene behind the phone is AI-generated, but the phone itself and every word on its screen are drawn by our own code — so the quote can never be misspelled or garbled. If the background generation ever fails mid-run, the post falls back to the old full-screen Notes look instead of dying. Note: the previous Notes-screen redesign from the 4th never went live — those commits were held awaiting your "push it," so production ran the old flat renderer all weekend. This commit joins that queue.
@@ -4728,7 +4728,7 @@ The phone-quote lane's second slide is no longer a full-screen Notes page — it
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 1103c141
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 Per your directive that every social media post runs through the humanizer before generation: an audit found the nightly lanes were covered but several older paths were not — the admin "generate one carousel" button, the retired sign/aura/quote-video/calm-video formats (still revivable), and the old X/TikTok/Instagram/ad-copy generator behind the admin content dashboard. All of them are now wired the same way: the anti-AI-writing rules ride on the generation prompt, and the finished copy passes through the full humanizer approval gate before it's accepted. Nothing in the system can produce a social post that skips the gate anymore — including anything we revive later.
@@ -4754,7 +4754,7 @@ None — deploy is automatic on push.
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 1103c141
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 Three quality fixes from today's escalations. First, every piece of post copy (titles, slide text, hooks, quotes, captions) now passes through a final "humanizer" approval gate before it's accepted: a checker armed with the full library of known AI-writing tells (em dashes, "It's not X, it's Y", fake-deep one-liners, forced groups of three, chatbot filler, and ~20 more) that rewrites anything that sounds like a bot wrote it. Second, cover titles now have a hard sense-check rule so a garbled title like "DON'T LIE NOW" can never ship — the title must read as a natural phrase a real person would say, on its own, instantly. Third, the phone-quote lane's second slide is no longer text floating on a blank background: it's now a pixel-perfect fake iOS Notes screenshot (status bar, "< Notes" back button, date line, the quote typed out) — light blue for the women's account, dark with gold for the men's. The phone-quote format is locked exactly as you specified: slide 1 = your hook line on a fresh photo, slide 2 = the quote on the Notes screen, every single time, no variance. The Notes screen is drawn by our own code, not the image AI, so the quote can never be misspelled or garbled.
@@ -4780,7 +4780,7 @@ None — deploy is automatic on push. Tonight's 5-8 UTC runs pick everything up.
 
 **Requested by:** Jimmy
 **Committed by:** Claude Code
-**Commit hash:** 0b6aee38
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 There's now a build recipe called `pricing` that produces an app showing the new $9.99 / $89.99 prices. It's the same recipe as the RevenueCat observer build with one switch flipped, so the behind-the-scenes RevenueCat trial run we started keeps going uninterrupted — we don't have to choose between the two.
@@ -4811,7 +4811,7 @@ Nothing changes for existing subscribers: grandfathering is automatic, so everyo
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 1103c141
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 Every generated image now runs at the image model's maximum quality tier instead of its default — this is the single biggest lever for the fidelity you flagged (the TRUST THE PROCESS reference level, and the blurred leaves on the bench photo). On top of that, every image instruction now carries an explicit attention-to-detail rule: individual leaves, fabric weave, wood grain, and background elements must all be fully resolved — no mushy, smeared, or half-melted areas anywhere in the frame, on any lane (scenery, selfies, and aesthetic shots alike). Heads up on cost: max quality is roughly 3x the per-image price — about 25¢ per image instead of 8¢, so a full 9-post day lands around $10-12 in image spend instead of ~$3-4.
@@ -4834,7 +4834,7 @@ None — deploy is automatic on push. Tonight's 5-8 UTC runs pick it up.
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 1103c141
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 The daily content is now built entirely around the posts that already performed. BWK gets 4 posts a day, each anchored on a winner: every discipline post is now a "move in silence" post (EARN YOUR SILENCE family), a new HOLD THE LINE lane always opens on a storm-skyscraper image like the one that got views, the 30 DAYS protocol posts continue unchanged, and there's a new 2-slide quote post ("this quote kept me up all night..." over a night skyline, then a phone notes-screen with the quote). Ripple gets 5 a day: the selfie slideshow now runs TWICE daily with a different photography style per post (golden hour, lamplight, overcast, etc.), the ANSWER HONESTLY-style question posts are back to the dark warm imagery that worked, the DO THE MATH posts always open on a dusk beach like the one that got shares, and Ripple gets its own version of the 2-slide quote post (light-blue notes screen). The lanes that weren't winning — men's life-math, ONE YEAR FROM NOW, THINGS THAT ARE STILL FREE, NOBODY TELLS YOU, DELETE THIS AFTER READING — are paused, not deleted, and can come back anytime. The quote text on the phone-screen slides is typed by code, not drawn by the image AI, so it can never be misspelled. Follow-up (same day): every cover title across all carousel lanes must now be short, sweet, and pull the reader in — a direct command or prompt to engage ("EARN YOUR SILENCE", "ANSWER THESE HONESTLY...") — never a passive topic label; a trailing "..." is allowed as swipe bait. Second follow-up (same day): every generated image on every lane must now look like a real photograph someone actually took — the image instructions explicitly forbid the 3D-render / CGI / too-perfect AI look and demand honest camera behavior (real light, a touch of grain, natural focus). The selfie lanes already worked this way; now the scenery lanes match. Third follow-up (same day): on top of realism, every image must be high quality and CLEAR — tack-sharp, never blurry or hazy — and the variance directive was widened so each image also varies its focal length, camera distance, weather, and light direction (not just the vantage). The mirror-selfie instructions dropped "mild soft focus" for crisp modern-phone clarity.
@@ -4865,7 +4865,7 @@ None — deploy is automatic on push. Tonight's 5-8 UTC runs pick this up automa
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 1103c141
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 Ripple posts are no longer all light and airy. Each post now flips a coin: half come out in the current bright, soft look with dark charcoal text, and half come out in the original dark look — warm candlelight, lamplit rooms, rain on night windows — with white text. Every Ripple lane (questions, free things, nobody-tells-you, memento mori, delete-after-reading) rolls its own coin per post, so a given day's mix varies naturally. The selfie posts are untouched (they're real-photo style, not scenery). BWK stays all-dark as before.
@@ -4888,7 +4888,7 @@ None — deploy is automatic on push. Tomorrow's 5-8 UTC runs pick this up autom
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 1103c141
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 The "avatar in every post" problem wasn't the avatar — the database showed your reference photo was only being attached at the capped rate. The real bug: the image instructions always ALLOWED "a lone man" in BWK scenes, so the AI painted a random generic guy into nearly every image, which looks identical to the avatar being everywhere. Now BWK images are people-free by default — empty gyms, glowing laptops, storm ridges with nobody in them — and a man only appears in the ~1-in-12 posts that win the avatar roll (and then it's actually you, on the cover). Also per your ask: the single-image "aura" post type (FINISH WHAT THEY LAUGHED AT) is gone, and two lanes are back on Ripple — the "DO THE MATH" memento-mori life-math posts and the "DELETE THIS AFTER READING" posts, both retuned to Ripple's light, airy look with dark text.
@@ -4913,7 +4913,7 @@ None — deploy is automatic on push; today's BWK posts were regenerated via the
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 1103c141
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 Every lane now has a much bigger world to draw from — new scene families straight from your two TRUST THE PROCESS references (the dark bedroom looking out over a city skyline at night, the black stone house on the cliff in sea fog), plus an explicit instruction that the example scenes are inspiration, not a menu, so the AI invents new locations every day instead of cycling the same gym/laptop/linen shots. Post length now varies too (4-7 slides on the men's carousels, 4-6 on the women's), and the "don't repeat" instruction got much stronger: a new post can't re-teach the same info under a different title. Your avatar is back, but hard-capped — roughly 1 in 12 posts (under your 10% max) gets you on exactly one slide; everything else renders a generic figure.
@@ -5334,7 +5334,7 @@ The line burned onto the looping quote videos now renders in an elegant italic s
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** d7148163
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 The content factory now makes three new kinds of posts every day, all in the same dark moody style as the carousels you said were our best work so far. First: a quote video — one devastating line sitting on a dark cinematic scene (rain on glass, a candle, steam from a cup) that loops perfectly, so viewers can't tell where it starts or ends and just sit with the line. One goes to each funnel daily (women at 1pm Central, men at 2pm). The loop is now guaranteed by video math on our side, not by hoping the AI video model cooperates. Second: a memento mori carousel — time-math slides like "about 15 more visits with your parents" ending in a short command — one universal post daily at 3pm Central. Third: a hard-questions carousel for the women funnel — five questions, no answers — daily at 4pm Central. That takes you from 6 to 10 emailed posts per day. The quote videos are silent on purpose: add a trending calm sound when you post them.
@@ -5365,7 +5365,7 @@ The content factory now makes three new kinds of posts every day, all in the sam
 
 **Requested by:** Jimmy
 **Committed by:** Claude Code
-**Commit hash:** 535a34e7
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 There's a new page that reads your file back to you: how long Ripple has been listening, the people you keep mentioning and whether those relationships sound warm or strained, the goals it's heard you talk about, the subjects that keep coming back, and a short written summary of each part of your life. All of it was already being collected quietly in the background — this is the first place a user can actually see it.
@@ -5398,7 +5398,7 @@ If someone is brand new and has only recorded once or twice, they get an encoura
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** d48e343b
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 Two new daily posts now generate automatically, cloned from the "TRUST THE PROCESS" reference you sent: dark, moody photo carousels with clean white text centered on each image (cover title + 5 numbered slides like "4. Reset day."). One funnel speaks to your core audience (women 40-50 — quiet discipline, protecting peace, softer warm-dim visuals) and one to your second market (young aspiring men — discipline/trust-the-process, stark dark architecture). Captions are hashtags only, like the reference. You'll now get 6 emails a day instead of 4 — the women's post at 9am, the men's at 11am Central.
@@ -5424,7 +5424,7 @@ Two new daily posts now generate automatically, cloned from the "TRUST THE PROCE
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** ec1e371b
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 The calm video no longer uses the window/room framing — today's video flickered because the AI kept inventing furniture and a balcony into the scene between loops. Now it's just a pure hyper-realistic nature background with one gentle motion (waves rolling, clouds drifting, rain or snow falling). Simple scenes give the AI nothing to hallucinate on, so the loop should finally flow.
@@ -5446,7 +5446,7 @@ None
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** ae8b1942
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 Carousel headlines will no longer end with padding words like "today" — the AI is now told "5 ways to reset your mind" is the target shape, using your exact example. Shorter, cleaner covers.
@@ -5468,7 +5468,7 @@ None
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** b0a06196
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 On the negative and positive carousels, all the burned-on text (the headline, the numbered items, and their supporting lines) now sits centered in the middle of the image instead of near the top. The cover also no longer asks a question like "Which one hits the hardest?" — it's just the headline.
@@ -5490,7 +5490,7 @@ None.
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 34092c6d
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 The negative and positive daily carousels are no longer animated — they're pure image posts now, which also makes them arrive in ~3-5 minutes instead of ~10-15. Each day they rotate through four looks: hyper-real photos with no people, a Pixar-style animated woman acting out each slide, animated-movie illustration scenes, and hyper-real nature photography — and the two posts never wear the same look on the same day. The calm video now always frames a still foreground (a window, a cliff edge, a porch, a forest canopy) with the only movement far off in the distance, and the clip starts and ends on the exact same image, so the loop plays as one constant scene instead of visibly restarting.
@@ -5517,7 +5517,7 @@ None — deploy is automatic on push; no Inngest resync needed (no trigger chang
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 54e127c1
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 Three changes you asked for, all live. (1) The selfie slideshow now has exactly ONE selfie — the cover — with her phone covering her face and a realistically slightly-dirty mirror (smudges, fingerprints, a faint streak); every other slide is an aesthetic no-people shot. (2) The calm ambient video scripts are now generic and high-level — relaxing, meditative, listen-along, things almost anyone relates to — and they never tell people to follow; the script just ends softly. (3) Captions on EVERY post are now just one thought-provoking question plus 3-4 hashtags. No more "send this to…" lines, no "which one are you doing first", no bio plug on any post.
@@ -5545,7 +5545,7 @@ Three changes you asked for, all live. (1) The selfie slideshow now has exactly 
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** b8da14ee
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 The daily content factory now produces exactly 4 posts overnight: a negative animated carousel at 6 UTC ("5 signs you're burnt out"), a positive one at 8 UTC ("5 ways to have a better day"), the ambient calm video at 10 UTC — now with the female AI voiceover restored — and the selfie slideshow at 12 UTC, unchanged. The old 4 UTC cartoon-style photo carousel is gone. The two animated carousels switched from illustration to strictly aesthetic, realistic phone-photo scenes — cozy home moments, objects, and light, with no people in them (Keenan's call: the avatar only appears in the selfie lane). Headlines across all lanes now follow the "simple and broad" rule — "6 signs you're falling behind", never "6 signs you've made yourself the easiest person to disappoint".
@@ -5600,7 +5600,7 @@ The daily selfie slideshow post was never actually being scheduled — the code 
 
 **Requested by:** Jimmy
 **Committed by:** Claude Code
-**Commit hash:** 0d284056
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 We're moving our subscription plumbing over to RevenueCat eventually, and the safe first step is to let it *watch* real purchases without letting it *control* anything. This sets up a special build that does exactly that. RevenueCat sees every subscription that happens and builds up its own records, while the app keeps working exactly as it does today — same $4.99 / $39.99 prices, same checkout, same source of truth. If someone installed this build, they could not tell the difference.
@@ -5634,7 +5634,7 @@ Nothing about pricing changed. Nothing about who gets Pro access changed. This i
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** a89d1e3d
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 The "photo of her" slide in a selfie slideshow no longer has to be a selfie at all — it can now be a candid shot where she's facing away from the camera (standing at the window, walking down a tree-lined street, sitting on the porch steps) or a shot of her out in nature. Five of these joined the pose rotation. One guardrail: the COVER always shows her face, because the cover photo is what keeps her looking like the same person across every post — if it were a from-behind shot, her face could drift over time. A fresh example ("this is how i started going outside more") was emailed to you: the cover is a casual front-camera selfie on the stairs, and the walk slide is her from behind on a sunlit street.
@@ -5658,7 +5658,7 @@ The "photo of her" slide in a selfie slideshow no longer has to be a selfie at a
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** e61f2cad
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 Three changes from your review: (1) the pose pool doubled — she can now be seated on the bed or stairs, take a regular arm's-length selfie with no mirror at all, or be caught in a gesture (raising her mug, shrugging, mid-laugh) — so the selfies feel even less repeatable. (2) Every slideshow now has exactly TWO photos of her — the cover plus one step — and everything else is the aesthetic shots, which now also have their own variance rule so no two look alike. (3) The caption no longer plugs ripple or asks for follows — these posts exist purely to earn views, likes, and follows on their own. A fresh example was generated with all of this and emailed to you (cover = mug-cheers in the bedroom mirror, step selfie = mid-laugh close-up in the apron).
@@ -5683,7 +5683,7 @@ Three changes from your review: (1) the pose pool doubled — she can now be sea
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** dc89b776
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 The selfies were all coming out as the exact same shot — same pose, same framing, same room, phone in front of her face every time — which screamed AI. Now each selfie in a slideshow gets its own look: one might be a full-length shot in the floor mirror, the next a close-up with flash on, another leaning against a wall. Different rooms, outfits, and angles — but always the same woman. It reads like a real camera roll instead of one photo copied five times. A fresh example ("this is how i got my evenings back") was generated with the new rules and emailed to you.
@@ -5706,7 +5706,7 @@ The selfies were all coming out as the exact same shot — same pose, same frami
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** e678cf83
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 The daily selfie slideshow now follows the mix you asked for: each post has two or three photos of the woman herself (the cover is always one of them) and everything else is the beautiful aesthetic shots — the coffee, the kettle, the phone face-down. Two selfies never appear back-to-back; there's always an aesthetic slide between them, so swiping through feels like a real photo dump instead of a selfie reel. Today's post ("this is how i stopped snapping at everyone i love") was generated with these rules and emailed to you.
@@ -5728,7 +5728,7 @@ The daily selfie slideshow now follows the mix you asked for: each post has two 
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** aac65fb2
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 Animated carousels now arrive as a single email containing just the finished, fully clipped video (tap and hold → Save Video) and the caption to copy. No more second email, no more per-slide download buttons or slide images cluttering the inbox. Static image carousels are unchanged — one email with the slides attached.
@@ -5750,7 +5750,7 @@ None
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 4db5a7ca
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 The Niche Lab now runs itself. It figures out your niche automatically from the carousels you've already posted (nothing to seed), then every night pulls the posts going viral in that niche TODAY — on both Instagram and TikTok — with a ready-to-paste comment for each. It also suggests accounts worth tracking and 3 carousel topics per day, but nothing it finds ever changes the automatic daily posts: a suggested topic only becomes a carousel when you press "Generate this carousel" in the dashboard.
@@ -5779,7 +5779,7 @@ The Niche Lab now runs itself. It figures out your niche automatically from the 
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** c0e8e9cf
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 The content factory now makes a fifth post every day: a swipeable photo slideshow that looks like a real woman in her 40s posted it herself. The cover is her taking a mirror selfie with a hook like "this is how i stopped running on empty," and each following slide is one thing she did about it — some slides are her again (same woman, different room and outfit), others are beautiful aesthetic shots like her coffee on a windowsill. The text is burned onto the images in the pink/pastel sticker style from the viral posts you sent, it never covers her face, and the small supporting lines are now crisp and readable. It runs automatically at 7am Central each day and emails you the finished post, same as the others. You already have the corrected example in your inbox.
@@ -5811,7 +5811,7 @@ The content factory now makes a fifth post every day: a swipeable photo slidesho
 
 **Requested by:** Jimmy
 **Committed by:** Claude Code
-**Commit hash:** e6bc1e77
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 The app used to be called Acuity and lived at getacuity.io. It's Ripple at goripple.io now, but the old address was still wired into a few places that actually do things — not just old notes. We moved the ones that are safe to move today.
@@ -5849,7 +5849,7 @@ The rest is stuck on something outside the code. goripple.io can *send* email bu
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 0b0fff0b
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 There's a new "Niche lab" page in the admin. You add Instagram accounts in your niche, and every night the system pulls their recent posts and figures out which ones broke out (did way better than that account normally does). Those breakout posts now quietly inspire your daily carousel topics. Every Monday morning you get an emailed strategy memo — what's working in the niche, what to double down on, what to test this week. Every Sunday it also discovers NEW accounts worth tracking and ranks the best hashtags by real engagement. There's also an engagement queue: it drafts a thoughtful comment for each breakout post, but YOU copy and post it yourself — nothing is ever auto-liked or auto-commented, so there's no ban risk.
@@ -5879,7 +5879,7 @@ There's a new "Niche lab" page in the admin. You add Instagram accounts in your 
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 1e4a753f
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 Every animated slide used to be the same video: a woman in a room, camera slowly pushing in while she does a small facial gesture. That's because the animated pipeline forced "one woman mid-activity" into every image and "push in toward her" into every video, while the static photo posts got much richer scene instructions. Now the AI directs a specific scene for each slide — sometimes a woman caught in a real moment (sitting in the parked car, phone glowing at 2am), sometimes no person at all (an overflowing mug, a phone buried under sticky notes, one candle in a dark kitchen) — and writes the motion to match what that slide is actually saying, so the animation IS the message. The camera also varies now (push in, pull back, side drift, rise, near-still) instead of always zooming in. The animated posts get the same rich image scripting the static posts already had.
@@ -5904,7 +5904,7 @@ Every animated slide used to be the same video: a woman in a room, camera slowly
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 70a39d7a
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 You now get two animated carousels every night instead of one, and they're a deliberate pair: the existing 1am Central one is always the negative "that's me" recognition post ("7 reasons you're stuck in a rut"), and a new 3am Central one is always the positive, practical post ("7 ways to break out of a slump") where every item is something she could actually do today. Everything else about the positive post is identical — same audience, same look, same captions and hashtags, same stitched video in your email. There's also a new ✨ button on the admin carousels page to generate a positive one on demand.
@@ -5928,7 +5928,7 @@ You now get two animated carousels every night instead of one, and they're a del
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 925c89ff
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 The multi-scene calm story video (the 3am Central one) never worked properly and was costing money every night, so it's gone completely. The regular calm post stays, but it no longer has an AI voiceover or burned-in captions — it arrives as a clean silent loop, and the email now leads with the script so you can record it in your own voice when you post. The scripts still follow the locked style guide: viral, audience-building, and never about Ripple, journaling, or downloading anything.
@@ -5955,7 +5955,7 @@ The multi-scene calm story video (the 3am Central one) never worked properly and
 
 **Requested by:** Jimmy
 **Committed by:** Claude Code
-**Commit hash:** cc9f101c
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 The alert emails warning that "the Stripe webhook is DOWN" were wrong — payments have been flowing fine the whole time. The alert was set up to shout whenever a whole day passed with no Stripe activity, which made sense for a busy app but not for ours: with around fifteen subscribers, going a day or two with nobody signing up, renewing or cancelling is completely normal. It had cried wolf roughly 28 times in the last three months, and zero of those were real. Now the alert asks Stripe directly whether anything actually failed, and only emails when Stripe confirms it. A quiet week is treated as a quiet week.
@@ -5993,7 +5993,7 @@ Separately, we checked whether some renewals were quietly failing to collect. Th
 
 **Requested by:** Jimmy
 **Committed by:** Claude Code
-**Commit hash:** 28b702f7
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 The higher-priced subscription products now exist for real in Apple, Google, Stripe and RevenueCat, and the app finally knows their exact ids. Nothing changed for any customer: the price switch is still off, so every page still says $4.99 / $39.99 and every card is still charged $4.99 / $39.99. This was the last piece of setup that had to happen *before* we can raise prices — it does not raise them. Flipping the actual switch is a separate, deliberate decision, and the existing 17 subscribers stay at the old price permanently when we do.
@@ -6024,7 +6024,7 @@ The higher-priced subscription products now exist for real in Apple, Google, Str
 
 **Requested by:** Jimmy
 **Committed by:** Claude Code
-**Commit hash:** 1103c141
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 Three things shipped and one disaster was caught.
@@ -6081,7 +6081,7 @@ Finally, we found that our database schema description had fallen behind the rea
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 1103c141
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 Aria came out with a southern drawl ("someone from the bayou"), so the calm and calm-story videos now speak with Rachel — the most widely used calm, neutral-American female narrator in ElevenLabs' library. Everything else about the read stays: the expressive v3 model and the script's full performance direction (tags for softening, whispering, tiredness, pauses, breaths).
@@ -6100,7 +6100,7 @@ Aria came out with a southern drawl ("someone from the bayou"), so the calm and 
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 1103c141
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 The daily carousel's topic brain is now linked to Jim's social research engine (growthos). When growthos has research in it, every carousel topic is generated with that intelligence in front of it: what our posted content's data says works, verified truths about the audience, open content angles the engine surfaced, and which competitor videos are breaking out right now. The AI is told to use it directionally — pick resonant angles, never copy. Right now growthos's database is completely empty (the engine is built but has never been run), so nothing changes in the posts yet; the moment Jim seeds it and the connection keys are added, the research starts flowing in automatically. If growthos is ever empty, slow, or down, carousel generation continues exactly as before — this link can never break a daily post.
@@ -6127,7 +6127,7 @@ The daily carousel's topic brain is now linked to Jim's social research engine (
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 1103c141
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 The calm and calm-story voice moves off Hope entirely — even the restored "good post" config still sounded bad to you. The new voice is Aria, an expressive middle-aged American female that fits the audience, still on the most emotional v3 mode. The bigger change is that the realism now comes from the script itself: the scriptwriter turns every narration into a marked-up vocal performance — where the voice softens, where it whispers, where it sounds tired, where it pauses, where a real woman would audibly exhale — instead of dropping in a couple of generic "softly" tags. If Aria still isn't right, the voice can be swapped instantly with an env var, no code change needed.
@@ -6149,7 +6149,7 @@ The calm and calm-story voice moves off Hope entirely — even the restored "goo
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 1103c141
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 Earlier today the voice was mistakenly "fixed" by reverting to the very first calm post's setup (a different voice, Matilda, on the older model). You then identified the actual best-sounding post — the Aug 19 "whatever's easiest" video — and its email pinned down the real gold-standard config: Hope on the expressive v3 model with the slow, tagged delivery. That turned out to be the exact setup that was already running, so the mistaken revert is undone and the good config is restored and now marked as locked in the code, with the reference post named so nobody (including future Claude sessions) second-guesses it again. If a post still sounds off with this config, the culprit is take-to-take randomness in the expressive model or the calm-story's scene-by-scene reads — not the settings.
@@ -6171,7 +6171,7 @@ None (auto-deploy; a fresh calm-story and a fresh regular calm post were trigger
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 1103c141
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 The story and calm videos now write their scripts from your viral style guide: every script speaks to the overloaded woman 35-55, opens with a sharp private-truth hook, grounds itself in a real daily-life moment, lands the deeper truth, reframes her as not-broken, and ends with one soft "follow/send/save" ask — never a product pitch, never app/AI/journaling mentions. Each run also picks one of the five pain branches (mental overload, busy-but-not-moving, repeating patterns, knowing-without-acting, planning-instead-of-progress) so posts stop clustering on the same ache. And the calm story is no longer stuck on the orange/purple look — each one is set in a randomly assigned soothing world: blue sky with clouds, ocean waves, sunset, rain on a window, a fireplace, misty forest, moonlit lake, snowfall, golden fields, or a mountain valley.
@@ -6193,7 +6193,7 @@ None (auto-deploy; a fresh calm-story was triggered post-deploy for review).
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 1103c141
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 The calm story is no longer photorealistic — every scene is now rendered like a still from a high-end soft-3D animated film (the same warm Pixar-ish style that's winning on the carousels), and it can never drift into looking like a real photo or live-action footage. The narration is also now recorded scene by scene and the video timeline is built around those exact recordings, so each scene stays on screen for precisely as long as its own lines take to speak — the words you hear always match the scene you're looking at, with a small breathing margin on each side of every crossfade.
@@ -6215,7 +6215,7 @@ None (auto-deploy; a fresh calm-story was triggered post-deploy for review).
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 1103c141
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 Captions across every content type are now short. Carousel captions no longer paste the whole numbered list into the caption — the slides carry the content, so the caption is just one hook line, one comment/share ask, the bio plug, and the 5 hashtags. Calm and calm-story captions are now exactly two lines (a hook + a share ask) and the AI is banned from retelling or summarizing what the video already says. Hashtags stay as-is (they're working).
@@ -6236,7 +6236,7 @@ None (deploy is automatic on push; prompts take effect on the next generation).
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 1103c141
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 Five changes in one overhaul. (1) Captions are no longer assembled from templates — the AI now writes each post's caption in the voice of a real woman who runs the page (texty, lowercase-leaning, personal), with template fallbacks only if it doesn't. (2) Every post gets exactly 5 hashtags: 2 huge-reach tags (#selfcare, #mentalhealth...) + 3 niche tags (#mentalload, #womenover40...), rotating per post; the branded tags are gone. (3) The caption box now sits at the TOP of every content email, so Gmail's "[Message clipped]" can never cut it off again. (4) The old illustrated story video is fully eliminated and replaced by a "calm story": the same soothing Hope voice telling a short story (a mix of she-stories, you-arcs, and parables) across several photoreal scenes — no people ever, so the same-woman problem can't come back — with clean crossfades between scenes, 15-45s, no burned captions. It runs in the story's old 8 UTC slot and its email has a 🎞️ subject. (5) Calm-video loops now dissolve over 1.4s instead of 0.6s and the scene/motion prompts demand one constant endless movement, so the repeat reads as one continuous shot.
@@ -6300,7 +6300,7 @@ Recordings longer than about four minutes were silently failing to upload — th
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 1103c141
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 The cartoonish-realistic look (the soft Pixar-style 3D illustration) is outperforming the other four art styles, so every post — daily carousels, story videos, one-off carousels, and slide regenerations — now uses that style instead of rotating randomly between five looks. It's controlled by a single switch, so when you want variety back (or want to test a different style), it's a one-line change. Calm videos are unaffected — they were never illustrated (real scenery footage).
@@ -6324,7 +6324,7 @@ None
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 1103c141
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 Animated carousel slides kept growing weird moving blinds/curtains behind the woman. The cause: the animation instructions listed examples of background things that were allowed to keep moving — "steam, rain, curtains, dust, screens, reflections" — and this video model treats any object you name as a request to create it. So it invented curtains in scenes that never had any. The instruction now says only movement already in the image may continue and nothing new may appear, without naming a single object. Applies to animated covers, reason slides, and story scenes from the next run onward.
@@ -6342,7 +6342,7 @@ None
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 1103c141
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 Two changes. (1) Every post caption — carousel, story, and calm — now carries exactly 5 hashtags instead of 6 (and the old Instagram generator was told 5 instead of 15-20). (2) Calm videos are now written to land at 20-30 seconds instead of ~40: the script budget dropped from 70-90 words to 50-65, and to keep them from getting thinner, the writer now has hard substance rules — the middle must contain at least 2-3 distinct concrete moments from her real life, every line has to add something new, and there's a test baked in: if she couldn't name something specific she recognized by the end, the script gets rewritten.
@@ -6366,7 +6366,7 @@ None
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 1103c141
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 Two changes. (1) Every content email now includes the post caption ready to copy — the follow-up "Carousel video" email was the one missing it, so you had to go back to the first email to grab the caption. Now it's in all of them. (2) Calm video captions got restructured to read like a person wrote them: the first line is now the question (the only line people see in the feed before "...more"), then one or two plain follow-up lines, then a simple share ask like "Send this to someone who's carrying a lot right now" — no emojis, no "tell me in the comments 👇" bait, then the six reach hashtags. The scriptwriter was also told its caption lines must sound like a text message, not marketing copy.
@@ -6387,7 +6387,7 @@ None
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 1103c141
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 Calm videos are for building a following, not selling the app — so their captions no longer end with the "Ripple — start your free week — link in bio" line, and the branded hashtags (#rippleapp, #voicejournal, #dailydebrief) are gone. What's left is engineered for reach: the hook, a comment question, a save/share ask, and six relatable hashtags like #mentalload and #womenintheirmidlife. The scriptwriter also now has the goal spelled out: success is her sending the video to a friend or tagging her sister — so it picks the most universally relatable version of every idea.
@@ -6408,7 +6408,7 @@ None
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 1103c141
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 Three changes from your feedback on the "version of next year" video. (1) Every calm script now follows a strict arc: it opens with a hook — a direct question or a bold statement — then explains it with concrete, relatable moments from her real life, then lands on a release. There's a coherence test baked in: if a stranger couldn't repeat the point back in one sentence, the script gets rewritten. No more vague poetry. (2) Vanessa is out — every calm video is voiced by Hope (the smoother of the two voices you picked). (3) The delivery got two upgrades: the voice model now runs at its most emotional, expressive setting, and the scriptwriter itself now marks WHERE the voice should soften, sigh, or drop to a whisper — so the inflection follows the meaning of the words instead of being random.
@@ -6431,7 +6431,7 @@ Three changes from your feedback on the "version of next year" video. (1) Every 
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 1103c141
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 The calm video you asked for this morning silently died halfway: the scene it invented was so visually detailed (lots of texture/motion) that the rendered video came out at 52MB, and our storage provider rejects anything over 50MB — so the upload failed and no email went out. The video encoder now caps the file size (~25MB worst case), which also guarantees the video is always small enough to attach directly to your email. Quality is unaffected in practice — Instagram and TikTok compress to about that level anyway.
@@ -6454,7 +6454,7 @@ The calm video you asked for this morning silently died halfway: the scene it in
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 1103c141
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 Four fixes from your feedback. (1) The scripts for both the story videos and the calm videos are now written the way a real person talks — contractions, sentence fragments, and built-in pauses (ellipses) that the voice actually honors — instead of reading like polished ad copy. (2) The calm-video narrator moved to ElevenLabs' expressive v3 model with a "softly" performance direction, so the read has real tone and inflection instead of a flat synthetic cadence. (3) The calm video no longer fades to black or gets cut mid-motion — it ends exactly where the scene loops back to its start, so it replays cleanly on Instagram/TikTok. (4) The reason you "never received" the calm videos: they were in your inbox wearing the exact same "🎥 Story video" subject line as the daily story emails. Calm videos now arrive as "[Ripple Content] 🌙 Calm video — …" with their own heading, so you can't miss them.
@@ -6477,7 +6477,7 @@ Four fixes from your feedback. (1) The scripts for both the story videos and the
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 1103c141
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 After watching the first finished calm video: the narrator now talks noticeably slower and with more natural rise and fall in her voice instead of a flat meditative monotone. Captions are no longer burned into voiced calm videos — the estimated timings didn't line up with the voiceover, so you add captions yourself when posting (the email says so). If the voiceover ever fails, the silent backup video still gets the script burned in as a teleprompter.
@@ -6499,7 +6499,7 @@ None
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 1103c141
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 The first live test of the new calm ambient video got 90% of the way there — the scene image, the moving clip, and the voiceover all generated — but the final assembly step (looping the clip to match the voiceover and burning in captions) took longer than the 5 minutes Vercel allows a single function to run, so it died twice and no email went out. The assembly now does half the redundant video processing and is split into two shorter steps, each safely inside the limit.
@@ -6522,7 +6522,7 @@ None
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** d88699dc
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 There's now a fourth daily post type: a calm "ambient" video like the wakingupapp format — one beautiful soothing scene (clouds, water, light) that moves gently in a loop, with a slow warm voiceover sharing a short reflective lesson and the words appearing as captions. All four daily posts now generate overnight (11pm, 1am, 3am, 5am Central) so everything is waiting in your inbox when you wake up. The dashboard also dropped the approve/reject workflow entirely — you now sort by post type (Photo/Video/Story/Calm), a post counts as "posted" the moment you paste its Instagram/TikTok link, and every cost number finally includes the Higgsfield video renders and the voiceover, not just the images.
@@ -6556,7 +6556,7 @@ There's now a fourth daily post type: a calm "ambient" video like the wakingupap
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 3f2c8698
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 The story video's biggest problem was that the main character looked like a completely different woman in every scene — new face, new hair, new outfit every few seconds — which made the story feel like random clips. Now the first scene's image is used as a visual reference for all the others, so it's literally the same woman throughout. Captions also stopped being garbled nonsense ("house wants To the") and lone floating words — they now come straight from the script, grouped 3-4 words at a time. She's no longer drawn mid-speech with her mouth hanging open, random rain/smoke effects are banned, and the final video is visibly sharper.
@@ -6582,7 +6582,7 @@ The story video's biggest problem was that the main character looked like a comp
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 5b167c94
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 The story videos were incoherent because the system recorded ONE continuous monologue and laid it over the whole video — the words were never attached to their scenes, so by scene 4 you'd hear scene 3's line. Now each scene's line is recorded separately and its clip is cut to exactly that line's length, so the words physically cannot drift off their scene. Also: a warmer voice (Matilda) is now the default, the AI can no longer swap a scene's gesture for a random unrelated one, images must literally show what the narration describes (phone in the line = phone in the picture), and the email now says which voice engine was used so "the voice sounds bad" is diagnosable.
@@ -6612,7 +6612,7 @@ The story videos were incoherent because the system recorded ONE continuous mono
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** e8511565
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 Two fixes to the story videos: the voiceover now reads like a real woman confessing something to a friend (slower, emotional, imperfect) instead of a flat robotic announcer, and each scene's animation now performs what the narration is saying — if the line is about gripping the steering wheel, you see her grip the wheel. Text-free clips also get a slow cinematic camera push-in and a scene that feels alive (light, steam, rain moving) instead of a frozen frame with a blinking woman.
@@ -6635,7 +6635,7 @@ Two fixes to the story videos: the voiceover now reads like a real woman confess
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** affbc6d5
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 The carousel cover was giving away every answer up front, so there was no reason to swipe through the post. Now the cover previews at most 40% of them — 1 answer on a 5-item post, 2 on a 6-7 item post, 3 on an 8-10 item post — and the previewed ones are the exact same answers that appear on the slides. The rest stay hidden so she has to swipe to get the full list.
@@ -6656,7 +6656,7 @@ None — deploys automatically on push.
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 32c6213d
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 Slides inside a single post could jump between looks — one slide realistic, the next cartoon-3D, another clay. Each post already picks one style, but the image AI was getting two competing style instructions and obeyed a different one on each slide. Now the post's chosen style is a hard "style lock" rule, so every slide in a post looks like it came from the same artist.
@@ -6701,7 +6701,7 @@ None — deploys automatically on push.
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** bc19005a
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 The daily content system now creates three genuinely different posts per day instead of variations of the same one: a picture carousel in the morning, a fully animated carousel video midday, and a 30-second story video with voiceover in the afternoon. The story is no longer a robot reading the carousel list out loud — it's a first-person mini-story with its own topic. Carousel topics now alternate between "that's so me" lists and genuinely helpful lists (small doable habits, like those "7 things to do every day for yourself" posts), and every slide gets a second, smaller line explaining the how or why. The animated video now blends smoothly between slides instead of hard-cutting. When the voiceover fails, the system retries, and if it still ships silent the email subject warns you loudly. And your bio links can now be goripple.io/go/tiktok (etc.) so social traffic finally shows up in analytics instead of as "direct". The admin page shows which of the three types each post is, plays the story video, and has three generate buttons (📷 🎬 🎥) to fire any bucket on demand.
@@ -6740,7 +6740,7 @@ The daily content system now creates three genuinely different posts per day ins
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** c2c46506
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 The question on the cover slide ("Which one hit home?") was phrased in past tense, but the viewer sees the cover BEFORE reading the list — they haven't read anything yet. All cover question variants are now present tense ("Which one hits home?", "Which one calls you out?", etc.).
@@ -6761,7 +6761,7 @@ None — deploys automatically on push.
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** a5c63a3e
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 The stitched carousel video (the one MP4 with all the animated slides back to back) now fades each slide out to black before the next one starts, so slide changes look like intentional transitions instead of abrupt jump cuts.
@@ -6783,7 +6783,7 @@ None — deploys automatically on push.
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 8404372f
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 Two fixes to the daily story video. First, the "voiceover failures" on the 13th and 14th weren't voiceover failures at all — the voiceover generated fine both days, but the tool that stamps the captions onto the video is missing on the server, so the whole final assembly step crashed and you got the raw silent video with a misleading error email. Captions are now drawn with the same system that renders the slide text (which works every day), and even if captions ever break again, the video will still ship WITH the voiceover instead of silent. Second, the story scripts no longer mention Ripple at all — they're pure viral story videos; the account posting them carries the brand.
@@ -6809,7 +6809,7 @@ None — deploys automatically on push. Tomorrow's 12 UTC story video is the liv
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 1a48af87
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 The "Which one hit home?" question no longer sits crammed under the headline at the top of the cover — it's now anchored near the bottom of the slide, which looks cleaner and keeps the headline as the sole hook up top. It's positioned high enough that TikTok's caption and music bar won't cover it.
@@ -6829,7 +6829,7 @@ None
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 5b4de435
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 Three fixes to the daily carousels. First, the animated slideshow you receive will now include EVERY slide — yesterday you got the cover and slides 2–6 but not slide 1, and a separate bug has been silently chopping the last reason off the compilation ever since we removed the CTA slide. If an animation fails to render, that slide now appears as a 4-second still image instead of vanishing. Second, the topic generator was deliberately leaving the most obvious reason off the list as comment bait ("comment MIRROR and I'll send it to you") — that's gone; every list is now complete, so a "6 ways to..." post actually shows all 6. Third, the cover now asks an engagement question like "Which one hits the hardest?" to spark comments instead — it varies per post based on the headline, and appears on both the static image and the animated video.
@@ -6857,7 +6857,7 @@ Three fixes to the daily carousels. First, the animated slideshow you receive wi
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 20671292
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 Two fixes after yesterday's silent story video. First, when the voiceover fails, the system no longer ships a mute video and moves on — it burns the script into the video as timed on-screen captions (so the video still tells the story and the captions pace you like a teleprompter), and the email now leads with a "record this yourself" block containing the exact script, the target length in seconds, and the actual reason the voiceover failed. The subject line flags it too, so you can't miss it. Second, the video will now actually match the script: a bug was injecting a random second location (e.g. "bathroom mirror") into almost every scene's image prompt, fighting the location the script asked for — that's why scenes felt disconnected from the narration. Removed.
@@ -6882,7 +6882,7 @@ Two fixes after yesterday's silent story video. First, when the voiceover fails,
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 62781b75
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 The story video voiceover sounded robotic. As soon as you add an ElevenLabs API key, every story video switches to a natural human-sounding voice (their "Rachel" voice by default — you can pick any voice from their library later). Until the key is added, videos keep working with a slightly better OpenAI voice than before.
@@ -6959,7 +6959,7 @@ The daily story video is no longer the carousel read out loud. The AI now invent
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 7395ecb9
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 Two fixes. First, the reason you never got a single story video: the story-video function was never registered with Inngest (the system that runs background jobs), so every daily run and every 🎥 Story button press sent a request that no one was listening for. Verified: zero story scripts have ever been written. The deploy that ships with this entry re-registers it. Second, videos will no longer show a woman standing up out of a bathtub fully clothed — every video now pins her in exactly the position the image shows, bathroom scenes place her at the mirror or on the edge of the tub instead of in the water, and the story script writer is banned from putting her in a tub or shower at all. Note: the 🎥 Story button is already fully independent of the slideshow — it only needs the post's headline and text, generates its own six images, and doesn't wait for slide animation.
@@ -6984,7 +6984,7 @@ Two fixes. First, the reason you never got a single story video: the story-video
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 17b89e05
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 No more typing engagement numbers by hand. When you post a carousel, paste its Instagram link into the new field in the admin (next to the metrics form) and hit "Save links" — the system pulls views, likes, comments, saves, and shares from Instagram immediately, and then re-pulls every morning so the numbers stay current while the post keeps climbing. The AI's feedback loop feeds on always-fresh data with zero ongoing effort. TikTok links can be pasted too (stored for when the TikTok API is hooked up — that needs a TikTok developer app approval first). Also fixed this morning's 500 error on the carousel page: the earlier `prisma db push` ran before `git pull`, so the new columns never reached the database — I pushed them from this machine and the page recovered instantly.
@@ -7014,7 +7014,7 @@ No more typing engagement numbers by hand. When you post a carousel, paste its I
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** da1c1f01
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 Each carousel in the admin now has a small form where you enter the real numbers from TikTok/Instagram — views, likes, comments, saves, shares. Once at least 4 posts have numbers, the AI is shown your best and worst performing headlines every time it writes a new topic, and is told to lean into what worked and avoid what flopped. The system stops guessing and starts learning from your account. Bonus: the 30-second story video is now saved on the post itself with an "Open MP4" link in the admin (before, it only existed in the email), and re-running a story from the admin now matches the carousel's art style instead of defaulting to realistic.
@@ -7044,7 +7044,7 @@ Each carousel in the admin now has a small form where you enter the real numbers
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 50c131ea
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 Two changes from the virality audit. First, the carousel no longer ends with the orange Ripple ad slide — people don't share ads, so the post now ends on the strongest emotional line. Second, every new topic is generated with a built-in trap for comments: the AI deliberately leaves the single most obvious reason OFF the list, and the caption dares viewers to comment the one that's missing. The reference caption in your email tells you what the withheld reason is (marked "internal — don't post") so you can spot it in the comments and engage.
@@ -7069,7 +7069,7 @@ None — no schema changes (withheldReason lives inside the stored caption text,
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 6406c6e0
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 Until now the 30-second story video only existed as the email that arrived after each daily run — there was nowhere in the admin to see or trigger one. Every post's detail page now has a "🎥 Story" button that generates the story video for that post and emails it to you (takes roughly 10 minutes end to end).
@@ -7091,7 +7091,7 @@ None.
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 2e369b74
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 The story video's voiceover used to be recorded before the video clips existed, so if a scene failed to render the audio could run past the end of the video or get chopped off mid-sentence. Now the system builds the video first, measures exactly how long it is, rewrites the script to fit that length (dropping lines for any scenes that failed), and only then records the voiceover — so the narration always ends right when the video does. The story, hook, and Ripple mention stay the same; only the timing is fitted.
@@ -7115,7 +7115,7 @@ None — no schema changes, no new env vars.
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 53057f2e
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 On posted videos, the first line of the headline was hiding underneath TikTok's search bar, and long headlines were covering the woman's face. For all future generations the text now starts lower on the screen (clear of TikTok's top bar), and the artwork is generated with the woman's face in the lower half of the frame so the headline always sits on calm background instead of on her.
@@ -7137,7 +7137,7 @@ None.
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** bc3c5d21
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 Instead of several "Videos" emails full of individual slide clips you had to clip together yourself, each post now sends exactly two video emails: one "Carousel video" email with all the animated slides already stitched into a single ready-to-post MP4, and one "Story video" email with the 30-second voiceover video. Save each attachment and post — no editing needed.
@@ -7158,7 +7158,7 @@ None
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 1562eee7
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 Every daily carousel now comes with a second email containing a completely finished ~30-second vertical video — no clipping needed. The AI writes a 6-scene voiceover script from the post, creates 6 brand-new illustrated scenes, animates each one, records a warm female voiceover, and stitches it all into one MP4 with sound. You just save the attached video and post it. If the voiceover fails for some reason, the video still arrives (silent) with the script included so nothing is ever lost.
@@ -7187,7 +7187,7 @@ Every daily carousel now comes with a second email containing a completely finis
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 54aad09d
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 The factory now makes 3 animated posts per day (7am, 11am, 3pm Central) instead of 5. Keenan clips and posts every video by hand, and 5 a day was producing more than the manual posting workflow could keep up with — 3 matches real capacity and cuts generation cost by 40%.
@@ -7206,7 +7206,7 @@ None (Inngest picks up the new cron on next sync after deploy)
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 689e8cb6
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 The women in the carousels were smiling and joyous even when the post was about burnout or feeling invisible. Now the AI decides the emotional mood of every single slide (exhausted, tender, wry, frustrated, or hopeful) and writes a custom micro-gesture for each one — so the face in the artwork and the movement in the video both match what that slide is actually saying. Animation variety also jumped from 8 stock movements to 30 mood-matched ones, plus the unlimited custom-written gestures.
@@ -7232,7 +7232,7 @@ None (no schema change — emotion directions travel via the Inngest event paylo
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 15f74da9
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 Four upgrades in one: (1) the factory now makes 5 posts per day, every 2 hours from 7am–3pm Central, and every one is fully animated — no more static posts. (2) Covers rotate through 5 different compositions (close-up face, window light, low dramatic angle, over-the-shoulder, classic medium shot) so they stop looking alike. (3) Each slide's animation gets its own gentle motion (a head tilt, a knowing smile, a deep breath...) instead of every video breathing the same way. (4) Headlines and captions are now engineered for saves, shares, and comments — every caption asks "which one is you? 👇", tells her to save it, and tells her to send it to a friend.
@@ -7257,7 +7257,7 @@ None
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 30ba0551
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 A third daily post now generates at 11am Central (16:00 UTC), on top of the existing 3am static post and 7am animated post. The new run is fully animated like the 7am one, so each day delivers one static slideshow and two animated posts to the inbox.
@@ -7277,7 +7277,7 @@ None
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 0c5d5313
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 The animated slide videos now arrive attached to one or two follow-up "🎬 Videos" emails right after the main daily email. On your phone: tap and hold a video in the email → Save Video → it's in your camera roll. No browser, no download buttons, no Files app. (The buttons in the main email still work as a backup.)
@@ -7297,7 +7297,7 @@ None
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 1e18c11b
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 Even after the first fix, tapping a video button on the phone could still just play the video in the browser with no way to save it. The buttons now go through our own website, which hands the phone the file as a download — so Safari shows its native "Do you want to download?" popup instead of playing the video.
@@ -7317,7 +7317,7 @@ None
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 5e9cff05
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 Tapping a "Download animation" button in the daily content email on your phone was just playing the video in the browser with no way to save it. The buttons now trigger a real file download. On iPhone the MP4 lands in Files — open it there and Share → Save Video to get it into your camera roll.
@@ -7337,7 +7337,7 @@ None
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** a2114565
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 The daily posts now rotate through 5 art styles instead of 7. We dropped "still life" (no character in the scene, so the animated version had nothing to move and looked frozen) and "risograph" (its halftone dot texture shimmers badly when animated). Kept: cinematic real, 3D toon, claymation, flat graphic, and paper diorama.
@@ -7406,7 +7406,7 @@ Three fixes to the animated carousel post. First, slides were coming out as full
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** c99c7ddd
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 The animated slides kept ruining the text because the video AI was animating an image that already had words on it — it warped them, covered them, and invented new actions (people standing up, mouths moving). Now the artwork for animated posts is generated with NO text at all, the animation runs on that clean image, and our own system stamps the exact words on top of the finished video afterward. The words are physically frozen pixels — the AI never sees them, so it can never move, block, or lip-sync them. Animation prompts were also rewritten to only allow small in-place movement with lips closed.
@@ -7436,7 +7436,7 @@ The animated slides kept ruining the text because the video AI was animating an 
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 99e614b3
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 The reason some slides kept arriving without animation: our video provider quietly ignores render requests when we send more than about 4 at the same time. The system now animates slides in batches of 4 — first batch renders, then the next — so all 7 slides of the animated daily post get their videos. Confirmed live: after resubmitting the 3 dropped slides on their own, every one rendered on the first try.
@@ -7457,7 +7457,7 @@ None
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 28becbec
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 Two fixes from the first animated-post test: the slide videos were inventing random things (birds, the person wandering around) instead of showing the message on the slide — now each slide's animation has the person acting out that exact slide's statement, with nothing new allowed into the scene, and the text always stays on top. Also, when a video render fails, the system now automatically tries that slide once more, so animated posts should arrive with every slide (except the final Ripple slide) animated instead of some staying still.
@@ -7478,7 +7478,7 @@ None
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 39c9a3c7
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 There's now a way to run the fully animated post on demand instead of waiting for the daily noon run. We used it today to test-animate the "6 reasons you overthink everything but decide nothing" carousel — you'll get a second email with all the videos once the renders finish.
@@ -7499,7 +7499,7 @@ None
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 5e9cff05
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 The two daily posts now have distinct formats. The 8 UTC post is a plain picture slideshow — no animation at all, so the email arrives as soon as the images are done. The 12 UTC post is fully animated: every slide except the final CTA slide gets its own 4-second video on the current (lite) model, and its topic is capped at 6 reasons so at most 7 slides are animated. The email for the animated post includes a download button for every video (tap → Share → Save Video on your phone), and attaches as many as fit under the email size limit.
@@ -7524,7 +7524,7 @@ The two daily posts now have distinct formats. The 8 UTC post is a plain picture
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 5e9cff05
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 The content factory now generates and emails 2 carousels per day instead of 5, cutting the daily AI image and video spend by 60%. The 8 UTC post keeps the high-energy intro animation and the 12 UTC post gets the smooth one, so you still see both styles every day. Also decided against upgrading the video model to the "standard" tier — it costs too many tokens, so we stay on the cheaper "lite" tier and rely on the improved prompts for quality.
@@ -7544,7 +7544,7 @@ The content factory now generates and emails 2 carousels per day instead of 5, c
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** a9c7bd58
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 Three fixes to the animated covers. First, the animation instructions were rewritten (v10): the woman now performs one clear, engaging movement from the very first moment instead of "a still, quiet moment" that barely moved, and the headline text stays razor-sharp and fully visible for the entire video — the text no longer fades out at the end, so viewers always know what the post is about. Second, the daily email now always has a big orange "Download animated cover (MP4)" button that works on your phone: tap it, then Share → Save Video to get it into your camera roll. Third, there's a new quality setting we can switch on in Vercel to render sharper video, and the model tier itself can be upgraded from "lite" for a bigger quality jump.
@@ -7665,7 +7665,7 @@ Also groundwork (not switched on) for the planned $8.99/$79.99 pricing, includin
 
 **Requested by:** Jimmy
 **Committed by:** Claude Code
-**Commit hash:** 589d25ea
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 We can now give someone free PRO access ("comp" them — testers, friends, App Store reviewers) in a way that sticks. Before, a comped person was just manually flipped to PRO with no marker, which made our new subscription monitor flag them as "can't verify." Now there's a real "comp" label: comped accounts get full PRO, never show up as a problem in the monitor, and can never be accidentally downgraded. Comping someone is now a single action. Two testers (olivia and Kelly Myers) were converted to the proper comp marker.
@@ -7688,7 +7688,7 @@ We can now give someone free PRO access ("comp" them — testers, friends, App S
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 5e9cff05
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 Two changes: (1) The animation was too chaotic — birds, particles, swirling leaves everywhere. The prompts now describe simple, clean motion: one clear character gesture, one or two ambient details (steam, light shift), and a gentle camera push. Think polished Instagram reel, not a movie trailer. (2) The email keeps arriving without the animated video even though the video exists in Supabase. Added detailed logging to the email function so we can see exactly WHY the video isn't being included — whether the URL is null, the fetch fails, or it's a size issue. Also removed the requirement that `useAttachments` must be true before even trying to fetch the video.
@@ -7709,7 +7709,7 @@ Two changes: (1) The animation was too chaotic — birds, particles, swirling le
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 5e9cff05
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 The animated covers had two problems: (1) the model was generating ugly text/numbers on screen even though the source image has no text, and (2) the character would snap into a pose and freeze rather than moving fluidly. The prompts now explicitly ban any text/number generation and describe every motion as continuous and flowing — the character drifts through her gesture over several seconds, the camera never stops moving, and every element (birds, steam, leaves, light) keeps flowing throughout the clip.
@@ -7779,7 +7779,7 @@ Two customers were stuck showing as "payment overdue" forever. We checked Stripe
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 5054fa8b
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 When the cover animation succeeded, the email sometimes went out without the video. This happened because a previous failed animation attempt had already sent a static email, and the system refused to send a second email for the same post. Now, when the animation succeeds, the system force-sends a fresh email with the video attached — even if a static version was already sent. You may occasionally get two emails for the same post (one static, then one with video), but you'll always get the animated version.
@@ -7798,7 +7798,7 @@ When the cover animation succeeded, the email sometimes went out without the vid
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 0b1d2ab4
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 The first test with the new model still only produced face movement and blinking — the prompts were too vague ("cinematic," "alive," "expressive"). The prompts now spell out exactly what should move: birds flying across the sky, light rays shifting, leaves swirling, steam curling, the character doing a full shrug with shoulder and hand movement, and the headline text sliding or snapping into frame. Switching to the turbo model for cheaper/faster renders.
@@ -7819,7 +7819,7 @@ The first test with the new model still only produced face movement and blinking
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** c31b88d7
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 The animated covers were barely moving — the character just blinked. The root cause was the video model: it was told to start on one image and end on a nearly identical image, so it correctly did almost nothing between them. The system now uses a standard image-to-video model that starts from the cover image and animates freely — the character performs a full gesture, the camera moves, steam/candles/plants come alive, and the whole scene feels like a living video, not a still photo with a subtle filter.
@@ -7843,7 +7843,7 @@ The animated covers were barely moving — the character just blinked. The root 
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 6993c401
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 The animated cover looked like a frozen image in the dashboard because some browsers silently refuse to auto-play videos (low-power mode does this). The video now has a normal play/pause bar so it always works.
@@ -7861,7 +7861,7 @@ The animated cover looked like a frozen image in the dashboard because some brow
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** acd8f454
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 One of the five daily posts (the first one, generated at 8 UTC) now gets a completely different, high-energy cover animation: the whole scene spins into frame with motion blur and the headline slams on, built to grab attention in the first half second. The other four keep the smooth cinematic style. Manual "Animate" from the dashboard and one-off generations stay smooth.
@@ -7883,7 +7883,7 @@ One of the five daily posts (the first one, generated at 8 UTC) now gets a compl
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** d4f486a6
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 The first animated cover barely moved — the character only blinked. The instructions we send to the video AI now explicitly demand big, visible motion: a full gesture from the character, steam/candle/plant movement in the scene, a noticeable camera push-in, and the headline sweeping on with energy.
@@ -7902,7 +7902,7 @@ The first animated cover barely moved — the character only blinked. The instru
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** fc689296
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 The first real cover video took longer to render than the system was willing to wait, so the email went out with the static cover even though the video was still cooking. The system now waits up to 20 minutes for the video before falling back to the static-cover email.
@@ -7921,7 +7921,7 @@ The first real cover video took longer to render than the system was willing to 
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** d692c762
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 The five daily carousel generations now run two hours earlier — at 8, 9, 10, 11, and 12 UTC instead of 10 through 14 UTC. Emails will arrive a few minutes after each run once the cover animation finishes.
@@ -7939,7 +7939,7 @@ The five daily carousel generations now run two hours earlier — at 8, 9, 10, 1
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 1b93c7cb
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 The daily carousel email no longer arrives before the cover video is ready. The pipeline now runs in order — generate the carousel, animate the cover, then send one email that includes the animated cover as an MP4 attachment (or a download link if it's too big to attach). If the animation ever fails or times out, you still get the email with the static cover, so there's never a missing email.
@@ -7965,7 +7965,7 @@ The daily carousel email no longer arrives before the cover video is ready. The 
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** b4b5caa4
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 Wiring up the real video engine for animated carousel covers. Two discoveries during setup: (1) the Kling 3.0 engine we tested with only exists in Higgsfield's consumer app — their developer API offers their own "DoP (First last frame)" engine instead, which does the same start-frame → end-frame trick our recipe needs; (2) the developer API uses different login headers than we'd coded, so no request would ever have been accepted. Both fixed. Also: Higgsfield's developer API bills separately from app credits — Keenan bought 500 API credits (app credits don't transfer). First live animation will reveal the real per-video cost.
@@ -7991,7 +7991,7 @@ Wiring up the real video engine for animated carousel covers. Two discoveries du
 
 **Requested by:** Jimmy
 **Committed by:** Claude Code
-**Commit hash:** cf37782d
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 A customer (emily) paid for PRO through Apple and her subscription is genuinely active (Apple confirms it renews through Sep 5). But she kept getting knocked back to the free tier every time our system processed a leftover event from an old, dead Stripe record she also had. We'd manually fix her, and a Stripe event would undo it hours later. This fix makes our billing system ignore Stripe cancellation/failure events for anyone whose real subscription comes from the Apple or Google app stores — so an old Stripe record can never again strip someone of the PRO they paid for in the app. emily is the only customer this affected. She's been set back to PRO and it will now stick.
@@ -8017,7 +8017,7 @@ A customer (emily) paid for PRO through Apple and her subscription is genuinely 
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 7fc30847
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 Major overhaul of the carousel system. The daily carousel was only running once — now it runs 5 times (10am–2pm UTC), generating one carousel each hour so they trickle in instead of all at once. Slides were showing up with garbled text (tiny rectangles instead of words) because the server couldn't render fonts — completely rebuilt the text engine to fix this. Each reason slide now shows its number ("1. Meditation", "2. No alcohol", etc.) so viewers can follow along. The CTA slide uses your actual Ripple lockup logo (mark + wordmark) on burnt orange with "Talk it out. See it clearly." and "Free 7-day trial on iPhone & Android." The admin page defaults to library view, clicking a post opens a full detail view with an X to close, and there's a Generate button to create a one-off carousel anytime (it emails you when done). Each post now shows its estimated cost (~$0.56/carousel).
@@ -8047,7 +8047,7 @@ None
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** dd320e8d
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 Three carousel fixes. First: the daily carousel was only running once a day instead of five times — now it runs at 10, 11, 12, 1, and 2 UTC, generating one carousel each hour so they trickle in instead of arriving all at once. Second: some slides were showing up with no text at all (just the image) — this was because the font files weren't being bundled with the server, so the text renderer had nothing to draw with. Fixed by bundling fonts and using a more reliable rendering pipeline. Third: added a "Generate" button to the carousel admin page so you can trigger a one-off carousel anytime without waiting for the scheduled runs. Hit the button, wait a couple minutes, and the carousel arrives in your email.
@@ -8074,7 +8074,7 @@ Three carousel fixes. First: the daily carousel was only running once a day inst
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** d69e2f9e
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 Two workflow fixes so syncing the project stops getting stuck. First: because you and Jimmy both add notes to the top of this log, Git kept colliding whenever you'd both logged something before syncing — that's exactly what blocked the `ripple` command earlier today. We told Git to automatically combine both of your new notes instead of halting with an error. Second: your `ripple` (and `acuity`) shortcuts now pull the latest code more robustly and will always open Claude even if the pull hits a snag, so you're never locked out of your tools.
@@ -8095,7 +8095,7 @@ Two workflow fixes so syncing the project stops getting stuck. First: because yo
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 99194b90
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 The first slide of each carousel can now be a short video instead of a static image. The scene opens alive (the woman moves and performs an emotion that matches the post — a tired shrug for invisible-labour posts, a relieved exhale for decompression posts, etc.), the headline text flows onto the screen, and the video ends on the exact same cover image as before. This makes the carousel far more scroll-stopping on Instagram, where the first slide can be a video. Each of the 35 topics has its own hand-written "emotion beat" so the motion always matches the feeling of the post. Covers are animated automatically after the daily generation run, and there's an "Animate" / "Re-animate" button on every cover in the admin queue. The ZIP download now includes the MP4. Recipe and prompt were validated manually in Higgsfield before building (~8.75 credits ≈ one cover video; ~44 credits/day for 5 carousels).
@@ -8133,7 +8133,7 @@ The first slide of each carousel can now be a short video instead of a static im
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 5bf137f5
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 When the daily carousel generation finishes, you now get one email per carousel straight to your inbox. Each email has all the composited slides attached (so you can save them to Photos and post), plus the full caption in a big copy-able block, a numbered list of the slide texts for quick scanning, and a button to open the review queue. If the attachments would be too big (over 15MB), the email links to the images instead. There's also a "Resend email" button on each carousel card in the admin UI if you need to re-send one.
@@ -8161,7 +8161,7 @@ When the daily carousel generation finishes, you now get one email per carousel 
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 6d4aba34
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 The carousel review page is now designed for your phone. Every morning you open one page, see a daily summary (how many carousels were generated, how many you've approved, cost), then swipe through each carousel's slides horizontally. At the bottom of the screen: Approve, Reject, Download ZIP, or Copy Caption — all thumb-reachable. If a slide has a bad phrase, tap "Edit text" right on the slide, fix the wording, and it re-generates the image with your new text. Once you approve a carousel and manually post it to TikTok, tap "Posted" so you never double-post. The old desktop grid is still there as a secondary "All Carousels" view with status filters.
@@ -8186,7 +8186,7 @@ None — no schema changes, no new env vars. Uses same tables from Phase 1.
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** f7f0f359
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 Ripple now auto-generates 5 TikTok/Instagram carousels every day at 11:00 UTC and drops them into a review queue at /admin/content-factory/carousels. Each carousel has a cover image, 5-7 "reason" slides with text overlaid on AI-generated art (in 7 rotating visual styles — cinematic, 3D, claymation, etc.), and a branded CTA slide. You review each one: approve, reject, regenerate a single slide if the image is off, or download everything as a ZIP to upload manually. There are 30 topics in the seed bank covering mental load, repeating patterns, self-reflection, and failed journaling — all mapped to Ripple positioning. No TikTok API yet — that's Phase 2.
@@ -8221,7 +8221,7 @@ Ripple now auto-generates 5 TikTok/Instagram carousels every day at 11:00 UTC an
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** d5179189
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 The admin dashboard now looks like the rest of Ripple — the coral color system, cleaner cards, and a grouped sidebar (Pulse, Growth, Users, Money, Content, System) instead of the long row of 12 tab pills. Tables can now be sorted by clicking column headers and searched. Three metric bugs got fixed along the way: the "Active Users (Week)" card on Overview was actually showing new signups (so it looked identical to the signups card), the "Median Time to First Recording" chart on Growth always said "Not enough data" because the server never sent that data, and the AI Costs page had a hidden per-user cost breakdown that never appeared for the same reason. All three now show real numbers.
@@ -8249,7 +8249,7 @@ None — no schema changes, no new env vars. Vercel redeploys automatically on p
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 5d927206
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 Added all 10 app screenshots (home screen, recording, insights, entries, tasks, settings, and multiple theme variants) to the website's public folder so they're ready to use on the landing page, marketing pages, or anywhere else we need them.
@@ -8271,7 +8271,7 @@ None
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 89a0ac53
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 The Ripple logo on the website had a cream-colored background baked into the image, so it looked like a square sticker pasted onto the page instead of blending cleanly. Created a transparent version of the logo and swapped it in everywhere — navbar, footer, sign-in, sign-up, and marketing pages. Also fixed the five-star App Store rating badge on the hero section, which was rendering broken/clipped stars because the star shape extended outside its drawing area.
@@ -8328,7 +8328,7 @@ Two loose ends from the Google Safe Browsing security check got cleaned up. Firs
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** c6bb5c4d
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 After switching from getacuity.io to goripple.io, anyone who signs in is landing in a brand-new empty account instead of their real one. Both Elise (a paying customer) and Keenan himself are confirmed affected. The root cause: Google sign-in broke because the Google Cloud Console redirect URIs haven't been updated yet. When users try Apple sign-in as a fallback, Apple's "Hide My Email" generates a random @privaterelay.appleid.com email that doesn't match their original account — so the system thinks they're a new user. All original accounts and data are completely intact; users just can't reach them through sign-in right now. The diagnostic script has been upgraded to find ALL duplicates, show a merge map table, and print the exact merge command for each pair. No merges happen until Jimmy reviews.
@@ -8392,7 +8392,7 @@ After switching from getacuity.io to goripple.io, anyone who signs in is landing
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 40508c81
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 After the goripple.io domain switch, Google sign-in broke because the Google Cloud Console still had getacuity.io listed as the allowed redirect. Users who normally sign in with Google — like Elise Cyr, a paying subscriber with 21 days of entries — got bounced and tried Apple Sign In instead. Because Apple's "Hide My Email" generates a random @privaterelay.appleid.com address that doesn't match their Gmail, the system treated them as brand-new users and created empty duplicate accounts. Elise is now signed into an empty account while her real account (with all her entries and paid subscription) sits untouched. Two scripts have been created: one to find all affected users, and one to merge the duplicates back into the originals (moving the Apple sign-in link so it works on the real account, then deleting the empty duplicate). Neither script auto-executes — Jimmy reviews the output first.
@@ -8446,7 +8446,7 @@ After the goripple.io domain switch, Google sign-in broke because the Google Clo
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 4aba406a
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 The admin Users list now has a "Notifications" column so you can tell at a glance whether each person has reminders turned on. It shows "On" (green) for people who opted in, "Off" (grey) for people who didn't, and "On · no device" (amber) for the tricky case where someone flipped reminders on but their phone never registered for push — meaning we can't actually deliver a push to them even though their setting says on. Click "view" on any user and the detail drawer now shows the full picture: their reminder time, which days they picked, what device their push is registered on, and when that last refreshed.
@@ -8471,7 +8471,7 @@ The admin Users list now has a "Notifications" column so you can tell at a glanc
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 5d195dac
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 Every URL across the entire website, mobile app, email templates, sitemap, robots.txt, and internal tools that used to point to getacuity.io now points to goripple.io. When someone shares a blog post, the link says goripple.io. When Google crawls the sitemap, it sees goripple.io. When a user gets an email with a "Use the web app" button, it goes to goripple.io. New blog posts published by the auto-blog system will have goripple.io canonical URLs. The email sending addresses (hello@getacuity.io, keenan@getacuity.io) are NOT changed yet — those need Resend domain verification first and are tracked as a separate step.
@@ -8523,7 +8523,7 @@ Every URL across the entire website, mobile app, email templates, sitemap, robot
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 83a999b4
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 Android users were showing as "None" or "iOS" in the admin dashboard instead of "Android." Now the Platform column correctly shows Android for the 11 Android users. A new "Push notification opt-in by platform" section appears in the dashboard summary, showing how many iOS and Android users have push tokens enabled (currently 9/35 iOS, 0/11 Android). The push token registration code in the mobile app was already correct — no hardcoding bug — so the one Android user with an "ios" push token likely registered on an iPhone before switching devices.
@@ -8551,7 +8551,7 @@ None
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 501ffd6d
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 Every logo across the entire website — nav bars, footer, landing pages, sign-in/sign-up screens, admin dashboard, app icons, and favicons — now shows the new bold Ripple mark instead of the old soft watercolor version. Six new logo variants were added from the Desktop files. A rebrand announcement email was also sent to all 302 real users in the database, letting them know Acuity is now Ripple, explaining the meaning behind the name, and linking to both the iOS and Android apps. 18 test/internal accounts were filtered out. Zero failures.
@@ -8580,7 +8580,7 @@ None
 
 **Requested by:** Jimmy
 **Committed by:** Claude Code
-**Commit hash:** d2783585
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 A PRO user (Vince) reported that the old "Acuity" name and purple diamond icon still show up on his phone's notifications. That happens because a phone always puts the app's own name and icon on every notification — and while the website already became Ripple, the phone app was still 100% "Acuity" under the hood. This change renames the phone app to Ripple, gives it the new coral raindrop icon, and switches every place the old name appeared on notifications, the Face ID unlock screen, and the microphone/tracking permission pop-ups. **Important:** this only fixes it once we ship a brand-new version to the App Store — it can't be pushed silently to phones already installed. It's ready to build on this branch; nothing is live yet, and nothing goes out until Jimmy gives the go.
@@ -8612,7 +8612,7 @@ On branch `fix/mobile-ripple-rebrand` (PR open, **not merged, no EAS build trigg
 
 **Requested by:** Jimmy
 **Committed by:** Claude Code
-**Commit hash:** aa6a8a7b
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 A paying customer (Kai) was locked out of most of the app — shown "read only" and a subscription page — even though her payment had gone through. We found the cause: when a card payment fails and then succeeds a day later, our system was failing to switch the person back to paid, so they stayed stuck on the free tier forever. Kai was fixed by hand. We then found six more customers one card-fix away from the same trap and quietly repaired their records so they'll unlock automatically the moment their next payment clears. Separately, we discovered that when a customer with a failing payment deletes their account, we were NOT cancelling their subscription — so a deleted person could keep getting charged with nothing to show for it (one real case, carmenaroberts; her subscription has been cancelled and the pending charge voided). Fixes for all of this are written and in review, not yet live.
@@ -8645,7 +8645,7 @@ Three PRs opened, all **pending review, not merged, not deployed**:
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 87258d3a
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 The new Ripple raindrop logo wasn't showing up on the live homepage even after the Phase 1 logo swap — the top nav and footer were still drawing a generic coral square placeholder. Turns out the earlier swap updated an old homepage file that isn't used anymore, plus the logged-in app screens, but NOT the actual marketing homepage people land on. This points the homepage nav and footer at the real raindrop mark, so it now appears. (If your browser still shows the old purple diamond in the tab, that's just a cached favicon — hard-refresh or wait for the CDN to clear; the icon file itself is already the raindrop.)
@@ -8668,7 +8668,7 @@ The new Ripple raindrop logo wasn't showing up on the live homepage even after t
 
 **Requested by:** Both
 **Committed by:** Claude Code
-**Commit hash:** 30a4d185
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 Everywhere the site used the old purple accent, it now uses Ripple's new brand violet. That covers the marketing pages (hero buttons, the "A life of clarity" gradient headline, the Life Matrix radar graphic), the funnel and try-it-now flows, the post-signup success screens, all the transactional emails, and the entire internal admin dashboard. The change is subtle — it's a slightly warmer, softer purple — but it makes the whole product match the new brand instead of the old one. Nothing about layout, copy, pricing, or how anything works changed; only the shade of purple. A few purples were **intentionally left alone** because they aren't the brand accent — the multi-colour confetti bursts, the Theme Map feature's own colour system, and the task-group category colours all keep their existing palette on purpose (details in Notes).
@@ -8698,7 +8698,7 @@ Everywhere the site used the old purple accent, it now uses Ripple's new brand v
 
 **Requested by:** Both
 **Committed by:** Claude Code
-**Commit hash:** b1d34ed6
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 The website now shows the new **Ripple** raindrop logo everywhere the old Acuity mark used to appear — the top navigation, the footer, the logged-in app sidebar, the admin dashboard, the sign-in and sign-up pages, and the post-signup success screens. The browser tab icon (favicon), the phone home-screen app icon (when someone saves the site to their home screen), and the little logo that shows up in Google's rich results all use the new Ripple raindrop too. On dark pages we use the white version of the mark; on light pages we use the coral one, so it always stays crisp. One transactional email header that still said "acuity" in lowercase now says "ripple." **Two things are still on the old brand and need you:** (1) the social-share preview image — see the manual step below — and (2) the legacy `.ico` fallback icon, which almost no modern browser uses. Nothing about pricing, features, links, or how anything works changed.
@@ -8731,7 +8731,7 @@ The website now shows the new **Ripple** raindrop logo everywhere the old Acuity
 
 **Requested by:** Both
 **Committed by:** Claude Code
-**Commit hash:** 4c9f5640
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 When someone buys a subscription, we send Meta (Facebook) an event labelled with the product name so our ad reporting can attribute the sale. Those two purchase labels still said "Acuity Pro" — they now say "Ripple Pro," matching the rebrand. Nothing about pricing, checkout, or how payments work changed; this is only the text label attached to the tracking event. Heads-up: in Meta Ads Manager you may briefly see both the old "Acuity Pro" and new "Ripple Pro" values while historical data ages out — that's expected.
@@ -8754,7 +8754,7 @@ When someone buys a subscription, we send Meta (Facebook) an event labelled with
 
 **Requested by:** Both
 **Committed by:** Claude Code
-**Commit hash:** 0fe6d063
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 Everywhere a visitor or user reads the product's name — the website, the web app, the onboarding funnel, all emails, the legal pages, and the little link previews that show up when someone shares us — it now says "Ripple" instead of "Acuity," matching the renamed iOS and Android apps. This is name-only: the website address, every link, and sign-in all still work exactly as before (the domain change is a separate Phase 2). One thing to know: the logo and favicon still show the old Acuity mark for now, because the Ripple image files aren't in the project yet — you need to drop them in (see manual steps). Nothing about pricing, features, or how anything works changed.
@@ -8784,7 +8784,7 @@ Everywhere a visitor or user reads the product's name — the website, the web a
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 431ff2c4
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 On the homepage, everything under the coral "Is this for me? Find out →" button — the three app badges (App Store / Google Play / Web App), the "Free 7-day trial · Free version forever · iPhone & Android" line, and the "See how it works" link — is now centered under the button instead of left-aligned. The button itself is unchanged.
@@ -8808,7 +8808,7 @@ On the homepage, everything under the coral "Is this for me? Find out →" butto
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 1713e994
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 Two small visual cleanups. (1) On the onboarding paywall, the standalone pricing sentence near the top ("$4.99/mo founders rate — or $39.99/yr…") is gone. The only price on the screen is now the small line right under the "Lock in founders rate" button ("$0 today. $4.99/mo after your free week. Cancel anytime."), so people still see the price before they hit Stripe — just once, in the right spot. Everything else on that screen is unchanged. (2) On the homepage, the big coral "Is this for me? Find out →" button was taller than the App Store / Google Play / Web App badges under it; it's now the same height and scale as those badges, so the hero reads as one tidy stack instead of one oversized button.
@@ -8830,7 +8830,7 @@ Two small visual cleanups. (1) On the onboarding paywall, the standalone pricing
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 486d1cd6
+**Commit hash:** 9c34e0c2
 
 > **BILLING-ADJACENT — Jimmy review requested.** This touches the onboarding
 > paywall copy, the Stripe-checkout trigger button, and the funnel event/dashboard
@@ -8872,7 +8872,7 @@ The paywall at the end of onboarding used to be a hard sell — one big "Start M
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 0d7c56a6
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 The homepage hero now gives visitors a clearer choice. The big coral button up top is now "Is this for me? Find out →" and sends people into the quiz, so undecided visitors get qualified instead of dropped straight onto a trial. Directly under it is a row of three equal options — the official App Store badge, the official Google Play badge (Android is live now), and a matching "Web App" button for people who'd rather not download anything. The small print under it now reads "Free 7-day trial · Free version forever · iPhone & Android," and "See how it works" is still there as a quiet text link just below. Every one of those four buttons is tracked separately, so we'll be able to see exactly which path people take from the hero.
@@ -8900,7 +8900,7 @@ The homepage hero now gives visitors a clearer choice. The big coral button up t
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 24dadcd1
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 We simplified the Android launch email and actually sent it. Instead of two different emails split by how people signed up, it's now a single, clean announcement — "Acuity is on Android now" with one Google Play button — sent to everyone who has never used the phone app (web users and people who signed up but never installed). Anyone already on the app was skipped. After a dry-run preview and a test to Keenan's inbox, it went out for real to 266 people; every send is logged so nobody can ever be emailed it twice. Keenan chose to skip the bounce/suppression list for this one.
@@ -8931,7 +8931,7 @@ We simplified the Android launch email and actually sent it. Instead of two diff
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** b125fa51
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 Built the one-time email that tells people the Android app is finally here, split into two audiences. People who originally signed up on an Android phone but never recorded get "Acuity is on Android now" with the Play Store link. People who signed up on iPhone (or desktop/unknown) and never recorded get a gentle "your first debrief is still waiting" nudge toward the App Store or web app. The whole thing has heavy safety rails so we can't accidentally spam anyone or email the same person twice: it first prints the exact recipient list for you to approve, then sends test copies to your inbox only, and only then sends for real — logging every single send so a re-run can never double-email. It automatically skips anyone who already recorded, was active in the app in the last week, unsubscribed, or is on the Resend bounce list. Nothing sends on its own — every stage is a manual command.
@@ -8968,7 +8968,7 @@ Built the one-time email that tells people the Android app is finally here, spli
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 7c8b1d14
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 The Android app is live on Google Play, so we now offer it everywhere we previously only offered the iPhone app. On the sign-up funnel's final download screen, we detect the visitor's phone: Android users see the "Get it on Google Play" button, iPhone users see the App Store button (unchanged), and desktop visitors see both. Crucially, Android users tapping from inside the Instagram/Facebook in-app browser go straight to the Play Store — none of the copy-the-link workaround the iPhone still needs. The marketing site (homepage, /for pages, footers, the install bar, and the mid-page install sections) now shows both store badges. Welcome and reminder emails now offer both an App Store and a Google Play button, and all the old "Android coming soon" wording is gone. Finally, our admin dashboard now counts an Android store tap exactly like an iPhone store tap, so the "Tapped App Store / Bounced from store" stages stay accurate now that most of our traffic is Android. This matters because the majority of our Meta ad traffic is Android and, until now, those people had no app to install.
@@ -9035,7 +9035,7 @@ Six reliability fixes bundled together. The big one: we had gone blind on paid s
 
 **Requested by:** Jimmy
 **Committed by:** Claude Code
-**Commit hash:** b956d7d0
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 When someone's card was declined, we downgraded them to the free plan — that part worked. But when they fixed their card and Stripe successfully charged them again, we never gave them Pro back. They stayed on the free plan while paying us. This was silent: no error, nothing in the dashboard. It's now fixed, and we added automated tests so it can't come back. Separately, we checked all 12 people who are on the free plan but have a Stripe record — good news, nobody is currently paying us while locked out. Four of them are mid-"your card failed" retries with Stripe; we repaired their records so that when their card goes through, they'll automatically get Pro back instead of staying stuck.
@@ -9064,7 +9064,7 @@ When someone's card was declined, we downgraded them to the free plan — that p
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 5de6df7c
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 Took out the little "powered by Acuity" pill that floated at the bottom center of every step of the sign-up funnel. It's gone across all steps and all five funnel versions. Nothing else about the funnel changed — same screens, same flow, same buttons.
@@ -9084,7 +9084,7 @@ Took out the little "powered by Acuity" pill that floated at the bottom center o
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 8b9e9ce5
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 We flipped the last two steps of the sign-up funnel to get more people into the app. Before, people saw the paywall FIRST and only created their account afterward. Now they create their free account first, and THEN see the paywall — and that paywall is completely optional. If someone wants to pay, they tap through to Stripe and land on the download page. If someone would rather not pay right now, there's a clear "Continue without paying" option that drops them straight onto the download page with a real, working free account. Either way, everyone ends up with an account and reaches the download page — we just make the money later instead of gating the door. Nothing changed about who gets charged or who gets Pro: people who skip stay on the free plan, people who pay get their 7-day trial and Pro exactly as before. This applies to all five funnel versions. One thing to be aware of: because more people now hit the account/sign-in step (and everyone must pass it before download), more of them will run into the known Instagram/Facebook in-app-browser sign-in problem — this change doesn't make that bug worse on its own, but it does put more people in front of it, so that leak still needs its own separate fix.
@@ -9117,7 +9117,7 @@ We flipped the last two steps of the sign-up funnel to get more people into the 
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 5aa23b83
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 Whenever someone pays for Pro, we already send an internal email to keenan@ and jim@heelerdigital.com. Until now that email just said "New payment" — it didn't tell us HOW they paid, so we couldn't tell an existing user upgrading from inside the app apart from someone converting on the sign-up funnel. Now every one of those alerts clearly labels the path right in the subject line: "In-app Pro upgrade", "Funnel conversion", or "Mobile IAP upgrade" — plus the same label inside the email — so at a glance we know which flow made the money. We also wired up the same alert for future mobile (Apple/Google) in-app purchases, so once we turn the mobile store purchases on, a real mobile upgrade will notify us too instead of being silent. This is alerts-only — nothing about charging, trials, or who gets access changed.
@@ -9145,7 +9145,7 @@ Whenever someone pays for Pro, we already send an internal email to keenan@ and 
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 6a16c463
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 About 85% of our traffic opens the site inside the Instagram or Facebook in-app browser on iPhone. In those in-app browsers, a normal "Download on the App Store" link often quietly fails — it opens a little tab-inside-the-app or does nothing, so people tap it but never actually reach the App Store, and we couldn't even see it happening. The funnel's final download screen was already fixed for this months ago. This change copies that exact same fix onto the three OTHER "Download on the App Store" buttons that live on the post-signup "You're in" pages. Now, when someone is in the Instagram/Facebook browser, those buttons hand off to the App Store the reliable way, the App Store link is auto-copied to their clipboard as a backup, and they see clear "Tap the ⋯ menu → Open in Safari" instructions. We also added tracking so a tap that never leaves the page is finally measurable — previously two of these three buttons had zero tracking, so failed downloads were completely invisible. URLs were not changed anywhere.
@@ -9176,7 +9176,7 @@ About 85% of our traffic opens the site inside the Instagram or Facebook in-app 
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 2cd0d8c3
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 On the Pattern Result screen (screen 14), the quote beneath the pattern name (e.g. the "mask" funnel's "You've gotten so good at 'I'm fine' that no one sees the weight you're actually carrying.") was left-aligned inside its box. It's now centered inside the box. The box itself stays where it is, and everything else on the screen — the "YOUR PATTERN" label, the pattern name, and the snapshot text below — is unchanged. Applies to all five funnels.
@@ -9196,7 +9196,7 @@ On the Pattern Result screen (screen 14), the quote beneath the pattern name (e.
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 6aec6bfb
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 Two changes to the "Here's the shift" screen (screen 9), on all five funnels. First, every row of text in both boxes is now black — the left "you right now" items were grey and the right "you a few weeks in" items were coral; now they're all black. Second, the short framing line that sat under each box header has moved down into the rows: it's now the first row of the comparison, with its own left → arrow → right pair just like the other rows (e.g. the "mask" funnel now leads with "Holding it together for everyone" → "Honest, and less alone"). The headers "YOU RIGHT NOW" / "YOU, A FEW WEEKS IN" now stand alone with nothing beneath them. Dividers, arrows, centered text, the paced reveal, footer and button are unchanged.
@@ -9219,7 +9219,7 @@ Two changes to the "Here's the shift" screen (screen 9), on all five funnels. Fi
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** ef672203
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 Three tweaks to the "Here's the shift" screen (screen 9), on all five funnels. First, the text inside both boxes is now centered instead of hugging the inner edges. Second, the row text is a step smaller so it feels lighter and fits more cleanly. Third, each box header now has a short framing line beneath it — under "YOU RIGHT NOW" and "YOU, A FEW WEEKS IN" — written specifically for each funnel (e.g. the "mask" funnel reads "Holding it together for everyone" on the left and "Honest, and less alone" on the right). Left line stays muted grey, right line stays coral. The dividers, arrows, four rows, the paced reveal, footer and button are all unchanged.
@@ -9243,7 +9243,7 @@ Three tweaks to the "Here's the shift" screen (screen 9), on all five funnels. F
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** e45ac566
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 On the "Here's the shift" screen (screen 9), the rows reveal one at a time — the grey "before" appears, an arrow sweeps across, then the coral "after" pops in. That whole reveal now plays at half speed, so it feels more deliberate and paced instead of rushing by. Nothing else about it changed — same look, same order, same arrows — just slower. If someone has reduced-motion turned on, they still see everything instantly (no animation), and the button still appears right after the last row lands. Applies to all five funnels.
@@ -9265,7 +9265,7 @@ On the "Here's the shift" screen (screen 9), the rows reveal one at a time — t
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** a08b549d
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 The previous change (making the "YOU RIGHT NOW" / "YOU, A FEW WEEKS IN" headers bigger and underlined) broke on screen 9 — the right header wrapped to two lines and its underline split across both lines, which looked broken. This reverts that: the headers go back to their prior compact size with no underline on the text. Instead, each panel now has a clean divider line running under its header — grey on the left panel, coral on the right — so the header still clearly "splits off" from the rows below it, without the messy underline. The longer right header now wraps gracefully and the divider stays intact. Applies to all five funnels and fits small phones.
@@ -9288,7 +9288,7 @@ The previous change (making the "YOU RIGHT NOW" / "YOU, A FEW WEEKS IN" headers 
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** e7e21174
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 On the "Here's the shift" screen (screen 9), the two little labels over the panels — "YOU RIGHT NOW" on the grey side and "YOU, A FEW WEEKS IN" on the coral side — were smaller than the rows underneath them, so they didn't read as proper headers. They're now noticeably bigger and underlined, so each side clearly has a title sitting above its rows. Left header stays muted grey to match its dim panel; right header stays coral to match the warm one. Everything else (panels, arrows, four rows, the row-by-row reveal, footer, button) is unchanged. Applies to all five funnels and still fits small phones.
@@ -9311,7 +9311,7 @@ On the "Here's the shift" screen (screen 9), the two little labels over the pane
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** a81e66e2
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 The admin dashboard's Conversion Funnel now has a new "V6 — post-rebuild" view that matches the funnel as it actually is today, after this week's rebuild. The old V5 view was still showing stages that no longer exist (the Time-Math screen, Q7/Q8/Q9, and the two "Gap" screens) and was mislabeling Q6, so its drop-off numbers were meaningless for the current funnel. V6 lists the real 21 steps in the order a user hits them — Entry, Q2, Q3, Q4, Q5 (duration), Q6 (cost), Pain/Mirror, Relief Flip, Current-vs-Future, Mechanism, Value, Commit, Processing, Pattern Result, Timeline, Paywall, Create Account, Account Created, Trial Continued, Download — each with its count, its click-through from the previous step, and its share of everyone who entered. Entry counts a real first tap, not just the page loading, so the top number isn't inflated. The old V5 and V3 views are still there for looking back at historical data; V6 is now the default.
@@ -9337,7 +9337,7 @@ The admin dashboard's Conversion Funnel now has a new "V6 — post-rebuild" view
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** e0a229ef
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 Two small cleanups to the paywall (screen 16), applied to all five funnels. First, the second line under the main headline (the branch-specific subhead, e.g. overload's "Put the list down. Acuity remembers so you don't have to.") is gone — the headline now flows straight into the "Try all of Acuity free for 7 days" line, with tighter spacing so there's no awkward gap. Second, the social-proof area is simpler: the "Loved by women who carry a lot" caption is removed, and the five-star rating now sits centered directly above the "What our users say" box. Tapping that box still opens the same popup with three testimonials matched to the user's funnel.
@@ -9358,7 +9358,7 @@ Two small cleanups to the paywall (screen 16), applied to all five funnels. Firs
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 88006f82
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 The "Here's the shift" screen (screen 9) used to be two columns of text with arrows between them — it read as floating text, not a clear comparison. It's now a true before/after diagram: a muted, dim grey panel on the LEFT ("You right now") sitting next to a warm, coral-tinted panel on the RIGHT ("You, a few weeks in") that's subtly lifted with a soft glow so it feels alive and hopeful. Arrows bridge the gap between the two panels, revealing row by row. The dead-grey-vs-alive-coral contrast makes the transformation land before you even read the words. Same four rows, same header, same one-at-a-time reveal, same button. Applies to all five funnels.
@@ -9379,7 +9379,7 @@ The "Here's the shift" screen (screen 9) used to be two columns of text with arr
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 5447ec8f
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 The reflection screen (screen 7, the "here's what you're carrying" moment) had a faint animated background shape behind the words — a slow looping circle on the patterns funnel, and similar quiet motifs for the other four funnels. In practice it read as a distracting halo rather than subtle atmosphere, so it's been removed entirely on all five funnels. The background is now clean (just the normal page gradient). The words themselves are unchanged: the same clean flowing lines, left-aligned, with coral emphasis on the key phrase in each line, generous spacing, the paced one-line-at-a-time reveal, and the closing beat. Nothing is boxed — it still reads as intimate prose.
@@ -9400,7 +9400,7 @@ The reflection screen (screen 7, the "here's what you're carrying" moment) had a
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 5cc6f2b7
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 The paywall (screen 16) is now less cluttered and easier to scan, across all 5 funnel branches. We removed the "cost of inaction" guilt line and the extra pricing sub-line. On the free side, the two separate items ("Voice debrief" and "Task extraction") are now one clean item — "Voice debrief & task extraction." On the Pro side, we dropped "Weekly report" so the insight layer shows just the three strongest: Deep Insights, Pattern detection, Signals. Instead of a single small italic quote, users now see a prominent ★★★★★ rating with a tappable "What our users say" button. Tapping it opens a tidy, on-brand popup with three real testimonials matched to that user's own branch (e.g. the overload funnel leads with Monica R.'s "47 tabs open" quote; the mask funnel leads with Sarah J.). The popup closes by tapping the X or the backdrop. Everything else stays exactly as it was: the branch headline/subhead, the Monthly $4.99 plan pre-selected by default, the therapy/coffee comparison, the founding-rate lock-in, the "Start My 7 Days Free" button, and the "continue without paying" option.
@@ -9422,7 +9422,7 @@ The paywall (screen 16) is now less cluttered and easier to scan, across all 5 f
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 92a6b7e7
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 The "This is what changes" timeline (screen 15) used to promise Week 1 / Week 2 / Week 4 with the same generic lines for everyone. It's now an aspirational Week 1 / Month 1 / Year 1 arc, AND every line is personalized to the user's own earlier answers. Week 1 names the first relief from the exact thing they said hurts, Month 1 shows that specific pain visibly changing with a new habit forming, and Year 1 describes who they've become now that it no longer runs them. Someone who said they forget things and can't find calm sees a different, truer timeline than someone who said they lie awake or push people away. It builds to a real "this is my future" moment. The vertical coral timeline, the "Starting now" tag, the closing line, the 4.9-from-127+ rating, and the button all stay exactly as they were.
@@ -9444,7 +9444,7 @@ The "This is what changes" timeline (screen 15) used to promise Week 1 / Week 2 
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 2749ade2
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 The "here's the shift" screen (screen 9) used to be two stacked grey cards with grey-on-grey text — flat and easy to miss. It's now a true side-by-side split that makes the transformation land: on the LEFT, "You now" in muted grey; on the RIGHT, "You, a few weeks in" in bright coral that visually wins. Four transformation rows stack down the screen, and they animate one at a time — the drab "before" appears, a coral arrow sweeps left-to-right, then the vivid "after" pops in. The user literally watches themselves change, four times, before the footer and button appear. It's built to stay readable on a narrow phone, and anyone who prefers less motion sees the whole thing static.
@@ -9466,7 +9466,7 @@ The "here's the shift" screen (screen 9) used to be two stacked grey cards with 
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 20b1cc71
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 The "we see you" moment in the funnel (the mirror screen that reflects the user's own answers back at them) used to read like a flat wall of grey text — an indented opening quote, full-width middle lines, and a big shouting centered closer. It now reads like an intimate, personal reflection: everything is left-aligned like being spoken to, the lines reveal one at a time with a gentle beat between each so each truth lands, the single most important phrase in each line is picked out in coral, and the final line is set apart as a quiet payoff before the "Keep going" button. Behind the text, a barely-there ambient animation embodies each branch's feeling — a slow circling loop for "the cycle," shapes gently settling for "the load," a turning tangle for "the loop," a sideways drift that goes nowhere for "the treadmill," and a hairline crack easing across a calm surface for "the mask." It's mood, not decoration — the words stay the focus. Anyone who prefers less motion sees a calm, fully-visible static version.
@@ -9492,7 +9492,7 @@ The "we see you" moment in the funnel (the mirror screen that reflects the user'
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** dbf0c9a6
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 The quiz answer cards in the onboarding funnel looked bland and off-brand — plain grey with a blue "selected" flash that didn't match Acuity. They're now warm and branded: soft coral borders, a barely-there cream tint, and a coral fill + glow when you tap one (the blue is gone). Each answer has a small coral dot on the left that fills in when chosen, the cards gently lift and glow on press, and the progress bar at the top is a slightly bolder coral. It looks premium and alive without any images and without slowing the funnel down. This applies to every quiz screen across all 5 branches, plus the "imagine you could…" relief screen.
@@ -9517,7 +9517,7 @@ The quiz answer cards in the onboarding funnel looked bland and off-brand — pl
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** cc342a28
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 The fifth and final path through the signup quiz — the "I look fine to everyone but I'm barely holding on" path — is confirmed finished and running end-to-end with its real "the mask" words, closing with Sarah J.'s testimonial. It was written with care for how stretched this person feels: it names the weight of holding it together and offers "a private place to set the mask down and be honest," but never implies therapy, treatment, or a mental-health intervention, and never uses crisis language. With this, all five paths of the rebuilt onboarding funnel now have their real content — the funnel rebuild is content-complete.
@@ -9540,7 +9540,7 @@ The fifth and final path through the signup quiz — the "I look fine to everyon
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** cc342a28
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 The fourth path through the signup quiz — the "I'm busy nonstop but I never actually get anywhere" path — is finished and runs end-to-end with its real "the treadmill" words. It mirrors the exact stuck-and-spinning feeling back ("you pour it all into everyone else... it's costing you the goals you keep pushing to someday"), flips to relief, and shows the personalized "you right now" vs "you a few weeks in" contrast, closing with Stephanie K.'s real testimonial. It reuses the same look and animations as the earlier branches.
@@ -9563,7 +9563,7 @@ The fourth path through the signup quiz — the "I'm busy nonstop but I never ac
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 89b34de8
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 The third path through the signup quiz — the "my brain won't stop racing at night" path — is finished and runs end-to-end with its real "the loop" words. It mirrors the exact racing-mind experience back ("you circle the things you can't control... it wakes you in the dark"), flips to relief, and shows the personalized "you right now" vs "you a few weeks in" contrast, closing with Megan R.'s real testimonial. Importantly, this path was carefully kept on the right side of the line: it names the problem (lost sleep, tiredness, a mind that won't quiet) and promises "somewhere to put it down" and rest — it never claims to cure insomnia, treat a condition, or improve your health. It reuses the same look and animations as Branches 1 and 2.
@@ -9586,7 +9586,7 @@ The third path through the signup quiz — the "my brain won't stop racing at ni
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 1c120778
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 The second path through the signup quiz — the "I keep having the same fights and patterns and I don't know why" path — is now finished and runs end-to-end with its real "the cycle" words. When someone picks it, the quiz mirrors their exact pattern back ("the same argument wearing a different face... it's costing you the closeness you actually want"), flips to relief, and shows the "you right now" vs "you a few weeks in" side-by-side built from their specific answers. The paywall, timeline, and "how it works" screen all speak to naming and breaking the cycle, closing with Jennifer H.'s real testimonial. It reuses the exact same look, feel, and animations as Branch 1 — nothing new was invented.
@@ -9608,7 +9608,7 @@ The second path through the signup quiz — the "I keep having the same fights a
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 2f2e0fcd
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 The first path through the new signup quiz — the "my head's too full and I keep forgetting things" path — now has its real words in place instead of placeholders. When someone picks that path, the quiz mirrors their exact pain back to them ("you lie awake running the list... it's costing you your peace"), flips to relief, and shows a "you right now" vs "you a few weeks in" side-by-side that's assembled from the specific answers they tapped. The paywall, the timeline, and the "how it works" screen all speak to the same "put the load down" idea, closing with a real testimonial from Monica R. I also made every screen's animation feel the same (one clean, uniform style) and removed the "one minute / talk for 60 seconds" wording so we're not making time claims we shouldn't. This is the finished template — the other four paths follow the same pattern next.
@@ -9633,7 +9633,7 @@ The first path through the new signup quiz — the "my head's too full and I kee
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 546d109f
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 The web quiz that new people go through before signup got a structural overhaul. It now walks them through a tighter, more emotional arc: after we mirror back their pain, we flip to relief ("imagine that weight gone — how would you feel?") and show a side-by-side of "you right now" versus "you a few weeks in." We cut the screens that dragged (a time-math counter, three extra quiz questions, two loss-focused "gap" screens, and a preview block) and simplified the branch list from six paths to five by folding the two weakest ones into stronger neighbours. Everything is wired end-to-end and clickable, but a lot of the per-path wording is still placeholder — the real branch-by-branch copy lands in follow-up commits. This commit is the skeleton, not the finished copy. Separately, the admin dashboard's user list can now be sorted by plan (paid vs trial vs free) by clicking the Plan column header.
@@ -9662,7 +9662,7 @@ The web quiz that new people go through before signup got a structural overhaul.
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 2d76c829
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 We killed the "Acuity noticed something" activation email for good. It was supposed to send people a real insight around their 5th recording, but in practice it kept surfacing low-value filler ("one entry in fourteen days… worth a sentence next time") that read like a nag, not an insight — which works against our whole "Acuity gives you answers" promise. Instead of trying to police its quality, we removed it completely: the email no longer sends, and the behind-the-scenes machinery that spun up a same-day insight just to feed that email is gone too (it was quietly costing us AI money for an email we're not sending). Nothing users actually see changed — the app's Insights page and the weekly insight generation still work exactly as before.
@@ -9695,7 +9695,7 @@ We killed the "Acuity noticed something" activation email for good. It was suppo
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 049958d2
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 On the "Everything's ready when you are" paywall, the $4.99 Monthly plan is now the plan that's highlighted by default for everyone — it no longer quietly falls back to the yearly plan because of a leftover choice saved from an earlier visit. The screen now hammers home that the trial is free: the button says "Start My 7 Days Free," the reassurance line is bigger and bolder ("You won't be charged today"), and there's a new line by the pricing making clear you aren't charged until the 7 days are up. The testimonial that used to get cut off mid-sentence now shows the full quote, and a few subtle, tasteful animations were added (rows easing in, a gentle glow on the selected Monthly plan, a soft shimmer on the button) — none of which slow down or block the button.
@@ -9724,7 +9724,7 @@ On the "Everything's ready when you are" paywall, the $4.99 Monthly plan is now 
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** a2f10bbc
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 Our single biggest leak is the "create account" step — about half the people who get there never finish, and the data says most of that traffic is trapped inside the Facebook/Instagram in-app browsers where "Continue with Google/Apple" often just fails silently. The problem: when that failure happened, our system recorded *nothing* — so every fix we've tried has been a guess in the dark. This pass doesn't try to fix it. It installs the cameras. We now log exactly what happens at each step — which app's browser the person is in (Facebook vs Instagram), which phone (iPhone vs Android), which button they tapped (Apple, Google, or email), whether the hand-off to Google/Apple even started, and whether they came back successfully, bounced back to the form, or vanished. Next session we read what these cameras record — plus what Keenan sees in the live test below — and *then* build the real fix on evidence instead of guesses.
@@ -9800,7 +9800,7 @@ Two things worth knowing up front:
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 68d1012e
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 The paywall was our biggest drop-off point, and it looked and felt like a wall — long, a little guilt-trippy, and it quietly pushed people toward the pricey annual plan. It now reads as a warm invitation instead of a pitch. The $4.99 monthly plan is the one highlighted by default, the screen is about half as long, the big feature table is gone (replaced with a simple "here's what's free forever vs. what Pro adds"), and the "7-day free trial, cancel anytime, you won't be charged today" reassurance is now big and easy to see right above the button. The "continue without paying" option is also clearer for people who aren't ready to commit.
@@ -9830,7 +9830,7 @@ The paywall was our biggest drop-off point, and it looked and felt like a wall �
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** ae3365fe
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 The value screen partway through the web signup flow (the "What it gives you" cards) used to open with "Active task tracking." That led with a to-do feature instead of the real reason people come to Acuity — the answers. It now opens with a new lead card, "Deep life insights," that says what people actually get: what's driving them and what's holding them back — the patterns they can't see from inside their own life. That's our core differentiator and the "Acuity gives you answers" promise, front and center. We kept "Active task tracking" — it's concrete, believable proof that reassures skeptical users — but moved it to second so the emotional insight promise leads and the practical proof backs it up. The other four cards (Life Matrix, Habit tracking, Weekly report, Signals) are unchanged.
@@ -9853,7 +9853,7 @@ The value screen partway through the web signup flow (the "What it gives you" ca
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 265c6663
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 All the "human" emails Acuity sends — trial onboarding nudges, recovery emails for people who stalled, milestone congrats, win-backs, and the weekly/monthly recap digests — were going out from the robotic no-reply system address. Now they come from "Keenan from Acuity" (keenan@getacuity.io), a real inbox you actually read. That makes them feel personal and invites replies, which is the whole point of these emails. Nothing changed for the boring transactional mail (email verification, password resets, login links) or the internal alerts that ping us — those still come from the system address, which is correct for that kind of mail. To prove it works, all 11 onboarding/recovery preview emails were sent to your heelerdigital inbox from the new address — check that the sender shows as "Keenan from Acuity".
@@ -9919,7 +9919,7 @@ No user-facing app change — this is all internal tooling for us to see what's 
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 297a078
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 
@@ -9953,7 +9953,7 @@ The "Open Acuity" button in emails was hitting a dead end because the /open page
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 7905db4
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 
@@ -9995,7 +9995,7 @@ Cancelled the previous catch-up that would have shoved all stranded never-record
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 8b65198
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 
@@ -10034,7 +10034,7 @@ About 120 existing users who signed up but never recorded a single debrief were 
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** a995590
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 
@@ -10071,7 +10071,7 @@ Every lifecycle email now looks and feels like a polished product — not a mark
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 3eac21a
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 
@@ -10115,7 +10115,7 @@ Our most engaged users now get milestone recognition emails at 10, 25, 50, 100, 
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 913e40f
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 
@@ -10157,7 +10157,7 @@ When we turn on the recovery emails, there will be a backlog of lapsed/dropped-o
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 3736139
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 
@@ -10200,7 +10200,7 @@ Full audit results:
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** f5f19ca
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 
@@ -10235,7 +10235,7 @@ The "Open Acuity" button in our re-engagement and winback emails now opens the n
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** b903128
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 
@@ -10279,7 +10279,7 @@ Users who recorded at least one debrief and then went completely silent now get 
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** de686fe
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 
@@ -10319,7 +10319,7 @@ Users who record a debrief and then go quiet now get a specific follow-up based 
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** d8a7cc3
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 
@@ -10358,7 +10358,7 @@ Trial users who sign up but never record a single debrief now get up to four esc
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** d4c5aea
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 
@@ -10404,7 +10404,7 @@ Instead of sending everyone the same generic "your app is waiting" download remi
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 8f013c0
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 
@@ -10446,7 +10446,7 @@ Users who are on an active trial, have recorded at least one debrief, and have N
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 329baec
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 
@@ -10480,7 +10480,7 @@ New users who record their second debrief now get a one-time email titled "You'v
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 83d0776
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 
@@ -10516,7 +10516,7 @@ The "Acuity noticed something" activation email was waiting up to 6 days because
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 0ad60e9
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 
@@ -10552,7 +10552,7 @@ Users who record at least 5 debriefs now get a one-time email titled "Acuity not
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** f534e382
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 
@@ -10592,7 +10592,7 @@ Until now, anyone who reached the "download the app" screen but didn't end up op
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 08616d46
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 
@@ -10623,7 +10623,7 @@ The "Create account" form was forcing people to type their full name before it w
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** fd98a7c0
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 
@@ -10656,7 +10656,7 @@ People who came from a Meta ad and signed up with Google or Apple were showing u
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 89345329
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 
@@ -10685,7 +10685,7 @@ The big Sessions table in the admin dashboard was listing every single session t
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** b6427d56
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 
@@ -10716,7 +10716,7 @@ The analytics dashboard was overcounting the very first step of the v5 onboardin
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 00ccfca1
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 
@@ -10751,7 +10751,7 @@ How to verify live once pushed:
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 6dc24536
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 
@@ -10775,7 +10775,7 @@ pointer-events-none on the container guarantees the badge can never intercept a 
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 56f34446
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 
@@ -10801,7 +10801,7 @@ Both changes are presentation-only in the v5 funnel; no tracking, schema, or cop
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** db1a030a
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 
@@ -10837,7 +10837,7 @@ The OVER-fire at ~line 327 is a known correctness bug regardless of D's outcome;
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 92a5116c
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 
@@ -10864,7 +10864,7 @@ Used a new filename rather than overwriting the old file so email-client/CDN ima
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 96f4bb0e
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 
@@ -10893,7 +10893,7 @@ The checkbox removal is itself the most likely fix for "Subscribe Now does nothi
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 09f39d7b
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 
@@ -10920,7 +10920,7 @@ All three verified clean of banned phrases (no "60 seconds"/"one minute"/nightly
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** f95bab97
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 
@@ -10947,7 +10947,7 @@ Signature title lives in one place now (keenanSignature() in trial/layout.ts), s
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 4487eb99
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 
@@ -10975,7 +10975,7 @@ Two quick fixes to the welcome email after you reviewed the live send. First, th
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 5057d9d7
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 
@@ -11007,7 +11007,7 @@ Every new person who signs up now gets one welcome email — a short, personal n
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 556ecbb2
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 
@@ -11040,7 +11040,7 @@ Every new person who signed up was getting TWO welcome emails at almost the same
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** cfd1c42d
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 
@@ -11078,7 +11078,7 @@ The 12 emails we kept turned on now actually look like Acuity. They used the old
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** f7cf1ad2
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 
@@ -11114,7 +11114,7 @@ KEPT ON (12): welcome_day0, recovery_paid_no_app, recovery_recorded_once, recove
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 5a61d411
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 
@@ -11139,7 +11139,7 @@ None.
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 0461abe5
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 
@@ -11164,7 +11164,7 @@ None.
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 204be096
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 
@@ -11190,7 +11190,7 @@ None.
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 31544ad9
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 
@@ -11219,7 +11219,7 @@ None.
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** c840a9b8
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 Four refinements to the pricing screen, all about making it clearer and more relevant — no change to price, the trial, or how billing works. First, the comparison table used to label the second column "Without Pro," which made it sound like you'd lose the whole app. In reality there's a permanent free tier: after the trial, voice recording, task extraction, and streaks stay free forever, and only the insight features (weekly report, Life Matrix, patterns, etc.) need Pro. So the columns are now simply "Pro" and "Free," and the line under the table spells out exactly what stays free versus what Pro keeps — framed as keeping the layer that shows you what your life means, not losing the app. Second, the locked-feature list was long and led with weaker items; it now leads with the three biggest reasons to upgrade — Weekly report, Life Matrix, Pattern detection — so the most persuasive features catch the eye first. Third, the little testimonial on the pricing screen used to be a career/quitting-my-job story shown to everyone, which didn't fit people who came in about relationships, overthinking, or feeling lost; it now picks a real, fitting quote based on the path the person came in on. Fourth — already handled: the loss-aversion line above the table ("you've already seen the … for what it is") was confirmed to already speak in each branch's own voice, so it needed no change.
@@ -11246,7 +11246,7 @@ Four refinements to the pricing screen, all about making it clearer and more rel
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 66b1d331
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 Two personalization fixes so the funnel speaks to each person's specific situation instead of one-size-fits-all. First, the "This is what changes" timeline (Week 1 / Month 1 / Year 1) was written in one voice for everyone — and that voice was about "the cycle," which only really fits people who came in through the relationship/patterns door. Now each of the six entry paths gets its own version of all three milestones: someone whose problem is foggy, blurred-together days hears about the fog lifting; someone stuck in 2am overthinking hears about their mind getting somewhere to rest; someone who's tried-everything-before hears about something finally sticking, and so on. Second, on the pricing screen, the little example lines under each feature used to default to a relationship example (a partner, an argument, "the Marcus conversation") for everyone — so a person who never mentioned relationships still saw relationship examples. Now every feature shows an example that matches the path the user came in on. Nothing about price, the trial, the layout, or the buttons changed.
@@ -11272,7 +11272,7 @@ Two personalization fixes so the funnel speaks to each person's specific situati
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 75acfcdf
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 The "This is what changes." screen used to show four week-by-week steps (Week 1, 2, 3, 4). It now shows three milestones that stretch further into the future — Week 1, Month 1, and Year 1 — so the user sees the journey go from an immediate win, to the pattern becoming undeniable a month in, to having a whole year-long record of themselves. The copy escalates: Week 1 the cycle gets named, Month 1 the pattern becomes undeniable and the Life Matrix takes shape, Year 1 they have a record of themselves nobody else could write. Same look and same animation pace — just three steps instead of four. The proof section below it, the testimonial, and the button are unchanged.
@@ -11300,7 +11300,7 @@ The "This is what changes." screen used to show four week-by-week steps (Week 1,
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** d735790a
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 On the "this is your pattern" results screen, the quoted line in the grey box (e.g. "The same conversations keep cycling without resolving…") is now bold so it stands out more as the line that makes the user nod.
@@ -11320,7 +11320,7 @@ On the "this is your pattern" results screen, the quoted line in the grey box (e
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 7dfbe51c
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 Two changes to the pricing screen aimed at getting more people onto the card-on-file path (which converts to paid far better than the no-card path). First, the big button now says "Start My 7 Days" instead of "Lock In My Savings" — it makes more sense because tapping it doesn't actually charge anyone today, it starts the free trial. The "you won't be charged today" line still sits right under it. Second, "Continue without paying" used to be a big button just as prominent as the paid button, which made it too easy to pick the weaker path; it's now a small, quiet text link. The free no-card option is still there and still works exactly the same — it's just no longer competing head-to-head with the paid button. Nothing about the actual price, the trial, or how billing works changed. We added tracking so we can see whether more people now choose the paid path and whether that lifts trial-to-paid conversion.
@@ -11349,7 +11349,7 @@ Two changes to the pricing screen aimed at getting more people onto the card-on-
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** f53657bc
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 We added quiet trust signals at a few points in the onboarding funnel to make new visitors feel more confident as they go, which should reduce people dropping off partway through the quiz. There are three new spots: (1) a small "4.9 ★ from 127+ users" rating strip above the very first question, (2) one customer quote on the "how it works" screen, and (3) one customer quote on the "what changes week by week" screen. Every quote and the rating are real and already existed elsewhere in the product — nothing was made up. We deliberately left the emotional "pain" screens and the personal "this is your pattern" result screen completely clean, because adding proof there would break the moment. We can now measure whether these placements actually help, because each one reports when it's seen.
@@ -11379,7 +11379,7 @@ We added quiet trust signals at a few points in the onboarding funnel to make ne
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 1a7c00e5
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 Both pricing cards on the paywall now **animate the discount happening in real time**. The regular price ($19.99/mo or $199/yr) shows first as the big number, then a red strikethrough line draws across it, the regular price shrinks to a small anchor, and the founding rate ($4.99/mo or $39.99/yr) drops in with a spring effect. The badges ("FOUNDING RATE" / "SAVE 33%") appear last. After everything lands, a subtle savings line fades in ("You save $15/mo" / "save $159/yr"). The annual card runs 150ms behind the monthly card so they feel coordinated but not identical. The whole sequence takes about 1.5 seconds. Selecting between monthly and annual smoothly lifts the chosen card.
@@ -11402,7 +11402,7 @@ None — deploys on push.
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 13961bf8
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 Three changes to the funnel screens between the quiz questions and the product explainer:
@@ -11433,7 +11433,7 @@ None — deploys on push.
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** ade4e229
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 The pricing screen now appears **before** the "Create your free account" screen instead of after it. This means users see the price, the founding rate, and the trial-vs-paid comparison BEFORE they're asked to create an account. Two paths: (1) "Lock In My Savings" → create account → Stripe checkout → download, or (2) "Continue without paying" → create account → download (free trial, no card). Either way, the account is always created before any charge happens — no one can be charged without having an account.
@@ -11483,7 +11483,7 @@ None — deploys on push. No migration needed.
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** b81219b7
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 The paywall screen ("Lock In My Savings") now shows a **concrete feature comparison table** that makes the trial-vs-paid difference tangible. During the trial, everything is unlocked (all checkmarks). After the trial ends without subscribing, the high-value features (Signals, pattern detection, Life Matrix, weekly report) show as "Locked" — so the user sees exactly what they'd lose. Each feature row is **tappable** — tap it and a real example expands showing what that feature actually does, personalized to the user's assigned pattern when possible (e.g. a "Relational Looping" user sees a relationship-specific Signal example). The 988 crisis line is now in the footer.
@@ -11509,7 +11509,7 @@ None — deploys on push.
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 9a67c991
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 The admin dashboard's funnel analytics now has a **v5** button alongside v4/v3/v2/v1. When you click v5, you see the current funnel stages — including the new "Pattern Result" screen that replaced the old "Snapshot" screen. New users going through the funnel are automatically tagged as v5 sessions, so their data shows up in the v5 view. Old data still shows up correctly under v4/v3/etc. — nothing historical was changed.
@@ -11590,7 +11590,7 @@ None — no build, no migration, no store submission. Deploys automatically on p
 
 **Requested by:** Jimmy
 **Committed by:** Claude Code
-**Commit hash:** a34c542
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 Two things shipped together in one release.
@@ -11641,7 +11641,7 @@ RLS:
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** ec7cde55
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 When someone taps a Meta/Instagram ad and finishes the signup funnel, the "Download" button at the end was silently failing — tapping it did nothing because Instagram's built-in browser blocks app-opening links. Now webview users see: (1) a real download link that the browser handles natively instead of through JavaScript tricks, (2) a clear, prominent instruction card saying "Tap the ⋯ menu → Open in Safari" with step-by-step directions customized for Instagram vs Facebook, and (3) the App Store link is automatically copied to their clipboard with a visible confirmation (or if that fails, a plain-text URL they can long-press to copy). There is no longer any path where the user taps something and nothing happens. Users in normal browsers (Safari, Chrome) see the same button as before — only the webview experience changed.
@@ -11670,7 +11670,7 @@ None — no build, no migration, no store submission required. Deploys automatic
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** c6b252d7
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 Users coming from Meta/Instagram ads are hitting an error when they tap "Download" at the end of the signup funnel — but we couldn't see what the error actually was, because nothing was being captured. This change adds invisible diagnostic tracking to the download screen so that the next time a webview user hits the problem, we'll see exactly what failed (popup blocked? scheme error? something else?) in our existing analytics data. Nothing about what the user sees or how the button works has changed — this is capture-only so we can find the real root cause.
@@ -11703,7 +11703,7 @@ None — this is instrumentation-only. No build, no migration, no store submissi
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 626eb508
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 Every place a user could still read "14 days" or "two weeks" when referring to the free trial now says "7 days" or "one week." This covers the graveyard testimonial on the signup funnel, the Life Audit unlock message on both web and mobile, the founding-member drip email, the waitlist activation email, the Play Store and App Store listing descriptions, and the brand/positioning reference docs that guide all future copy. Legal references to a "14-day cancellation right" were left alone — those are a separate EU consumer protection right, not the trial.
@@ -11773,7 +11773,7 @@ New users now get a **7-day free trial** instead of 14. Existing trials are neve
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** d7995a73
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 The peach highlighter on the Gap 1 "what it's costing you" screen was only covering the bottom half of words like "health" and "time" — it looked like the highlight was cutting through the middle of the letters. Now it covers the full word cleanly, like a real highlighter drawn over text. The sweep animation still plays the same way.
@@ -11794,7 +11794,7 @@ None.
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 71998388
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 The peach highlighter effect on the Gap 1 "what it's costing you" screen was broken — it sat too high and clipped the tops of letters, bled across line wraps, and looked ragged on long phrases like "time you can't get back." Now the highlight sits cleanly behind the lower half of the text like a real marker pen, wraps cleanly across lines, and only highlights the core cost noun ("health", "career", "time", "sense of self") instead of long clauses. Looks intentional now, not glitchy.
@@ -11817,7 +11817,7 @@ None.
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 0a83f6c2
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 The paywall's "YOUR FIRST 30 DAYS" timeline was listing what the app produces (tasks extracted, weekly report, Life Matrix, monthly memoir). Rewritten to describe how she feels: Week 1 her head feels lighter, Week 2 she starts seeing the loops that run her on autopilot, Week 3 her life comes into focus, Week 4 she's running her weeks instead of chasing them. Zero feature names — all transformation language. The kicker changed from "YOUR FIRST 30 DAYS" to "THE NEXT FEW WEEKS." Added a settle closer: "Less in your head. More in your hands." Price anchor tightened slightly ("A coach" instead of "A life coach", "less than a coffee a week" instead of "less than a coffee"). Pricing, Stripe, checkout all untouched.
@@ -11840,7 +11840,7 @@ None.
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 5b8bbc2d
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 Gap 1 now matches the visual format of Gap 3 and Time-Math. Instead of four text blocks at varying sizes with no hierarchy, the screen reads as a clear progression: a small uppercase kicker at the top with the tally count (e.g. "4 TIMES THIS WEEK · ~210 A YEAR"), then a large centered hero statement about what it's costing her (with the animated highlight sweep on cost words), then a smaller undertone line about the pattern compounding, then a bold settle closer. If she tapped zero on the counter, the kicker is omitted and the screen opens directly on the hero. The overall feel now matches the other screens — clear hierarchy, generous spacing, content centered vertically.
@@ -11868,7 +11868,7 @@ None.
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 0b74e83d
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 The big number animation on the Time-Math screen (e.g. counting up to "365 evenings") was playing multiple times instead of once. Now it counts up exactly once when the screen appears, settles on the final number, and stays there. Tap-to-skip still jumps straight to the final number.
@@ -11890,7 +11890,7 @@ None.
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 3144740c
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 The "Get app / Download Acuity for iPhone" banner was showing at the top of the funnel Entry screen. This was sending high-intent ad traffic straight to the App Store before they even answered the first question — bypassing the entire web funnel and web recording flow. Both the Apple Smart App Banner (the native Safari one) and our custom orange banner are now suppressed on the /start funnel. They still appear on the standalone signup and upgrade pages where they make sense. The Download screen at the end of the funnel still handles the app download as the intended reward.
@@ -11914,7 +11914,7 @@ None.
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** b4a7c56a
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 The cookie consent banner was covering the answer options on the funnel Entry screen and clashing visually. It now waits until the user reaches the Create Account step before appearing — by that point she's already committed and the banner doesn't compete with content. The banner is also restyled to be slimmer and visually match the funnel when it does appear. On non-funnel pages (homepage, dashboard, etc.), the existing 5-second delay is unchanged.
@@ -11946,7 +11946,7 @@ Separately, the Meta Pixel was loading before users consented to cookies — whi
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** e92fac43
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 Two fixes to the funnel tally and Gap 1 screens. (1) The counter that asks "how many times did it happen" now looks obviously tappable — it's wrapped in a large circular button with an instruction line ("Tap once for each time it happened") and a gentle pulsing invitation before the first tap. The "I've lost count" link is spaced further from the counter so it can't be accidentally tapped. (2) If someone taps zero times and continues, Gap 1 no longer shows the false "52 times a year" math — it skips straight to the cost beat. The orange highlight on cost words now sweeps across like someone drawing with a highlighter instead of appearing as a flat block. The Gap 1 screen is better centered vertically with more breathing room between lines, and the final settle animation ("Left alone, loops don't loosen. They tighten.") now plays correctly.
@@ -11974,7 +11974,7 @@ Two fixes to the funnel tally and Gap 1 screens. (1) The counter that asks "how 
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 1103c141
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 Three additions to the v4 funnel. (1) After the "what pattern would you like to stop?" question, users now TAP to count how many times it happened last week — a big number they increment with each tap. The count echoes in Gap 1: "7 times last week. At that pace, that's roughly 360 times a year." If she can't count, "Honestly, I've lost count" is also powerful copy. (2) After the "how long" question, a time-math screen translates her duration into evenings — if she said "over a year," she sees a large animated count-up to 365 with the label "evenings." Short durations ("a few weeks") skip this screen entirely since the numbers aren't impactful. (3) The Mirror was cut from 5 dense paragraphs (~200 words) to 3 choreographed beats (~50 words) — the sharpest pain reflection, her Q9 echo, and "You don't have to keep living like this." The original copy is preserved in comments for future use.
@@ -12014,7 +12014,7 @@ Three additions to the v4 funnel. (1) After the "what pattern would you like to 
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 1103c141
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 The three Gap screens between Mirror and Mechanism now feel alive instead of flat. Gap 1 animates each cost word with an orange highlight sweep, then the final line ("Left alone, loops don't loosen") settles with physical weight. Gap 2 swapped the small pill chips for full-width option cards matching every other quiz screen, with an animated checkmark on select and a count that updates live ("3 selected"). Gap 3 plays like a film time-lapse: each future-self scene arrives bright, then dims as the next one takes over, and the final question owns the screen alone. Tapping anywhere skips the animation on all three screens. All motion respects accessibility settings.
@@ -12044,7 +12044,7 @@ None.
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 1103c141
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 Major funnel upgrade. The Gap screen between Mirror and Mechanism is now a three-screen animated sequence: (1) "What it's costing you" personalizes the cost she named in Q6, (2) "How would it feel?" lets her select from 6 feelings chips, and (3) "Your future self" paints her chosen feelings as a vivid future — ending with "Are you ready to make a lasting change?" If she says "no," she gets a warm micro-moment (not a dead-end) and proceeds to Mechanism. The signup screen now shows real App Store ratings, rotating testimonials, and a privacy reassurance note — with zero changes to the actual signup logic. The paywall replaces the fake "47 of 100 spots left" counter with honest founding-rate urgency. The entire funnel now has the marketing site's gradient background. The commit screen copy is reverted to "Hold to commit to 60 seconds a day." The admin dashboard has a V4 toggle, Gap 1/2/3 bars, a "Ready for Change" stat, and a Gap 2 feelings breakdown for ad angle research. flowVersion is now "v4".
@@ -12080,7 +12080,7 @@ Major funnel upgrade. The Gap screen between Mirror and Mechanism is now a three
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 0abdd64e
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 The Gap screen in the /start funnel has been invisible in the analytics since it launched — zero events ever made it to the database, even though hundreds of people saw the screen. The admin chart showed "22" for Gap but that number was fake — it was borrowing from the Mechanism step's count. The root cause: when we added the Gap screen to the funnel, we forgot to add `funnel_gap_viewed` to the server's list of allowed event names, so the server silently rejected every Gap event with a 400 error that the client swallowed. Two other events added in v3 (`funnel_ad_match` for ad attribution tracking and `funnel_copy_app_link_clicked` for download link copies) had the same bug. All three are now fixed. Going forward, real Gap data will appear in the admin chart.
@@ -12108,7 +12108,7 @@ The Gap screen in the /start funnel has been invisible in the analytics since it
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** ea3b25e7
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 When someone tries to create an account on /start and something goes wrong, they now see a specific, helpful message instead of getting silently stuck. If her email is already registered, she sees "Looks like you already have an account" with a sign-in button that keeps her in the funnel. If password is too short, she's told exactly what to fix. If the network drops, she's told to try again and her info stays filled in. On the admin side, the Funnel Analytics tab now shows a "Signup Failures" panel with counts and reasons, so you can see exactly why people aren't completing signup. Every failure is now logged server-side too — no more invisible breakage.
@@ -12172,7 +12172,7 @@ No code changes. Audit findings:
 
 - **Requested by:** Jimmy
 - **Committed by:** Claude Code
-- **Commit hash:** 1103c141
+- **Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 The product-tour Next and Back buttons felt cramped on phones. They're now bigger (50pt) with a 20pt gap between them, so they're comfortable to tap. Web is live immediately; the native (iOS/Android) version rides the next app build.
@@ -12193,7 +12193,7 @@ The product-tour Next and Back buttons felt cramped on phones. They're now bigge
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 501eaa7
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 The V3/V2/V1 toggle you added in the Funnel Analytics tab was broken — switching between versions showed identical numbers because the database query never actually filtered by version. Now V3 shows only v3-tagged sessions (~25 so far), V2 shows only the v2 historical data (~476 events), and they display clearly different numbers. The Stripe paid count is labeled "(all versions)" since it comes from the User table, not from funnel events.
@@ -12217,7 +12217,7 @@ None — no schema changes. The `flowVersion` column and `[flowVersion, createdA
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 4d7b4c0
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 The start funnel now has a stronger persuasion architecture. After the Mirror shows her what she told us, a new "Gap" screen amplifies the cost she selected and paints a sensory picture of what changes — before showing how the product works. The "how it works" steps now sell the benefit she'll feel, not just the feature. The commit screen says "hold to commit — not to an app, to 60 seconds a day of finally keeping track of YOU." All six branches have personalized Gap copy. Ads can now deep-link to the matching pain option (?p=rumination), which pre-highlights it on the entry screen. The admin Funnel Analytics tab has a v3 toggle so you can compare old copy vs new copy cleanly, plus commit completion rate and ad-match attribution.
@@ -12275,7 +12275,7 @@ Stops the silent-recording problem at the source. If your mic captured no sound 
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 0516a83
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 The web app was following your Mac's dark mode setting, which caused the "how it works" screen in the start funnel to show up with a dark background and orange text instead of matching the rest of the light funnel. The "hold to commit" circle was also nearly invisible (white on white). Both are fixed. The record button in the recording modal is now orange instead of purple. The entire web app now defaults to light theme regardless of OS preference.
@@ -12361,7 +12361,7 @@ The product tour was unusable on phones — the "Next" arrow was getting cut off
 
 - **Requested by:** Keenan
 - **Committed by:** Claude Code
-- **Commit hash:** 6dbe1ac7
+- **Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 
@@ -12390,7 +12390,7 @@ None — deploys automatically on push. Keenan to verify nav works from a blog p
 
 - **Requested by:** Keenan
 - **Committed by:** Claude Code
-- **Commit hash:** 37e9118
+- **Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 
@@ -12415,7 +12415,7 @@ None — deploys automatically on push.
 
 - **Requested by:** Keenan
 - **Committed by:** Claude Code
-- **Commit hash:** 13d1ecf
+- **Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 
@@ -12445,7 +12445,7 @@ None — mobile requires a new build for copy changes to ship to TestFlight. Web
 
 - **Requested by:** Keenan
 - **Committed by:** Claude Code
-- **Commit hash:** 8e6f71e
+- **Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 
@@ -12551,7 +12551,7 @@ The first-login product tour has been silently broken for ~30 days — it never 
 
 - **Requested by:** Keenan
 - **Committed by:** Claude Code
-- **Commit hash:** 2ecb500
+- **Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 
@@ -12578,7 +12578,7 @@ None — no schema changes, no env vars, deploys automatically on push.
 
 - **Requested by:** Keenan
 - **Committed by:** Claude Code
-- **Commit hash:** fc8ff20
+- **Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 
@@ -12604,7 +12604,7 @@ None — no schema changes, deploys automatically on push.
 
 - **Requested by:** Keenan
 - **Committed by:** Claude Code
-- **Commit hash:** 175629f
+- **Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 
@@ -12631,7 +12631,7 @@ None — no schema changes, no env vars, deploys automatically on push.
 
 - **Requested by:** Keenan
 - **Committed by:** Claude Code
-- **Commit hash:** ca69834
+- **Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 
@@ -12658,7 +12658,7 @@ None
 
 - **Requested by:** Keenan
 - **Committed by:** Claude Code
-- **Commit hash:** 8cfc55e
+- **Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 
@@ -12716,7 +12716,7 @@ Four bugs found while testing the v1.3 flows, all fixed and going out in the nex
 
 - **Requested by:** Keenan
 - **Committed by:** Claude Code
-- **Commit hash:** f176fab
+- **Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 
@@ -12742,7 +12742,7 @@ None — deploys automatically on push.
 
 - **Requested by:** Keenan
 - **Committed by:** Claude Code
-- **Commit hash:** 37efa79
+- **Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 
@@ -12776,7 +12776,7 @@ Now: (1) the pixel waits up to 5 seconds for consent before giving up, (2) the s
 
 - **Requested by:** Keenan
 - **Committed by:** Claude Code
-- **Commit hash:** c4b6d73
+- **Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 
@@ -12801,7 +12801,7 @@ None
 
 - **Requested by:** Keenan
 - **Committed by:** Claude Code
-- **Commit hash:** 0d3dc34
+- **Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 
@@ -12841,7 +12841,7 @@ Now: CompleteRegistration fires (both browser pixel AND server-side) for 100% of
 
 - **Requested by:** Jimmy
 - **Committed by:** Claude Code
-- **Commit hash:** 5eeb6db
+- **Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 
@@ -12881,7 +12881,7 @@ We closed the legal gaps a privacy review found in our Privacy Policy and Terms 
 
 - **Requested by:** Jimmy
 - **Committed by:** Claude Code
-- **Commit hash:** 92a74d7
+- **Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 
@@ -12961,7 +12961,7 @@ All future App Store submissions are **MANUAL release**, not automatic. Jim cont
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** c6758b2
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 
@@ -13078,7 +13078,7 @@ The `User.totalRecordings` field doesn't match the actual count of COMPLETE entr
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 6b422c4
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 
@@ -13114,7 +13114,7 @@ Two changes: (1) The "Savings Locked In" bar in the funnel chart was showing wro
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** ba3ed2a
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 
@@ -13145,7 +13145,7 @@ The "Savings Locked In" count was showing 4 paid users who actually paid through
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** fa2bcd8
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 
@@ -13174,7 +13174,7 @@ Meta Ads Manager was only showing 3 CompleteRegistration events despite 8 confir
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 4d7fba8
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 
@@ -13207,7 +13207,7 @@ The Old Flow / New Flow / All Time toggle on the Funnel Analytics tab was showin
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 27bf9d5
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 
@@ -13243,7 +13243,7 @@ None
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 59be902
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 
@@ -13270,7 +13270,7 @@ None
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 9339364
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 
@@ -13299,7 +13299,7 @@ The Create Account screen on /start now has "Continue with Apple" and "Continue 
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 4b28489
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 
@@ -13327,7 +13327,7 @@ None
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 1463012
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 
@@ -13366,7 +13366,7 @@ None — no schema changes required. All existing user data is preserved. The ne
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 577f2b7
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 
@@ -13395,7 +13395,7 @@ None
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** a2a4a05
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 
@@ -13424,7 +13424,7 @@ None
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** a2a4a05
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 
@@ -13464,7 +13464,7 @@ Three events are now sent server-side:
 
 **Requested by:** Jimmy (escalated by Polly Leung)
 **Committed by:** Claude Code
-**Commit hash:** 95e8748
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 
@@ -13519,7 +13519,7 @@ All three fixes use the same fire-and-forget POST to `/api/onboarding/complete`.
 
 **Requested by:** Jimmy
 **Committed by:** Claude Code
-**Commit hash:** a3a0120
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 
@@ -13701,7 +13701,7 @@ Two pre-submission fixes for App Store build 55:
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** f9a9508
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 The Funnel Analytics tab in the admin dashboard was showing three sections that aren't useful yet at current user volume: a daily completion rate chart, a time-per-step breakdown, and an answer distribution view. These have been removed to keep the dashboard focused on what matters — the conversion funnel, drop-off analysis, campaign performance, and session details are all still there.
@@ -13723,7 +13723,7 @@ None
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 427c43d
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 
@@ -13755,7 +13755,7 @@ None
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** dca6269
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 
@@ -13821,7 +13821,7 @@ Two pre-submission UI polishes:
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 0dd7dac
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 
@@ -13849,7 +13849,7 @@ Five fixes to the /start paywall. First, the headline was producing broken copy 
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 4f95fc9
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 
@@ -13874,7 +13874,7 @@ None
 
 **Requested by:** Jimmy
 **Committed by:** Claude Code
-**Commit hash:** b898beb
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 
@@ -13914,7 +13914,7 @@ Users were getting stuck on step 9 of onboarding ("How the trial works" — pick
 
 **Requested by:** Jimmy
 **Committed by:** Claude Code
-**Commit hash:** 7b91d3e
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 
@@ -13968,7 +13968,7 @@ None
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 07a9da2
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 
@@ -13999,7 +13999,7 @@ None
 
 **Requested by:** Jimmy
 **Committed by:** Claude Code
-**Commit hash:** f4966a9
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 
@@ -14056,7 +14056,7 @@ Three pre-submission fixes shipped as one slice for App Store build 51:
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 843799f
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 
@@ -14096,7 +14096,7 @@ Admin signup notification now includes the user's quiz branch, payment status, a
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 834faaa
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 
@@ -14124,7 +14124,7 @@ None
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 54bb991
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 
@@ -14158,7 +14158,7 @@ None — web-only changes, deploy automatically on push.
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** ecfd984
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 
@@ -14187,7 +14187,7 @@ None — JS-only change, ships via OTA.
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 7f3d673
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 
@@ -14216,7 +14216,7 @@ None — JS-only change, ships via OTA.
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** cb498d5
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 
@@ -14248,7 +14248,7 @@ None — JS-only change, ships via OTA. No schema changes, no new env vars.
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 7f412f4
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 
@@ -14285,7 +14285,7 @@ Full audit of the Users tab. Found and fixed four bugs: (1) Users who signed up 
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** df21e5d
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 
@@ -14313,7 +14313,7 @@ None
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 98f6316
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 
@@ -14346,7 +14346,7 @@ Three bugs fixed: (1) Users who started checkout were showing as "Dropped" in th
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 238e209
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 
@@ -14374,7 +14374,7 @@ None
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 57f89d7
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 
@@ -14409,7 +14409,7 @@ None
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** b8e0366
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 
@@ -14442,7 +14442,7 @@ Meta's ad campaigns had no signal to optimize against because the /start funnel 
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 235f261
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 
@@ -14476,7 +14476,7 @@ None — no Prisma schema changes. `campaignObjective` field already exists on A
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 5e9cff05
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 
@@ -14502,7 +14502,7 @@ None
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** a69d121
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 
@@ -14532,7 +14532,7 @@ None
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 281915a
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 
@@ -14559,7 +14559,7 @@ None
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 5e27675
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 
@@ -14615,7 +14615,7 @@ None
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 7f79448
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 
@@ -14645,7 +14645,7 @@ None — deploys automatically on push.
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 47bbf0a
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 
@@ -14676,7 +14676,7 @@ None
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 110b940
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 
@@ -14707,7 +14707,7 @@ None
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 1551552
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 
@@ -14780,7 +14780,7 @@ None — no Prisma schema changes. All state is in React. Events use existing On
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 9efc3fd
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 
@@ -14809,7 +14809,7 @@ UPDATE "OnboardingEvent" SET "isBot" = true WHERE "browser" ILIKE '%AdsBot%' OR 
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 33a2a62
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 
@@ -14834,7 +14834,7 @@ None
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 4f20333
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 
@@ -14892,7 +14892,7 @@ Other fixes in this batch:
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** ecb2c58
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 
@@ -14933,7 +14933,7 @@ For existing bot events already in the database: the dashboard queries now filte
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 3e19566
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 
@@ -14966,7 +14966,7 @@ None — code change only.
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 17c1139
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 
@@ -15016,7 +15016,7 @@ Three major features:
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 3265d70
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 
@@ -15053,7 +15053,7 @@ None — code changes only.
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 054f110
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 
@@ -15093,7 +15093,7 @@ None — code changes only.
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 248e987
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 
@@ -15138,7 +15138,7 @@ Two changes:
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 59e269f
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 
@@ -15181,7 +15181,7 @@ None — code change only.
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 5c0fa35
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 
@@ -15207,7 +15207,7 @@ None
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 4fa173e
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 
@@ -15235,7 +15235,7 @@ The seed/default for new projects was already US, CA, GB only — AU was only in
 
 **Requested by:** Jimmy
 **Committed by:** Claude Code
-**Commit hash:** f4ee9e31
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 
@@ -15267,7 +15267,7 @@ The Facebook ad attribution SDK needs an app ID and a client token to work. Earl
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** b0c4a95
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 
@@ -15299,7 +15299,7 @@ None — code change only, no schema migration.
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 9de2db9
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 
@@ -15334,7 +15334,7 @@ For any existing broken videos: there's now a small refresh icon next to each vi
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** a4cdca2
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 
@@ -15368,7 +15368,7 @@ None — UI-only change, no schema migration.
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 5fdba9f
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 
@@ -15398,7 +15398,7 @@ None — this is a UI fix, no schema changes.
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 42bba16
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 
@@ -15436,7 +15436,7 @@ In project settings, the Video/HeyGen section now has two dedicated avatar slots
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 2a271f8
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 
@@ -15479,7 +15479,7 @@ If video generation fails because an avatar isn't found, the error message now s
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** c037816
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 
@@ -15526,7 +15526,7 @@ We also now log which browser environment users are in when they reach the signu
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 7db5de1
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 
@@ -15634,7 +15634,7 @@ All 21 events route through the web `VALID_EVENTS` whitelist; the `value` column
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** f4ee9e31
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 
@@ -15688,7 +15688,7 @@ Meta Pixel events (Lead, CompleteRegistration, StartTrial, Subscribe) now includ
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** f4ee9e31
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 
@@ -15728,7 +15728,7 @@ None — all changes are web-only, no schema changes
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 3d45784
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 
@@ -15774,7 +15774,7 @@ Both cofounders now get an email notification whenever someone completes payment
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 27b8ac9
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 
@@ -15803,7 +15803,7 @@ None
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** b47bf2b
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 
@@ -15839,7 +15839,7 @@ Every screen in the /start onboarding funnel now has polished animations and tra
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 8e051e8
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 
@@ -15873,7 +15873,7 @@ None
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** f7afc06
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 
@@ -15909,7 +15909,7 @@ The web onboarding funnel at /start has been completely rebuilt from scratch. It
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** ced04e9
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 
@@ -16057,7 +16057,7 @@ Manual call-site wiring for the four conversion events is intentionally deferred
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** a6f0aa3
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 
@@ -16094,7 +16094,7 @@ Every "Start Free Trial" and "Try It First" button on the website now leads to a
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 27c4f7b
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 
@@ -16126,7 +16126,7 @@ All pricing across the entire site now reflects $4.99/month and $39.99/year (sav
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 09e707e
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 
@@ -16150,7 +16150,7 @@ None
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** f832e49
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 
@@ -16178,7 +16178,7 @@ None
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** e6403cf
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 
@@ -16208,7 +16208,7 @@ None
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 2afe7eb
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 
@@ -16490,7 +16490,7 @@ Marketing pages (the homepage + /for/* persona landers) still untouched per your
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 29dbf78
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 
@@ -16517,7 +16517,7 @@ The AdLab cron was automatically pausing ads that it judged as underperforming. 
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** c415a7e
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 
@@ -16544,7 +16544,7 @@ The "Try It Now Funnel" in the admin dashboard was showing 0 for every step even
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** d98c1b5
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 
@@ -16569,7 +16569,7 @@ None — check admin dashboard after deploy.
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 847ce6f
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 
@@ -16596,7 +16596,7 @@ None
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** d9ccd2f
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 
@@ -16680,7 +16680,7 @@ Marketing pages (homepage, /for/* persona landers) explicitly NOT touched per th
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 3cf9745
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 
@@ -16717,7 +16717,7 @@ You can now see exactly where users drop off during signup. The admin dashboard 
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 68daf1a
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 
@@ -16759,7 +16759,7 @@ Visitors can now try a full debrief recording without signing up. A "Try it now 
 
 **Requested by:** Jimmy
 **Committed by:** Claude Code
-**Commit hash:** a2a4a05
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 
@@ -16803,7 +16803,7 @@ All three are queued for follow-up. The autonomous parity sequence (slices 1, 2-
 
 **Requested by:** Jimmy
 **Committed by:** Claude Code
-**Commit hash:** a2a4a05
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 
@@ -16836,7 +16836,7 @@ The Insights pages — theme map, theme detail, life matrix, ask, state of me, w
 
 **Requested by:** Jimmy
 **Committed by:** Claude Code
-**Commit hash:** a2a4a05
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 
@@ -16871,7 +16871,7 @@ The signed-in pages a daily user actually uses — Home, Entries, the entry deta
 
 **Requested by:** Jimmy
 **Committed by:** Claude Code
-**Commit hash:** a2a4a05
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 
@@ -16910,7 +16910,7 @@ The web onboarding flow now has the same look as the rest of the app (dark canon
 
 **Requested by:** Jimmy
 **Committed by:** Claude Code
-**Commit hash:** a2a4a05
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 
@@ -16943,7 +16943,7 @@ The sign-in and sign-up pages now look like the rest of the app's new visual dir
 
 **Requested by:** Jimmy
 **Committed by:** Claude Code
-**Commit hash:** a2a4a05
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 
@@ -16983,7 +16983,7 @@ This is the first piece of foundation work for bringing the web app's look to ma
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** ff7edaf
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 
@@ -17019,7 +17019,7 @@ None
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 735ea19
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 
@@ -17055,7 +17055,7 @@ None
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 1670b4c
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 
@@ -17093,7 +17093,7 @@ None
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 7feb224
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 
@@ -17127,7 +17127,7 @@ None
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 89a475e
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 
@@ -17163,7 +17163,7 @@ None
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 7f4fc2a
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 
@@ -17198,7 +17198,7 @@ None
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** eea5c24
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 
@@ -17233,7 +17233,7 @@ None
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** b5d7129
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 
@@ -17269,7 +17269,7 @@ None
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** cd40233
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 
@@ -17306,7 +17306,7 @@ None
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 353a9d0
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 
@@ -17344,7 +17344,7 @@ None
 
 **Requested by:** Jimmy
 **Committed by:** Claude Code
-**Commit hash:** a2a4a05
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 
@@ -17374,7 +17374,7 @@ The Theme Map's unlock gate was lying to users. It read "5 of 10 entries" even o
 
 **Requested by:** Jimmy
 **Committed by:** Claude Code
-**Commit hash:** f81cb59
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 
@@ -17416,7 +17416,7 @@ monday: 12058980099
 
 **Requested by:** Jimmy
 **Committed by:** Claude Code
-**Commit hash:** 5137709
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 
@@ -17449,7 +17449,7 @@ monday: 12058980099
 
 **Requested by:** Jimmy
 **Committed by:** Claude Code
-**Commit hash:** 817fb07
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 
@@ -17488,7 +17488,7 @@ monday: 12058980099
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 0b8da44
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 
@@ -17526,7 +17526,7 @@ The admin signup notification email was always showing Source: "direct" and Meth
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 91dfa2c
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 
@@ -17554,7 +17554,7 @@ The admin Users tab now shows where each user came from. A new "Source" column i
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** ec85a524
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 
@@ -17581,7 +17581,7 @@ Replaced raw image tags with Next.js optimized images across landing pages and t
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** ec85a524
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 
@@ -17612,7 +17612,7 @@ The AdLab auto-kill and auto-scale rules have been completely rebuilt for the va
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** ec85a524
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 
@@ -17641,7 +17641,7 @@ Users who signed up with email/password were getting blocked when they tried to 
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** ed6c745
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 
@@ -17672,7 +17672,7 @@ The page users see after signing up was a dead end — just a logo, a headline, 
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** e72529c
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 
@@ -17714,7 +17714,7 @@ Three changes to fix the paid ad conversion funnel. First, landing pages now loa
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 6b42e0a
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 
@@ -17746,7 +17746,7 @@ AdLab was showing 0 conversions for all experiments because it was looking for "
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** ec85a524
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 
@@ -17772,7 +17772,7 @@ The Google Search Console connection was failing with "credentials missing" even
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** e8d6bff
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 
@@ -17802,7 +17802,7 @@ When clicking "Sync GSC" on the admin dashboard, the error message was too vague
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 1ab3e42
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 
@@ -17831,7 +17831,7 @@ The homepage hero section now shows "Start Free Trial" and the App Store downloa
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 81a980a
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 
@@ -17888,7 +17888,7 @@ The admin blog dashboard was showing 0 impressions and 0 clicks for every blog p
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 830ec9f
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 
@@ -17926,7 +17926,7 @@ Three urgent fixes shipped together. First, AdLab was automatically killing ads 
 
 **Requested by:** Jimmy
 **Committed by:** Claude Code
-**Commit hash:** 4d90c72
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 
@@ -17960,7 +17960,7 @@ After each nightly recording finishes processing, the entry detail screen shows 
 
 **Requested by:** Jimmy
 **Committed by:** Claude Code
-**Commit hash:** 0e5d753
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 
@@ -17993,7 +17993,7 @@ The onboarding step where new users pick their top three life areas (Career, Hea
 
 **Requested by:** Jimmy
 **Committed by:** Claude Code
-**Commit hash:** d314375
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 
@@ -18027,7 +18027,7 @@ The mobile Home tab was hanging on a loading spinner. Diagnosis: every time the 
 
 **Requested by:** Jimmy
 **Committed by:** Claude Code
-**Commit hash:** 46c5906
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 
@@ -18059,7 +18059,7 @@ A user friend of Jimmy's hit "Upload failed" after recording. Any nightly entry 
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** eb472c7
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 The admin dashboard was showing "Never opened app" for every single user, including your own test accounts, because the mobile app never told the server what device it was running on. Now when someone opens the app, it sends their platform (iOS or Android) and app version to the server. The admin Users table shows the correct platform badge and a "last seen" timestamp underneath. First-time app opens are also recorded so the signup journey timeline works.
@@ -18085,7 +18085,7 @@ The admin dashboard was showing "Never opened app" for every single user, includ
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 62a94ae
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 
@@ -18110,7 +18110,7 @@ None — deploys automatically on push.
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** ec85a524
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 
@@ -18135,7 +18135,7 @@ None
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 90ca529
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 
@@ -18165,7 +18165,7 @@ The admin signup notification email now waits 30 seconds before sending, giving 
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** c7ebd62
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 
@@ -18202,7 +18202,7 @@ Lauren (mergler95@gmail.com) and Kevin (sgb6c6wbdd@privaterelay.appleid.com) sig
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** c2c5501
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 
@@ -18235,7 +18235,7 @@ Blog posts in the Content tab were showing 0 impressions and 0 clicks even thoug
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** cefec8e
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 
@@ -18294,7 +18294,7 @@ The admin dashboard went from 16 overwhelming tabs to 9 focused ones. The Overvi
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 010df14
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 
@@ -18327,7 +18327,7 @@ The entire admin dashboard now starts fresh from today. All the garbage data fro
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** ec85a524
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 
@@ -18359,7 +18359,7 @@ Created a script to wipe all the polluted ad performance data from AdLab (the ga
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** f2fb027
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 
@@ -18394,7 +18394,7 @@ The admin Users tab now shows you exactly where each user is in their journey. T
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 830fba3
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 
@@ -18425,7 +18425,7 @@ You can now send emails to any user directly from the admin dashboard Users tab.
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 42425a3
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 
@@ -18451,7 +18451,7 @@ None
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 25092e8
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 
@@ -18480,7 +18480,7 @@ The welcome email new users receive now includes Keenan's branded email signatur
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** a2043f8
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 
@@ -18509,7 +18509,7 @@ Every new user now gets a personal-feeling plain-text email from keenan@getacuit
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 0a78aac
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 
@@ -18540,7 +18540,7 @@ None
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 2731c9e
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 
@@ -18576,7 +18576,7 @@ Every place on the website, landing pages, emails, and blog that told users they
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 585261b
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 
@@ -18606,7 +18606,7 @@ Once you've launched an AdLab campaign, you can now generate additional ad creat
 
 **Requested by:** Jimmy
 **Committed by:** Claude Code
-**Commit hash:** e50a6f0
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 
@@ -18635,7 +18635,7 @@ Before today, when the AI updated a user's Life Matrix score after a recording, 
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** e736e07
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 
@@ -18660,7 +18660,7 @@ None
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** a105a94
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 
@@ -18689,7 +18689,7 @@ None
 
 **Requested by:** Jimmy
 **Committed by:** Claude Code
-**Commit hash:** 95911c2
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 
@@ -18721,7 +18721,7 @@ When users tap "Send feedback" in the mobile app, their message now lands as a n
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 690a36a
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 
@@ -18753,7 +18753,7 @@ All 4 active campaigns had $0 spend after 24+ hours because they were using the 
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 37ecbc2
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 
@@ -18779,7 +18779,7 @@ Two improvements to all ad landing pages: (1) The hero headline now uses two col
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 7022f6d
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 
@@ -18805,7 +18805,7 @@ None
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 8c5b6f4
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 
@@ -18832,7 +18832,7 @@ None — all changes are web-only and deploy automatically on push.
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** a037004
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 
@@ -18857,7 +18857,7 @@ None
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 45fb623
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 
@@ -18916,7 +18916,7 @@ None — all changes are web-only and deploy automatically on push.
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** ce69b66
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 
@@ -18970,7 +18970,7 @@ None — all changes are web-only and deploy automatically on push.
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 4a8ea7c
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 
@@ -19002,7 +19002,7 @@ Every dynamic landing page generated by AdLab (the `/for/[slug]` pages that ads 
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** ccc6311
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 
@@ -19032,7 +19032,7 @@ None — all changes are web-only and deploy automatically on push.
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 3fe8226
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 
@@ -19067,7 +19067,7 @@ Each AdLab experiment can now have its own dedicated landing page that matches t
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 84411c4
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 
@@ -19096,7 +19096,7 @@ Three fixes to stop mobile users from bypassing the web signup flow: (1) Removed
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** d598e21
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 
@@ -19135,7 +19135,7 @@ Both the signup and sign-in pages now show a "Continue with Apple" button direct
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 5abe703
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 
@@ -19168,7 +19168,7 @@ Three events that were supposed to fire for Meta ad optimization (StartTrial, Su
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 3bc5d6b
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 
@@ -19198,7 +19198,7 @@ The Meta pixel was loading and firing events in the browser, but the data was be
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 0f8a7a6
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 
@@ -19229,7 +19229,7 @@ Meta's Event Setup Tool and Google's lightweight crawler couldn't read the site 
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 3d8a769
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 
@@ -19258,7 +19258,7 @@ None — web-only change, auto-deploys on push.
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** abfccb0
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 
@@ -19288,7 +19288,7 @@ The signup page was a plain white box on a blank page — no value prop, no bran
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** d38b908
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 
@@ -19326,7 +19326,7 @@ The Meta pixel was installed but not actually working — it was only firing a b
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 7f97a9e
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 
@@ -19354,7 +19354,7 @@ None — existing "passed" and "flagged" values still render correctly via legac
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 95d042c
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 
@@ -19389,7 +19389,7 @@ You can now create AdLab experiments that drive App Store downloads instead of w
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** dda1b5a
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 
@@ -19416,7 +19416,7 @@ When AdLab tried to upload creative images to Meta for ad campaigns, Meta was re
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 6e2d35a
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 
@@ -19448,7 +19448,7 @@ None — deploys automatically on push.
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** f267f1c
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 
@@ -19488,7 +19488,7 @@ The Content Factory no longer generates content automatically on a schedule. Ins
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 383bf13
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 
@@ -19516,7 +19516,7 @@ When you clicked "Generate Creatives" in AdLab, the AI was writing perfectly goo
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 974a4ec
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 
@@ -19543,7 +19543,7 @@ The "Generate Creatives" button in AdLab was failing with a blank 500 error and 
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** e2d551b
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 
@@ -19572,7 +19572,7 @@ None
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 2135b59
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 
@@ -19602,7 +19602,7 @@ None
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 1103c141
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 
@@ -19649,7 +19649,7 @@ None
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 1103c141
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 
@@ -19685,7 +19685,7 @@ None
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 1103c141
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 
@@ -19719,7 +19719,7 @@ None
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 1103c141
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 
@@ -19748,7 +19748,7 @@ None
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 1103c141
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 
@@ -19790,7 +19790,7 @@ Second, the social share image (what shows up when you paste an Acuity link in S
 
 **Requested by:** Jimmy
 **Committed by:** Claude Code
-**Commit hash:** 1103c141
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 
@@ -19831,7 +19831,7 @@ Per-slice gates: vitest 370/370 pass. Mobile tsc baseline 542 → 542 errors (ze
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 1103c141
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 
@@ -19861,7 +19861,7 @@ When someone shares an Acuity link on Facebook, Twitter, LinkedIn, or iMessage, 
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 1103c141
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 
@@ -19920,7 +19920,7 @@ None
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 4cf3c2e
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 
@@ -19975,7 +19975,7 @@ When shipping any slice of a multi-slice initiative (currently: docs/v1-1/free-t
 
 **Requested by:** Jimmy
 **Committed by:** Claude Code
-**Commit hash:** 1103c141
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 
@@ -20026,7 +20026,7 @@ Per-slice gates: vitest 370/370 pass. Mobile tsc baseline 542 errors → 542 err
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 21f3f3d
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 Meta Ads Manager was full of names like `acuity_ad_clx8xyz789` which made it impossible to tell which ad was which. Now everything in Meta uses readable names:
@@ -20063,7 +20063,7 @@ None — naming changes only apply to future campaign launches. Existing campaig
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 2bccfaf
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 On the experiment detail page where you see generated ad images, each image now has a download button that appears when you hover over it. Click it and the image saves straight to your computer with a useful filename like `abc12345_problem_def67890.png`. There's also a "Download All" button at the top of each angle's image section that downloads every image for that angle in sequence.
@@ -20090,7 +20090,7 @@ None
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 378663a
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 The warm-up button was timing out on Vercel because 200 calls at 2.5-second intervals took longer than Vercel's 5-minute function limit. Now it makes 100 calls per run at 2-second intervals (~3-4 minutes total), which fits safely under the timeout. To build up 200+ calls of history, just click the button twice with a 15-minute gap between runs. The button now shows a "Running... this takes ~3-4 minutes" message while it's working.
@@ -20112,7 +20112,7 @@ None
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 09cf421
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 Three SEO changes in one commit. First, the homepage meta title is now "Acuity — One Minute a Day. A Life of Clarity." and the description leads with "The AI journal that listens." — this is what shows up in Google results and when someone shares the link on social media. Second, the hero subheading on the homepage now calls Acuity "the AI voice journal that turns your daily debrief into action" instead of the old "daily debrief that turns what you're thinking about into what you're doing." Third, every public page on the site now has SEO-optimized meta descriptions with target keywords (AI journal, voice journal, daily debrief, mood tracking, goal tracking, pattern detection, weekly report) and consistent social card images.
@@ -20146,7 +20146,7 @@ None
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 623ba0a
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 The warm-up button was hitting Meta's rate limit around call 115 because it was firing too fast (every 0.5 seconds). Now it waits 2.5 seconds between calls, which keeps it under the limit. If Meta does rate-limit you anyway, it stops immediately instead of continuing to pile up failures — you'll see a message telling you to wait 15 minutes before trying again. The button now says it takes ~8 minutes (200 calls × 2.5s).
@@ -20168,7 +20168,7 @@ None
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 32634b7
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 The warm-up button was making 53 failed calls out of 200 because some of the endpoints it was hitting (campaigns, ad sets, ads, insights) require Standard Access — the exact thing we're trying to get approved for. Now it only reads your ad account info using 3 different field combos, which all work at the Limited access tier. Every call should succeed, so hitting the button once will add 200 clean successes to your API history. Any failures now show the specific error message so we can diagnose issues.
@@ -20189,7 +20189,7 @@ None — redeploy happens on push, then click the button again.
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 572582f
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 Meta rejected our app for Standard Access because too many of our recent API calls were errors (from all the debugging during launch). This adds a "Warm Up API" button to the AdLab Settings page that fires off 200 successful read-only calls to Meta — reading your account info, campaign lists, ad set lists, ad lists, and performance insights. It takes about 2 minutes to run and shows you a live progress bar. After running it, the success rate on your last 500 calls will be much higher, which is what Meta checks when reviewing the app.
@@ -20212,7 +20212,7 @@ None — just click the button on the Settings page after deploy.
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 3b2232f
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 The AdLab Performance page was a basic table. Now it's a full analytics dashboard with everything you need to evaluate experiments: summary cards comparing all-time vs recent performance, an experiment overview table you can sort and click through, two trend charts (daily spend/conversions and daily CPL with your target line), a detailed ad table where you can expand any row to see the full decision log, an AI cost breakdown showing what you're spending on Claude and image generation vs ad spend, a CSV export button, and date range controls that filter everything on the page.
@@ -20252,7 +20252,7 @@ None
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** d35f7ce
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 When an image failed to upload to Meta, the system was still creating the ad — which meant ads going live with no image, just the landing page's fallback thumbnail. Now if the image upload fails, that creative is skipped entirely and you'll see it listed in the launch errors. If every creative's image fails, the campaign is cleaned up automatically (same behavior as the existing all-fail cleanup).
@@ -20272,7 +20272,7 @@ None
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 90dbbbc
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 Meta requires age_max to be at least 65 when Advantage+ audience is turned on. Our project had age_max set to 55, which caused ad set creation to fail with "Maximum age is below threshold." Now age_max is automatically bumped to 65 when Advantage+ is active — Meta's algorithm still focuses delivery on your actual 25-55 target range, this is just a technical floor requirement.
@@ -20292,7 +20292,7 @@ None
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** d503dbd
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 Meta's latest API version requires every ad set to explicitly say whether it wants Advantage Audience (Meta's AI audience expansion) turned on or off. Without it, ad set creation was being rejected. Now it's set to "on" — Meta will use our age, geo, and interest targeting as a starting point but expand to find the best converters automatically.
@@ -20313,7 +20313,7 @@ None
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 6104f93
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 The AdLab "Launch Campaign" button was failing because of nine separate issues in how we talk to Meta's ad API. Ads were being rejected for missing required fields (bid strategy, destination type, start time), the call-to-action buttons weren't being mapped to Meta's format, landing page URLs weren't being validated before launch, and failed launches were leaving orphaned campaigns on Meta. All nine issues are fixed — the pipeline now validates everything upfront, builds proper UTM-tagged landing URLs, maps CTAs correctly, handles failures cleanly, and redacts your Meta access token from error logs so it never leaks.
@@ -20351,7 +20351,7 @@ The AdLab "Launch Campaign" button was failing because of nine separate issues i
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 7897d9e
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 Blog posts were being generated with "2024" or "2025" as the current year — things like "best journaling apps in 2024" or "top tips for 2025." Two fixes: (1) future posts now automatically know the current year and are explicitly told never to use 2024 or 2025 as "this year," and (2) there's a new "Fix Year References" button in Admin > Auto Blog that scans all existing published posts, finds the ones with wrong years, and surgically swaps just the year to 2026 without regenerating the whole post.
@@ -20375,7 +20375,7 @@ Blog posts were being generated with "2024" or "2025" as the current year — th
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** c004683
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 The AdLab admin pages were crashing with a blank screen after the latest database update. Several fields (like target interests, page ID, USPs, banned phrases, and audience details) could come back empty from the database, and the UI wasn't handling that — it tried to count or loop through "nothing" and blew up. Now every field that can be empty has a safe fallback, so the admin pages load even when project data is incomplete.
@@ -20399,7 +20399,7 @@ None
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 6faf7a4
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 The blog pruner was evaluating posts for removal after just 3 weeks. That's not enough time for Google to crawl, index, and start showing impressions on a newer domain. Changed to 8 weeks (56 days) so posts get a fair chance before being flagged for pruning.
@@ -20420,7 +20420,7 @@ None
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 2b509a4
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 The auto blog was failing about half the time and never generating header images. Three root causes fixed: (1) images were being uploaded with the wrong file format label so Supabase rejected them silently, (2) the Supabase storage bucket might not have existed, (3) the quality checks on generated posts were so strict that good posts were being thrown away. Now posts are shorter (saving ~25% on AI costs), the image pipeline self-heals if the storage bucket is missing, and you have two new admin buttons: "Regen Image" on any post to regenerate its header image, and "Backfill Missing Images" to generate images for all existing posts that don't have one.
@@ -20458,7 +20458,7 @@ The auto blog was failing about half the time and never generating header images
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 468b4ce
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 AdLab is now ready for its first real Meta ad launch. You can set your Facebook Page ID in project settings (required to launch), search and select specific audience interests from Meta's database, use reference images as stylistic direction for generated ad images, see real analytics on the Performance page, check API key status and test your Meta connection on Settings, and HeyGen video generation has been removed since it wasn't being used.
@@ -20485,7 +20485,7 @@ AdLab is now ready for its first real Meta ad launch. You can set your Facebook 
 
 **Requested by:** Jimmy
 **Committed by:** Claude Code
-**Commit hash:** 1103c141
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 
@@ -20531,7 +20531,7 @@ Per-slice gates: vitest 370/370 pass, web tsc clean for touched files, mobile ts
 
 **Requested by:** Jimmy
 **Committed by:** Claude Code
-**Commit hash:** 1103c141
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 
@@ -20581,7 +20581,7 @@ Per-slice gates: vitest 370/370 pass, web tsc clean for touched files. Asset leg
 
 **Requested by:** Jimmy
 **Committed by:** Claude Code
-**Commit hash:** 1103c141
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 
@@ -20618,7 +20618,7 @@ New email/password signups used to get TWO emails simultaneously — a short "Ve
 
 **Requested by:** Jimmy
 **Committed by:** Claude Code
-**Commit hash:** 1103c141
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 
@@ -20658,7 +20658,7 @@ The credential check tool we shipped earlier today was returning a "page not fou
 
 **Requested by:** Jimmy (Slice D's first sim test exposed three things — bypass condition was too narrow, transactionId="0" needed root-cause documentation, and we have no way to confirm Apple credentials are valid before EAS spend. This slice adds all three.)
 **Committed by:** Claude Code
-**Commit hash:** f0e3ed7
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 
@@ -20882,7 +20882,7 @@ If any step fails, **stop and report which one** — don't push, don't EAS. The 
 
 **Requested by:** Jimmy (Slice C of 3 bundling Keenan's TestFlight bugs; this fixes Bug 4 — single-reminder limitation surfaced as a common ask. Confirmed at-home tonight to run prisma db push end-to-end after the slice lands.)
 **Committed by:** Claude Code
-**Commit hash:** f4ce37d
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 
@@ -20929,7 +20929,7 @@ Onboarding stays single-time — we ask for one reminder during signup and let u
 
 **Requested by:** Jimmy (Slice B of 3 bundling Keenan's TestFlight bugs; this fixes Bug 3 — Life Matrix radar showing initial values from first entry and never refreshing after subsequent recordings)
 **Committed by:** Claude Code
-**Commit hash:** 2022920
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 
@@ -20967,7 +20967,7 @@ You'd record an entry and the Life Matrix radar wouldn't budge — it kept showi
 
 **Requested by:** Jimmy (bundling Keenan's 4 TestFlight bugs into one EAS build alongside the IAP fix; this slice ships bugs 1 + 2)
 **Committed by:** Claude Code
-**Commit hash:** dd32eef
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 
@@ -21014,7 +21014,7 @@ Two recording-flow fixes:
 
 **Requested by:** Jimmy (build 34 paywall test surfaced two bugs — purchase succeeded on Apple's side but app didn't transition to PRO, and a red error banner persisted on the paywall after Apple's "You're all set" confirmation; launch blocker before App Review)
 **Committed by:** Claude Code
-**Commit hash:** b4e779d
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 
@@ -21068,7 +21068,7 @@ The local-verification analog of the Folly plugin's xcodebuild step is the unit-
 
 **Requested by:** Jimmy (cleanup slice landed clean; production-flag flip is the next step toward App Review submission with IAP attached)
 **Committed by:** Claude Code
-**Commit hash:** ab21f1f
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 
@@ -21109,7 +21109,7 @@ This single-line change turns on the in-app purchase flow that's been compiled, 
 
 **Requested by:** Jimmy (build 33 verified working on TestFlight — entries load, backgrounding survives, auth stable. Time to remove the diagnostic surface before App Review.)
 **Committed by:** Claude Code
-**Commit hash:** 866aa4d
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 
@@ -21150,7 +21150,7 @@ A few days ago we shipped heavy diagnostic logging to find the sign-in bug. That
 
 **Requested by:** Jimmy (build 32 EAS failed at link with `Undefined symbols for architecture arm64: folly::f14::detail::F14LinkCheck<(...)1>::check() Referenced from: libRNReanimated.a CSSAnimationsRegistry.o` — the v15 react-native-iap plugin's Folly patch was incomplete)
 **Committed by:** Claude Code
-**Commit hash:** 2646b40
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 
@@ -21194,7 +21194,7 @@ This change adds a tiny custom plugin that completes the configuration: it sets 
 
 **Requested by:** Jimmy (after manual TEST-notification verification was skipped — Apple's web UI doesn't surface a button in current ASC; real notifications will land when actual subs happen)
 **Committed by:** Claude Code
-**Commit hash:** 59b8f2f
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 
@@ -21237,7 +21237,7 @@ The IAP (in-app purchase) code path was stubbed out 3 days ago because the under
 
 **Requested by:** Jimmy (instrumentation surfaced the actual bug — Vercel's `www.getacuity.io` 308-redirects to apex `getacuity.io`, and the cross-origin redirect drops the Authorization header per Fetch spec)
 **Committed by:** Claude Code
-**Commit hash:** e6b4546
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 
@@ -21280,7 +21280,7 @@ This change updates 9 places in the mobile config from `www.getacuity.io` to `ge
 
 **Requested by:** Jimmy (build 30 didn't fix the bug; entries-don't-load and 4-second-logout still present. Three EAS builds, three failures, hundreds in pay-as-you-go credits. No more hypothesis-driven fixes — instrument and read the data.)
 **Committed by:** Claude Code
-**Commit hash:** b1d8d82
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 
@@ -21324,7 +21324,7 @@ We've shipped three TestFlight builds trying to fix the sign-in bug, each based 
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** a3b11b8
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 
@@ -21379,7 +21379,7 @@ You never have to log into Meta Ads Manager, write ad copy, or check performance
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 9b0a557
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 
@@ -21422,7 +21422,7 @@ Second, every new auto-published blog post now gets a custom hero image generate
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 9604b67
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 
@@ -21449,7 +21449,7 @@ None
 
 **Requested by:** Jimmy (build 29 with tokenBridge still failed — bearer not attaching post-sign-in AND backgrounding for seconds wipes auth entirely)
 **Committed by:** Claude Code
-**Commit hash:** 2f3ea04
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 
@@ -21487,7 +21487,7 @@ This change makes the re-check safe: if the keychain returns nothing on a warm r
 
 **Requested by:** Jimmy (build 28 in-memory cache didn't hold in production — `mobile-auth.no-header` events confirmed bearer still missing on every post-sign-in API call)
 **Committed by:** Claude Code
-**Commit hash:** b55ab43
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 
@@ -21533,7 +21533,7 @@ This change adds a third, redundant safety net: a tiny "token bridge" that the s
 
 **Requested by:** Jimmy (build 28 still 401s on Jim's home screen; Jim getting kicked back to sign-in after backgrounding)
 **Committed by:** Claude Code
-**Commit hash:** 10c375b
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 
@@ -21595,7 +21595,7 @@ Jim's installed build 28 (the in-memory token cache fix from yesterday) but his 
 
 **Requested by:** Jimmy (Jim signed in successfully via 32f1faa but home screen showed empty entries — 15 × 401 on `/api/entries` over 38 seconds)
 **Committed by:** Claude Code
-**Commit hash:** 3bf1778
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 
@@ -21678,7 +21678,7 @@ SecureStore should be thought of as **eventual-consistency persistence** — a c
 
 **Requested by:** Jimmy (Jim locked in onboarding on TestFlight preview build)
 **Committed by:** Claude Code
-**Commit hash:** 32f1faa
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 
@@ -21747,7 +21747,7 @@ End-user impact: Jim re-opens the app on the new build → mobile-callback retur
 
 **Requested by:** Jimmy
 **Committed by:** Claude Code
-**Commit hash:** eb0e136
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 
@@ -21801,7 +21801,7 @@ The OAuth-fix EAS build failed at the iOS pod-install step because of a known in
 
 **Requested by:** Jimmy
 **Committed by:** Claude Code
-**Commit hash:** 8c2734a
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 
@@ -21859,7 +21859,7 @@ Fix for "OAuth completes but stays on the login screen" — the bug that was hit
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 0b8a103
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 
@@ -21932,7 +21932,7 @@ The pruner will also now alert you loudly if the Google Search Console credentia
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** e4bded0
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 
@@ -21960,7 +21960,7 @@ Audited the automated blog pruning system. Finding: a policy exists and is fully
 
 **Requested by:** Jimmy
 **Committed by:** Claude Code
-**Commit hash:** e55979f
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 
@@ -22012,7 +22012,7 @@ Tonight's Stripe-related cleanup. The W6 audit flagged four lower-severity items
 
 **Requested by:** Jimmy
 **Committed by:** Claude Code
-**Commit hash:** f4b11ca
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 
@@ -22068,7 +22068,7 @@ Three new `safeLog.warn` call sites in `getMobileSessionFromBearer`:
 
 **Requested by:** Jimmy
 **Committed by:** Claude Code
-**Commit hash:** 8fbe78b
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 
@@ -22127,7 +22127,7 @@ Phase 3b — the small-but-symbolic addition that follow-ups Phase 3a. The eight
 
 **Requested by:** Jimmy
 **Committed by:** Claude Code
-**Commit hash:** 9aec449
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 
@@ -22237,7 +22237,7 @@ Phase 3a — the mobile-side wiring for the new in-app subscription path. iOS us
 
 **Requested by:** Jimmy
 **Committed by:** Claude Code
-**Commit hash:** 2a978aa
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 
@@ -22462,7 +22462,7 @@ No code changes — this was an admin script run + verification.
 
 **Requested by:** Jimmy
 **Committed by:** Claude Code
-**Commit hash:** 02644e4
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 
@@ -22519,7 +22519,7 @@ We've been holding the V5 themes ramp at 12% because we couldn't tell which entr
 
 **Requested by:** Jimmy
 **Committed by:** Claude Code
-**Commit hash:** 8c0a7ed
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 
@@ -22642,7 +22642,7 @@ Six pieces of work tonight, all in one sitting. (1) Drafted everything we'll nee
 
 **Requested by:** Jimmy
 **Committed by:** Claude Code
-**Commit hash:** c276175
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 
@@ -22697,7 +22697,7 @@ Slice 7 closes out the free-tier redesign with the small finishing pieces that d
 
 **Requested by:** Jimmy (pivot from C6 — Apple still reviewing v1.0 resubmit, holding new EventKit permission)
 **Committed by:** Claude Code
-**Commit hash:** f894a43
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 
@@ -22772,7 +22772,7 @@ This slice ships the safety net for runaway free-tier costs without changing any
 
 **Requested by:** Jimmy
 **Committed by:** Claude Code
-**Commit hash:** 20cf8e9
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 
@@ -22856,7 +22856,7 @@ The "Process my history" upgrade affordance is live end-to-end. When a user upgr
 
 **Requested by:** Jimmy
 **Committed by:** Claude Code
-**Commit hash:** 8dd4284
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 
@@ -22911,7 +22911,7 @@ Calendar slice C5b ships the real connect-flow surface plus a small defensive fi
 
 **Requested by:** Jimmy (TRIAL re-verification surfaced an empty-embedding entry)
 **Committed by:** Claude Code
-**Commit hash:** aec0ec8
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 
@@ -22966,7 +22966,7 @@ Three-line change at each call site. No retry logic, no sentinel values, no sche
 
 **Requested by:** Jimmy (production-down ticket)
 **Committed by:** Claude Code
-**Commit hash:** 54af6c0
+**Commit hash:** 9c34e0c2
 **Sentry REF:** 3863552433
 
 ### In plain English (for Keenan)
@@ -23024,7 +23024,7 @@ Adding this as a backlog entry to update the slice protocol at the top of PROGRE
 
 **Requested by:** Jimmy
 **Committed by:** Claude Code
-**Commit hash:** 6ae855d
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 
@@ -23087,7 +23087,7 @@ Decision-tree precedence is the same on every surface — `FREE post-trial → P
 
 **Requested by:** Jimmy
 **Committed by:** Claude Code
-**Commit hash:** 1c4b0df
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 
@@ -23128,7 +23128,7 @@ Five of the six "this is a Pro feature" cards now appear for free post-trial use
 
 **Requested by:** Jimmy
 **Committed by:** Claude Code
-**Commit hash:** 071a033
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 
@@ -23232,7 +23232,7 @@ All six steps at the top of this file apply to the merged workstream. Slice prot
 
 **Requested by:** Jimmy
 **Committed by:** Claude Code
-**Commit hash:** 804ee23
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 
@@ -23278,7 +23278,7 @@ C5a never had a successful deploy — it hadn't fired its build by the time slic
 
 **Requested by:** Jimmy
 **Committed by:** Claude Code
-**Commit hash:** b6ea366
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 
@@ -23328,7 +23328,7 @@ This is the slice that turns calendar integration from "engine running with no p
 
 **Requested by:** Jimmy
 **Committed by:** Claude Code
-**Commit hash:** 8a907b5
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 
@@ -23369,7 +23369,7 @@ When a user's 14-day Pro trial ends, their dashboard doesn't actually shut down 
 
 **Requested by:** Jimmy
 **Committed by:** Claude Code
-**Commit hash:** 4e74c35
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 
@@ -23474,7 +23474,7 @@ We executed every fix from the SEO audit to take the site from a C+ to a B+. The
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 7fdd413
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 
@@ -23509,7 +23509,7 @@ We audited every inch of getacuity.io for search engine visibility — Google, B
 
 **Requested by:** Jimmy
 **Committed by:** Claude Code
-**Commit hash:** 7fad3a9
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 
@@ -23544,7 +23544,7 @@ We finished verifying that the free-vs-pro recording split works in production. 
 
 **Requested by:** Jimmy
 **Committed by:** Claude Code
-**Commit hash:** 4739d56
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 
@@ -23592,7 +23592,7 @@ The next foundation piece for calendar integration. This slice adds new fields t
 
 **Requested by:** Jimmy
 **Committed by:** Claude Code
-**Commit hash:** 7858c4b
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 
@@ -23629,7 +23629,7 @@ Building the calendar-integration foundation in stages. This slice writes the fu
 
 **Requested by:** Jimmy
 **Committed by:** Claude Code
-**Commit hash:** e6de1b0
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 
@@ -23671,7 +23671,7 @@ Building on yesterday's slice 1, this is the actual code that splits the recordi
 
 **Requested by:** Jimmy
 **Committed by:** Claude Code
-**Commit hash:** ed88f75
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 
@@ -23702,7 +23702,7 @@ This is the foundation for v1.1's "free tier that's actually useful" redesign. A
 
 **Requested by:** Jimmy
 **Committed by:** Claude Code
-**Commit hash:** 10da170
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 
@@ -23734,7 +23734,7 @@ When the record button fails to start (most often because the user is on a phone
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 6a800cd
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 
@@ -23768,7 +23768,7 @@ None
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 6b35d3a
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 
@@ -23798,7 +23798,7 @@ None
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 2ed3e60
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 
@@ -23826,7 +23826,7 @@ None
 
 **Requested by:** Jimmy
 **Committed by:** Claude Code
-**Commit hash:** b98bcbc
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 
@@ -23862,7 +23862,7 @@ We also shipped a small piece of internal infrastructure to catch this kind of l
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 95a2dea
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 The trial email sequence (the 14 emails that go out over your first 30 days — objection handling, pattern teases, user stories, reactivation for non-recorders, etc.) was never firing after the welcome email. The orchestrator function was in the code, registered correctly, and the logic was sound — but Inngest Cloud never synced it, so it never ran. The recent Inngest resync should have picked it up.
@@ -23897,7 +23897,7 @@ The old waitlist drip emails ("While you wait", "The feature our beta users can'
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** e6c772f
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 The auto-blog "Generate Now" button ran but timed out after 2 minutes 23 seconds. The Inngest dashboard showed two green steps (topic queue + pick topic) followed by one red "Finalization" step. That step was trying to do everything at once: call Claude 3 times, validate the output, create the blog post in the database, ping Google, and update the topic status — all in one block. Vercel killed it because it exceeded the timeout.
@@ -23930,7 +23930,7 @@ Also bumped the Vercel timeout from 60 seconds to 300 seconds (5 minutes) since 
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 777bfcb
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 The auto-blog system has never published a post since it was built on April 28. The root cause: the original code used a plain JavaScript `setTimeout` to spread publish times randomly across the day. Vercel kills any function after 60 seconds. That delay alone could be up to 16 hours. Every single cron run was terminated before any blog generation even started. The fix (which landed via Jimmy's session) replaced `setTimeout` with Inngest's `step.sleep()` which holds the delay in the cloud instead of blocking Vercel. Every other operation (Claude generation, DB writes, Google indexing) is now wrapped in `step.run()` calls so each fits within the 60-second limit.
@@ -23960,7 +23960,7 @@ The auto-blog system has never published a post since it was built on April 28. 
 
 **Requested by:** Jimmy
 **Committed by:** Claude Code
-**Commit hash:** bdc94c6
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 
@@ -23997,7 +23997,7 @@ On laptops, phones, or anything narrower than ~1536px wide, the page looks exact
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 2495721
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 
@@ -24033,7 +24033,7 @@ Also fixed a schema issue that would have wiped all production data during the n
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** e465e64
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 
@@ -24071,7 +24071,7 @@ The campaign is one-shot — once you fire it, the button locks out and shows st
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 0b920d9
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 
@@ -24114,7 +24114,7 @@ Three fixes in one pass:
 
 **Requested by:** Jimmy
 **Committed by:** Claude Code
-**Commit hash:** 7fd52f8
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 After two distinct sign-in regressions hit production within 24 hours (the keyboard-wrapper bug on mobile, the schema-drift bug on web), this is the prevention work that makes a third silent break much harder to ship. The five files that own authentication now carry a giant warning comment listing past regressions and the manual test checklist. We have a new health-check URL we can hit after every deploy that catches the exact pattern that broke us today *before* users hit it. We have a vitest test that runs before every Vercel build — if it fails, the deploy is blocked.
@@ -24156,7 +24156,7 @@ P2 also bundled:
 
 **Requested by:** Jimmy
 **Committed by:** Claude Code
-**Commit hash:** 8ba9df6
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 Theme Map (and any other feature gated behind a feature flag — Ask the Past Self, State of Me, goal-progression tree, health correlations, public share links, referral rewards) was throwing 500 errors in production. Pulled the actual exception from Vercel logs:
@@ -24193,7 +24193,7 @@ Patched the gate evaluator to project ONLY the three columns it actually reads (
 
 **Requested by:** Jimmy
 **Committed by:** Claude Code
-**Commit hash:** 0149c6f
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 The morning's keyboard-avoidance OTA had a side effect: tapping "Continue with Google" on the iPhone sign-in screen would briefly show the Google sign-in sheet, then dump users back to the Acuity sign-in page with no error message. Turned out the wrapper we added to keep keyboards from covering inputs was destabilizing the in-app browser session that Google sign-in needs to work. Removed the wrapper from the sign-in screen specifically. Onboarding, sign-up, password-reset, and the delete-account modal all keep the keyboard fix.
@@ -24222,7 +24222,7 @@ The wrapper specifically: `<KeyboardAvoidingView><ScrollView>{children}</ScrollV
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 48e9245
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 You can now see exactly where every paying customer came from. When someone lands on any Acuity page, a cookie captures which ad campaign, traffic source, and landing page brought them. That attribution stays with them through signup and all the way to paid conversion. The admin dashboard has a new "Acquisition" tab showing per-source signup breakdowns, per-campaign CAC (cost to acquire each customer), which /for/* landing pages convert best, and A/B experiment results. The Funnel tab now shows Day 1 and Day 30 retention alongside the existing Day 3 and Day 7. The Overview tab's "Blended CAC" card now shows a real number instead of "—" once you have ad spend entered. Four new tracking events fire automatically: when someone views the signup page, clicks a "Start Free Trial" button, completes their first recording, or gets assigned to an A/B test variant.
@@ -24264,7 +24264,7 @@ You can now see exactly where every paying customer came from. When someone land
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** c93ee17
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 The blog now runs on full autopilot. Every day, the system picks a topic from a pre-loaded queue, writes a 1,400-2,200 word SEO blog post, validates it against quality rules (keyword placement, word count, no banned marketing phrases, FAQ section), and publishes it at a random time between 6am and 10pm UTC. Google gets pinged immediately so it knows to crawl the new page. Every night at 3am, a separate job checks how each blog post is performing via Google Search Console — posts that get zero impressions after 7 days, or very low traffic after 30/90 days, get automatically removed with a redirect to the best-performing post. You can see everything in the new "Auto Blog" tab in the admin dashboard, including a "Generate Now" button for testing and a "Kill" button to manually remove any post.
@@ -24303,7 +24303,7 @@ The blog now runs on full autopilot. Every day, the system picks a topic from a 
 
 **Requested by:** Jimmy
 **Committed by:** Claude Code
-**Commit hash:** f718ca2
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 Users can now delete journal entries. Three input methods on iPhone, two on web — all funnel through the same confirmation dialog ("Delete this entry? This cannot be undone.") and the same backend endpoint. This was a launch-blocker for App Store review under Guideline 5.1.1(v) (data deletion), same regulation that drove the account-delete flow.
@@ -24373,7 +24373,7 @@ On confirm, the entry, its themes-link rows, its extracted tasks, and its audio 
 
 **Requested by:** Jimmy
 **Committed by:** Claude Code
-**Commit hash:** 01a521b
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 Three readability fixes on the Theme Map screen.
@@ -24421,7 +24421,7 @@ Three readability fixes on the Theme Map screen.
 
 **Requested by:** Jimmy
 **Committed by:** Claude Code
-**Commit hash:** f4297d1
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 On the iPhone sign-in screen, when you tapped the password field the keyboard would come up and hide it — you'd be typing blind. Same potential problem on sign-up, password-reset, and the delete-account confirmation. Built a small reusable wrapper that keeps any active text input visible above the keyboard and lets the form scroll if needed. Applied to all four screens. iOS users can now drag the keyboard down to dismiss it.
@@ -24449,7 +24449,7 @@ On the iPhone sign-in screen, when you tapped the password field the keyboard wo
 
 **Requested by:** Jimmy
 **Committed by:** Claude Code
-**Commit hash:** cfece10
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 The progress bar from the previous commit stays at the top of the wait screen, but now there's also a vertical checklist below it showing every processing stage and its status. Each stage is one of three states: pending (empty outlined circle, muted), active (filled violet circle that pulses), complete (filled violet circle with a checkmark + the time it took, like "0.8s"). The checklist updates in lockstep with the bar — when the bar advances to "Transcribing", the Transcribing row goes Active, the rows above mark Complete with their durations. Same combined view on web and on iPhone.
@@ -24486,7 +24486,7 @@ The progress bar from the previous commit stays at the top of the wait screen, b
 
 **Requested by:** Jimmy
 **Committed by:** Claude Code
-**Commit hash:** 7930e2c
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 The Weekly Insight card on /home was leaving empty space at the bottom while users wait for their first weekly report (which only drops after 7 sessions). Filled that space with something useful: a small "What you've reflected on" chip list showing the top three themes the AI has been picking up from the user's recordings. Now the card carries signal even before Sunday's report lands.
@@ -24510,7 +24510,7 @@ The Weekly Insight card on /home was leaving empty space at the bottom while use
 
 **Requested by:** Jimmy
 **Committed by:** Claude Code
-**Commit hash:** 3a3df57
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 Third and final pass on the dashboard's row alignment. The previous fix overshot — Goals card was extending past the Life Matrix card on the right. Reset the approach: each card now uses a "fill the cell" rule, and CSS grid handles the row sizing. Whichever side has more content sets the row height; the other side's card stretches to match. Bottom edges line up. If a card has empty space inside, that's just padding.
@@ -24535,7 +24535,7 @@ Third and final pass on the dashboard's row alignment. The previous fix overshot
 
 **Requested by:** Jimmy
 **Committed by:** Claude Code
-**Commit hash:** 2c2e840
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 After someone finishes a recording, the wait screen used to show a generic spinning loader (web) and a spinner-plus-checklist (mobile) — no real signal about how far along the processing was or how much longer they'd be staring at the screen. Replaced with a thin **purple progress bar** that fills as each real pipeline stage completes:
@@ -24583,7 +24583,7 @@ The bar advances on real backend events — the polling hook already exposes `En
 
 **Requested by:** Jimmy
 **Committed by:** Claude Code
-**Commit hash:** d6197fc
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 After bumping the polygon fill last round, two new annoyances on the dedicated Life Matrix page: the background hexagon outlines were too bright and competed with the data, and the axis labels (Career / Health / Relationships / Personal Growth / Finances / Other) were sitting close enough to the polygon that the longer ones overlapped the shape's edge. Toned the grid down so it recedes behind the polygon, and pushed the labels further out with extra room to breathe.
@@ -24610,7 +24610,7 @@ After bumping the polygon fill last round, two new annoyances on the dedicated L
 
 **Requested by:** Jimmy
 **Committed by:** Claude Code
-**Commit hash:** fa55a56
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 On the dedicated Life Matrix page, the purple shape inside the radar was so transparent you could barely see it. Bumped the fill to be much denser so the shape reads clearly. Outline and vertex dots already looked good — only the inside fill needed work.
@@ -24628,7 +24628,7 @@ On the dedicated Life Matrix page, the purple shape inside the radar was so tran
 
 **Requested by:** Jimmy
 **Committed by:** Claude Code
-**Commit hash:** 1e7420e
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 Two final polish passes on the dashboard. The Life Matrix radar polygon was too faint to read at a glance — bumped the colors brighter and the lines thicker so the shape pops against the dark card. Separately, the right column (Weekly Insight + Goals) still wasn't matching the left column's height despite last round's fix — the wrapper needed an extra "fill the available height" rule. Now the bottom edges of the Life Matrix card and the Goals card line up exactly, and the radar reads at a glance.
@@ -24654,7 +24654,7 @@ The next time a `flex-1` child mysteriously refuses to grow, check whether its p
 
 **Requested by:** Jimmy
 **Committed by:** Claude Code
-**Commit hash:** e05f99e
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 The dedicated Life Matrix page was showing reviewers a "Record 3 more debriefs to unlock" message even though the account had 31 entries and the data clearly existed (the same data renders on /home just fine). The page was actually doing the right unlock check at the top — and then doing a SECOND, different unlock check inside the chart component, sourced from a separate table that the seed hadn't populated. The second check kept saying "locked" no matter what. Removed the duplicate gate; the page-level check is now the single source of truth, just like /home.
@@ -24689,7 +24689,7 @@ The task asked to consolidate the radar visualization between /home and /life-ma
 
 **Requested by:** Jimmy
 **Committed by:** Claude Code
-**Commit hash:** 6888e65
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 Brought the Open Tasks card on the /home dashboard up to feature parity with iOS. Each row now has a checkbox on the left, the task title in the middle, and a priority badge (HIGH / MEDIUM / LOW) on the right. Tap the checkbox to mark a task done — it fades out and disappears from the list immediately, just like the mobile app. Tap anywhere else on the row to jump straight to the full task editing screen.
@@ -24716,7 +24716,7 @@ Brought the Open Tasks card on the /home dashboard up to feature parity with iOS
 
 **Requested by:** Jimmy
 **Committed by:** Claude Code
-**Commit hash:** 55e4ad5
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 Closed two empty-space gaps on the consumer dashboard. The Goals card on the right of the middle row now stretches to match the Life Matrix card on the left — no more dark gap below it. Recent Sessions and Open Tasks at the bottom are now equal-width (50/50 instead of 60/40) so they line up cleanly without one leaving a hanging gap. Page reads as a balanced grid top-to-bottom now.
@@ -24740,7 +24740,7 @@ Closed two empty-space gaps on the consumer dashboard. The Goals card on the rig
 
 **Requested by:** Jimmy
 **Committed by:** Claude Code
-**Commit hash:** 30b4336
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 Two issues fixed.
@@ -24801,7 +24801,7 @@ Second, **admin typography was too small** for a no-sidebar layout. Bumped sizes
 
 **Requested by:** Jimmy
 **Committed by:** Claude Code
-**Commit hash:** 68a030a
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 Two visual problems on the consumer dashboard, both visible to the App Store reviewer.
@@ -24831,7 +24831,7 @@ The right column under "Weekly insight" was much shorter than the Life Matrix ca
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 11d624e
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 Existing users who visited the main website had no obvious way to sign in — the landing page only showed "Start Free Trial." Now there's a "Sign in" link in the top nav and in the footer so returning users can get back into their account without having to type the URL manually.
@@ -24852,7 +24852,7 @@ None
 
 **Requested by:** Jimmy
 **Committed by:** Claude Code
-**Commit hash:** c156950
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 Apple's reviewers need to sign into a populated account so they don't see a blank app on first launch. Built a one-shot script that creates a fully-populated demo account — 31 voice journal entries spread over 30 days with realistic content (golf, family, work stress, sleep, mood swings), themes extracted, weekly insights, a Life Audit, goals and tasks, the works. The reviewer account is on PRO so they can see all paid features. The script is locked to one specific email so we can't accidentally clobber a real user.
@@ -24887,7 +24887,7 @@ Also closed a small loose end: the "Manage subscription" button we added earlier
 
 **Requested by:** Jimmy
 **Committed by:** Claude Code
-**Commit hash:** e79246f
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 The remaining /admin tabs — Funnel, Engagement, and Revenue's Failed Payment Alerts — are now drillable. Click "Account Created", "First Recording", "Active Day 7", or "Converted to Paid" in the Funnel → modal lists the users at that step. Click "Waitlist Signups" → modal lists the actual waitlist rows (different shape since they're not yet matched to User accounts; that's Slice 3). Click DAU / WAU / MAU tile in Engagement → list of users who recorded in that window. Click any row in the Failed Payment Alerts table or any silent-trial row → drops you straight into that user's detail modal in the Users tab.
@@ -24923,7 +24923,7 @@ Same privacy guard, same audit-log pattern.
 
 **Requested by:** Jimmy
 **Committed by:** Claude Code
-**Commit hash:** 89df97d
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 The two charts on the admin Overview page are now clickable. Click a bar in "Signups Over Time" → modal listing the users who signed up that day, with their email, name, sign-in method, and current status. Click a slice of the "AI Cost by Feature" donut → modal listing every Claude call for that feature in the active period, sorted by time, with token counts, cost per call, latency, and OK/FAIL.
@@ -24961,7 +24961,7 @@ Same privacy guard as the tile drilldowns: metadata only, never entry content / 
 
 **Requested by:** Jimmy
 **Committed by:** Claude Code
-**Commit hash:** ab0c213
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 Every metric tile on the admin Overview page is now clickable. Click "New Signups" → modal with the actual users who signed up in the active period (email, name, signup time, sign-in method). Click "Trial-to-Paid Conversion Rate" → list of users who converted. Click "Active Paying Subscribers" → list of paying users. Click "Monthly Recurring Revenue (MRR)" → same paying-users list with an inferred plan column (monthly vs annual, derived from how soon their billing period ends — real plan attribution lands in Slice 3). Click "Claude Spend (Month-to-Date)" or any of the AI Costs tiles → spend-by-feature table sorted by total cost.
@@ -25004,7 +25004,7 @@ The Blended CAC tile still says "—" with the awaiting-attribution tooltip; no 
 
 **Requested by:** Jimmy
 **Committed by:** Claude Code
-**Commit hash:** b73e944
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 The admin dashboard at /admin used to inherit the same left sidebar as the consumer app — Record button, Home / Tasks / Goals / Insights / Life Matrix / Settings — eating ~272px of horizontal space and mixing two contexts. That sidebar is now hidden on /admin. Admin pages render full-width with a thin top bar that still has the avatar menu (so you can sign out, hit account, etc.). Navigate to /home and the consumer sidebar is back to normal.
@@ -25033,7 +25033,7 @@ The admin dashboard at /admin used to inherit the same left sidebar as the consu
 
 **Requested by:** Jimmy
 **Committed by:** Claude Code
-**Commit hash:** 2313550
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 The admin dashboard at /admin has been showing **zero** for paying subscribers, MRR, churn, and trial-to-paid conversion — not because we have zero, but because the code was looking up subscriptions under the wrong label. Stripe writes our paying subs as `PRO` and the admin queries were asking for `ACTIVE` (a label nothing writes). Same story for churn (queries asked for `CANCELED`, webhook writes `FREE`). Both fixed. Numbers should populate the next time the page loads in production.
@@ -25080,7 +25080,7 @@ The per-user detail modal (admin Users tab) was audited — it correctly exclude
 
 **Requested by:** Jimmy
 **Committed by:** Claude Code
-**Commit hash:** f27b7c7
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 Two related changes for PRO subscribers on iPhone.
@@ -25113,7 +25113,7 @@ Second: **honest copy about what you give up if you delete instead.** The old de
 
 **Requested by:** Jimmy
 **Committed by:** Claude Code
-**Commit hash:** d980f4e
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 After fixing the "Unauthorized" error earlier today, the next delete attempt got a different error: "Account deletion failed - please try again or contact support." Root cause was a mismatch between our schema definition (which lists a brand-new column we added today, `targetCadence`) and the actual production database (which doesn't have that column yet because the schema push from the home network hasn't run). When we tried to delete the user row, Prisma asked the database for every column the schema mentions — including the missing one — and the database refused. Fixed by switching to a delete style that doesn't read the row back. Cascade still fires; user data still gets removed. Account deletion should now actually work for both Apple and Google sign-in users on TestFlight.
@@ -25140,7 +25140,7 @@ After fixing the "Unauthorized" error earlier today, the next delete attempt got
 
 **Requested by:** Jimmy
 **Committed by:** Claude Code
-**Commit hash:** e12e85f
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 Two real problems with the delete-account flow on the iPhone app, both fixed.
@@ -25170,7 +25170,7 @@ The second was a usability problem that's brand-new with Apple sign-in. Apple le
 
 **Requested by:** Jimmy
 **Committed by:** Claude Code
-**Commit hash:** f626c4e
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 The reminder-time picker during onboarding (step 9) was still showing 24-hour military time, even though the standalone Reminders settings screen had been moved to a friendlier 12-hour AM/PM picker a couple sessions ago. Both screens now use the same picker, so a user who picks 7:30 AM during onboarding sees the exact same thing if they revisit the setting later. No more drift between the two entry points.
@@ -25196,7 +25196,7 @@ The reminder-time picker during onboarding (step 9) was still showing 24-hour mi
 
 **Requested by:** Jimmy
 **Committed by:** Claude Code
-**Commit hash:** 563e94e
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 The "How the trial works" screen during mobile onboarding now ends with a clear ask: "Set your daily commitment." Three options — Daily, Most days, A few times a week — with Daily pre-selected and visually highlighted (subtle violet glow). The old softer options ("Not sure" and "Weekly") are gone because they read like permission to skip days. We don't lock anyone out based on what they pick — it's a stated intent we can later reference in reminder copy, streak nudges, etc. New users land on the recommended cadence by default.
@@ -25221,7 +25221,7 @@ The "How the trial works" screen during mobile onboarding now ends with a clear 
 
 **Requested by:** Jimmy
 **Committed by:** Claude Code
-**Commit hash:** 0b541c9
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 After 6 vague iterations of "make it match the references," Jimmy switched the workflow: I surfaced an inventory of every single visual value on the Theme Map page (every font size, stroke width, gradient stop, glow blur, opacity, shadow), and Jimmy marked up a precise list of numerical changes against that inventory. This commit applies ONLY the exact values Jimmy specified — no creative reinterpretation, no "while I'm here" tweaks, no extra polish. Both platforms in lockstep. The result is bigger hero numbers, fatter glowing strokes, stronger wave fills, more visible glow halos, taller frequency bars, brighter atmospheric backdrop. The page should now read substantially closer to the dark-navy fitness/finance dashboard references that have been the visual target across every iteration.
@@ -25256,7 +25256,7 @@ The full markup spec is in the commit body — abbreviated here. Web file: `apps
 
 **Requested by:** Jimmy
 **Committed by:** Claude Code
-**Commit hash:** 6f2b7ae
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 Two visible bugs and one "make it look as good as the inspirational mockups" pass. (1) The back arrow at the top-left of the Theme Map was sitting on top of the Acuity logo in the sidebar — fixed by tucking the back arrow inside the content area on desktop. (2) When a user has only a few mentions in their data, the trend chart was rendering as a flat zero line for 27 days followed by two peaks slammed against the right edge — looked broken. Now low-data periods render as glowing dot markers at the actual recording dates against a faint dashed horizon, with the caption "Your trend fills in as you record." (3) The visual quality of the page is now substantially closer to the reference dashboard mockups Jimmy shared — every gradient stroke now glows softly, the hero number is bigger and more confident, cards have inner top-edge highlights and outer glow shadows, tile sentiment indicators have luminous halos, and the page background has a subtle vertical gradient with multiple radial color glows tinted to the user's top theme. Same artifact lands on web and mobile.
@@ -25300,7 +25300,7 @@ Two visible bugs and one "make it look as good as the inspirational mockups" pas
 
 **Requested by:** Jimmy
 **Committed by:** Claude Code
-**Commit hash:** 45a7145
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 The Theme Map page (the screen that shows what topics keep coming up in your recordings) has been rebuilt from scratch. The old version showed a constellation of themed orbs floating around — pretty in concept, but the data was hard to read at a glance and the metaphor didn't match the tone of the rest of the app. The new version is a serious, modern data dashboard inspired by reference designs Jimmy shared (deep navy, glowing gradients, smooth curves, polished tiles). On one screen the user now sees: (1) a giant gradient ring with their #1 theme's count in the middle and a sentence explaining what stood out and why; (2) a smooth wave chart showing how their top 3 themes have moved over the last 30 days, with a callout dot pinned on the peak day; (3) a tile grid for themes 1-6 with each tile showing the count, a sentiment-colored mini sparkline, and a one-word trend label like "Trending up" or "Steady"; (4) a frequency-spectrum bar chart of the long-tail themes (the ones with only a couple mentions) so they're still discoverable but quiet. Color encodes mood — warm coral/amber for positive themes, purple/blue for neutral, pink/rose for challenging — so the user can scan their emotional terrain in one look. Everything is dark, soft, and atmospheric, with a faint radial glow at the top in the color of the user's top theme. The same artifact ships on web and mobile, scaled to fit each.
@@ -25345,7 +25345,7 @@ The Theme Map page (the screen that shows what topics keep coming up in your rec
 
 **Requested by:** Jimmy
 **Committed by:** Claude Code
-**Commit hash:** d7cfb51
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 Four small but visible tightenings to the new-user onboarding flow. First, the entire 10-step flow now renders in dark mode regardless of the user's device theme — the brand identity is dark-first and the light-mode styling was half-finished anyway. Second, the life-stage question (Student / Early career / Parent / etc.) is now multi-select instead of forcing one answer; lots of users are both "Parent" and "Established career" and the radio-button version was undercounting. Third, the microphone practice round now explicitly tells users to "Tap and start talking" instead of just "Tap to start" — the old copy didn't make it clear that they were supposed to speak. Fourth, the web flow's "Record your first entry" button now shows "Listening…" while submitting instead of the awkward "Taking you in…".
@@ -25377,7 +25377,7 @@ Four small but visible tightenings to the new-user onboarding flow. First, the e
 
 **Requested by:** Jimmy
 **Committed by:** Claude Code
-**Commit hash:** 45fde16
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 TestFlight Build 20 had a hard crash where tapping any entry to view its details closed the app instantly. It happened 100% of the time on every entry — from Home, from the Journal list, from anywhere — so users effectively could not read their own entries on this build. This commit fixes that. The fix is a tiny code reorder, no new features or changes elsewhere; the entry detail screen will load and display normally as soon as the fix reaches the app. We will ship the fix to existing TestFlight installs over-the-air (no new build download needed for testers), and a fresh Build 21 will follow so the binary on the App Store side has the fix baked in for any new reviewer or fresh install.
@@ -25405,7 +25405,7 @@ TestFlight Build 20 had a hard crash where tapping any entry to view its details
 
 **Requested by:** Jimmy
 **Committed by:** Claude Code
-**Commit hash:** 9434cbd
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 The web app now looks like a real desktop SaaS product instead of a mobile screen stretched across a big monitor. On any desktop-sized browser (≥1024px), there's a persistent left sidebar with every major section one click away, a dedicated top bar with just the profile menu on the right, and the main content fills the full canvas up to a 1600px cap so dashboards, charts, and the Life Matrix can actually breathe. The sidebar groups nav into three sections — CORE (Home, Tasks, Goals), REFLECT (Life Matrix, Theme Map, Insights), ACCOUNT (Settings) — and puts a prominent purple "Record" button above everything so starting a debrief is always one click away. Life Matrix is now a top-level destination at `/life-matrix` with its own wide page instead of being buried as a section inside Insights — it's the flagship view of the product and now looks like it. Mobile and tablet (<1024px) are completely untouched: same nav bar, same single-column layout as before.
@@ -25470,7 +25470,7 @@ The web app now looks like a real desktop SaaS product instead of a mobile scree
 
 **Requested by:** Jimmy
 **Committed by:** Claude Code
-**Commit hash:** 1adcc3d
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 The top-right corner of every authenticated page used to show your profile picture, your name as text, and a "Sign out" text link all sitting in the nav bar. We've cleaned that up to a single profile circle with a small chevron. Clicking (or tapping) it opens a compact dropdown that shows your name and email at the top, then four items — Settings, Documentation, Support, and Sign out. Sign out is styled in red so it can't be confused with the navigation items above it. The menu handles keyboard navigation cleanly (Tab to focus, Enter to open, arrows to move, Esc to close) and works on phones as well as desktop. Net result: less visual clutter in the nav bar and a clearer home for anything account-related.
@@ -25505,7 +25505,7 @@ The top-right corner of every authenticated page used to show your profile pictu
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 7e7694c
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 The old "waitlist drip" (5 emails that went out based on someone's spot in the Waitlist table) is off. Nobody will get any of those 5 emails anymore — including people who were halfway through the sequence. The Waitlist rows themselves stay in the database as a historical record, we just stopped sending to them.
@@ -25592,7 +25592,7 @@ There's a new tab in the admin dashboard (`/admin?tab=trial-emails`) that shows,
 
 **Requested by:** Jimmy
 **Committed by:** Claude Code
-**Commit hash:** a36d1b2
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 Four changes land together. (1) Theme Map Round 4 — the hero theme is now a glowing orb at the center of a proper constellation. Satellite themes sit on three soft orbital rings around it (top 4 on the innermost, next 5 in the middle, next 5 on the outer edge), and each orb breathes with a subtle scale pulse so the whole picture feels alive but never jittery. Above the constellation, a single sentence narrates what the data means — "Golf performance came up 28 times this month, twice as often as anything else." Themes past rank 15 drop into a premium strip list below. No more bubble clusters, no more rectangles, no more gauge rings. The hero theme's name now sits full-width in readable 28pt type, on two lines if needed — no more "Golf perf…" truncation. (2) Every detail screen's back button is now stuck to the top-left of the screen, staying visible as you scroll — Theme Detail, Entry Detail, Goal Detail, Dimension, Theme Map, Reminders, Ask Your Past Self, State of Me. (3) The Home tab label now sits on the same baseline as Goals/Tasks/Insights/Entries — the tab bar was rebuilt from scratch so all five slots share one code path and ONE flex structure, guaranteeing label alignment. The purple record button is a separate overlay above the center slot with zero influence on the tab row's layout. (4) Goal titles bumped from 14pt regular to 16pt semibold, and the space between a group header and its first goal card went from 8pt to 16pt — Goals now feels like "things that matter" instead of a list of items.
@@ -25647,7 +25647,7 @@ Four changes land together. (1) Theme Map Round 4 — the hero theme is now a gl
 
 **Requested by:** Jimmy
 **Committed by:** Claude Code
-**Commit hash:** 50752ad
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 This run executed the performance audit (docs/PERFORMANCE_AUDIT_2026-04-24.md) end-to-end and shipped all four sprints in one build. What you'll notice on device: (1) On the Goals tab, checking a task under a goal or tapping a status pill (complete/archive/start/restore) now fills the UI instantly — same fix we shipped for the Tasks tab this morning. (2) Navigating into a task's edit modal, an entry's detail view, a goal's detail page, or a life-area's drill-down now skips the loading spinner entirely when you've already loaded that data on the screen you came from — the content appears as fast as you can scroll. (3) Boot: the white-flash-with-spinner between the splash logo and the app is gone — splash stays up until auth resolves. (4) Behind the scenes: all debug `console.log` from the Google sign-in flow is stripped from production builds (and any future ones, because the build process now removes them automatically), and an unused audio library was removed from the bundle. Net: the app feels tighter everywhere without adding any new features.
@@ -25717,7 +25717,7 @@ Screens rewired:
 
 **Requested by:** Jimmy
 **Committed by:** Claude Code
-**Commit hash:** ffc9f81
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 Third attempt at Theme Map. Previous two were rejected: the bubble cluster felt like a preschool toy, and the "gallery" of colored rectangular boxes read like a boring list of cards. This one replaces all of that with curved, ring-shaped visualizations — the same visual language fitness and investing apps use when they want numbers to feel premium and alive instead of spreadsheet-y. The top theme is now a hero ring: a big 220-point circle with the theme's mention count in the middle and a glowing colored arc sweeping around it, sized proportionally to how much of your total mentions that theme represents (e.g. "this theme is 24% of everything you talked about this month"). Below it, themes ranked 2 through 5 sit in a 2×2 grid, each with its own smaller ring showing how big it is relative to the #1 theme — so you get an instant visual read of "which themes dominate and which are secondary." Themes ranked 6 and below become clean arc-rows, each with a tiny ring on the left that fills up by how often that theme appears. Every ring uses the deep jewel-tone gradients (emerald for positive, indigo for neutral, rose for challenging) with a soft glow on the active arc — which gives the whole screen the "dashboard screenshots you save on Pinterest" feel Jimmy asked for. The trend chart on the Theme Detail page also got the same polish: deeper gradient fill under the curve, a softer outer glow on the line, only the endpoint marked with a dot (so the shape reads as a wave, not a list of data points), and tiny uppercase axis labels instead of chart-style ones. Web got the same redesign so you'll see it identically on the phone and the desktop. Same data as before; visual only.
@@ -25769,7 +25769,7 @@ Third attempt at Theme Map. Previous two were rejected: the bubble cluster felt 
 
 **Requested by:** Jimmy
 **Committed by:** Claude Code
-**Commit hash:** f958b99
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 Three things shipped in this build. First: the app feels fast now. The biggest culprit was Tasks — every checkbox tap was waiting on a full trip to the server plus a re-download of every task and group in your account before the UI would respond. That's gone. Checkboxes now fill instantly and the network save happens silently in the background. Tab switches are instant too: Home, Entries, and Insights no longer wipe their content and re-fetch from scratch every time you tap back to them — they show what's already cached and quietly update in place if the data is older than 30 seconds. Second: a light tap/buzz fires when you complete a task on iOS. Like the iOS Reminders app. Only on complete, never on uncheck. Third: the Theme Map got a complete redesign. The bubble cluster is gone. In its place is the "Theme Gallery" — the #1 theme gets a full-width hero card with a big gradient and 34pt typography, ranks 2 and 3 live side-by-side in medium cards, ranks 4 through 7 sit in a 2×2 grid, and everything from #8 down renders as a premium pill row with a glowing sentiment stripe. Colors are deep jewel tones (emerald / indigo / rose) instead of preschool-saturation mint/crimson/violet. It handles Jimmy's 32 themes without looking cluttered because each rank band has its own visual treatment. Web got the same redesign for parity.
@@ -25825,7 +25825,7 @@ Three things shipped in this build. First: the app feels fast now. The biggest c
 
 **Requested by:** Jimmy
 **Committed by:** Claude Code
-**Commit hash:** f482d2b
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 Theme Map went from "five orbs that bumped into each other around a hero" to a proper bubble cluster — each bubble is a theme, size = how often it shows up, color = sentiment, packed so they never overlap. The three-stat strip at the top is now a single big gradient card with 40pt numbers for Themes / Mentions / Top Theme. The All Themes list below lost its jagged sparklines and now renders as clean card rows with sentiment dots and mention-count pill badges. The Theme Detail page (when you tap a theme) now has a smooth curved area chart with a gradient fill underneath — fitness-app-style, not Excel-style — plus a purple-tinted "What Acuity notices" card, rounded mention cards, and pill-chip related themes. Web got the same redesign so the experience is identical between the phone and a laptop. This is a visual ship only: same data, same unlock gate (10+ entries), same tap-to-detail navigation — just dramatically nicer to look at.
@@ -25889,7 +25889,7 @@ Theme Map went from "five orbs that bumped into each other around a hero" to a p
 
 **Requested by:** Jimmy
 **Committed by:** Claude Code
-**Commit hash:** 849a3b1
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 Four things visible on Build 13 in TestFlight were broken: the "Home" label under the mic button was sitting a few pixels below the other tab labels; the Insights page kept claiming the user had "0 of 3 life areas" even though they'd recorded across career, health, and golf; the Theme Map still had a text-style `< Insights` back button instead of the circle-arrow one; and the two "coming soon" screens (State of Me and Ask Your Past Self) had their copy glued to the bottom instead of sitting in the vertical middle. Build 14 fixes all four: labels now align on a single baseline, the Life Matrix reads from the real extraction-scored coverage (so it unlocks when the AI has actually tagged three different areas in a user's entries), every back button in the Insights flow is the circle component, and the placeholder screens center their copy properly. No new features in this build — it's a cleanup pass on Build 13.
@@ -25918,7 +25918,7 @@ Four things visible on Build 13 in TestFlight were broken: the "Home" label unde
 
 **Requested by:** Jimmy
 **Committed by:** Claude Code
-**Commit hash:** 8c0a7ed
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 Before: tapping a task's checkbox instantly yanked it off the Open list — no visual confirmation, no undo, just "where'd it go?" This reshapes the rhythm: tapping a box fills it purple and strikes the title, but the task stays on the Open list for the rest of your current visit. Tap it again to undo (strike removed, box empties). Leave the Tasks tab — to Home, Goals, Insights, Entries, or any detail screen — and the next time you come back, the boxes you checked have moved to Done. The Done tab works the same way in reverse: un-checking something keeps it on Done with the strike removed, and moves it to Open next visit. No timers, no "are you sure" dialogs — just the natural rhythm of "work through a list, then flip away when you're done."
@@ -25951,7 +25951,7 @@ Before: tapping a task's checkbox instantly yanked it off the Open list — no v
 
 **Requested by:** Jimmy
 **Committed by:** Claude Code
-**Commit hash:** 8c0a7ed
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 For the past two TestFlight builds (9 and 10), the mobile app was silently shipping without checkboxes on the Tasks tab, without back buttons on detail screens, and without a lot of the interactive polish Keenan saw on web. Every attempt to fix it (bumping versions, clearing OTA caches, reinstalling) failed because the root cause was completely different from what we assumed — a React Native quirk in the new rendering engine (Fabric) silently erases any tappable element written with the "dynamic style" pattern. 34 tappable elements across the app were affected. This commit rewrites every one of them to the static-style pattern that Fabric renders correctly. Build 13 will ship to TestFlight with checkboxes, back buttons, and every tappable polish item visible exactly as designed. The 14-day wild goose chase through OTA caches, build binaries, and device reinstalls was a rendering-engine bug, not a pipeline bug.
@@ -25987,7 +25987,7 @@ For the past two TestFlight builds (9 and 10), the mobile app was silently shipp
 
 **Requested by:** Jimmy
 **Committed by:** Claude Code
-**Commit hash:** 31b6ec6
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 Our mobile crash reporting was completely broken. We had Sentry installed in the app but it had never been turned on properly — the secret address it needs to send crashes to was never set for production builds. That's why the Sentry dashboard was near-empty despite real crashes happening in TestFlight builds 9 and 10. This ships the fix: every TestFlight build from now on sends crashes and errors to Sentry. It also fires a "hello" ping the first time the app opens after install, so we can verify the pipeline is working before a user hits a real bug. Build 11 is on its way to TestFlight with all of this wired up.
@@ -26025,7 +26025,7 @@ Our mobile crash reporting was completely broken. We had Sentry installed in the
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 5a168c9
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 Two fixes. First, the "First 100" urgency banner that was supposed to show at the top of every page wasn't visible — it was being hidden behind the landing page's own navigation bar. It now sits above the nav on every public page and shows "First 100 members get 30 days free — only N spots left" with a live counter. Second, all the social proof numbers across the site were inconsistent and inflated (500+, 2847, 12k, 98%). They've been standardized to realistic early-access numbers: 127+ users, 1,400+ debriefs, 94% would miss it, 4.8 star rating. Every page pulls from a single source of truth so numbers can never drift out of sync again.
@@ -26055,7 +26055,7 @@ Two fixes. First, the "First 100" urgency banner that was supposed to show at th
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 598dc5f
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 Acuity is officially live for real signups. Every "Join the Waitlist" button across the entire site now says "Start Free Trial" and takes people directly to account creation. The first 100 people who sign up get Founding Member status: a 30-day free trial (instead of 14), a permanent badge on their account, and a sequential number (#1-100). A purple banner at the top of every page shows how many spots are left. The 14 existing waitlist users are grandfathered as Founding Members #1-14 when they create their accounts. There's a ready-to-send email template for Keenan to notify those 14 people with their access links. All the drip emails have been updated to remove "when we launch" language since we've launched.
@@ -26094,7 +26094,7 @@ Acuity is officially live for real signups. Every "Join the Waitlist" button acr
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** b4d15fa
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 The 5-email waitlist drip was completely broken — only the Day 0 welcome email was firing. Nobody on the waitlist was getting their Day 2, Day 5, Day 10, or Day 14 emails because the daily scheduler was never set up. This is now fixed: a daily cron runs at 2pm UTC and sends all overdue emails. The 7 signups from the past 4–6 days will get their missed emails on the next cron run. Also shipped a major landing page overhaul: new hero headline, transparent favicon, accordion FAQ, expanded footer, mobile-centered layout, removed redundant mobile CTAs, tightened section spacing, added shine animations to CTA buttons, and comprehensive desktop improvements (wider layouts, bigger phone mockups, better hover states).
@@ -26126,7 +26126,7 @@ The 5-email waitlist drip was completely broken — only the Day 0 welcome email
 
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** 9b5885a
+**Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 The big headline on the landing page is now slightly smaller so it fits on two lines, and the subtitle text underneath is bigger so it's easier to read. The wording was changed from "keep you stuck" to "leave you stuck." The headline also has a subtle glow effect to make the white text pop more against the dark background. The browser tab icon now uses the purple diamond on a transparent background instead of the old dark square — it looks cleaner in both light and dark browser themes.
@@ -26256,7 +26256,7 @@ Longer-term followups unchanged:
 
 - **Requested by:** Jimmy (beta-blocking — auth broken on www.getacuity.io)
 - **Committed by:** Claude Code
-- **Commit hash:** 2b6aace
+- **Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 
@@ -26688,7 +26688,7 @@ Typecheck not run (no code touched). EAS not run (no mobile code touched). Web b
 
 - **Requested by:** Both (Keenan flagged both issues from testing)
 - **Committed by:** Claude Code
-- **Commit hash:** 31be41e
+- **Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 
@@ -26903,7 +26903,7 @@ Trade-off shipped honestly: **constellation orbital entrance animation deferred.
 
 - **Requested by:** Keenan
 - **Committed by:** Claude Code
-- **Commit hash:** 313b606
+- **Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 Every page on getacuity.io was audited against the Acuity Sales Copy Rubric and the copy was rewritten where it violated the rules. The homepage hero now leads with "It's 10 PM and your brain won't shut off" instead of a slogan. Features are described as artifacts ("The Sunday Report", "Goals That Remember") instead of mechanisms ("AI task extraction", "Mood analytics"). The upgrade page uses accountability tone ("Keep what you built") instead of banned words ("Unlock the full power"). Banned words like "transform", "powerful", "insights", and "AI-powered" were removed from all customer-facing pages.
@@ -27262,7 +27262,7 @@ Beta testers flagged four things. We fixed three of them and documented a decisi
 
 - **Requested by:** Keenan
 - **Committed by:** Claude Code
-- **Commit hash:** bf2703b
+- **Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 When you share an Acuity link on Slack, Twitter, iMessage, or LinkedIn, the preview image now shows the new purple diamond logo with the "Acuity" wordmark and tagline — instead of the old glossy "A" icon. The browser tab icon (favicon) and phone home screen icon (apple-touch-icon) also now use the new logo. A PWA manifest was added so "Add to Home Screen" on mobile shows the correct icon and brand colors.
@@ -27299,7 +27299,7 @@ When you share an Acuity link on Slack, Twitter, iMessage, or LinkedIn, the prev
 
 - **Requested by:** Keenan
 - **Committed by:** Claude Code
-- **Commit hash:** b0aefa1
+- **Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 All emails from Acuity — magic link, password reset, verification, payment failed, data export ready, State of Me ready, weekly digest, monthly digest, and the waitlist drip sequence — now show the actual purple diamond Acuity logo instead of a placeholder "✦" character. A test script is included so you can send yourself a test magic link email to verify the logo looks right before going live.
@@ -27330,7 +27330,7 @@ All emails from Acuity — magic link, password reset, verification, payment fai
 
 - **Requested by:** Keenan
 - **Committed by:** Claude Code
-- **Commit hash:** 27980a2
+- **Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 The admin dashboard is now much faster — tabs load from cache instead of re-running every database query on every page view. All the confusing abbreviations like "DAU", "MRR", and "CAC" are spelled out in full so you don't need to remember what they stand for. There's a new "Guide" tab at the end of the tab bar that explains every single metric in the dashboard: what it measures, what a healthy number looks like, what counts as a red flag, and what to do about it. Every tab also has a small "Refresh" button in the top-right that shows when the data was last updated and lets you force-refresh when you want live numbers.
@@ -27373,7 +27373,7 @@ The admin dashboard is now much faster — tabs load from cache instead of re-ru
 
 - **Requested by:** Keenan
 - **Committed by:** Claude Code
-- **Commit hash:** ce9e88a
+- **Commit hash:** 9c34e0c2
 
 ### In plain English (for Keenan)
 Set up a system so every code change is automatically logged with both a plain-English summary for Keenan and a technical summary for Jimmy. From now on, every Claude Code session will read this progress log before starting and append a new entry when done. No more guessing what shipped or what manual steps are still pending.
