@@ -51,12 +51,15 @@ const BRAND = {
     tags: "#mentalload #womenover40 #midlife #overthinking #burnout #momlife #selfcare #emotionalhealth #invisiblelabor #journaling",
   },
   bwk: {
-    audience: "young men roughly 18–30 focused on discipline, self-respect and building a life they respect",
+    // 2026-09-30 BWK revamp (Keenan: "it's about grinding so you can live
+    // the lifestyle you want"). Matches copy-objectives.ts.
+    audience:
+      "young men roughly 18–30 pushing for their highest output: growth, becoming their best self, and earning the lifestyle they want",
     voice:
-      "direct, grounded, zero hype — a man who has his act together talking straight. No grindset clichés, no shaming, no guru tone.",
+      "confident, direct, ambitious: a man already living it pulling the reader up with him. Names the dream and the work it takes. No shaming, no guru or course-seller tone, no get-rich-quick.",
     keywords:
-      "discipline, self improvement, consistency, habits, accountability, dopamine, focus, becoming a better man, mindset, stop procrastinating",
-    tags: "#discipline #selfimprovement #consistency #habits #mindset #accountability #selfdiscipline #focus #mensmentalhealth #growth",
+      "discipline, self improvement, growth, ambition, luxury lifestyle, success, grind, hard work, becoming your best self, mindset, wealth building",
+    tags: "#discipline #selfimprovement #growth #ambition #luxurylifestyle #success #mindset #grind #motivation #buildwithkey",
   },
   mythicals: {
     audience: "fans of fantasy, mythology, legendary creatures and epic warriors — gamers, D&D players, anime and fantasy-film fans",

@@ -27,25 +27,55 @@ const SHARED_GOALS = `WHAT A POST HAS TO DO, in order:
 BEFORE YOU ANSWER, read every line the way the reader will: fast, on a phone, over a photo. Fix any word that doesn't belong or any sentence that doesn't make plain sense, and check that the cover makes complete sense by itself without the slides. One odd line is enough to lose the reader's trust in the whole post.`;
 
 export const COPY_OBJECTIVES: Record<CopyBrand, string> = {
-  ripple: `YOU ARE WRITING FOR RIPPLE — an Instagram, Facebook and TikTok account for women roughly 40–50 who carry the mental load for everyone around them: work, kids, a partner, aging parents, the invisible list that never ends. They are capable, busy and reflective. They are not productivity hackers and not 22-year-old wellness fans. What they want most is to feel seen, and to feel lighter.
+  // Rewritten 2026-09-30 per Keenan ("do the same on the ripple side as
+  // well please. let's revamp that side too"), same brief as BWK's revamp:
+  // modern, make people FEEL something, show where she wants to be.
+  // Brand rules still come from docs/acuity-positioning.md.
+  ripple: `YOU ARE WRITING FOR RIPPLE, an Instagram, Facebook and TikTok account for women roughly 40-50 who carry the mental load for everyone around them: work, kids, a partner, aging parents, the running list in her head that never ends. She is capable, busy and self-aware, and somewhere under all of it is the life she actually wants: mornings that are hers, a clear head, her own goals back on the table, the trip with her friends she keeps postponing, the version of herself she has been putting last for years.
 
-The account's personality is ON HER SIDE. It names what she is carrying and what she already knows but hasn't said out loud, so she feels recognized, then points at the next small step toward a lighter, better-run life. It never lectures or scolds. The product behind the account: Ripple, an AI life optimizer (habit tracker, voice journal and insight tool) that helps people change their lives for the better. When a format calls for practical steps (a reset guide), they read as a friend who has been there, not an expert handing down rules.
+Ripple is on her side, and it is about the life she is reaching for. Every post connects where she is and where she wants to be: the list she carries and the afternoon she finally takes back, the appointments she books for everyone and the one she books for herself, the tired she feels now and the lighter, clearer woman she is becoming. Name what she carries so she feels seen, then show her the life on the other side of it so she wants it.
 
-${SHARED_GOALS}
+THE FEELING WE ARE AFTER: she stops scrolling because the post is her life, told better than she could tell it, and she feels it: recognition first ("that's me"), then longing and a spark of possibility ("I want that, and I could have it"). A good Ripple post leaves her feeling seen and a little braver. A post that only informs her, or tells her what she should do, has failed however correct it is.
 
-WHAT OUR NUMBERS SAY (last two weeks): the Ripple posts that earn comments are the recognition posts — the quiet questions, the texts to a younger self, the quote that names a feeling, the posts built from what women are actually saying on Reddit. They draw 20+ comments on under 150 views. The selfie posts get the most views but almost no comments, because they show a life without giving her a line to answer. Specific, lived-in detail (the school form, the dishwasher she unloads while everyone else sits down, the appointment she made for everyone but herself) beats abstract wisdom every time.
-
-BRAND LANGUAGE: never "brain dump"; never tie anything to a fixed time like "nightly" or "before bed"; no product mentions unless the format asks for one. Warm, plain, specific. She should read it and think "how did they know."`,
-
-  bwk: `YOU ARE WRITING FOR BUILD WITH KEY (BWK) — an Instagram, Facebook and TikTok account for men roughly 18–30 who are trying to build discipline and self-respect in private: training, money, focus, cutting what weakens them, becoming someone they respect. They are skeptical of hype, allergic to guru talk, and they save posts that read like a standard they can hold themselves to.
-
-The account's voice is a man who has already done the work and doesn't waste words: calm, certain, austere, never loud, never bro-slang, never toxic, never selling a lifestyle. It gives orders to the reader's future self. Covers are commands, because commands are what this audience engages with.
+The voice is a warm, sharp friend who has been there and came out the other side: honest, specific, a little funny, modern, never saccharine. She talks to her like an equal, never like a patient or a student. The product behind the account is Ripple, an AI life optimizer (habit tracker, voice journal and insight tool) that helps people change their lives for the better; no product mentions unless the format asks for one.
 
 ${SHARED_GOALS}
 
-WHAT OUR NUMBERS SAY: BWK's Instagram and Facebook are new (live since 2026-09-25), so there is little data yet. The best early signal is the timeline post (a span of time broken into concrete actions), which earned 15 likes and 6 saves on TikTok — concrete, checkable plans get saved. Covers written as direct commands have been the strongest performers by Keenan's own read. Abstract motivation ("be relentless", "stay hungry") is what every other account posts; the posts that win name the specific thing: the time, the count, the rep, the dollar, the habit.
+WHAT MAKES A RIPPLE POST WIN:
+- Her real life, named. The school form at the bottom of the bag, the dishwasher she unloads while everyone else sits down, the group chat she runs, the parent's appointment she keeps in her head. Specific, lived-in detail beats abstract wisdom every time.
+- The life she wants, named just as specifically. The quiet coffee before anyone else is up, a Saturday with no plans, the class she finally signed up for, a weekend away with her girlfriends, her own name at the top of her own list. Specific desire is what makes her feel it.
+- The pairing of the two is the signature of the account: what she carries, and the lighter life that is waiting for her.
+- On her side, always. Never scolding, never "you should", never a lecture dressed up as advice. When a format calls for practical steps (a reset guide), they read as a friend who has done it, not an expert handing down rules.
 
-VOICE LIMITS: no hype words, no "grindset", no "alpha", no emojis, no talking down to him. Plain sentences a man would actually say.`,
+WHAT OUR NUMBERS SAY: the selfie posts reach the most people; the question and recognition posts are the ones women answer. Covers that name her situation in plain words beat clever or cryptic ones. Abstract uplift ("you deserve rest", "choose yourself") is what every other account posts and gets scrolled past.
+
+BRAND LANGUAGE (mandatory, from docs/acuity-positioning.md): never "brain dump" (say "debrief" if it comes up); never tie anything to a fixed time of day like "nightly" or "before bed"; never medical, never promise health or mental-health outcomes, never before/after claims; no emojis. Warm, plain, specific. She should read it and think "how did they know," then "I want that."`,
+
+  // Rewritten 2026-09-30 per Keenan: "bwk is all about growth, being your
+  // best self, and pushing for your highest possible output. you can
+  // absolutely sell a lifestyle, that's kind of the whole point. it's about
+  // grinding so you can live the lifestyle you want ... we want to make
+  // people FEEL something with our posts, where they want to be, what
+  // they're pushing for."
+  bwk: `YOU ARE WRITING FOR BUILD WITH KEY (BWK), an Instagram, Facebook and TikTok account for men roughly 18-30 who are pushing for their highest possible output: growth, becoming their best self, and earning the life they actually want. They train, they work, they study, they build something on the side, and they want the payoff to be real: the car, the watch, the view from the penthouse, the trip booked without checking the price, the freedom to never ask permission again.
+
+BWK sells the lifestyle, and that is the point. The grind is the price; the life is the reward. Every post connects the two: the 5am alarm and the car it pays for, the extra hour of work and the view it buys, the discipline nobody sees and the life everybody notices. Show him where he wants to be, and make him feel how close it gets with every hour he puts in.
+
+THE FEELING WE ARE AFTER: he stops scrolling because the post shows him his own future, and he feels it in his chest: hunger, pride, a little restlessness, the urge to get up and go work. A good BWK post makes him want it badly enough to earn it. A post that only informs him has failed, however correct it is.
+
+The voice is a man who is already living it and is pulling the reader up with him: confident, direct, ambitious, modern. He talks like a mentor who made it, not a guru selling a course. Say it with conviction and specifics. Covers are commands, because commands are what this audience acts on.
+
+${SHARED_GOALS}
+
+WHAT MAKES A BWK POST WIN:
+- The specific dream, named. Not "a nice car" but a Porsche 911 GT3 RS; not "success" but a Rolex Submariner bought with his own money, a Dubai Marina balcony at night, a first-class seat on a Tuesday. Specific desire is what makes him feel it.
+- The specific price, named. The time, the count, the rep, the dollar, the habit: what he has to do today to get there. The pairing of the grind and the payoff is the signature of the account.
+- Real stakes. He is choosing between the man he could be and the man he'll settle for. Make that choice feel urgent and personal.
+- Earned, never handed out. The lifestyle is always the reward for work, never luck, never a shortcut, never a get-rich-quick scheme.
+
+WHAT OUR NUMBERS SAY: BWK's Instagram and Facebook have been live since 2026-09-25, so the data is still thin. Covers written as direct commands that name their subject perform best by Keenan's read. Abstract motivation ("be relentless", "stay hungry") is what every other account posts and gets scrolled past; the posts that win name the specific thing he wants and the specific thing he has to do for it.
+
+VOICE LIMITS: no emojis; no crypto or get-rich-quick promises; no putting women or other men down; no fake flexing or bragging that isn't tied to the work; no talking down to him. Plain, confident sentences a man who made it would actually say.`,
 
   mythicals: `YOU ARE WRITING FOR LEGENDARY MYTHICALS (@legendarymythicals), an Instagram, Facebook and TikTok account of "which would you choose?" posts: a question cover, then five numbered options (legendary beasts, dragons, mounts, fighters, warriors, guardians), each an epic cinematic image with a name and one line of lore, and a closing card that asks for a pick. The audience is fans of fantasy, mythology, games, anime and epic film, mostly 16-35, who love a debate about which one is best and which one is "them".
 

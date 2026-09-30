@@ -7,6 +7,35 @@
 
 ---
 
+## [2026-09-30] — BWK and Ripple brand briefs rewritten: make them feel where they're going
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** see "content: Rewrite the BWK and Ripple brand briefs around aspiration"
+
+### In plain English (for Keenan)
+The brief every AI writer reads before writing BWK or Ripple posts has been rewritten.
+
+BWK is now about growth, highest output and earning the lifestyle:
+- It names the exact dream (the car, the watch, the view) and the work it takes.
+- The aim is posts that make him feel hungry for it.
+
+Ripple keeps her real life at the center (the mental load, feeling seen) and pairs it with the lighter life she wants: time that's hers, her own goals back, the trip she keeps postponing. The aim is posts that make her think "that's me" and then "I want that."
+
+### Technical changes (for Jimmy)
+- `lib/content-factory/copy-objectives.ts`:
+  - `COPY_OBJECTIVES.bwk` rewritten: lifestyle is the point, grind + payoff pairing, feeling-first, luxury specifics, voice of a man already living it. Dropped "never selling a lifestyle" and the stale timeline data point.
+  - `COPY_OBJECTIVES.ripple` rewritten: what she carries paired with the life she wants, feeling-first, warm sharp-friend voice. Positioning language rules kept verbatim in intent.
+- `lib/content-factory/caption-writer.ts`: BWK audience, voice, keywords and hashtags aligned. The old "No grindset clichés" line is removed; luxury, growth and ambition tags added.
+- Applies to every lane that uses `copyObjectives`: all moody lanes, pick lanes, Mythicals unaffected.
+
+### Manual steps needed
+- None
+
+### Notes
+- Still in effect: Ripple brand-language rules (no "brain dump", no fixed times, never medical or before/after) and the BWK command-cover rule.
+- Watch the next BWK posts: the lane prompts (e.g. BWK scene briefs: dark, austere, people-free) were written for the old "austere, never selling a lifestyle" voice and may pull against the new brief. Revisit if posts still feel flat.
+- I caught and removed a "6am coffee" example in my own Ripple draft (it broke the fixed-time rule).
+
 ## [2026-09-30] — BWK pick options are exact luxury picks; all options must be specific
 **Requested by:** Keenan
 **Committed by:** Claude Code
