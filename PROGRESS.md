@@ -7,6 +7,26 @@
 
 ---
 
+## [2026-09-30] — Ripple lanes adjusted: pulse out, texts-younger back
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** see "chore: Log Ripple swap of pulse for texts-younger"
+
+### In plain English (for Keenan)
+Pulse is switched off because its engagement looked fake. Texts to your younger self is back on. Ripple's four daily posts are now questions, reset guide, texts to your younger self, and phone quote.
+
+### Technical changes (for Jimmy)
+- DB only: ContentLane `pulse` set to RETIRED; `texts-younger` set back to ACTIVE (retiredAt null, hour 5 unchanged).
+- Ripple roster: texts-younger@5, phone-quote@6, questions@6, reset-guide@6.
+
+### Manual steps needed
+- None
+
+### Notes
+- Keenan overrode Jev's top-4 ranking here (pulse 0.45 vs texts-younger 0.33) on the grounds that pulse's engagement is fake.
+- Jev only sees the numbers, so it can't tell fake engagement from real. Where engagement is suspect, Keenan's read beats the ranking.
+- Interpretation: "keep reset guide, questions, get rid of pulse, and texts younger" was read as keeping texts-younger, so Ripple stays at 4 with phone-quote.
+
 ## [2026-09-30] — Ripple cut to its top 4 lanes (Jev-ranked)
 **Requested by:** Keenan
 **Committed by:** Claude Code
