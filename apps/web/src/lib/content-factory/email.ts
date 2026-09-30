@@ -64,6 +64,7 @@ const BWK_LANES = new Set([
   "discipline-real",
   "future-texts",
   "voiced-bwk",
+  "pick-bwk",
 ]);
 async function accountLabel(lane: string | null | undefined): Promise<string> {
   if (lane && BWK_LANES.has(lane)) return "[BUILD WITH KEY]";

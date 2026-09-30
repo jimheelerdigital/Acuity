@@ -132,7 +132,7 @@ export const socialPublishCronFn = inngest.createFunction(
       // Until ranked, the day's posts wait here — windows open at noon ET,
       // so no slot moves. Mythicals is never gated. Off/erroring Jev →
       // "open"/fail-open, i.e. exactly the old behavior. See publish-gate.ts.
-      const { publishGateEnabled, resolveDayGate } = await import(
+      const { publishGateEnabled, resolveDayGate, gateExemptLane } = await import(
         "@/lib/content-factory/publish-gate"
       );
       const { laneBrand: brandOfLane } = await import(
@@ -142,8 +142,9 @@ export const socialPublishCronFn = inngest.createFunction(
       if (publishGateEnabled()) {
         const gates = new Map<string, Awaited<ReturnType<typeof resolveDayGate>>>();
         for (const post of candidates) {
-          // Voiced videos are approved by Keenan one at a time — never ranked or held.
-          if (post.lane?.startsWith("voiced-")) continue;
+          // Voiced videos (approved by Keenan one at a time) and pick lanes
+          // (always post) are never ranked or held.
+          if (gateExemptLane(post.lane)) continue;
           const brand = await brandOfLane(post.lane);
           const date = post.generatedFor.toISOString().slice(0, 10);
           const key = `${brand}:${date}`;

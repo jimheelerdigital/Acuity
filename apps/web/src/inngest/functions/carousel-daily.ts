@@ -646,16 +646,25 @@ export const carouselDailyCronFn = inngest.createFunction(
     // cover + 5 numbered options + a varied closing card. Cover and
     // options keep raw + text layer so the Higgsfield video animates them;
     // the closing card is a still. See lib/content-factory/choice-lane.ts.
+    // Template "pick" (2026-09-30) runs the same branch for the Ripple/BWK
+    // "which one is you?" lanes: topic from pick-lane.ts (Jev picks the
+    // concept and the five options), brand photo style, and ONLY the cover
+    // keeps its raw image, so only the cover is animated.
     const choiceLane =
       !isLegacyBucket && b
         ? await step.run("load-choice-lane", async () => {
             const { prisma } = await import("@/lib/prisma");
             const row = await prisma.contentLane.findUnique({ where: { key: b } });
-            if (!row || row.status === "RETIRED" || row.template !== "choice") return null;
+            if (!row || row.status === "RETIRED" || (row.template !== "choice" && row.template !== "pick")) return null;
             const { parseChoiceLaneSpec } = await import("@/lib/content-factory/choice-lane");
             const spec = parseChoiceLaneSpec(row.spec);
             if (!spec) throw new Error(`[carousel-cron] ContentLane "${b}" has an unusable choice spec — fix the row`);
-            return { key: row.key, spec };
+            // "pick" (2026-09-30): the same format for Ripple / BWK — "which
+            // one is you?" — with Jev choosing the concept and the five
+            // options, and only the cover animated. See pick-lane.ts.
+            const pickBrand: "ripple" | "bwk" | null =
+              row.template === "pick" ? (row.brand === "bwk" ? "bwk" : "ripple") : null;
+            return { key: row.key, spec, pickBrand };
           })
         : null;
     if (choiceLane) {
@@ -675,8 +684,27 @@ export const carouselDailyCronFn = inngest.createFunction(
             : runAt.getUTCHours() === 7 && Math.floor(runAt.getTime() / 86_400_000) % 2 === 0
               ? "place"
               : "choice";
+      const pickBrand = choiceLane.pickBrand;
       const topic = await step.run("generate-choice-topic", async () => {
         const { prisma } = await import("@/lib/prisma");
+        if (pickBrand) {
+          const recentPick = await prisma.carouselPost.findMany({
+            where: { generatedFor: { gte: new Date(Date.now() - 30 * 86_400_000) }, lane: laneKey },
+            orderBy: { createdAt: "desc" },
+            select: { headline: true, slides: { select: { overlayText: true, kind: true } } },
+          });
+          const { generatePickTopic } = await import("@/lib/content-factory/pick-lane");
+          const { getLaneFeedback } = await import("@/lib/content-factory/performance");
+          return generatePickTopic({
+            brand: pickBrand,
+            theme: choiceLane.spec.theme,
+            recentTitles: recentPick.map((p) => p.headline),
+            recentNames: recentPick
+              .flatMap((p) => p.slides.filter((s) => s.kind === "REASON").map((s) => s.overlayText.replace(/^\d+\.\s*/, "")))
+              .filter(Boolean),
+            feedback: await getLaneFeedback(laneKey),
+          });
+        }
         const { generateChoiceTopic, rollChoiceCategory, CHOICE_CATEGORIES, DUO_CATEGORIES, PLACE_CATEGORIES } = await import(
           "@/lib/content-factory/choice-lane"
         );
@@ -722,13 +750,16 @@ export const carouselDailyCronFn = inngest.createFunction(
           "@/lib/content-factory/carousel-generate"
         );
         const { buildMythicImagePrompt } = await import("@/lib/content-factory/choice-lane");
+        const { buildPickImagePrompt } = await import("@/lib/content-factory/pick-lane");
         const { renderChoiceOverlay } = await import("@/lib/content-factory/compose");
-        const prompt = buildMythicImagePrompt(topic.coverScene, "cover", choiceMode);
+        const prompt = pickBrand
+          ? buildPickImagePrompt(pickBrand, topic.coverScene, "cover")
+          : buildMythicImagePrompt(topic.coverScene, "cover", choiceMode);
         const { buffer: raw, qc } = await generateCheckedImage(() => generateImage(prompt), {
           scene: topic.coverScene,
           slot: "cover",
           personAllowed: true,
-          fantasy: true,
+          fantasy: !pickBrand,
         });
         logger.info(`[carousel-cron] choice cover quality: ${qc}`);
         const overlay = await renderChoiceOverlay({ top: topic.title, topSize: 66 });
@@ -741,7 +772,7 @@ export const carouselDailyCronFn = inngest.createFunction(
         return { imageUrl, rawImageUrl, overlayText: topic.title, imagePrompt: withMotion(prompt, topic.coverMotion) };
       });
 
-      const choiceSlides: { imageUrl: string; rawImageUrl: string; overlayText: string; imagePrompt: string }[] = [];
+      const choiceSlides: { imageUrl: string; rawImageUrl: string | null; overlayText: string; imagePrompt: string }[] = [];
       for (let i = 0; i < topic.options.length; i++) {
         choiceSlides.push(
           await step.run(`choice-option-${i}`, async () => {
@@ -751,12 +782,15 @@ export const carouselDailyCronFn = inngest.createFunction(
             const { buildMythicImagePrompt } = await import("@/lib/content-factory/choice-lane");
             const { renderChoiceOverlay } = await import("@/lib/content-factory/compose");
             const o = topic.options[i];
-            const prompt = buildMythicImagePrompt(o.scene, "option", choiceMode);
+            const { buildPickImagePrompt } = await import("@/lib/content-factory/pick-lane");
+            const prompt = pickBrand
+              ? buildPickImagePrompt(pickBrand, o.scene, "option")
+              : buildMythicImagePrompt(o.scene, "option", choiceMode);
             const { buffer: raw, qc } = await generateCheckedImage(() => generateImage(prompt, "item"), {
               scene: o.scene,
               slot: "item",
               personAllowed: true,
-              fantasy: true,
+              fantasy: !pickBrand,
             });
             logger.info(`[carousel-cron] choice option ${i + 1} quality: ${qc}`);
             // Name only on the slide (2026-09-30, per Keenan: "it doesn't need
@@ -772,9 +806,11 @@ export const carouselDailyCronFn = inngest.createFunction(
             const { withMotion } = await import("@/lib/content-factory/choice-lane");
             return {
               imageUrl,
-              rawImageUrl,
+              // Pick lanes animate ONLY the cover: an option slide with no raw
+              // image is planned as a free slow-zoom still by the video builder.
+              rawImageUrl: pickBrand ? null : rawImageUrl,
               overlayText: `${i + 1}. ${o.name}`,
-              imagePrompt: withMotion(prompt, o.motion),
+              imagePrompt: pickBrand ? prompt : withMotion(prompt, o.motion),
             };
           })
         );
@@ -806,8 +842,11 @@ export const carouselDailyCronFn = inngest.createFunction(
       const choiceResult = await step.run("save-choice", async () => {
         const { prisma } = await import("@/lib/prisma");
         const { buildChoiceCaption } = await import("@/lib/content-factory/choice-lane");
+        const { buildPickCaption } = await import("@/lib/content-factory/pick-lane");
         const { extractHashtags } = await import("@/lib/content-factory/carousel-generate");
-        const caption = buildChoiceCaption(topic.captionQuestion);
+        const caption = pickBrand
+          ? buildPickCaption(pickBrand, topic.captionQuestion)
+          : buildChoiceCaption(topic.captionQuestion);
         const post = await prisma.carouselPost.create({
           data: {
             topicSlug: topic.slug,

@@ -128,7 +128,7 @@ export const carouselPostVideoFn = inngest.createFunction(
       ? plan.slides
           .map((s, i) => (s.mode === "live" ? i : -1))
           .filter((i) => i >= 0)
-          .slice(0, maxAnimatedSlides(plan.brand))
+          .slice(0, maxAnimatedSlides(plan.brand, plan.lane))
       : [];
     logger.info(
       `[post-video] ${postId} (${plan.lane}): ${liveIdx.length} animated / ${plan.slides.length} slides${configured ? "" : " — Higgsfield not configured"}`
@@ -178,7 +178,11 @@ export const carouselPostVideoFn = inngest.createFunction(
           baseUrl: await up(`living/${postId}/base-${i}.jpg`, base, "image/jpeg"),
           layerUrl,
           // Legendary Mythicals: the creature itself acts (action mode).
-          prompt: livingMotionPrompt(s.imagePrompt, { person: s.person, action: plan.brand === "mythicals" }),
+          prompt: livingMotionPrompt(s.imagePrompt, {
+            person: s.person,
+            action: plan.brand === "mythicals" || !!plan.lane?.startsWith("pick-"),
+            realistic: !!plan.lane?.startsWith("pick-"),
+          }),
         };
       });
     }

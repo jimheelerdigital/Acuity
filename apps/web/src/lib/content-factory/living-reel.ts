@@ -44,7 +44,7 @@ function ffmpegPath(): string | null {
  */
 export function livingMotionPrompt(
   imagePrompt: string,
-  opts: { person?: boolean; action?: boolean } = {}
+  opts: { person?: boolean; action?: boolean; realistic?: boolean } = {}
 ): string {
   // ACTION mode (2026-09-29, Legendary Mythicals — per Keenan: "the
   // animations for the mythical beasts are pretty weak... it's basically
@@ -55,13 +55,18 @@ export function livingMotionPrompt(
     const motion = imagePrompt.match(/^MOTION:\s*(.+)$/m)?.[1]?.trim();
     const scene = (imagePrompt.split("\n")[0] ?? "")
       .replace(/^A breathtaking, hyper-real cinematic (film still|establishing shot), vertical composition:\s*/i, "")
+      .replace(/^A REAL photograph a person actually took with a camera:\s*/i, "")
       .slice(0, 300);
+    // realistic (2026-09-30): Ripple/BWK pick-lane covers — a real-world
+    // photograph brought to life, not a fantasy film shot.
     return [
-      "Epic cinematic fantasy film shot.",
+      opts.realistic ? "Realistic cinematic footage of a real place, shot on a real camera." : "Epic cinematic fantasy film shot.",
       scene ? `Scene: ${scene}` : "",
       motion
         ? `Action: ${motion}`
-        : "Action: the creature or fighter comes alive with natural movement: it breathes, turns its head toward the camera, shifts its weight and moves its wings, tail, mane or cloak as it would in life.",
+        : opts.realistic
+          ? "Action: gentle, natural movement that already belongs in the scene: light shifting, steam or mist drifting, fabric or leaves stirring."
+          : "Action: the creature or fighter comes alive with natural movement: it breathes, turns its head toward the camera, shifts its weight and moves its wings, tail, mane or cloak as it would in life.",
       // Tuned 2026-09-29 (per Keenan: the first war-mount post "was perfect",
       // the next two "a bit too much movement which made it look slightly
       // unrealistic"): one clear action at real-world speed, gentle camera.

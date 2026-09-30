@@ -152,6 +152,16 @@ export interface GateMarker {
   rows: GateRow[];
 }
 
+/**
+ * Lanes that always post and are never ranked or held: voiced videos
+ * (Keenan approves each one) and the "which one is you?" pick lanes
+ * (2026-09-30, per Keenan: "it should automatically post"). They also
+ * don't count toward a brand-day being complete.
+ */
+export function gateExemptLane(lane: string | null | undefined): boolean {
+  return !!lane && (lane.startsWith("voiced-") || lane.startsWith("pick-"));
+}
+
 /** JEV_PUBLISH_GATE: on with a Jev key, "0" disables. */
 export function publishGateEnabled(): boolean {
   return process.env.JEV_PUBLISH_GATE?.trim() !== "0" && jevEnabled();
@@ -512,7 +522,7 @@ export async function loadBrandDay(
     where: { status: { not: "RETIRED" } },
     select: { key: true, hoursUtc: true },
   });
-  const lanes = laneRows.filter((l) => brandOf(l.key) === brand);
+  const lanes = laneRows.filter((l) => brandOf(l.key) === brand && !gateExemptLane(l.key));
 
   const all = await prisma.carouselPost.findMany({
     where: { generatedFor: day, lane: { in: lanes.map((l) => l.key) } },

@@ -7,6 +7,46 @@
 
 ---
 
+## [2026-09-30] — New daily "which one is you?" posts for Ripple and BWK
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** see "feat: Add daily which-one-is-you pick lanes for Ripple and BWK"
+
+### In plain English (for Keenan)
+Ripple and BWK each get a daily Mythicals-style post, like "Where are you hiding for one hour where nobody needs you?" with 5 numbered picks. How each post is made:
+1. The AI writes 5 post ideas and Jev picks the best.
+2. The AI writes about 9 options and Jev keeps the best 5.
+3. The cover is animated and the 5 picks slowly zoom, set to music.
+
+It posts automatically every day. It replaces phone quote on Ripple and the timeline on BWK.
+
+### Technical changes (for Jimmy)
+- New `lib/content-factory/pick-lane.ts`:
+  - `generatePickTopic`: Sonnet writes 5 concepts; Jev `pickConcept` scores scroll/comment per concept plus a separate cover-only clarity call (<0.3 ineligible); Sonnet then writes 9 options; Jev `narrowOptions` scores want-to-pick and twins, and keeps 5.
+  - `buildPickImagePrompt`, `buildPickCaption`.
+  - Every Jev step fails open.
+- `inngest/functions/carousel-daily.ts`: the choice branch also handles template `"pick"`. Option slides are saved without `rawImageUrl`, so they become push-in stills; only the cover animates. Mythicals behavior is unchanged.
+- `lib/content-factory/post-video.ts`: `maxAnimatedSlides(brand, lane?)` returns 1 for `pick-*` lanes, 6 for Mythicals, 0 otherwise. `carousel-post-video.ts` passes the lane.
+- `lib/content-factory/living-reel.ts`: `livingMotionPrompt` gets a `realistic` flag for non-fantasy action clips.
+- `social-health-check.ts` uses the lane-aware budget. `publish-gate.ts` adds `gateExemptLane()` (voiced-* and pick-*), used by the `social-publish-cron.ts` scan.
+- `social-publish.ts` BWK_LANES and `email.ts` BWK set now include `pick-bwk`.
+- DB, in the same session:
+  - ContentLane `pick-ripple` (ripple, template pick, hour 7) and `pick-bwk` (bwk, template pick, hour 6) inserted.
+  - `phone-quote` and `timeline` retired.
+
+### Manual steps needed
+- None
+
+### Notes
+- Cost is about 70¢ per post: cover image high, 5 medium images, Opus checks, 2 Sonnet calls, 1 Higgsfield clip.
+- The pick lanes skip the Jev hold gate (Keenan: "it should automatically post").
+- Jev tests on stubbed candidates:
+  - Ripple chose "Where are you hiding for one hour where nobody needs you?".
+  - BWK chose "Which car are you working toward?".
+  - The BWK clarity check rejects terse concepts ("Pick your 5am" 0.24). If BWK picks get too narrow, lower CLEAR_MIN in pick-lane.ts.
+- The option twin threshold is 0.6: in 9-option batches, real near-copies score about 0.6-0.7.
+- Swaps were chosen by Keenan: phone-quote out on Ripple, and timeline out on BWK over Jev's memento-men pick.
+
 ## [2026-09-30] — Daily voiced scripts paused
 **Requested by:** Keenan
 **Committed by:** Claude Code

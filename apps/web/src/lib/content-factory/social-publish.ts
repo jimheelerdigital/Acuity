@@ -44,6 +44,8 @@ export const BWK_LANES = [
   "future-texts",
   // Voiced daily videos (2026-09-30): Keenan-recorded, approved by hand.
   "voiced-bwk",
+  // "Which one is you?" pick lane (2026-09-30); its ContentLane row also says bwk.
+  "pick-bwk",
 ] as const;
 
 /**

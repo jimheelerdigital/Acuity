@@ -153,7 +153,7 @@ export const socialHealthCheckFn = inngest.createFunction(
           const m = await readVideoMarker(p.id);
           // Brands with no animation budget (Ripple since 09-30) ship stills
           // videos on purpose: only a missing or failed build is broken.
-          const wantsAnimation = maxAnimatedSlides(brandOf.get(p.lane ?? "") ?? "ripple") > 0;
+          const wantsAnimation = maxAnimatedSlides(brandOf.get(p.lane ?? "") ?? "ripple", p.lane) > 0;
           const bad =
             !m || m.status === "failed" || (wantsAnimation && m.status === "done" && m.source !== "higgsfield");
           if (!bad) continue;
