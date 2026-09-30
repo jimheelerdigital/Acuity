@@ -493,6 +493,37 @@ export async function updateAdSetBudget(adsetId: string, dailyBudgetCents: numbe
   await adset.update([], { daily_budget: dailyBudgetCents });
 }
 
+/**
+ * Change what an existing ad set optimizes for (2026-09-30, per Keenan:
+ * "start to optimize for purchase"). Graph API directly so Meta's real error
+ * comes back (e.g. a health & wellness restriction on lower-funnel events).
+ * Resets the ad set's learning phase.
+ */
+export async function updateAdSetOptimization(adsetId: string, pixelId: string, customEventType: string): Promise<void> {
+  const token = process.env.META_ACCESS_TOKEN;
+  if (!token) throw new Error("META_ACCESS_TOKEN not configured");
+  const version = process.env.META_API_VERSION || "v25.0";
+  const body = new URLSearchParams({
+    promoted_object: JSON.stringify({ pixel_id: pixelId, custom_event_type: customEventType }),
+    access_token: token,
+  });
+  const res = await fetch(`https://graph.facebook.com/${version}/${adsetId}`, { method: "POST", body });
+  const data = (await res.json().catch(() => ({}))) as { success?: boolean; error?: { message?: string; error_user_msg?: string; code?: number; error_subcode?: number } };
+  if (!res.ok || data.error) {
+    const e = data.error;
+    throw new Error(`Meta optimization change failed (${res.status}): ${redactAccessToken(e?.error_user_msg || e?.message || JSON.stringify(data)).slice(0, 400)}${e?.code ? ` [code ${e.code}${e.error_subcode ? `/${e.error_subcode}` : ""}]` : ""}`);
+  }
+}
+
+/** Read an ad set's current budget + optimization target (for verification). */
+export async function getAdSetSettings(adsetId: string): Promise<Record<string, unknown>> {
+  const token = process.env.META_ACCESS_TOKEN;
+  if (!token) throw new Error("META_ACCESS_TOKEN not configured");
+  const version = process.env.META_API_VERSION || "v25.0";
+  const res = await fetch(`https://graph.facebook.com/${version}/${adsetId}?fields=name,daily_budget,optimization_goal,promoted_object,effective_status&access_token=${encodeURIComponent(token)}`);
+  return (await res.json()) as Record<string, unknown>;
+}
+
 export async function deleteCampaign(campaignId: string) {
   const bizSdk = await getBizSdk();
   await getApi();

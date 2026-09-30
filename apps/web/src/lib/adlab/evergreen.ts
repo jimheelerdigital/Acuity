@@ -23,14 +23,18 @@ import { prisma } from "@/lib/prisma";
 import * as meta from "@/lib/adlab/meta";
 import type { BatchGroupKey } from "@/lib/adlab/weekly-batch";
 
-/** Daily budget per group, cents. Total = $140/day (2026-09-29, per Keenan:
- *  "let's up our spend an extra 20 for each" — women $60→$80, men $40→$60). */
+/** Daily budget per group, cents. Total = $140/day. 2026-09-30, per Keenan:
+ *  "move the extra 20 to men instead of women" — women $60, men $80 (men was
+ *  ~$52 per paid trial vs ~$140 for women over the prior 14 days). */
 export const GROUP_DAILY_BUDGET_CENTS: Record<BatchGroupKey, number> = {
-  women: 8000,
-  men: 6000,
+  women: 6000,
+  men: 8000,
 };
 
-export const GROUP_OPTIMIZATION_EVENT = "COMPLETE_REGISTRATION";
+/** 2026-09-30, per Keenan: "start to optimize for purchase". Was
+ *  COMPLETE_REGISTRATION — Meta found signups (25 in 14 days) but only 5 of
+ *  them paid. Purchase = the Stripe trial-start event (CAPI, with fbclid). */
+export const GROUP_OPTIMIZATION_EVENT = "PURCHASE";
 
 /**
  * Live ads allowed in one ad set. More than this splits $40–60/day too thin
@@ -45,6 +49,38 @@ const GROUP_NAMES: Record<BatchGroupKey, string> = {
   women: "Ripple — Women | Evergreen (signups)",
   men: "Ripple — Men | Evergreen (signups)",
 };
+
+/**
+ * Push the code's budget + optimization event onto both live evergreen ad
+ * sets (2026-09-30). Per-group results; one lane failing (e.g. Meta refusing
+ * Purchase optimization) doesn't stop the other.
+ */
+export async function applyEvergreenSettings(): Promise<Record<string, unknown>> {
+  const out: Record<string, unknown> = {};
+  for (const [groupKey, slug] of [["women", "ripple-women"], ["men", "ripple-men"]] as const) {
+    const project = await prisma.adLabProject.findUnique({ where: { slug } });
+    if (!project?.evergreenAdsetId || !project.metaPixelId) {
+      out[groupKey] = { error: "no evergreen ad set / pixel" };
+      continue;
+    }
+    const r: Record<string, unknown> = {};
+    try {
+      await meta.updateAdSetBudget(project.evergreenAdsetId, GROUP_DAILY_BUDGET_CENTS[groupKey]);
+      r.budget = "ok";
+    } catch (err) {
+      r.budget = err instanceof Error ? err.message : String(err);
+    }
+    try {
+      await meta.updateAdSetOptimization(project.evergreenAdsetId, project.metaPixelId, GROUP_OPTIMIZATION_EVENT);
+      r.optimization = "ok";
+    } catch (err) {
+      r.optimization = err instanceof Error ? err.message : String(err);
+    }
+    r.now = await meta.getAdSetSettings(project.evergreenAdsetId).catch((err) => String(err));
+    out[groupKey] = r;
+  }
+  return out;
+}
 
 /** Weekly-batch experiments carry their group as a campaign tag. */
 export function weeklyBatchGroup(campaignTags: string[]): BatchGroupKey | null {
