@@ -323,6 +323,18 @@ export async function uploadVideo(videoUrl: string): Promise<string> {
   return videoId;
 }
 
+/**
+ * The Instagram account that represents the business on Instagram
+ * placements (2026-09-30). Meta began rejecting new creatives with
+ * "Instagram Account Is Missing" (100/1772103) — it no longer fills this in
+ * from the Page — so every creative names it. META_ADS_IG_USER_ID overrides;
+ * otherwise Ripple's Instagram (IG_USER_ID, the account organic posts use).
+ */
+function igIdentity(): Record<string, string> {
+  const id = process.env.META_ADS_IG_USER_ID || process.env.IG_USER_ID;
+  return id ? { instagram_user_id: id } : {};
+}
+
 export async function createAdCreative(params: AdCreativeParams) {
   await getApi();
   const account = await getAdAccount();
@@ -334,6 +346,7 @@ export async function createAdCreative(params: AdCreativeParams) {
     // Video creative
     objectStorySpec = {
       page_id: params.pageId,
+      ...igIdentity(),
       video_data: {
         video_id: params.videoId,
         // Thumbnail (2026-09-29): Meta rejects a video_data creative without
@@ -349,6 +362,7 @@ export async function createAdCreative(params: AdCreativeParams) {
     // Image creative
     objectStorySpec = {
       page_id: params.pageId,
+      ...igIdentity(),
       link_data: {
         message: params.primaryText,
         link: params.linkUrl,
@@ -399,7 +413,7 @@ export async function createPlacementAdCreative(params: {
 
   const payload = {
     name: params.name,
-    object_story_spec: { page_id: params.pageId },
+    object_story_spec: { page_id: params.pageId, ...igIdentity() },
     asset_feed_spec: {
       images: [
         { hash: params.feedImageHash, adlabels: [{ name: "feed_img" }] },
