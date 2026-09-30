@@ -40,6 +40,13 @@ export const voicedScriptDailyFn = inngest.createFunction(
   },
   async ({ event, step }) => {
     const data = (event?.data ?? {}) as { date?: string; brand?: Brand; force?: boolean };
+    // PAUSED 2026-09-30 (Keenan: "i'm not liking the scripts so let's
+    // eliminate the script writing posts for the time being"). The daily
+    // cron no-ops unless VOICED_ENABLED=1; a manual event with force:true
+    // still runs, and uploads/builds for already-sent scripts still work.
+    if (process.env.VOICED_ENABLED !== "1" && !data.force) {
+      return { paused: true };
+    }
     const date = data.date ?? new Date(typeof event?.ts === "number" ? event.ts : Date.now()).toISOString().slice(0, 10);
     const { VOICED_BRANDS } = await import("@/lib/content-factory/voiced");
     const brands = data.brand ? [data.brand] : VOICED_BRANDS;

@@ -7,6 +7,25 @@
 
 ---
 
+## [2026-09-30] — Daily voiced scripts paused
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** see "chore: Pause the daily voiced script emails"
+
+### In plain English (for Keenan)
+The daily record-it-yourself scripts are switched off because you didn't like them. The machinery is kept, so it can come back with one setting.
+
+### Technical changes (for Jimmy)
+- `inngest/functions/voiced-video.ts` `voicedScriptDailyFn`: returns `{paused:true}` unless `VOICED_ENABLED=1` or the event has `force:true`.
+- Upload and build still work for scripts that were already sent.
+
+### Manual steps needed
+- None
+
+### Notes
+- Today's (09-30) two scripts were already written, emailed and pre-rendered, about $2 of shots.
+- Keenan's verdict on the first scripts (Ripple "Appointments for everyone but you", BWK "Decide Tomorrow's First Hour"): "not liking the scripts".
+
 ## [2026-09-30] — Daily voiced videos: Keenan records, the system builds the video
 **Requested by:** Keenan
 **Committed by:** Claude Code
