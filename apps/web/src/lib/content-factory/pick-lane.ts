@@ -218,13 +218,13 @@ YOUR JOB: write the options for one "which one is you?" post whose question is g
 - "options": write 9 candidates (the best five are picked later). Each one:
   - "name": 1-5 words in Title Case, the label on the slide ("The Car in the Driveway", "Empty Gym at 5am"). Easy to recognize and to type as a number in a comment. No numbers; the renderer adds them.
   - "lore": one line on why someone picks this one and what it says about them (used for the caption and ranking, never shown on the slide).
-  - "scene": one or two sentences describing a REAL photograph for this option: its place, light, objects and mood. The nine scenes must look different from each other (setting, time of day, palette). ${people}
+  - "scene": one or two sentences describing a REAL photograph for this option: the place or thing itself, its light and mood. Keep it clean: no stray props added for "story" (no laptops, notebooks, books, mugs, cups, bags, phones or papers) unless the option is literally about that object. The nine scenes must look different from each other (setting, time of day, palette). ${people}
 - Every option must be a real, tempting answer; none is a joke or a throwaway, and no two are the same idea in different words.${
     brand === "bwk"
       ? "\n- Every option is something he would be PROUD to pick or is working toward: an ambition, a standard, a kind of man. Never a list of his failures or bad habits."
       : "\n- Every option is a version of her own life she would recognize and feel seen by, told with warmth, never a list of her failings."
   }
-- Every option is SPECIFIC and real: an exact make and model, a named watch, a named city or place, a clearly drawn person or moment. Never a generic category ("The Black Sedan", "The First New Car", "A Walk Alone", "The Desert Rig").${
+- Every option is SPECIFIC and real AND instantly recognizable, named the way most people would say it: cars as make and model ("Porsche 911 GT3 RS"), watches by brand and model ("Rolex Submariner"), places as city and country ("Tokyo, Japan", "Dubai, UAE", "New York City", "Lake Como, Italy"). Never a neighborhood, building or niche name most readers won't know ("Azabudai Tokyo", "Dubai Marina Penthouse"). Ripple options can be a clearly drawn person or moment. Never a generic category ("The Black Sedan", "The First New Car", "A Walk Alone", "The Desert Rig").${
     brand === "bwk"
       ? `\n- BWK's world is aspirational LUXURY (2026-09-30, per Keenan: "bwk is about luxury cars"). When the question is about something he could own or a place he could live or go, every option is the exact high-end thing by name: cars like the Porsche 911 GT3 RS, Mercedes-AMG G63, Rolls-Royce Cullinan, Aston Martin DB12, Ferrari Roma, Lamborghini Urus, McLaren 750S, Bentley Continental GT, Range Rover SV; watches like the Rolex Submariner, Audemars Piguet Royal Oak, Patek Philippe Nautilus; cities and places like Monaco, Dubai Marina, a Tokyo penthouse, Lake Como. These are examples, pick fresh ones. Never economy, used or ordinary choices. The "lore" line says what picking it says about the man. The scene shows that exact car, watch or place, hyperreal, with no badges, logos or text.`
       : ""
@@ -232,7 +232,7 @@ YOUR JOB: write the options for one "which one is you?" post whose question is g
 - Stay on the post's subject, which is about: ${CORE[brand]} ${OFF_BRAND}
 - "coverScene": the cover photograph: an inviting scene that sets up the question without showing the options. Keep the top quarter of the frame calm (the title sits there).
 - "coverMotion": one sentence of calm, realistic movement for the cover's five-second clip (steam rises from the mug as rain runs down the window; mist drifts past the empty track as the light comes up). Nothing fast, no people moving quickly.
-- "endCard": 2-6 words, ALL-CAPS ready, asking for their pick in a ${brand === "ripple" ? "warm" : "calm, direct"} voice; vary it ("COMMENT YOUR NUMBER.", "TAG YOUR #3.", "WHICH ONE ARE YOU?").
+- "endCard": 2-6 words, ALL-CAPS ready: a short, direct question asking for THEIR pick that echoes this post's question ("WHERE ARE YOU MOVING?", "WHICH CAR IS YOURS?", "WHERE ARE YOU HIDING?"). It must make sense on its own. Never a "tag the one..." instruction.
 - "captionQuestion": one short caption question that gets a number AND a reason in the comments.
 No emojis.
 
@@ -534,6 +534,7 @@ export function buildPickImagePrompt(brand: PickBrand, scene: string, kind: "cov
     "ATTENTION TO DETAIL: every element is fully resolved with fine, true texture; no mushy, smeared, or painterly areas anywhere.",
     "Vertical frame. Keep the subject and every important detail inside the central 4:5 area — the edges get cropped.",
     people,
+    "CLEAN composition: show only what the scene describes. Do NOT add props: no laptops, notebooks, books, mugs, cups, bags, phones or papers unless the scene names them.",
     "Screens may glow softly but show NO readable content.",
     "Absolutely NO text, letters, words, numbers, logos, or watermarks anywhere in the image.",
   ].join("\n");

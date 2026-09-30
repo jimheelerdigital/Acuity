@@ -7,6 +7,32 @@
 
 ---
 
+## [2026-09-30] — Pick videos: cleaner photos, recognizable names, end cards that make sense
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** see "fix: Clean up pick-lane scenes, option names and end cards"
+
+### In plain English (for Keenan)
+Three fixes after the first real pick videos:
+- **Clean photos:** no more random laptop, notebook or mug dropped onto every surface.
+- **Familiar names:** options use names people know, like "Tokyo, Japan" instead of "Azabudai Tokyo".
+- **Matching end card:** it asks a question that fits the post, like "WHERE ARE YOU MOVING?", instead of "TAG THE ONE YOU'D MOVE WITH."
+
+### Technical changes (for Jimmy)
+- `lib/content-factory/pick-lane.ts` options prompt:
+  - scenes are clean, with no stray props (laptops, notebooks, mugs, bags, phones, papers) unless the option is about them
+  - option names must be instantly recognizable (make + model, brand + model, "City, Country"), never neighborhoods or niche names
+  - `endCard` is now a short direct question echoing the post's question, and "tag the one..." lines are banned
+- `buildPickImagePrompt`: new CLEAN composition line so gpt-image-2 doesn't add props either.
+
+### Manual steps needed
+- None
+
+### Notes
+- Cause: the scene writer kept adding a lone storytelling prop to every scene. The first run had a closed laptop on the Tribeca table, a weekender bag, a mug on the floor, a mug on a step, and tea at a salon.
+- "Specific" was read as hyper-local ("Azabudai Tokyo", "Marina Bay Singapore"). The rule now asks for specific AND recognizable.
+- The first two real pick posts (BWK "PICK THE CITY YOU REBUILD YOUR LIFE IN.", Ripple "WHERE ARE YOU HIDING FOR ONE QUIET HOUR?") were generated before this fix.
+
 ## [2026-09-30] — Ripple and BWK cut to 2 pick videos a day (2-week reach test)
 **Requested by:** Keenan
 **Committed by:** Claude Code
