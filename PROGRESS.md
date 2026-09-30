@@ -7,6 +7,35 @@
 
 ---
 
+## [2026-09-30] — Five lanes cut on Jev's lane audit (18 → 13 posts a day)
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** see this entry's commit ("chore: Log the Jev lane-audit cuts")
+
+### In plain English (for Keenan)
+We were posting too much, so the five weakest or most repetitive lanes are switched off: Ripple's memento and muse, and BWK's watching, discipline-real and pulse-men. From tomorrow it's 13 posts a day (Ripple 6, BWK 4, Mythicals 3), and Jev's daily hold still skips roughly the weakest third of Ripple and BWK posts.
+
+### Technical changes (for Jimmy)
+- DB only, no code: ContentLane rows `memento`, `muse`, `watching`, `discipline-real`, `pulse-men` set to status RETIRED with `retiredAt` and a reason appended to `origin`.
+- Still live:
+  - Ripple: selfie@5, texts-younger@5, phone-quote@6, questions@6, reset-guide@6, pulse@7
+  - BWK: memento-men@5, muse-men@7, reset-guide-men@7, timeline@7
+  - Mythicals: mythic-picks@5/6/7
+- The generator reads the lane roster from ContentLane each hour, so no deploy or Inngest resync is needed.
+
+### Manual steps needed
+- [ ] None. Posts from these lanes already generated today still publish as scheduled. (Keenan)
+
+### Notes
+- How lanes were judged: 21-day IG numbers per lane, then Jev over each lane's last 6 posts (scroll, save, coach tone) plus a Choice with a confirming Noul for "same kind of post as another lane". Real engagement weighed first, because the 09-30 backtest showed Jev's quality scores alone don't predict engagement.
+- Why each lane went:
+  - memento: 0 comments on 14 measured posts, and the most coach-toned lane (0.77).
+  - muse: overlaps pulse (0.70), and pulse gets 3x the views.
+  - BWK: watching, discipline-real, pulse-men and muse-men read to Jev as one kind of post (0.71-0.79), so only muse-men was kept (the most views).
+- BWK has about 4 measured posts per lane (IG live since 09-25), so the BWK cuts are provisional. Revisit mid-October.
+- The publish/hold gate was left ON ("do what Jev says"). With fewer lanes it holds about 2 Ripple and 1 BWK post a day; turn it off with `JEV_PUBLISH_GATE=0` if volume gets too low.
+- Worth checking: the Ripple comment counts (about 25 comments on about 150-230 views in texts-younger, muse and questions) may include our own replies or engagement pods.
+
 ## [2026-09-30] — Jev decision layer live; humanizer removed; Mythicals slides show names only
 **Requested by:** Keenan
 **Committed by:** Claude Code
