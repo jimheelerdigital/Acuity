@@ -87,6 +87,22 @@ const SEEDS: Record<PickBrand, string[]> = {
   ],
 };
 
+/**
+ * What a pick post must be ABOUT (2026-09-30, after the first dry run
+ * produced "WHAT'S YOUR REAL ANSWER TO WHAT'S FOR DINNER?" and "WHAT'S
+ * YOUR 11PM KITCHEN HABIT?" — Keenan: "what ... do they have to do with
+ * our target audiences?"). Trivia with nothing at stake is out.
+ */
+const CORE: Record<PickBrand, string> = {
+  ripple:
+    "the mental load she carries for everyone; being the one who remembers and holds it all together; wanting an hour where nobody needs her; the roles she plays (mother, partner, daughter caring for aging parents, the friend everyone leans on); the season of life she is in and who she is becoming at 40-50; rest, escape and time that is only hers; saying no and taking something back for herself; her friendships.",
+  bwk:
+    "discipline and the habits he is building; training; money, work and ambition (what he is working toward: the car, the home, the business); the man he is becoming; the mentors and role models he learns from; the friends and brothers in his corner; his mornings and routines; where he builds his life; the hard things he chooses on purpose.",
+};
+
+const OFF_BRAND =
+  "Never trivia or everyday preferences with nothing at stake: food and meals (what's for dinner, snacks, late-night eating), chores, household logistics, coffee orders, generic lifestyle quizzes. The test: the pick has to say something real about who the reader is, what they carry or who they are becoming.";
+
 const AUDIENCE_LINE: Record<PickBrand, string> = {
   ripple:
     "Women roughly 40-50 carrying the mental load for everyone (work, kids, partner, aging parents), scrolling Instagram or Facebook on a phone. They want to feel seen and lighter.",
@@ -109,6 +125,8 @@ const PICK_LEVELS = [
 ];
 
 const CLEAR_MIN = 0.3;
+/** On-brand gate: a concept Jev thinks is trivia can never win. */
+const CORE_MIN = 0.6; // tested 09-30: approved concepts 0.82-0.95, trivia 0.18-0.50
 // Tested 2026-09-30: real near-copies score ~0.6-0.7 in a 9-option batch
 // ("Car in the Driveway" vs "Parked Car at Target": 0.64 / 0.60).
 const TWIN_MIN = 0.6;
@@ -165,7 +183,11 @@ function conceptSystem(brand: PickBrand): string {
 
 YOUR JOB: pitch five "which one is you?" posts for this account. The format: a question cover, then five numbered options with a photo each, then a card asking the reader to comment their number. It works when every option is a version of the reader's own life, so picking one says something about her or him, commenting is as easy as typing a number, and people tag or send it to a friend.
 
-Seeds that show the kind of question (never copy them word for word; write fresh questions in their spirit): ${SEEDS[brand].map((s) => `"${s}"`).join(", ")}.
+WHAT EVERY POST MUST BE ABOUT, for this audience: ${CORE[brand]}
+${OFF_BRAND}
+
+APPROVED QUESTIONS (Keenan picked these): ${SEEDS[brand].map((s) => `"${s}"`).join(", ")}.
+At least three of your five concepts must be one of these approved questions (reworded slightly into a clear cover is fine) that is NOT in the recent list; the rest are new questions on the same subjects and just as strong.
 
 Each concept:
 - "question": the cover question, 4-10 words, the way a person would ask it out loud. ${
@@ -195,7 +217,12 @@ YOUR JOB: write the options for one "which one is you?" post whose question is g
   - "name": 1-5 words in Title Case, the label on the slide ("The Car in the Driveway", "Empty Gym at 5am"). Easy to recognize and to type as a number in a comment. No numbers; the renderer adds them.
   - "lore": one line on why someone picks this one and what it says about them (used for the caption and ranking, never shown on the slide).
   - "scene": one or two sentences describing a REAL photograph for this option: its place, light, objects and mood. The nine scenes must look different from each other (setting, time of day, palette). ${people}
-- Every option must be a real, tempting answer; none is a joke or a throwaway, and no two are the same idea in different words.
+- Every option must be a real, tempting answer; none is a joke or a throwaway, and no two are the same idea in different words.${
+    brand === "bwk"
+      ? "\n- Every option is something he would be PROUD to pick or is working toward: an ambition, a standard, a kind of man. Never a list of his failures or bad habits."
+      : "\n- Every option is a version of her own life she would recognize and feel seen by, told with warmth, never a list of her failings."
+  }
+- Stay on the post's subject, which is about: ${CORE[brand]} ${OFF_BRAND}
 - "coverScene": the cover photograph: an inviting scene that sets up the question without showing the options. Keep the top quarter of the frame calm (the title sits there).
 - "coverMotion": one sentence of calm, realistic movement for the cover's five-second clip (steam rises from the mug as rain runs down the window; mist drifts past the empty track as the light comes up). Nothing fast, no people moving quickly.
 - "endCard": 2-6 words, ALL-CAPS ready, asking for their pick in a ${brand === "ripple" ? "warm" : "calm, direct"} voice; vary it ("COMMENT YOUR NUMBER.", "TAG YOUR #3.", "WHICH ONE ARE YOU?").
@@ -227,6 +254,14 @@ export async function pickConcept(brand: PickBrand, concepts: PickConcept[]): Pr
       instructions: `A post asks \`concepts[${i}]\` and shows five numbered options. How likely is the reader described in \`audience\` to comment their number, tag a friend or send it on?`,
       criteria: COMMENT_LEVELS,
     };
+    questions[`core_${i}`] = {
+      type: "noul",
+      instructions: `Is \`concepts[${i}]\` about something at the heart of this audience's life, as described in \`core\`, rather than everyday trivia (food, meals, chores, preferences)?`,
+      criteria: {
+        true: "Yes: it is about who they are, what they carry or who they are becoming",
+        false: "No: it is trivia or a preference with nothing at stake",
+      },
+    };
     clearQuestions[`clear_${i}`] = {
       type: "noul",
       instructions: `Reading ONLY \`covers[${i}]\` as an Instagram post cover, with nothing else to go on, can a stranger tell what the post is about?`,
@@ -238,7 +273,7 @@ export async function pickConcept(brand: PickBrand, concepts: PickConcept[]): Pr
   });
   const qs = concepts.map((c) => c.question);
   const [r, rc] = await Promise.all([
-    askJev(`pick-concept:${brand}`, { audience: AUDIENCE_LINE[brand], concepts: qs }, questions),
+    askJev(`pick-concept:${brand}`, { audience: AUDIENCE_LINE[brand], core: CORE[brand], concepts: qs }, questions),
     askJev(`pick-concept-clear:${brand}`, { covers: qs }, clearQuestions),
   ]);
   if (!r || !rc) return { index: 0, table: "jev unavailable — first concept" };
@@ -248,15 +283,18 @@ export async function pickConcept(brand: PickBrand, concepts: PickConcept[]): Pr
     const scroll = scoreOf(r, `scroll_${i}`) ?? 0;
     const comment = scoreOf(r, `comment_${i}`) ?? 0;
     const clear = noulOf(rc, `clear_${i}`) ?? 0;
-    const score = 0.45 * scroll + 0.4 * comment + 0.15 * clear;
-    const eligible = clear >= CLEAR_MIN;
+    const core = noulOf(r, `core_${i}`) ?? 0;
+    const score = 0.35 * scroll + 0.3 * comment + 0.1 * clear + 0.25 * core;
+    const eligible = clear >= CLEAR_MIN && core >= CORE_MIN;
     if (eligible && score > bestScore) {
       bestScore = score;
       best = i;
     }
-    return `${score.toFixed(3)} scroll=${scroll.toFixed(2)} comment=${comment.toFixed(2)} clear=${clear.toFixed(2)}${eligible ? "" : " INELIGIBLE"}  ${c.question}`;
+    return `${score.toFixed(3)} scroll=${scroll.toFixed(2)} comment=${comment.toFixed(2)} clear=${clear.toFixed(2)} core=${core.toFixed(2)}${eligible ? "" : " INELIGIBLE"}  ${c.question}`;
   });
-  const index = best >= 0 ? best : 0;
+  // Nothing eligible: take the most on-brand concept rather than the first.
+  const coreOf = (i: number) => noulOf(r, `core_${i}`) ?? 0;
+  const index = best >= 0 ? best : concepts.reduce((b, _, i) => (coreOf(i) > coreOf(b) ? i : b), 0);
   return { index, table: rows.map((row, i) => `${i === index ? "*" : " "} ${row}`).join("\n") };
 }
 

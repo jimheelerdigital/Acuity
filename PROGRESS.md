@@ -7,6 +7,36 @@
 
 ---
 
+## [2026-09-30] — Pick posts must be about the audience's real life (no trivia)
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** see "fix: Keep pick-lane topics on each audience's core themes"
+
+### In plain English (for Keenan)
+The first test pick posts were "what's for dinner?" and "your 11pm kitchen habit": trivia with nothing to do with either audience. Topics must now be about what each audience actually cares about:
+- Ripple: the mental load, needing an hour to herself, the roles she plays, who she's becoming.
+- BWK: discipline, training, ambition, mentors, the friends in his corner, the man he's becoming.
+
+Most daily picks now come from the approved question list. Jev also rejects any trivia topic, and BWK options must be things he'd be proud to pick, not a list of bad habits.
+
+### Technical changes (for Jimmy)
+- `lib/content-factory/pick-lane.ts`:
+  - New `CORE` themes per brand and an `OFF_BRAND` ban (food, chores, preferences, lifestyle quizzes).
+  - The concept prompt now requires at least 3 of the 5 concepts to come from the approved `SEEDS` (not used recently).
+  - The options prompt gets brand guardrails: BWK options aspirational, Ripple options recognizable and warm.
+  - `pickConcept` adds a Jev on-brand Noul (`core_i`, with `core` in state), gated at CORE_MIN 0.6. The composite is now 0.35 scroll + 0.3 comment + 0.1 clarity + 0.25 core. When nothing is eligible, it falls back to the most on-brand concept instead of the first.
+
+### Manual steps needed
+- None
+
+### Notes
+- Root cause:
+  - Jev scored only scroll-stop and comment likelihood, which trivia wins ("what's for dinner" does get comments).
+  - Jev only chooses among what Sonnet writes, and the approved list was only examples.
+- On-brand gate test on real concepts:
+  - Approved concepts scored 0.82-0.95.
+  - Trivia: dinner 0.44, snack 0.18, kitchen habit 0.50, post-workout meal 0.28.
+
 ## [2026-09-30] — New daily "which one is you?" posts for Ripple and BWK
 **Requested by:** Keenan
 **Committed by:** Claude Code
