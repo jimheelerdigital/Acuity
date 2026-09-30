@@ -74,10 +74,15 @@ export async function GET() {
           ...experiment,
           angles: experiment.angles.map((a) => ({
             ...a,
-            creatives: a.creatives.map(({ generationPrompt, ...c }) => ({
-              ...c,
-              videoUrl: decodeAdCopy(generationPrompt).videoUrl ?? null,
-            })),
+            creatives: a.creatives.map(({ generationPrompt, ...c }) => {
+              const copy = decodeAdCopy(generationPrompt);
+              return {
+                ...c,
+                videoUrl: copy.videoUrl ?? null,
+                // Jev's pick (2026-09-30): its score and the drafts it beat.
+                jev: copy.jev ? { rank: copy.jev.rank, of: copy.jev.of ?? null, beat: copy.jev.beat ?? [], relatable: copy.jev.relatable ?? null } : null,
+              };
+            }),
           })),
         },
       };

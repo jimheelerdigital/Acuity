@@ -144,6 +144,41 @@ Mythicals slides now show just the number and name, and "places" posts show the 
 - Local ANTHROPIC key is still dead (401). The cover-picker Sonnet path was tested with a stubbed reply; first real run is in prod. Look for `[cover-picker]` log lines.
 - 09-30 posts were queued before this deploy, so the gate leaves that day alone.
 
+## [2026-09-30] — Ads stay specific but everyday; Jev checks relatability; review shows Jev scores
+
+- **Requested by:** Keenan
+- **Committed by:** Claude Code
+- **Commit hash:** (see git log — "fix: Keep ad details relatable, and show what Jev picked over")
+
+### In plain English (for Keenan)
+**Fixed niche ads.** The first Jev batch went oddly niche ("the dryer noise since March", "the $212 vet charge", HRT refills), because the writer was pushed to be specific with no rule that the detail has to be something most of the audience lives. The ads now use everyday specifics (school forms, the dentist, a work deadline, the gym, "tomorrow"). They skip medical topics and major life decisions. Jev now also checks "would most of the audience recognise this from their own week?" and weighs that above raw specificity.
+
+**Also changed:**
+- Two near-identical ads can no longer come out of one batch.
+- Videos stop reusing old end headlines.
+- The review page shows each ad's Jev score and the scores of the drafts it beat.
+- Video previews play again: the site's media policy blocked video from our storage.
+
+### Technical changes (for Jimmy)
+- weekly-batch.ts:
+  - "SPECIFIC AND COMMON" rule, Reddit-theme usage rule (no medical or major-life-decision themes), headline and video-script specificity lines reworded.
+  - Recent video end headlines passed as never-reuse.
+  - `nearCopy()` within-batch dedupe.
+  - Iteration slots pick with `ignoreDuplicate`.
+- jev-judge.ts:
+  - New `relatable` noul.
+  - rank = 0.4 winner + 0.3 relatable + 0.2 clear + 0.1 concrete.
+  - viable also needs relatable ≥ 0.35.
+  - `pickBest` records `beat` (the runner-up ranks) and takes `ignoreDuplicate`.
+- Review API/page: `jev` summary per creative, shown as a "Jev 0.78 · beat 0.61, 0.52" badge.
+- next.config.js (earlier commit cbd3b7e9): media-src allows https://*.supabase.co.
+
+### Manual steps needed
+- [ ] Keenan: Remake both lanes for a batch with the new relatability rules (optional; the current batch's everyday ads are fine to pick)
+
+### Notes
+- Specific ≠ relatable. The research's "concrete detail" finding holds only when the detail is common. Our winners ("Two years of noticing", "Same patterns. Different year.") are specific to the product and universal to the audience.
+
 ## [2026-09-30] — $15/day test ad sets, main capped at 8, and Jev picks the ads
 
 - **Requested by:** Keenan

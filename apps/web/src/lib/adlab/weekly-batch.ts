@@ -723,6 +723,15 @@ export function videoTemplatesForWeek(date = new Date()): VideoTemplate[] {
   return ["voice_to_list", a, b];
 }
 
+/** Headlines that share most of their words (within-batch near-copies). */
+export function nearCopy(a: string, b: string): boolean {
+  const words = (s: string) => new Set(s.toLowerCase().replace(/[^a-z0-9 ]/g, " ").split(/\s+/).filter((w) => w.length > 2));
+  const A = words(a), B = words(b);
+  if (!A.size || !B.size) return false;
+  const shared = [...A].filter((w) => B.has(w)).length;
+  return shared / Math.min(A.size, B.size) >= 0.6;
+}
+
 /** Three different opening-hook styles per week, rotating. */
 export function hookStylesForWeek(date = new Date()): HookStyle[] {
   const week = Math.floor(date.getTime() / (7 * 86_400_000));
@@ -957,6 +966,7 @@ WHAT CONVERTS (our research, reports/Subscription app ad creative conversion.md 
 - Our own winners were concrete and showed a real insight ("Two years of noticing", "Same patterns. Different year."). Generic moody lines lose. Show the insight, not the mood.
 - Every ad needs: (1) a SPECIFIC scene or hook with a concrete noun, number or quoted phrase; (2) ONE literal line on what Ripple does; (3) a result. A stranger must know what Ripple is and does within the headline + first line.
 - Nobody else in the category shows people their own words turned into a list and a pattern. That demo and pattern-reveal territory is ours: lean on it.
+- SPECIFIC **AND COMMON** (2026-09-30 — the last batch went niche: "the dryer noise since March", "the $212 vet charge", "I asked 3 groups"). A detail only works if MOST of this audience lived it this week and recognises it in one second: the school form, the dentist, the grocery run, the work deadline, the missed workout, the thing you said you'd start "tomorrow", the list in your head at 11pm. Never an unusual one-off situation, an odd dollar amount, a specific appliance, a medical or prescription detail, or a major life decision (divorce, leaving a job, a diagnosis). Specific enough to feel real, common enough that anyone nods. The headline alone must make sense to a stranger scrolling past.
 
 PRODUCT (ground truth — never claim beyond this):
 ${PRODUCT_TRUTH}
@@ -974,13 +984,13 @@ ${bestAdBlock}
 THE 10 SLOTS — every slot has a FIXED hook template and a FIXED format. Write the ad for the slot you are given; set "archetype" to the slot key.
 ${AD_SLOTS.map((sl) => `- ${sl.key} [format: ${sl.format}]: ${sl.how}${sl[groupKey] ? `\n    Example for this lane (write your OWN, don't copy): ${sl[groupKey]}` : ""}`).join("\n")}
 ${learningSection ? `\n${learningSection}\n` : ""}${competitorSection ? `\n${competitorSection}\n` : ""}
-THIS WEEK'S REDDIT AUDIENCE PULSE (real distilled pain from the audience's own threads — root every new-concept ad in one of these themes, in their own words):
+THIS WEEK'S REDDIT AUDIENCE PULSE (real distilled pain from the audience's own threads — root every new-concept ad in one of these themes, in their own words). Use a theme only through its EVERYDAY, widely shared side; skip medical/medication, relationship-ending or other major-life-decision themes entirely, and never lift a one-off story detail from a thread:
 ${themes.map((t, i) => `${i + 1}. THEME: ${t.theme}\n   WHY IT'S LIVE THIS WEEK: ${t.why}\n   SUGGESTED ANGLE: ${t.angle}\n   THEIR OWN PHRASES: ${(t.phrases ?? []).join(" | ")}`).join("\n\n")}
 
 VALUE SURFACE DEFINITIONS (label each ad with the closest): problem, outcome, social_proof, mechanism, story, comparison, identity, urgency.
 
 FIELD RULES:
-- headline: HARD max 40 characters, count them. It is the biggest text on the image AND the Meta headline. It must contain a concrete noun, number or quoted phrase. Names a SITUATION, never the reader's state or condition.
+- headline: HARD max 40 characters, count them. It is the biggest text on the image AND the Meta headline. It must contain a concrete noun, number or quoted phrase that MOST of the audience recognises from their own week (see SPECIFIC AND COMMON). Names a SITUATION, never the reader's state or condition.
 - primaryText: HARD max 125 characters, fixed order: the hook/scene first, then ONE literal mechanism line ("You talk. Ripple turns it into your to-do list and shows what keeps coming up."). No price.
 - description: max 100 characters (app-proof: ≤60, says what the screenshot shows).
 - solutionLine: max 90 characters, what Ripple concretely does about THIS ad's situation. Must name a real feature from PRODUCT.
@@ -1048,10 +1058,18 @@ Call the submit_ads tool IMMEDIATELY. Do not write any analysis, plan, draft or 
   };
   // Video scripts run in parallel with the two image halves; a failure
   // here only costs the week its videos, never the image batch.
+  const recentVideoHeadlines = (
+    await prisma.adLabCreative.findMany({
+      where: { creativeType: "video", angle: { experiment: { projectId } } },
+      select: { headline: true },
+      orderBy: { createdAt: "desc" },
+      take: 20,
+    })
+  ).map((c) => c.headline);
   const videoTemplates = videoTemplatesForWeek();
   const hookStyles = hookStylesForWeek();
   const videoPrompt = `Write ${videoTemplates.length * VIDEO_VARIANTS} ANIMATED VIDEO ad scripts for this lane: ${VIDEO_VARIANTS} genuinely different scripts per template (different moment, hook and footage each), templates in this order: ${videoTemplates.join(", ")}. The scripts are scored and only the strongest per template is made.
-Each video is a ~12–15s silent-readable animation (music underneath, no voiceover) that shows the viewer THEIR OWN WORDS turning into a to-do list, a tracked habit, a pattern or a weekly report. Nothing else is on screen, so the specifics carry the ad: real errands, names, days, excuses — the way this audience actually talks (use the Reddit themes and phrases). Every number is one person's believable week, never a claim about users.
+Each video is a ~12–15s silent-readable animation (music underneath, no voiceover) that shows the viewer THEIR OWN WORDS turning into a to-do list, a tracked habit, a pattern or a weekly report. Nothing else is on screen, so the specifics carry the ad: everyday errands, days and excuses MOST of this audience lives every week (school forms, the dentist, groceries, a work deadline, the gym, "tomorrow") — never an unusual one-off, a medical detail or a major life decision. Every number is one person's believable week, never a claim about users.
 
 STRUCTURE — one continuous story, not a clip stapled to a slideshow:
 1. 0–3s: real-looking footage of ONE specific moment (openerScene) with the opening hook on screen from the very first frame.
@@ -1067,7 +1085,7 @@ COMMON FIELDS (every video):
 - hook: ≤44 chars, on screen from frame 0 over the footage; follow the video's hook style. Never a feeling-state question, never age.
 - hookStyle: copy the style given for the template.
 - openerScene: ≤200 chars. The ad OPENS on ~3s of real-looking footage behind the hook (generated by a video model), then cuts to the animation. Describe that moment so it matches the hook: a specific everyday PLACE with real objects, hands, or a person seen from behind — never a face (e.g. "car in the school pickup line, permission slip and keys on the passenger seat, her hands let go of the wheel"; "gym bag by the apartment door at dawn, his hand reaches for it and stops"). One simple motion. No text, no screens with readable text, no logos.
-- endHeadline: ≤34 chars, end card + Meta headline, outcome-led and literal ("Say it. Ripple sorts it.", "See what keeps coming up.").
+- endHeadline: ≤34 chars, end card + Meta headline, outcome-led and literal, written fresh for THIS video. Never reuse an end headline we've already run: ${recentVideoHeadlines.join(" | ") || "(none yet)"}.
 - primaryText: ≤125 chars: hook/scene, then one literal line on what Ripple does. No price.
 - description: ≤60 chars.
 - theme: which Reddit theme it's rooted in. hypothesis: one sentence on why it should convert.
@@ -1124,12 +1142,19 @@ Call the submit_video_ads tool IMMEDIATELY with no text before or after it.`;
   const verdicts = await judgeDrafts(jevCtx, drafts.map((d) => ({ format: d.format ?? "", headline: d.headline, primaryText: d.primaryText, onScreen: onScreenOf(d) })));
   const jevOf = new Map<z.infer<typeof BatchAdSchema>, import("@/lib/adlab/jev-judge").JevVerdict | null>();
   const ads: z.infer<typeof BatchAdSchema>[] = [];
+  // Per slot: best viable draft. "Extend the best ad" slots are MEANT to
+  // echo the live winner, so Jev's duplicate flag doesn't count against
+  // them; every slot skips drafts that near-copy an ad already picked here.
+  const picked: string[] = [];
   for (const slot of AD_SLOTS) {
-    const idx = drafts.map((d, i) => (d.archetype === slot.key ? i : -1)).filter((i) => i >= 0);
+    const idx = drafts
+      .map((d, i) => (d.archetype === slot.key ? i : -1))
+      .filter((i) => i >= 0 && !picked.some((h) => nearCopy(h, drafts[i].headline)));
     if (idx.length === 0) continue;
-    const pick = pickBest(idx.map((i) => drafts[i]), idx.map((i) => verdicts[i]));
+    const pick = pickBest(idx.map((i) => drafts[i]), idx.map((i) => verdicts[i]), { ignoreDuplicate: !!slot.iteration });
     jevOf.set(pick.item, pick.verdict);
     ads.push(pick.item);
+    picked.push(pick.item.headline);
   }
   const judgedCount = verdicts.filter(Boolean).length;
   const vVerdicts = await judgeDrafts(

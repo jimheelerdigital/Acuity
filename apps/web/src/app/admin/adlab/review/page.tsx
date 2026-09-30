@@ -32,6 +32,7 @@ interface Creative {
   /** Video ads (2026-09-29): "video" + the rendered MP4. */
   creativeType?: string;
   videoUrl?: string | null;
+  jev?: { rank: number; of: number | null; beat: number[]; relatable: number | null } | null;
   complianceStatus: string;
   complianceNotes: string | null;
   approved: boolean;
@@ -526,6 +527,15 @@ function GroupSection({ group, onLaunched }: { group: Group; onLaunched: () => v
                     <span className="text-[10px] text-acuity-text-ter uppercase tracking-wide">
                       {c.valueSurface.replace("_", " ")}
                     </span>
+                    {c.jev && (
+                      <span
+                        className="rounded-acuity-pill bg-violet-500/15 px-2 py-0.5 text-[10px] font-medium text-violet-300"
+                        title={`Jev score ${c.jev.rank.toFixed(2)}${c.jev.relatable != null ? ` · relatable ${c.jev.relatable.toFixed(2)}` : ""}${c.jev.beat.length ? ` · beat ${c.jev.beat.map((b) => b.toFixed(2)).join(", ")}` : ""}`}
+                      >
+                        Jev {c.jev.rank.toFixed(2)}
+                        {c.jev.beat.length ? ` · beat ${c.jev.beat.map((b) => b.toFixed(2)).join(", ")}` : c.jev.of ? ` · best of ${c.jev.of}` : ""}
+                      </span>
+                    )}
                   </div>
                   <p className="text-sm font-semibold text-white truncate">{c.headline}</p>
                   <p className="text-xs text-acuity-text-sec mt-0.5 line-clamp-2">{c.primaryText}</p>

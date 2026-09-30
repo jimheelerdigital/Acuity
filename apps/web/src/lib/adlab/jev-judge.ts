@@ -30,6 +30,8 @@ import { PRODUCT_ONE_LINER } from "@/lib/positioning";
 import { askAdsJev, noulOf, scoreOf, adsJevEnabled, type JevResult } from "@/lib/adlab/jev";
 
 export interface JevVerdict {
+  /** Most of the audience would recognise the situation from their own week. */
+  relatable?: number;
   concrete: number;
   clear: number;
   policyRisk: number;
@@ -39,6 +41,8 @@ export interface JevVerdict {
   viable: boolean;
   /** How many drafts competed for this slot. */
   of?: number;
+  /** Ranks of the drafts Jev turned down (shown on the review page). */
+  beat?: number[];
 }
 
 export interface JudgeExample {
@@ -64,14 +68,18 @@ const WINNER_LEVELS = [
 
 function verdictFrom(r: JevResult | null): JevVerdict | null {
   if (!r) return null;
+  const relatable = noulOf(r, "relatable");
   const concrete = noulOf(r, "concrete");
   const clear = noulOf(r, "clear");
   const policyRisk = noulOf(r, "policyRisk");
   const duplicate = noulOf(r, "duplicate");
   const winner = scoreOf(r, "winner");
-  if ([concrete, clear, policyRisk, duplicate, winner].some((x) => x === null)) return null;
-  const rank = 0.55 * winner! + 0.2 * concrete! + 0.25 * clear!;
+  if ([relatable, concrete, clear, policyRisk, duplicate, winner].some((x) => x === null)) return null;
+  // 2026-09-30: relatability weighs more than raw specificity — the batch
+  // before this went niche ("the dryer noise since March").
+  const rank = 0.4 * winner! + 0.3 * relatable! + 0.2 * clear! + 0.1 * concrete!;
   return {
+    relatable: relatable!,
     concrete: concrete!,
     clear: clear!,
     policyRisk: policyRisk!,
@@ -80,7 +88,7 @@ function verdictFrom(r: JevResult | null): JevVerdict | null {
     rank,
     // Cutoffs from the first live check (2026-09-30): a clean, specific
     // draft scored policyRisk 0.54 / duplicate 0.49, a real violator 0.97.
-    viable: policyRisk! < 0.8 && duplicate! < 0.7,
+    viable: policyRisk! < 0.8 && duplicate! < 0.7 && relatable! >= 0.35,
   };
 }
 
@@ -100,6 +108,12 @@ export async function judgeDraft(ctx: {
     live_ads: ctx.liveHeadlines,
   };
   const r = await askAdsJev(`judge:${ctx.lane}`, state, {
+    relatable: {
+      type: "noul",
+      instructions:
+        "Would most people in the audience instantly recognise the situation in ad.headline from their own ordinary week, without reading the rest of the ad? Everyday things (school forms, the dentist, groceries, a work deadline, a skipped workout, putting something off until tomorrow) count; an unusual one-off situation, an oddly specific amount or appliance, a medical or prescription detail, or a major life decision does not.",
+      criteria: { true: "an everyday situation most of the audience lives", false: "niche, unusual or one-off" },
+    },
     concrete: {
       type: "noul",
       instructions:
@@ -158,19 +172,30 @@ export async function judgeDrafts(
  * Pick the best draft in a group: viable first, then highest rank. With no
  * verdicts (Jev off/failed) the first draft wins, as before Jev.
  */
-export function pickBest<T>(items: T[], verdicts: (JevVerdict | null)[]): { item: T; verdict: JevVerdict | null; index: number } {
+export function pickBest<T>(
+  items: T[],
+  verdicts: (JevVerdict | null)[],
+  opts?: { ignoreDuplicate?: boolean }
+): { item: T; verdict: JevVerdict | null; index: number } {
   let best = 0;
   let bestKey = -Infinity;
+  const ok = (v: JevVerdict) =>
+    opts?.ignoreDuplicate ? v.policyRisk < 0.8 && (v.relatable ?? 1) >= 0.35 : v.viable;
   items.forEach((_, i) => {
     const v = verdicts[i];
     if (!v) return;
-    const key = (v.viable ? 10 : 0) + v.rank - (v.viable ? 0 : v.policyRisk);
+    const key = (ok(v) ? 10 : 0) + v.rank - (ok(v) ? 0 : v.policyRisk);
     if (key > bestKey) {
       bestKey = key;
       best = i;
     }
   });
-  const verdict = verdicts[best] ? { ...verdicts[best]!, of: items.length } : null;
+  const beat = verdicts
+    .map((v, i) => (i !== best && v ? Math.round(v.rank * 100) / 100 : null))
+    .filter((x): x is number => x !== null);
+  const verdict = verdicts[best]
+    ? { ...verdicts[best]!, of: items.length, beat, viable: ok(verdicts[best]!) }
+    : null;
   return { item: items[best], verdict, index: best };
 }
 
