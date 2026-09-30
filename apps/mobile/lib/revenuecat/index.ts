@@ -370,9 +370,25 @@ export function pickOffering<T extends OfferingsLike>(
   const current = offerings.current;
   if (wantedId === "grandfathered" && current?.identifier !== "grandfathered") {
     const g = offerings.all["grandfathered"] as T["current"] | undefined;
-    if (g) return g;
+    if (g && offeringHasPackages(g)) return g;
+  }
+  // Platform guard: an offering can exist but carry no product for THIS
+  // store (e.g. `grandfathered` has legacy App Store + web products but no
+  // Google Play legacy SKUs, because none were ever sold on Android). An
+  // empty offering would render an empty paywall, so fall back to
+  // `default`, which has products on every platform.
+  if (current && !offeringHasPackages(current)) {
+    const d = offerings.all["default"] as T["current"] | undefined;
+    if (d && offeringHasPackages(d)) return d;
   }
   return current;
+}
+
+function offeringHasPackages(offering: unknown): boolean {
+  const pkgs = (offering as { availablePackages?: unknown[] } | null)
+    ?.availablePackages;
+  // Objects without the field (tests, older shapes) are treated as usable.
+  return pkgs === undefined || pkgs.length > 0;
 }
 
 /**
@@ -425,6 +441,31 @@ export async function getPaywallOffering(
  * link. Preferred over the itms-apps:// deep link, which didn't open for
  * Jimmy on build 146 and never shows sandbox/TestFlight subscriptions.
  */
+/**
+ * Meta Ads integration support: hand RevenueCat the Meta anonymous id and
+ * let it collect device identifiers (IDFA/IDFV/GAID, per ATT) so the
+ * events RC forwards to Meta's Conversions API can be matched to ad
+ * clicks. Waits briefly for the app-start configure (it races Meta init
+ * at boot). No-op on non-RC builds. Never throws.
+ */
+export async function linkRevenueCatAdIdentifiers(
+  fbAnonymousId: string | null
+): Promise<void> {
+  if (!rcFlags().RC_SDK_PURCHASES) return;
+  for (let i = 0; i < 20 && !configured; i++) {
+    await new Promise((r) => setTimeout(r, 500));
+  }
+  if (!configured) return;
+  const mod = await loadPurchases();
+  if (!mod) return;
+  try {
+    await mod.default.collectDeviceIdentifiers();
+    if (fbAnonymousId) await mod.default.setFBAnonymousID(fbAnonymousId);
+  } catch (err) {
+    log("linkRevenueCatAdIdentifiers failed", err);
+  }
+}
+
 export async function showManageSubscriptions(): Promise<boolean> {
   if (!configured) return false;
   const mod = await loadPurchases();

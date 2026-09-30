@@ -35,6 +35,7 @@ import { ThemeProvider, useTheme } from "@/contexts/theme-context";
 import { ProcessingNotifierProvider } from "@/contexts/processing-notifier";
 import { LockScreenOverlay } from "@/components/lock-screen-overlay";
 import { UniversalLinkHandler } from "@/components/universal-link-handler";
+import { WebRedemptionHandler } from "@/components/web-redemption-handler";
 import { UpdatePromptOverlay } from "@/components/UpdatePromptOverlay";
 import { WhatsNewOverlay } from "@/components/WhatsNewOverlay";
 import { CelebrationModal } from "@/components/achievements/CelebrationModal";
@@ -331,6 +332,7 @@ function ThemedApp() {
     <>
       <StatusBar style={isDark ? "light" : "dark"} />
       <AuthGate />
+      <WebRedemptionHandler />
       <Stack
         screenOptions={{
           headerShown: false,
