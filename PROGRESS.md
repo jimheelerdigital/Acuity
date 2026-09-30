@@ -7,6 +7,25 @@
 
 ---
 
+## [2026-09-30] — Ripple lanes corrected: selfie back, texts-younger off
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** see "chore: Correct Ripple roster to selfie over texts-younger"
+
+### In plain English (for Keenan)
+I misread the last instruction and turned texts-to-your-younger-self back on. It's off again, and selfie is back on. Ripple's four daily posts are now questions, reset guide, selfie and phone quote.
+
+### Technical changes (for Jimmy)
+- DB only: ContentLane `texts-younger` set to RETIRED; `selfie` set back to ACTIVE (hour 5 unchanged).
+- Ripple roster: selfie@5, phone-quote@6, questions@6, reset-guide@6.
+
+### Manual steps needed
+- None
+
+### Notes
+- Keenan's "keep reset guide, questions, get rid of pulse, and texts younger" meant get rid of pulse AND texts-younger, with selfie kept. The entry below records my misread.
+- Keenan overrode Jev twice here. Selfie was Jev's first cut (0.31), and Keenan keeps it. Pulse ranked 0.45, and Keenan cut it as fake engagement.
+
 ## [2026-09-30] — Ripple lanes adjusted: pulse out, texts-younger back
 **Requested by:** Keenan
 **Committed by:** Claude Code
