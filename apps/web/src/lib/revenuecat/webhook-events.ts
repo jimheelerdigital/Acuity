@@ -118,6 +118,16 @@ export type RcWebhookDecision =
       stampBillingIssue: boolean;
       /** Clear the anchor — a successful renewal ends the dunning episode. */
       clearBillingIssue: boolean;
+      /**
+       * Release this account's claim on the store subscription (clear
+       * appleOriginalTransactionId / googlePurchaseToken). Set when RC says a
+       * TRANSFER moved the subscription AWAY from this account: the legacy
+       * Apple/Google notification handlers find the owner by those ids, so a
+       * stale id lets a store renewal notice re-grant Pro to the old account
+       * (seen 2026-09-29 on jim+rc1). RC is the owner of record; the new
+       * owner is kept current by RC's own events.
+       */
+      releaseStoreOwnership?: boolean;
       reason: string;
     };
 
@@ -363,6 +373,11 @@ export function rcDecisionToUpdateData(
     data.trialEndsAt = null;
   }
 
+  if (decision.releaseStoreOwnership) {
+    data.appleOriginalTransactionId = null;
+    data.googlePurchaseToken = null;
+  }
+
   if (decision.stampBillingIssue) {
     data.stripeFirstFailureAt = now;
   } else if (decision.clearBillingIssue) {
@@ -451,6 +466,21 @@ export function decideTransferResync(
     };
   }
   const nextSource = next === "FREE" ? null : rc.subscriptionSource;
+  // RC says this account no longer holds a subscription: it must also give up
+  // its store ids, or a legacy store notification can re-grant it Pro. Done
+  // even when the status is already FREE — the stale id is the hazard.
+  if (next === "FREE") {
+    return {
+      action: "set-status",
+      nextStatus: "FREE",
+      trialEndsAt: null,
+      source: null,
+      stampBillingIssue: false,
+      clearBillingIssue: false,
+      releaseStoreOwnership: true,
+      reason: `transfer re-sync from RC (${user.subscriptionStatus} → FREE, store ids released)`,
+    };
+  }
   if (
     next === user.subscriptionStatus &&
     (nextSource === null || nextSource === user.subscriptionSource)
