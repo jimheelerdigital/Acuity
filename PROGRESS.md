@@ -7,6 +7,25 @@
 
 ---
 
+## [2026-09-30] — Daily volume: Mythicals 4, Ripple 3, BWK 3
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** see "chore: Set Mythicals to 4 and Ripple/BWK picks to 3 a day"
+
+### In plain English (for Keenan)
+Mythicals posts 4 times a day (11am, 2, 5 and 8pm CT), and Ripple and BWK each post 3 "which one is you?" videos a day.
+
+### Technical changes (for Jimmy)
+- `lib/content-factory/social-publish.ts`: `MYTHICALS_SLOTS_CT` = [11, 14, 17, 20].
+- DB: `mythic-picks` hoursUtc [5,6,7,8]; `pick-ripple` and `pick-bwk` hoursUtc [6,7,8].
+- The 9 UTC cron tick stays and simply finds no lanes.
+
+### Manual steps needed
+- None
+
+### Notes
+- Post types stay random per run (see the entry below).
+
 ## [2026-09-30] — Legendary Mythicals: 5 posts a day, bigger idea catalog, random post types
 **Requested by:** Keenan
 **Committed by:** Claude Code
