@@ -94,7 +94,7 @@ export default function ResultPage({ params, searchParams }: Props) {
             <EmailCapture slug={a.slug} />
           </div>
 
-          <div className="mt-6 rounded-xl border border-[#d9a441]/30 bg-gradient-to-b from-[#d9a441]/[0.08] to-transparent p-5">
+          <div id="portrait" className="mt-6 scroll-mt-6 rounded-xl border border-[#d9a441]/30 bg-gradient-to-b from-[#d9a441]/[0.08] to-transparent p-5">
             <p className="text-xs uppercase tracking-[0.25em] text-[var(--lm-gold)]">Your Legendary Creature Portrait</p>
             <h2 className="font-lm-display mt-2 text-xl text-[var(--lm-bone)]">A {a.name} that is yours alone</h2>
             <p className="mb-5 mt-2 text-sm leading-relaxed text-[var(--lm-dim)]">

@@ -7,6 +7,27 @@
 
 ---
 
+## [2026-10-01] — Legendary Mythicals welcome email redesigned around the creature art
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** (see git log: "Redesign the Mythicals welcome email")
+
+### In plain English (for Keenan)
+The email people get after the Mythicals quiz now opens with a big picture of their creature, shows the profile as cards, includes a phone-sized preview of the free wallpaper next to its download button, and ends with the $12 portrait offer (or "coming soon" while the shop is off). It used to be a page of plain text.
+
+### Technical changes (for Jimmy)
+- apps/web/src/lib/mythicals/emails.ts: welcomeEmail rebuilt as a table-based dark layout; hero = archetypeOgUrl (1200x630, ~124KB), wallpaper thumbnail = archetypeImageUrl; portrait block switches on shopLive(); subject now "You are the <Creature>"; preheader text added
+- apps/web/src/app/lm/result/[slug]/page.tsx: portrait section gets id="portrait" so the email button lands on it
+
+### Manual steps needed
+- None
+
+### Notes
+- Images are remote links to the public content-factory bucket, never attachments, so the email stays small and still reads with images blocked.
+- Still sent from hello@getacuity.io. Moving to a legendarymythicals.com sender needs a Resend domain plus 3 GoDaddy DNS records (optional).
+- No Stripe product is needed: checkout sends inline price_data named "Legendary Creature Portrait" with metadata brand=mythicals.
+
 ## [2026-10-01] — Two new emails: after the first debrief, and when someone cancels their trial
 **Requested by:** Keenan
 **Committed by:** Claude Code
