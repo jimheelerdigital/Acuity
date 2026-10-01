@@ -7,6 +7,25 @@
 
 ---
 
+## [2026-09-30] — URGENT email before Meta access lapses
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** see "feat: Email an URGENT warning before Meta data access lapses"
+
+### In plain English (for Keenan)
+Starting two weeks before Meta's 90-day access window ends (currently 2026-12-30), you'll get an email every morning with "URGENT" in the subject and the 5-minute renewal steps. You'll also get one right away if a token ever stops working.
+
+### Technical changes (for Jimmy)
+- `inngest/functions/social-health-check.ts`: new `meta-data-access` step, which runs daily at 14:00 UTC with the health check.
+  - It calls `debug_token` on IG_ACCESS_TOKEN, META_BWK_ACCESS_TOKEN and META_MYTHICALS_ACCESS_TOKEN.
+  - It emails a separate message with subject "URGENT: Meta access ... expires in N days" when any token is within 14 days of `data_access_expires_at`, or "... is BROKEN" when a token is invalid.
+
+### Manual steps needed
+- [ ] When the URGENT email arrives: renew the token in Graph Explorer and send it to Claude (Keenan)
+
+### Notes
+- The durable alternative is a Business Manager system-user token, which avoids the 90-day clock and the session-replacement breakage. Suggested to Keenan; not done.
+
 ## [2026-09-30] — Performance loop live; pick photos show the answer and move more; Meta tokens re-issued with FB insights
 **Requested by:** Keenan
 **Committed by:** Claude Code

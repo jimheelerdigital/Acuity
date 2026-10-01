@@ -28,6 +28,51 @@ export const socialHealthCheckFn = inngest.createFunction(
     ],
   },
   async ({ step }) => {
+    // Meta data-access expiry (2026-09-30, per Keenan: "send me an email to
+    // keep an eye out at that reminder - make sure subject says URGENT").
+    // Never-expiring Page tokens still stop working when the app's 90-day
+    // data access lapses. From 14 days out, a separate URGENT email goes
+    // out every morning until the token is renewed.
+    await step.run("meta-data-access", async () => {
+      const keys = ["IG_ACCESS_TOKEN", "META_BWK_ACCESS_TOKEN", "META_MYTHICALS_ACCESS_TOKEN"];
+      const found: { key: string; expires: Date | null; error?: string }[] = [];
+      for (const key of keys) {
+        const t = process.env[key]?.trim();
+        if (!t) continue;
+        try {
+          const r = await fetch(
+            `https://graph.facebook.com/v21.0/debug_token?input_token=${encodeURIComponent(t)}&access_token=${encodeURIComponent(t)}`,
+            { signal: AbortSignal.timeout(15_000) }
+          );
+          const j = (await r.json()) as { data?: { is_valid?: boolean; data_access_expires_at?: number } };
+          if (!j.data?.is_valid) {
+            found.push({ key, expires: null, error: "token is INVALID" });
+            continue;
+          }
+          const at = j.data.data_access_expires_at;
+          found.push({ key, expires: at ? new Date(at * 1000) : null });
+        } catch (err) {
+          console.warn(`[health] debug_token failed for ${key}:`, err instanceof Error ? err.message : err);
+        }
+      }
+      const soon = found.filter((f) => f.error || (f.expires && f.expires.getTime() - Date.now() < 14 * 86_400_000));
+      if (soon.length === 0) return { ok: true, found: found.map((f) => `${f.key}: ${f.expires?.toISOString().slice(0, 10)}`) };
+      const first = soon.map((f) => f.expires).filter(Boolean).sort((a, b) => a!.getTime() - b!.getTime())[0];
+      const days = first ? Math.max(0, Math.ceil((first.getTime() - Date.now()) / 86_400_000)) : 0;
+      const { sendEmailOrThrow } = await import("@/lib/resend");
+      await sendEmailOrThrow({
+        from: process.env.CONTENT_FACTORY_EMAIL_FROM ?? '"Ripple Content" <content@getacuity.io>',
+        to: process.env.CONTENT_FACTORY_EMAIL_TO ?? "keenan@heelerdigital.com",
+        subject: `URGENT: Meta access for Instagram/Facebook posting ${soon.some((f) => f.error) ? "is BROKEN" : `expires in ${days} day${days === 1 ? "" : "s"}`}`,
+        html: `<p><b>Action needed.</b> Meta's data access for the Ripple Post Publisher app ${
+          soon.some((f) => f.error) ? "has failed" : `ends on <b>${first!.toDateString()}</b>`
+        }. When it lapses, Instagram/Facebook posting and stats for Ripple, BWK and Legendary Mythicals can stop.</p>
+<p><b>To renew (5 minutes):</b> developers.facebook.com/tools/explorer → app <b>Ripple Post Publisher</b> → Generate Access Token → approve all three Pages and Instagram accounts → click "Continue as Keenan" (ignore the review warning) → extend it in the Access Token Tool → send the token to Claude, who re-issues all three brands' tokens.</p>
+<p>${soon.map((f) => `${f.key}: ${f.error ?? f.expires?.toDateString()}`).join("<br>")}</p>`,
+      });
+      return { ok: false, days };
+    });
+
     const problems = await step.run("check", async () => {
       const { prisma } = await import("@/lib/prisma");
       const now = Date.now();
