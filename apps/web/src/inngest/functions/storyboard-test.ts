@@ -73,13 +73,14 @@ export const storyboardTestFn = inngest.createFunction(
     };
 
     // ── Higgsfield: animate a set of images, waves + model fallback ─────
-    // Clip length for this storyboard (5 or 10s); set once the storyboard is known.
+    // Clip length and model override for this storyboard; set once it is known.
     let shotSec = 5;
+    let modelOverride: string | undefined;
     const animate = async (label: string, jobs: { key: number; imageUrl: string; prompt: string }[]) => {
       const { POST_VIDEO_WAVE, POST_VIDEO_MODEL, POST_VIDEO_FALLBACK_MODEL, POST_VIDEO_ROUNDS } = await import(
         "@/lib/content-factory/post-video"
       );
-      const models = [...new Set([POST_VIDEO_MODEL, POST_VIDEO_FALLBACK_MODEL].filter(Boolean))];
+      const models = [...new Set([modelOverride, POST_VIDEO_MODEL, POST_VIDEO_FALLBACK_MODEL].filter(Boolean))] as string[];
       const out: Record<number, string | null> = {};
       for (let w = 0; w * POST_VIDEO_WAVE < jobs.length; w++) {
         let remaining = jobs.slice(w * POST_VIDEO_WAVE, (w + 1) * POST_VIDEO_WAVE);
@@ -147,6 +148,7 @@ export const storyboardTestFn = inngest.createFunction(
       });
       const shots = sb.shots;
       shotSec = sb.shotSec ?? 5;
+      modelOverride = sb.model;
       const { shotMotionPrompt } = await import("@/lib/content-factory/storyboard");
 
       // ── 1. References, generated once, into one sheet ──────────────
@@ -264,6 +266,7 @@ export const storyboardTestFn = inngest.createFunction(
     const sb = manifest.sb;
     const shots = sb.shots;
     shotSec = sb.shotSec ?? 5;
+    modelOverride = sb.model;
     const versions = (["b", "a"] as const).filter((v) => manifest[v]);
 
     // ── 4. Sound: fal MMAudio per clip (one call per unique clip) ──────

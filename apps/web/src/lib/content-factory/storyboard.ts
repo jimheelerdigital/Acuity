@@ -78,6 +78,8 @@ export interface Storyboard {
   chain?: "edit" | "raw";
   /** Clip length in seconds (Kling: 5 or 10). Default 5. */
   shotSec?: number;
+  /** Video model override for this storyboard (e.g. "kling-video/v3.0/pro/image-to-video"). */
+  model?: string;
 }
 
 export const DRAGON_STORYBOARD: Storyboard = {
@@ -246,6 +248,7 @@ export function resolveStoryboard(input: { preset?: string; storyboard?: Partial
     style: sb.style === "documentary" || sb.style === "trailcam" || sb.style === "locked" ? sb.style : "film",
     chain: sb.chain === "raw" ? "raw" : "edit",
     shotSec: sb.shotSec === 10 ? 10 : 5,
+    ...(typeof sb.model === "string" && /^[a-z0-9-]+\/[a-z0-9./-]+$/i.test(sb.model) ? { model: sb.model } : {}),
     coverText: sb.coverText ?? null,
     closingQuestion: sb.closingQuestion ?? null,
     emailSubject: sb.emailSubject || `Storyboard test: ${sb.title}`,
