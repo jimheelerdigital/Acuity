@@ -39,6 +39,8 @@ export async function POST(req: NextRequest) {
 
   const body = (await req.json().catch(() => ({}))) as {
     account?: string;
+    /** Reuse an existing (paused) campaign instead of creating a new one. */
+    campaignId?: string;
     pageId?: string;
     postId?: string;
     dailyBudgetUsd?: number;
@@ -93,7 +95,7 @@ export async function POST(req: NextRequest) {
     const end = new Date(start.getTime() + days * 86_400_000);
     const name = body.name ?? "Mythicals – Page likes";
 
-    const campaign = await call("POST", `${act}/campaigns`, {
+    const campaign = body.campaignId ? { id: body.campaignId } : await call("POST", `${act}/campaigns`, {
       name,
       objective: "OUTCOME_ENGAGEMENT",
       status: "PAUSED",
@@ -119,7 +121,8 @@ export async function POST(req: NextRequest) {
         age_max: 34,
         ...(interests.length ? { flexible_spec: [{ interests }] } : {}),
         publisher_platforms: ["facebook"],
-        facebook_positions: ["feed", "facebook_reels", "video_feeds"],
+        // "video_feeds" was deprecated by Meta (error 2490562, 2026-10-01).
+        facebook_positions: ["feed", "facebook_reels"],
       },
     });
     const objectStoryId = body.postId.includes("_") ? body.postId : `${body.pageId}_${body.postId}`;
