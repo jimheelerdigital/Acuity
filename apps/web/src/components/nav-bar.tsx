@@ -227,7 +227,7 @@ export function NavBar() {
   const { data: session } = useSession();
 
   // Don't show nav on auth pages, landing, or onboarding funnel
-  if (!session || pathname?.startsWith("/auth") || pathname === "/" || pathname?.startsWith("/start") || pathname?.startsWith("/onboarding")) {
+  if (!session || pathname?.startsWith("/lm") || pathname?.startsWith("/auth") || pathname === "/" || pathname?.startsWith("/start") || pathname?.startsWith("/onboarding")) {
     return null;
   }
 

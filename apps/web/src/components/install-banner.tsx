@@ -3,6 +3,8 @@
 import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 
+import { isMythicalsSurface } from "@/lib/mythicals/site";
+
 import { APP_VERSION_CONFIG } from "@/lib/app-version-config";
 import { captureUtmParams } from "@/lib/track-onboarding";
 import { trackClient } from "@/lib/analytics-client";
@@ -147,6 +149,7 @@ export function InstallBanner() {
     setBannerHeightVar(0);
 
     if (typeof navigator === "undefined") return;
+    if (!pathname || isMythicalsSurface(pathname)) return; // no Ripple app banner on Legendary Mythicals
     if (!isEligibleRoute(pathname)) return;
 
     const p = detectPlatform(navigator.userAgent);

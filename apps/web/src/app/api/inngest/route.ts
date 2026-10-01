@@ -75,6 +75,7 @@ import { adlabCompetitorResearchFn } from "@/inngest/functions/adlab-competitor-
 import { socialHealthCheckFn } from "@/inngest/functions/social-health-check";
 import { adlabRegenImagesFn } from "@/inngest/functions/adlab-regen-images";
 import { adlabDailyCronFn } from "@/inngest/functions/adlab-daily-cron";
+import { mythicalsPortraitFn } from "@/inngest/functions/mythicals-portrait";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -86,6 +87,7 @@ export const maxDuration = 300;
 const handler = serve({
   client: inngest,
   functions: [
+    mythicalsPortraitFn,
     helloWorldFn,
     processEntryFn,
     generateWeeklyReportFn,

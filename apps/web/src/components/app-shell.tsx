@@ -358,6 +358,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const bypass =
     !pathname ||
     pathname === "/" ||
+    pathname.startsWith("/lm") ||
     pathname.startsWith("/auth") ||
     pathname.startsWith("/for/") ||
     pathname.startsWith("/blog") ||

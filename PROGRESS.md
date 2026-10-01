@@ -104,6 +104,48 @@ All 30 automatic emails (getting into the app, first debrief, checkout, trial en
 - Uses the ads Jev client (`lib/adlab/jev.ts`, either JEV_API_KEY or OPENROUTER_API_KEY); logged as ClaudeCallLog `jev:adlab:email:<key>`.
 - Copy removed: "takes about thirty seconds", "talk for a few minutes", the unverified "top 1%" in milestone_100.
 
+## [2026-10-01] — Legendary Mythicals website: quiz, results, email list, $12 portrait (shop off)
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** see "feat: Launch the Legendary Mythicals quiz site and portrait product"
+
+### In plain English (for Keenan)
+legendarymythicals.com now has a "Which Legendary Creature Are You?" quiz:
+- 8 questions leading to one of 12 creatures.
+- A shareable result page for each creature.
+- Email signup that sends a free HD wallpaper.
+- A $12 personalized portrait (custom creature art plus a lore card, delivered by email). It stays switched off ("Coming soon") until Keenan approves.
+
+None of Ripple's branding, analytics or pixels appear on these pages.
+
+### Technical changes (for Jimmy)
+- Routing: `next.config.js` rewrites every path on host legendarymythicals.com to `/lm/*` (API, `_next` and static files pass through). www gets a 308 to the apex. The pages are also reachable at goripple.io/lm.
+- Pages in `src/app/lm/`: layout, landing, quiz, `result/[slug]` (per-creature OG images), thanks, privacy, refunds.
+- Components in `src/components/mythicals/` (track, quiz, result-actions); logic in `src/lib/mythicals/` (archetypes, site, store, emails, lore-card).
+- API `api/mythicals/`:
+  - `event`: analytics counters.
+  - `subscribe`: email capture plus a welcome email via Resend.
+  - `unsubscribe`: signed link, using NEXTAUTH_SECRET.
+  - `checkout`: Stripe Checkout with inline price_data, metadata brand=mythicals, only when `MYTHICALS_SHOP_LIVE=1`.
+  - `stripe-webhook`: optional backup, needs `MYTHICALS_STRIPE_WEBHOOK_SECRET`.
+- New `inngest/functions/mythicals-portrait.ts` (registered): verify payment → Claude lore (falls back to the archetype lore) → gpt-image-2 high portrait → 1080x1920 lore card → email the buyer and Keenan. Idempotent per Stripe session; failures email Keenan "FAILED".
+- Data storage: subscribers, orders and events go in a new PRIVATE storage bucket `mythicals-data`; `content-factory` is public and must never hold emails. Images go in `content-factory/mythicals-site/`.
+- Ripple surfaces skip `/lm` and the Mythicals host: app-shell, nav-bar, crisis-footer, install-banner, and consent-gated trackers (no GA or Meta pixel).
+- Ripple's Stripe webhook already ignores Mythicals sessions (no userId), so it's untouched.
+- Domain: legendarymythicals.com and www are attached to this Vercel project. GoDaddy DNS: A @ 76.76.21.21, CNAME www cname.vercel-dns.com.
+
+### Manual steps needed
+- [ ] Inngest resync after deploy, for the new function (Claude, same session)
+- [ ] Approve the site, then set `MYTHICALS_SHOP_LIVE=1` in Vercel and redeploy (Keenan to approve, Claude to flip)
+- [ ] Optional: add the Stripe webhook endpoint `https://legendarymythicals.com/api/mythicals/stripe-webhook` (events checkout.session.completed and async_payment_succeeded), then put its secret in Vercel as MYTHICALS_STRIPE_WEBHOOK_SECRET (Keenan)
+
+### Notes
+- Cost per portrait is about $0.95 including Stripe fees, so about $11 margin on $12.
+- Leftovers:
+  - The root layout still injects Ripple's favicon and its structured-data block on /lm pages.
+  - The result page sometimes opens scrolled partway down on desktop.
+- Shopify and Amazon products come later, after the site is validated (Keenan has existing stores).
+
 ## [2026-10-01] — Mythicals Page-likes ad is live
 **Requested by:** Keenan
 **Committed by:** Claude Code

@@ -208,8 +208,32 @@ const nextConfig = {
       },
     ];
   },
+  // Legendary Mythicals site (2026-10-01): legendarymythicals.com is served
+  // by this app. Every page path on that host is rewritten onto /lm/*
+  // (API, Next internals and static files pass through). The same pages are
+  // reachable at goripple.io/lm for testing.
+  async rewrites() {
+    const lm = [{ type: "host", value: "legendarymythicals\\.com" }];
+    return {
+      beforeFiles: [
+        { source: "/", has: lm, destination: "/lm" },
+        {
+          source: "/:path((?!api/|_next/|lm(?:/|$)|fonts/|monitoring|[^/]*\\.[a-z0-9]+$).*)",
+          has: lm,
+          destination: "/lm/:path",
+        },
+      ],
+    };
+  },
   async redirects() {
     return [
+      {
+        // www → apex for the Mythicals domain (2026-10-01).
+        source: "/:path*",
+        has: [{ type: "host", value: "www.legendarymythicals.com" }],
+        destination: "https://legendarymythicals.com/:path*",
+        permanent: true,
+      },
       {
         // Canonical auth domain. Any getacuity.io host → goripple.io, same
         // path. Kept IN CODE (not the Vercel dashboard) on purpose: the

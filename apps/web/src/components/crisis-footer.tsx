@@ -42,7 +42,7 @@ export function CrisisFooter() {
   // Not on the signup funnels (2026-09-26): once the email step signs her in,
   // the bar covered the paywall and Stripe checkout. The funnels carry their
   // own inline 988 line instead.
-  if (status !== "authenticated" || dismissed || pathname?.startsWith("/admin") || pathname?.startsWith("/start")) return null;
+  if (status !== "authenticated" || dismissed || pathname?.startsWith("/admin") || pathname?.startsWith("/start") || pathname?.startsWith("/lm")) return null;
 
   const dismiss = () => {
     try {

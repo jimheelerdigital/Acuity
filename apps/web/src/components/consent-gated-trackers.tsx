@@ -4,6 +4,7 @@ import Script from "next/script";
 import { useEffect, useState } from "react";
 
 import { effectiveConsent, readConsent } from "@/components/cookie-consent";
+import { isMythicalsSurface } from "@/lib/mythicals/site";
 
 /**
  * Consent-gated tracking script loader.
@@ -41,6 +42,14 @@ export function ConsentGatedTrackers() {
 
   useEffect(() => {
     const sync = () => {
+      // Legendary Mythicals (2026-10-01): keep Ripple's GA + Meta pixel
+      // off legendarymythicals.com and /lm so Ripple's data stays clean.
+      if (isMythicalsSurface(window.location.pathname)) {
+        setAnalytics(false);
+        setMarketing(false);
+        setRecording(false);
+        return;
+      }
       const c = effectiveConsent();
       setAnalytics(c.analytics);
       setMarketing(c.marketing);
