@@ -41,6 +41,8 @@ export async function POST(req: NextRequest) {
     account?: string;
     /** Reuse an existing (paused) campaign instead of creating a new one. */
     campaignId?: string;
+    /** Advantage audience expansion (default on). */
+    advantageAudience?: boolean;
     pageId?: string;
     postId?: string;
     dailyBudgetUsd?: number;
@@ -121,8 +123,10 @@ export async function POST(req: NextRequest) {
         age_max: 34,
         ...(interests.length ? { flexible_spec: [{ interests }] } : {}),
         publisher_platforms: ["facebook"],
-        // Required flag (Meta error 1870227). Off = stick to the audience above.
-        targeting_automation: { advantage_audience: 0 },
+        // Required flag (Meta error 1870227). On by default (2026-10-01, Keenan:
+        // "you can use advantage audience for meta, they do a good job"):
+        // the audience above becomes a suggestion Meta can expand from.
+        targeting_automation: { advantage_audience: body.advantageAudience === false ? 0 : 1 },
         // "video_feeds" was deprecated by Meta (error 2490562, 2026-10-01).
         facebook_positions: ["feed", "facebook_reels"],
       },
