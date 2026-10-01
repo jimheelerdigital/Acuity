@@ -7,6 +7,25 @@
 
 ---
 
+## [2026-09-30] — Reset-guide photo carousels back for Ripple and BWK, emailed only
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** see "feat: Add email-only lanes and bring back the reset guides"
+
+### In plain English (for Keenan)
+The step-by-step reset guide carousels (like "3 days to restart after a lost month") are back for both Ripple and BWK, one a day each. They're photo carousels with no video, and they're emailed to you instead of posting automatically.
+
+### Technical changes (for Jimmy)
+- `inngest/functions/social-publish-cron.ts`: the scan excludes lanes whose ContentLane `spec.emailOnly === true` from IG/FB enqueueing, even if they're in the legacy AUTO_LANES list.
+- DB: `reset-guide` (hour 6) and `reset-guide-men` (hour 7) set back to ACTIVE with `spec.emailOnly = true`.
+- Both lanes are already in CAROUSEL_LANES, so no video build runs; the per-post daily email covers all lanes.
+
+### Manual steps needed
+- None
+
+### Notes
+- Daily output is now: Ripple 3 pick videos (auto-posted) + 1 reset guide (email); BWK the same; Mythicals 4 (auto-posted).
+
 ## [2026-09-30] — Luxury items always fit the frame
 **Requested by:** Keenan
 **Committed by:** Claude Code

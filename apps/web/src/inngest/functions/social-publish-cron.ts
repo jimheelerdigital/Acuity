@@ -99,11 +99,19 @@ export const socialPublishCronFn = inngest.createFunction(
       // Lanes-as-data (2026-09-15): DB-born lanes are auto-eligible
       // alongside the legacy AUTO_LANES list.
       const laneRows = await prisma.contentLane.findMany({
-        select: { key: true },
+        select: { key: true, spec: true },
       });
+      // spec.emailOnly (2026-09-30, per Keenan: reset-guide carousels "send
+      // those to me. no video needed"): the lane still generates and emails,
+      // but never auto-posts to IG/FB.
+      const emailOnly = new Set(
+        laneRows
+          .filter((r) => (r.spec as Record<string, unknown> | null)?.emailOnly === true)
+          .map((r) => r.key)
+      );
       const eligibleLanes = [
         ...new Set([...AUTO_LANES, ...laneRows.map((r) => r.key)]),
-      ];
+      ].filter((k) => !emailOnly.has(k));
 
       const threeDaysAgo = new Date(Date.now() - 3 * 86_400_000);
       const candidates = await prisma.carouselPost.findMany({
