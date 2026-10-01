@@ -104,6 +104,29 @@ All 30 automatic emails (getting into the app, first debrief, checkout, trial en
 - Uses the ads Jev client (`lib/adlab/jev.ts`, either JEV_API_KEY or OPENROUTER_API_KEY); logged as ClaudeCallLog `jev:adlab:email:<key>`.
 - Copy removed: "takes about thirty seconds", "talk for a few minutes", the unverified "top 1%" in milestone_100.
 
+## [2026-10-01] — Meta tokens re-issued (now with ad permissions); Mythicals gets its own ad account
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** see "feat: Run Mythicals Page-likes ads from its own ad account"
+
+### In plain English (for Keenan)
+Keenan generated a new Meta login token that can also run ads. Posting access for Ripple, BWK and Mythicals was re-issued from it and tested. Mythicals ads now run from the Mythicals portfolio's own ad account (235992026), so the Page-likes campaign can be created automatically. That account also has a $2.77 Meta ad credit.
+
+### Technical changes (for Jimmy)
+- The new user token never expires (data access runs until 2026-12-30). On top of the previous set it adds ads_management, ads_read and pages_manage_ads.
+- Vercel production env, via the REST API:
+  - updated: IG_ACCESS_TOKEN, META_BWK_ACCESS_TOKEN, META_MYTHICALS_ACCESS_TOKEN (fresh never-expiring Page tokens, each verified with debug_token, the IG username and content_publishing_limit)
+  - new, sensitive: META_MYTHICALS_ADS_TOKEN (Keenan's user token)
+  - new, sensitive: META_MYTHICALS_AD_ACCOUNT_ID = act_235992026 (USD, America/Los_Angeles)
+- `app/api/admin/adlab/page-likes-campaign/route.ts`: `account: "mythicals"` in the body (POST) or `?account=mythicals` (GET) uses the Mythicals ads token and ad account. The default is still AdLab's account and token.
+- AdLab's META_ACCESS_TOKEN belongs to a separate identity ("AdLab - Acuity User"), so this re-authorization doesn't affect it.
+
+### Manual steps needed
+- [ ] Delete the empty, paused "Mythicals – Page likes" campaign shell in AdLab's account act_2066627453970999 (no ad set or ad, $0) (Keenan, or Claude via API)
+
+### Notes
+- Same gotcha as 09-29: generating a new Graph Explorer token invalidates Page tokens minted from the old session. Re-mint all three brands' tokens in the same session, as was done here.
+
 ## [2026-10-01] — Legendary Mythicals: 6 posts a day
 **Requested by:** Keenan
 **Committed by:** Claude Code

@@ -26,14 +26,19 @@ export async function POST(req: NextRequest) {
     const guard = await requireAdmin();
     if (!guard.ok) return guard.response;
   }
-  const token = process.env.META_ACCESS_TOKEN;
-  const rawAccount = process.env.META_AD_ACCOUNT_ID;
-  if (!token || !rawAccount) return NextResponse.json({ error: "META_ACCESS_TOKEN / META_AD_ACCOUNT_ID missing" }, { status: 500 });
+  // account "mythicals" (2026-10-01): the Legendary Mythicals portfolio's own
+  // ad account + Keenan's ads token; default = AdLab's account/token.
+  const peek = (await req.clone().json().catch(() => ({}))) as { account?: string };
+  const useMyth = peek.account === "mythicals";
+  const token = useMyth ? process.env.META_MYTHICALS_ADS_TOKEN : process.env.META_ACCESS_TOKEN;
+  const rawAccount = useMyth ? process.env.META_MYTHICALS_AD_ACCOUNT_ID : process.env.META_AD_ACCOUNT_ID;
+  if (!token || !rawAccount) return NextResponse.json({ error: "ads token / ad account missing" }, { status: 500 });
   const act = rawAccount.startsWith("act_") ? rawAccount : `act_${rawAccount}`;
   const v = process.env.META_API_VERSION || "v25.0";
   const G = `https://graph.facebook.com/${v}`;
 
   const body = (await req.json().catch(() => ({}))) as {
+    account?: string;
     pageId?: string;
     postId?: string;
     dailyBudgetUsd?: number;
@@ -155,8 +160,9 @@ export async function GET(req: NextRequest) {
     const guard = await requireAdmin();
     if (!guard.ok) return guard.response;
   }
-  const token = process.env.META_ACCESS_TOKEN;
-  const rawAccount = process.env.META_AD_ACCOUNT_ID;
+  const useMyth = req.nextUrl.searchParams.get("account") === "mythicals";
+  const token = useMyth ? process.env.META_MYTHICALS_ADS_TOKEN : process.env.META_ACCESS_TOKEN;
+  const rawAccount = useMyth ? process.env.META_MYTHICALS_AD_ACCOUNT_ID : process.env.META_AD_ACCOUNT_ID;
   if (!token || !rawAccount) return NextResponse.json({ error: "missing ads env" }, { status: 500 });
   const act = rawAccount.startsWith("act_") ? rawAccount : `act_${rawAccount}`;
   const v = process.env.META_API_VERSION || "v25.0";
