@@ -160,6 +160,16 @@ export async function GET(req: NextRequest) {
   if (!token || !rawAccount) return NextResponse.json({ error: "missing ads env" }, { status: 500 });
   const act = rawAccount.startsWith("act_") ? rawAccount : `act_${rawAccount}`;
   const v = process.env.META_API_VERSION || "v25.0";
+  if (req.nextUrl.searchParams.get("whoami")) {
+    // Which Facebook identity the ads token belongs to, and its Page tasks.
+    const g = async (path: string, fields: string) =>
+      (await fetch(`https://graph.facebook.com/${v}/${path}?fields=${fields}&access_token=${encodeURIComponent(token)}`)).json();
+    return NextResponse.json({
+      me: await g("me", "id,name"),
+      accounts: await g("me/accounts", "id,name,tasks"),
+      businesses: await g("me/businesses", "id,name"),
+    });
+  }
   const name = req.nextUrl.searchParams.get("name") ?? "Mythicals";
   const qs = new URLSearchParams({
     fields: "id,name,status,effective_status,daily_budget,created_time,adsets{id,name,status,effective_status,daily_budget},ads{id,status,effective_status}",
