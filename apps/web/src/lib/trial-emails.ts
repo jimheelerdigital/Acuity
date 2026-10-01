@@ -181,6 +181,7 @@ export const APP_ACCESS_EMAIL_KEYS = new Set<string>([
   "app_access_rescue",
   "app_first_record_1",
   "app_first_record_2",
+  "apple_duplicate_rescue",
 ]);
 
 export async function sendTrialEmail(

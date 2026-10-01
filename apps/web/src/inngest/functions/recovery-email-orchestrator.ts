@@ -414,6 +414,21 @@ export const recoveryEmailOrchestratorFn = inngest.createFunction(
       }
 
       // ═══════════════════════════════════════════════════════════
+      // PAID ON WEB, THEN SIGN IN WITH APPLE MADE A 2ND ACCOUNT
+      // (2026-10-01, per Keenan). URGENT: not budget-gated or throttled —
+      // a paying customer can't see their membership. Each match is emailed
+      // once (rescue to the paid address + founder alert), see
+      // lib/apple-duplicate-catch.ts.
+      // ═══════════════════════════════════════════════════════════
+      try {
+        const { runAppleDuplicateCatch } = await import("@/lib/apple-duplicate-catch");
+        const caught = await runAppleDuplicateCatch({ dryRun: config.dryRun });
+        if (caught.length) sentByKey["apple_duplicate_rescue"] = (sentByKey["apple_duplicate_rescue"] ?? 0) + caught.length;
+      } catch (err) {
+        console.error("[recovery] apple duplicate catch failed:", err instanceof Error ? err.message : err);
+      }
+
+      // ═══════════════════════════════════════════════════════════
       // IN THE APP, NOT RECORDING (2026-09-29, per Keenan). Keyed on the
       // first app sign-in (lib/mobile-session.ts logs app_signed_in), any
       // plan including paid. #1 ~30 min after sign-in (was 1h, 2026-10-01), #2 ~1 day after.

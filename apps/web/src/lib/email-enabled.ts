@@ -65,6 +65,7 @@ export const EMAIL_ENABLED: Record<string, boolean> = {
   nr_winback_3: true, // never-recorded drip #3 (day 6): "should I take the hint?"
   app_first_record_1: true, // 2026-09-29 (30 min since 10-01): after first app sign-in, 0 recordings — what to say first
   app_first_record_2: true, // 2026-09-29: ~1 day after first app sign-in, still 0 recordings
+  apple_duplicate_rescue: true, // 2026-10-01: URGENT — paid on web, then Sign in with Apple made a 2nd account (lib/apple-duplicate-catch.ts)
   app_access_rescue: true, // 2026-09-28 one-off: web signups who never got into the app, one-tap signed-in link
 
   // ── PAUSED — duplicate-welcome cleanup (2026-06-24) ─────────────

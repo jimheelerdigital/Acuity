@@ -7,6 +7,31 @@
 
 ---
 
+## [2026-10-01] — Automatic rescue when a paid customer signs into the app with Apple and gets a second account
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** see "feat: Auto-catch paid customers stuck in duplicate Apple accounts"
+
+### In plain English (for Keenan)
+When someone pays on the website and then taps "Sign in with Apple" in the app with Hide My Email turned on, the app creates a second, empty account and their membership disappears (this happened to Aubrey today). Every 15 minutes the system now looks for this. When it finds a case, it immediately emails the customer at their paid address with a one-tap button that opens the app signed into the account they paid for. It also sends Keenan and Jimmy an urgent alert with a "Link these accounts" button, so Sign in with Apple opens the right account from then on.
+
+### Technical changes (for Jimmy)
+- New `lib/apple-duplicate-catch.ts`: `matchDuplicates` (strong = an Apple-supplied name token matches the paid account's name or email local part, paid ≤48h before; possible = exactly one web-paid, never-in-app account paid in the 2h before), `runAppleDuplicateCatch` (flags OnboardingEvent `apple_dupe_flagged` on the paid user, sends `apple_duplicate_rescue`, emails founders), HMAC `signLinkApple`/`verifyLinkApple` (14 days, NEXTAUTH_SECRET)
+- New `app/api/admin/link-apple/route.ts` (GET `?t=`): moves `appleSubject` from the duplicate onto the paid account only if the duplicate has 0 recordings and the paid account has no Apple ID; logs `apple_dupe_linked`
+- New email `emails/trial/apple-duplicate-rescue.ts` (key `apple_duplicate_rescue`): registered, enabled, in APP_ACCESS_EMAIL_KEYS (one-tap sign-in link), goal "app"
+- `inngest/functions/recovery-email-orchestrator.ts`: runs the catch every tick; not budget-gated or throttled
+- New `lib/apple-duplicate-catch.test.ts` (4 tests)
+- Manual fix today: moved Aubrey's Apple ID (`000012.39c5…1934`) from `jdzrvb6yhc@privaterelay.appleid.com` (cmupxo0he000ey4c1qlfqne1b) to `atondreault@me.com` (cmupxjz7y000kyugtsj7ih0ds); Keenan emailed her a one-tap link
+
+### Manual steps needed
+- [ ] Push to main (Keenan: "push it"). The first run will email bbfamspam@gmail.com and alert the founders about Michael Hester (a "possible" match); Keenan decides whether to link those accounts
+- [ ] App-side prevention in 1.9: when Sign in with Apple creates a new account with a hidden email, show "Already paid on our website? Sign in with your email instead" (Jimmy)
+
+### Notes
+- The Apple ID is never moved automatically: a wrong guess would put a stranger into someone's paid account. The customer rescue email is safe on a wrong guess, because only the owner of the paid inbox can use its link.
+- The Apple full name comes from the app (Apple only returns it on first sign-in), so it's a matching hint, not proof.
+- Dry run on prod at 14:52 CT found only Michael Hester ↔ bbfamspam (paid 23 min earlier, no name to confirm). Aubrey is excluded because her paid account now holds the Apple ID.
+
 ## [2026-10-01] — Every lifecycle email rewritten, three versions each, Jev picks which one each person gets
 **Requested by:** Keenan
 **Committed by:** Claude Code

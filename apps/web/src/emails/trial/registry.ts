@@ -58,6 +58,7 @@ import { trialEnding } from "./trial-ending";
 import { welcomeDay0 } from "./welcome-day0";
 import { appAccessRescue } from "./app-access-rescue";
 import { appFirstRecord1, appFirstRecord2 } from "./app-first-record";
+import { appleDuplicateRescue } from "./apple-duplicate-rescue";
 
 export const TRIAL_EMAIL_TEMPLATES: Record<TrialEmailKey, TrialEmailTemplate> =
   {
@@ -110,6 +111,7 @@ export const TRIAL_EMAIL_TEMPLATES: Record<TrialEmailKey, TrialEmailTemplate> =
     app_access_rescue: appAccessRescue,
     app_first_record_1: appFirstRecord1,
     app_first_record_2: appFirstRecord2,
+    apple_duplicate_rescue: appleDuplicateRescue,
   };
 
 export type { TrialEmailKey, TrialEmailTemplate } from "./types";

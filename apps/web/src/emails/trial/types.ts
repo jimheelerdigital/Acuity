@@ -98,6 +98,7 @@ export type TrialEmailKey =
   | "milestone_100"
   | "milestone_365"
   | "nr_winback_1"
+  | "apple_duplicate_rescue"
   | "nr_winback_2"
   | "nr_winback_3"
   | "app_access_rescue"
