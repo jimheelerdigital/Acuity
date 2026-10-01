@@ -158,8 +158,17 @@ export default function RootLayout({
           }}
         />
         <script
+          id="ripple-org-jsonld"
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredDataJsonLd) }}
+        />
+        {/* Legendary Mythicals (2026-10-01) is served by this app on its own
+            domain. Drop Ripple's Organization JSON-LD there, client-side, so
+            the root layout stays static (no headers() read). */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `(function(){try{if(/legendarymythicals\\.com$/.test(location.hostname)||location.pathname.indexOf("/lm")===0){var e=document.getElementById("ripple-org-jsonld");if(e)e.remove()}}catch(e){}})()`,
+          }}
         />
         {/* App-install promotion is a body component now (<InstallBanner />,
             components/install-banner.tsx) — replaced the apple-itunes-app
