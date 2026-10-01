@@ -209,8 +209,8 @@ export const carouselDailyCronFn = inngest.createFunction(
     id: "carousel-daily-cron",
     name: "Content Factory — Daily Carousel Generation",
     triggers: [
-      // 9 added 2026-09-30 for the 5th daily Mythicals post.
-      { cron: "0 5,6,7,8,9 * * *" },
+      // 9 added 2026-09-30, 10 on 2026-10-01 (Mythicals 6 a day).
+      { cron: "0 5,6,7,8,9,10 * * *" },
       // Generation trigger (cron fan-out + admin generate actions).
       { event: "content-factory/daily.generate" },
     ],

@@ -257,8 +257,9 @@ export function clampToWindow(t: Date, platform: SocialPlatform): Date {
  * Keenan: "spread the posts out every 2 hours starting at 1pm, 3pm, 5pm
  * cst"), same time on every platform, instead of the rolling windows.
  */
-// 4 a day since 2026-09-30 (Keenan: 5, then "keep mythicals at 4 a day").
-export const MYTHICALS_SLOTS_CT = [11, 14, 17, 20];
+// 6 a day since 2026-10-01 (Keenan: "up that to 6 posts per day picked at
+// random... 10, 11, 1, 3, 5, 6 pm ct").
+export const MYTHICALS_SLOTS_CT = [10, 11, 13, 15, 17, 18];
 
 /** UTC instant for a wall-clock hour on a calendar day in America/Chicago (DST-safe). */
 export function centralWallTimeToUtc(day: string, hour: number): Date {

@@ -62,6 +62,26 @@ All 30 automatic emails (getting into the app, first debrief, checkout, trial en
 - Uses the ads Jev client (`lib/adlab/jev.ts`, either JEV_API_KEY or OPENROUTER_API_KEY); logged as ClaudeCallLog `jev:adlab:email:<key>`.
 - Copy removed: "takes about thirty seconds", "talk for a few minutes", the unverified "top 1%" in milestone_100.
 
+## [2026-10-01] — Legendary Mythicals: 6 posts a day
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** see "feat: Run Legendary Mythicals six times a day"
+
+### In plain English (for Keenan)
+Mythicals now posts 6 times a day (10am, 11am, 1pm, 3pm, 5pm and 6pm CT), each a randomly picked post type. That's about $8 a day for Mythicals and about $18 a day across all brands.
+
+### Technical changes (for Jimmy)
+- `lib/content-factory/social-publish.ts`: `MYTHICALS_SLOTS_CT` = [10, 11, 13, 15, 17, 18].
+- `inngest/functions/carousel-daily.ts`: cron `0 5,6,7,8,9,10 * * *`. The 10 UTC run (5am CT) finishes before the 10am CT slot.
+- DB: `mythic-picks` hoursUtc [5,6,7,8,9,10].
+- The post type is still chosen per run by the performance-loop bandit. There are 5 types, so one repeats each day.
+
+### Manual steps needed
+- [ ] Inngest resync after deploy, because the cron changed (Claude, same session)
+
+### Notes
+- The ~$15/day approved budget is now ~$18/day.
+
 ## [2026-10-01] — $10/day Facebook Page-likes campaign for Legendary Mythicals
 **Requested by:** Keenan
 **Committed by:** Claude Code
