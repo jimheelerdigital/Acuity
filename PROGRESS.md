@@ -7,6 +7,39 @@
 
 ---
 
+## [2026-10-01] — Scene test #2: trail-cam version with one locked camera
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** see "feat: Add a raw-chain trail-cam mode to the storyboard test"
+
+### In plain English (for Keenan)
+The first scene test ("not cohesive even slightly") redrew a new picture for every shot, so it looked like six different photos, and its sound effects silently failed. Test #2 uses a single fixed "trail cam" camera and two 10-second clips. The second clip starts from the exact last frame of the first, so nothing is redrawn and the background never changes. It's still test-only.
+
+### Technical changes (for Jimmy)
+- `lib/content-factory/storyboard.ts`:
+  - `Storyboard.chain` ("edit" | "raw"), `shotSec` (5 | 10) and style "trailcam" (fixed-camera look and motion prompt; the camera never moves).
+  - New preset `trailcam-kirin`: 2 shots × 10s; shot 1 starts as the empty lake.
+  - `resolveStoryboard` passes style, chain and shotSec through.
+- `inngest/functions/storyboard-test.ts`:
+  - In raw chain mode, the next clip's start image is the previous clip's exact last frame, with no edit and no QC redraw.
+  - Clip, segment, SFX and music lengths follow `shotSec`.
+
+### Manual steps needed
+- None
+
+### Notes
+- What went wrong in test #1:
+  1. gpt-image-2 edits redraw the whole frame, so continuity broke at every join.
+  2. There were 6 cuts, each needing a big scene change.
+  3. The camera moved independently in each clip.
+  4. fal returned "locked TOP_UP" on prod at 04:55 UTC even though the same key worked locally. With music set to start at shot 3, the first 10s were silent.
+  5. I judged it from 5 still frames.
+- Checks before sending test #2:
+  - fal is pre-flighted on prod with a `--sfx` re-run.
+  - Audio levels are measured across the whole video.
+  - Frames are compared right at the join.
+  - Frames are reviewed every 0.5s around the join.
+
 ## [2026-09-30] — Storyboard scene test generator (Frost Kirin nature reveal), test-only
 **Requested by:** Keenan
 **Committed by:** Claude Code

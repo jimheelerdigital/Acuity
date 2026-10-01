@@ -66,6 +66,8 @@ export const storyboardTestFn = inngest.createFunction(
     };
 
     // ── Higgsfield: animate a set of images, waves + model fallback ─────
+    // Clip length for this storyboard (5 or 10s); set once the storyboard is known.
+    let shotSec = 5;
     const animate = async (label: string, jobs: { key: number; imageUrl: string; prompt: string }[]) => {
       const { POST_VIDEO_WAVE, POST_VIDEO_MODEL, POST_VIDEO_FALLBACK_MODEL, POST_VIDEO_ROUNDS } = await import(
         "@/lib/content-factory/post-video"
@@ -82,7 +84,7 @@ export const storyboardTestFn = inngest.createFunction(
             return Promise.all(
               batch.map(async (j) => {
                 try {
-                  return { key: j.key, id: (await submitCoverVideo({ startImageUrl: j.imageUrl, prompt: j.prompt, duration: 5, model })) as string | null };
+                  return { key: j.key, id: (await submitCoverVideo({ startImageUrl: j.imageUrl, prompt: j.prompt, duration: shotSec, model })) as string | null };
                 } catch (err) {
                   return { key: j.key, id: null as string | null, error: err instanceof Error ? err.message : String(err) };
                 }
@@ -137,6 +139,7 @@ export const storyboardTestFn = inngest.createFunction(
         return resolveStoryboard({ preset: data.preset, storyboard: data.storyboard });
       });
       const shots = sb.shots;
+      shotSec = sb.shotSec ?? 5;
       const { shotMotionPrompt } = await import("@/lib/content-factory/storyboard");
 
       // ── 1. References, generated once, into one sheet ──────────────
@@ -211,7 +214,11 @@ export const storyboardTestFn = inngest.createFunction(
             : null;
           bFrames.push(frameUrl);
           const loopEnd = sb.endMatchesStart && i === shots.length - 1;
-          if (!frameUrl) {
+          if (frameUrl && sb.chain === "raw") {
+            // Exact last frame, untouched: the join is pixel-identical.
+            bShots.push({ raw: frameUrl, base: frameUrl });
+            notes.push(`shot ${shot.n}: starts from shot ${shot.n - 1}'s exact last frame (nothing redrawn)`);
+          } else if (!frameUrl) {
             bShots.push(a ? a.shots[i] : await sheetShot(shot, "b"));
             notes.push(`shot ${shot.n}: previous clip failed, generated from the sheet instead`);
           } else {
@@ -249,6 +256,7 @@ export const storyboardTestFn = inngest.createFunction(
 
     const sb = manifest.sb;
     const shots = sb.shots;
+    shotSec = sb.shotSec ?? 5;
     const versions = (["b", "a"] as const).filter((v) => manifest[v]);
 
     // ── 4. Sound: fal MMAudio per clip (one call per unique clip) ──────
@@ -263,7 +271,7 @@ export const storyboardTestFn = inngest.createFunction(
         const r = await step.run(`sfx-${v}-${shots[i].n}`, async () => {
           const { falVideoToAudio, FalLockedError } = await import("@/lib/content-factory/storyboard");
           try {
-            const audio = await falVideoToAudio(clip, shots[i].sfx);
+            const audio = await falVideoToAudio(clip, shots[i].sfx, shotSec);
             return { url: await upload(`${dir}/sfx/${v}-${shots[i].n}.m4a`, audio, "audio/mp4") };
           } catch (err) {
             if (err instanceof FalLockedError) return { locked: err.message };
@@ -281,7 +289,7 @@ export const storyboardTestFn = inngest.createFunction(
     const music = await step.run("music", async () => {
       const { pickMusicTrack } = await import("@/lib/content-factory/slideshow-reel");
       const { SHOT_SEC } = await import("@/lib/content-factory/storyboard");
-      return pickMusicTrack("mythic-picks", undefined, { minSeconds: Math.ceil(shots.length * SHOT_SEC) });
+      return pickMusicTrack("mythic-picks", undefined, { minSeconds: Math.ceil(shots.length * (manifest.sb.shotSec ?? SHOT_SEC)) });
     });
     const urls: Record<string, string> = {};
     for (const v of versions) {
@@ -299,8 +307,8 @@ export const storyboardTestFn = inngest.createFunction(
             }
             const clip = ver.clips[i];
             const buf = clip
-              ? await renderShotSegment(await fetchBuffer(clip), layer)
-              : await renderStillSegment(await fetchBuffer(ver.shots[i].base), layer);
+              ? await renderShotSegment(await fetchBuffer(clip), layer, shotSec)
+              : await renderStillSegment(await fetchBuffer(ver.shots[i].base), layer, shotSec);
             return upload(`${dir}/seg-${v}-${shots[i].n}.mp4`, buf, "video/mp4");
           })
         );
@@ -316,6 +324,7 @@ export const storyboardTestFn = inngest.createFunction(
           sfx,
           music: music ? await fetchBuffer(music) : null,
           musicFromShot: sb.musicFromShot,
+          seconds: shotSec,
         });
         return upload(`${dir}/version-${v}.mp4`, buf, "video/mp4");
       });

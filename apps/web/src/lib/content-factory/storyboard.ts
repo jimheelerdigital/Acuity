@@ -54,7 +54,7 @@ export interface StoryShot {
 export interface Storyboard {
   title: string;
   /** "film" = prestige fantasy film; "documentary" = BBC-style nature footage. */
-  style: "film" | "documentary";
+  style: "film" | "documentary" | "trailcam";
   /** Title text over shot 1, or null for no title card. */
   coverText: string | null;
   /** Question burned over the last shot, or null (question lives in the caption). */
@@ -70,6 +70,14 @@ export interface Storyboard {
   musicFromShot: number;
   /** Last shot is generated to mirror the first frame so the video loops. */
   endMatchesStart: boolean;
+  /**
+   * "raw" (2026-10-01): the next clip starts from the previous clip's EXACT
+   * last frame, untouched, so every join is pixel-identical. "edit" (the
+   * first kirin test) redrew each frame and was "not cohesive even slightly".
+   */
+  chain?: "edit" | "raw";
+  /** Clip length in seconds (Kling: 5 or 10). Default 5. */
+  shotSec?: number;
 }
 
 export const DRAGON_STORYBOARD: Storyboard = {
@@ -133,9 +141,52 @@ export const FROST_KIRIN_STORYBOARD: Storyboard = {
   ],
 };
 
+/**
+ * Trail-cam nature reveal (2026-10-01), built after the first kirin test
+ * failed ("not cohesive even slightly"): ONE fixed camera, ONE base image,
+ * two 10-second clips joined on the exact last frame. Nothing is redrawn.
+ */
+export const TRAILCAM_KIRIN_STORYBOARD: Storyboard = {
+  title: "Trail Cam: The Frost Kirin",
+  style: "trailcam",
+  coverText: null,
+  closingQuestion: null,
+  caption:
+    "Nobody believed the trail cam footage.\n\nWhat would you have done? Tell us below.\n\n#trailcam #mythicalcreatures #kirin #legendarycreatures",
+  emailSubject: "Storyboard test #2: Trail Cam Frost Kirin (one locked camera)",
+  versions: ["b"],
+  musicFromShot: 2,
+  endMatchesStart: false,
+  chain: "raw",
+  shotSec: 10,
+  refs: {
+    lake: "the shore of a misty alpine lake at dawn seen from a trail camera strapped to a pine trunk: pebbled shore in the foreground, still glassy water in the middle, dark pines and a snowy peak behind, soft fog on the water",
+    kirin:
+      "a colossal frost kirin, as tall as the pines: a deer-like body with pale silver-blue scales, a flowing white mane like mist, crystalline antlers and glowing pale-blue eyes",
+  },
+  shots: [
+    {
+      n: 1,
+      scene: "The misty lake shore at dawn from the fixed trail camera. Fog drifts on the still water. Far out in the middle of the lake, the water begins to bulge and ripple.",
+      motion: "Fog drifts slowly; for the first few seconds nothing happens, then the center of the lake starts to swell and ripple outward, and the antlers and head of a colossal frost kirin slowly rise out of the water.",
+      sfx: "birdsong, gentle lapping water, then the birds go quiet and a deep underwater rumble builds",
+      // The opening still shows only the empty lake; the kirin rises during the clip.
+      refs: ["lake"],
+    },
+    {
+      n: 2,
+      scene: "The colossal frost kirin, as tall as the pines, stands in the lake, water streaming off it.",
+      motion: "The kirin lowers its head and breathes out a wave of frost that spreads across the lake and freezes the water in a sweeping crackling sheet, then it turns and walks slowly away into the fog until it is gone. The camera never moves.",
+      sfx: "water cascading off a huge creature, a deep breath, ice cracking and freezing across a lake, heavy slow footsteps on ice fading away",
+      refs: ["lake", "kirin"],
+    },
+  ],
+};
+
 export const STORYBOARD_PRESETS: Record<string, Storyboard> = {
   dragon: DRAGON_STORYBOARD,
   kirin: FROST_KIRIN_STORYBOARD,
+  "trailcam-kirin": TRAILCAM_KIRIN_STORYBOARD,
 };
 
 /** Preset name or a full storyboard object (request JSON) → a Storyboard. */
@@ -148,7 +199,9 @@ export function resolveStoryboard(input: { preset?: string; storyboard?: Partial
     ...sb,
     versions: sb.versions?.length ? sb.versions : ["b"],
     musicFromShot: sb.musicFromShot || 1,
-    style: sb.style === "documentary" ? "documentary" : "film",
+    style: sb.style === "documentary" || sb.style === "trailcam" ? sb.style : "film",
+    chain: sb.chain === "raw" ? "raw" : "edit",
+    shotSec: sb.shotSec === 10 ? 10 : 5,
     coverText: sb.coverText ?? null,
     closingQuestion: sb.closingQuestion ?? null,
     emailSubject: sb.emailSubject || `Storyboard test: ${sb.title}`,
@@ -163,11 +216,13 @@ const DOC_LOOK =
   "Hyperreal nature-documentary footage, like a BBC wildlife film: a long telephoto lens, natural dawn light, true-to-life color, real mist and water, believable scale. It must look like real footage of a real place that happens to contain the creature. Not a cartoon, not a painting, not a render. No text, letters, logos or watermarks anywhere.";
 
 function look(sb: Storyboard): string {
-  return sb.style === "documentary" ? DOC_LOOK : FILM_LOOK;
+  return sb.style === "trailcam" ? TRAILCAM_LOOK : sb.style === "documentary" ? DOC_LOOK : FILM_LOOK;
 }
 
 function stillLead(sb: Storyboard): string {
-  return sb.style === "documentary"
+  return sb.style === "trailcam"
+    ? "A real wildlife trail-camera frame from a fixed camera, vertical composition: "
+    : sb.style === "documentary"
     ? "A breathtaking, hyper-real nature documentary frame, vertical composition: "
     : "A breathtaking, hyper-real cinematic film still, vertical composition: ";
 }
@@ -190,6 +245,9 @@ function refNames(sb: Storyboard, refs: string[]): string {
 }
 
 /** Shot image generated against the character sheet. */
+const TRAILCAM_LOOK =
+  "Real wildlife trail-camera footage: a fixed camera strapped to a tree, wide lens, natural light, slight sensor grain, true-to-life color, a believable real place. It must look like genuine footage that happens to contain the creature. Not a cartoon, not a painting, not a render. No text, letters, logos, timestamps or watermarks anywhere.";
+
 export function shotPrompt(sb: Storyboard, shot: StoryShot): string {
   return [
     `${stillLead(sb)}${shot.scene}`,
@@ -216,14 +274,19 @@ export function continuationPrompt(sb: Storyboard, shot: StoryShot, opts: { matc
 
 /** Higgsfield motion prompt. */
 export function shotMotionPrompt(sb: Storyboard, shot: StoryShot): string {
+  const sec = sb.shotSec ?? SHOT_SEC;
   return [
-    sb.style === "documentary"
-      ? "Real nature documentary footage, long telephoto lens, gentle handheld drift."
-      : "Epic cinematic fantasy film shot.",
+    sb.style === "trailcam"
+      ? "Real wildlife trail-camera footage. The camera is LOCKED OFF on a tripod and does NOT move, pan, zoom or shake at all; only things in the scene move."
+      : sb.style === "documentary"
+        ? "Real nature documentary footage, long telephoto lens, gentle handheld drift."
+        : "Epic cinematic fantasy film shot.",
     `Scene: ${shot.scene}`,
     `Action: ${shot.motion}`,
-    "Dynamic, confident movement: the subject moves clearly through the five seconds at natural speed. Realistic physics, no morphing, no warping.",
-    "Keep every creature's design, colors and the setting exactly as in the image. The main subject stays in frame. No text, no new creatures or people, no scene cuts.",
+    `Natural, continuous movement through all ${sec} seconds at real-world speed. Realistic physics, no morphing, no warping, no sudden changes.`,
+    sb.style === "trailcam"
+      ? "Keep the setting exactly as in the image: same shore, water, trees, light and framing for the whole clip. The camera never moves. The creature described in the action is the only thing that appears. No text, no people, no scene cuts."
+      : "Keep every creature's design, colors and the setting exactly as in the image. The main subject stays in frame. No text, no new creatures or people, no scene cuts.",
   ].join(" ");
 }
 
