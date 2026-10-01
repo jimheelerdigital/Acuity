@@ -40,6 +40,31 @@ The first scene test ("not cohesive even slightly") redrew a new picture for eve
   - Frames are compared right at the join.
   - Frames are reviewed every 0.5s around the join.
 
+## [2026-10-01] — "Winner" now means paid trials at $50 or less
+
+- **Requested by:** Keenan
+- **Committed by:** Claude Code
+- **Commit hash:** 51e11454
+
+### In plain English (for Keenan)
+- **Winner:** an ad now only counts as a winner if it brings in paid trials at $50 or less each.
+- **Not working:** an ad that has spent $100+ at more than $100 per paid trial (or none) counts as not working, even if it gets lots of cheap signups.
+- **Why:** "Two years of noticing" was protected as a winner because of 12 cheap signups, while it cost about $200 per paying customer.
+
+### Technical changes (for Jimmy)
+- apps/web/src/lib/adlab/evergreen.ts `judgeCreatives`:
+  - winner = trials ≥ 1 and spend/trials ≤ $50.
+  - not_working = spend ≥ $100 and spend/trials > $100 (or no trials).
+  - The early signup/CTR signals are unchanged.
+  - The signup-based winner rule is removed.
+- This drives test-week graduation, the main-ad-set cap and the upload audit.
+
+### Manual steps needed
+- [ ] Keenan: pause "Two years of noticing" in the Women (purchase) ad set
+
+### Notes
+- Paid trials are counted from our own funnel events per utm_content. Meta's own purchase counts can differ (it reported 2 for "Two years of noticing"; our data shows 1).
+
 ## [2026-09-30] — Storyboard scene test generator (Frost Kirin nature reveal), test-only
 **Requested by:** Keenan
 **Committed by:** Claude Code
