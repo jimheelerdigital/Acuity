@@ -4,49 +4,58 @@
  * Trigger: Has funnel_app_store_clicked but appFirstOpenedAt still null,
  *          NOT webview-blocked (no funnel_inapp_browser_detected event).
  * Subject: "Looks like the download didn't finish"
+ *
+ * 2026-10-01: three versions, Jev picks (lib/email-jev.ts). Goal: she gets
+ * into the Ripple app, signed in, within 3 days.
  */
 
-import { escapeHtml } from "@/lib/escape-html";
-import { keenanSignature, appStoreAndPlayButtons, trialLayout , para, appAccessBlock } from "./layout";
-import type { TrialEmailTemplate, TrialVars } from "./types";
+import { appBlock, h1, hi, men, para, variant, withVariants } from "./kit";
+import type { TrialEmailTemplate } from "./types";
 
-const APP_STORE_URL =
-  "https://apps.apple.com/us/app/acuity-daily/id6762633410";
+const WEBVIEW_TIP =
+  "One tip: if you&rsquo;re tapping this inside Instagram or Facebook, their built-in browser can block the App Store. Open this email in your Mail app instead and tap the link there.";
 
-
-export const rescueTappedAppStore: TrialEmailTemplate = {
-  subject: () => "Looks like the download didn\u2019t finish",
-  html: (v: TrialVars) => {
-    const rawFirst = (v.firstName ?? "").trim();
-    const greeting = rawFirst && rawFirst !== "friend"
-      ? `Hi ${escapeHtml(rawFirst)},`
-      : "Hi there,";
-
-    const content = `
-      <tr>
-        <td style="padding-bottom:24px;">
-          <h1 style="margin:0;font-size:26px;font-weight:800;color:#1a1a1a;line-height:1.3;letter-spacing:-0.4px;">
-            Looks like the download didn\u2019t finish
-          </h1>
-        </td>
-      </tr>
-      ${para(greeting)}
-      ${para(`Looks like you went to grab the app but it didn\u2019t quite finish installing \u2014 happens all the time, usually nothing on your end.`)}
-      ${para(`Here\u2019s the direct link to pick up where you left off:`)}
-      <tr>
-        <td style="padding-bottom:20px;">
-          ${appAccessBlock(v)}
-        </td>
-      </tr>
-      ${para(`One tip: if you\u2019re tapping this from inside Instagram or Facebook, those apps have a built-in browser that can block the App Store. If it won\u2019t open, open this email from your Mail app instead and tap the link there \u2014 it\u2019ll go straight through.`)}
-      ${para(`You were basically there. This is the last step.`)}
-      ${keenanSignature()}
-    `;
-
-    return trialLayout({
-      content,
-      unsubscribeUrl: v.unsubscribeUrl,
-      preheader: "You were one tap away \u2014 here\u2019s the direct link.",
-    });
-  },
-};
+export const rescueTappedAppStore: TrialEmailTemplate = withVariants([
+  variant(
+    "download_didnt_finish",
+    "The download probably didn't finish, not her fault; here's the direct link",
+    () => "Looks like the download didn’t finish",
+    () => "You were one tap away. Here's the direct link.",
+    (v) => `
+      ${h1("Looks like the download didn&rsquo;t finish")}
+      ${hi(v)}
+      ${para("You went to get the app, but it looks like it never opened. That happens a lot, and it&rsquo;s usually nothing on your end.")}
+      ${para("Here&rsquo;s the direct way in:")}
+      ${appBlock(v)}
+      ${para(WEBVIEW_TIP)}
+    `
+  ),
+  variant(
+    "already_installed",
+    "She may already have the app on her phone; open it signed in with one tap",
+    () => "Ripple might already be on your phone",
+    () => "If it's installed, one tap opens your account.",
+    (v) => `
+      ${h1("Ripple might already be on your phone.")}
+      ${hi(v)}
+      ${para("You tapped through to the App Store, so the app may be sitting on your home screen already. If it is, tap the button below on your phone and it opens your account. No password.")}
+      ${para("If the app asks you to sign up, skip that. Your account is already made.")}
+      ${appBlock(v)}
+      ${para(WEBVIEW_TIP)}
+    `
+  ),
+  variant(
+    "first_thing_to_say",
+    "Gets her past the install by telling her the first thing to say once she's in",
+    () => "Once it opens, say this",
+    () => "Here's the way in, and the first thing to say.",
+    (v) => `
+      ${h1("Once it opens, say this.")}
+      ${hi(v)}
+      ${para("Looks like the app didn&rsquo;t open after the App Store. Here&rsquo;s the way in:")}
+      ${appBlock(v)}
+      ${para(men(v) ? "Then tap record and say: &ldquo;Here&rsquo;s what I&rsquo;m working on this week.&rdquo; Gym, calls, money, whatever. Ripple turns it into your list and tracks the habits you mention." : "Then tap record and say: &ldquo;Here&rsquo;s what&rsquo;s on my plate this week.&rdquo; Kids, work, the house, whatever. Ripple turns it into your list and tracks the habits you mention.")}
+      ${para(WEBVIEW_TIP)}
+    `
+  ),
+]);

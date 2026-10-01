@@ -4,56 +4,66 @@
  * Trigger: User has exactly 1 completed recording AND 48h+ since
  *          their last (only) recording. Replaces the old
  *          "recorded once went quiet" email.
- * Subject: "don't leave it at one..."
  *
- * Links to the installed app (web app URL), NOT the App Store —
- * these users already have the app.
+ * Links to the app (App Store link opens the installed app) + web /home.
+ *
+ * 2026-10-01: three versions, Jev picks (lib/email-jev.ts). Goal: she records
+ * her second debrief within 3 days.
  */
-
 import { escapeHtml } from "@/lib/escape-html";
-import { keenanSignature, primaryButton, secondaryButton, trialLayout , para } from "./layout";
+import { button, h1, hi, men, para, variant, webLink, withVariants } from "./kit";
 import type { TrialEmailTemplate, TrialVars } from "./types";
 
+const APP_LINK = "https://apps.apple.com/us/app/acuity-daily/id6762633410";
 
-export const stall1rec: TrialEmailTemplate = {
-  subject: () => "don\u2019t leave it at one...",
-  html: (v: TrialVars) => {
-    const rawFirst = (v.firstName ?? "").trim();
-    const greeting = rawFirst && rawFirst !== "friend"
-      ? `Hi ${escapeHtml(rawFirst)},`
-      : "Hi there,";
+function firstTasks(v: TrialVars): string {
+  return v.firstDebriefTaskCount
+    ? para(`Your first debrief turned into ${v.firstDebriefTaskCount} task${v.firstDebriefTaskCount === 1 ? "" : "s"}. Tell Ripple which ones you&rsquo;ve done and what&rsquo;s new.`)
+    : "";
+}
 
-    const appLink = "https://apps.apple.com/us/app/acuity-daily/id6762633410";
-
-    const content = `
-      <tr>
-        <td style="padding-bottom:24px;">
-          <h1 style="margin:0;font-size:26px;font-weight:800;color:#1a1a1a;line-height:1.3;letter-spacing:-0.4px;">
-            don\u2019t leave it at one...
-          </h1>
-        </td>
-      </tr>
-      ${para(greeting)}
-      ${para(`You recorded one debrief a couple days ago \u2014 and then it went quiet.`)}
-      ${para(`Here\u2019s the thing about that first one: on its own, it\u2019s just a moment. The magic doesn\u2019t happen until there\u2019s a second, a third, a few more \u2014 because that\u2019s when Ripple starts connecting the dots. The patterns, the things you keep coming back to, the quiet stuff running your week \u2014 none of that shows up from a single debrief. It needs a little more to work with.`)}
-      ${para(`You already did the hard part once. The next one\u2019s easier \u2014 you know how it feels now. Just a few minutes, whenever it suits you.`)}
-      <tr>
-        <td style="padding-bottom:8px;">
-          ${primaryButton(appLink, "Open Ripple")}
-        </td>
-      </tr>
-      <tr>
-        <td style="padding-bottom:28px;">
-          ${secondaryButton(`${v.appUrl}/home`, "Use the web version")}
-        </td>
-      </tr>
-      ${keenanSignature()}
-    `;
-
-    return trialLayout({
-      content,
-      unsubscribeUrl: v.unsubscribeUrl,
-      preheader: "You started \u2014 the magic needs a little more to work with.",
-    });
-  },
-};
+export const stall1rec: TrialEmailTemplate = withVariants([
+  variant(
+    "second_one_connects",
+    "The second debrief is when Ripple starts connecting the dots",
+    () => "The second one is where it starts",
+    () => "One debrief is a moment. Two is the start of a pattern.",
+    (v) => `
+      ${h1("The second one is where it starts.")}
+      ${hi(v)}
+      ${para("You recorded your first debrief a couple of days ago. On its own, that&rsquo;s a moment. The second one is when Ripple can start connecting the dots: what&rsquo;s still on your list, what changed, what keeps coming up.")}
+      ${firstTasks(v)}
+      ${button(APP_LINK, "Open Ripple")}
+      ${webLink(v, "Use the web version")}
+    `
+  ),
+  variant(
+    "quick_update",
+    "Tiny ask: a quick update on what got done and what's next",
+    () => "Quick update?",
+    () => "What got done, what's still hanging. Ripple keeps track.",
+    (v) => `
+      ${h1("Give Ripple a quick update.")}
+      ${hi(v)}
+      ${para("Your second debrief doesn&rsquo;t need to be big. Just: what got done, what&rsquo;s still hanging, what&rsquo;s new.")}
+      ${firstTasks(v)}
+      ${para(men(v) ? "&ldquo;Hit the gym twice, still haven&rsquo;t made that call, and I want to stop skipping breakfast.&rdquo; That&rsquo;s plenty." : "&ldquo;Got the dentist booked, still need to sort the permission slip, and the week&rsquo;s been a lot.&rdquo; That&rsquo;s plenty.")}
+      ${button(APP_LINK, "Open Ripple")}
+      ${webLink(v, "Use the web version")}
+    `
+  ),
+  variant(
+    "how_was_the_first",
+    "Personal note asking how the first debrief felt; invites a reply",
+    () => "how was your first one?",
+    () => "Tell me, or tell Ripple what happened since.",
+    (v) => `
+      ${hi(v)}
+      ${para("You tried Ripple a couple of days ago. How did it feel? If anything was off, reply and tell me. I read every one.")}
+      ${para("If it was fine and life just got busy, that&rsquo;s normal. Open the app next time something&rsquo;s on your mind and pick up where you left off.")}
+      ${v.topTheme ? para(`Ripple already picked up on <strong>${escapeHtml(v.topTheme)}</strong>. It&rsquo;ll show you more once it hears from you again.`) : ""}
+      ${button(APP_LINK, "Open Ripple")}
+      ${webLink(v, "Use the web version")}
+    `
+  ),
+]);

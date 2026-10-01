@@ -3,55 +3,59 @@
  *
  * Trigger: User has exactly 2 completed recordings AND 48h+ since
  *          their last recording.
- * Subject: "right before the good part?"
  *
- * Links to the installed app (web app URL), NOT the App Store.
+ * Links to the app (App Store link opens the installed app) + web /home.
+ *
+ * 2026-10-01: three versions, Jev picks (lib/email-jev.ts). Goal: she records
+ * her third debrief within 3 days.
  */
-
 import { escapeHtml } from "@/lib/escape-html";
-import { keenanSignature, primaryButton, secondaryButton, trialLayout , para } from "./layout";
-import type { TrialEmailTemplate, TrialVars } from "./types";
+import { button, h1, hi, men, para, variant, webLink, withVariants } from "./kit";
+import type { TrialEmailTemplate } from "./types";
 
+const APP_LINK = "https://apps.apple.com/us/app/acuity-daily/id6762633410";
 
-export const stall2rec: TrialEmailTemplate = {
-  subject: () => "right before the good part?",
-  html: (v: TrialVars) => {
-    const rawFirst = (v.firstName ?? "").trim();
-    const greeting = rawFirst && rawFirst !== "friend"
-      ? `Hi ${escapeHtml(rawFirst)},`
-      : "Hi there,";
-
-    const appLink = "https://apps.apple.com/us/app/acuity-daily/id6762633410";
-
-    const content = `
-      <tr>
-        <td style="padding-bottom:24px;">
-          <h1 style="margin:0;font-size:26px;font-weight:800;color:#1a1a1a;line-height:1.3;letter-spacing:-0.4px;">
-            right before the good part?
-          </h1>
-        </td>
-      </tr>
-      ${para(greeting)}
-      ${para(`You recorded two debriefs and then went quiet on me \u2014 and I wanted to nudge you before the thread goes cold.`)}
-      ${para(`You\u2019re actually right at the point where this starts to pay off. Two debriefs is enough for Ripple to begin noticing things; a few more and it starts handing real stuff back to you \u2014 patterns you didn\u2019t see, tasks you\u2019d have lost, a clearer read on where your week actually went.`)}
-      ${para(`You\u2019ve got momentum. It\u2019s a shame to let it stall right before the good part. A few minutes is all it takes to pick it back up.`)}
-      <tr>
-        <td style="padding-bottom:8px;">
-          ${primaryButton(appLink, "Open Ripple")}
-        </td>
-      </tr>
-      <tr>
-        <td style="padding-bottom:28px;">
-          ${secondaryButton(`${v.appUrl}/home`, "Use the web version")}
-        </td>
-      </tr>
-      ${keenanSignature()}
-    `;
-
-    return trialLayout({
-      content,
-      unsubscribeUrl: v.unsubscribeUrl,
-      preheader: "Two debriefs in, then quiet \u2014 let\u2019s keep it going.",
-    });
-  },
-};
+export const stall2rec: TrialEmailTemplate = withVariants([
+  variant(
+    "right_before_good_part",
+    "She's right at the point where patterns start showing up",
+    () => "Right before the good part",
+    () => "Two debriefs in. One more and Ripple starts handing things back.",
+    (v) => `
+      ${h1("You&rsquo;re right before the good part.")}
+      ${hi(v)}
+      ${para("Two debriefs is enough for Ripple to start noticing things. One more and it starts handing them back: what you keep mentioning, what&rsquo;s still on the list, where your week went.")}
+      ${para("Pick up wherever you left off. Open the app and tap record.")}
+      ${button(APP_LINK, "Open Ripple")}
+      ${webLink(v, "Use the web version")}
+    `
+  ),
+  variant(
+    "theme_tease",
+    "Teases the theme Ripple already noticed and asks for more",
+    (v) => (v.topTheme ? `Ripple noticed something: ${v.topTheme}` : "Ripple is starting to notice things"),
+    () => "Keep talking and it'll show you how often it comes up.",
+    (v) => `
+      ${h1("Ripple is starting to notice things.")}
+      ${hi(v)}
+      ${v.topTheme ? para(`From your first two debriefs, one thing stands out: <strong>${escapeHtml(v.topTheme)}</strong>.`) : para("From your first two debriefs, a few themes are starting to take shape.")}
+      ${para("Your next debrief tells Ripple whether that&rsquo;s a one-off or something that keeps coming up. That&rsquo;s where the useful stuff starts.")}
+      ${button(APP_LINK, "Open Ripple")}
+      ${webLink(v, "Use the web version")}
+    `
+  ),
+  variant(
+    "streak_restart",
+    "Low-pressure restart: no streak lost, just say what's happened since",
+    () => "Nothing lost. Pick it back up.",
+    () => "Tell Ripple what's happened since your last one.",
+    (v) => `
+      ${h1("Nothing lost. Pick it back up.")}
+      ${hi(v)}
+      ${para("A few quiet days don&rsquo;t undo anything. Everything you said is still there, and your list is waiting.")}
+      ${para(men(v) ? "Open Ripple and tell it what&rsquo;s happened since: what you got done, what you skipped, what&rsquo;s next." : "Open Ripple and tell it what&rsquo;s happened since: what got done, what didn&rsquo;t, what&rsquo;s on your mind now.")}
+      ${button(APP_LINK, "Open Ripple")}
+      ${webLink(v, "Use the web version")}
+    `
+  ),
+]);

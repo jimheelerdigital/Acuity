@@ -3,54 +3,56 @@
  *
  * Trigger: TRIAL user, trialEndsAt ~3 days out, totalRecordings = 0.
  *          ONLY sent to users with NO card on file / not paid.
- * Subject: "three days left..."
+ *
+ * 2026-10-01: three versions, Jev picks (lib/email-jev.ts). Goal: she records
+ * her first debrief within 3 days, before the trial ends.
  */
+import { appBlock, exampleCard, h1, hi, men, para, variant, webLink, withVariants } from "./kit";
+import type { TrialEmailTemplate } from "./types";
 
-import { escapeHtml } from "@/lib/escape-html";
-import { keenanSignature, appStoreAndPlayButtons, secondaryButton, trialLayout , para, appAccessBlock } from "./layout";
-import type { TrialEmailTemplate, TrialVars } from "./types";
-
-const APP_STORE_URL =
-  "https://apps.apple.com/us/app/acuity-daily/id6762633410";
-
-
-export const neverRecorded3day: TrialEmailTemplate = {
-  subject: () => "three days left...",
-  html: (v: TrialVars) => {
-    const rawFirst = (v.firstName ?? "").trim();
-    const greeting = rawFirst && rawFirst !== "friend"
-      ? `Hi ${escapeHtml(rawFirst)},`
-      : "Hi there,";
-
-    const content = `
-      <tr>
-        <td style="padding-bottom:24px;">
-          <h1 style="margin:0;font-size:26px;font-weight:800;color:#1a1a1a;line-height:1.3;letter-spacing:-0.4px;">
-            three days left...
-          </h1>
-        </td>
-      </tr>
-      ${para(greeting)}
-      ${para(`Your free trial has three days left, and you still haven\u2019t recorded a single debrief. I\u2019d hate for the whole thing to come and go without you ever seeing what it does.`)}
-      ${para(`You don\u2019t have to commit to anything. Just try it once. Open the app, talk for a few minutes, and let Ripple show you what it pulls out \u2014 the tasks, the patterns, the picture of your week. If it\u2019s not for you after that, no harm done.`)}
-      ${para(`But don\u2019t let it end on nothing. Give it the one shot it needs.`)}
-      <tr>
-        <td style="padding-bottom:8px;">
-          ${appAccessBlock(v)}
-        </td>
-      </tr>
-      <tr>
-        <td style="padding-bottom:28px;">
-          ${secondaryButton(`${v.appUrl}/home`, "Use the web version")}
-        </td>
-      </tr>
-      ${keenanSignature()}
-    `;
-
-    return trialLayout({
-      content,
-      unsubscribeUrl: v.unsubscribeUrl,
-      preheader: "Your trial\u2019s almost up \u2014 don\u2019t let it end on nothing.",
-    });
-  },
-};
+export const neverRecorded3day: TrialEmailTemplate = withVariants([
+  variant(
+    "see_it_once",
+    "Trial ends soon; try it once so you know if it's for you",
+    () => "Three days left to try it once",
+    (v) => `Your trial runs until ${v.trialEndsAt}. See what it does first.`,
+    (v) => `
+      ${h1("Try it once before it ends.")}
+      ${hi(v)}
+      ${para(`Your free trial runs until ${v.trialEndsAt}, and you haven&rsquo;t had a chance to see what Ripple does yet.`)}
+      ${para("One debrief is enough to know. Open the app, tap record, and say what&rsquo;s on your plate this week. If it&rsquo;s not for you, no harm done.")}
+      ${exampleCard(v)}
+      ${appBlock(v)}
+      ${webLink(v, "Use the web version")}
+    `
+  ),
+  variant(
+    "three_days_three_debriefs",
+    "Three days is enough for three debriefs and a first glimpse of patterns",
+    () => "Three days, three debriefs",
+    () => "Enough to see what keeps coming up for you.",
+    (v) => `
+      ${h1("Three days is enough to see it work.")}
+      ${hi(v)}
+      ${para(`Your trial runs until ${v.trialEndsAt}. Here&rsquo;s a simple way to use what&rsquo;s left: one debrief a day, whenever it suits you.`)}
+      ${para("Day one, you get your list. Day two, Ripple starts tracking your habits. Day three, you start seeing what keeps coming up.")}
+      ${para(men(v) ? "Start with whatever you&rsquo;re putting off this week. Open Ripple and tap record." : "Start with whatever is taking up the most room in your head this week. Open Ripple and tap record.")}
+      ${appBlock(v)}
+      ${webLink(v, "Use the web version")}
+    `
+  ),
+  variant(
+    "why_you_signed_up",
+    "Reminds her of the reason she signed up; invites a reply if something's in the way",
+    () => "you signed up for a reason",
+    () => "Still worth finding out if Ripple helps.",
+    (v) => `
+      ${hi(v)}
+      ${para(men(v) ? "Something made you sign up for Ripple. Maybe you wanted to stop losing track of things, or finally stick with a habit." : "Something made you sign up for Ripple. Maybe too much to keep track of, or wanting to finally see where your weeks go.")}
+      ${para(`That reason is probably still there. Your trial runs until ${v.trialEndsAt}, so there&rsquo;s still time to see if Ripple helps with it. Open the app, tap record, and talk about it.`)}
+      ${para("And if something got in the way, reply and tell me. I read every one.")}
+      ${appBlock(v)}
+      ${webLink(v, "Use the web version")}
+    `
+  ),
+]);

@@ -51,6 +51,8 @@ export interface MinimalUser {
   trialEndsAt: Date | null;
   totalRecordings: number;
   foundingMemberNumber: number | null;
+  /** /start-bwk etc. → men's lane in the email examples. */
+  signupLandingPath?: string | null;
 }
 
 function origin(): string {
@@ -142,6 +144,7 @@ export async function buildTrialVars(
     firstDebriefTaskCount,
     foundingMemberNumber: user.foundingMemberNumber,
     unsubscribeUrl,
+    lane: /bwk/i.test(user.signupLandingPath ?? "") ? "men" : "women",
   };
 }
 
@@ -204,6 +207,7 @@ export async function sendTrialEmail(
       totalRecordings: true,
       foundingMemberNumber: true,
       onboardingUnsubscribed: true,
+      signupLandingPath: true,
     },
   });
 
@@ -245,6 +249,7 @@ export async function sendTrialEmail(
     trialEndsAt: user.trialEndsAt,
     totalRecordings: user.totalRecordings,
     foundingMemberNumber: user.foundingMemberNumber,
+    signupLandingPath: user.signupLandingPath,
   });
 
   // Emails that ask her to get into the app carry a fresh one-tap sign-in
@@ -259,8 +264,17 @@ export async function sendTrialEmail(
     }
   }
 
-  const subject = template.subject(vars);
-  const html = template.html(vars);
+  // Several versions of this email → Jev picks one (lib/email-jev.ts).
+  let variantId: string | null = null;
+  let subject = template.subject(vars);
+  let html = template.html(vars);
+  if (template.variants?.length) {
+    const { chooseEmailVariant } = await import("@/lib/email-jev");
+    const choice = await chooseEmailVariant(user.id, emailKey, template.variants, vars);
+    variantId = choice.variant.id;
+    subject = choice.variant.subject(vars);
+    html = choice.variant.html(vars);
+  }
 
   try {
     const { sendEmailOrThrow } = await import("@/lib/resend");
@@ -298,9 +312,15 @@ export async function sendTrialEmail(
       },
     });
 
+    if (variantId) {
+      const { logVariantSent } = await import("@/lib/email-jev");
+      await logVariantSent(user.id, emailKey, variantId);
+    }
+
     safeLog.info("trial-email.sent", {
       userId: user.id,
       emailKey,
+      variantId: variantId ?? "(single)",
       resendId: resendId ?? "(missing)",
     });
 

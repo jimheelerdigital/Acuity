@@ -2,54 +2,55 @@
  * Never-Recorded Re-engagement Drip — Email 3 (Day 6)
  *
  * Sends ~3 days after email 2, only if still 0 recordings.
- * Subject: "should I take the hint?"
  * Invites replies — replyTo keenan@getacuity.io.
+ *
+ * 2026-10-01: three versions, Jev picks (lib/email-jev.ts). Goal: she records
+ * her first debrief within 3 days (replies are welcome too).
  */
+import { appBlock, h1, hi, men, para, variant, webLink, withVariants } from "./kit";
+import type { TrialEmailTemplate } from "./types";
 
-import { escapeHtml } from "@/lib/escape-html";
-import { keenanSignature, appStoreAndPlayButtons, secondaryButton, trialLayout, para, appAccessBlock } from "./layout";
-import type { TrialEmailTemplate, TrialVars } from "./types";
-
-const APP_STORE_URL =
-  "https://apps.apple.com/us/app/acuity-daily/id6762633410";
-
-export const nrWinback3: TrialEmailTemplate = {
-  subject: () => "should I take the hint?",
-  html: (v: TrialVars) => {
-    const rawFirst = (v.firstName ?? "").trim();
-    const greeting = rawFirst && rawFirst !== "friend"
-      ? `Hi ${escapeHtml(rawFirst)},`
-      : "Hi there,";
-
-    const content = `
-      <tr>
-        <td style="padding-bottom:24px;">
-          <h1 style="margin:0;font-size:26px;font-weight:800;color:#1a1a1a;line-height:1.3;letter-spacing:-0.4px;">
-            should I take the hint?
-          </h1>
-        </td>
-      </tr>
-      ${para(greeting)}
-      ${para(`This is the last one I\u2019ll send about getting started \u2014 I don\u2019t want to be the person clogging your inbox.`)}
-      ${para(`But I\u2019ll be honest: you signed up for a reason. Something in your life made you think <em>I want to get a handle on this.</em> That reason is probably still there. And the only thing standing between you and finding out if Ripple helps is a single recording \u2014 a few minutes of talking, once.`)}
-      ${para(`So either give it that one shot... or, if something\u2019s holding you back \u2014 it felt like a hassle, you weren\u2019t sure it was for you, the timing was wrong \u2014 just hit reply and tell me. I read every one, and honestly, knowing why people don\u2019t start is some of the most useful feedback I get.`)}
-      <tr>
-        <td style="padding-bottom:8px;">
-          ${appAccessBlock(v)}
-        </td>
-      </tr>
-      <tr>
-        <td style="padding-bottom:28px;">
-          ${secondaryButton(`${v.appUrl}/home`, "Use the web version")}
-        </td>
-      </tr>
-      ${keenanSignature()}
-    `;
-
-    return trialLayout({
-      content,
-      unsubscribeUrl: v.unsubscribeUrl,
-      preheader: "One last nudge \u2014 or tell me what\u2019s holding you back.",
-    });
-  },
-};
+export const nrWinback3: TrialEmailTemplate = withVariants([
+  variant(
+    "last_note_reply",
+    "Last getting-started note; try once or reply with what held her back",
+    () => "last one from me about this",
+    () => "Give it one try, or tell me what got in the way.",
+    (v) => `
+      ${hi(v)}
+      ${para("This is the last email I&rsquo;ll send about getting started. I don&rsquo;t want to crowd your inbox.")}
+      ${para("You signed up for a reason, and that reason is probably still there. One debrief is all it takes to see if Ripple helps with it.")}
+      ${para("And if something held you back, whether it felt like a hassle, wasn&rsquo;t clear, or the timing was wrong, reply and tell me. I read every one.")}
+      ${appBlock(v)}
+      ${webLink(v, "Use the web version")}
+    `
+  ),
+  variant(
+    "what_got_in_the_way",
+    "Asks directly what got in the way, with three one-word reply options",
+    () => "what got in the way?",
+    () => "One word reply is plenty. I read every one.",
+    (v) => `
+      ${hi(v)}
+      ${para("Quick question: what stopped you from trying Ripple? Reply with one word if that&rsquo;s easier:")}
+      ${para("&bull; <strong>Time</strong>, too busy to start<br/>&bull; <strong>Unsure</strong>, didn&rsquo;t know what to say<br/>&bull; <strong>Stuck</strong>, something didn&rsquo;t work")}
+      ${para("I&rsquo;ll write back. And if you&rsquo;d rather just try it, open the app and tap record.")}
+      ${appBlock(v)}
+      ${webLink(v, "Use the web version")}
+    `
+  ),
+  variant(
+    "door_open",
+    "Kind sign-off: Ripple is there whenever she's ready, with one easy first prompt",
+    () => "Whenever you're ready",
+    () => "Ripple will be here. Here's the easiest way to start.",
+    (v) => `
+      ${h1("Whenever you&rsquo;re ready.")}
+      ${hi(v)}
+      ${para("I&rsquo;ll stop nudging after this. Ripple will be here whenever you want it.")}
+      ${para(men(v) ? "When that is, start with one question: what am I putting off this week? Open the app, tap record, and answer it out loud." : "When that is, start with one question: what&rsquo;s taking up the most room in my head right now? Open the app, tap record, and answer it out loud.")}
+      ${appBlock(v)}
+      ${webLink(v, "Use the web version")}
+    `
+  ),
+]);

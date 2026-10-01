@@ -4,54 +4,56 @@
  * Trigger: Account created, never reached the download screen
  *          (no funnel_download_screen_viewed event), appFirstOpenedAt null.
  * Subject: "You did the hard part. The easy part's waiting."
+ *
+ * 2026-10-01: three versions, Jev picks (lib/email-jev.ts). Goal: she gets
+ * into the Ripple app, signed in, within 3 days.
  */
 
-import { escapeHtml } from "@/lib/escape-html";
-import { keenanSignature, appStoreAndPlayButtons, secondaryButton, trialLayout , para, appAccessBlock } from "./layout";
-import type { TrialEmailTemplate, TrialVars } from "./types";
+import { appBlock, exampleCard, h1, hi, men, para, variant, webLink, withVariants } from "./kit";
+import type { TrialEmailTemplate } from "./types";
 
-const APP_STORE_URL =
-  "https://apps.apple.com/us/app/acuity-daily/id6762633410";
-
-
-export const rescueSignupOnly: TrialEmailTemplate = {
-  subject: () => "You did the hard part. The easy part\u2019s waiting.",
-  html: (v: TrialVars) => {
-    const rawFirst = (v.firstName ?? "").trim();
-    const greeting = rawFirst && rawFirst !== "friend"
-      ? `Hi ${escapeHtml(rawFirst)},`
-      : "Hi there,";
-
-    const content = `
-      <tr>
-        <td style="padding-bottom:24px;">
-          <h1 style="margin:0;font-size:26px;font-weight:800;color:#1a1a1a;line-height:1.3;letter-spacing:-0.4px;">
-            You did the hard part. The easy part\u2019s waiting.
-          </h1>
-        </td>
-      </tr>
-      ${para(greeting)}
-      ${para(`So you signed up \u2014 and then life probably did what life does and pulled you somewhere else. Totally get it.`)}
-      ${para(`But here\u2019s the thing: you\u2019ve already done the hard part. The app \u2014 the part that actually does the work \u2014 takes about thirty seconds to grab, and you haven\u2019t yet.`)}
-      ${para(`And it\u2019s a shame, because this is where it gets good. You talk for a few minutes about your day, and Ripple quietly catches what you\u2019d otherwise lose \u2014 the task buried in a sentence, the worry you keep circling back to, the honest picture of where your week actually went. No typing. No blank page staring back at you. You just talk, and it listens.`)}
-      ${para(`Right now you\u2019ve got the door open and one foot through it. This is the other foot.`)}
-      <tr>
-        <td style="padding-bottom:8px;">
-          ${appAccessBlock(v)}
-        </td>
-      </tr>
-      <tr>
-        <td style="padding-bottom:28px;">
-          ${secondaryButton(`${v.appUrl}/home`, "Use the web version")}
-        </td>
-      </tr>
-      ${keenanSignature()}
-    `;
-
-    return trialLayout({
-      content,
-      unsubscribeUrl: v.unsubscribeUrl,
-      preheader: "You\u2019re signed up \u2014 the app is where it all actually happens.",
-    });
-  },
-};
+export const rescueSignupOnly: TrialEmailTemplate = withVariants([
+  variant(
+    "hard_part_done",
+    "She already did the hard part by signing up; getting the app is the easy part",
+    () => "You did the hard part. The easy part’s waiting.",
+    () => "You're signed up. The app is where it all happens.",
+    (v) => `
+      ${h1("You did the hard part. The easy part&rsquo;s waiting.")}
+      ${hi(v)}
+      ${para("You signed up, and then life probably pulled you somewhere else. Totally get it.")}
+      ${para("The app is the part that does the work. You talk about your week, and Ripple catches the task buried in a sentence, the habit you keep meaning to start, and what keeps coming up. No typing.")}
+      ${appBlock(v)}
+      ${webLink(v, "Use the web version")}
+    `
+  ),
+  variant(
+    "show_example",
+    "Shows exactly what she'd say and the list Ripple hands back, then the way in",
+    () => "Here's what Ripple does with one sentence",
+    () => "Say what's on your plate. Get the list back.",
+    (v) => `
+      ${h1("Here&rsquo;s what Ripple does with one sentence.")}
+      ${hi(v)}
+      ${para("You&rsquo;ve got an account but haven&rsquo;t tried the app yet. This is the whole idea:")}
+      ${exampleCard(v)}
+      ${para("That&rsquo;s your to-do list and your habits, sorted, from talking. Here&rsquo;s the way in:")}
+      ${appBlock(v)}
+      ${webLink(v, "Use the web version")}
+    `
+  ),
+  variant(
+    "quick_check_in",
+    "Short personal check-in from Keenan; offers help if something got in the way",
+    () => "quick check-in",
+    () => "You signed up but haven't opened the app. Anything I can help with?",
+    (v) => `
+      ${hi(v)}
+      ${para("Keenan here, one of the founders of Ripple. I saw you signed up but haven&rsquo;t opened the app yet.")}
+      ${para(men(v) ? "When you&rsquo;re ready, it&rsquo;s simple: open it, tap record, and talk through what you&rsquo;re working on this week. Ripple turns it into your list and tracks the habits you mention." : "When you&rsquo;re ready, it&rsquo;s simple: open it, tap record, and talk through what&rsquo;s on your plate this week. Ripple turns it into your list and tracks the habits you mention.")}
+      ${appBlock(v)}
+      ${webLink(v, "Use the web version")}
+      ${para("If something got in the way, reply and tell me. I read every one.")}
+    `
+  ),
+]);

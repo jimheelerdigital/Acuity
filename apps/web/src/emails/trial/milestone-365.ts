@@ -3,42 +3,50 @@
  *
  * Year recognition — no CTA buttons, pure acknowledgment.
  * Reply-to: keenan@getacuity.io.
+ *
+ * 2026-10-01: three versions, Jev picks (lib/email-jev.ts). Goal: she replies
+ * (no button; counted as clicks when present).
  */
-
 import { escapeHtml } from "@/lib/escape-html";
-import { keenanSignature, trialLayout , para } from "./layout";
-import type { TrialEmailTemplate, TrialVars } from "./types";
+import { h1, hi, para, variant, withVariants } from "./kit";
+import type { TrialEmailTemplate } from "./types";
 
-
-export const milestone365: TrialEmailTemplate = {
-  subject: () => "look how far you\u2019ve come",
-  html: (v: TrialVars) => {
-    const rawFirst = (v.firstName ?? "").trim();
-    const greeting = rawFirst && rawFirst !== "friend"
-      ? `Hi ${escapeHtml(rawFirst)},`
-      : "Hi there,";
-
-    const content = `
-      <tr>
-        <td style="padding-bottom:24px;">
-          <h1 style="margin:0;font-size:26px;font-weight:800;color:#1a1a1a;line-height:1.3;letter-spacing:-0.4px;">
-            look how far you\u2019ve come
-          </h1>
-        </td>
-      </tr>
-      ${para(greeting)}
-      ${para(`Three hundred and sixty-five debriefs.`)}
-      ${para(`I don\u2019t have a clever subject line for this one, because it deserves a straight one: that\u2019s a year\u2019s worth of showing up for yourself. A year of paying attention. Most people never do that for themselves once, let alone three hundred and sixty-five times.`)}
-      ${para(`Somewhere in all those debriefs is a real record of your life \u2014 what you worried about, what you worked through, what mattered, how you changed. That\u2019s not a small thing. That\u2019s the whole point of this.`)}
-      ${para(`I just wanted to stop and acknowledge it. Thank you for trusting Ripple to hold all of that. And if you ever feel like telling me what this year of debriefs has meant to you, I will read every word.`)}
-      ${para(`Here\u2019s to the next one.`)}
-      ${keenanSignature()}
-    `;
-
-    return trialLayout({
-      content,
-      unsubscribeUrl: v.unsubscribeUrl,
-      preheader: "365 debriefs. That\u2019s a year of showing up for yourself.",
-    });
-  },
-};
+export const milestone365: TrialEmailTemplate = withVariants([
+  variant(
+    "look_how_far",
+    "Straight acknowledgment of a year of debriefs, invites a reply",
+    () => "look how far you've come",
+    () => "365 debriefs. That's a year of showing up for yourself.",
+    (v) => `
+      ${h1("Look how far you&rsquo;ve come.")}
+      ${hi(v)}
+      ${para("Three hundred and sixty-five debriefs. That&rsquo;s a year of paying attention to your own life.")}
+      ${para("Somewhere in all of them is a real record: what you worried about, what you worked through, what mattered, how things changed. That&rsquo;s the whole point of this.")}
+      ${para("I just wanted to stop and acknowledge it. Thank you for trusting Ripple with all of that. If you ever want to tell me what this year has meant, I&rsquo;ll read every word.")}
+    `
+  ),
+  variant(
+    "year_in_one_line",
+    "Asks her to sum up her year of debriefs in one line, by reply",
+    () => "a year of debriefs",
+    () => "If you summed up the year in one line, what would it be?",
+    (v) => `
+      ${hi(v)}
+      ${para("You just hit 365 debriefs with Ripple. A full year of them.")}
+      ${para(v.topTheme ? `Across all of it, <strong>${escapeHtml(v.topTheme)}</strong> came up more than anything else. I&rsquo;m curious if that matches how the year felt.` : "I&rsquo;m curious how the year looks to you now, looking back.")}
+      ${para("If you summed it up in one line, what would it be? Hit reply. And thank you, truly.")}
+    `
+  ),
+  variant(
+    "thank_you",
+    "Short, warm thank-you from Keenan; no ask beyond an open invitation to reply",
+    () => "thank you",
+    () => "365 debriefs. I wanted to say it properly.",
+    (v) => `
+      ${h1("Thank you.")}
+      ${hi(v)}
+      ${para("365 debriefs. Most people never give themselves this kind of attention once, and you did it all year.")}
+      ${para("We&rsquo;re a small team, and people like you are why we keep building. Here&rsquo;s to the next year. Reply any time, I&rsquo;m always around.")}
+    `
+  ),
+]);

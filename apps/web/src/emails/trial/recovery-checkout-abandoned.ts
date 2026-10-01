@@ -9,44 +9,59 @@
  * 2026-09-24: dropped the per-branch quiz line. TrialVars never carried the
  * branch, so every user got the "overload" line whatever they answered.
  * Links to /pro-trial (the funnel paywall, where the card trial lives).
+ *
+ * 2026-10-01: three versions, Jev picks (lib/email-jev.ts). Goal: she starts
+ * the paid membership / card trial within 3 days. Same /pro-trial URL.
  */
 
 import { escapeHtml } from "@/lib/escape-html";
-import { keenanSignature, trialButton, trialLayout , para } from "./layout";
+import { button, h1, hi, men, para, variant, withVariants } from "./kit";
 import type { TrialEmailTemplate, TrialVars } from "./types";
 
-export const recoveryCheckoutAbandoned: TrialEmailTemplate = {
-  subject: () => "You were almost there",
-  html: (v: TrialVars) => {
-    const name = escapeHtml(v.firstName);
-    const appUrl = escapeHtml(v.appUrl);
-    const trialUrl = `${appUrl}/pro-trial?utm_source=email&utm_medium=recovery&utm_campaign=checkout_abandoned`;
+function trialUrl(v: TrialVars): string {
+  return `${escapeHtml(v.appUrl)}/pro-trial?utm_source=email&utm_medium=recovery&utm_campaign=checkout_abandoned`;
+}
 
-    const content = `
-      <tr>
-        <td style="padding-bottom:24px;">
-          <h1 style="margin:0;font-size:26px;font-weight:800;color:#1a1a1a;line-height:1.3;letter-spacing:-0.4px;">
-            You were almost there.
-          </h1>
-        </td>
-      </tr>
-      ${para(`Hey ${name},`)}
-      ${para(`I\u2019m Keenan, one of the founders of Ripple.`)}
-      ${para(`You got as far as checkout and stopped. That\u2019s fine. Maybe the timing was off, or you wanted to think it over.`)}
-      ${para(`Your free week of Pro is still waiting. $0 today, we email you before you\u2019re charged, and you can cancel anytime from your account.`)}
-      ${para(`If something at checkout didn\u2019t work, just reply to this email and I\u2019ll sort it out myself.`)}
-      <tr>
-        <td style="padding-bottom:28px;">
-          ${trialButton(trialUrl, "Start my free 7 days")}
-        </td>
-      </tr>
-      ${keenanSignature()}
-    `;
-
-    return trialLayout({
-      content,
-      unsubscribeUrl: v.unsubscribeUrl,
-      preheader: "Your free week of Pro is still waiting.",
-    });
-  },
-};
+export const recoveryCheckoutAbandoned: TrialEmailTemplate = withVariants([
+  variant(
+    "almost_there",
+    "Personal note from Keenan: she stopped at checkout, the free week is still waiting, reply if it broke",
+    () => "You were almost there",
+    () => "Your free week of Pro is still waiting.",
+    (v) => `
+      ${h1("You were almost there.")}
+      ${hi(v)}
+      ${para("I&rsquo;m Keenan, one of the founders of Ripple. You got as far as checkout and stopped. That&rsquo;s fine. Maybe the timing was off, or you wanted to think it over.")}
+      ${para("Your free week is still waiting. $0 today, we email you before you&rsquo;re charged, and you can cancel anytime from your account.")}
+      ${button(trialUrl(v), "Start my free 7 days")}
+      ${para("If something at checkout didn&rsquo;t work, reply and I&rsquo;ll sort it out myself.")}
+    `
+  ),
+  variant(
+    "nothing_today",
+    "Leads with the risk-free terms: $0 today, reminder before any charge, cancel anytime",
+    () => "$0 today, and a reminder before anything",
+    () => "Start free. We email you before you're ever charged.",
+    (v) => `
+      ${h1("$0 today. A reminder before anything else.")}
+      ${hi(v)}
+      ${para("If the card step gave you pause, here&rsquo;s exactly how it works:")}
+      ${para("&#10003; Nothing is charged today<br/>&#10003; We email you before your free week ends<br/>&#10003; Cancel from your account in two taps, any time")}
+      ${para("You&rsquo;re one step from your free week.")}
+      ${button(trialUrl(v), "Start my free 7 days")}
+    `
+  ),
+  variant(
+    "what_week_one_looks_like",
+    "Paints her first week with Ripple: the list, the habits, the first weekly report",
+    () => "Here's what your first week looks like",
+    () => "A list that writes itself, habits tracked, and your first weekly report.",
+    (v) => `
+      ${h1("Here&rsquo;s what your first week looks like.")}
+      ${hi(v)}
+      ${para(men(v) ? "You talk through what you&rsquo;re working on, whenever it suits you. Ripple pulls out the tasks, tracks the habits you mention (gym, sleep, money), and by the end of the week shows you what kept coming up." : "You talk through what&rsquo;s on your plate, whenever it suits you. Ripple pulls out the tasks, tracks the habits you mention, and by the end of the week shows you what kept coming up.")}
+      ${para("You stopped just before your free week started. It&rsquo;s still there: $0 today, cancel anytime.")}
+      ${button(trialUrl(v), "Start my free 7 days")}
+    `
+  ),
+]);

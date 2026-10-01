@@ -3,54 +3,56 @@
  *
  * Trigger: TRIAL or FREE (funnel) user, ~24h after signup, totalRecordings = 0.
  *          Sent to ALL trial users (card on file or not).
- * Subject: "you dropped this..."
+ *
+ * 2026-10-01: three versions, Jev picks (lib/email-jev.ts). Goal: she records
+ * her first debrief within 3 days. Replaces the old "you dropped this..." copy.
  */
+import { appBlock, exampleCard, h1, hi, men, para, variant, webLink, withVariants } from "./kit";
+import type { TrialEmailTemplate } from "./types";
 
-import { escapeHtml } from "@/lib/escape-html";
-import { keenanSignature, appStoreAndPlayButtons, secondaryButton, trialLayout , para, appAccessBlock } from "./layout";
-import type { TrialEmailTemplate, TrialVars } from "./types";
-
-const APP_STORE_URL =
-  "https://apps.apple.com/us/app/acuity-daily/id6762633410";
-
-
-export const neverRecorded24h: TrialEmailTemplate = {
-  subject: () => "you dropped this...",
-  html: (v: TrialVars) => {
-    const rawFirst = (v.firstName ?? "").trim();
-    const greeting = rawFirst && rawFirst !== "friend"
-      ? `Hi ${escapeHtml(rawFirst)},`
-      : "Hi there,";
-
-    const content = `
-      <tr>
-        <td style="padding-bottom:24px;">
-          <h1 style="margin:0;font-size:26px;font-weight:800;color:#1a1a1a;line-height:1.3;letter-spacing:-0.4px;">
-            you dropped this...
-          </h1>
-        </td>
-      </tr>
-      ${para(greeting)}
-      ${para(`You did the hard part (signing up), but looks like you dropped the whole point of Ripple... using it!`)}
-      ${para(`Here\u2019s all it is: open the app, tap record, and talk for a few minutes about whatever\u2019s on your mind \u2014 your day, what\u2019s weighing on you, what you need to get done. We handle the rest \u2014 life insights, pattern tracking, and a little more peace of mind.`)}
-      ${para(`The first one\u2019s the only one that ever feels unfamiliar. After that, it\u2019s just talking.`)}
-      <tr>
-        <td style="padding-bottom:8px;">
-          ${appAccessBlock(v)}
-        </td>
-      </tr>
-      <tr>
-        <td style="padding-bottom:28px;">
-          ${secondaryButton(`${v.appUrl}/home`, "Use the web version")}
-        </td>
-      </tr>
-      ${keenanSignature()}
-    `;
-
-    return trialLayout({
-      content,
-      unsubscribeUrl: v.unsubscribeUrl,
-      preheader: "You\u2019re in \u2014 but you left the best part behind.",
-    });
-  },
-};
+export const neverRecorded24h: TrialEmailTemplate = withVariants([
+  variant(
+    "first_one_example",
+    "Shows exactly what to say first and the list Ripple hands back",
+    () => "Your first debrief, made easy",
+    () => "Here's exactly what to say. Ripple does the sorting.",
+    (v) => `
+      ${h1("Here&rsquo;s an easy first one.")}
+      ${hi(v)}
+      ${para("You&rsquo;re all set up. The only thing left is the part where Ripple actually helps: open the app, tap record, and say what&rsquo;s on your plate this week.")}
+      ${exampleCard(v)}
+      ${para("No typing, no right way to do it. Say it the way it comes out.")}
+      ${appBlock(v)}
+      ${webLink(v, "Use the web version")}
+    `
+  ),
+  variant(
+    "one_thing",
+    "Tiny ask: say one thing you keep meaning to do",
+    () => "Just one thing",
+    () => "The thing you keep meaning to do. Say that.",
+    (v) => `
+      ${h1("Start with one thing.")}
+      ${hi(v)}
+      ${para("What&rsquo;s one thing you keep meaning to do and haven&rsquo;t?")}
+      ${para(men(v) ? "The car insurance call. Booking the haircut. Getting back to the gym. Whatever it is, open Ripple, tap record, and say it out loud." : "The dentist. The birthday gift. That email you keep starring. Whatever it is, open Ripple, tap record, and say it out loud.")}
+      ${para("Ripple turns it into a task and keeps hold of it, so you don&rsquo;t have to. That&rsquo;s your first debrief done.")}
+      ${appBlock(v)}
+      ${webLink(v, "Use the web version")}
+    `
+  ),
+  variant(
+    "personal_check_in",
+    "Warm personal note from Keenan; offers help and invites a reply",
+    () => "quick note from me",
+    () => "Getting started with Ripple, and how I can help.",
+    (v) => `
+      ${hi(v)}
+      ${para("Thanks for signing up for Ripple. I noticed you haven&rsquo;t recorded yet, which is really common on day one.")}
+      ${para("Here&rsquo;s how I&rsquo;d start: next time something&rsquo;s on your mind, open the app, tap record, and talk it through like you would to a friend. Ripple pulls out your to-do list, tracks the habits you mention, and starts noticing what keeps coming up.")}
+      ${para("If you got stuck anywhere, reply and tell me. I read every one.")}
+      ${appBlock(v)}
+      ${webLink(v, "Use the web version")}
+    `
+  ),
+]);

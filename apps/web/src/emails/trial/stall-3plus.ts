@@ -4,57 +4,60 @@
  * Trigger: User has 3+ completed recordings AND 72h+ since their
  *          last recording. Longer silence window because established
  *          users have normal gaps.
- * Subject: "everything okay?"
  *
  * Invites replies — sendTrialEmail called with
  * replyTo: "keenan@getacuity.io" (real monitored inbox).
- * Links to the installed app (web app URL), NOT the App Store.
+ * Links to the app (App Store link opens the installed app) + web /home.
+ *
+ * 2026-10-01: three versions, Jev picks (lib/email-jev.ts). Goal: she records
+ * another debrief within 3 days.
  */
-
 import { escapeHtml } from "@/lib/escape-html";
-import { keenanSignature, primaryButton, secondaryButton, trialLayout , para } from "./layout";
-import type { TrialEmailTemplate, TrialVars } from "./types";
+import { button, h1, hi, para, variant, webLink, withVariants } from "./kit";
+import type { TrialEmailTemplate } from "./types";
 
+const APP_LINK = "https://apps.apple.com/us/app/acuity-daily/id6762633410";
 
-export const stall3plus: TrialEmailTemplate = {
-  subject: () => "everything okay?",
-  html: (v: TrialVars) => {
-    const rawFirst = (v.firstName ?? "").trim();
-    const greeting = rawFirst && rawFirst !== "friend"
-      ? `Hi ${escapeHtml(rawFirst)},`
-      : "Hi there,";
-
-    const appLink = "https://apps.apple.com/us/app/acuity-daily/id6762633410";
-
-    const content = `
-      <tr>
-        <td style="padding-bottom:24px;">
-          <h1 style="margin:0;font-size:26px;font-weight:800;color:#1a1a1a;line-height:1.3;letter-spacing:-0.4px;">
-            everything okay?
-          </h1>
-        </td>
-      </tr>
-      ${para(greeting)}
-      ${para(`You\u2019ve been recording debriefs for a bit now \u2014 enough that Ripple\u2019s actually started to know your patterns. But it\u2019s been a few days since your last one, so I wanted to check in.`)}
-      ${para(`No pressure at all. Life gets busy, and a gap here and there is normal. But you\u2019ve built something real \u2014 a real picture of your weeks, your tasks, the things that keep coming up. The longer the gap, the more that picture goes stale, and I\u2019d hate for the work you\u2019ve already put in to fade out.`)}
-      ${para(`If something changed, or it stopped being useful, I\u2019d genuinely like to know \u2014 just hit reply. And if you\u2019ve just been busy, picking it back up takes a couple of minutes.`)}
-      <tr>
-        <td style="padding-bottom:8px;">
-          ${primaryButton(appLink, "Open Ripple")}
-        </td>
-      </tr>
-      <tr>
-        <td style="padding-bottom:28px;">
-          ${secondaryButton(`${v.appUrl}/home`, "Use the web version")}
-        </td>
-      </tr>
-      ${keenanSignature()}
-    `;
-
-    return trialLayout({
-      content,
-      unsubscribeUrl: v.unsubscribeUrl,
-      preheader: "You\u2019ve been at this a while \u2014 just checking in.",
-    });
-  },
-};
+export const stall3plus: TrialEmailTemplate = withVariants([
+  variant(
+    "check_in_reply",
+    "Personal check-in from Keenan; invites a reply if something changed",
+    () => "everything okay?",
+    () => "It's been a few days. Just checking in.",
+    (v) => `
+      ${hi(v)}
+      ${para(`You&rsquo;ve recorded ${v.totalRecordings} debriefs, enough that Ripple has a real picture of your weeks. It&rsquo;s been a few days since your last one, so I wanted to check in.`)}
+      ${para("Gaps are normal. If something changed or it stopped being useful, reply and tell me. And if you&rsquo;ve just been busy, pick it back up whenever.")}
+      ${button(APP_LINK, "Open Ripple")}
+      ${webLink(v, "Use the web version")}
+    `
+  ),
+  variant(
+    "picture_you_built",
+    "Reminds her of the picture she's built and what she'd see by picking up again",
+    () => "Your patterns are waiting",
+    (v) => `${v.totalRecordings} debriefs in. Here's what Ripple can see.`,
+    (v) => `
+      ${h1("You&rsquo;ve built something real here.")}
+      ${hi(v)}
+      ${para(`${v.totalRecordings} debriefs is enough for Ripple to see your patterns${v.topTheme ? `, like how often <strong>${escapeHtml(v.topTheme)}</strong> comes up` : ""}. Every new one keeps that picture current.`)}
+      ${para("Open the app and tell it what&rsquo;s happened since your last one.")}
+      ${button(APP_LINK, "Open Ripple")}
+      ${webLink(v, "Use the web version")}
+    `
+  ),
+  variant(
+    "catch_up",
+    "Easy catch-up: one debrief covering the days she missed",
+    () => "One debrief to catch up",
+    () => "Cover the last few days in one go.",
+    (v) => `
+      ${h1("Catch up in one go.")}
+      ${hi(v)}
+      ${para("No need to make up for missed days one by one. One debrief can cover the lot: what got done, what didn&rsquo;t, what&rsquo;s coming up.")}
+      ${para("Ripple sorts it into your list and keeps your habits and patterns up to date.")}
+      ${button(APP_LINK, "Open Ripple")}
+      ${webLink(v, "Use the web version")}
+    `
+  ),
+]);

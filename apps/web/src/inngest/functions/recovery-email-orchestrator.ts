@@ -416,7 +416,7 @@ export const recoveryEmailOrchestratorFn = inngest.createFunction(
       // ═══════════════════════════════════════════════════════════
       // IN THE APP, NOT RECORDING (2026-09-29, per Keenan). Keyed on the
       // first app sign-in (lib/mobile-session.ts logs app_signed_in), any
-      // plan including paid. #1 ~1h after sign-in, #2 ~1 day after.
+      // plan including paid. #1 ~30 min after sign-in (was 1h, 2026-10-01), #2 ~1 day after.
       // ═══════════════════════════════════════════════════════════
       if (hasGlobalBudget() || config.dryRun) {
         const { isInternalEmail } = await import("@/lib/internal-traffic");
@@ -441,7 +441,7 @@ export const recoveryEmailOrchestratorFn = inngest.createFunction(
             where: { userId_emailKey: { userId: u.id, emailKey: "app_first_record_1" } },
             select: { id: true },
           });
-          if (!sent1 && ageH >= 1 && ageH < 48) await trySend(u.id, "app_first_record_1");
+          if (!sent1 && ageH >= 0.5 && ageH < 48) await trySend(u.id, "app_first_record_1");
           else if (sent1 && ageH >= 24 && ageH < 96) await trySend(u.id, "app_first_record_2");
         }
       }

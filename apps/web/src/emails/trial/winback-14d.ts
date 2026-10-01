@@ -3,53 +3,57 @@
  *
  * Trigger: totalRecordings >= 1, lastRecordingAt 14+ days ago,
  *          NOT currently paying.
- * Subject: "it adds up"
+ *
+ * 2026-10-01: three versions, Jev picks (lib/email-jev.ts). Goal: she records again.
  */
-
-import { escapeHtml } from "@/lib/escape-html";
-import { keenanSignature, primaryButton, secondaryButton, trialLayout , para } from "./layout";
+import { h1, hi, men, para, primaryButton, row, variant, webLink, withVariants } from "./kit";
 import type { TrialEmailTemplate, TrialVars } from "./types";
 
+const APP_LINK = "https://apps.apple.com/us/app/acuity-daily/id6762633410";
 
-export const winback14d: TrialEmailTemplate = {
-  subject: () => "it adds up",
-  html: (v: TrialVars) => {
-    const rawFirst = (v.firstName ?? "").trim();
-    const greeting = rawFirst && rawFirst !== "friend"
-      ? `Hi ${escapeHtml(rawFirst)},`
-      : "Hi there,";
+function cta(v: TrialVars): string {
+  return `${row(primaryButton(APP_LINK, "Open Ripple"), 8)}${webLink(v, "Use the web version")}`;
+}
 
-    const appLink = "https://apps.apple.com/us/app/acuity-daily/id6762633410";
-
-    const content = `
-      <tr>
-        <td style="padding-bottom:24px;">
-          <h1 style="margin:0;font-size:26px;font-weight:800;color:#1a1a1a;line-height:1.3;letter-spacing:-0.4px;">
-            it adds up
-          </h1>
-        </td>
-      </tr>
-      ${para(greeting)}
-      ${para(`A couple weeks since your last debrief now. No pitch here \u2014 just one thing worth knowing.`)}
-      ${para(`Ripple compounds. Every debrief makes the next insight sharper, the patterns clearer, the picture of your life more complete. It\u2019s not about any single recording \u2014 it\u2019s about what builds up across them. A handful of debriefs is a moment. Dozens is a mirror.`)}
-      ${para(`That\u2019s all. The door\u2019s open whenever you want to keep building it.`)}
-      <tr>
-        <td style="padding-bottom:8px;">
-          ${primaryButton(appLink, "Open Ripple")}
-        </td>
-      </tr>
-      <tr>
-        <td style="padding-bottom:28px;">
-          ${secondaryButton(`${v.appUrl}/home`, "Use the web version")}
-        </td>
-      </tr>
-      ${keenanSignature()}
-    `;
-
-    return trialLayout({
-      content,
-      unsubscribeUrl: v.unsubscribeUrl,
-      preheader: "The more you talk to it, the sharper it gets.",
-    });
-  },
-};
+export const winback14d: TrialEmailTemplate = withVariants([
+  variant(
+    "it_adds_up",
+    "Ripple gets more useful with every debrief; patterns need more than a few",
+    () => "it adds up",
+    () => "The more you tell Ripple, the more it can show you.",
+    (v) => `
+      ${h1("It adds up.")}
+      ${hi(v)}
+      ${para("A couple of weeks since your last debrief, so just one thing worth knowing.")}
+      ${para("Ripple gets more useful the more you use it. One debrief gives you a list. A few weeks of them show you what keeps coming up, which habits actually stick, and where your week really goes.")}
+      ${para("Pick it back up whenever you&rsquo;re ready. One debrief is enough to start.")}
+      ${cta(v)}
+    `
+  ),
+  variant(
+    "fresh_start",
+    "No catching up needed: start fresh with whatever is on her plate today",
+    () => "start from today",
+    () => "No need to fill in the last two weeks. Just today.",
+    (v) => `
+      ${h1("Start from today.")}
+      ${hi(v)}
+      ${para("You don&rsquo;t have to fill in the last two weeks. Ripple doesn&rsquo;t keep score.")}
+      ${para(men(v) ? "Open it, tap record, and say what you want to get done this week: the workout, the call you keep dodging, the thing you said you&rsquo;d start. Ripple turns it into your list and tracks the habits." : "Open it, tap record, and say what&rsquo;s on your plate this week: the appointments, the errands, the thing you keep meaning to get to. Ripple turns it into your list and tracks the habits.")}
+      ${cta(v)}
+    `
+  ),
+  variant(
+    "one_thing",
+    "Tiny ask: say one thing she keeps putting off",
+    () => "one thing you keep putting off",
+    () => "Say it once to Ripple and stop carrying it around.",
+    (v) => `
+      ${hi(v)}
+      ${para("Here&rsquo;s a small one. What&rsquo;s the one thing you keep meaning to do and haven&rsquo;t?")}
+      ${para("Open Ripple and say it out loud. It goes on your list, Ripple keeps track of it, and you can stop holding it in your head.")}
+      ${para("That&rsquo;s the whole ask.")}
+      ${cta(v)}
+    `
+  ),
+]);

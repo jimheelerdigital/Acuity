@@ -4,47 +4,64 @@
  * Trigger: User has 2+ completed recordings AND first recording was
  *          at least 48 hours ago (habit forming across days, not a
  *          same-day burst). Only fires for users with < 5 recordings.
- * Subject: "You've done two. Here's where it starts to click."
  * From: Keenan from Ripple <keenan@getacuity.io> (set centrally in sendTrialEmail)
  *
  * Fires once per user. NO CTA button, NO app/web link — this is
  * purely a warm reminder of why the habit pays off.
+ *
+ * 2026-10-01: three versions, Jev picks (lib/email-jev.ts). Goal: she records
+ * another debrief within 3 days.
  */
-
 import { escapeHtml } from "@/lib/escape-html";
-import { keenanSignature, trialLayout , para } from "./layout";
+import { h1, hi, men, para, variant, withVariants } from "./kit";
 import type { TrialEmailTemplate, TrialVars } from "./types";
 
+function themeLine(v: TrialVars): string {
+  return v.topTheme
+    ? para(`One thing Ripple is already hearing from you: <strong>${escapeHtml(v.topTheme)}</strong>. Keep talking and it&rsquo;ll show you how often it comes up, and when.`)
+    : "";
+}
 
-export const keepMomentum: TrialEmailTemplate = {
-  subject: () => "You\u2019ve done two. Here\u2019s where it starts to click.",
-  html: (v: TrialVars) => {
-    const rawFirst = (v.firstName ?? "").trim();
-    const greeting = rawFirst && rawFirst !== "friend"
-      ? `Hi ${escapeHtml(rawFirst)},`
-      : "Hi there,";
-
-    const content = `
-      <tr>
-        <td style="padding-bottom:24px;">
-          <h1 style="margin:0;font-size:26px;font-weight:800;color:#1a1a1a;line-height:1.3;letter-spacing:-0.4px;">
-            You\u2019ve done two. Here\u2019s where it starts to click.
-          </h1>
-        </td>
-      </tr>
-      ${para(greeting)}
-      ${para(`You\u2019ve recorded two debriefs now. That\u2019s further than most people get.`)}
-      ${para(`Here\u2019s the thing worth knowing: the value of Ripple isn\u2019t in any single debrief. It\u2019s in what shows up across them. One debrief is a snapshot. A handful is a pattern \u2014 the stuff you keep circling back to, the things that quietly run your week, the tasks you mention and then forget. Ripple is listening for that, and it gets sharper every time you talk.`)}
-      ${para(`You\u2019re two in. A few more and it starts handing real things back to you \u2014 patterns you didn\u2019t notice, tasks you\u2019d have lost, a clearer read on where your time and energy actually go.`)}
-      ${para(`That\u2019s why the habit matters. Not because more is better for its own sake, but because the picture only forms when there\u2019s enough to see. The good news is it asks almost nothing of you \u2014 a few spoken minutes, whenever it suits you. No writing, no blank page.`)}
-      ${para(`Keep going. It compounds.`)}
-      ${keenanSignature()}
-    `;
-
-    return trialLayout({
-      content,
-      unsubscribeUrl: v.unsubscribeUrl,
-      preheader: "The pattern doesn\u2019t show up in one debrief. It shows up across them.",
-    });
-  },
-};
+export const keepMomentum: TrialEmailTemplate = withVariants([
+  variant(
+    "where_it_clicks",
+    "Two debriefs in; explains that patterns show up across debriefs, not in one",
+    () => "You've done two. Here's where it starts to click.",
+    () => "The pattern doesn't show up in one debrief. It shows up across them.",
+    (v) => `
+      ${h1("You&rsquo;ve done two. Here&rsquo;s where it starts to click.")}
+      ${hi(v)}
+      ${para(`You&rsquo;ve recorded ${v.totalRecordings} debriefs now. That&rsquo;s further than most people get.`)}
+      ${para("One debrief is a snapshot. A handful is a pattern: the things you keep coming back to, the tasks you mention and forget, where your week actually goes. Ripple gets sharper every time you talk.")}
+      ${themeLine(v)}
+      ${para("Keep going. It adds up.")}
+    `
+  ),
+  variant(
+    "whats_coming",
+    "Previews what she'll see next: weekly report, habits, recurring themes",
+    () => "What you'll see next",
+    () => "A few more debriefs and Ripple starts handing things back.",
+    (v) => `
+      ${h1("Here&rsquo;s what&rsquo;s coming.")}
+      ${hi(v)}
+      ${para(`${v.totalRecordings} debriefs in. Here&rsquo;s what a few more unlock:`)}
+      ${para("&#10003; <strong>Your weekly report</strong>, what your week was actually about<br/>&#10003; <strong>Habit tracking</strong> that fills itself in from what you say<br/>&#10003; <strong>What keeps coming up</strong>, the themes you might not notice yourself")}
+      ${themeLine(v)}
+      ${para(men(v) ? "Next time you&rsquo;re between things, open it and talk through what&rsquo;s next." : "Next time you have a quiet moment, open it and talk through what&rsquo;s on your mind.")}
+    `
+  ),
+  variant(
+    "proud_note",
+    "Short warm personal note from Keenan celebrating the habit",
+    () => "this is the hard part, and you're doing it",
+    () => "A short note from me.",
+    (v) => `
+      ${hi(v)}
+      ${para(`Just wanted to say: ${v.totalRecordings} debriefs across different days is the hardest part of building any habit, and you&rsquo;re doing it.`)}
+      ${para("Ripple works best when it hears from you regularly. No set time, no right length. Whenever something&rsquo;s on your mind, say it.")}
+      ${themeLine(v)}
+      ${para("Glad you&rsquo;re here.")}
+    `
+  ),
+]);

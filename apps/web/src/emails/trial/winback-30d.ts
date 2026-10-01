@@ -3,56 +3,59 @@
  *
  * Trigger: totalRecordings >= 1, lastRecordingAt 30+ days ago,
  *          NOT currently paying.
- * Subject: "given up?"
  * Invites replies — replyTo keenan@getacuity.io.
+ *
+ * 2026-10-01: three versions, Jev picks (lib/email-jev.ts). Goal: she records again.
  */
-
 import { escapeHtml } from "@/lib/escape-html";
-import { keenanSignature, primaryButton, secondaryButton, trialLayout , para } from "./layout";
+import { h1, hi, men, para, primaryButton, row, variant, webLink, withVariants } from "./kit";
 import type { TrialEmailTemplate, TrialVars } from "./types";
 
+const APP_LINK = "https://apps.apple.com/us/app/acuity-daily/id6762633410";
 
-export const winback30d: TrialEmailTemplate = {
-  subject: () => "given up?",
-  html: (v: TrialVars) => {
-    const rawFirst = (v.firstName ?? "").trim();
-    const greeting = rawFirst && rawFirst !== "friend"
-      ? `Hi ${escapeHtml(rawFirst)},`
-      : "Hi there,";
+function cta(v: TrialVars): string {
+  return `${row(primaryButton(APP_LINK, "Open Ripple"), 8)}${webLink(v, "Use the web version")}`;
+}
 
-    const appLink = "https://apps.apple.com/us/app/acuity-daily/id6762633410";
-
-    const content = `
-      <tr>
-        <td style="padding-bottom:24px;">
-          <h1 style="margin:0;font-size:26px;font-weight:800;color:#1a1a1a;line-height:1.3;letter-spacing:-0.4px;">
-            given up?
-          </h1>
-        </td>
-      </tr>
-      ${para(greeting)}
-      ${para(`It\u2019s been about a month, so I\u2019ll ask straight: have you given up on it?`)}
-      ${para(`No judgment if you have. But here\u2019s what I keep coming back to \u2014 you signed up for a reason. Something in your life made you think <em>I want to get a handle on this.</em> That reason didn\u2019t go away just because the habit stalled.`)}
-      ${para(`Ripple exists to help you get where you were trying to go \u2014 clearer on your patterns, on top of your tasks, less lost in the blur of your weeks. We want to help you actually get there.`)}
-      ${para(`But if something got in the way \u2014 it didn\u2019t click, it felt like work, it was missing something you needed \u2014 I really want to know. What would\u2019ve made it worth keeping? Just hit reply. I read every one, and that kind of honesty is how this gets better.`)}
-      ${para(`Your debriefs are still here. So is the reason you started.`)}
-      <tr>
-        <td style="padding-bottom:8px;">
-          ${primaryButton(appLink, "Open Ripple")}
-        </td>
-      </tr>
-      <tr>
-        <td style="padding-bottom:28px;">
-          ${secondaryButton(`${v.appUrl}/home`, "Use the web version")}
-        </td>
-      </tr>
-      ${keenanSignature()}
-    `;
-
-    return trialLayout({
-      content,
-      unsubscribeUrl: v.unsubscribeUrl,
-      preheader: "You started for a reason \u2014 let\u2019s get you there.",
-    });
-  },
-};
+export const winback30d: TrialEmailTemplate = withVariants([
+  variant(
+    "the_reason",
+    "Reminds her of why she signed up and that the reason is still there",
+    () => "the reason you signed up",
+    () => "It didn't go away just because the habit stalled.",
+    (v) => `
+      ${h1("The reason you signed up.")}
+      ${hi(v)}
+      ${para("It&rsquo;s been about a month. I&rsquo;m not writing to guilt you. Something made you want to get a better handle on things, and that probably hasn&rsquo;t gone anywhere.")}
+      ${para("Ripple is still here for exactly that: you talk, it turns it into your list, tracks your habits and shows you what keeps coming up.")}
+      ${para("If you want to give it another go, one debrief is all it takes.")}
+      ${cta(v)}
+    `
+  ),
+  variant(
+    "what_was_missing",
+    "Direct feedback ask: what would have made Ripple worth keeping, reply to Keenan",
+    () => "can I ask what happened?",
+    () => "What would have made Ripple worth keeping?",
+    (v) => `
+      ${hi(v)}
+      ${para("It&rsquo;s been about a month since your last debrief, so I&rsquo;ll just ask: what happened?")}
+      ${para("Maybe it didn&rsquo;t click. Maybe it felt like one more thing to do. Maybe it was missing something you needed. Whatever it was, I&rsquo;d really like to know. Hit reply, even one line helps.")}
+      ${para("And if it was just a busy month, your debriefs are still here.")}
+      ${cta(v)}
+    `
+  ),
+  variant(
+    "month_recap",
+    "Offers a one-debrief recap of the last month so Ripple is current again",
+    () => "a month in one debrief",
+    () => "Talk through the last month and Ripple sorts it out.",
+    (v) => `
+      ${h1("A month in one debrief.")}
+      ${hi(v)}
+      ${para(`A lot can happen in a month.${v.topTheme ? ` Last time, <strong>${escapeHtml(v.topTheme)}</strong> was what kept coming up. Is it still?` : ""}`)}
+      ${para(men(v) ? "Open Ripple and talk through the month: what moved, what stalled, what you want to get back on. It&rsquo;ll pull out your list and pick your habits back up." : "Open Ripple and talk through the month: what happened, what&rsquo;s still on your mind, what&rsquo;s coming up. It&rsquo;ll pull out your list and pick your habits back up.")}
+      ${cta(v)}
+    `
+  ),
+]);

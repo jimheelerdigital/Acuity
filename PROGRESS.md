@@ -7,6 +7,36 @@
 
 ---
 
+## [2026-10-01] — Every lifecycle email rewritten, three versions each, Jev picks which one each person gets
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** see "feat: Rewrite lifecycle emails as Jev-picked versions"
+
+### In plain English (for Keenan)
+All 30 automatic emails (getting into the app, first debrief, checkout, trial ending, win-backs, milestones) are rewritten in a shorter, warmer voice, with three versions of each. For every send, Jev looks at who the person is (Ripple or BWK, paid or not, in the app or not, how many debriefs) and at how each version has done so far, then picks the version most likely to work. Over time the versions that actually get people recording, into the app or paying win more of the sends. The old snarky subjects ("you dropped this...", "should I take the hint?") are gone, men from the BWK funnel now get examples written for them, and the "you're in the app, now record" nudge goes out 30 minutes after first sign-in instead of an hour.
+
+### Technical changes (for Jimmy)
+- `emails/trial/types.ts`: `EmailVariant {id, angle, subject, html}`, optional `TrialEmailTemplate.variants`, `TrialVars.lane` ("women" | "men")
+- New `emails/trial/kit.ts`: shared copy helpers (`variant`, `withVariants`, `hi`, `h1`, `exampleCard` lane-aware, `appBlock`, `webLink`, `button`)
+- New `lib/email-jev.ts`: `goalFor(emailKey)` (record / app / pay / click), `variantStats` (matured 72h sends vs goal hits, 10-min cache), `chooseEmailVariant` (Jev choice question; Jev's probabilities mixed with 20% uniform; Jev off or failing → best smoothed rate with 30% random), `logVariantSent`
+- `lib/trial-emails.ts`: `sendTrialEmail` picks a variant when present and logs OnboardingEvent `email_variant_sent` with value `<emailKey>:<variantId>`; `buildTrialVars` sets `lane` from `User.signupLandingPath` (contains "bwk" → men)
+- 31 templates rewritten to 3 variants each (all 30 live registry emails plus app_first_record_2); export names, triggers and CTA URLs are unchanged
+- `inngest/functions/recovery-email-orchestrator.ts`: app_first_record_1 now fires at ≥0.5h after the first app sign-in (was 1h)
+- New `app/api/admin/email-variants/route.ts` (GET, admin or CRON_SECRET bearer, optional `?key=`): per-version sends, goal hits and rate
+- New `lib/email-jev.test.ts` (4 tests: goals, both pickers, every live variant renders for both lanes with no banned phrases)
+- No schema changes
+
+### Manual steps needed
+- [ ] Push to main to deploy (Keenan: "push it")
+- [ ] The app-side activation fix (web-paid users skip the first-debrief step and the push prompt) is in Jimmy's 1.9 release (Jimmy)
+
+### Notes
+- No schema change: variants are recorded in OnboardingEvent, and results are computed from Entry rows (record), app_signed_in events (app), current subscriptionStatus PRO (pay; no paid-at timestamp, fine for comparing versions of the same email) and TrialEmailLog.clicked (click).
+- milestones 50/100/365 and winback_90d ask only for replies (no button), so their "click" goal measures little; Jev mostly picks those on fit.
+- Variant ids are the keys the results are counted on: never rename one that has sent. To retire a version, delete it; to add one, add a new id.
+- Uses the ads Jev client (`lib/adlab/jev.ts`, either JEV_API_KEY or OPENROUTER_API_KEY); logged as ClaudeCallLog `jev:adlab:email:<key>`.
+- Copy removed: "takes about thirty seconds", "talk for a few minutes", the unverified "top 1%" in milestone_100.
+
 ## [2026-10-01] — $10/day Facebook Page-likes campaign for Legendary Mythicals
 **Requested by:** Keenan
 **Committed by:** Claude Code

@@ -2,56 +2,55 @@
  * Never-Recorded Re-engagement Drip — Email 2 (Day 3)
  *
  * Sends ~2 days after email 1, only if still 0 recordings.
- * Subject: "here's what one debrief gets you"
+ *
+ * 2026-10-01: three versions, Jev picks (lib/email-jev.ts). Goal: she records
+ * her first debrief within 3 days.
  */
+import { appBlock, exampleCard, h1, hi, men, para, variant, webLink, withVariants } from "./kit";
+import type { TrialEmailTemplate } from "./types";
 
-import { escapeHtml } from "@/lib/escape-html";
-import { keenanSignature, appStoreAndPlayButtons, secondaryButton, trialLayout, para, appAccessBlock } from "./layout";
-import type { TrialEmailTemplate, TrialVars } from "./types";
-
-const APP_STORE_URL =
-  "https://apps.apple.com/us/app/acuity-daily/id6762633410";
-
-export const nrWinback2: TrialEmailTemplate = {
-  subject: () => "here\u2019s what one debrief gets you",
-  html: (v: TrialVars) => {
-    const rawFirst = (v.firstName ?? "").trim();
-    const greeting = rawFirst && rawFirst !== "friend"
-      ? `Hi ${escapeHtml(rawFirst)},`
-      : "Hi there,";
-
-    const content = `
-      <tr>
-        <td style="padding-bottom:24px;">
-          <h1 style="margin:0;font-size:26px;font-weight:800;color:#1a1a1a;line-height:1.3;letter-spacing:-0.4px;">
-            here\u2019s what one debrief gets you
-          </h1>
-        </td>
-      </tr>
-      ${para(greeting)}
-      ${para(`Still haven\u2019t recorded your first debrief \u2014 so let me show you what\u2019s actually waiting, because it\u2019s more than you\u2019d think for a few spoken minutes.`)}
-      ${para(`One debrief gets you:<br/>
-\u2014 Your tasks, pulled out automatically. The stuff you mention and forget \u2014 Ripple catches it so you don\u2019t have to hold it in your head.<br/>
-\u2014 Patterns you can\u2019t see yourself. The things you keep circling back to, quietly running your mood and your time.<br/>
-\u2014 A clear read on where your energy actually goes \u2014 across work, health, relationships, money, all of it.`)}
-      ${para(`None of that exists until you talk to it once. No writing, no blank page, no setup. Just talk.`)}
-      <tr>
-        <td style="padding-bottom:8px;">
-          ${appAccessBlock(v)}
-        </td>
-      </tr>
-      <tr>
-        <td style="padding-bottom:28px;">
-          ${secondaryButton(`${v.appUrl}/home`, "Use the web version")}
-        </td>
-      </tr>
-      ${keenanSignature()}
-    `;
-
-    return trialLayout({
-      content,
-      unsubscribeUrl: v.unsubscribeUrl,
-      preheader: "You haven\u2019t tried it yet \u2014 here\u2019s what\u2019s on the other side.",
-    });
-  },
-};
+export const nrWinback2: TrialEmailTemplate = withVariants([
+  variant(
+    "before_after_list",
+    "Shows a messy spoken sentence turning into a clean list",
+    () => "What one debrief gets you",
+    () => "You say it messy. Ripple hands it back sorted.",
+    (v) => `
+      ${h1("Say it messy. Get it back sorted.")}
+      ${hi(v)}
+      ${para("You don&rsquo;t need to organize anything before you talk. Here&rsquo;s what a first debrief can look like:")}
+      ${exampleCard(v, "You say:")}
+      ${para("Open Ripple and tap record. That&rsquo;s the whole first step.")}
+      ${appBlock(v)}
+      ${webLink(v, "Use the web version")}
+    `
+  ),
+  variant(
+    "no_blank_page",
+    "No writing, no blank page, no setup: just talk",
+    () => "No writing. No setup.",
+    () => "If journaling never stuck, this is different.",
+    (v) => `
+      ${h1("No writing. No blank page.")}
+      ${hi(v)}
+      ${para(men(v) ? "If writing things down never stuck for you, that&rsquo;s exactly who Ripple is for. You just talk." : "If journaling or to-do apps never stuck for you, that&rsquo;s exactly who Ripple is for. You just talk.")}
+      ${para("Open the app, tap record, and say what&rsquo;s on your mind. Ripple pulls out the tasks, tracks the habits, and keeps it all in one place.")}
+      ${appBlock(v)}
+      ${webLink(v, "Use the web version")}
+    `
+  ),
+  variant(
+    "patterns_promise",
+    "Leads with patterns: what keeps coming up, shown back to her",
+    () => "What keeps coming up for you?",
+    () => "Ripple shows you, once you start talking to it.",
+    (v) => `
+      ${h1("What keeps coming up for you?")}
+      ${hi(v)}
+      ${para(men(v) ? "Most of us have a few things that come up every week: the workout we skip, the call we avoid, the plan we keep remaking. Ripple notices them for you." : "Most of us have a few things that come up every week: the same worry, the same errand, the same thing we never get to. Ripple notices them for you.")}
+      ${para("It starts with one debrief. Open the app, tap record, and talk about your week.")}
+      ${appBlock(v)}
+      ${webLink(v, "Use the web version")}
+    `
+  ),
+]);

@@ -25,11 +25,32 @@ export interface TrialVars {
   /** One-tap "open the app already signed in" link (lib/app-access.ts).
    *  Set only for emails that ask her to get into the app. */
   signInUrl?: string | null;
+  /** Which funnel she came from (2026-10-01): "men" = BWK (/start-bwk,
+   *  /start-test-bwk), "women" = everything else. Drives example lines. */
+  lane?: "women" | "men";
+}
+
+/**
+ * One version of an email (2026-10-01, per Keenan: "writing multiple scripts
+ * per app that we feed into jev that then decides which one to use"). Every
+ * variant of an email has the same job and the same CTA; they differ in
+ * angle. lib/email-jev.ts picks one per send and learns from the results.
+ */
+export interface EmailVariant {
+  /** Stable id — never rename one that has sent, the results key on it. */
+  id: string;
+  /** One line Jev reads: the angle this version takes. */
+  angle: string;
+  subject: (v: TrialVars) => string;
+  html: (v: TrialVars) => string;
 }
 
 export interface TrialEmailTemplate {
   subject: (v: TrialVars) => string;
   html: (v: TrialVars) => string;
+  /** When present, sendTrialEmail sends one of these (picked by Jev) and
+   *  subject/html above are only the admin-preview default. */
+  variants?: EmailVariant[];
 }
 
 export type TrialEmailKey =
