@@ -7,6 +7,33 @@
 
 ---
 
+## [2026-09-30] — Songs must be at least as long as the reel (no more looping)
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** see "fix: Only use songs at least as long as the reel, no looping"
+
+### In plain English (for Keenan)
+Every reel now uses a song at least as long as the video, and songs no longer loop. Reels run about 34-37 seconds, so 12 short tracks drop out of rotation: BWK 5 (8 left), Mythicals 5 (6 left), Ripple 2 (12 left). The tournament reel used an 11.9-second track that looped; it was remade with a 60-second-plus song and swapped in for the old post.
+
+### Technical changes (for Jimmy)
+- `lib/content-factory/slideshow-reel.ts`:
+  - New manifest `music/_durations.json` (storage path → seconds), seeded with all 38 tracks. Unknown tracks are probed once via the new `probeAudioSeconds` and added to it.
+  - `pickMusicTrack(lane, brandOverride?, { minSeconds?, exclude? })` filters by length and exclusions, with case-insensitive manifest lookup for music/BWK vs music/bwk.
+- `lib/content-factory/living-reel.ts`: new `probeAudioSeconds(url)`. `joinPostVideo` drops `-stream_loop -1` and uses `apad` as a silent safety net.
+- `inngest/functions/carousel-post-video.ts`:
+  - Computes the reel length (segments plus CTA, if any) and passes it as `minSeconds`, plus optional `event.data.music` (minSeconds/exclude) for rebuilds.
+  - Logs the chosen track, which wasn't recorded before.
+- `inngest/functions/carousel-living-reel.ts`: a `video-requests/<id>.json` body may carry `{ "music": { "minSeconds": N, "exclude": [...] } }`, which is passed to the build.
+- `inngest/functions/social-publish-cron.ts` (slideshow fallback) passes minSeconds = slides × slide length. `slideshow-reel.ts` and `voiced-video.ts` no longer loop music.
+- Tournament remake (post cmuoupjkk0000k0g6th501p4g): video-request with minSeconds 50, excluding ssstik.io_1790723365058.mp3, plus a replace-request (deletes the old IG/FB posts, then reposts the new video).
+
+### Manual steps needed
+- [ ] If Instagram refuses the API delete (it did on 09-28 with "(#10) Insufficient permissions"), delete the old tournament reel on IG by hand (Keenan)
+
+### Notes
+- Track lengths: BWK has 5 tracks under 37s (BWK4 10s, BWK7 12s, BWK12 23s, BWK11 27s, BWK5 30s). Mythicals has five under 37s (11.9, 11.9, 15.7, 17.5, 18.1s) plus 42.7 and 49.9s. Ripple has two 16s tracks.
+- If a library has no track long enough, the build fails loudly ("No music track at least Ns long") rather than looping. Upload 60s+ tracks to keep libraries healthy.
+
 ## [2026-09-30] — Facebook numbers now feed the scoreboard
 **Requested by:** Keenan
 **Committed by:** Claude Code

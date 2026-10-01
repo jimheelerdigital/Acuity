@@ -251,6 +251,35 @@ async function fitStillTo916(image: Buffer): Promise<Buffer> {
     .toBuffer();
 }
 
+/**
+ * Length of an audio file in seconds (ffmpeg's "Duration:" line), or null.
+ * Used to keep music at least as long as the reel (2026-09-30).
+ */
+export async function probeAudioSeconds(url: string): Promise<number | null> {
+  const bin = ffmpegPath();
+  if (!bin) return null;
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "probe-"));
+  try {
+    const res = await fetch(url);
+    if (!res.ok) return null;
+    const file = path.join(dir, "a.audio");
+    fs.writeFileSync(file, Buffer.from(await res.arrayBuffer()));
+    const stderr = await new Promise<string>((resolve) => {
+      const proc = spawn(bin, ["-i", file]);
+      let err = "";
+      proc.stderr.on("data", (d) => (err += d.toString()));
+      proc.on("close", () => resolve(err));
+      proc.on("error", () => resolve(err));
+    });
+    const m = stderr.match(/Duration: (\d+):(\d+):([\d.]+)/);
+    return m ? +m[1] * 3600 + +m[2] * 60 + +m[3] : null;
+  } catch {
+    return null;
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+}
+
 function runFfmpeg(args: string[]): Promise<void> {
   const bin = ffmpegPath();
   if (!bin) return Promise.reject(new Error("ffmpeg-static binary not found in this environment"));
@@ -378,8 +407,11 @@ export async function joinPostVideo(opts: {
     const out = path.join(dir, "reel.mp4");
     await runFfmpeg([
       "-i", silent,
-      "-stream_loop", "-1", "-i", music,
-      "-filter_complex", `[1:a]atrim=0:${t.toFixed(2)},afade=t=in:st=0:d=0.3,afade=t=out:st=${(t - 1.5).toFixed(2)}:d=1.5[aout]`,
+      // No looping (2026-09-30, per Keenan: "all songs used must be at LEAST
+      // as long as the reel, no looping from now on"). The picker only
+      // offers tracks at least this long; apad is a silent safety net.
+      "-i", music,
+      "-filter_complex", `[1:a]apad,atrim=0:${t.toFixed(2)},afade=t=in:st=0:d=0.3,afade=t=out:st=${(t - 1.5).toFixed(2)}:d=1.5[aout]`,
       "-map", "0:v", "-map", "[aout]",
       "-c:v", "copy", "-c:a", "aac", "-b:a", "192k", "-movflags", "+faststart",
       "-t", t.toFixed(2), out,

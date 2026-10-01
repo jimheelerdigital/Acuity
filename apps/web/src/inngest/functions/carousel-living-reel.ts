@@ -350,20 +350,30 @@ export const livingReelQueueFn = inngest.createFunction(
       const { supabase } = await import("@/lib/supabase.server");
       const { writeVideoMarker } = await import("@/lib/content-factory/post-video");
       const { data } = await supabase.storage.from("content-factory").list("video-requests", { limit: 20 });
-      const claimed: string[] = [];
+      const claimed: { postId: string; music?: { minSeconds?: number; exclude?: string[] } }[] = [];
       for (const f of (data ?? []).filter((x) => x.name.endsWith(".json"))) {
+        // Optional body (2026-09-30): { "music": { "minSeconds": 50, "exclude": ["track.mp3"] } }
+        let music: { minSeconds?: number; exclude?: string[] } | undefined;
+        try {
+          const { data: body } = await supabase.storage.from("content-factory").download(`video-requests/${f.name}`);
+          const j = body ? JSON.parse(await body.text()) : null;
+          if (j?.music && typeof j.music === "object") music = j.music;
+        } catch {
+          // empty or non-JSON body: plain rebuild
+        }
         const { error } = await supabase.storage.from("content-factory").remove([`video-requests/${f.name}`]);
         if (error) continue;
         const postId = f.name.replace(/\.json$/, "");
         await writeVideoMarker(postId, { status: "pending" });
-        claimed.push(postId);
+        claimed.push({ postId, ...(music ? { music } : {}) });
+
       }
       return claimed;
     });
     if (videoRuns.length > 0) {
       await step.sendEvent(
         "send-video-builds",
-        videoRuns.map((postId) => ({ name: "content-factory/post-video.build" as const, data: { postId } }))
+        videoRuns.map((r) => ({ name: "content-factory/post-video.build" as const, data: r }))
       );
     }
     // Replace published slideshow posts with the Higgsfield video

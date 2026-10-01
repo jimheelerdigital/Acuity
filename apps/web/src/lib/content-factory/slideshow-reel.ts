@@ -65,10 +65,47 @@ const AUDIO_EXT = /\.(mp3|m4a|aac|wav|ogg|mp4)$/i;
  * Pick a random music track for a lane from the bucket library.
  * Returns the track's public URL, or null when no library exists yet.
  */
+/**
+ * Track lengths in seconds, keyed by storage path ("music/BWK/BWK1.mp3"),
+ * stored at music/_durations.json (2026-09-30). Unknown tracks are probed
+ * once and added, so new uploads are measured automatically.
+ */
+const DURATIONS_PATH = "music/_durations.json";
+let durationsCache: { at: number; map: Record<string, number> } | null = null;
+
+async function trackDurations(): Promise<Record<string, number>> {
+  if (durationsCache && Date.now() - durationsCache.at < 10 * 60_000) return durationsCache.map;
+  const { supabase } = await import("@/lib/supabase.server");
+  let map: Record<string, number> = {};
+  try {
+    const { data } = await supabase.storage.from("content-factory").download(DURATIONS_PATH);
+    if (data) map = JSON.parse(await data.text());
+  } catch {
+    // no manifest yet — every track gets probed
+  }
+  durationsCache = { at: Date.now(), map };
+  return map;
+}
+
+async function saveDurations(map: Record<string, number>): Promise<void> {
+  const { supabase } = await import("@/lib/supabase.server");
+  durationsCache = { at: Date.now(), map };
+  await supabase.storage
+    .from("content-factory")
+    .upload(DURATIONS_PATH, Buffer.from(JSON.stringify(map, null, 1)), { contentType: "application/json", upsert: true })
+    .catch(() => {});
+}
+
 export async function pickMusicTrack(
   lane: string | null,
   /** Skip the lane lookup (AdLab video ads pick by brand: "ripple" | "bwk"). */
-  brandOverride?: string
+  brandOverride?: string,
+  /**
+   * minSeconds: only tracks at least this long (2026-09-30, Keenan: songs
+   * must be at least as long as the reel, no looping). exclude: storage
+   * paths or file names never to pick (a remake that needs a new song).
+   */
+  opts: { minSeconds?: number; exclude?: string[] } = {}
 ): Promise<string | null> {
   const { supabase } = await import("@/lib/supabase.server");
   const { laneBrand } = await import("./social-publish");
@@ -100,7 +137,33 @@ export async function pickMusicTrack(
       .from("content-factory")
       .list(folder, { limit: 200 });
     if (error) continue;
-    const tracks = (data ?? []).filter((f) => AUDIO_EXT.test(f.name));
+    let tracks = (data ?? []).filter((f) => AUDIO_EXT.test(f.name));
+    if (opts.exclude?.length) {
+      tracks = tracks.filter((f) => !opts.exclude!.some((x) => x === f.name || x.endsWith(`/${f.name}`)));
+    }
+    if (opts.minSeconds) {
+      const durations = await trackDurations();
+      const known = (name: string) =>
+        durations[`${folder}/${name}`] ??
+        Object.entries(durations).find(([k]) => k.toLowerCase() === `${folder}/${name}`.toLowerCase())?.[1];
+      let changed = false;
+      const long: typeof tracks = [];
+      for (const f of tracks) {
+        let sec = known(f.name);
+        if (sec === undefined) {
+          const { probeAudioSeconds } = await import("./living-reel");
+          const url = supabase.storage.from("content-factory").getPublicUrl(`${folder}/${f.name}`).data.publicUrl;
+          const probed = await probeAudioSeconds(url);
+          if (probed == null) continue;
+          sec = probed;
+          durations[`${folder}/${f.name}`] = probed;
+          changed = true;
+        }
+        if (sec >= opts.minSeconds) long.push(f);
+      }
+      if (changed) await saveDurations(durations);
+      tracks = long;
+    }
     if (tracks.length === 0) continue;
     const pick = tracks[Math.floor(Math.random() * tracks.length)];
     const url = supabase.storage
@@ -166,9 +229,8 @@ export async function renderSlideshowReel(
     for (const p of imgPaths) {
       args.push("-loop", "1", "-t", slideSec.toFixed(2), "-framerate", String(FPS), "-i", p);
     }
-    // Loop the track in case it's shorter than the video; -shortest ends
-    // the encode when the (finite) video stream does.
-    args.push("-stream_loop", "-1", "-i", musicPath);
+    // No looping (2026-09-30): the picker supplies a track at least as long.
+    args.push("-i", musicPath);
 
     const filters: string[] = [];
     for (let i = 0; i < n; i++) {

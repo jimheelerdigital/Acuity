@@ -412,7 +412,11 @@ export const socialPublishCronFn = inngest.createFunction(
               const { pickMusicTrack, renderSlideshowReel } = await import(
                 "@/lib/content-factory/slideshow-reel"
               );
-              const music = await pickMusicTrack(post.lane);
+              // Song at least as long as the slideshow, no looping (2026-09-30).
+              const slideSec = post.lane?.startsWith("reset-guide") ? 6 : 3.5;
+              const music = await pickMusicTrack(post.lane, undefined, {
+                minSeconds: Math.ceil((reelSlides.length + (brand === "mythicals" ? 0 : 1)) * slideSec),
+              });
               if (!music) {
                 console.warn(
                   `[social-publish] No music library tracks for lane ${post.lane} — publishing as photo carousel instead (upload MP3s to content-factory/music/ripple or music/bwk)`

@@ -58,7 +58,11 @@ export const carouselPostVideoFn = inngest.createFunction(
     },
   },
   async ({ event, step, logger }) => {
-    const { postId } = event.data as { postId: string };
+    const { postId, music: musicOpts } = event.data as {
+      postId: string;
+      /** Rebuild options (2026-09-30): a longer minimum and songs to avoid. */
+      music?: { minSeconds?: number; exclude?: string[] };
+    };
 
     // ── 1. Plan: which slides animate, which stay still ──────────────
     const plan = await step.run("plan", async () => {
@@ -356,8 +360,15 @@ export const carouselPostVideoFn = inngest.createFunction(
         })
       );
       const live = segments.filter((sg) => !sg.still).length;
-      const music = await pickMusicTrack(plan.lane);
-      if (!music) throw new Error(`No music track for lane ${plan.lane}`);
+      // Song must cover the whole reel, no looping (2026-09-30, per Keenan).
+      const ctaSec = plan.brand === "mythicals" || (plan.lane?.startsWith("pick-") && process.env.PICK_CTA !== "1") ? 0 : 3;
+      const reelSec = segments.reduce((a, sg) => a + sg.seconds, 0) + ctaSec;
+      const music = await pickMusicTrack(plan.lane, undefined, {
+        minSeconds: Math.max(Math.ceil(reelSec), musicOpts?.minSeconds ?? 0),
+        exclude: musicOpts?.exclude,
+      });
+      if (!music) throw new Error(`No music track at least ${Math.ceil(reelSec)}s long for lane ${plan.lane}`);
+      console.log(`[post-video] ${postId}: music ${music.split("/content-factory/")[1] ?? music}`);
       const { buf, seconds } = await joinPostVideo({
         segments: bufs,
         // Legendary Mythicals posts end on their own "which will you

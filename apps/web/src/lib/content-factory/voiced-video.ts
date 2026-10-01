@@ -448,7 +448,7 @@ export async function joinVoicedVideo(opts: {
       await runFfmpeg([
         "-i", silent,
         "-i", voicePath,
-        "-stream_loop", "-1", "-i", music,
+        "-i", music,
         "-filter_complex",
         [
           `[1:a]aresample=48000,aformat=channel_layouts=stereo,apad=whole_dur=${t.toFixed(2)}[vo]`,
