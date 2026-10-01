@@ -507,6 +507,43 @@ export const livingReelQueueFn = inngest.createFunction(
       }
       return done;
     });
-    return { queued: requests.map((r) => r.postId), lanes: laneRuns, videos: videoRuns, replaced, probes };
+    // Storyboard test (2026-09-30, TEST ONLY — never posts):
+    // `storyboard-requests/<name>.json` = full build ({ "preset": "kirin" }
+    // or { "storyboard": {...} });
+    // `storyboard-requests/<name>--sfx.json` = re-run sound + assembly only.
+    const storyboards = await step.run("claim-storyboard-requests", async () => {
+      const { supabase } = await import("@/lib/supabase.server");
+      const { data } = await supabase.storage.from("content-factory").list("storyboard-requests", { limit: 5 });
+      const claimed: { name: string; mode: "full" | "sfx"; preset?: string; storyboard?: Record<string, unknown> }[] = [];
+      for (const f of (data ?? []).filter((x) => x.name.endsWith(".json"))) {
+        const p = `storyboard-requests/${f.name}`;
+        // Body: { "preset": "kirin" } or { "storyboard": { ... } }.
+        let body: { preset?: string; storyboard?: Record<string, unknown> } = {};
+        try {
+          const dl = await supabase.storage.from("content-factory").download(p);
+          body = dl.data ? JSON.parse(await dl.data.text()) : {};
+        } catch {
+          // empty or bad JSON → defaults (dragon preset)
+        }
+        const { error } = await supabase.storage.from("content-factory").remove([p]);
+        if (error) continue;
+        const base = f.name.replace(/\.json$/, "");
+        const sfx = base.endsWith("--sfx");
+        claimed.push({
+          name: sfx ? base.slice(0, -"--sfx".length) : base,
+          mode: sfx ? "sfx" : "full",
+          ...(body.preset ? { preset: body.preset } : {}),
+          ...(body.storyboard ? { storyboard: body.storyboard } : {}),
+        });
+      }
+      return claimed;
+    });
+    if (storyboards.length > 0) {
+      await step.sendEvent(
+        "send-storyboards",
+        storyboards.map((d) => ({ name: "content-factory/storyboard.test" as const, data: d }))
+      );
+    }
+    return { queued: requests.map((r) => r.postId), lanes: laneRuns, videos: videoRuns, replaced, probes, storyboards };
   }
 );

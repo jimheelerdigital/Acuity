@@ -7,6 +7,35 @@
 
 ---
 
+## [2026-09-30] — Storyboard scene test generator (Frost Kirin nature reveal), test-only
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** see "feat: Add a test-only storyboard scene generator with synced sound"
+
+### In plain English (for Keenan)
+A test tool that builds one cinematic scene out of several AI shots stitched into a single continuous take, with sound effects matched to the action. The first test is a calm misty-lake scene where a giant frost kirin rises out of the water, freezes the lake and vanishes. It's emailed to you for review and doesn't post anywhere or change any lane.
+
+### Technical changes (for Jimmy)
+- New `lib/content-factory/storyboard.ts`:
+  - data-driven `Storyboard` with `FROST_KIRIN_STORYBOARD` and `DRAGON_STORYBOARD` presets
+  - reference sheet plus multi-image `editWithReferences` (gpt-image-2)
+  - last-frame chaining for the continuous take
+  - `falVideoToAudio` (fal MMAudio v2)
+  - `assembleWithSound`: SFX lead, music bed at -13 dB swelling in from `musicFromShot`, never looped
+  - review email
+- New `inngest/functions/storyboard-test.ts` (`storyboard-test`, event `content-factory/storyboard.test`), registered in `api/inngest/route.ts`.
+- `inngest/functions/carousel-living-reel.ts`: the 5-minute queue claims `storyboard-requests/<name>.json` (body `{preset}` or `{storyboard}`); `<name>--sfx.json` re-runs sound and assembly on saved clips only.
+- Output: `storyboards/<name>/version-b.mp4` (plus `version-a.mp4` when requested), images, sfx and `manifest.json`.
+- Env: `FAL_KEY` added to Vercel production (sensitive). The fal account was topped up by Keenan, and a test call works.
+
+### Manual steps needed
+- [ ] Inngest resync after deploy (Claude, same session)
+
+### Notes
+- No posting path and no ContentLane changes ("replace nothing yet while i see if this is viable").
+- Cost about $1.50-2 per kirin run (6 shots); the dragon A+B preset is about $3.
+- Continuous take: each shot's image is an edit of the previous clip's last frame plus the reference sheet. If a clip fails, the chain resumes from the sheet.
+
 ## [2026-09-30] — Songs must be at least as long as the reel (no more looping)
 **Requested by:** Keenan
 **Committed by:** Claude Code
