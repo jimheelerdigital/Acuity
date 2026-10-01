@@ -188,7 +188,8 @@ export const carouselDailyCronFn = inngest.createFunction(
     id: "carousel-daily-cron",
     name: "Content Factory — Daily Carousel Generation",
     triggers: [
-      { cron: "0 5,6,7,8 * * *" },
+      // 9 added 2026-09-30 for the 5th daily Mythicals post.
+      { cron: "0 5,6,7,8,9 * * *" },
       // Generation trigger (cron fan-out + admin generate actions).
       { event: "content-factory/daily.generate" },
     ],
@@ -676,14 +677,28 @@ export const carouselDailyCronFn = inngest.createFunction(
       // mode "duo"/"place" (manual) overrides.
       const runAt = new Date(typeof event.ts === "number" ? event.ts : Date.now());
       const forcedMode = (event.data as { mode?: string } | undefined)?.mode;
-      const choiceMode: "choice" | "duo" | "place" =
-        forcedMode === "duo" || forcedMode === "place"
+      // 2026-09-30: no fixed lane per hour (Keenan: "i no longer want set
+      // lanes... i want random variation based on the theme post"). Each
+      // Mythicals run draws a post type at random, skipping types already
+      // posted today. Drawn inside a step so Inngest replays keep it.
+      type MythMode = "choice" | "duo" | "place" | "know" | "scenario";
+      const MYTH_MODES: MythMode[] = ["choice", "duo", "place", "know", "scenario"];
+      const choiceMode: MythMode =
+        forcedMode === "duo" || forcedMode === "place" || forcedMode === "know" || forcedMode === "scenario" || forcedMode === "choice"
           ? forcedMode
-          : runAt.getUTCHours() === 6
-            ? "duo"
-            : runAt.getUTCHours() === 7 && Math.floor(runAt.getTime() / 86_400_000) % 2 === 0
-              ? "place"
-              : "choice";
+          : await step.run("pick-post-type", async () => {
+              const { prisma } = await import("@/lib/prisma");
+              const today = new Date(runAt);
+              today.setUTCHours(0, 0, 0, 0);
+              const posted = await prisma.carouselPost.findMany({
+                where: { lane: laneKey, generatedFor: today },
+                select: { topicSlug: true },
+              });
+              const used = new Set(posted.map((p) => (p.topicSlug.match(/^mythic-(duo|place|know|scenario)-/)?.[1] ?? "choice") as MythMode));
+              const fresh = MYTH_MODES.filter((m) => !used.has(m));
+              const pool = fresh.length ? fresh : MYTH_MODES;
+              return pool[Math.floor(Math.random() * pool.length)];
+            });
       const pickBrand = choiceLane.pickBrand;
       const topic = await step.run("generate-choice-topic", async () => {
         const { prisma } = await import("@/lib/prisma");
@@ -705,7 +720,15 @@ export const carouselDailyCronFn = inngest.createFunction(
             feedback: await getLaneFeedback(laneKey),
           });
         }
-        const { generateChoiceTopic, rollChoiceCategory, CHOICE_CATEGORIES, DUO_CATEGORIES, PLACE_CATEGORIES } = await import(
+        const {
+          generateChoiceTopic,
+          rollChoiceCategory,
+          CHOICE_CATEGORIES,
+          DUO_CATEGORIES,
+          PLACE_CATEGORIES,
+          KNOW_CATEGORIES,
+          SCENARIO_CATEGORIES,
+        } = await import(
           "@/lib/content-factory/choice-lane"
         );
         const recent = await prisma.carouselPost.findMany({
@@ -730,7 +753,11 @@ export const carouselDailyCronFn = inngest.createFunction(
               ? DUO_CATEGORIES[Math.floor(Math.random() * DUO_CATEGORIES.length)]
               : choiceMode === "place"
                 ? PLACE_CATEGORIES[Math.floor(Math.random() * PLACE_CATEGORIES.length)]
-                : rollChoiceCategory(recentCats),
+                : choiceMode === "know"
+                  ? KNOW_CATEGORIES[Math.floor(Math.random() * KNOW_CATEGORIES.length)]
+                  : choiceMode === "scenario"
+                    ? SCENARIO_CATEGORIES[Math.floor(Math.random() * SCENARIO_CATEGORIES.length)]
+                    : rollChoiceCategory(recentCats),
           theme: choiceLane.spec.theme,
           recentTitles: recent.map((p) => p.headline),
           recentNames,

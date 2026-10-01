@@ -7,6 +7,41 @@
 
 ---
 
+## [2026-09-30] — Legendary Mythicals: 5 posts a day, bigger idea catalog, random post types
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** see "feat: Run Mythicals 5x a day with a wider, randomized idea catalog"
+
+### In plain English (for Keenan)
+Mythicals now posts 5 times a day (11am, 1, 3, 5 and 7pm CT). Each post randomly draws from a much bigger set of ideas modeled on the account you shared:
+- "if you know her, what armor does she choose?"
+- "you and bro", plus guild, faction and last-stand posts
+- story setups like "you cleared the dungeon, choose your legendary item"
+
+There are no fixed lanes, and a day never repeats a post type until all five are used.
+
+### Technical changes (for Jimmy)
+- `lib/content-factory/choice-lane.ts`:
+  - CHOICE (+7), DUO (+5) and PLACE (+7) categories widened.
+  - New modes `know` (KNOW_CATEGORIES + KNOW_RULES) and `scenario` (SCENARIO_CATEGORIES + SCENARIO_RULES).
+  - Mode type widened; slug prefix is `mythic-<mode>`.
+  - Best-of-5 cover rules per mode; scenario covers may end with "." instead of "?".
+- `inngest/functions/carousel-daily.ts`:
+  - The hour-to-mode mapping is replaced by a `pick-post-type` step: a random mode, excluding modes already used today in the lane (from topicSlug).
+  - Cron is now `0 5,6,7,8,9 * * *`.
+- `lib/content-factory/social-publish.ts`: `MYTHICALS_SLOTS_CT` = [11, 13, 15, 17, 19].
+- DB: ContentLane `mythic-picks` hoursUtc = [5,6,7,8,9].
+
+### Manual steps needed
+- [ ] Inngest resync after deploy: the cron changed, and deploys don't sync it (Claude, same session)
+
+### Notes
+- Cost: 5 posts × about 6 Kling clips plus images, roughly $5-6 a day for Mythicals.
+- Reference: the_mage_page_ (Keenan's screenshots). Not adopted yet:
+  - their painterly retro-fantasy art style; ours stays hyperreal
+  - 12-option "your birth month is your..." posts, which need 12-slide support
+- Next, proposed to Keenan: a performance loop where code scores past posts by type and topic, and Jev picks the daily mix with built-in exploration.
+
 ## [2026-09-30] — Pick posts: 10 answers trimmed to 5, best-of-5 photo per slide
 **Requested by:** Keenan
 **Committed by:** Claude Code

@@ -74,6 +74,15 @@ export const CHOICE_CATEGORIES = [
   "a beast from world mythology to have on their side (kitsune, qilin, griffin, kraken, fenrir, simurgh, thunderbird and more)",
   "an armored war-mount for battle",
   "a mythical creature that matches their personality",
+  // 2026-09-30: catalog widened from Keenan's reference account
+  // (the_mage_page_, doing very well with these shapes).
+  "legendary armor to wear into battle",
+  "a legendary weapon to wield",
+  "a war helm to wear",
+  "a fantasy class to be (paladin, ranger, rogue, battlemage, warlock, druid, berserker)",
+  "a mythical companion to raise from a hatchling",
+  "a beast warrior to command in a strange realm",
+  "a legendary unit to command (one choice, choose wisely)",
 ];
 
 export function rollChoiceCategory(recentCategories: string[]): string {
@@ -125,6 +134,11 @@ export const DUO_CATEGORIES = [
   "unlikely duos: a creature and a warrior from completely different legends",
   "sibling beasts and twin guardians",
   "a mage and a fighter on a quest together",
+  "which quest you and your bro accept",
+  "which faction you and your bro join when the realm goes to war",
+  "which guild you and your bro join when the guilds are recruiting",
+  "which ship you and your bro take on a sea quest",
+  "which ally you and your bro recruit in a strange realm",
 ];
 
 const DUO_RULES = `THIS POST IS A DUO POST: "who are you and your bro?" The reader picks the pair that is him and his best friend, then sends it to that friend.
@@ -148,6 +162,13 @@ export const PLACE_CATEGORIES = [
   "an arena or proving ground to fight in together",
   "a realm or city to explore with your bro",
   "a feast hall to celebrate the win",
+  "where you and your bro make your last stand when the kingdom falls",
+  "where you and your bro hide out when a plague of the undead covers the realm",
+  "which fortress you and your bro defend",
+  "which realm you and your bro enter when a portal opens",
+  "where you and your maiden go for a weekend away",
+  "which town you and your bae settle down in",
+  "your sanctuary as the realm falls",
 ];
 
 const PLACE_RULES = `THIS POST IS A PLACES POST: the options are five legendary LOCATIONS, not characters. The reader picks where he and his bro are going.
@@ -160,9 +181,58 @@ const PLACE_RULES = `THIS POST IS A PLACES POST: the options are five legendary 
 - "captionQuestion": asks which spot they're hitting and to tag the friend.
 Where these rules differ from the format above (scene, coverScene, motion), THESE win: a places post never makes a creature or hero the subject of an image. Everything else in the format above still applies.`;
 
+/**
+ * KNOW mode (2026-09-30, from Keenan's reference account): "IF YOU KNOW
+ * HER, WHAT ARMOR DOES SHE CHOOSE?" — a post built to be SENT to one
+ * specific person. Alternates him / her.
+ */
+export const KNOW_CATEGORIES = [
+  "if you know her, what legendary armor does she choose",
+  "if you know him, what legendary armor does he choose",
+  "if you know her, what weapon does she wield",
+  "if you know him, what legendary weapon does he choose",
+  "if you know her, what war helm does she choose",
+  "if you know him, what warrior is he",
+  "if you know her, what legendary mount does she ride into battle",
+  "if she ruled the realm, which queen would she be",
+];
+
+const KNOW_RULES = `THIS POST IS A "IF YOU KNOW HIM / HER" POST: the reader thinks of one specific person and sends the post to them.
+- "title": the cover question, 6-11 words, ALL-CAPS ready, ending with "?", in the shape "IF YOU KNOW HER, WHAT ARMOR DOES SHE CHOOSE?" / "IF YOU KNOW HIM, WHAT WARRIOR IS HE?" (match the subject given; new wording for the item every post).
+- Each option is one distinct item or warrior: "name" is 2-5 words ("Obsidian Valkyrie Plate", "The Sunforged Greatsword"). Each one shows a different personality (the elegant one, the wild one, the dark one, the regal one, the fierce one), so picking it says something about that person.
+- "scene": the item worn or wielded by one heroic figure of that gender, full figure or three-quarter, powerful and armored, epic setting. Women are portrayed as fierce, capable warriors in full armor, never sexualized.
+- "endCard": 2-6 words, ALL-CAPS ready, telling them to send it to that person ("SEND THIS TO HER.", "SEND IT TO HIM.", "SHE KNOWS IT'S HER.").
+- "captionQuestion": asks which number that person is and to tag them.
+Everything else in the format above still applies.`;
+
+/**
+ * SCENARIO mode (2026-09-30, from Keenan's reference account): a one-line
+ * story setup, then the choice — "YOU CLEARED THE DUNGEON. CHOOSE YOUR
+ * LEGENDARY ITEM." The setup is the hook.
+ */
+export const SCENARIO_CATEGORIES = [
+  "you cleared the dungeon: choose your legendary item",
+  "you have 100 gold: hire your mercenary company",
+  "the royal tournament begins: which event are you entering",
+  "the high priest grants you one artifact for your quest: which one",
+  "they attack at dawn: choose your legendary weapon",
+  "you've reached the final boss: choose your weapon",
+  "you've entered a strange realm: choose your unit",
+  "the quest paid enough to retire: choose your new life",
+  "a dying king offers you one reward: which one",
+];
+
+const SCENARIO_RULES = `THIS POST IS A SCENARIO POST: the cover sets up a short story moment, then asks for the choice.
+- "title": the cover, 6-12 words, ALL-CAPS ready: one short setup sentence then the choice ("YOU CLEARED THE DUNGEON. CHOOSE YOUR LEGENDARY ITEM.", "THE TOURNAMENT BEGINS. WHICH EVENT ARE YOU ENTERING?"). Use the scenario given, in fresh words.
+- Each option fits the scenario (an item, a unit, an event, a reward, a new life) and is clearly different from the others, so the pick says something about the reader. "name" is 2-5 words, easy to type in a comment.
+- "coverScene": the moment of the setup itself (a knight kneeling at an open treasure chest glowing gold; banners and a packed arena at dawn).
+- "endCard": 2-6 words asking for their pick in the scenario's voice ("CHOOSE WISELY.", "WHAT'S YOUR PICK?", "ONE CHOICE. MAKE IT.").
+Everything else in the format above still applies.`;
+
 type ChoiceTopicOpts = {
-  /** "duo" = who-are-you-and-your-bro; "place" = where you two are going. */
-  mode?: "choice" | "duo" | "place";
+  /** "duo" = who-are-you-and-your-bro; "place" = where you two are going;
+   *  "know" = if you know him/her; "scenario" = story setup + choice. */
+  mode?: "choice" | "duo" | "place" | "know" | "scenario";
   category: string;
   theme?: string;
   recentTitles: string[];
@@ -187,7 +257,7 @@ export async function generateChoiceTopic(opts: ChoiceTopicOpts): Promise<Choice
  * questions for the same five options, Jev scores all five, the top one
  * ships. Fails open to the writer's title.
  */
-async function withBestTitle(topic: ChoiceTopic, mode: "choice" | "duo" | "place"): Promise<ChoiceTopic> {
+async function withBestTitle(topic: ChoiceTopic, mode: NonNullable<ChoiceTopicOpts["mode"]>): Promise<ChoiceTopic> {
   try {
     const { pickBestCover } = await import("./cover-picker");
     const picked = await pickBestCover({
@@ -201,11 +271,15 @@ async function withBestTitle(topic: ChoiceTopic, mode: "choice" | "duo" | "place
           ? "A cover question, 4-9 words, ALL CAPS, ending with \"?\", asking which duo the reader and his bro are."
           : mode === "place"
             ? "A cover question, 4-9 words, ALL CAPS, ending with \"?\", asking where the reader and his bro are going (a tavern, hall or legendary place)."
-            : "A cover question, 4-9 words, ALL CAPS, ending with \"?\", asking which of the five the reader would choose or which one is him.",
+            : mode === "know"
+              ? "A cover question, 6-11 words, ALL CAPS, ending with \"?\", in the shape \"IF YOU KNOW HER, WHAT ARMOR DOES SHE CHOOSE?\" (same him/her and same item type as the original)."
+              : mode === "scenario"
+                ? "A cover, 6-12 words, ALL CAPS: one short story setup then the choice, ending with \"?\" or \".\" (\"YOU CLEARED THE DUNGEON. CHOOSE YOUR LEGENDARY ITEM.\"). Same scenario as the original."
+                : "A cover question, 4-9 words, ALL CAPS, ending with \"?\", asking which of the five the reader would choose or which one is him.",
     });
     const h = picked?.headline.trim();
-    if (!h || h === topic.title || !h.endsWith("?")) return topic;
-    const prefix = topic.slug.match(/^mythic(-duo|-place)?/)?.[0] ?? "mythic";
+    if (!h || h === topic.title || (mode !== "scenario" && !h.endsWith("?"))) return topic;
+    const prefix = topic.slug.match(/^mythic(-duo|-place|-know|-scenario)?/)?.[0] ?? "mythic";
     const slug = `${prefix}-${h.toLowerCase().replace(/[^a-z0-9\s-]/g, "").trim().replace(/\s+/g, "-").slice(0, 50)}`;
     console.log(`[choice-lane] best-of-5 cover "${topic.title}" -> "${h}"`);
     return { ...topic, title: h, slug };
@@ -309,7 +383,17 @@ async function generateChoiceTopicOnce(opts: ChoiceTopicOpts): Promise<ChoiceTop
 
   const response = await contentAnthropic.messages.create({
     max_tokens: 2500,
-    system: `${SYSTEM}${opts.mode === "duo" ? `\n\n${DUO_RULES}` : opts.mode === "place" ? `\n\n${PLACE_RULES}` : ""}\n\n${HUMAN_VOICE_RULES}`,
+    system: `${SYSTEM}${
+      opts.mode === "duo"
+        ? `\n\n${DUO_RULES}`
+        : opts.mode === "place"
+          ? `\n\n${PLACE_RULES}`
+          : opts.mode === "know"
+            ? `\n\n${KNOW_RULES}`
+            : opts.mode === "scenario"
+              ? `\n\n${SCENARIO_RULES}`
+              : ""
+    }\n\n${HUMAN_VOICE_RULES}`,
     messages: [{ role: "user", content: user }],
   });
   const tokensIn = response.usage.input_tokens;
@@ -379,7 +463,7 @@ async function generateChoiceTopicOnce(opts: ChoiceTopicOpts): Promise<ChoiceTop
     console.warn("[choice-lane] humanize gate failed — shipping ungated copy:", err);
   }
 
-  const slug = `${opts.mode === "duo" ? "mythic-duo" : opts.mode === "place" ? "mythic-place" : "mythic"}-${gatedTitle
+  const slug = `${opts.mode && opts.mode !== "choice" ? `mythic-${opts.mode}` : "mythic"}-${gatedTitle
     .toLowerCase()
     .replace(/[^a-z0-9\s-]/g, "")
     .trim()
@@ -404,7 +488,7 @@ async function generateChoiceTopicOnce(opts: ChoiceTopicOpts): Promise<ChoiceTop
 export function buildMythicImagePrompt(
   scene: string,
   kind: "cover" | "option",
-  mode: "choice" | "duo" | "place" = "choice"
+  mode: NonNullable<ChoiceTopicOpts["mode"]> = "choice"
 ): string {
   if (mode === "place") {
     return [
