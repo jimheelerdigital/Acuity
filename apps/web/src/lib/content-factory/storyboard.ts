@@ -54,7 +54,7 @@ export interface StoryShot {
 export interface Storyboard {
   title: string;
   /** "film" = prestige fantasy film; "documentary" = BBC-style nature footage. */
-  style: "film" | "documentary" | "trailcam";
+  style: "film" | "documentary" | "trailcam" | "locked";
   /** Title text over shot 1, or null for no title card. */
   coverText: string | null;
   /** Question burned over the last shot, or null (question lives in the caption). */
@@ -183,10 +183,49 @@ export const TRAILCAM_KIRIN_STORYBOARD: Storyboard = {
   ],
 };
 
+/** Test #3 (2026-10-01): mossy valley, a dragon flies in and settles. One action per clip. */
+export const VALLEY_DRAGON_STORYBOARD: Storyboard = {
+  title: "The Valley Dragon",
+  style: "locked",
+  coverText: null,
+  closingQuestion: null,
+  caption:
+    "We set the camera up for the waterfall.\n\nWhat would you have done? Tell us below.\n\n#dragon #mythicalcreatures #fantasy #legendarycreatures",
+  emailSubject: "Storyboard test #3: The Valley Dragon (locked camera)",
+  versions: ["b"],
+  musicFromShot: 2,
+  endMatchesStart: false,
+  chain: "raw",
+  shotSec: 10,
+  refs: {
+    valley:
+      "a deep, empty, hyperreal mossy valley in soft overcast morning light: thick emerald moss over boulders and fallen stone, a thin waterfall on the far cliff, drifting low mist, a wide flat mossy clearing in the middle ground, open grey sky above the ridgeline. No animals, no birds, no people",
+    dragon:
+      "a colossal moss-green and bronze dragon with weathered scales, huge leathery wings with torn edges, a long horned head and a heavy, believable body",
+  },
+  shots: [
+    {
+      n: 1,
+      scene: "The empty mossy valley from a camera locked on a tripod: the wide mossy clearing in the middle ground, the waterfall on the far cliff, mist drifting, open sky above the ridge. Nothing else is in the frame.",
+      motion: "For the first three seconds only the mist drifts and the waterfall falls. Then a colossal moss-green and bronze dragon glides in from off-screen at the top right, wings spread wide, and descends in a long smooth glide toward the mossy clearing, getting closer and larger.",
+      sfx: "soft wind through a valley, distant waterfall, then huge slow wingbeats approaching and a rush of air",
+      refs: ["valley"],
+    },
+    {
+      n: 2,
+      scene: "The colossal moss-green and bronze dragon is just above the mossy clearing, wings spread, about to land.",
+      motion: "The dragon lands heavily on the mossy clearing, its claws sinking into the moss, then slowly folds its huge wings against its body and settles down, lifting its head to breathe out a slow plume of mist. The camera never moves.",
+      sfx: "a heavy thud of a huge creature landing on moss, wings folding with leathery snaps, a deep slow breath and a low rumbling growl, wind and waterfall",
+      refs: ["valley", "dragon"],
+    },
+  ],
+};
+
 export const STORYBOARD_PRESETS: Record<string, Storyboard> = {
   dragon: DRAGON_STORYBOARD,
   kirin: FROST_KIRIN_STORYBOARD,
   "trailcam-kirin": TRAILCAM_KIRIN_STORYBOARD,
+  "valley-dragon": VALLEY_DRAGON_STORYBOARD,
 };
 
 /** Preset name or a full storyboard object (request JSON) → a Storyboard. */
@@ -199,7 +238,7 @@ export function resolveStoryboard(input: { preset?: string; storyboard?: Partial
     ...sb,
     versions: sb.versions?.length ? sb.versions : ["b"],
     musicFromShot: sb.musicFromShot || 1,
-    style: sb.style === "documentary" || sb.style === "trailcam" ? sb.style : "film",
+    style: sb.style === "documentary" || sb.style === "trailcam" || sb.style === "locked" ? sb.style : "film",
     chain: sb.chain === "raw" ? "raw" : "edit",
     shotSec: sb.shotSec === 10 ? 10 : 5,
     coverText: sb.coverText ?? null,
@@ -216,11 +255,19 @@ const DOC_LOOK =
   "Hyperreal nature-documentary footage, like a BBC wildlife film: a long telephoto lens, natural dawn light, true-to-life color, real mist and water, believable scale. It must look like real footage of a real place that happens to contain the creature. Not a cartoon, not a painting, not a render. No text, letters, logos or watermarks anywhere.";
 
 function look(sb: Storyboard): string {
-  return sb.style === "trailcam" ? TRAILCAM_LOOK : sb.style === "documentary" ? DOC_LOOK : FILM_LOOK;
+  return sb.style === "locked"
+    ? LOCKED_LOOK
+    : sb.style === "trailcam"
+      ? TRAILCAM_LOOK
+      : sb.style === "documentary"
+        ? DOC_LOOK
+        : FILM_LOOK;
 }
 
 function stillLead(sb: Storyboard): string {
-  return sb.style === "trailcam"
+  return sb.style === "locked"
+    ? "A hyperrealistic frame from a cinema camera locked on a tripod, vertical composition: "
+    : sb.style === "trailcam"
     ? "A real wildlife trail-camera frame from a fixed camera, vertical composition: "
     : sb.style === "documentary"
     ? "A breathtaking, hyper-real nature documentary frame, vertical composition: "
@@ -245,6 +292,11 @@ function refNames(sb: Storyboard, refs: string[]): string {
 }
 
 /** Shot image generated against the character sheet. */
+// Hyperreal fixed-camera footage (2026-10-01, test #3, Keenan: "it should
+// be hyperrealistic", "no other animals in the scene").
+const LOCKED_LOOK =
+  "Hyperrealistic live-action footage shot on a high-end cinema camera locked on a tripod: natural light, true-to-life color and texture, real moss, rock, mist and scale. It must be indistinguishable from real footage of a real place. Absolutely NO animals, birds or people anywhere unless the scene names them. Not a cartoon, not a painting, not a render, not a video-game look. No text, letters, logos, timestamps or watermarks anywhere.";
+
 const TRAILCAM_LOOK =
   "Real wildlife trail-camera footage: a fixed camera strapped to a tree, wide lens, natural light, slight sensor grain, true-to-life color, a believable real place. It must look like genuine footage that happens to contain the creature. Not a cartoon, not a painting, not a render. No text, letters, logos, timestamps or watermarks anywhere.";
 
@@ -276,7 +328,9 @@ export function continuationPrompt(sb: Storyboard, shot: StoryShot, opts: { matc
 export function shotMotionPrompt(sb: Storyboard, shot: StoryShot): string {
   const sec = sb.shotSec ?? SHOT_SEC;
   return [
-    sb.style === "trailcam"
+    sb.style === "locked"
+      ? "Hyperrealistic live-action footage. The camera is LOCKED OFF on a tripod and does NOT move, pan, zoom or shake at all; only things in the scene move."
+      : sb.style === "trailcam"
       ? "Real wildlife trail-camera footage. The camera is LOCKED OFF on a tripod and does NOT move, pan, zoom or shake at all; only things in the scene move."
       : sb.style === "documentary"
         ? "Real nature documentary footage, long telephoto lens, gentle handheld drift."
@@ -284,7 +338,7 @@ export function shotMotionPrompt(sb: Storyboard, shot: StoryShot): string {
     `Scene: ${shot.scene}`,
     `Action: ${shot.motion}`,
     `Natural, continuous movement through all ${sec} seconds at real-world speed. Realistic physics, no morphing, no warping, no sudden changes.`,
-    sb.style === "trailcam"
+    sb.style === "trailcam" || sb.style === "locked"
       ? "Keep the setting exactly as in the image: same shore, water, trees, light and framing for the whole clip. The camera never moves. The creature described in the action is the only thing that appears. No text, no people, no scene cuts."
       : "Keep every creature's design, colors and the setting exactly as in the image. The main subject stays in frame. No text, no new creatures or people, no scene cuts.",
   ].join(" ");
