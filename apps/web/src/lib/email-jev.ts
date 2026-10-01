@@ -35,7 +35,7 @@ export type EmailGoal = "record" | "app" | "pay" | "click";
 export function goalFor(emailKey: string): EmailGoal {
   if (["recovery_paid_no_app", "app_access_rescue", "apple_duplicate_rescue", "rescue_signup_only", "rescue_viewed_no_tap", "rescue_tapped_app_store", "rescue_webview_blocked"].includes(emailKey)) return "app";
   if (["recovery_signup_no_checkout", "recovery_checkout_abandoned", "trial_ending"].includes(emailKey)) return "pay";
-  if (/^(app_first_record|never_recorded|nr_winback|stall_|winback_|keep_momentum)/.test(emailKey)) return "record";
+  if (/^(app_first_record|first_debrief_followup|never_recorded|nr_winback|stall_|winback_|keep_momentum)/.test(emailKey)) return "record";
   return "click";
 }
 

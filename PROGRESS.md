@@ -7,6 +7,30 @@
 
 ---
 
+## [2026-10-01] — Two new emails: after the first debrief, and when someone cancels their trial
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** see "feat: Add first-debrief follow-up and trial-cancelled emails"
+
+### In plain English (for Keenan)
+Two gaps in the email sequence are filled. (1) About 20 hours after someone's first debrief, if they haven't done a second, they get an email showing what Ripple caught from the first one and nudging the second, which is where patterns start. Before this, nothing went out until 2 days of silence, and new users have notifications off. (2) When someone cancels during their free trial, they get one short note from Keenan: they won't be charged, they keep access until the week ends, and one tap tells us why they cancelled (the answer lands in Keenan's inbox). Both have three versions, and Jev picks one per person. Also today: Keenan reached out to Michael Hester (the possible duplicate Apple account) asking for the email he paid with.
+
+### Technical changes (for Jimmy)
+- New `emails/trial/first-debrief-followup.ts` (`first_debrief_followup`, goal "record"; uses firstDebriefTaskCount + escaped topTheme)
+- New `emails/trial/trial-cancelled.ts` (`trial_cancelled`, goal "click"; five mailto one-tap answers to keenan@heelerdigital.com)
+- Both registered in types/registry and enabled in `lib/email-enabled.ts`; `lib/email-jev.ts` goal mapping updated
+- `inngest/functions/recovery-email-orchestrator.ts`: new section, COMPLETE entries 20–40h old where the user has totalRecordings = 1 → `first_debrief_followup` (normal budget + 24h throttle)
+- **`app/api/stripe/webhook/route.ts` (BILLING-ADJACENT)**: in `customer.subscription.updated`, after `applySubscriptionState`, if status trialing + cancel_at_period_end and `previous_attributes.cancel_at_period_end === false` → `sendTrialEmail(…, "trial_cancelled")`. Wrapped in try/catch, runs after the state write, never touches billing state
+- `route.test.ts`: 2 new tests (sends on the trial cancel transition; no send for an active sub or an unrelated update); 21/21 pass
+
+### Manual steps needed
+- [ ] **Jimmy review required before push**: small best-effort addition to the Stripe webhook (see above) (Jimmy)
+- [ ] Push to main after review (Keenan: "push it"); this push also carries the earlier first-record throttle fix (4d255e14)
+
+### Notes
+- Only cancel-at-period-end is handled, the Stripe portal default. An immediate cancel (subscription.deleted mid-trial) gets no email, because the "you keep access" copy would be wrong for it.
+- Michael Hester's only address is an Apple Hide-My-Email relay. Our past lifecycle emails to relay addresses show 0 opens out of 13, so relay mail may be getting dropped. Apple only relays mail from domains registered under Sign in with Apple → "Email Communication" in the Apple Developer account. Registering getacuity.io (and goripple.io) there would fix delivery to every Hide-My-Email user (Jimmy owns the developer account).
+
 ## [2026-10-01] — "Now record your first one" email no longer waits a day behind other emails
 **Requested by:** Keenan
 **Committed by:** Claude Code

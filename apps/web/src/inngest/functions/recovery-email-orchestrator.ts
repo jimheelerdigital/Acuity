@@ -429,6 +429,35 @@ export const recoveryEmailOrchestratorFn = inngest.createFunction(
       }
 
       // ═══════════════════════════════════════════════════════════
+      // AFTER THE FIRST DEBRIEF (2026-10-01, per Keenan). ~20h after her
+      // first complete debrief, still exactly one: what Ripple caught + do
+      // the second one. Fills the gap before stall_1rec (48h+). Normal
+      // budget + 24h throttle apply.
+      // ═══════════════════════════════════════════════════════════
+      if (hasGlobalBudget() || config.dryRun) {
+        const { isInternalEmail } = await import("@/lib/internal-traffic");
+        const firstEntries = await prisma.entry.findMany({
+          where: {
+            status: "COMPLETE",
+            createdAt: { gte: new Date(now.getTime() - 40 * 3600_000), lte: new Date(now.getTime() - 20 * 3600_000) },
+          },
+          select: { userId: true },
+        });
+        const ids = [...new Set(firstEntries.map((e) => e.userId))];
+        const onlyOne = ids.length
+          ? await prisma.user.findMany({
+              where: { id: { in: ids }, totalRecordings: 1, isAdmin: false },
+              select: { id: true, email: true },
+            })
+          : [];
+        for (const u of onlyOne) {
+          if (!hasGlobalBudget() && !config.dryRun) break;
+          if (isInternalEmail(u.email)) continue;
+          await trySend(u.id, "first_debrief_followup");
+        }
+      }
+
+      // ═══════════════════════════════════════════════════════════
       // IN THE APP, NOT RECORDING (2026-09-29, per Keenan). Keyed on the
       // first app sign-in (lib/mobile-session.ts logs app_signed_in), any
       // plan including paid. #1 ~30 min after sign-in (was 1h, 2026-10-01), #2 ~1 day after.

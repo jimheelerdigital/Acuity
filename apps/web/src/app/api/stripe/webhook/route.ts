@@ -864,6 +864,30 @@ export async function POST(req: NextRequest) {
       // the PRO path relinks an unlinked or in-dunning user.
       const sub = event.data.object as Stripe.Subscription;
       await applySubscriptionState(prisma, sub, event.type);
+      // 2026-10-01: cancelled during the free trial → one personal note
+      // (no charge, access continues, one-tap "why"). Best-effort and after
+      // the state update, so it can never affect billing state. Only on the
+      // transition to cancel_at_period_end; sendTrialEmail dedupes per user.
+      if (
+        event.type === "customer.subscription.updated" &&
+        sub.status === "trialing" &&
+        sub.cancel_at_period_end &&
+        (event.data.previous_attributes as Partial<Stripe.Subscription> | undefined)?.cancel_at_period_end === false
+      ) {
+        try {
+          const users = await prisma.user.findMany({
+            where: { stripeCustomerId: sub.customer as string },
+            select: { id: true },
+          });
+          const { sendTrialEmail } = await import("@/lib/trial-emails");
+          for (const u of users) await sendTrialEmail(u.id, "trial_cancelled", { replyTo: "keenan@heelerdigital.com" });
+        } catch (err) {
+          safeLog.warn("stripe-webhook.trial-cancelled-email-failed", {
+            subscriptionId: sub.id,
+            err: err instanceof Error ? err.message : String(err),
+          });
+        }
+      }
       break;
     }
 

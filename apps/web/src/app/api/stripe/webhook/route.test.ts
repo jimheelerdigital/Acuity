@@ -209,9 +209,13 @@ vi.mock("@/lib/founder-notifications", () => ({
 vi.mock("@/lib/referrals", () => ({
   recordReferralConversion: vi.fn().mockResolvedValue(undefined),
 }));
+vi.mock("@/lib/trial-emails", () => ({
+  sendTrialEmail: vi.fn().mockResolvedValue({ sent: true }),
+}));
 
 import { POST } from "./route";
 import { sendPaymentFailedEmail } from "@/emails/payment-failed";
+import { sendTrialEmail } from "@/lib/trial-emails";
 
 // ─── Harness ──────────────────────────────────────────────────────────────
 
@@ -588,5 +592,30 @@ describe("Task 2: decline-code telemetry", () => {
     const ev = paymentEvent("funnel_payment_failed");
     expect(ev).toBeTruthy();
     expect(ev!.value).toBe("decline:unknown");
+  });
+});
+
+// ─── Trial cancelled email (2026-10-01) ───────────────────────────────────
+
+describe("trial cancelled email", () => {
+  async function sendUpdated(object: unknown, previous: Record<string, unknown>) {
+    const body = JSON.stringify({ id: `evt_${++evtSeq}`, type: "customer.subscription.updated", livemode: false, data: { object, previous_attributes: previous } });
+    return POST({ text: async () => body } as unknown as Parameters<typeof POST>[0]);
+  }
+
+  beforeEach(() => vi.mocked(sendTrialEmail).mockClear());
+
+  it("sends once when a trialing subscription switches to cancel at period end", async () => {
+    users = [user()];
+    await sendUpdated(subscription({ status: "trialing", cancel_at_period_end: true }), { cancel_at_period_end: false });
+    expect(sendTrialEmail).toHaveBeenCalledWith("u1", "trial_cancelled", expect.anything());
+    expect(users[0].subscriptionStatus).toBe("PRO");
+  });
+
+  it("does not send for an active (paid) subscription or an unrelated update", async () => {
+    users = [user()];
+    await sendUpdated(subscription({ status: "active", cancel_at_period_end: true }), { cancel_at_period_end: false });
+    await sendUpdated(subscription({ status: "trialing", cancel_at_period_end: true }), { metadata: {} });
+    expect(sendTrialEmail).not.toHaveBeenCalled();
   });
 });
