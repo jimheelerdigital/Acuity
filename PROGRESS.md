@@ -7,6 +7,27 @@
 
 ---
 
+## [2026-10-01] — $10/day Facebook Page-likes campaign for Legendary Mythicals
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** see "feat: Add an admin route to launch a Page-likes campaign"
+
+### In plain English (for Keenan)
+A 7-day, $10/day Facebook ad to grow the Legendary Mythicals Page's followers. It promotes the best-performing reel ("Which mythical creature is you?") to fantasy fans aged 18-34 in the US, Canada, the UK and Australia. The Facebook Page had 0 followers, which is why its posts were getting almost no reach.
+
+### Technical changes (for Jimmy)
+- New `app/api/admin/adlab/page-likes-campaign/route.ts` (CRON_SECRET or admin).
+  - Uses AdLab's META_ACCESS_TOKEN and META_AD_ACCOUNT_ID.
+  - Resolves interest IDs through the targeting search, then creates: an OUTCOME_ENGAGEMENT campaign; an ad set with PAGE_LIKES optimization, ON_PAGE destination, the promoted page, $10/day, a 7-day window, US/CA/GB/AU, ages 18-34, Facebook feed/reels/video feeds; a creative from the existing post's object_story_id; and the ad.
+  - Everything is created PAUSED. It's only activated when all four objects succeed and `activate: true` is passed.
+
+### Manual steps needed
+- [ ] Check Ads Manager Billing → Promotions for any Meta ad credit (credits apply automatically) (Keenan)
+- [ ] After 2-3 days: if cost per Page like is over ~$0.40, swap the post or narrow the interests (Claude/Keenan)
+
+### Notes
+- Expected cost: $0.05-0.30 per like, roughly 300-1,000 followers over the week.
+
 ## [2026-10-01] — Cinematic scene tests scrapped; Mythicals unchanged
 **Requested by:** Keenan
 **Committed by:** Claude Code
