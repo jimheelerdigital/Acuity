@@ -7,6 +7,24 @@
 
 ---
 
+## [2026-10-01] — "Now record your first one" email no longer waits a day behind other emails
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** see "fix: Let the first-record nudge skip the daily email limit"
+
+### In plain English (for Keenan)
+The email that tells someone what to say the first time they open the app now goes out 30 minutes after they sign in, even if they got another email from us earlier that day. Before this, it could be held back a full day by the "one email per day" limit, missing the moment they were actually in the app.
+
+### Technical changes (for Jimmy)
+- `inngest/functions/recovery-email-orchestrator.ts`: `trySend` accepts `skipThrottle`; only `app_first_record_1` uses it. The global daily budget and the per-key TrialEmailLog dedupe still apply
+
+### Manual steps needed
+- [ ] Push to main (Keenan: "push it")
+
+### Notes
+- Live check after the 2026-10-01 deploy: Jev picked `recovery_checkout_abandoned:almost_there` in 156 ms and the email sent; the Apple duplicate catch flagged bbfamspam ↔ Michael Hester's Apple account, sent the rescue email, and the founder alert arrived.
+- Stripe `trial_will_end` reminders are arriving and sending (4 in 30 days), so card trials do get the reminder the paywall promises.
+
 ## [2026-10-01] — Automatic rescue when a paid customer signs into the app with Apple and gets a second account
 **Requested by:** Keenan
 **Committed by:** Claude Code

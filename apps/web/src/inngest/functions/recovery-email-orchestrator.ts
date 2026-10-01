@@ -112,7 +112,7 @@ export const recoveryEmailOrchestratorFn = inngest.createFunction(
       async function trySend(
         userId: string,
         emailKey: TrialEmailKey,
-        opts?: { replyTo?: string }
+        opts?: { replyTo?: string; skipThrottle?: boolean }
       ): Promise<boolean> {
         if (config.dryRun) {
           dryRunCounts[emailKey] = (dryRunCounts[emailKey] ?? 0) + 1;
@@ -122,11 +122,11 @@ export const recoveryEmailOrchestratorFn = inngest.createFunction(
           rateLimited++;
           return false;
         }
-        if (await isThrottled(userId)) {
+        if (!opts?.skipThrottle && (await isThrottled(userId))) {
           throttled++;
           return false;
         }
-        const result = await sendTrialEmail(userId, emailKey, opts);
+        const result = await sendTrialEmail(userId, emailKey, { replyTo: opts?.replyTo });
         if (result.sent) {
           sent++;
           sentByKey[emailKey] = (sentByKey[emailKey] ?? 0) + 1;
@@ -456,7 +456,9 @@ export const recoveryEmailOrchestratorFn = inngest.createFunction(
             where: { userId_emailKey: { userId: u.id, emailKey: "app_first_record_1" } },
             select: { id: true },
           });
-          if (!sent1 && ageH >= 0.5 && ageH < 48) await trySend(u.id, "app_first_record_1");
+          // skipThrottle (2026-10-01): she just opened the app; this is the moment,
+          // so it isn't held back by a "get the app" email sent earlier that day.
+          if (!sent1 && ageH >= 0.5 && ageH < 48) await trySend(u.id, "app_first_record_1", { skipThrottle: true });
           else if (sent1 && ageH >= 24 && ageH < 96) await trySend(u.id, "app_first_record_2");
         }
       }
