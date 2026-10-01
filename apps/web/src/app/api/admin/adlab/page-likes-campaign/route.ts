@@ -121,6 +121,8 @@ export async function POST(req: NextRequest) {
         age_max: 34,
         ...(interests.length ? { flexible_spec: [{ interests }] } : {}),
         publisher_platforms: ["facebook"],
+        // Required flag (Meta error 1870227). Off = stick to the audience above.
+        targeting_automation: { advantage_audience: 0 },
         // "video_feeds" was deprecated by Meta (error 2490562, 2026-10-01).
         facebook_positions: ["feed", "facebook_reels"],
       },
