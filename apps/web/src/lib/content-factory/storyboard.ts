@@ -204,18 +204,23 @@ export const VALLEY_DRAGON_STORYBOARD: Storyboard = {
       "a colossal moss-green and bronze dragon with weathered scales, huge leathery wings with torn edges, a long horned head and a heavy, believable body",
   },
   shots: [
+    // Test #4 (2026-10-01): test #3 left the dragon out of the opening frame,
+    // so the video model invented a flat, game-like dragon that flew away
+    // into the distance. Lesson: the creature must be IN the opening image
+    // (rendered hyperreal by gpt-image-2), large and close, and each clip
+    // gets exactly one action.
     {
       n: 1,
-      scene: "The empty mossy valley from a camera locked on a tripod: the wide mossy clearing in the middle ground, the waterfall on the far cliff, mist drifting, open sky above the ridge. Nothing else is in the frame.",
-      motion: "For the first three seconds only the mist drifts and the waterfall falls. Then a colossal moss-green and bronze dragon glides in from off-screen at the top right, wings spread wide, and descends in a long smooth glide toward the mossy clearing, getting closer and larger.",
-      sfx: "soft wind through a valley, distant waterfall, then huge slow wingbeats approaching and a rush of air",
-      refs: ["valley"],
+      scene: "The mossy valley from a camera locked on a tripod. The colossal moss-green and bronze dragon is descending into the valley from the upper right, wings spread wide, close to the camera and large in the frame (its body and wings fill about half the width), about twenty meters above the wide mossy clearing in the middle of the frame. Mist drifts, the waterfall falls on the far cliff. No other animals, birds or people.",
+      motion: "The dragon glides down in one smooth, heavy descent and lands on the mossy clearing in the middle of the frame, its claws sinking into the moss, its wings still spread as it touches down. It stays large and close; it does not fly away.",
+      sfx: "huge slow wingbeats and rushing air, valley wind, distant waterfall, then a heavy thud of a huge creature landing on moss",
+      refs: ["valley", "dragon"],
     },
     {
       n: 2,
-      scene: "The colossal moss-green and bronze dragon is just above the mossy clearing, wings spread, about to land.",
-      motion: "The dragon lands heavily on the mossy clearing, its claws sinking into the moss, then slowly folds its huge wings against its body and settles down, lifting its head to breathe out a slow plume of mist. The camera never moves.",
-      sfx: "a heavy thud of a huge creature landing on moss, wings folding with leathery snaps, a deep slow breath and a low rumbling growl, wind and waterfall",
+      scene: "The colossal moss-green and bronze dragon has just landed on the mossy clearing, wings spread.",
+      motion: "The dragon slowly folds its huge wings against its body and settles down onto the moss, then lifts its head and breathes out a slow plume of mist. It stays in the same spot. The camera never moves.",
+      sfx: "leathery wings folding, a heavy body settling on moss, a deep slow breath and a low rumbling growl, valley wind and waterfall",
       refs: ["valley", "dragon"],
     },
   ],
