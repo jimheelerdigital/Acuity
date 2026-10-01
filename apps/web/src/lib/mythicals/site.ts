@@ -45,5 +45,5 @@ export const MYTHICALS_FAVICON_URL =
 export const MYTHICALS_SOCIALS: { key: "instagram" | "facebook" | "tiktok"; label: string; url: string | null }[] = [
   { key: "instagram", label: "Instagram", url: "https://instagram.com/legendarymythicals" },
   { key: "facebook", label: "Facebook", url: "https://www.facebook.com/1251155438091197" },
-  { key: "tiktok", label: "TikTok", url: process.env.NEXT_PUBLIC_MYTHICALS_TIKTOK_URL || null },
+  { key: "tiktok", label: "TikTok", url: "https://www.tiktok.com/@legendarymythicals" },
 ];

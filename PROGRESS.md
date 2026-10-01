@@ -7,6 +7,29 @@
 
 ---
 
+## [2026-10-01] — Mythicals welcome email now animated; TikTok link added to the site
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** (see git log: "Animate the Mythicals welcome email hero")
+
+### In plain English (for Keenan)
+The welcome email now opens with a short looping animation of the person's creature (a dragon roaring, a phoenix beating its wings, and so on) instead of a still picture. The website now also shows a TikTok follow link next to Instagram and Facebook.
+
+### Technical changes (for Jimmy)
+- apps/web/src/lib/mythicals/archetypes.ts: archetypeEmailHeroUrl(slug, animated) returns mythicals-site/email/<slug>.gif when animated
+- apps/web/src/lib/mythicals/emails.ts: welcome email hero uses the GIF
+- apps/web/src/lib/mythicals/site.ts: TikTok url hardcoded to tiktok.com/@legendarymythicals (no env var needed)
+- Storage: 12 GIFs at content-factory/mythicals-site/email/<slug>.gif (400x500, 10fps, 3s loop, 1.7–3.1MB)
+
+### Manual steps needed
+- None
+
+### Notes
+- Clips were made once through the Higgsfield app (Kling 3.0 Turbo, 3s, 720p, 9:16; 4.5 credits each, ~54 credits total from the Max plan balance), not the dev API. They are cropped to 4:5 with the bundled ffmpeg-static.
+- Outlook desktop shows only the first GIF frame, so it falls back to a still image.
+- The GIFs are 1.7–3.1MB. Shrinking them further (360px wide) made the water/fire scenes band visibly.
+
 ## [2026-10-01] — Legendary Mythicals site gets a premium brand homepage, logo, socials and shop sections
 
 **Requested by:** Keenan

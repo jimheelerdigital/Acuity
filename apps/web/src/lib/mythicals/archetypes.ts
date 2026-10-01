@@ -310,9 +310,13 @@ export function archetypeImageUrl(slug: ArchetypeSlug): string {
   return `https://rohjfcenylmfnqoyoirn.supabase.co/storage/v1/object/public/content-factory/mythicals-site/archetypes/${slug}.jpg`;
 }
 
-/** 720x900 (4:5) crop of the hero image that keeps the whole creature, for emails. */
-export function archetypeEmailHeroUrl(slug: ArchetypeSlug): string {
-  return `https://rohjfcenylmfnqoyoirn.supabase.co/storage/v1/object/public/content-factory/mythicals-site/email/${slug}.jpg`;
+/**
+ * Email hero: a 4:5 crop that keeps the whole creature. `animated` is the
+ * looping GIF (Higgsfield Kling 3.0 Turbo clip, 2026-10-01); Outlook desktop
+ * shows its first frame, so it degrades to the still.
+ */
+export function archetypeEmailHeroUrl(slug: ArchetypeSlug, animated = false): string {
+  return `https://rohjfcenylmfnqoyoirn.supabase.co/storage/v1/object/public/content-factory/mythicals-site/email/${slug}.${animated ? "gif" : "jpg"}`;
 }
 
 /** 1200x630 share image for a result page. */
