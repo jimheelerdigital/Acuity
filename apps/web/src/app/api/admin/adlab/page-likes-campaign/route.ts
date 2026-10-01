@@ -53,8 +53,9 @@ export async function POST(req: NextRequest) {
         ? await fetch(`${G}/${path}?${form}`)
         : await fetch(`${G}/${path}`, { method: "POST", body: form });
     const json = await res.json();
-    log.push({ path, ok: res.ok, ...(res.ok ? {} : { error: json.error?.message ?? json }) });
-    if (!res.ok) throw new Error(`${path}: ${json.error?.message ?? res.status}`);
+    const detail = json.error ? [json.error.message, json.error.error_user_title, json.error.error_user_msg, json.error.error_subcode].filter(Boolean).join(" | ") : "";
+    log.push({ path, ok: res.ok, ...(res.ok ? {} : { error: detail || json }) });
+    if (!res.ok) throw new Error(`${path}: ${detail || res.status}`);
     return json;
   };
 
@@ -92,6 +93,8 @@ export async function POST(req: NextRequest) {
       objective: "OUTCOME_ENGAGEMENT",
       status: "PAUSED",
       special_ad_categories: [],
+      // Required since Graph v23 when the budget lives on the ad set.
+      is_adset_budget_sharing_enabled: false,
     });
     const adset = await call("POST", `${act}/adsets`, {
       name: `${name} – US/CA/UK/AU 18-34`,
