@@ -134,6 +134,13 @@ const CORE_MIN = 0.6; // tested 09-30: approved concepts 0.82-0.95, trivia 0.18-
 const TWIN_MIN = 0.6;
 const SPECIFIC_MIN = 0.5;
 const LUX_MIN = 0.5;
+/**
+ * Natural-answer check (2026-09-30, Keenan: "bathroom fan on makes no
+ * sense... 'in the bathroom with the fan on' does make sense"; "is jev
+ * not proofreading these?"). Tested: clipped/niche names 0.22-0.34,
+ * natural answers 0.46-0.82.
+ */
+const ANSWER_MIN = 0.4;
 
 // ─── Sonnet calls ───────────────────────────────────────────────────
 
@@ -218,7 +225,7 @@ YOUR JOB: write the options for one "which one is you?" post whose question is g
 
 - "title": the cover question in final form, ALL-CAPS ready, 4-10 words, ending with "?" when it is a question. It must make complete sense on its own.
 - "options": write 9 candidates (the best five are picked later). Each one:
-  - "name": 1-5 words in Title Case, the label on the slide ("The Car in the Driveway", "Empty Gym at 5am"). Easy to recognize and to type as a number in a comment. No numbers; the renderer adds them.
+  - "name": the label on the slide: a natural, complete ANSWER to the question, the way a person would actually reply, 1-8 words ("In the bathroom with the fan on", "The car in the driveway", "Tokyo, Japan", "Porsche 911 GT3 RS"). Read the question, then the name: it must make instant sense as the reply. Never a clipped caption ("Bathroom Fan On", "Target With No List"). No numbers; the renderer adds them.
   - "lore": one line on why someone picks this one and what it says about them (used for the caption and ranking, never shown on the slide).
   - "scene": one or two sentences describing a REAL photograph for this option: the place or thing itself, its light and mood. Keep it clean: no stray props added for "story" (no laptops, notebooks, books, mugs, cups, bags, phones or papers) unless the option is literally about that object. The nine scenes must look different from each other (setting, time of day, palette). ${people}
   - "motion": one sentence of calm, realistic movement for this option's five-second clip, true to the scene (waves roll in below the terrace as the light fades; rain streaks the window as traffic moves far below; steam curls from the bath as the candle flickers). Nothing fast.
@@ -329,6 +336,14 @@ export async function narrowOptions(
       instructions: `How much would the reader described in \`audience\`, reading \`question\`, want to pick \`options[${i}]\`?`,
       criteria: PICK_LEVELS,
     };
+    questions[`answer_${i}`] = {
+      type: "noul",
+      instructions: `Read \`question\`, then \`options[${i}]\` as someone's reply. Does it read as a natural, complete answer that a person would actually say, and that makes sense immediately?`,
+      criteria: {
+        true: "Yes: a natural answer that makes instant sense",
+        false: "No: a clipped label, an odd phrase, or it needs explaining",
+      },
+    };
     questions[`specific_${i}`] = {
       type: "noul",
       instructions: `Is \`options[${i}]\` a specific, exact thing (an exact make and model, a named watch, a named city or place, a clearly drawn person or moment) rather than a generic category like "a black sedan" or "a new car"?`,
@@ -356,11 +371,13 @@ export async function narrowOptions(
     want: scoreOf(r, `want_${i}`) ?? 0,
     twin: noulOf(r, `twin_${i}`) ?? 0,
     specific: noulOf(r, `specific_${i}`) ?? 1,
+    answer: noulOf(r, `answer_${i}`) ?? 1,
     lux: brand === "bwk" ? noulOf(r, `lux_${i}`) ?? 1 : 1,
   }));
   // Generic or (BWK) non-luxury options go to the back of the line: they
   // only fill slots when too few good ones exist.
-  const good = (x: { specific: number; lux: number }) => x.specific >= SPECIFIC_MIN && x.lux >= LUX_MIN;
+  const good = (x: { specific: number; lux: number; answer: number }) =>
+    x.specific >= SPECIFIC_MIN && x.lux >= LUX_MIN && x.answer >= ANSWER_MIN;
   const byWant = [...scored].sort((a, b) => Number(good(b)) - Number(good(a)) || b.want - a.want);
   const chosen: typeof scored = [];
   let twinKept = false;
@@ -379,7 +396,7 @@ export async function narrowOptions(
   }
   const keepSet = new Set(chosen.map((c) => c.i));
   const table = scored
-    .map((s) => `${keepSet.has(s.i) ? "*" : " "} want=${s.want.toFixed(2)} twin=${s.twin.toFixed(2)} specific=${s.specific.toFixed(2)} lux=${s.lux.toFixed(2)}  ${s.o.name}`)
+    .map((s) => `${keepSet.has(s.i) ? "*" : " "} want=${s.want.toFixed(2)} twin=${s.twin.toFixed(2)} specific=${s.specific.toFixed(2)} lux=${s.lux.toFixed(2)} answer=${s.answer.toFixed(2)}  ${s.o.name}`)
     .join("\n");
   return { options: scored.filter((s) => keepSet.has(s.i)).map((s) => s.o), table };
 }
@@ -533,6 +550,7 @@ export function buildPickImagePrompt(brand: PickBrand, scene: string, kind: "cov
       : "People: none unless the scene names one; then at most ONE man (or two for a scene about friends), distant, from behind or in silhouette, face never visible. No animals unless the scene names one.";
   return [
     `A REAL photograph a person actually took with a camera: ${scene}`,
+    "THE SCENE COMES FIRST: show exactly the place, subject and light described above. If it is a bright store aisle, a sunny garage or a car in a driveway, show exactly that; never swap it for a different room or a generic cozy interior. The style below only sets mood and color grade.",
     style,
     "Overall DIM and shadowed in mood — low-key with deep blacks — but with full contrast and real, crisp highlights, never flat or murky grey.",
     kind === "cover"

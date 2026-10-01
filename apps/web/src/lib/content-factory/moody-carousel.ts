@@ -2885,7 +2885,7 @@ FAIL it if ANY of these is clearly true:
 3. ${opts.bakedText ? "Readable text appears anywhere OTHER than the one intended message on the screen, sign, or paper the scene describes (that message itself is expected — do not judge its wording), or there are logos or watermarks." : "Any readable text, letters, numbers, logos, or watermarks appear."}
 4. ${opts.personAllowed ? "More than the people the scene describes appear." : "A person appears, unless the scene explicitly describes a distant armored warrior, a rider, or a statue."}
 5. It is so dark or murky that the main subject cannot be made out.
-6. It clearly does not show the intended scene's main subject.
+6. It clearly does not show the intended scene's main subject, or it shows a different place than the scene describes (for example a bedroom when the scene is a store aisle, or a living room when the scene is a car in a driveway).
 
 Otherwise PASS. Reply with exactly PASS, or FAIL: followed by a few words naming the problem.`,
             },

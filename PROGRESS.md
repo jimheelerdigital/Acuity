@@ -7,6 +7,30 @@
 
 ---
 
+## [2026-09-30] — Pick options read as real answers; photos must match the option
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** see "fix: Make pick options natural answers and keep photos on-scene"
+
+### In plain English (for Keenan)
+Each pick now reads as a real answer to the question ("In the bathroom with the fan on", not "Bathroom Fan On"). Jev now proofreads every option for this and drops any that read oddly. Photos must show the place the option names: the "Target" option had come out as a cozy bedroom, and the photo check now rejects that. The two test posts from tonight were cancelled and remade with all the fixes.
+
+### Technical changes (for Jimmy)
+- `lib/content-factory/pick-lane.ts`:
+  - The option `name` rule is now a natural complete answer, 1-8 words; clipped captions are banned.
+  - New Jev `answer_i` Noul in `narrowOptions`, ANSWER_MIN 0.4, joining the "good" gate with specific and lux.
+  - `buildPickImagePrompt` gets a "THE SCENE COMES FIRST" line, so the brand style only sets mood and grade and never replaces the place.
+- `lib/content-factory/moody-carousel.ts` `checkMoodyImageQuality`, criterion 6: now also fails "a different place than the scene describes". This is shared by all lanes.
+- DB: the 4 SocialPublish rows for posts cmuor0rk… (BWK) and cmuor21rv… (Ripple) set to SKIPPED with a cancellation note.
+
+### Manual steps needed
+- None
+
+### Notes
+- Jev natural-answer test: "Bathroom Fan On" 0.22, "Target With No List" 0.28, "Azabudai Tokyo" 0.26, "The Black Sedan" 0.30; "Tokyo, Japan" 0.78, "New York City" 0.82, "In the bathroom with the fan on" 0.46.
+- Cause of the bedroom image: the Ripple style line (warm lamplight, candles, linen, dried flowers) overrode a fluorescent store-aisle scene, and the Opus check didn't treat a different place as a fail.
+- Jev can't see images; image-to-scene matching is the Opus check's job.
+
 ## [2026-09-30] — Pick videos: every slide animated, no Ripple/BWK end card for 2 weeks
 **Requested by:** Keenan
 **Committed by:** Claude Code
