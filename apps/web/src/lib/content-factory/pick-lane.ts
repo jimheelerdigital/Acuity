@@ -239,7 +239,7 @@ async function callWriter(
 function conceptSystem(brand: PickBrand): string {
   return `${copyObjectives(brand)}
 
-YOUR JOB: pitch five "which one is you?" posts for this account. The format: a question cover, then five numbered options with a photo each, then a card asking the reader to comment their number. It works when every option is a version of the reader's own life, so picking one says something about her or him, commenting is as easy as typing a number, and people tag or send it to a friend.
+YOUR JOB: pitch five PICK-ONE posts for this account. The format: a cover that makes the reader pick one of five, then five numbered options with a photo each, then a card asking the reader to comment their number. The cover does NOT have to be "which one is you?" (2026-09-30, per Keenan: "it doesn't always have to be 'which one is you'"). Vary the shape across the five pitches: "which one is you?", "where are you going?", "what do you buy first?", "pick your...", "who's in your corner?", "if you know her, which one is she?", a one-line setup then the choice ("you get one free Saturday. how do you spend it?"). It works when every option is a version of the reader's own life, so picking one says something about her or him, commenting is as easy as typing a number, and people tag or send it to a friend.
 
 WHAT EVERY POST MUST BE ABOUT, for this audience: ${CORE[brand]}
 ${OFF_BRAND}
@@ -269,13 +269,13 @@ function optionsSystem(brand: PickBrand): string {
       : `The photo must SHOW the answer. When it is a car, watch, city or place, show that exact thing as the hero. When it is a person or an action (a mentor, a friend, a habit), show ONE man (or two for friends) DOING it, seen from behind, over the shoulder or in profile in shadow, face not the focus.`;
   return `${copyObjectives(brand)}
 
-YOUR JOB: write the options for one "which one is you?" post whose question is given below.
+YOUR JOB: write the options for one pick-one post (the reader picks one of five) whose question is given below.
 
 - "title": the cover question in final form, ALL-CAPS ready, 4-10 words, ending with "?" when it is a question. It must make complete sense on its own.
-- "options": write 10 candidates (Jev picks the best five later). Each one:
+- "options": write 15 candidates (Jev picks the best five later; 2026-09-30, per Keenan: "make it 15 answers and jev picks the top 5"). Each one:
   - "name": the label on the slide: a natural, complete ANSWER to the question, the way a person would actually reply, 1-8 words ("In the bathroom with the fan on", "The car in the driveway", "Tokyo, Japan", "Porsche 911 GT3 RS"). Read the question, then the name: it must make instant sense as the reply. Never a clipped caption ("Bathroom Fan On", "Target With No List"). No numbers; the renderer adds them.
   - "lore": one line on why someone picks this one and what it says about them (used for the caption and ranking, never shown on the slide).
-  - "scene": one or two sentences describing a REAL photograph for this option: the place or thing itself, its light and mood. Keep it clean: no stray props added for "story" (no laptops, notebooks, books, mugs, cups, bags, phones or papers) unless the option is literally about that object. The ten scenes must look different from each other (setting, time of day, palette). ${people}
+  - "scene": one or two sentences describing a REAL photograph for this option: the place or thing itself, its light and mood. Keep it clean: no stray props added for "story" (no laptops, notebooks, books, mugs, cups, bags, phones or papers) unless the option is literally about that object. The fifteen scenes must look different from each other (setting, time of day, palette). ${people}
   - "motion": one sentence of DYNAMIC, clearly visible movement for this option's five-second clip, true to the scene, with the subject moving and the camera moving (the GT3 RS launches out of the garage as the camera tracks beside it; she lifts the overflowing laundry basket and turns toward the stairs as the camera follows; waves crash below the terrace as the camera sweeps out). Realistic speed, never a static frame.
 - Every option must be a real, tempting answer; none is a joke or a throwaway, and no two are the same idea in different words.${
     brand === "bwk"
@@ -494,7 +494,7 @@ export async function pickScenes(
       `pick-scenes-${brand}`,
       `${copyObjectives(brand)}
 
-YOUR JOB: write alternative PHOTO descriptions for a "which one is you?" post. For the cover and for each option, write ${SCENE_ALTS} new scenes, each a different way to photograph it: a REAL photograph that shows that exact answer clearly at a glance (the place, car, city or moment the option names), with its own light and mood, and a DYNAMIC "motion" line for its five-second clip (the subject clearly moves and the camera makes a confident move; never a static frame). Show the subject WHOLE inside a vertical frame with space around it (a car at a three-quarter angle, nose to tail in frame; never cropped at the edges). Keep every scene clean: no stray props (no laptops, notebooks, books, mugs, cups, bags, phones or papers) unless the option is that object. Never swap the place for a generic cozy interior.${brand === "bwk" ? " BWK photos look like the luxury life: hyperreal, dark and premium." : " Ripple photos are warm and intimate, but the place itself always comes first."} The photo must SHOW the answer: for a role, person or action, show ONE ${brand === "ripple" ? "woman in her 40s" : "man"} doing it mid-action (from behind, over the shoulder or in profile in shadow, face not the focus), never an empty room standing in for it. No text, logos or badges.
+YOUR JOB: write alternative PHOTO descriptions for a pick-one post. For the cover and for each option, write ${SCENE_ALTS} new scenes, each a different way to photograph it: a REAL photograph that shows that exact answer clearly at a glance (the place, car, city or moment the option names), with its own light and mood, and a DYNAMIC "motion" line for its five-second clip (the subject clearly moves and the camera makes a confident move; never a static frame). Show the subject WHOLE inside a vertical frame with space around it (a car at a three-quarter angle, nose to tail in frame; never cropped at the edges). Keep every scene clean: no stray props (no laptops, notebooks, books, mugs, cups, bags, phones or papers) unless the option is that object. Never swap the place for a generic cozy interior.${brand === "bwk" ? " BWK photos look like the luxury life: hyperreal, dark and premium." : " Ripple photos are warm and intimate, but the place itself always comes first."} The photo must SHOW the answer: for a role, person or action, show ONE ${brand === "ripple" ? "woman in her 40s" : "man"} doing it mid-action (from behind, over the shoulder or in profile in shadow, face not the focus), never an empty room standing in for it. No text, logos or badges.
 
 OUTPUT (JSON): { "cover": [{ "scene": "...", "motion": "..." }], "options": [[{ "scene": "...", "motion": "..." }]] } with "options" in the same order as given, ${SCENE_ALTS} each.`,
       JSON.stringify({ question: title, cover: coverScene, options: options.map((o) => ({ answer: o.name, why: o.lore, current_scene: o.scene })) }),
@@ -627,7 +627,7 @@ export async function generatePickTopic(opts: {
       ]
         .filter(Boolean)
         .join("\n\n"),
-      4000
+      7000
     )) as {
       title?: string;
       coverScene?: string;

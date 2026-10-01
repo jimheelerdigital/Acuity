@@ -7,6 +7,27 @@
 
 ---
 
+## [2026-09-30] — Pick posts: varied cover shapes, 15 answers trimmed to 5
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** see "content: Vary pick-post formats and write 15 answers"
+
+### In plain English (for Keenan)
+The Ripple and BWK pick posts are no longer always "which one is you?". The covers now vary ("where are you going?", "what do you buy first?", "pick your...", "if you know her...", or a one-line setup and then the choice). Each post now starts from 15 possible answers, and Jev keeps the best 5.
+
+### Technical changes (for Jimmy)
+- `lib/content-factory/pick-lane.ts`:
+  - The concept prompt asks for five varied pick-one shapes instead of always "which one is you?".
+  - The options prompt asks for 15 candidates (was 10), and the options call's max_tokens went from 4000 to 7000.
+  - The scene prompt wording is generalized to "pick-one post".
+- `narrowOptions` is unchanged: any count goes in, the top 5 come out.
+
+### Manual steps needed
+- None
+
+### Notes
+- The options call runs longer with 15 candidates. The topic step's estimated total is about 3 minutes, under Vercel's 300s cap; watch the first runs.
+
 ## [2026-09-30] — Reset-guide photo carousels back for Ripple and BWK, emailed only
 **Requested by:** Keenan
 **Committed by:** Claude Code
