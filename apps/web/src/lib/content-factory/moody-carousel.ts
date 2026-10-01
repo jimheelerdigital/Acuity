@@ -2886,6 +2886,7 @@ FAIL it if ANY of these is clearly true:
 4. ${opts.personAllowed ? "More than the people the scene describes appear." : "A person appears, unless the scene explicitly describes a distant armored warrior, a rider, or a statue."}
 5. It is so dark or murky that the main subject cannot be made out.
 6. It clearly does not show the intended scene's main subject, or it shows a different place than the scene describes (for example a bedroom when the scene is a store aisle, or a living room when the scene is a car in a driveway).
+7. The main subject is a car, watch, building, ship or creature and it is cut off by the frame edge (for example a car missing its nose or tail). A person framed from behind, over the shoulder or as hands is fine.
 
 Otherwise PASS. Reply with exactly PASS, or FAIL: followed by a few words naming the problem.`,
             },

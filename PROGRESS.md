@@ -7,6 +7,27 @@
 
 ---
 
+## [2026-09-30] — Luxury items always fit the frame
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** see "fix: Keep the whole luxury subject in frame in pick videos"
+
+### In plain English (for Keenan)
+Cars, watches and other hero objects are now shown whole: a car is framed at a three-quarter angle, nose to tail, with space around it. The animation keeps the whole thing in shot for the full clip, and the photo check rejects any image where it's cut off.
+
+### Technical changes (for Jimmy)
+- `lib/content-factory/pick-lane.ts`:
+  - `buildPickImagePrompt` gets a "FIT THE WHOLE SUBJECT IN FRAME" line (car at three-quarter angle, about 60% of the frame width, space all around).
+  - The `pickScenes` writer gets the same instruction.
+- `lib/content-factory/living-reel.ts`: in realistic (pick-lane) motion, the whole subject must stay in frame all five seconds and the camera follows it.
+- `lib/content-factory/moody-carousel.ts` `checkMoodyImageQuality`: new criterion 7 fails a car, watch, building, ship or creature cut off by the frame edge. People framed from behind or as hands are exempt. Shared by all lanes.
+
+### Manual steps needed
+- None
+
+### Notes
+- Cause: gpt-image-2 renders 2:3, and the video fits it to 9:16, cropping the sides. The new dynamic tracking moves could also carry the car out of shot.
+
 ## [2026-09-30] — Mythicals: "which superpower" and "which weapon" added
 **Requested by:** Keenan
 **Committed by:** Claude Code

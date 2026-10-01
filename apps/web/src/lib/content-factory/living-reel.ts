@@ -74,7 +74,7 @@ export function livingMotionPrompt(
       // animation"; "make the image move somewhat dynamically"). Mythicals
       // keeps the tuned, measured level.
       opts.realistic
-        ? "Make it move DYNAMICALLY but stay real: the subject moves clearly through the five seconds at natural speed, AND the camera makes a confident move (a steady dolly-in, a slow orbit, a tracking move alongside). Never a static frame or a barely-there zoom. No morphing, no warping."
+        ? "Make it move DYNAMICALLY but stay real: the subject moves clearly through the five seconds at natural speed, AND the camera makes a confident move (a steady dolly-in, a slow orbit, a tracking move alongside). Never a static frame or a barely-there zoom. No morphing, no warping. The WHOLE subject (the entire car, watch or person) stays fully inside the frame for all five seconds: the camera follows it and never lets it drive out of shot or get cut off at an edge."
         : "Keep the movement realistic and measured: one clear action at natural, real-world speed, like footage of a real animal or actor. Nothing frantic, no sudden lunges, no morphing. The camera moves slowly and steadily (a gentle push-in or a slight drift).",
       "Keep the subject's design, colors, armor and setting exactly as in the image. The subject stays in frame. No text, no new creatures or people, no scene cuts.",
     ]
