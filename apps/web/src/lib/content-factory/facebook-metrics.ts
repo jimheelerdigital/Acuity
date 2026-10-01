@@ -20,6 +20,8 @@ const GRAPH = "https://graph.facebook.com/v21.0";
 
 export interface FbMetrics {
   views: number | null;
+  /** Unique accounts reached (2026-09-30, once read_insights was granted). */
+  reach: number | null;
   likes: number | null;
   comments: number | null;
   shares: number | null;
@@ -29,7 +31,9 @@ function tokenFor(accountKey: string): string | null {
   const raw =
     accountKey === "bwk"
       ? process.env.META_BWK_ACCESS_TOKEN
-      : process.env.IG_ACCESS_TOKEN;
+      : accountKey === "mythicals"
+        ? process.env.META_MYTHICALS_ACCESS_TOKEN
+        : process.env.IG_ACCESS_TOKEN;
   const v = raw?.trim();
   return v ? v : null;
 }
@@ -77,7 +81,7 @@ export async function fetchFbPostMetrics(
     throw new Error(`No FB access token configured for account "${accountKey}"`);
   }
 
-  const out: FbMetrics = { views: null, likes: null, comments: null, shares: null };
+  const out: FbMetrics = { views: null, reach: null, likes: null, comments: null, shares: null };
   const isFeedPost = externalId.includes("_");
 
   if (isFeedPost) {
@@ -92,13 +96,17 @@ export async function fetchFbPostMetrics(
     out.likes = post.reactions?.summary?.total_count ?? null;
     out.comments = post.comments?.summary?.total_count ?? null;
     out.shares = post.shares?.count ?? null;
+    // 2026-09-30: post_impressions / post_impressions_unique are retired
+    // (Graph error #100). Current names: post_media_view (views) and
+    // post_total_media_view_unique (reach). Needs read_insights.
     try {
       const insights = await graphGet(
         `${externalId}/insights`,
-        { metric: "post_impressions" },
+        { metric: "post_media_view,post_total_media_view_unique" },
         token
       );
-      out.views = insightValue(insights, "post_impressions");
+      out.views = insightValue(insights, "post_media_view");
+      out.reach = insightValue(insights, "post_total_media_view_unique");
     } catch {
       // read_insights not granted or metric unsupported — views stay null
     }
@@ -110,13 +118,18 @@ export async function fetchFbPostMetrics(
     );
     out.likes = video.likes?.summary?.total_count ?? null;
     out.comments = video.comments?.summary?.total_count ?? null;
+    // Reels (2026-09-30): plays come from fb_reels_total_plays /
+    // blue_reels_play_count; total_video_views is the legacy name for
+    // non-reel videos. Fetch everything once and take the first present.
     try {
-      const insights = await graphGet(
-        `${externalId}/video_insights`,
-        { metric: "total_video_views" },
-        token
-      );
-      out.views = insightValue(insights, "total_video_views");
+      const insights = await graphGet(`${externalId}/video_insights`, {}, token);
+      out.views =
+        insightValue(insights, "fb_reels_total_plays") ??
+        insightValue(insights, "blue_reels_play_count") ??
+        insightValue(insights, "total_video_views");
+      out.reach =
+        insightValue(insights, "post_impressions_unique") ??
+        insightValue(insights, "total_video_impressions_unique");
     } catch {
       // video insights unavailable — views stay null
     }

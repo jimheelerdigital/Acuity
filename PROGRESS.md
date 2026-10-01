@@ -7,6 +7,29 @@
 
 ---
 
+## [2026-09-30] — Facebook numbers now feed the scoreboard
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** see "fix: Read Facebook views and reach with current Meta metrics"
+
+### In plain English (for Keenan)
+The daily stats pull now records real Facebook views and reach for Ripple, BWK and Mythicals, so the learning loop scores Facebook alongside Instagram. Until now Facebook views were always blank because Meta had renamed its metrics, and Mythicals' Facebook stats were being read with the wrong account.
+
+### Technical changes (for Jimmy)
+- `lib/content-factory/facebook-metrics.ts`:
+  - `tokenFor` adds `mythicals` (META_MYTHICALS_ACCESS_TOKEN); it previously fell through to Ripple's token.
+  - Feed posts read `post_media_view` (views) and `post_total_media_view_unique` (reach). `post_impressions` is retired and returns error #100.
+  - Videos/reels read all of `video_insights` and take `fb_reels_total_plays`, then `blue_reels_play_count`, then `total_video_views` as views, and `post_impressions_unique` / `total_video_impressions_unique` as reach.
+  - `FbMetrics` gains `reach`, written to `SocialPublish.reach` by the existing 03:00 UTC metrics refresh.
+- The performance-loop scorer already blends FB at 30% once views or reach exist, so no change there.
+
+### Manual steps needed
+- None
+
+### Notes
+- Verified on live posts: Mythicals FB reels 2-6 views, Ripple 0-1, BWK 0. Instagram gets roughly 200 for Mythicals. FB distribution for these new, low-follower Pages is near zero.
+- The first FB-inclusive scoreboard is at 04:30 UTC tomorrow.
+
 ## [2026-09-30] — Pick posts: varied cover shapes, 15 answers trimmed to 5
 **Requested by:** Keenan
 **Committed by:** Claude Code
