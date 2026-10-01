@@ -7,6 +7,33 @@
 
 ---
 
+## [2026-09-30] — Pick posts: 10 answers trimmed to 5, best-of-5 photo per slide
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** see "feat: Write 10 pick answers and pick the best photo per slide"
+
+### In plain English (for Keenan)
+Each "which one is you?" post now starts from 10 possible answers, and Jev keeps the best 5. Every slide (the cover and each answer) also gets 5 different photo ideas, and Jev picks the one that shows that answer most clearly, without random clutter.
+
+### Technical changes (for Jimmy)
+- `lib/content-factory/pick-lane.ts`:
+  - The options prompt now asks for 10 candidates (was 9).
+  - New exported `pickScenes()`:
+    - one Sonnet call (effort medium) writes 4 alternative scenes + motion for the cover and each kept option
+    - per slide, a parallel Jev call scores `fit` (Score: how clearly a photo shows the answer) and `props` (Noul: unrelated decoration) for the writer's scene plus the alternatives
+    - composite is fit - 0.3*props, highest wins; it fails open to the first scene
+  - `callWriter` takes an optional `effort`.
+
+### Manual steps needed
+- None
+
+### Notes
+- Jev test:
+  - "Wandering Target with no list": the bedroom scene scored fit 0.04, the Target aisle 0.72 and was picked, and the laptop-in-cart scene was penalized (props 0.70).
+  - "New York City": the Tribeca loft with a laptop scored 0.24, the Manhattan skyline 0.95 and was picked.
+- Adds one Sonnet call per post (about 3-5¢) and about 6 Jev calls.
+- Instagram polls: not available through the publishing API (feed posts have no polls, and story stickers can't be added via API), so we keep the "comment your number" mechanic.
+
 ## [2026-09-30] — Pick options read as real answers; photos must match the option
 **Requested by:** Keenan
 **Committed by:** Claude Code

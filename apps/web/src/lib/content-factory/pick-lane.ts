@@ -144,12 +144,19 @@ const ANSWER_MIN = 0.4;
 
 // ─── Sonnet calls ───────────────────────────────────────────────────
 
-async function callWriter(purpose: string, system: string, user: string, maxTokens: number): Promise<unknown> {
+async function callWriter(
+  purpose: string,
+  system: string,
+  user: string,
+  maxTokens: number,
+  effort?: "low" | "medium" | "high"
+): Promise<unknown> {
   const { prisma } = await import("@/lib/prisma");
   const start = Date.now();
   try {
     const response = await contentAnthropic.messages.create({
       max_tokens: maxTokens,
+      ...(effort ? { effort } : {}),
       system,
       messages: [{ role: "user", content: user }],
     });
@@ -224,10 +231,10 @@ function optionsSystem(brand: PickBrand): string {
 YOUR JOB: write the options for one "which one is you?" post whose question is given below.
 
 - "title": the cover question in final form, ALL-CAPS ready, 4-10 words, ending with "?" when it is a question. It must make complete sense on its own.
-- "options": write 9 candidates (the best five are picked later). Each one:
+- "options": write 10 candidates (Jev picks the best five later). Each one:
   - "name": the label on the slide: a natural, complete ANSWER to the question, the way a person would actually reply, 1-8 words ("In the bathroom with the fan on", "The car in the driveway", "Tokyo, Japan", "Porsche 911 GT3 RS"). Read the question, then the name: it must make instant sense as the reply. Never a clipped caption ("Bathroom Fan On", "Target With No List"). No numbers; the renderer adds them.
   - "lore": one line on why someone picks this one and what it says about them (used for the caption and ranking, never shown on the slide).
-  - "scene": one or two sentences describing a REAL photograph for this option: the place or thing itself, its light and mood. Keep it clean: no stray props added for "story" (no laptops, notebooks, books, mugs, cups, bags, phones or papers) unless the option is literally about that object. The nine scenes must look different from each other (setting, time of day, palette). ${people}
+  - "scene": one or two sentences describing a REAL photograph for this option: the place or thing itself, its light and mood. Keep it clean: no stray props added for "story" (no laptops, notebooks, books, mugs, cups, bags, phones or papers) unless the option is literally about that object. The ten scenes must look different from each other (setting, time of day, palette). ${people}
   - "motion": one sentence of calm, realistic movement for this option's five-second clip, true to the scene (waves roll in below the terrace as the light fades; rain streaks the window as traffic moves far below; steam curls from the bath as the candle flickers). Nothing fast.
 - Every option must be a real, tempting answer; none is a joke or a throwaway, and no two are the same idea in different words.${
     brand === "bwk"
@@ -403,6 +410,95 @@ export async function narrowOptions(
 
 // ─── The full topic ──────────────────────────────────────────────────
 
+const SCENE_ALTS = 4;
+
+/** Jev picks the best photo description per slide (cover + options). */
+export async function pickScenes(
+  brand: PickBrand,
+  title: string,
+  coverScene: string,
+  coverMotion: string,
+  options: PickOptionDraft[]
+): Promise<{ cover: { scene: string; motion: string }; options: { scene: string; motion: string }[] }> {
+  const fallback = {
+    cover: { scene: coverScene, motion: coverMotion },
+    options: options.map((o) => ({ scene: o.scene, motion: o.motion ?? "" })),
+  };
+  type Alt = { scene: string; motion: string };
+  let alts: { cover: Alt[]; options: Alt[][] } | null = null;
+  try {
+    const raw = (await callWriter(
+      `pick-scenes-${brand}`,
+      `${copyObjectives(brand)}
+
+YOUR JOB: write alternative PHOTO descriptions for a "which one is you?" post. For the cover and for each option, write ${SCENE_ALTS} new scenes, each a different way to photograph it: a REAL photograph that shows that exact answer clearly at a glance (the place, car, city or moment the option names), with its own light and mood, and a calm realistic "motion" line for its five-second clip. Keep every scene clean: no stray props (no laptops, notebooks, books, mugs, cups, bags, phones or papers) unless the option is that object. Never swap the place for a generic cozy interior.${brand === "bwk" ? " BWK photos look like the luxury life: hyperreal, dark and premium." : " Ripple photos are warm and intimate, but the place itself always comes first."} People: none unless needed, then seen from behind or in silhouette, face never visible. No text, logos or badges.
+
+OUTPUT (JSON): { "cover": [{ "scene": "...", "motion": "..." }], "options": [[{ "scene": "...", "motion": "..." }]] } with "options" in the same order as given, ${SCENE_ALTS} each.`,
+      JSON.stringify({ question: title, cover: coverScene, options: options.map((o) => ({ answer: o.name, why: o.lore, current_scene: o.scene })) }),
+      5000,
+      "medium"
+    )) as { cover?: Alt[]; options?: Alt[][] };
+    const clean = (xs: unknown): Alt[] =>
+      (Array.isArray(xs) ? xs : [])
+        .filter((x): x is Alt => typeof (x as Alt)?.scene === "string" && !!(x as Alt).scene.trim())
+        .map((x) => ({ scene: x.scene.trim(), motion: typeof x.motion === "string" ? x.motion.trim() : "" }));
+    alts = { cover: clean(raw.cover), options: options.map((_, i) => clean(raw.options?.[i])) };
+  } catch (err) {
+    console.warn(`[pick-lane] ${brand} scene alternatives failed — keeping first scenes:`, err instanceof Error ? err.message : err);
+    return fallback;
+  }
+  const { askJev, scoreOf, noulOf } = await import("./jev");
+  const slides = [
+    { answer: `the cover of a post asking "${title}"`, first: fallback.cover, alts: alts.cover },
+    ...options.map((o, i) => ({ answer: o.name, first: fallback.options[i], alts: alts!.options[i] })),
+  ];
+  const picked = await Promise.all(
+    slides.map(async (sl, j) => {
+      const cands = [sl.first, ...sl.alts].slice(0, SCENE_ALTS + 1);
+      if (cands.length < 2) return { pick: sl.first, table: "" };
+      const qs: Parameters<typeof askJev>[2] = {};
+      cands.forEach((_, k) => {
+        qs[`fit_${k}`] = {
+          type: "score",
+          instructions: `How clearly and attractively would a real photograph of \`scenes[${k}]\` show \`answer\` to someone reading \`question\`?`,
+          criteria: [
+            "Not at all: it shows something else",
+            "Loosely: you would need the caption to connect them",
+            "Clearly: it obviously shows that answer",
+            "Perfectly: it shows that answer at a glance and makes you want it",
+          ],
+        };
+        qs[`props_${k}`] = {
+          type: "noul",
+          instructions: `Does \`scenes[${k}]\` include objects that have nothing to do with \`answer\` (a laptop, notebook, mug, bag, phone or papers added for decoration)?`,
+        };
+      });
+      const r = await askJev(`pick-scene:${brand}:${j}`, { question: title, answer: sl.answer, scenes: cands.map((c) => c.scene) }, qs);
+      if (!r) return { pick: sl.first, table: "jev unavailable" };
+      let best = 0;
+      let bestScore = -Infinity;
+      const rows = cands.map((c, k) => {
+        const fit = scoreOf(r, `fit_${k}`) ?? 0;
+        const props = noulOf(r, `props_${k}`) ?? 0;
+        const score = fit - 0.3 * props;
+        if (score > bestScore) {
+          bestScore = score;
+          best = k;
+        }
+        return { score, fit, props, scene: c.scene };
+      });
+      return {
+        pick: cands[best],
+        table: rows
+          .map((x, k) => `${k === best ? "*" : " "} ${x.score.toFixed(2)} fit=${x.fit.toFixed(2)} props=${x.props.toFixed(2)}  ${x.scene.slice(0, 110)}`)
+          .join("\n"),
+      };
+    })
+  );
+  picked.forEach((p, j) => p.table && console.log(`[pick-lane] ${brand} scene pick, slide ${j} (${slides[j].answer}):\n${p.table}`));
+  return { cover: picked[0].pick, options: picked.slice(1).map((p) => p.pick) };
+}
+
 export async function generatePickTopic(opts: {
   brand: PickBrand;
   theme?: string;
@@ -511,6 +607,15 @@ export async function generatePickTopic(opts: {
   }
   const narrowed = await narrowOptions(brand, draft.title, draft.options);
   console.log(`[pick-lane] ${brand} options for "${draft.title}":\n${narrowed.table}`);
+
+  // Best-of-5 photo per slide (2026-09-30, per Keenan: "same with photo
+  // prompts"): Sonnet writes 4 more scenes for the cover and each kept
+  // option; Jev picks the one that best shows that slide. Fails open to
+  // the writer's first scene.
+  const scenes = await pickScenes(brand, draft.title, draft.coverScene, draft.coverMotion, narrowed.options);
+  draft.coverScene = scenes.cover.scene;
+  draft.coverMotion = scenes.cover.motion || draft.coverMotion;
+  narrowed.options = narrowed.options.map((o, i) => ({ ...o, scene: scenes.options[i].scene, motion: scenes.options[i].motion || o.motion }));
 
   const slug = `pick-${brand}-${draft.title
     .toLowerCase()
