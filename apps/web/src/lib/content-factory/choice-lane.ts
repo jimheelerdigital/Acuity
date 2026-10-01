@@ -83,6 +83,10 @@ export const CHOICE_CATEGORIES = [
   "a mythical companion to raise from a hatchling",
   "a beast warrior to command in a strange realm",
   "a legendary unit to command (one choice, choose wisely)",
+  // 2026-09-30, per Keenan: "add 'which superpower would you pick' and
+  // 'which weapon would you choose' as options too".
+  "which superpower would you pick (a legendary power: command storms, shapeshift into a beast, walk through shadow, bend fire, speak with dragons, stop time)",
+  "which weapon would you choose (each a legendary weapon with its own power and story)",
 ];
 
 export function rollChoiceCategory(recentCategories: string[]): string {

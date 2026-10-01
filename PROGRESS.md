@@ -7,6 +7,24 @@
 
 ---
 
+## [2026-09-30] — Mythicals: "which superpower" and "which weapon" added
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** see "content: Add superpower and weapon picks to Mythicals"
+
+### In plain English (for Keenan)
+Mythicals reels can now be "which superpower would you pick?" and "which weapon would you choose?".
+
+### Technical changes (for Jimmy)
+- `lib/content-factory/choice-lane.ts`: two new CHOICE_CATEGORIES entries.
+- The performance-loop bandit reads CHOICE_CATEGORIES directly. New categories start as "untested", so they get explored early.
+
+### Manual steps needed
+- None
+
+### Notes
+- None
+
 ## [2026-09-30] — URGENT email before Meta access lapses
 **Requested by:** Keenan
 **Committed by:** Claude Code
