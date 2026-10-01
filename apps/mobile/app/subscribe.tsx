@@ -37,6 +37,7 @@ import {
   WITHDRAWAL_PLAN_CHANGE_CONSENT_TEXT,
   WITHDRAWAL_PLAN_CHANGE_WORDING_VERSION,
 } from "@/lib/consent";
+import { useWithdrawalAckRequired } from "@/lib/withdrawal-region";
 import {
   getProducts,
   initIap,
@@ -131,6 +132,10 @@ export default function SubscribeScreen() {
   // blocks the purchase until ticked, and we write a ConsentRecord
   // before initiating the StoreKit flow.
   const [acknowledged, setAcknowledged] = useState(false);
+  // Only UK + EU/EEA store accounts must tick it (lib/withdrawal-region.ts).
+  // Everyone else: no checkbox, no consent record, purchase not blocked.
+  const ackRequired = useWithdrawalAckRequired();
+  const ackSatisfied = !ackRequired || acknowledged;
   // RC rail only: the customer's active Pro plan (read from RC on-device, so
   // transfers + fresh purchases show immediately) and the price tier the
   // server says they get (legacy customers keep $4.99 / $39.99).
@@ -299,7 +304,7 @@ export default function SubscribeScreen() {
 
   const handlePurchase = async () => {
     if (purchasing) return;
-    if (!acknowledged) {
+    if (!ackSatisfied) {
       // Button is disabled in this state; guard the entry point too.
       return;
     }
@@ -317,24 +322,26 @@ export default function SubscribeScreen() {
       // 14-day-withdrawal acknowledgement recorded BEFORE the purchase,
       // same as the StoreKit path — abort rather than take money without
       // the acknowledgement on file.
-      try {
-        await recordConsent({
-          consentType: "distance_contract_immediate_performance",
-          granted: true,
-          consentText: canUpgradeToAnnual
-            ? WITHDRAWAL_PLAN_CHANGE_CONSENT_TEXT
-            : WITHDRAWAL_CONSENT_TEXT,
-          wordingVersion: canUpgradeToAnnual
-            ? WITHDRAWAL_PLAN_CHANGE_WORDING_VERSION
-            : WITHDRAWAL_WORDING_VERSION,
-          plan: selectedTier,
-        });
-      } catch {
-        setErrorMsg(
-          "Couldn't record your acknowledgement. Check your connection and try again."
-        );
-        setPurchasing(false);
-        return;
+      if (ackRequired) {
+        try {
+          await recordConsent({
+            consentType: "distance_contract_immediate_performance",
+            granted: true,
+            consentText: canUpgradeToAnnual
+              ? WITHDRAWAL_PLAN_CHANGE_CONSENT_TEXT
+              : WITHDRAWAL_CONSENT_TEXT,
+            wordingVersion: canUpgradeToAnnual
+              ? WITHDRAWAL_PLAN_CHANGE_WORDING_VERSION
+              : WITHDRAWAL_WORDING_VERSION,
+            plan: selectedTier,
+          });
+        } catch {
+          setErrorMsg(
+            "Couldn't record your acknowledgement. Check your connection and try again."
+          );
+          setPurchasing(false);
+          return;
+        }
       }
       try {
         const result = await purchaseProPackage(pkg);
@@ -381,20 +388,22 @@ export default function SubscribeScreen() {
     // Record the 14-day-withdrawal acknowledgement BEFORE launching the
     // StoreKit purchase. If we can't evidence it, abort rather than take
     // money without the acknowledgement on file.
-    try {
-      await recordConsent({
-        consentType: "distance_contract_immediate_performance",
-        granted: true,
-        consentText: WITHDRAWAL_CONSENT_TEXT,
-        wordingVersion: WITHDRAWAL_WORDING_VERSION,
-        plan: selectedTier,
-      });
-    } catch {
-      setErrorMsg(
-        "Couldn't record your acknowledgement. Check your connection and try again."
-      );
-      setPurchasing(false);
-      return;
+    if (ackRequired) {
+      try {
+        await recordConsent({
+          consentType: "distance_contract_immediate_performance",
+          granted: true,
+          consentText: WITHDRAWAL_CONSENT_TEXT,
+          wordingVersion: WITHDRAWAL_WORDING_VERSION,
+          plan: selectedTier,
+        });
+      } catch {
+        setErrorMsg(
+          "Couldn't record your acknowledgement. Check your connection and try again."
+        );
+        setPurchasing(false);
+        return;
+      }
     }
     try {
       const result = await purchaseProduct(
@@ -720,6 +729,7 @@ export default function SubscribeScreen() {
               blocks Subscribe until ticked (Consumer Contracts Regs
               2013 Reg. 36–37). A ConsentRecord is written before the
               StoreKit flow launches. */}
+          {ackRequired && (
           <Pressable
             onPress={() => setAcknowledged((v) => !v)}
             className="flex-row gap-3 rounded-xl border p-3.5"
@@ -742,6 +752,7 @@ export default function SubscribeScreen() {
                 : WITHDRAWAL_CONSENT_TEXT}
             </Text>
           </Pressable>
+          )}
 
           {/* Apply tokens.glowPrimary as proper iOS shadow props +
               Android elevation. The previous version spread
@@ -758,13 +769,13 @@ export default function SubscribeScreen() {
               purchasing ||
               loadState !== "idle" ||
               !selectedAvailable ||
-              !acknowledged
+              !ackSatisfied
             }
             className="rounded-full py-4 items-center"
             style={{
               backgroundColor: tokens.primary,
               opacity:
-                purchasing || !selectedAvailable || !acknowledged ? 0.7 : 1,
+                purchasing || !selectedAvailable || !ackSatisfied ? 0.7 : 1,
               shadowColor: tokens.glowPrimary.color,
               shadowOffset: { width: 0, height: 0 },
               shadowRadius: tokens.glowPrimary.radius,

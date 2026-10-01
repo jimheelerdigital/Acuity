@@ -466,6 +466,28 @@ export async function linkRevenueCatAdIdentifiers(
   }
 }
 
+/**
+ * Country code of the customer's App Store / Play Store account, via
+ * RevenueCat. Apple returns ISO alpha-3 ("USA", "GBR"); Google may return
+ * alpha-2. Null when RC isn't configured or the store doesn't answer —
+ * callers must treat null as "unknown", not as a country.
+ */
+export async function getStorefrontCountryCode(): Promise<string | null> {
+  for (let i = 0; i < 10 && !configured; i++) {
+    await new Promise((r) => setTimeout(r, 300));
+  }
+  if (!configured) return null;
+  const mod = await loadPurchases();
+  if (!mod) return null;
+  try {
+    const sf = await mod.default.getStorefront();
+    return sf?.countryCode ? sf.countryCode.toUpperCase() : null;
+  } catch (err) {
+    log("getStorefront failed", err);
+    return null;
+  }
+}
+
 export async function showManageSubscriptions(): Promise<boolean> {
   if (!configured) return false;
   const mod = await loadPurchases();

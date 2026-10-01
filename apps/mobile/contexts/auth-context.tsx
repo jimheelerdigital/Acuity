@@ -26,6 +26,7 @@ import {
   syncRevenueCatAttributes,
 } from "@/lib/revenuecat";
 import { flushPendingWithdrawalAck } from "@/lib/paywall-consent";
+import { claimAnonymousDebrief } from "@/lib/onboarding-v10/claim";
 import { fetchCustomerRcProfile } from "@/lib/pricing-tier";
 import {
   IDLE_EXPIRY_MS,
@@ -333,6 +334,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // the native module is even imported. Deliberately does NOT call
   // refresh() — while RC_SOURCE_OF_TRUTH is off, RC's opinion is
   // observation only and must not drive app state.
+  // v10 first-debrief recovery. The funnel records a debrief BEFORE the
+  // account exists and claims it at signup. If that claim didn't land
+  // (network, or a sign-in path that finished elsewhere), the token stays on
+  // the device; retry on every sign-in. Idempotent server-side and a no-op
+  // when there's nothing to claim, so it's safe on every auth path.
+  useEffect(() => {
+    if (!user?.id) return;
+    void claimAnonymousDebrief();
+  }, [user?.id]);
+
   useEffect(() => {
     if (!user?.id) return;
     let cancelled = false;

@@ -9,7 +9,7 @@
  *
  * Purchases are completed by RevenueCat. We intercept each one with
  * onPurchasePackageInitiated to show the UK/EU 14-day-withdrawal
- * acknowledgement first (WithdrawalAckModal) and only resume the purchase
+ * acknowledgement first (UK + EU/EEA store accounts only — lib/withdrawal-region.ts) (WithdrawalAckModal) and only resume the purchase
  * once it's captured (lib/paywall-consent.ts).
  */
 
@@ -28,6 +28,7 @@ import {
   WITHDRAWAL_WORDING_VERSION,
 } from "@/lib/consent";
 import { captureWithdrawalAck, planForPackageType } from "@/lib/paywall-consent";
+import { requiresWithdrawalAck } from "@/lib/withdrawal-region";
 import { RC_ENTITLEMENT_PRO } from "@acuity/shared";
 
 type CustomVariables = NonNullable<
@@ -61,7 +62,16 @@ export function RcPaywall(props: RcPaywallProps) {
       packageBeingPurchased: PurchasesPackage;
       resume: (shouldResume: boolean) => void;
     }) => {
-      setPending({ pkg: packageBeingPurchased, resume });
+      // UK/EU/EEA store accounts get the 14-day acknowledgement first;
+      // everyone else goes straight to the store sheet.
+      void requiresWithdrawalAck().then((required) => {
+        if (required) {
+          setPending({ pkg: packageBeingPurchased, resume });
+        } else {
+          lastPkg.current = packageBeingPurchased;
+          resume(true);
+        }
+      });
     },
     []
   );

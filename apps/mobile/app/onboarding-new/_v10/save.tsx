@@ -5,12 +5,17 @@ import { router } from "expo-router";
 import Svg, { Path } from "react-native-svg";
 
 import { useAuth } from "@/contexts/auth-context";
+import { api } from "@/lib/api";
 import { useTheme } from "@/contexts/theme-context";
 
 import { CoralScreen, FunnelCta, RippleWordmark } from "./_ui";
 import { makeAcuityTokens } from "@/lib/theme/tokens";
 import { signInWithApple, isAppleSignInAvailable } from "@/lib/apple-auth";
-import { signUpWithPassword, useGoogleSignIn } from "@/lib/auth";
+import {
+  signInWithPassword,
+  signUpWithPassword,
+  useGoogleSignIn,
+} from "@/lib/auth";
 import { trackV10 } from "@/lib/onboarding-v10/analytics";
 import { claimAnonymousDebrief } from "@/lib/onboarding-v10/claim";
 import {
@@ -113,6 +118,19 @@ export default function V10Save() {
       // state and skip the signed-in branch.
       await setV10Guest(false);
 
+      // The v10 funnel IS onboarding. Mark it complete server-side, the
+      // same call the legacy account/paywall screens make — otherwise
+      // AuthGate sees onboardingCompleted=false and runs the legacy
+      // onboarding ("Before your first entry…") right after v10 finishes.
+      // Best-effort: AuthGate's v10Offered guard is the local backstop.
+      try {
+        await api.post<{ ok: boolean }>("/api/onboarding/complete", {
+          skipped: false,
+        });
+      } catch {
+        /* non-fatal */
+      }
+
       await refresh();
       trackV10("v10_account_completed", { method, paid_state: paidState });
       router.replace("/onboarding-new/reminders" as never);
@@ -178,6 +196,18 @@ export default function V10Save() {
       const result = await signUpWithPassword(trimmed, password);
       if (!result.ok) {
         setError(result.message ?? "That didn’t go through.");
+        return;
+      }
+      // Sign-up creates the account but returns NO session (the server's
+      // mobile-signup contract). Without this login the user is signed out:
+      // the debrief claim 401s and AuthGate bounces them to sign-in right
+      // after the reminders screen. Same two-step pattern as
+      // (auth)/sign-up.tsx and the legacy onboarding account screen.
+      const login = await signInWithPassword(trimmed, password);
+      if (!login.ok) {
+        setError(
+          "Your account was created, but we couldn't sign you in. Try signing in with the same email and password."
+        );
         return;
       }
       await finishSignup("email");
