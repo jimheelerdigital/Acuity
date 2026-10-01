@@ -146,3 +146,27 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: false, error: err instanceof Error ? err.message : String(err), log }, { status: 500 });
   }
 }
+
+/** GET ?name=… — read-only: campaigns in the ad account matching a name (to avoid duplicates). */
+export async function GET(req: NextRequest) {
+  const bearer = req.headers.get("authorization");
+  const cronSecret = process.env.CRON_SECRET;
+  if (!(cronSecret && bearer === `Bearer ${cronSecret}`)) {
+    const guard = await requireAdmin();
+    if (!guard.ok) return guard.response;
+  }
+  const token = process.env.META_ACCESS_TOKEN;
+  const rawAccount = process.env.META_AD_ACCOUNT_ID;
+  if (!token || !rawAccount) return NextResponse.json({ error: "missing ads env" }, { status: 500 });
+  const act = rawAccount.startsWith("act_") ? rawAccount : `act_${rawAccount}`;
+  const v = process.env.META_API_VERSION || "v25.0";
+  const name = req.nextUrl.searchParams.get("name") ?? "Mythicals";
+  const qs = new URLSearchParams({
+    fields: "id,name,status,effective_status,daily_budget,created_time,adsets{id,name,status,effective_status,daily_budget},ads{id,status,effective_status}",
+    filtering: JSON.stringify([{ field: "name", operator: "CONTAIN", value: name }]),
+    limit: "20",
+    access_token: token,
+  });
+  const res = await fetch(`https://graph.facebook.com/${v}/${act}/campaigns?${qs}`);
+  return NextResponse.json(await res.json(), { status: res.ok ? 200 : 500 });
+}
