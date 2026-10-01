@@ -518,7 +518,7 @@ export const livingReelQueueFn = inngest.createFunction(
       for (const f of (data ?? []).filter((x) => x.name.endsWith(".json"))) {
         const p = `storyboard-requests/${f.name}`;
         // Body: { "preset": "kirin" } or { "storyboard": { ... } }.
-        let body: { preset?: string; storyboard?: Record<string, unknown> } = {};
+        let body: { preset?: string; storyboard?: Record<string, unknown>; email?: boolean } = {};
         try {
           const dl = await supabase.storage.from("content-factory").download(p);
           body = dl.data ? JSON.parse(await dl.data.text()) : {};
@@ -534,6 +534,7 @@ export const livingReelQueueFn = inngest.createFunction(
           mode: sfx ? "sfx" : "full",
           ...(body.preset ? { preset: body.preset } : {}),
           ...(body.storyboard ? { storyboard: body.storyboard } : {}),
+          ...(body.email === true ? { email: true } : {}),
         });
       }
       return claimed;

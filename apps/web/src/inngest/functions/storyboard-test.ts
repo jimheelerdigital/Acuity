@@ -54,7 +54,14 @@ export const storyboardTestFn = inngest.createFunction(
     },
   },
   async ({ event, step, logger }) => {
-    const data = event.data as { name: string; mode?: "full" | "sfx"; preset?: string; storyboard?: Partial<Storyboard> };
+    const data = event.data as {
+      name: string;
+      mode?: "full" | "sfx";
+      preset?: string;
+      storyboard?: Partial<Storyboard>;
+      /** Email the result to Keenan. Off by default (2026-10-01): results are QA'd before he sees them. */
+      email?: boolean;
+    };
     const { name, mode = "full" } = data;
     const dir = `storyboards/${name}`;
 
@@ -330,8 +337,8 @@ export const storyboardTestFn = inngest.createFunction(
       });
     }
 
-    // ── 6. Email ─────────────────────────────────────────────────────
-    await step.run("email", async () => {
+    // ── 6. Email (opt-in) ────────────────────────────────────────────
+    if (data.email === true) await step.run("email", async () => {
       const { sendStoryboardEmail } = await import("@/lib/content-factory/storyboard");
       const failed = versions.reduce((acc, v) => acc + manifest[v]!.clips.filter((c) => !c).length, 0);
       const clips = Object.keys(sfxByClip).length + (locked ? 1 : 0);
