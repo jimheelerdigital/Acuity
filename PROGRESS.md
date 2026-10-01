@@ -104,6 +104,30 @@ All 30 automatic emails (getting into the app, first debrief, checkout, trial en
 - Uses the ads Jev client (`lib/adlab/jev.ts`, either JEV_API_KEY or OPENROUTER_API_KEY); logged as ClaudeCallLog `jev:adlab:email:<key>`.
 - Copy removed: "takes about thirty seconds", "talk for a few minutes", the unverified "top 1%" in milestone_100.
 
+## [2026-10-01] — Mythicals Page-likes ad is live
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** see "docs: Log the live Mythicals Page-likes campaign"
+
+### In plain English (for Keenan)
+The $10/day, 7-day ad to grow the Legendary Mythicals Facebook Page is live, promoting the reel Keenan reposted by hand. It runs until 2026-10-08.
+
+### Technical changes (for Jimmy)
+- Ad account act_235992026 (Mythicals portfolio):
+  - Campaign 52651587106786
+  - Ad set 52651588674586: PAGE_LIKES, $10/day, Advantage audience on, US/CA/GB/AU 18-34 plus fantasy interests as suggestions, Facebook feed and reels
+  - Ad 52651590840786 promoting post 1251155438091197_122098055679498409 (reel 2274155003438442)
+- All three are ACTIVE, pending Meta ad review.
+- A second, empty paused ad set (52651588340586) remains from an earlier attempt; $0.
+
+### Manual steps needed
+- [ ] ~10-04: check cost per Page like. If it's over ~$0.40, swap the creative or drop the "Computers" interest (Claude/Keenan)
+
+### Notes
+- BIG GOTCHA: posts published by our app (Ripple Post Publisher, in Development mode) can't be promoted, and the API can't create ad creatives through a dev-mode app either (Meta errors 1487472 and 1885183). To boost something, repost it by hand (ideally with Meta-library music), or run ads through a live app such as AdLab's "AdLab - Acuity User" once the Page is shared into the main portfolio.
+- The interest search matched "Dragon" to "Computers". It's only a suggestion while Advantage audience is on.
+- The size reel's IG tracking was moved to the copy still up (Dd9xazyASpH, media 18095751488436570) after Keenan deleted the duplicate.
+
 ## [2026-10-01] — BWK pick videos: calmer motion; Mythicals ad moves to an image creative
 **Requested by:** Keenan
 **Committed by:** Claude Code
