@@ -44,7 +44,7 @@ function ffmpegPath(): string | null {
  */
 export function livingMotionPrompt(
   imagePrompt: string,
-  opts: { person?: boolean; action?: boolean; realistic?: boolean } = {}
+  opts: { person?: boolean; action?: boolean; realistic?: boolean; calm?: boolean } = {}
 ): string {
   // ACTION mode (2026-09-29, Legendary Mythicals — per Keenan: "the
   // animations for the mythical beasts are pretty weak... it's basically
@@ -73,7 +73,11 @@ export function livingMotionPrompt(
       // Pick lanes (realistic) move more (2026-09-30, Keenan: "barely has any
       // animation"; "make the image move somewhat dynamically"). Mythicals
       // keeps the tuned, measured level.
-      opts.realistic
+      // BWK picks are calmer (2026-10-01, Keenan: "bwk posts need a little
+      // bit less movement throughout. they're too chaotic right now").
+      opts.realistic && opts.calm
+        ? "Keep the movement calm, controlled and premium: one slow, deliberate motion (light shifting, a car rolling slowly forward, steam rising, a man turning his head) and a slow, steady camera push-in or drift. Nothing fast, no whip pans, no sudden moves, no shaking. No morphing, no warping. The WHOLE subject stays fully inside the frame for all five seconds."
+        : opts.realistic
         ? "Make it move DYNAMICALLY but stay real: the subject moves clearly through the five seconds at natural speed, AND the camera makes a confident move (a steady dolly-in, a slow orbit, a tracking move alongside). Never a static frame or a barely-there zoom. No morphing, no warping. The WHOLE subject (the entire car, watch or person) stays fully inside the frame for all five seconds: the camera follows it and never lets it drive out of shot or get cut off at an edge."
         : "Keep the movement realistic and measured: one clear action at natural, real-world speed, like footage of a real animal or actor. Nothing frantic, no sudden lunges, no morphing. The camera moves slowly and steadily (a gentle push-in or a slight drift).",
       "Keep the subject's design, colors, armor and setting exactly as in the image. The subject stays in frame. No text, no new creatures or people, no scene cuts.",

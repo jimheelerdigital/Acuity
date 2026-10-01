@@ -186,6 +186,7 @@ export const carouselPostVideoFn = inngest.createFunction(
             person: s.person,
             action: plan.brand === "mythicals" || !!plan.lane?.startsWith("pick-"),
             realistic: !!plan.lane?.startsWith("pick-"),
+            calm: plan.lane === "pick-bwk",
           }),
         };
       });

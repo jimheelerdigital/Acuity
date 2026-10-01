@@ -104,6 +104,36 @@ All 30 automatic emails (getting into the app, first debrief, checkout, trial en
 - Uses the ads Jev client (`lib/adlab/jev.ts`, either JEV_API_KEY or OPENROUTER_API_KEY); logged as ClaudeCallLog `jev:adlab:email:<key>`.
 - Copy removed: "takes about thirty seconds", "talk for a few minutes", the unverified "top 1%" in milestone_100.
 
+## [2026-10-01] — BWK pick videos: calmer motion; Mythicals ad moves to an image creative
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** see "fix: Calm down BWK pick-video motion"
+
+### In plain English (for Keenan)
+- **Calmer BWK videos:** BWK's "which one is you?" videos now move calmly and deliberately, with the same luxury themes. Ripple keeps its livelier motion.
+- **Mythicals ad creative:** the Page-likes ad uses the cover image with a "Like Page" button, because Meta won't promote the reel itself (most likely because of its music).
+- **Size reel:** the duplicate Facebook copy was deleted.
+
+### Technical changes (for Jimmy)
+- `lib/content-factory/living-reel.ts`: `livingMotionPrompt` gets a `calm` flag (slow, deliberate subject motion plus a slow steady camera; no whip pans or fast moves).
+- `inngest/functions/carousel-post-video.ts`: `calm: lane === "pick-bwk"`.
+- `lib/content-factory/pick-lane.ts`: for BWK, the option and scene "motion" lines are now calm and controlled; Ripple stays dynamic.
+- `page-likes-campaign` route:
+  - Advantage audience is on by default.
+  - New `imageUrl` option builds a LIKE_PAGE image creative.
+  - `adsetId` and `campaignId` can be reused.
+  - `video_feeds` placement removed (deprecated, error 2490562).
+- FB: deleted the duplicate size-reel post 1083893887962353. The tracked one is 1105852401791370. The publisher posted the size reel twice to FB; cause still to investigate.
+
+### Manual steps needed
+- None
+
+### Notes
+- Meta errors hit along the way:
+  - 1870227: the advantage_audience flag is required.
+  - 2446289: a reel's video id can't be used as object_story_id; use the page post id.
+  - 1487472: this page post can't be promoted.
+
 ## [2026-10-01] — Meta tokens re-issued (now with ad permissions); Mythicals gets its own ad account
 **Requested by:** Keenan
 **Committed by:** Claude Code
