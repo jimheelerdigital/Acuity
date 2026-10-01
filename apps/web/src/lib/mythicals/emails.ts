@@ -1,6 +1,6 @@
 import { createHmac } from "crypto";
 
-import { ARCHETYPES, archetypeImageUrl, archetypeOgUrl, type ArchetypeSlug } from "@/lib/mythicals/archetypes";
+import { ARCHETYPES, archetypeEmailHeroUrl, archetypeImageUrl, type ArchetypeSlug } from "@/lib/mythicals/archetypes";
 import { MYTHICALS_ORIGIN, PORTRAIT_PRICE_CENTS, shopLive } from "@/lib/mythicals/site";
 import type { PortraitOrder } from "@/lib/mythicals/store";
 
@@ -74,7 +74,7 @@ export function welcomeEmail(to: string, slug: ArchetypeSlug) {
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#0b0a09"><tr><td align="center" style="padding:24px 12px">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;background:#0f0d0b;border:1px solid #2c261d;border-radius:14px;overflow:hidden">
 <tr><td align="center" style="padding:18px 24px;font-family:Helvetica,Arial,sans-serif;font-size:12px;letter-spacing:4px;text-transform:uppercase;color:${GOLD}">&#10022; Legendary Mythicals &#10022;</td></tr>
-<tr><td><a href="${resultUrl}"><img src="${archetypeOgUrl(slug)}" width="560" alt="The ${esc(a.name)}" style="display:block;width:100%;height:auto;border:0"></a></td></tr>
+<tr><td><a href="${resultUrl}"><img src="${archetypeEmailHeroUrl(slug)}" width="560" alt="The ${esc(a.name)}" style="display:block;width:100%;height:auto;border:0"></a></td></tr>
 <tr><td align="center" style="padding:28px 24px 8px">
 <p style="margin:0 0 6px;font-family:Helvetica,Arial,sans-serif;font-size:12px;letter-spacing:3px;text-transform:uppercase;color:${DIM}">Your creature is</p>
 <h1 style="margin:0;font-size:34px;line-height:1.15;font-weight:normal;color:${BONE}">The ${esc(a.name)}</h1>

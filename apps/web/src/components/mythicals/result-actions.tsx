@@ -45,10 +45,12 @@ export function EmailCapture({
   slug,
   source = "result",
   cta = "Send my profile",
+  doneText = "Sent. Check your inbox.",
 }: {
   slug: string;
   source?: string;
   cta?: string;
+  doneText?: string;
 }) {
   const [email, setEmail] = useState("");
   const [state, setState] = useState<"idle" | "sending" | "done" | "error">("idle");
@@ -73,7 +75,7 @@ export function EmailCapture({
   };
 
   if (state === "done") {
-    return <p className="rounded-lg border border-[#d9a441]/40 bg-[#d9a441]/10 px-4 py-3 text-sm text-[var(--lm-bone)]">Sent. Check your inbox.</p>;
+    return <p className="rounded-lg border border-[#d9a441]/40 bg-[#d9a441]/10 px-4 py-3 text-sm text-[var(--lm-bone)]">{doneText}</p>;
   }
   return (
     <form onSubmit={submit} className="flex flex-col gap-3 sm:flex-row">

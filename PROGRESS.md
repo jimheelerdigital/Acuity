@@ -7,6 +7,35 @@
 
 ---
 
+## [2026-10-01] — Legendary Mythicals site gets a premium brand homepage, logo, socials and shop sections
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** (see git log: "Rebuild the Mythicals homepage as a premium brand hub")
+
+### In plain English (for Keenan)
+legendarymythicals.com is now a proper brand site. The homepage has the dragon emblem, all 12 creatures, the portrait offer, a "coming soon" shop (lamps, prints, apparel, collectibles) with a waitlist, partnership/licensing contact cards, and Instagram/Facebook follow links. The quiz now lives on its own landing page at /quiz, which is where ads and the bio link should point. The welcome email's top picture also now shows the whole creature instead of a cut-off slice.
+
+### Technical changes (for Jimmy)
+- apps/web/src/app/lm/page.tsx: rebuilt as the brand hub (hero, #creatures, quiz band, #portrait, #shop with list waitlist, partnerships, follow)
+- apps/web/src/app/lm/quiz/page.tsx: quiz landing page (hero + first question right below it); title "Which Legendary Creature Are You?"
+- apps/web/src/app/lm/layout.tsx: sticky header with emblem, nav, socials and quiz button; 3-column footer; emblem favicon; new home title/description; .lm-eyebrow/.lm-rule/.lm-card/.lm-glow styles
+- apps/web/src/components/mythicals/socials.tsx (new): SocialLinks (inline SVG icons)
+- apps/web/src/lib/mythicals/site.ts: MYTHICALS_EMBLEM_URL, MYTHICALS_FAVICON_URL, MYTHICALS_SOCIALS (TikTok from NEXT_PUBLIC_MYTHICALS_TIKTOK_URL, hidden when unset)
+- apps/web/src/app/api/mythicals/subscribe/route.ts: list-only signups (source "list_*") need no creature and get no profile email
+- apps/web/src/components/mythicals/result-actions.tsx: EmailCapture doneText prop
+- apps/web/src/lib/mythicals/archetypes.ts + emails.ts: archetypeEmailHeroUrl (720x900 crops at content-factory/mythicals-site/email/<slug>.jpg) used as the email hero
+- Storage: mythicals-site/brand/{emblem-512.png, emblem-192.png, wordmark.jpg}, mythicals-site/email/<slug>.jpg
+
+### Manual steps needed
+- [ ] Send Claude the Mythicals TikTok handle, then add NEXT_PUBLIC_MYTHICALS_TIKTOK_URL in Vercel and redeploy (Keenan)
+- [ ] Point the Instagram/Facebook bio link at legendarymythicals.com/quiz (Keenan)
+
+### Notes
+- Shop cards are placeholders; the waitlist rows land in mythicals-site/subscribers.jsonl with source list_shop and an empty slug.
+- Partnerships cards are mailto links to Keenan; there's no form yet.
+- The Facebook link uses the page id URL because the vanity URL isn't confirmed.
+
 ## [2026-10-01] — Legendary Mythicals welcome email redesigned around the creature art
 
 **Requested by:** Keenan

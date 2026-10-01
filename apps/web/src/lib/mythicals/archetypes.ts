@@ -310,6 +310,11 @@ export function archetypeImageUrl(slug: ArchetypeSlug): string {
   return `https://rohjfcenylmfnqoyoirn.supabase.co/storage/v1/object/public/content-factory/mythicals-site/archetypes/${slug}.jpg`;
 }
 
+/** 720x900 (4:5) crop of the hero image that keeps the whole creature, for emails. */
+export function archetypeEmailHeroUrl(slug: ArchetypeSlug): string {
+  return `https://rohjfcenylmfnqoyoirn.supabase.co/storage/v1/object/public/content-factory/mythicals-site/email/${slug}.jpg`;
+}
+
 /** 1200x630 share image for a result page. */
 export function archetypeOgUrl(slug: ArchetypeSlug): string {
   return `https://rohjfcenylmfnqoyoirn.supabase.co/storage/v1/object/public/content-factory/mythicals-site/og/${slug}.jpg`;
