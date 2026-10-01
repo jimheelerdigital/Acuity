@@ -78,7 +78,16 @@ interface WrittenCaption {
   hashtags: string[];
 }
 
-function assemble(c: WrittenCaption): string {
+/**
+ * Fixed quiz line on every Mythicals caption (2026-10-01, per Keenan: grow
+ * the following through the quiz funnel first). Added in code, after the
+ * writer, because the writer is told never to market. The plain domain
+ * reads on Instagram (where caption links don't click) and links on
+ * Facebook/TikTok.
+ */
+const MYTHICALS_QUIZ_LINE = "Which legendary creature are you? Take the free quiz at legendarymythicals.com/quiz";
+
+function assemble(c: WrittenCaption, brand?: "ripple" | "bwk" | "mythicals"): string {
   const tags = c.hashtags
     .map((t) => (t.startsWith("#") ? t : `#${t}`).toLowerCase().replace(/[^#a-z0-9_]/g, ""))
     .filter((t) => t.length > 1 && !BANNED_TAGS.has(t))
@@ -86,6 +95,7 @@ function assemble(c: WrittenCaption): string {
   return [
     [c.firstLine.trim(), c.secondLine.trim()].filter(Boolean).join("\n"),
     c.question.trim(),
+    brand === "mythicals" ? MYTHICALS_QUIZ_LINE : "",
     tags.join(" "),
   ]
     .filter(Boolean)
@@ -156,7 +166,7 @@ EXISTING QUESTION: ${opts.question ?? "(none)"}`,
       .catch(() => {});
     const parsed = JSON.parse(lastJsonText(text)) as WrittenCaption;
     if (!parsed.firstLine || !parsed.question || !Array.isArray(parsed.hashtags)) return null;
-    return assemble(parsed);
+    return assemble(parsed, opts.brand);
   } catch (err) {
     console.error(`[caption-writer] failed: ${err instanceof Error ? err.message : err}`);
     return null;

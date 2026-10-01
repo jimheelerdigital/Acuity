@@ -7,6 +7,26 @@
 
 ---
 
+## [2026-10-01] — Every Mythicals post now points people to the quiz
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** (see git log: "Add the quiz line to every Mythicals caption")
+
+### In plain English (for Keenan)
+Every Legendary Mythicals post caption now ends with "Which legendary creature are you? Take the free quiz at legendarymythicals.com/quiz", so viewers learn the quiz exists. The focus for now is growing followers and the quiz email list; selling (prints, portraits) is on hold.
+
+### Technical changes (for Jimmy)
+- apps/web/src/lib/content-factory/caption-writer.ts: MYTHICALS_QUIZ_LINE appended by assemble() before the hashtags when brand is mythicals
+
+### Manual steps needed
+- [ ] Point the Instagram, Facebook and TikTok bio links at legendarymythicals.com/quiz (Keenan)
+
+### Notes
+- The line is added in code, not by the writer prompt, because the prompt bans marketing asks for every brand.
+- If the caption writer fails, the fallback caption has no quiz line. That's rare and acceptable.
+- Monetization (POD prints, $5 pack, price test) is parked by Keenan's decision on 10-01.
+
 ## [2026-10-01] — Mythicals welcome email now animated; TikTok link added to the site
 
 **Requested by:** Keenan
