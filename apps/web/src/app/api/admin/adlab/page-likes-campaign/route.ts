@@ -43,6 +43,15 @@ export async function POST(req: NextRequest) {
     campaignId?: string;
     /** Advantage audience expansion (default on). */
     advantageAudience?: boolean;
+    /** Reuse an existing ad set. */
+    adsetId?: string;
+    /**
+     * Image creative instead of an existing post (2026-10-01: reels with
+     * library music can't be promoted, Meta error 1487472). Uses a LIKE_PAGE
+     * call to action.
+     */
+    imageUrl?: string;
+    message?: string;
     pageId?: string;
     postId?: string;
     dailyBudgetUsd?: number;
@@ -51,7 +60,7 @@ export async function POST(req: NextRequest) {
     interests?: string[];
     activate?: boolean;
   };
-  if (!body.pageId || !body.postId) return NextResponse.json({ error: "pageId and postId required" }, { status: 400 });
+  if (!body.pageId || (!body.postId && !body.imageUrl)) return NextResponse.json({ error: "pageId and postId or imageUrl required" }, { status: 400 });
   const log: unknown[] = [];
   const call = async (method: "GET" | "POST", path: string, params: Record<string, unknown>) => {
     const form = new URLSearchParams();
@@ -105,7 +114,7 @@ export async function POST(req: NextRequest) {
       // Required since Graph v23 when the budget lives on the ad set.
       is_adset_budget_sharing_enabled: false,
     });
-    const adset = await call("POST", `${act}/adsets`, {
+    const adset = body.adsetId ? { id: body.adsetId } : await call("POST", `${act}/adsets`, {
       name: `${name} – US/CA/UK/AU 18-34`,
       campaign_id: campaign.id,
       daily_budget: String(Math.round((body.dailyBudgetUsd ?? 10) * 100)),
@@ -131,8 +140,29 @@ export async function POST(req: NextRequest) {
         facebook_positions: ["feed", "facebook_reels"],
       },
     });
-    const objectStoryId = body.postId.includes("_") ? body.postId : `${body.pageId}_${body.postId}`;
-    const creative = await call("POST", `${act}/adcreatives`, { name: `${name} – creative`, object_story_id: objectStoryId });
+    let creative: { id: string };
+    if (body.imageUrl) {
+      const img = Buffer.from(await (await fetch(body.imageUrl)).arrayBuffer()).toString("base64");
+      const up = await call("POST", `${act}/adimages`, { bytes: img });
+      const hash = Object.values(up.images as Record<string, { hash: string }>)[0]?.hash;
+      if (!hash) throw new Error("adimages returned no hash");
+      creative = await call("POST", `${act}/adcreatives`, {
+        name: `${name} – image creative`,
+        object_story_spec: {
+          page_id: body.pageId,
+          link_data: {
+            image_hash: hash,
+            link: `https://www.facebook.com/${body.pageId}`,
+            message: body.message ?? "",
+            call_to_action: { type: "LIKE_PAGE", value: { page: body.pageId } },
+          },
+        },
+      });
+    } else {
+      const postId = body.postId!;
+      const objectStoryId = postId.includes("_") ? postId : `${body.pageId}_${postId}`;
+      creative = await call("POST", `${act}/adcreatives`, { name: `${name} – creative`, object_story_id: objectStoryId });
+    }
     const ad = await call("POST", `${act}/ads`, {
       name: `${name} – ad`,
       adset_id: adset.id,
