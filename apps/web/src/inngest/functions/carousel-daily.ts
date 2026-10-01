@@ -183,6 +183,27 @@ const HOUR_LANES: Record<number, DailyBucket[]> = {
  */
 const AVATAR_POST_PROBABILITY = 0.08;
 
+/**
+ * Categories (Mythicals) / theme families (pick lanes) this lane used in
+ * the last `days` days, read from the performance-loop recipes, so the
+ * bandit doesn't repeat a topic back to back. Fails soft to [].
+ */
+async function recentLoopCategories(lane: string, days: number): Promise<string[]> {
+  try {
+    const { prisma } = await import("@/lib/prisma");
+    const { readRecipe } = await import("@/lib/content-factory/performance-loop");
+    const posts = await prisma.carouselPost.findMany({
+      where: { lane, createdAt: { gte: new Date(Date.now() - days * 86_400_000) } },
+      select: { id: true },
+      take: 20,
+    });
+    const recipes = await Promise.all(posts.map((p) => readRecipe(p.id)));
+    return recipes.map((r) => r?.category).filter((c): c is string => !!c && c !== "unknown");
+  } catch {
+    return [];
+  }
+}
+
 export const carouselDailyCronFn = inngest.createFunction(
   {
     id: "carousel-daily-cron",
@@ -686,19 +707,30 @@ export const carouselDailyCronFn = inngest.createFunction(
       const choiceMode: MythMode =
         forcedMode === "duo" || forcedMode === "place" || forcedMode === "know" || forcedMode === "scenario" || forcedMode === "choice"
           ? forcedMode
-          : await step.run("pick-post-type", async () => {
-              const { prisma } = await import("@/lib/prisma");
-              const today = new Date(runAt);
-              today.setUTCHours(0, 0, 0, 0);
-              const posted = await prisma.carouselPost.findMany({
-                where: { lane: laneKey, generatedFor: today },
-                select: { topicSlug: true },
+          : choiceLane.pickBrand
+            ? "choice"
+            : await step.run("pick-post-type", async () => {
+                // Performance loop (2026-09-30): a bandit over post types
+                // using the scoreboard (Thompson sampling + 25% exploration),
+                // skipping types already posted today unless a proven
+                // winner strongly beats the rest. No scoreboard → uniform
+                // random among fresh types, as before.
+                const { prisma } = await import("@/lib/prisma");
+                const { readScoreboard, chooseMythicPostType, mythicModeFromSlug } = await import(
+                  "@/lib/content-factory/performance-loop"
+                );
+                const today = new Date(runAt);
+                today.setUTCHours(0, 0, 0, 0);
+                const posted = await prisma.carouselPost.findMany({
+                  where: { lane: laneKey, generatedFor: today },
+                  select: { topicSlug: true },
+                });
+                const used = new Set(posted.map((p) => mythicModeFromSlug(p.topicSlug)));
+                const board = await readScoreboard("mythicals");
+                const choice = chooseMythicPostType(board, used);
+                console.log(`[carousel-cron] post type: ${choice.arm} (${choice.reason}) ${choice.samples ? JSON.stringify(choice.samples) : ""}`);
+                return choice.arm as MythMode;
               });
-              const used = new Set(posted.map((p) => (p.topicSlug.match(/^mythic-(duo|place|know|scenario)-/)?.[1] ?? "choice") as MythMode));
-              const fresh = MYTH_MODES.filter((m) => !used.has(m));
-              const pool = fresh.length ? fresh : MYTH_MODES;
-              return pool[Math.floor(Math.random() * pool.length)];
-            });
       const pickBrand = choiceLane.pickBrand;
       const topic = await step.run("generate-choice-topic", async () => {
         const { prisma } = await import("@/lib/prisma");
@@ -708,9 +740,28 @@ export const carouselDailyCronFn = inngest.createFunction(
             orderBy: { createdAt: "desc" },
             select: { headline: true, slides: { select: { overlayText: true, kind: true } } },
           });
-          const { generatePickTopic } = await import("@/lib/content-factory/pick-lane");
+          const { generatePickTopic, PICK_FAMILIES } = await import("@/lib/content-factory/pick-lane");
           const { getLaneFeedback } = await import("@/lib/content-factory/performance");
+          // Performance loop: bandit picks today's focus family; Jev gets
+          // the scoreboard as context. Fails open to no loop context.
+          const loop = await (async () => {
+            try {
+              const pl = await import("@/lib/content-factory/performance-loop");
+              const board = await pl.readScoreboard(pickBrand);
+              const recentFamilies = await recentLoopCategories(laneKey, 2);
+              const focus = pl.chooseCategory(board, "pick", PICK_FAMILIES[pickBrand], recentFamilies);
+              const ctx = pl.whatWorksContext(board);
+              const familyLabels: Record<string, "proven winner" | "solid" | "weak" | "untested"> = {};
+              for (const f of PICK_FAMILIES[pickBrand]) familyLabels[f] = board?.categories[`pick::${f}`]?.label ?? "untested";
+              console.log(`[carousel-cron] ${laneKey} focus family: ${focus.arm} (${focus.reason})`);
+              return { focusFamily: focus.arm, whatWorks: ctx.whatWorks, whatDoesnt: ctx.whatDoesnt, familyLabels };
+            } catch (err) {
+              console.warn(`[carousel-cron] ${laneKey} loop context failed:`, err instanceof Error ? err.message : err);
+              return undefined;
+            }
+          })();
           return generatePickTopic({
+            loop,
             brand: pickBrand,
             theme: choiceLane.spec.theme,
             recentTitles: recentPick.map((p) => p.headline),
@@ -746,22 +797,48 @@ export const carouselDailyCronFn = inngest.createFunction(
           .flatMap((p) => p.slides.filter((s) => s.kind === "REASON").map((s) => s.overlayText.split("\n")[0]))
           .filter(Boolean);
         const { getLaneFeedback } = await import("@/lib/content-factory/performance");
+        const randomCategory =
+          choiceMode === "duo"
+            ? DUO_CATEGORIES[Math.floor(Math.random() * DUO_CATEGORIES.length)]
+            : choiceMode === "place"
+              ? PLACE_CATEGORIES[Math.floor(Math.random() * PLACE_CATEGORIES.length)]
+              : choiceMode === "know"
+                ? KNOW_CATEGORIES[Math.floor(Math.random() * KNOW_CATEGORIES.length)]
+                : choiceMode === "scenario"
+                  ? SCENARIO_CATEGORIES[Math.floor(Math.random() * SCENARIO_CATEGORIES.length)]
+                  : rollChoiceCategory(recentCats);
+        // Performance loop: bandit picks the category within the post type,
+        // then Sonnet writes 3 covers and Jev picks one with the scoreboard
+        // as context. Any failure falls back to the random category above.
+        let category = randomCategory;
+        let coverGuidance = "";
+        try {
+          const pl = await import("@/lib/content-factory/performance-loop");
+          const board = await pl.readScoreboard("mythicals");
+          const catalog = await pl.categoryCatalog("mythicals", choiceMode);
+          const recentCatsLoop = await recentLoopCategories(laneKey, 3);
+          const pickCat = pl.chooseCategory(board, choiceMode, catalog, recentCatsLoop);
+          category = pickCat.arm;
+          const cover = await pl.chooseMythicCover({
+            postType: choiceMode,
+            category,
+            recentTitles: recent.map((p) => p.headline),
+            board,
+          });
+          console.log(`[carousel-cron] category: ${category} (${pickCat.reason})${cover ? `\n${cover.table}` : ""}`);
+          if (cover) {
+            coverGuidance = `\n\nCOVER QUESTION FOR THIS POST (picked from tested candidates): "${cover.title}". Use it as the title, polishing wording only if it needs it, and build the five options around it.`;
+          }
+        } catch (err) {
+          console.warn("[carousel-cron] loop category/cover failed — random category:", err instanceof Error ? err.message : err);
+        }
         return generateChoiceTopic({
           mode: choiceMode,
-          category:
-            choiceMode === "duo"
-              ? DUO_CATEGORIES[Math.floor(Math.random() * DUO_CATEGORIES.length)]
-              : choiceMode === "place"
-                ? PLACE_CATEGORIES[Math.floor(Math.random() * PLACE_CATEGORIES.length)]
-                : choiceMode === "know"
-                  ? KNOW_CATEGORIES[Math.floor(Math.random() * KNOW_CATEGORIES.length)]
-                  : choiceMode === "scenario"
-                    ? SCENARIO_CATEGORIES[Math.floor(Math.random() * SCENARIO_CATEGORIES.length)]
-                    : rollChoiceCategory(recentCats),
+          category,
           theme: choiceLane.spec.theme,
           recentTitles: recent.map((p) => p.headline),
           recentNames,
-          feedback: await getLaneFeedback(laneKey),
+          feedback: `${(await getLaneFeedback(laneKey)) ?? ""}${coverGuidance}` || null,
         });
       });
       logger.info(`[carousel-cron] Choice (${laneKey}): "${topic.title}" — ${topic.options.map((o) => o.name).join(" / ")}`);
@@ -915,6 +992,27 @@ export const carouselDailyCronFn = inngest.createFunction(
             },
           },
         });
+        // Performance loop recipe (fail-soft: never blocks the post).
+        try {
+          const { writeRecipe, LOOP_LANES } = await import("@/lib/content-factory/performance-loop");
+          const brand = LOOP_LANES[laneKey];
+          if (brand) {
+            await writeRecipe({
+              postId: post.id,
+              brand,
+              lane: laneKey,
+              postType: pickBrand ? "pick" : choiceMode,
+              category: topic.category,
+              title: topic.title,
+              options: topic.options.map((o) => o.name),
+              coverScene: topic.coverScene,
+              generatedFor: today.toISOString().slice(0, 10),
+              slotHourUtc: runAt.getUTCHours(),
+            });
+          }
+        } catch (err) {
+          console.warn("[carousel-cron] recipe write failed:", err instanceof Error ? err.message : err);
+        }
         const { queuePostVideo } = await import("@/lib/content-factory/post-video");
         await queuePostVideo(post.id);
         return {

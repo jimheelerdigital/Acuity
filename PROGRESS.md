@@ -7,6 +7,49 @@
 
 ---
 
+## [2026-09-30] — Performance loop live; pick photos show the answer and move more; Meta tokens re-issued with FB insights
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** see "feat: Add the performance loop and fix pick-lane photos and motion"
+
+### In plain English (for Keenan)
+- **Learning from results:** the system now tracks every post's recipe and scores it 48 hours after posting against that account's typical post. It keeps a scoreboard of which post types and themes win, and uses it to choose tomorrow's posts. Roughly 3 in 4 picks go to what's working and 1 in 4 tries something less tested; Jev picks the specific post.
+- **Weekly email:** a report arrives every Monday.
+- **Photos that show the answer:** "which one is you?" photos now show the answer itself, such as a woman actually doing the role, instead of an empty couch or a pair of shoes.
+- **More movement:** every Ripple and BWK clip now moves clearly.
+- **Facebook numbers:** Facebook stats can now be read.
+
+### Technical changes (for Jimmy)
+- New `lib/content-factory/performance-loop.ts`:
+  - `recipes/<postId>.json` (recipe tags)
+  - post scoring: weighted ratios vs the brand/platform 14-day median; weights shares .2, saves .2, views .15, reach .15, follows .1, comments .1, likes .05, visits .05; IG is the anchor, FB blends in at 30% once views exist
+  - `scoreboard/<brand>.json` labels: untested (n<3), proven winner (≥1.25), solid (≥0.85), weak
+  - Thompson-sampling bandit with 25% exploration
+  - Mythicals cover pick: Sonnet writes 3 covers, Jev picks
+  - weekly report HTML
+- New `inngest/functions/performance-loop.ts`: `performance-scoreboard-refresh` (04:30 UTC daily + `content-factory/scoreboard.refresh`) and `performance-weekly-report` (Mon 14:00 UTC + `content-factory/performance.report`). Registered in `api/inngest/route.ts`.
+- New `app/api/admin/content-factory/performance-report/route.ts` (CRON_SECRET or admin; body `{}` = refresh + email, `{"action":"refresh"}` = refresh only).
+- `inngest/functions/carousel-daily.ts`:
+  - Mythicals `pick-post-type` and category now come from the bandit.
+  - Pick lanes get a bandit focus family and scoreboard context.
+  - Every post writes a recipe on save.
+- `lib/content-factory/pick-lane.ts`:
+  - `PICK_FAMILIES` (7 Ripple, 9 BWK); `pickConcept` takes scoreboard context, with a ±0.05 nudge for proven/weak and +0.03 for the focus family.
+  - Photo rules: for a role, person or action, show ONE woman (Ripple, 40s) or man (BWK) doing it, from behind or in profile with the face not the focus; never an empty room standing in.
+  - Option and scene motion lines are now dynamic (subject plus camera move).
+- `lib/content-factory/living-reel.ts`: `livingMotionPrompt` realistic mode (pick lanes) asks for dynamic subject motion plus a confident camera move. Mythicals keeps its tuned measured level.
+- Env: `IG_ACCESS_TOKEN`, `META_BWK_ACCESS_TOKEN` and `META_MYTHICALS_ACCESS_TOKEN` were replaced with never-expiring Page tokens minted from Keenan's new user token. It is never-expiring, with data access until 2026-12-30, and adds read_insights, pages_show_list, instagram_basic and business_management. Production was redeployed.
+
+### Manual steps needed
+- [ ] Inngest resync after deploy: new crons and functions (Claude, same session)
+- [ ] Before 2026-12-30: refresh the Meta user-token data access (Graph Explorer → generate → send to Claude); otherwise insights reads stop (Keenan)
+
+### Notes
+- No loop-lane post is 48h old yet, so scoreboards are empty and the lanes stay random until the first 04:30 UTC refresh (Mythicals first).
+- FB insights verified working on a Mythicals reel (blue_reels_play_count, avg watch time) and a post (post_media_view). The old `post_impressions_unique` metric is retired and returns #100. The scorer still needs FB views/reach mapped to the new metric names; currently FB rows only carry likes and comments.
+- The tonight Ripple "WHICH ROLE IS WEARING YOU OUT MOST THIS WEEK?" posted at 00:31 UTC before the watcher was stopped; Keenan disliked its photos. Deletion is offered (FB via API, IG manual).
+- Two unrelated changes share this commit, because `pick-lane.ts` and `carousel-daily.ts` hold both and interactive staging isn't available.
+
 ## [2026-09-30] — Daily volume: Mythicals 4, Ripple 3, BWK 3
 **Requested by:** Keenan
 **Committed by:** Claude Code

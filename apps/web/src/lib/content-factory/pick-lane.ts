@@ -51,6 +51,46 @@ export function parsePickLaneSpec(raw: unknown): PickLaneSpec | null {
 export interface PickConcept {
   question: string;
   why: string;
+  /** Theme family (PICK_FAMILIES), so the performance loop can learn by theme. */
+  family?: string;
+}
+
+/**
+ * Theme families the performance loop scores and steers (2026-09-30).
+ * Every concept is tagged with one; the scoreboard learns which families
+ * win, and the bandit picks a "focus family" for each run.
+ */
+export const PICK_FAMILIES: Record<PickBrand, string[]> = {
+  ripple: [
+    "the mental load she carries",
+    "time and space that is only hers",
+    "the roles she plays (mother, partner, daughter, friend)",
+    "who she is becoming",
+    "saying no and taking something back",
+    "her friendships",
+    "the life she keeps postponing (trips, dreams, plans)",
+  ],
+  bwk: [
+    "luxury cars",
+    "luxury watches",
+    "homes, cities and views",
+    "training and the body",
+    "habits and discipline",
+    "mentors and role models",
+    "brotherhood and the friends in his corner",
+    "money, business and ambition",
+    "the man he is becoming",
+  ],
+};
+
+/** Loop context passed in by carousel-daily (all optional; absent = pre-loop behavior). */
+export interface PickLoopContext {
+  /** Bandit-chosen focus family for this run. */
+  focusFamily?: string;
+  whatWorks?: string;
+  whatDoesnt?: string;
+  /** Scoreboard label per family. */
+  familyLabels?: Record<string, "proven winner" | "solid" | "weak" | "untested">;
 }
 
 export interface PickOptionDraft {
@@ -214,18 +254,19 @@ Each concept:
       : "Plain, concrete, calm; never hype or guru talk."
   }
 - "why": one line on why this audience would comment and tag on it.
+- "family": exactly one of these theme families, copied word for word: ${PICK_FAMILIES[brand].map((f) => `"${f}"`).join(", ")}.
 The five concepts must be clearly different subjects from each other and from recent posts.
 
 ${HUMAN_VOICE_RULES}
 
-OUTPUT (JSON): { "concepts": [{ "question": "...", "why": "..." }] }`;
+OUTPUT (JSON): { "concepts": [{ "question": "...", "why": "...", "family": "..." }] }`;
 }
 
 function optionsSystem(brand: PickBrand): string {
   const people =
     brand === "ripple"
-      ? `Prefer places, objects and moments over people (a car parked in a quiet driveway, a bath with a book, a café window seat). A woman may appear only when the option truly needs one, and then seen from behind, in soft silhouette or as hands, face never visible.`
-      : `Prefer places, objects and scenes over people (an empty gym at dawn, a black car in rain, a desk with one lamp). A man may appear only when the option truly needs one (a mentor, a friend), and then distant, from behind or in silhouette, face never visible.`;
+      ? `The photo must SHOW the answer, not an empty room standing in for it. When the answer is a role, a person or an action ("the mom who tracks every school form", "the daughter running Mom's appointments"), show ONE woman in her 40s DOING it, mid-action (signing a permission slip at the kitchen counter, walking her mother into a clinic), seen from behind, over the shoulder, in profile in shadow, or as hands, face not the focus. When the answer is a place or object, show it clearly. (2026-09-30, Keenan: an empty couch for "the partner who holds it all together" and shoes for "the mom of a teenager" "has literally nothing to do with it".)`
+      : `The photo must SHOW the answer. When it is a car, watch, city or place, show that exact thing as the hero. When it is a person or an action (a mentor, a friend, a habit), show ONE man (or two for friends) DOING it, seen from behind, over the shoulder or in profile in shadow, face not the focus.`;
   return `${copyObjectives(brand)}
 
 YOUR JOB: write the options for one "which one is you?" post whose question is given below.
@@ -235,7 +276,7 @@ YOUR JOB: write the options for one "which one is you?" post whose question is g
   - "name": the label on the slide: a natural, complete ANSWER to the question, the way a person would actually reply, 1-8 words ("In the bathroom with the fan on", "The car in the driveway", "Tokyo, Japan", "Porsche 911 GT3 RS"). Read the question, then the name: it must make instant sense as the reply. Never a clipped caption ("Bathroom Fan On", "Target With No List"). No numbers; the renderer adds them.
   - "lore": one line on why someone picks this one and what it says about them (used for the caption and ranking, never shown on the slide).
   - "scene": one or two sentences describing a REAL photograph for this option: the place or thing itself, its light and mood. Keep it clean: no stray props added for "story" (no laptops, notebooks, books, mugs, cups, bags, phones or papers) unless the option is literally about that object. The ten scenes must look different from each other (setting, time of day, palette). ${people}
-  - "motion": one sentence of calm, realistic movement for this option's five-second clip, true to the scene (waves roll in below the terrace as the light fades; rain streaks the window as traffic moves far below; steam curls from the bath as the candle flickers). Nothing fast.
+  - "motion": one sentence of DYNAMIC, clearly visible movement for this option's five-second clip, true to the scene, with the subject moving and the camera moving (the GT3 RS launches out of the garage as the camera tracks beside it; she lifts the overflowing laundry basket and turns toward the stairs as the camera follows; waves crash below the terrace as the camera sweeps out). Realistic speed, never a static frame.
 - Every option must be a real, tempting answer; none is a joke or a throwaway, and no two are the same idea in different words.${
     brand === "bwk"
       ? "\n- Every option is something he would be PROUD to pick or is working toward: an ambition, a standard, a kind of man. Never a list of his failures or bad habits."
@@ -262,7 +303,11 @@ OUTPUT (JSON):
 // ─── Jev selection (pure logic, exported for tests) ──────────────────
 
 /** Jev picks one concept. Returns the index into `concepts` (0 when Jev is off). */
-export async function pickConcept(brand: PickBrand, concepts: PickConcept[]): Promise<{ index: number; table: string }> {
+export async function pickConcept(
+  brand: PickBrand,
+  concepts: PickConcept[],
+  loop: PickLoopContext = {}
+): Promise<{ index: number; table: string }> {
   if (concepts.length <= 1) return { index: 0, table: "" };
   const { askJev, scoreOf, noulOf, SCROLL_STOP_LEVELS } = await import("./jev");
   const questions: Parameters<typeof askJev>[2] = {};
@@ -270,7 +315,7 @@ export async function pickConcept(brand: PickBrand, concepts: PickConcept[]): Pr
   concepts.forEach((_, i) => {
     questions[`scroll_${i}`] = {
       type: "score",
-      instructions: `How strongly would the reader described in \`audience\` stop scrolling for a post whose cover asks \`concepts[${i}]\`?`,
+      instructions: `How strongly would the reader described in \`audience\` stop scrolling for a post whose cover asks \`concepts[${i}]\`? Use \`history\` (what has and hasn't worked on this account) as context.`,
       criteria: SCROLL_STOP_LEVELS,
     };
     questions[`comment_${i}`] = {
@@ -297,7 +342,19 @@ export async function pickConcept(brand: PickBrand, concepts: PickConcept[]): Pr
   });
   const qs = concepts.map((c) => c.question);
   const [r, rc] = await Promise.all([
-    askJev(`pick-concept:${brand}`, { audience: AUDIENCE_LINE[brand], core: CORE[brand], concepts: qs }, questions),
+    askJev(
+      `pick-concept:${brand}`,
+      {
+        audience: AUDIENCE_LINE[brand],
+        core: CORE[brand],
+        history: {
+          what_works: loop.whatWorks || "no data yet",
+          what_doesnt: loop.whatDoesnt || "no data yet",
+        },
+        concepts: qs,
+      },
+      questions
+    ),
     askJev(`pick-concept-clear:${brand}`, { covers: qs }, clearQuestions),
   ]);
   if (!r || !rc) return { index: 0, table: "jev unavailable — first concept" };
@@ -308,13 +365,19 @@ export async function pickConcept(brand: PickBrand, concepts: PickConcept[]): Pr
     const comment = scoreOf(r, `comment_${i}`) ?? 0;
     const clear = noulOf(rc, `clear_${i}`) ?? 0;
     const core = noulOf(r, `core_${i}`) ?? 0;
-    const score = 0.35 * scroll + 0.3 * comment + 0.1 * clear + 0.25 * core;
+    // Performance loop nudge (code, not Jev): proven family +0.05, weak
+    // family -0.05, today's focus family +0.03.
+    const fam = c.family;
+    const label = fam ? loop.familyLabels?.[fam] : undefined;
+    const nudge =
+      (label === "proven winner" ? 0.05 : label === "weak" ? -0.05 : 0) + (fam && fam === loop.focusFamily ? 0.03 : 0);
+    const score = 0.35 * scroll + 0.3 * comment + 0.1 * clear + 0.25 * core + nudge;
     const eligible = clear >= CLEAR_MIN && core >= CORE_MIN;
     if (eligible && score > bestScore) {
       bestScore = score;
       best = i;
     }
-    return `${score.toFixed(3)} scroll=${scroll.toFixed(2)} comment=${comment.toFixed(2)} clear=${clear.toFixed(2)} core=${core.toFixed(2)}${eligible ? "" : " INELIGIBLE"}  ${c.question}`;
+    return `${score.toFixed(3)} scroll=${scroll.toFixed(2)} comment=${comment.toFixed(2)} clear=${clear.toFixed(2)} core=${core.toFixed(2)}${nudge ? ` nudge=${nudge.toFixed(2)}` : ""}${eligible ? "" : " INELIGIBLE"}  ${c.question}${fam ? ` [${fam}]` : ""}`;
   });
   // Nothing eligible: take the most on-brand concept rather than the first.
   const coreOf = (i: number) => noulOf(r, `core_${i}`) ?? 0;
@@ -431,7 +494,7 @@ export async function pickScenes(
       `pick-scenes-${brand}`,
       `${copyObjectives(brand)}
 
-YOUR JOB: write alternative PHOTO descriptions for a "which one is you?" post. For the cover and for each option, write ${SCENE_ALTS} new scenes, each a different way to photograph it: a REAL photograph that shows that exact answer clearly at a glance (the place, car, city or moment the option names), with its own light and mood, and a calm realistic "motion" line for its five-second clip. Keep every scene clean: no stray props (no laptops, notebooks, books, mugs, cups, bags, phones or papers) unless the option is that object. Never swap the place for a generic cozy interior.${brand === "bwk" ? " BWK photos look like the luxury life: hyperreal, dark and premium." : " Ripple photos are warm and intimate, but the place itself always comes first."} People: none unless needed, then seen from behind or in silhouette, face never visible. No text, logos or badges.
+YOUR JOB: write alternative PHOTO descriptions for a "which one is you?" post. For the cover and for each option, write ${SCENE_ALTS} new scenes, each a different way to photograph it: a REAL photograph that shows that exact answer clearly at a glance (the place, car, city or moment the option names), with its own light and mood, and a DYNAMIC "motion" line for its five-second clip (the subject clearly moves and the camera makes a confident move; never a static frame). Keep every scene clean: no stray props (no laptops, notebooks, books, mugs, cups, bags, phones or papers) unless the option is that object. Never swap the place for a generic cozy interior.${brand === "bwk" ? " BWK photos look like the luxury life: hyperreal, dark and premium." : " Ripple photos are warm and intimate, but the place itself always comes first."} The photo must SHOW the answer: for a role, person or action, show ONE ${brand === "ripple" ? "woman in her 40s" : "man"} doing it mid-action (from behind, over the shoulder or in profile in shadow, face not the focus), never an empty room standing in for it. No text, logos or badges.
 
 OUTPUT (JSON): { "cover": [{ "scene": "...", "motion": "..." }], "options": [[{ "scene": "...", "motion": "..." }]] } with "options" in the same order as given, ${SCENE_ALTS} each.`,
       JSON.stringify({ question: title, cover: coverScene, options: options.map((o) => ({ answer: o.name, why: o.lore, current_scene: o.scene })) }),
@@ -505,8 +568,10 @@ export async function generatePickTopic(opts: {
   recentTitles: string[];
   recentNames: string[];
   feedback?: string | null;
+  loop?: PickLoopContext;
 }): Promise<ChoiceTopic> {
   const { brand } = opts;
+  const loop = opts.loop ?? {};
   const { recentHeadlinesPromptBlock, isRecentHeadline } = await import("./headline-history");
 
   // 1. Five concepts → Jev picks one.
@@ -520,6 +585,11 @@ export async function generatePickTopic(opts: {
         ? `This lane's recent covers (pick different subjects):\n${opts.recentTitles.slice(0, 30).map((t) => `- ${t}`).join("\n")}`
         : "",
       opts.feedback ?? "",
+      loop.focusFamily
+        ? `TODAY'S FOCUS (chosen from this account's results): at least three of your five concepts must be in the family "${loop.focusFamily}".`
+        : "",
+      loop.whatWorks ? `What has worked on this account: ${loop.whatWorks}.` : "",
+      loop.whatDoesnt ? `What has not worked: ${loop.whatDoesnt}.` : "",
       history,
       "Write exactly five concepts.",
     ]
@@ -527,15 +597,20 @@ export async function generatePickTopic(opts: {
       .join("\n\n"),
     2000
   )) as { concepts?: Partial<PickConcept>[] };
-  let concepts = (conceptsRaw.concepts ?? [])
+  let concepts: PickConcept[] = (conceptsRaw.concepts ?? [])
     .filter((c) => typeof c?.question === "string" && c.question.trim())
-    .map((c) => ({ question: c.question!.trim(), why: typeof c.why === "string" ? c.why.trim() : "" }))
+    .map((c) => ({
+      question: c.question!.trim(),
+      why: typeof c.why === "string" ? c.why.trim() : "",
+      family:
+        typeof c.family === "string" && PICK_FAMILIES[brand].includes(c.family.trim()) ? c.family.trim() : undefined,
+    }))
     .slice(0, 5);
   const fresh: PickConcept[] = [];
   for (const c of concepts) if (!(await isRecentHeadline(c.question))) fresh.push(c);
   if (fresh.length) concepts = fresh;
   if (!concepts.length) throw new Error(`pick concepts unusable for ${brand}`);
-  const picked = await pickConcept(brand, concepts);
+  const picked = await pickConcept(brand, concepts, loop);
   const concept = concepts[picked.index];
   console.log(`[pick-lane] ${brand} concept pick:\n${picked.table}`);
 
@@ -631,7 +706,8 @@ export async function generatePickTopic(opts: {
     options: narrowed.options.map((o) => ({ name: o.name, lore: o.lore, scene: o.scene, motion: o.motion ?? "" })),
     endCard: draft.endCard,
     captionQuestion: draft.captionQuestion,
-    category: concept.question,
+    // Theme family (for the performance loop's recipe); the question is the title.
+    category: concept.family ?? "unknown",
   };
 }
 
@@ -651,8 +727,8 @@ export function buildPickImagePrompt(brand: PickBrand, scene: string, kind: "cov
       : "Dark, dominant, moody photography with a muted cinematic grade — deep blacks, charcoal and slate, cold glass and storm light — where the scene's own accent color (a sunset, burnished gold, a car's paint, an ember) is allowed to glow richly. Austere, powerful, commanding.";
   const people =
     brand === "ripple"
-      ? "People: none unless the scene names one; then ONE woman only, seen from behind, in soft silhouette or as hands, face never visible. No children's faces. No animals unless the scene names one."
-      : "People: none unless the scene names one; then at most ONE man (or two for a scene about friends), distant, from behind or in silhouette, face never visible. No animals unless the scene names one.";
+      ? "People: only the ones the scene names; a woman shown doing the action, from behind, over the shoulder, in profile in shadow or as hands, face not the focus. No children's faces. No animals unless the scene names one."
+      : "People: only the ones the scene names; at most ONE man (or two for a scene about friends) doing the action, from behind, over the shoulder or in profile in shadow, face not the focus. No animals unless the scene names one.";
   return [
     `A REAL photograph a person actually took with a camera: ${scene}`,
     "THE SCENE COMES FIRST: show exactly the place, subject and light described above. If it is a bright store aisle, a sunny garage or a car in a driveway, show exactly that; never swap it for a different room or a generic cozy interior. The style below only sets mood and color grade.",

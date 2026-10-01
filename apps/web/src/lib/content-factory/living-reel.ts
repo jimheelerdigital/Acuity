@@ -65,12 +65,17 @@ export function livingMotionPrompt(
       motion
         ? `Action: ${motion}`
         : opts.realistic
-          ? "Action: gentle, natural movement that already belongs in the scene: light shifting, steam or mist drifting, fabric or leaves stirring."
+          ? "Action: clearly visible, dynamic movement that belongs in the scene: the car rolls forward and its lights sweep, traffic streams, waves break, a person in the frame moves through the action, rain and steam swirl."
           : "Action: the creature or fighter comes alive with natural movement: it breathes, turns its head toward the camera, shifts its weight and moves its wings, tail, mane or cloak as it would in life.",
       // Tuned 2026-09-29 (per Keenan: the first war-mount post "was perfect",
       // the next two "a bit too much movement which made it look slightly
       // unrealistic"): one clear action at real-world speed, gentle camera.
-      "Keep the movement realistic and measured: one clear action at natural, real-world speed, like footage of a real animal or actor. Nothing frantic, no sudden lunges, no morphing. The camera moves slowly and steadily (a gentle push-in or a slight drift).",
+      // Pick lanes (realistic) move more (2026-09-30, Keenan: "barely has any
+      // animation"; "make the image move somewhat dynamically"). Mythicals
+      // keeps the tuned, measured level.
+      opts.realistic
+        ? "Make it move DYNAMICALLY but stay real: the subject moves clearly through the five seconds at natural speed, AND the camera makes a confident move (a steady dolly-in, a slow orbit, a tracking move alongside). Never a static frame or a barely-there zoom. No morphing, no warping."
+        : "Keep the movement realistic and measured: one clear action at natural, real-world speed, like footage of a real animal or actor. Nothing frantic, no sudden lunges, no morphing. The camera moves slowly and steadily (a gentle push-in or a slight drift).",
       "Keep the subject's design, colors, armor and setting exactly as in the image. The subject stays in frame. No text, no new creatures or people, no scene cuts.",
     ]
       .filter(Boolean)
