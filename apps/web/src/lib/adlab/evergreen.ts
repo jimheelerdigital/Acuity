@@ -244,9 +244,10 @@ export async function ensureEvergreenAdSet(
  * ones that weren't working").
  *
  * No ad is paused just to make room. Each live ad gets a verdict:
- *   WINNER      a paid trial in our funnel data, or >=3 signups at <= $25
- *               each. Never paused.
- *   NOT WORKING judged only with evidence (>= $15 spent AND >= 72h live):
+ *   WINNER      >=1 paid trial at <= $50 per paid trial (2026-10-01; was
+ *               "any paid trial or 3+ cheap signups"). Never paused.
+ *   NOT WORKING >= $100 spent at > $100 per paid trial (or none), OR the
+ *               early signals, judged after >= $15 spent AND >= 72h live:
  *               >= $20 spent with 0 signups, OR cost per signup > $40, OR
  *               link CTR < 0.5% over >= 1,500 impressions with 0 signups.
  *               Paused.
@@ -256,8 +257,19 @@ export async function ensureEvergreenAdSet(
  * The ad set can run over MAX_ACTIVE_ADS; that's a signal to upload fewer.
  * Status is written to the DB only after Meta confirms the pause.
  */
-const WINNER_MIN_SIGNUPS = 3;
-const WINNER_MAX_CPL_CENTS = 2500;
+/**
+ * Winner = paying customers, not signups (2026-10-01, per Keenan: "paid
+ * trials should be $50 or less"). "Two years of noticing" was a 'winner'
+ * on 12 cheap signups while costing ~$200 per paid trial, and the old rule
+ * made it unpausable.
+ *   winner       ≥1 paid trial at ≤ $50 per paid trial
+ *   not working  ≥ $100 spent at > $100 per paid trial (or no paid trial)
+ * The early signals below (no signups, $40+ per signup, low CTR) still stop
+ * obvious duds before they reach $100.
+ */
+const WINNER_MAX_COST_PER_TRIAL_CENTS = 5000;
+const EXPENSIVE_MIN_SPEND_CENTS = 10000;
+const EXPENSIVE_COST_PER_TRIAL_CENTS = 10000;
 const JUDGE_MIN_SPEND_CENTS = 1500;
 const JUDGE_MIN_HOURS = 72;
 const DEAD_SPEND_CENTS = 2000;
@@ -321,9 +333,13 @@ export async function judgeCreatives(creativeIds: string[]): Promise<Map<string,
     const summary = `${signups} signups, ${trials} trials, ${$(spend)} spent, ${ctr.toFixed(2)}% CTR over ${imps} impressions`;
     let verdict: AdVerdict = "keep";
     let why = "not enough evidence yet";
-    if (trials > 0 || (signups >= WINNER_MIN_SIGNUPS && spend / signups <= WINNER_MAX_CPL_CENTS)) {
+    const perTrial = trials > 0 ? spend / trials : Infinity;
+    if (trials > 0 && perTrial <= WINNER_MAX_COST_PER_TRIAL_CENTS) {
       verdict = "winner";
-      why = trials > 0 ? `produced ${trials} paid trial${trials > 1 ? "s" : ""}` : `${signups} signups at ${$(spend / signups)} each`;
+      why = `${trials} paid trial${trials > 1 ? "s" : ""} at ${$(perTrial)} each`;
+    } else if (spend >= EXPENSIVE_MIN_SPEND_CENTS && perTrial > EXPENSIVE_COST_PER_TRIAL_CENTS) {
+      verdict = "not_working";
+      why = trials > 0 ? `${$(perTrial)} per paid trial (over $100)` : `${$(spend)} spent with no paid trial`;
     } else if (spend >= JUDGE_MIN_SPEND_CENTS && hours >= JUDGE_MIN_HOURS) {
       if (signups === 0 && spend >= DEAD_SPEND_CENTS) { verdict = "not_working"; why = `${$(spend)} spent with no signups`; }
       else if (signups > 0 && spend / signups > BAD_CPL_CENTS) { verdict = "not_working"; why = `${$(spend / signups)} per signup (over $40)`; }
