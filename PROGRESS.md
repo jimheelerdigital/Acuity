@@ -213,6 +213,29 @@ The email people get after the Mythicals quiz now opens with a big picture of th
 - Still sent from hello@getacuity.io. Moving to a legendarymythicals.com sender needs a Resend domain plus 3 GoDaddy DNS records (optional).
 - No Stripe product is needed: checkout sends inline price_data named "Legendary Creature Portrait" with metadata brand=mythicals.
 
+## [2026-10-02] — Fix: signing in with Google on the website could reset a paying customer to a free trial
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** see "fix: Stop Google/Apple sign-in from re-running new-account setup"
+
+### In plain English (for Keenan)
+A paying customer (Alexandria, amrigby1818@gmail.com) signed up and paid in the funnel, then later signed in on the website with Google. That sign-in wrongly re-ran the "brand-new account" setup on her existing account: it switched her from paid back to a fresh 7-day free trial and sent us a second "new signup" notification (why it looked like two signups). Her account is restored, and the setup now only ever runs on genuinely new accounts.
+
+### Technical changes (for Jimmy)
+- `lib/bootstrap-user.ts`: `bootstrapNewUser` now returns early (logs `bootstrap-user.skipped-existing`) if the user is PRO or the row is older than 10 minutes
+- Root cause: NextAuth v4 `callback-handler.js` calls `events.createUser` even on the `allowDangerousEmailAccountLinking` branch (an existing user matched by email), and our `events.createUser` in `lib/auth.ts` calls `bootstrapNewUser`. That rewrote subscriptionStatus TRIAL + trialEndsAt now+7d, the referralCode and the founding-member fields, and re-sent the founder signup notification
+- New `lib/bootstrap-user-guard.test.ts` (2 tests)
+- Data fix: amrigby1818@gmail.com (cmuqrpv28000yvmq3n8fhokyc) TRIAL → PRO, trialEndsAt = Stripe trial end 2026-10-09T09:41:12Z (same shape as other web trial customers)
+
+### Manual steps needed
+- [ ] Jimmy review (auth/bootstrap path) (Jimmy)
+- [ ] Push to main (Keenan: "push it")
+
+### Notes
+- Swept all users with a Stripe subscription who aren't PRO: Alexandria was the only one with this signature (trialEndsAt reset well after createdAt). The others are FREE after a failed charge at trial end, which is expected behavior.
+- britneyniforos@gmail.com is TRIAL with a Stripe sub and trialEndsAt = the Stripe trial end, which looks like the RevenueCat mapping (store trial = TRIAL), not this bug. Access is unaffected.
+- 6 failing tests under `src/lib/evidence/` (RC observer build, v10 paywall copy, V2 product IDs) are mobile/pricing config checks unrelated to this change.
+
 ## [2026-10-01] — Two new emails: after the first debrief, and when someone cancels their trial
 **Requested by:** Keenan
 **Committed by:** Claude Code

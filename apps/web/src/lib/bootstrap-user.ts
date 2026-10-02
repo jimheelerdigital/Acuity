@@ -30,6 +30,9 @@ import { DEFAULT_LIFE_AREAS, TRIAL_DAYS } from "@acuity/shared";
  *
  * IMPLEMENTATION_PLAN_PAYWALL §1.6 + §8.3.
  */
+/** Accounts older than this are existing users — never re-bootstrap them. */
+const BOOTSTRAP_MAX_AGE_MS = 10 * 60 * 1000;
+
 export async function bootstrapNewUser(params: {
   userId: string;
   email: string | null;
@@ -62,6 +65,34 @@ export async function bootstrapNewUser(params: {
 }): Promise<void> {
   const { userId, email, referralCodeFromSignup, attribution, skipWelcomeEmail, signupMethod } = params;
   const { prisma } = await import("@/lib/prisma");
+
+  // 2026-10-02 guard: only ever bootstrap a BRAND-NEW account. NextAuth v4
+  // fires events.createUser even when it links Google/Apple to an EXISTING
+  // user by email (allowDangerousEmailAccountLinking — see
+  // next-auth/core/lib/callback-handler.js), which re-ran this on a paid
+  // funnel customer (amrigby1818@gmail.com): PRO → TRIAL with a fresh 7-day
+  // trialEndsAt, a new referral code, and a duplicate founder "new signup"
+  // email. A real signup calls this within seconds of creating the row.
+  {
+    const existing = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { createdAt: true, subscriptionStatus: true },
+    });
+    if (
+      existing &&
+      (existing.subscriptionStatus === "PRO" ||
+        Date.now() - existing.createdAt.getTime() > BOOTSTRAP_MAX_AGE_MS)
+    ) {
+      const { safeLog } = await import("@/lib/safe-log");
+      safeLog.info("bootstrap-user.skipped-existing", {
+        userId,
+        status: existing.subscriptionStatus,
+        ageMs: Date.now() - existing.createdAt.getTime(),
+        signupMethod: signupMethod ?? null,
+      });
+      return;
+    }
+  }
   const { track } = await import("@/lib/posthog");
   const { generateReferralCode, resolveReferrerByCode } = await import(
     "@/lib/referrals"
