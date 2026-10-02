@@ -45,6 +45,8 @@ export interface ChoiceTopic {
   category: string;
   /** CompetitorPost id of the research brief this post was built on (pick lanes, 2026-10-01). */
   researchSeed?: string;
+  /** Jev's scores for the chosen pick concept, kept for calibration (2026-10-02). */
+  jev?: Record<string, number>;
 }
 
 export interface ChoiceLaneSpec {

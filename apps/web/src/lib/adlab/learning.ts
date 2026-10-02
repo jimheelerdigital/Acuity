@@ -94,6 +94,8 @@ export interface CreativePerf {
   theme: string;
   formatKey: string;
   strategy: string; // "exploit" | "explore" | "unknown"
+  /** "research" = built on an organic competitor brief (2026-10-02), else "own". */
+  source: "research" | "own";
   spendCents: number;
   impressions: number;
   clicks: number;
@@ -143,6 +145,8 @@ export interface LearningStats {
   byFormat: DimensionRow[];
   byCta: DimensionRow[];
   byStrategy: DimensionRow[];
+  /** Research-based ads vs our own ideas (2026-10-02). Optional: older rows lack it. */
+  bySource?: DimensionRow[];
 }
 
 export interface LearningBrief {
@@ -315,6 +319,7 @@ export async function buildLearningStats(groupKey: BatchGroupKey): Promise<Learn
       theme: themeFromNotes(c.angle.researchNotes),
       formatKey: c.formatKey ?? inferFormatKey(c.generationPrompt),
       strategy: strategyFromNotes(c.angle.researchNotes),
+      source: /\| organic: /.test(c.angle.researchNotes ?? "") ? "research" : "own",
       ...m,
       landings: landings.get(c.id) ?? 0,
       ...f,
@@ -381,6 +386,7 @@ export async function buildLearningStats(groupKey: BatchGroupKey): Promise<Learn
     byFormat: rollup(judged, (r) => r.formatKey),
     byCta: rollup(judged, (r) => r.cta),
     byStrategy: rollup(judged, (r) => r.strategy),
+    bySource: rollup(judged, (r) => r.source),
   };
 }
 
@@ -450,7 +456,8 @@ ${dimTable("BY IMAGE FORMAT", stats.byFormat)}
 
 ${dimTable("BY CTA", stats.byCta)}
 
-${dimTable("EXPLOIT vs EXPLORE (weekly-batch ads only)", stats.byStrategy.filter((d) => d.value !== "unknown"))}`.trim();
+${dimTable("EXPLOIT vs EXPLORE (weekly-batch ads only)", stats.byStrategy.filter((d) => d.value !== "unknown"))}
+${(stats.bySource ?? []).some((d) => d.value === "research") ? `\n${dimTable("BUILT ON ORGANIC COMPETITOR RESEARCH vs OUR OWN IDEAS", stats.bySource ?? [])}` : ""}`.trim();
 }
 
 /**

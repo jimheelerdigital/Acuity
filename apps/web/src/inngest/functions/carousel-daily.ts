@@ -762,7 +762,15 @@ export const carouselDailyCronFn = inngest.createFunction(
               for (const f of PICK_FAMILIES[pickBrand]) familyLabels[f] = board?.categories[`pick::${f}`]?.label ?? "untested";
               console.log(`[carousel-cron] ${laneKey} focus family: ${focus.arm} (${focus.reason})`);
               const researchLabel = board?.sources?.research?.label ?? "untested";
-              return { focusFamily: focus.arm, whatWorks: ctx.whatWorks, whatDoesnt: ctx.whatDoesnt, familyLabels, researchLabel };
+              return {
+                focusFamily: focus.arm,
+                whatWorks: ctx.whatWorks,
+                whatDoesnt: ctx.whatDoesnt,
+                familyLabels,
+                researchLabel,
+                topTitles: (board?.top ?? []).map((p) => p.title),
+                bottomTitles: (board?.bottom ?? []).map((p) => p.title),
+              };
             } catch (err) {
               console.warn(`[carousel-cron] ${laneKey} loop context failed:`, err instanceof Error ? err.message : err);
               return undefined;
@@ -1031,6 +1039,7 @@ export const carouselDailyCronFn = inngest.createFunction(
               generatedFor: today.toISOString().slice(0, 10),
               slotHourUtc: runAt.getUTCHours(),
               researchSeed: topic.researchSeed,
+              jev: topic.jev,
             });
           }
         } catch (err) {

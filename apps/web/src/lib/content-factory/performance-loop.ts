@@ -40,7 +40,7 @@ const BUCKET = "content-factory";
 
 // ─── Storage helpers ─────────────────────────────────────────────────
 
-async function readJson<T>(path: string): Promise<T | null> {
+export async function readJson<T>(path: string): Promise<T | null> {
   try {
     const { supabase } = await import("@/lib/supabase.server");
     const { data } = await supabase.storage.from(BUCKET).download(path);
@@ -51,7 +51,7 @@ async function readJson<T>(path: string): Promise<T | null> {
   }
 }
 
-async function writeJson(path: string, value: unknown): Promise<void> {
+export async function writeJson(path: string, value: unknown): Promise<void> {
   const { supabase } = await import("@/lib/supabase.server");
   const { error } = await supabase.storage
     .from(BUCKET)
@@ -77,6 +77,8 @@ export interface PostRecipe {
   slotHourUtc?: number;
   /** CompetitorPost id when the post was built on a research brief (2026-10-01). */
   researchSeed?: string;
+  /** Jev's scores for the chosen pick concept (jev-calibration.ts). */
+  jev?: Record<string, number>;
   createdAt: string;
   backfilled?: boolean;
 }
@@ -589,7 +591,7 @@ ${sections.join("\n")}
 </div>`;
 }
 
-export async function sendPerformanceReport(boards?: Scoreboard[]): Promise<{ sent: boolean; id?: string }> {
+export async function sendPerformanceReport(boards?: Scoreboard[], extraHtml = ""): Promise<{ sent: boolean; id?: string }> {
   const use =
     boards ??
     ((await Promise.all((["mythicals", "ripple", "bwk"] as LoopBrand[]).map(readScoreboard))).filter(Boolean) as Scoreboard[]);
@@ -598,7 +600,7 @@ export async function sendPerformanceReport(boards?: Scoreboard[]): Promise<{ se
     from: process.env.CONTENT_FACTORY_EMAIL_FROM ?? '"Ripple Content" <content@getacuity.io>',
     to: process.env.CONTENT_FACTORY_EMAIL_TO ?? "keenan@heelerdigital.com",
     subject: `Weekly content performance — ${new Date().toISOString().slice(0, 10)}`,
-    html: reportHtml(use),
+    html: reportHtml(use) + extraHtml,
   });
   return { sent: true, id: res?.id };
 }

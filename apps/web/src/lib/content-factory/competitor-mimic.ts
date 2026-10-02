@@ -590,12 +590,27 @@ export async function getResearchSeeds(brand: "ripple" | "bwk", n: number): Prom
       account: { brand, status: { not: "PAUSED" } },
     },
     orderBy: [{ mandatedAt: { sort: "asc", nulls: "first" } }, { outlierScore: "desc" }],
-    take: n,
-    select: { id: true, brief: true },
+    take: n * 4,
+    select: { id: true, brief: true, account: { select: { handle: true, niche: true } } },
   });
-  return rows
-    .filter((r) => r.brief && typeof r.brief === "object")
-    .map((r) => ({ id: r.id, brief: r.brief as unknown as MimicBrief }));
+  // Source credit (2026-10-02, research-learning.ts): briefs from sources
+  // whose seeded posts scored weak for US drop out; proven sources go first.
+  // Untested sources keep the rotation order above.
+  const { readResearchLearning, sourceLabel } = await import("./research-learning");
+  const learning = await readResearchLearning().catch(() => null);
+  const rank = (r: (typeof rows)[number]) => {
+    const labels = [sourceLabel(learning, `account:${r.account.handle}`)];
+    if (r.account.niche?.startsWith("search: ")) labels.push(sourceLabel(learning, `keyword:${r.account.niche.slice(8)}`));
+    return labels.includes("weak") ? -1 : labels.includes("proven winner") ? 2 : labels.includes("solid") ? 1 : 0;
+  };
+  const usable = rows.filter((r) => r.brief && typeof r.brief === "object");
+  const notWeak = usable.filter((r) => rank(r) >= 0);
+  const pool = notWeak.length ? notWeak : usable;
+  return pool
+    .map((r, i) => ({ r, i, k: rank(r) }))
+    .sort((a, b) => b.k - a.k || a.i - b.i)
+    .slice(0, n)
+    .map(({ r }) => ({ id: r.id, brief: r.brief as unknown as MimicBrief }));
 }
 
 /** Mark a seed used so the next run rotates past it. Soft. */

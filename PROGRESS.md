@@ -7,6 +7,51 @@
 
 ---
 
+## [2026-10-02] — Research and Jev learn from our own results
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** see "feat: Close the learning loops on research, ads and Jev"
+
+### In plain English (for Keenan)
+The system now learns from what actually performs for us, not just from what performs for competitors:
+- **Which competitors are worth watching:** accounts and search phrases whose ideas lead to strong posts for us get used first. Ones whose ideas flop get dropped automatically.
+- **Search phrases improve themselves:** a phrase that finds nothing for 3 weeks is retired, and Opus suggests a new one in its place.
+- **Ads:** the ad engine compares research-based ads with our own ideas. It writes more research-based ads if they convert better and stops if they're clearly worse.
+- **Jev learns:** every week it checks which of its own scores actually predicted our results and reweights itself.
+- **Weekly email:** you get a research email every Sunday: the best briefs, new creators, how each search phrase did, and which sources paid off.
+
+### Technical changes (for Jimmy)
+- New `lib/content-factory/research-learning.ts`:
+  - Keyword book `research/keywords.json`, per-run yield `research/keyword-runs.json`, and source scoreboard `research/learning.json` (ArmStat per `account:<handle>` / `keyword:<phrase>`).
+  - `evolveKeywords()` retires a phrase after 3 runs with no standouts and refills to a fixed count per brand with Opus proposals.
+- New `lib/content-factory/research-report.ts`: `sendResearchReport()`.
+- New `lib/content-factory/jev-calibration.ts`:
+  - Spearman correlation of each Jev pick score (scroll / comment / clear / core) with the 48h score.
+  - Weights move halfway toward the target each week. Needs 8 or more posts. Stored in `calibration/pick-<brand>.json`.
+- `competitor-mimic.ts` `getResearchSeeds`: drops briefs from weak sources and ranks proven ones first.
+- `competitor-discovery.ts`:
+  - `discoverKeyword` returns `results`.
+  - `promoteAndPause` pauses empty handles and accounts whose briefs led to weak posts.
+- `inngest/functions/competitor-scrape-daily.ts`: keywords come from the book, plus new steps record-keyword-run, refresh-research-learning, evolve-keywords and send-research-report.
+- `pick-lane.ts`:
+  - `pickConcept` uses calibrated weights and returns the chosen concept's Jev scores.
+  - Jev's history now includes the best and worst recent covers.
+  - `ChoiceTopic.jev` and `PostRecipe.jev` are recorded.
+- `carousel-daily.ts`: passes top/bottom titles and writes `recipe.jev`.
+- `adlab/learning.ts`: `CreativePerf.source` and `LearningStats.bySource`, plus a prompt table.
+- `adlab/weekly-batch.ts`: the research section is dropped when research ads are clearly worse after $100+ spend, and asks for 3+ research ads when they're 20%+ cheaper per trial.
+- `performance-loop.ts`: `readJson`/`writeJson` exported; `sendPerformanceReport(boards, extraHtml)`.
+- `inngest/functions/performance-loop.ts`: Monday step `calibrate-jev`, and the report shows the correlations and weights.
+- Tests: `research-learning.test.ts` (Spearman, weights, red flags).
+
+### Manual steps needed
+- None
+
+### Notes
+- Nothing calibrates until there's data. Source credit needs research-seeded posts with 48h scores (1+ per source; labels need 3+). Jev calibration needs 8+ pick posts recording `recipe.jev`, which starts with posts made after this deploy. Expect the first real weight change around 10-12.
+- The Opus keyword proposals run only when a phrase retires, so normally zero calls.
+- 10-02 re-run with fixed inputs: "default parent" found 12 standouts in 30 results and "mental load" found 5. 81+ creators were discovered mid-run.
+
 ## [2026-10-02] — Competitor research runs once a week, on Sundays
 **Requested by:** Keenan
 **Committed by:** Claude Code

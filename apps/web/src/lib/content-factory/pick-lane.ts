@@ -95,6 +95,9 @@ export interface PickLoopContext {
   familyLabels?: Record<string, "proven winner" | "solid" | "weak" | "untested">;
   /** How research-seeded posts score vs the rest (scoreboard `sources.research`). */
   researchLabel?: "proven winner" | "solid" | "weak" | "untested";
+  /** This account's best / worst recent covers (scoreboard top/bottom), as Jev examples. */
+  topTitles?: string[];
+  bottomTitles?: string[];
 }
 
 export interface PickOptionDraft {
@@ -316,8 +319,12 @@ export async function pickConcept(
   brand: PickBrand,
   concepts: PickConcept[],
   loop: PickLoopContext = {}
-): Promise<{ index: number; table: string }> {
+): Promise<{ index: number; table: string; dims?: Record<string, number> }> {
   if (concepts.length <= 1) return { index: 0, table: "" };
+  // Weights learned from our 48h results (jev-calibration.ts); defaults until
+  // there are enough scored posts.
+  const { readPickWeights } = await import("./jev-calibration");
+  const w = await readPickWeights(brand);
   const { askJev, scoreOf, noulOf, SCROLL_STOP_LEVELS } = await import("./jev");
   const questions: Parameters<typeof askJev>[2] = {};
   const clearQuestions: Parameters<typeof askJev>[2] = {};
@@ -359,6 +366,8 @@ export async function pickConcept(
         history: {
           what_works: loop.whatWorks || "no data yet",
           what_doesnt: loop.whatDoesnt || "no data yet",
+          best_recent_covers: loop.topTitles?.length ? loop.topTitles : "no data yet",
+          worst_recent_covers: loop.bottomTitles?.length ? loop.bottomTitles : "no data yet",
         },
         concepts: qs,
       },
@@ -380,7 +389,7 @@ export async function pickConcept(
     const label = fam ? loop.familyLabels?.[fam] : undefined;
     const nudge =
       (label === "proven winner" ? 0.05 : label === "weak" ? -0.05 : 0) + (fam && fam === loop.focusFamily ? 0.03 : 0);
-    const score = 0.35 * scroll + 0.3 * comment + 0.1 * clear + 0.25 * core + nudge;
+    const score = w.scroll * scroll + w.comment * comment + w.clear * clear + w.core * core + nudge;
     const eligible = clear >= CLEAR_MIN && core >= CORE_MIN;
     if (eligible && score > bestScore) {
       bestScore = score;
@@ -391,7 +400,13 @@ export async function pickConcept(
   // Nothing eligible: take the most on-brand concept rather than the first.
   const coreOf = (i: number) => noulOf(r, `core_${i}`) ?? 0;
   const index = best >= 0 ? best : concepts.reduce((b, _, i) => (coreOf(i) > coreOf(b) ? i : b), 0);
-  return { index, table: rows.map((row, i) => `${i === index ? "*" : " "} ${row}`).join("\n") };
+  const dims = {
+    scroll: scoreOf(r, `scroll_${index}`) ?? 0,
+    comment: scoreOf(r, `comment_${index}`) ?? 0,
+    clear: noulOf(rc, `clear_${index}`) ?? 0,
+    core: noulOf(r, `core_${index}`) ?? 0,
+  };
+  return { index, table: rows.map((row, i) => `${i === index ? "*" : " "} ${row}`).join("\n"), dims };
 }
 
 /**
@@ -747,6 +762,7 @@ export async function generatePickTopic(opts: {
     // Theme family (for the performance loop's recipe); the question is the title.
     category: concept.family ?? "unknown",
     researchSeed,
+    jev: picked.dims,
   };
 }
 

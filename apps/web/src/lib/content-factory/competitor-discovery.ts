@@ -103,9 +103,9 @@ function str(v: unknown): string {
 export async function discoverKeyword(
   brand: ResearchBrand,
   keyword: string
-): Promise<{ stored: number; standouts: number }> {
+): Promise<{ results: number; stored: number; standouts: number }> {
   const { prisma } = await import("@/lib/prisma");
-  if (!process.env.APIFY_TOKEN) return { stored: 0, standouts: 0 };
+  if (!process.env.APIFY_TOKEN) return { results: 0, stored: 0, standouts: 0 };
   let items: Record<string, unknown>[];
   try {
     items = await runApifyActor("clockworks~tiktok-scraper", {
@@ -121,7 +121,7 @@ export async function discoverKeyword(
     });
   } catch (e) {
     console.warn(`[competitor-discovery] search failed "${keyword}":`, e instanceof Error ? e.message.slice(0, 200) : e);
-    return { stored: 0, standouts: 0 };
+    return { results: 0, stored: 0, standouts: 0 };
   }
 
   const cutoff = Date.now() - MAX_AGE_DAYS * 86_400_000;
@@ -195,7 +195,7 @@ export async function discoverKeyword(
     if (isOutlier) standouts++;
   }
   console.log(`[competitor-discovery] ${brand} "${keyword}": ${items.length} results, ${stored} stored, ${standouts} standouts`);
-  return { stored, standouts };
+  return { results: items.length, stored, standouts };
 }
 
 /**
@@ -245,6 +245,37 @@ export async function promoteAndPause(): Promise<{ promoted: string[]; paused: s
     });
     paused.push(a.handle);
   }
+  // Handles that return nothing (wrong or renamed handle) stop costing a run.
+  const empty = await prisma.competitorAccount.findMany({
+    where: { status: "ACTIVE", lastScrapedAt: { not: null }, posts: { none: {} } },
+    select: { id: true, handle: true, notes: true },
+  });
+  for (const a of empty) {
+    await prisma.competitorAccount.update({
+      where: { id: a.id },
+      data: { status: "PAUSED", notes: `${a.notes ?? ""}\n${today}: auto-paused, the scrape returned no posts (handle may be wrong).`.trim() },
+    });
+    paused.push(a.handle);
+  }
+
+  // Source credit: accounts whose briefs led to weak posts for US (3+ posts).
+  const { readResearchLearning } = await import("./research-learning");
+  const learning = await readResearchLearning().catch(() => null);
+  for (const [key, stat] of Object.entries(learning?.sources ?? {})) {
+    if (!key.startsWith("account:") || stat.label !== "weak") continue;
+    const handle = key.slice(8);
+    const acct = await prisma.competitorAccount.findFirst({ where: { handle, status: { not: "PAUSED" } } });
+    if (!acct) continue;
+    await prisma.competitorAccount.update({
+      where: { id: acct.id },
+      data: {
+        status: "PAUSED",
+        notes: `${acct.notes ?? ""}\n${today}: auto-paused, posts we built from its briefs scored weak (${stat.n} posts, avg ${stat.mean}).`.trim(),
+      },
+    });
+    paused.push(handle);
+  }
+
   if (promoted.length || paused.length) {
     console.log(`[competitor-discovery] promoted ${promoted.join(", ") || "none"}; paused ${paused.join(", ") || "none"}`);
   }

@@ -48,9 +48,25 @@ export const performanceReportFn = inngest.createFunction(
       const { refreshScoreboards } = await import("@/lib/content-factory/performance-loop");
       return refreshScoreboards();
     });
+    // Jev calibration (2026-10-02): reweight the pick-concept judge by how
+    // well each of its scores predicted our 48h results.
+    const calibration = await step.run("calibrate-jev", async () => {
+      const { scorePosts } = await import("@/lib/content-factory/performance-loop");
+      const { refreshPickCalibration } = await import("@/lib/content-factory/jev-calibration");
+      return refreshPickCalibration(await scorePosts()).catch((e) => {
+        console.warn("[performance-loop] jev calibration failed:", e instanceof Error ? e.message : e);
+        return [];
+      });
+    });
     const sent = await step.run("email", async () => {
       const { sendPerformanceReport } = await import("@/lib/content-factory/performance-loop");
-      return sendPerformanceReport(boards);
+      const extra = calibration.length
+        ? `<h2 style="font-size:16px;margin:18px 0 4px">How Jev judges pick posts now</h2><p style="margin:0;color:#555">Each Jev score's rank correlation with our 48-hour results (1 = perfect predictor, 0 = no link), and the weight it now gets when choosing concepts.</p>${calibration
+            .flatMap((c) => (c ? [c] : []))
+            .map((c) => `<p style="margin:6px 0"><b>${c.brand === "bwk" ? "Build With Key" : "Ripple"}</b> (${c.n} posts): ${Object.entries(c.rho).map(([k, v]) => `${k} ${v.toFixed(2)} → weight ${(c.weights as Record<string, number>)[k].toFixed(2)}`).join(" · ")}</p>`)
+            .join("")}`
+        : "";
+      return sendPerformanceReport(boards, extra);
     });
     return sent;
   }

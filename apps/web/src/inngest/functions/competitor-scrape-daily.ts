@@ -34,6 +34,7 @@ export const competitorScrapeDailyFn = inngest.createFunction(
     ],
   },
   async ({ step, logger }) => {
+    const startedAt = await step.run("started-at", async () => new Date().toISOString());
     const accountIds = await step.run("list-accounts", async () => {
       const { listActiveAccountIds } = await import("@/lib/content-factory/competitor-mimic");
       return process.env.APIFY_TOKEN ? listActiveAccountIds() : ([] as string[]);
@@ -48,18 +49,28 @@ export const competitorScrapeDailyFn = inngest.createFunction(
       if (n > 0) scraped++;
     }
 
-    // Keyword search: finds creators we don't track yet.
-    const { SEARCH_KEYWORDS } = await import("@/lib/content-factory/competitor-discovery");
+    // Keyword search: finds creators we don't track yet. The phrase list
+    // evolves (research-learning.ts): dead phrases retire, Opus adds new ones.
+    const keywords = await step.run("load-keywords", async () => {
+      const { activeKeywords } = await import("@/lib/content-factory/research-learning");
+      return activeKeywords();
+    });
     let discovered = 0;
+    const keywordRows: { brand: "ripple" | "bwk"; keyword: string; results: number; standouts: number }[] = [];
     for (const brand of ["ripple", "bwk"] as const) {
-      for (const [i, keyword] of SEARCH_KEYWORDS[brand].entries()) {
+      for (const [i, keyword] of keywords[brand].entries()) {
         const r = await step.run(`discover-${brand}-${i}`, async () => {
           const { discoverKeyword } = await import("@/lib/content-factory/competitor-discovery");
           return discoverKeyword(brand, keyword);
         });
         discovered += r.standouts;
+        keywordRows.push({ brand, keyword, results: r.results, standouts: r.standouts });
       }
     }
+    await step.run("record-keyword-run", async () => {
+      const { recordKeywordRun } = await import("@/lib/content-factory/research-learning");
+      await recordKeywordRun(keywordRows);
+    });
 
     // Hashtag top-video feed for the admin "Top Videos" tab (Keenan
     // recreates these by hand — separate from the mimic-brief pipeline).
@@ -86,9 +97,39 @@ export const competitorScrapeDailyFn = inngest.createFunction(
       if (ok) briefs++;
     }
 
+    // Learn: credit our 48h results to the sources behind them, then
+    // promote/pause accounts and evolve the search phrases.
+    const learning = await step.run("refresh-research-learning", async () => {
+      const { refreshResearchLearning } = await import("@/lib/content-factory/research-learning");
+      return refreshResearchLearning().catch((e) => {
+        console.warn("[competitor-mimic] research learning failed:", e instanceof Error ? e.message : e);
+        return null;
+      });
+    });
     const roster = await step.run("promote-and-pause", async () => {
       const { promoteAndPause } = await import("@/lib/content-factory/competitor-discovery");
       return promoteAndPause();
+    });
+    const keywordChanges = await step.run("evolve-keywords", async () => {
+      const { evolveKeywords } = await import("@/lib/content-factory/research-learning");
+      return evolveKeywords().catch((e) => {
+        console.warn("[competitor-mimic] keyword evolution failed:", e instanceof Error ? e.message : e);
+        return { retired: [] as string[], added: [] as string[] };
+      });
+    });
+    await step.run("send-research-report", async () => {
+      const { sendResearchReport } = await import("@/lib/content-factory/research-report");
+      await sendResearchReport({
+        startedAt,
+        accountsScraped: scraped,
+        accountsTotal: accountIds.length,
+        keywordRows,
+        briefs,
+        promoted: roster.promoted,
+        paused: roster.paused,
+        keywordChanges,
+        learning,
+      }).catch((e) => console.warn("[competitor-mimic] research report failed:", e instanceof Error ? e.message : e));
     });
 
     logger.info(

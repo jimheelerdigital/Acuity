@@ -1038,8 +1038,20 @@ export async function createBatchForGroup(
     "@/lib/content-factory/competitor-mimic"
   );
   const organicSeeds = await getResearchSeeds(g.digestBrand === "bwk" ? "bwk" : "ripple", 5).catch(() => []);
-  const organicSection = organicSeeds.length
-    ? `WHAT'S WORKING IN ORGANIC SOCIAL FOR THIS AUDIENCE THIS WEEK (posts that far outran their usual reach; mechanics only, never wording, never name or allude to a creator or platform). A new-concept slot MAY build its hook on one of these when it fits the slot's fixed template; if it does, set "inspiration" to that label (e.g. "R2"), otherwise leave "inspiration" out:\n${renderResearchSeeds(organicSeeds)}`
+  // How research-based ads have converted vs our own (learning.ts bySource):
+  // clearly worse after real spend → skip the section; clearly better →
+  // ask for more of them. Otherwise optional, as before.
+  const srcRows = learning?.stats.bySource ?? [];
+  const resRow = srcRows.find((r) => r.value === "research");
+  const ownRow = srcRows.find((r) => r.value === "own");
+  const researchVerdict: "better" | "worse" | "unknown" =
+    resRow && ownRow && resRow.trials >= 2 && ownRow.costPerTrialCents && resRow.costPerTrialCents && resRow.costPerTrialCents < ownRow.costPerTrialCents * 0.8
+      ? "better"
+      : resRow && resRow.spendCents >= 10_000 && (resRow.trials === 0 || (ownRow?.costPerTrialCents && resRow.costPerTrialCents && resRow.costPerTrialCents > ownRow.costPerTrialCents * 1.5))
+        ? "worse"
+        : "unknown";
+  const organicSection = organicSeeds.length && researchVerdict !== "worse"
+    ? `${researchVerdict === "better" ? "Ads built on this research have been converting better than our own ideas, so build AT LEAST 3 of the new-concept ads on these.\n" : ""}WHAT'S WORKING IN ORGANIC SOCIAL FOR THIS AUDIENCE THIS WEEK (posts that far outran their usual reach; mechanics only, never wording, never name or allude to a creator or platform). A new-concept slot MAY build its hook on one of these when it fits the slot's fixed template; if it does, set "inspiration" to that label (e.g. "R2"), otherwise leave "inspiration" out:\n${renderResearchSeeds(organicSeeds)}`
     : "";
   const digestDate = digest.date.toISOString().slice(0, 10);
   const weekLabel = new Date().toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
