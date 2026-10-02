@@ -132,7 +132,7 @@ async function tiktokMedia(url: string): Promise<PostMedia> {
     resultsPerPage: 1,
     shouldDownloadVideos: true,
     shouldDownloadSlideshowImages: true,
-    downloadSubtitlesOptions: "DOWNLOAD_SUBTITLES_ONLY",
+    downloadSubtitlesOptions: "DOWNLOAD_SUBTITLES",
     shouldDownloadCovers: false,
   });
   const it = items[0];

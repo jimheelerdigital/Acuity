@@ -7,6 +7,27 @@
 
 ---
 
+## [2026-10-02] — Fix competitor research inputs rejected by the scraper
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** see "fix: Send the TikTok scraper input values it actually accepts"
+
+### In plain English (for Keenan)
+The first research run scraped all 25 accounts and found about 95 standout posts. But two settings were rejected by the scraper. The topic search found nothing, and the briefs could only see each post's cover image instead of its slides and video. Both settings are fixed. Research can also now be re-run without you clicking "Scrape now".
+
+### Technical changes (for Jimmy)
+- `lib/content-factory/competitor-discovery.ts`: `searchSection` changed from "Video" to "/video".
+- `lib/content-factory/competitor-media.ts`: `downloadSubtitlesOptions` changed from "DOWNLOAD_SUBTITLES_ONLY" to "DOWNLOAD_SUBTITLES".
+- Every field for `clockworks~tiktok-scraper`, `clockworks~tiktok-profile-scraper` and `apify~instagram-scraper` was checked against the actors' live input schemas (`api.apify.com/v2/acts/<actor>/builds/default`).
+- `app/api/admin/trends/competitors/scrape/route.ts` also accepts `Bearer CRON_SECRET`.
+
+### Manual steps needed
+- None
+
+### Notes
+- Use the actor build's `inputSchema` as the source of truth, not the Apify marketing page. The page listed "Video" and "DOWNLOAD_SUBTITLES_ONLY", which the actor rejects.
+- Briefs written during the first run fell back to the cover thumbnail (`brief.seen = "image"`). They get reset and re-briefed after this deploy.
+
 ## [2026-10-01] — Mythicals: "How Big" becomes a daily series, new "Who Would Win?" posts
 **Requested by:** Keenan
 **Committed by:** Claude Code

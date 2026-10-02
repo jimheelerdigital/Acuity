@@ -1,5 +1,5 @@
 import { getServerSession } from "next-auth";
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 
 import { getAuthOptions } from "@/lib/auth";
 
@@ -10,8 +10,19 @@ export const dynamic = "force-dynamic";
  * (2026-09-17). Fires the same event the 3:30 UTC cron listens to,
  * so a freshly added handle gets scraped + briefed without waiting
  * overnight.
+ *
+ * Auth: admin session OR `Authorization: Bearer ${CRON_SECRET}` (2026-10-02,
+ * so research re-runs don't need Keenan's click).
  */
-export async function POST() {
+export async function POST(req: NextRequest) {
+  const bearer = req.headers.get("authorization");
+  const cronSecret = process.env.CRON_SECRET;
+  if (cronSecret && bearer === `Bearer ${cronSecret}`) {
+    const { inngest } = await import("@/inngest/client");
+    await inngest.send({ name: "content-factory/competitor.scrape", data: {} });
+    return NextResponse.json({ ok: true });
+  }
+
   const session = await getServerSession(getAuthOptions());
   if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });

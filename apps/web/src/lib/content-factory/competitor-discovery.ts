@@ -110,7 +110,7 @@ export async function discoverKeyword(
   try {
     items = await runApifyActor("clockworks~tiktok-scraper", {
       searchQueries: [keyword],
-      searchSection: "Video",
+      searchSection: "/video",
       // Most-liked from the past month: big recent hits; the follower
       // ratio below keeps the ones where the FORMAT did the work.
       videoSearchSorting: "MOST_LIKED",
