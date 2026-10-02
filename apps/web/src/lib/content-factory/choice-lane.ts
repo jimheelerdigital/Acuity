@@ -545,6 +545,8 @@ async function generateChoiceTopicOnce(opts: ChoiceTopicOpts): Promise<ChoiceTop
     console.warn("[choice-lane] humanize gate failed — shipping ungated copy:", err);
   }
 
+  endCard = await fitEndCard(gatedTitle, endCard, opts.mode ?? "choice");
+
   const slug = `${opts.mode && opts.mode !== "choice" ? `mythic-${opts.mode}` : "mythic"}-${gatedTitle
     .toLowerCase()
     .replace(/[^a-z0-9\s-]/g, "")
@@ -627,4 +629,67 @@ export function buildChoiceCaption(question: string): string {
   ];
   const tags = pools[Math.floor(Math.random() * pools.length)];
   return `${question}\n\n${tags.join(" ")}`;
+}
+
+/** Safe closing line per mode, used when the written one doesn't fit the post. */
+const SAFE_END_CARD: Record<string, string> = {
+  choice: "WHICH ONE IS YOURS?",
+  duo: "SEND THIS TO YOUR BRO.",
+  place: "SEND THIS TO YOUR BRO.",
+  know: "SEND THIS TO THEM.",
+  scenario: "WHAT'S YOUR PICK?",
+  size: "WHICH ONE WOULD YOU RUN FROM?",
+  versus: "PICK YOUR WINNERS.",
+};
+
+/**
+ * End-card fit check (2026-10-02, per Keenan: "TRIPLE CHECK that all of our
+ * social scripts were run through jev"). The copy check only screened for
+ * nonsense, so "WHICH HIDDEN INN ARE YOU AND YOUR BRO BOOKING?" shipped
+ * with "SEND THIS TO HER." Two layers: a hard rule for the person the
+ * title names (him/bro vs her), then a Jev Noul on whether the closing line
+ * fits the post. Anything that fails gets the mode's safe end card.
+ * Jev failing open keeps the written card.
+ */
+export async function fitEndCard(
+  title: string,
+  endCard: string,
+  mode: string
+): Promise<string> {
+  const safe = SAFE_END_CARD[mode] ?? SAFE_END_CARD.choice;
+  const t = ` ${title.toUpperCase()} `;
+  const e = ` ${endCard.toUpperCase().replace(/[^A-Z' ]/g, " ")} `;
+  const titleMale = /\b(BRO|BROTHER|BROS|HIM|HIS|HE)\b/.test(t);
+  const titleFemale = /\b(HER|SHE|QUEEN|GIRL|WIFE|SISTER)\b/.test(t);
+  const cardMale = /\b(BRO|HIM|HE|HIS)\b/.test(e);
+  const cardFemale = /\b(HER|SHE)\b/.test(e);
+  if (
+    (titleMale && !titleFemale && cardFemale) ||
+    (titleFemale && !titleMale && cardMale)
+  ) {
+    console.warn(
+      `[choice-lane] end card "${endCard}" names the wrong person for "${title}" — using "${safe}"`
+    );
+    return safe;
+  }
+  const { askJev, noulOf } = await import("./jev");
+  const r = await askJev(
+    "choice-endcard-fit",
+    { postTitle: title, closingLine: endCard },
+    {
+      fits: {
+        type: "noul",
+        instructions:
+          "A short social video opens with postTitle and ends with closingLine. Does closingLine make sense as the last line of THIS post: it asks for the same kind of answer the title asks for, and if it names a person (her, him, your bro) it is the same person the title is about?",
+      },
+    }
+  );
+  const fits = noulOf(r, "fits");
+  if (fits !== null && fits < 0.4) {
+    console.warn(
+      `[choice-lane] Jev: end card "${endCard}" doesn't fit "${title}" (${fits.toFixed(2)}) — using "${safe}"`
+    );
+    return safe;
+  }
+  return endCard;
 }

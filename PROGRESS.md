@@ -7,6 +7,28 @@
 
 ---
 
+## [2026-10-02] — Jev now checks post captions and closing cards, not just covers and options
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** (see git log: "Run captions and end cards through Jev")
+
+### In plain English (for Keenan)
+Keenan asked to confirm that every post went through Jev. It did, with no failures. But Jev was never shown two things: the caption under the post, and whether the closing card matched the post. That's how a "you and your bro" post ended with "SEND THIS TO HER." and how fantasy posts got captions like "what's the real-life habit behind that?". Jev now checks both, and anything that fails is rewritten before posting. Ripple captions also stop repeating "mental load" in every post. The broken bro/her post was fixed before it went out.
+
+### Technical changes (for Jimmy)
+- apps/web/src/lib/content-factory/choice-lane.ts: fitEndCard(title, endCard, mode) runs after the copy check. A hard rule handles the person the title names (bro/him vs her/she), then a Jev Noul "jev:choice-endcard-fit" (<0.4 fails). Failures use SAFE_END_CARD[mode].
+- apps/web/src/lib/content-factory/caption-writer.ts: per-brand `question` rule (Mythicals questions stay inside the fantasy; Ripple/BWK keep the life question) and a Ripple `extra` variety rule. New captionProblem() Jev check ("jev:caption-check:<brand>": fits <0.4, sense <0.4, Mythicals forced ≥0.6) triggers one rewrite with feedback; the second draft ships either way. Fails open.
+- Data fix: post cmuqsv6320009zcf2bks7no6z end card set to "SEND THIS TO YOUR BRO." and video rebuilt from cached clips (no Higgsfield spend). Captions on the unposted Mythicals drafts reset so they're rewritten under the new rules.
+
+### Manual steps needed
+- None
+
+### Notes
+- The audit on 10-01/10-02 found every Jev purpose ran with 0 failures: pick concept/options/scenes, covers, choice topic/diversity and near-duplicate checks. The issues were coverage gaps, not outages.
+- The Jev copy check (humanizer.ts) only flags nonsense and banned words. It never judged whether the parts of a post fit each other.
+- Video rebuilds via video-requests/<id>.json reuse cached clips, so text fixes are free.
+
 ## [2026-10-02] — Research and Jev learn from our own results
 **Requested by:** Keenan
 **Committed by:** Claude Code
