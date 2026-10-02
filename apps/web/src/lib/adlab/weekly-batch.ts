@@ -715,6 +715,8 @@ const BatchAdSchema = z.object({
     .optional()
     .transform((st) => st?.slice(0, 3)),
   insight: z.string().max(140).optional(),
+  // Organic research seed label ("R2") this ad built on (2026-10-01).
+  inspiration: z.string().max(8).optional(),
 });
 
 /** JSON schema for the submit_ads tool (structured output, 2026-09-29). */
@@ -751,6 +753,7 @@ const SUBMIT_ADS_TOOL = {
               items: { type: "object", properties: { value: { type: "string" }, label: { type: "string" } }, required: ["value", "label"] },
             },
             insight: { type: "string" },
+            inspiration: { type: "string" },
           },
           required: ["theme", "hypothesis", "targetPersona", "valueSurface", "archetype", "headline", "primaryText", "description", "cta", "imageScene", "solutionLine", "benefits", "said", "caught", "format", "strategy"],
         },
@@ -1028,6 +1031,16 @@ export async function createBatchForGroup(
   );
   const competitorBrief = await getLatestCompetitorBrief(groupKey).catch(() => null);
   const competitorSection = renderCompetitorBriefForBatch(competitorBrief);
+  // Organic research seeds (2026-10-01, per Keenan: competitor briefs feed
+  // ads too). Posts for this audience that far outran their usual reach,
+  // briefed from their real slides/frames. Soft: none → section omitted.
+  const { getResearchSeeds, renderResearchSeeds, markResearchSeedUsed } = await import(
+    "@/lib/content-factory/competitor-mimic"
+  );
+  const organicSeeds = await getResearchSeeds(g.digestBrand === "bwk" ? "bwk" : "ripple", 5).catch(() => []);
+  const organicSection = organicSeeds.length
+    ? `WHAT'S WORKING IN ORGANIC SOCIAL FOR THIS AUDIENCE THIS WEEK (posts that far outran their usual reach; mechanics only, never wording, never name or allude to a creator or platform). A new-concept slot MAY build its hook on one of these when it fits the slot's fixed template; if it does, set "inspiration" to that label (e.g. "R2"), otherwise leave "inspiration" out:\n${renderResearchSeeds(organicSeeds)}`
+    : "";
   const digestDate = digest.date.toISOString().slice(0, 10);
   const weekLabel = new Date().toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
 
@@ -1080,7 +1093,7 @@ ${recentBlock}
 ${bestAdBlock}
 THE 10 SLOTS — every slot has a FIXED hook template and a FIXED format. Write the ad for the slot you are given; set "archetype" to the slot key.
 ${SLOTS.map((sl) => `- ${sl.key} [format: ${sl.format}]: ${sl.how}${sl[groupKey] ? `\n    Example for this lane (write your OWN, don't copy): ${sl[groupKey]}` : ""}`).join("\n")}
-${learningSection ? `\n${learningSection}\n` : ""}${competitorSection ? `\n${competitorSection}\n` : ""}
+${learningSection ? `\n${learningSection}\n` : ""}${competitorSection ? `\n${competitorSection}\n` : ""}${organicSection ? `\n${organicSection}\n` : ""}
 THIS WEEK'S REDDIT AUDIENCE PULSE (real distilled pain from the audience's own threads — root every new-concept ad in one of these themes, in their own words). Use a theme only through its EVERYDAY, widely shared side; skip medical/medication, relationship-ending or other major-life-decision themes entirely, and never lift a one-off story detail from a thread:
 ${themes.map((t, i) => `${i + 1}. THEME: ${t.theme}\n   WHY IT'S LIVE THIS WEEK: ${t.why}\n   SUGGESTED ANGLE: ${t.angle}\n   THEIR OWN PHRASES: ${(t.phrases ?? []).join(" | ")}`).join("\n\n")}
 
@@ -1238,6 +1251,11 @@ Call the submit_video_ads tool IMMEDIATELY with no text before or after it.`;
     [d.solutionLine, d.said, ...(d.caught ?? []), ...(d.lines ?? []), ...(d.stats ?? []).map((x) => `${x.value} ${x.label}`), d.insight].filter((x): x is string => !!x);
   const verdicts = await judgeDrafts(jevCtx, drafts.map((d) => ({ format: d.format ?? "", headline: d.headline, primaryText: d.primaryText, onScreen: onScreenOf(d) })));
   const jevOf = new Map<z.infer<typeof BatchAdSchema>, import("@/lib/adlab/jev-judge").JevVerdict | null>();
+  // "R2" → that seed's CompetitorPost id, for researchNotes + rotation.
+  const organicSeedOf = (d: z.infer<typeof BatchAdSchema>): string | undefined => {
+    const m = d.inspiration?.trim().match(/^R([1-9])$/);
+    return m ? organicSeeds[Number(m[1]) - 1]?.id : undefined;
+  };
   const ads: z.infer<typeof BatchAdSchema>[] = [];
   // Per slot: best viable draft. "Extend the best ad" slots are MEANT to
   // echo the live winner, so Jev's duplicate flag doesn't count against
@@ -1328,10 +1346,12 @@ Call the submit_video_ads tool IMMEDIATELY with no text before or after it.`;
         targetPersona: ad.targetPersona,
         valueSurface: ad.valueSurface,
         // "| strategy:" is parsed back by lib/adlab/learning.ts — keep format
-        researchNotes: `Reddit theme (${digestDate}): ${ad.theme} | strategy: ${strategy}${ad.archetype ? ` | type: ${ad.archetype}` : ""} | format: ${formatKey}${jevOf.get(ad) ? ` | jev: ${jevOf.get(ad)!.rank.toFixed(2)} best of ${jevOf.get(ad)!.of}` : ""}`,
+        researchNotes: `Reddit theme (${digestDate}): ${ad.theme} | strategy: ${strategy}${ad.archetype ? ` | type: ${ad.archetype}` : ""} | format: ${formatKey}${jevOf.get(ad) ? ` | jev: ${jevOf.get(ad)!.rank.toFixed(2)} best of ${jevOf.get(ad)!.of}` : ""}${organicSeedOf(ad) ? ` | organic: ${organicSeedOf(ad)}` : ""}`,
         score: 5,
       },
     });
+    const seedId = organicSeedOf(ad);
+    if (seedId) await markResearchSeedUsed(seedId);
     const creative = await prisma.adLabCreative.create({
       data: {
         angleId: angle.id,

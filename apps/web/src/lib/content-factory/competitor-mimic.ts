@@ -38,22 +38,24 @@ import { copyObjectives } from "./copy-objectives";
 
 const anthropic = contentAnthropic;
 const CLAUDE_MODEL = CONTENT_MODEL;
-/** Briefs stay usable for 9 days: the scrape runs weekly, plus slack for a missed run. */
+/** Briefs stay usable for 9 days (the scrape runs Mon + Thu; slack for a missed run). */
 const BRIEF_FRESH_MS = 9 * 24 * 3600 * 1000;
 const INPUT_COST_PER_TOKEN = CONTENT_INPUT_COST_PER_TOKEN;
 const OUTPUT_COST_PER_TOKEN = CONTENT_OUTPUT_COST_PER_TOKEN;
 
 const APIFY_BASE = "https://api.apify.com/v2/acts";
-/** Posts pulled per account per scrape. Cut 20→10 on 2026-09-21 for Apify plan limits. */
-const POSTS_PER_ACCOUNT = 10;
+/** Posts pulled per account per scrape. Back to 20 on 2026-10-01 (Keenan: plan
+ *  limits shouldn't cap research; a 20-post median is a truer baseline). */
+const POSTS_PER_ACCOUNT = 20;
 /** views ÷ median ≥ this ⇒ outlier. */
 const OUTLIER_MULTIPLE = 3;
 /** Absolute views floor so tiny accounts don't flag 3× of nothing. */
 const OUTLIER_MIN_VIEWS = 10_000;
-/** Max new briefs written per run (cost guard). */
-const MAX_BRIEFS_PER_RUN = 8;
+/** Max new briefs per run. 8 → 30 on 2026-10-01 ("brief every standout");
+ *  still a runaway guard (~$0.10 each with images). */
+const MAX_BRIEFS_PER_RUN = 30;
 /** Candidates Jev screens before the MAX_BRIEFS_PER_RUN cut (Jev #5). */
-const TRIAGE_POOL = 40;
+const TRIAGE_POOL = 80;
 
 export interface MimicBrief {
   /** The hook mechanic in one sentence ("opens on a contradiction..."). */
@@ -66,6 +68,8 @@ export interface MimicBrief {
   howWeApply: string;
   /** Audience-vocabulary words tied to the emotion (never copied lines). */
   phrases: string[];
+  /** What the brief was written from (2026-10-01): slides, frames, cover or text. */
+  seen?: "slideshow" | "video" | "image" | "none";
 }
 
 interface ScrapedPost {
@@ -202,7 +206,9 @@ export async function scrapeAccount(accountId: string): Promise<number> {
     return 0;
   }
 
+  const { isRedFlag } = await import("./competitor-discovery");
   for (const p of posts) {
+    if (isRedFlag(p.caption)) continue;
     await prisma.competitorPost.upsert({
       where: { accountId_externalId: { accountId: account.id, externalId: p.externalId } },
       update: {
@@ -264,7 +270,7 @@ function briefSystem(brand: "ripple" | "bwk"): string {
 
 YOUR JOB TODAY: creative strategy for the account above. You get one post from another account in a nearby niche that far outperformed that account's usual numbers. Work out the mechanic that made it work, so our writers can run the same play with our own subject, our own words and our own voice.
 
-The mechanic is the part that transfers: the shape of the hook, how the post is structured from first line to last, and the reason people stopped, kept going, and then commented, saved or sent it. The topic and the wording do not transfer; they belong to that creator. If the caption is thin, reason from what is there and from the numbers (a high comment count usually means the post asked for recognition or an opinion).
+The mechanic is the part that transfers: the shape of the hook, how the post is structured from first line to last, and the reason people stopped, kept going, and then commented, saved or sent it. The topic and the wording do not transfer; they belong to that creator. You usually get the post itself: its slides or frames from its video, and sometimes its spoken words. Work from what is on screen first; the caption is often just hashtags. If you only have text, reason from it and the numbers (a high comment count usually means the post asked for recognition or an opinion).
 
 Fields:
 - "hook": the opening mechanic in one sentence, described as a shape ("opens by naming a private habit the reader thinks only she has"), never their words.
@@ -279,24 +285,29 @@ Return {"hook":"...","format":"...","whyItWorks":"...","howWeApply":"...","phras
 }
 
 /**
- * Write mimic briefs for un-briefed outliers (cost-capped per run).
- * Returns the number of briefs written.
+ * Pick this run's posts to brief: un-briefed standouts from tracked and
+ * discovered accounts, red flags dropped, then Jev triage (format worth
+ * learning, not a sales post, made for our audience). Returns post ids,
+ * so the Inngest function can brief each in its own step.
  */
-export async function writeMimicBriefs(): Promise<number> {
+export async function selectBriefCandidates(): Promise<string[]> {
   const { prisma } = await import("@/lib/prisma");
+  const { isRedFlag } = await import("./competitor-discovery");
   // briefAt null ⇔ no brief written yet (set together, so one filter).
-  // Jev #5 (2026-09-30): pull a wider pool, let Jev drop ad/product/
-  // giveaway posts and rank the rest by how learnable the format is for
-  // our brand, then brief the best MAX_BRIEFS_PER_RUN. Jev off/failed ⇒
-  // the first MAX_BRIEFS_PER_RUN by outlierScore, exactly as before.
-  // Dropped promo posts stay un-briefed and are simply re-screened (and
-  // dropped again) next run — cheap, and no schema change needed.
-  const pool = await prisma.competitorPost.findMany({
-    where: { isOutlier: true, briefAt: null },
-    orderBy: { outlierScore: "desc" },
-    take: TRIAGE_POOL,
-    include: { account: true },
-  });
+  const recent = new Date(Date.now() - 45 * 86_400_000);
+  const pool = (
+    await prisma.competitorPost.findMany({
+      where: {
+        isOutlier: true,
+        briefAt: null,
+        account: { status: { not: "PAUSED" } },
+        OR: [{ postedAt: null }, { postedAt: { gte: recent } }],
+      },
+      orderBy: { outlierScore: "desc" },
+      take: TRIAGE_POOL,
+      include: { account: true },
+    })
+  ).filter((p) => !isRedFlag(p.caption));
   let pending = pool.slice(0, MAX_BRIEFS_PER_RUN);
   try {
     const { triageCompetitorPosts } = await import("./research-triage");
@@ -323,89 +334,138 @@ export async function writeMimicBriefs(): Promise<number> {
   } catch (e) {
     console.warn("[competitor-mimic] triage failed — using outlier order", e);
   }
+  return pending.map((p) => p.id);
+}
 
-  let written = 0;
-  for (const post of pending) {
-    const brand = post.account.brand === "bwk" ? "bwk" : "ripple";
-    const userMsg = [
-      `OUTLIER POST (${post.account.platform}, niche: ${post.account.niche ?? "unspecified"}):`,
-      `Performance: ${post.views.toLocaleString()} views (${post.outlierScore}x their baseline), ${post.likes.toLocaleString()} likes, ${post.comments.toLocaleString()} comments.`,
-      `Caption/text: ${post.caption?.slice(0, 1500) || "(no caption — visual-only post)"}`,
-    ].join("\n");
+/**
+ * Brief one post from what is actually ON it (2026-10-01): its slides or
+ * video frames and subtitles via competitor-media, plus caption and
+ * numbers. Returns true when a brief was written.
+ */
+export async function writeBriefFor(postId: string): Promise<boolean> {
+  const { prisma } = await import("@/lib/prisma");
+  const post = await prisma.competitorPost.findUnique({ where: { id: postId }, include: { account: true } });
+  if (!post || post.briefAt) return false;
+  const brand = post.account.brand === "bwk" ? "bwk" : "ripple";
 
-    const start = Date.now();
-    try {
-      const response = await anthropic.messages.create({
+  const { fetchPostMedia } = await import("./competitor-media");
+  const media = await fetchPostMedia({ url: post.url, platform: post.account.platform, thumbnailUrl: post.thumbnailUrl });
+  const what =
+    media.kind === "slideshow"
+      ? `The ${media.images.length} images below are the post's slides, in order.`
+      : media.kind === "video"
+        ? `The ${media.images.length} images below are frames from the video, one every 2 seconds, in order.`
+        : media.images.length
+          ? "The image below is the post's cover."
+          : "No images could be fetched; work from the text.";
+  const userMsg = [
+    `OUTLIER POST (${post.account.platform}, niche: ${post.account.niche ?? "unspecified"}):`,
+    `Performance: ${post.views.toLocaleString()} views (${post.outlierScore}x ${post.account.status === "DISCOVERED" ? "the creator's follower count" : "their usual views"}), ${post.likes.toLocaleString()} likes, ${post.comments.toLocaleString()} comments.`,
+    `Caption/text: ${post.caption?.slice(0, 1500) || "(no caption)"}`,
+    media.transcript ? `Spoken words (subtitles): ${media.transcript}` : "",
+    what,
+    media.images.length
+      ? "Read the on-screen text exactly as it appears and use what you SEE (the hook on the first frame, how many beats, what each one shows, how it ends) — that is the mechanic."
+      : "",
+  ]
+    .filter(Boolean)
+    .join("\n");
+
+  const start = Date.now();
+  try {
+    const response = await anthropic.messages.create({
+      model: CLAUDE_MODEL,
+      max_tokens: 900,
+      system: briefSystem(brand),
+      messages: [
+        {
+          role: "user",
+          content: [
+            ...media.images.map((img) => ({
+              type: "image" as const,
+              source: { type: "base64" as const, media_type: "image/jpeg" as const, data: img.toString("base64") },
+            })),
+            { type: "text" as const, text: userMsg },
+          ],
+        },
+      ],
+    });
+    await prisma.claudeCallLog.create({
+      data: {
+        purpose: "competitor-mimic-brief",
         model: CLAUDE_MODEL,
-        max_tokens: 900,
-        system: briefSystem(brand),
-        messages: [{ role: "user", content: userMsg }],
-      });
-      await prisma.claudeCallLog.create({
+        tokensIn: response.usage.input_tokens,
+        tokensOut: response.usage.output_tokens,
+        costCents: Math.ceil(
+          (response.usage.input_tokens * INPUT_COST_PER_TOKEN +
+            response.usage.output_tokens * OUTPUT_COST_PER_TOKEN) *
+            100
+        ),
+        durationMs: Date.now() - start,
+        success: true,
+      },
+    });
+    const text = response.content
+      .filter((b) => b.type === "text")
+      .map((b) => b.text)
+      .join("");
+    const parsed = JSON.parse(lastJsonText(text)) as Partial<MimicBrief>;
+    if (
+      typeof parsed.hook !== "string" ||
+      typeof parsed.format !== "string" ||
+      typeof parsed.whyItWorks !== "string" ||
+      typeof parsed.howWeApply !== "string"
+    ) {
+      console.warn(`[competitor-mimic] brief parse missing fields for ${post.id}`);
+      return false;
+    }
+    const brief: MimicBrief = {
+      hook: parsed.hook.trim(),
+      format: parsed.format.trim(),
+      whyItWorks: parsed.whyItWorks.trim(),
+      howWeApply: parsed.howWeApply.trim(),
+      phrases: Array.isArray(parsed.phrases)
+        ? parsed.phrases.filter((p): p is string => typeof p === "string").slice(0, 4)
+        : [],
+      seen: media.kind,
+    };
+    await prisma.competitorPost.update({
+      where: { id: post.id },
+      data: { brief: brief as unknown as object, briefAt: new Date() },
+    });
+    return true;
+  } catch (e) {
+    console.warn(`[competitor-mimic] brief failed for ${post.id}:`, e);
+    await prisma.claudeCallLog
+      .create({
         data: {
           purpose: "competitor-mimic-brief",
           model: CLAUDE_MODEL,
-          tokensIn: response.usage.input_tokens,
-          tokensOut: response.usage.output_tokens,
-          costCents: Math.ceil(
-            (response.usage.input_tokens * INPUT_COST_PER_TOKEN +
-              response.usage.output_tokens * OUTPUT_COST_PER_TOKEN) *
-              100
-          ),
+          tokensIn: 0,
+          tokensOut: 0,
+          costCents: 0,
           durationMs: Date.now() - start,
-          success: true,
+          success: false,
+          errorMessage: e instanceof Error ? e.message.slice(0, 500) : String(e).slice(0, 500),
         },
-      });
-      const text = response.content
-        .filter((b) => b.type === "text")
-        .map((b) => b.text)
-        .join("");
-      const parsed = JSON.parse(
-        lastJsonText(text)
-      ) as Partial<MimicBrief>;
-      if (
-        typeof parsed.hook !== "string" ||
-        typeof parsed.format !== "string" ||
-        typeof parsed.whyItWorks !== "string" ||
-        typeof parsed.howWeApply !== "string"
-      ) {
-        console.warn(`[competitor-mimic] brief parse missing fields for ${post.id}`);
-        continue;
-      }
-      const brief: MimicBrief = {
-        hook: parsed.hook.trim(),
-        format: parsed.format.trim(),
-        whyItWorks: parsed.whyItWorks.trim(),
-        howWeApply: parsed.howWeApply.trim(),
-        phrases: Array.isArray(parsed.phrases)
-          ? parsed.phrases.filter((p): p is string => typeof p === "string").slice(0, 4)
-          : [],
-      };
-      await prisma.competitorPost.update({
-        where: { id: post.id },
-        data: { brief: brief as unknown as object, briefAt: new Date() },
-      });
-      written++;
-    } catch (e) {
-      console.warn(`[competitor-mimic] brief failed for ${post.id}:`, e);
-      await prisma.claudeCallLog
-        .create({
-          data: {
-            purpose: "competitor-mimic-brief",
-            model: CLAUDE_MODEL,
-            tokensIn: 0,
-            tokensOut: 0,
-            costCents: 0,
-            durationMs: Date.now() - start,
-            success: false,
-            errorMessage:
-              e instanceof Error ? e.message.slice(0, 500) : String(e).slice(0, 500),
-          },
-        })
-        .catch(() => {});
-    }
+      })
+      .catch(() => {});
+    return false;
   }
+}
+
+/** Select + brief in one call (scripts; the cron uses one step per post). */
+export async function writeMimicBriefs(): Promise<number> {
+  let written = 0;
+  for (const id of await selectBriefCandidates()) if (await writeBriefFor(id)) written++;
   return written;
+}
+
+/** Tracked account ids, so the cron can scrape each in its own step. */
+export async function listActiveAccountIds(): Promise<string[]> {
+  const { prisma } = await import("@/lib/prisma");
+  const rows = await prisma.competitorAccount.findMany({ where: { status: "ACTIVE" }, select: { id: true } });
+  return rows.map((r) => r.id);
 }
 
 /** Scrape every ACTIVE account (all brands). Returns accounts scraped. */
@@ -443,7 +503,7 @@ async function recentBriefs(
     where: {
       isOutlier: true,
       briefAt: { gte: cutoff },
-      account: { brand, status: "ACTIVE" },
+      account: { brand, status: { not: "PAUSED" } },
     },
     orderBy: { outlierScore: "desc" },
     take: 10,
@@ -492,7 +552,7 @@ export async function getTopMimicBrief(
     where: {
       isOutlier: true,
       briefAt: { gte: cutoff },
-      account: { brand, status: "ACTIVE" },
+      account: { brand, status: { not: "PAUSED" } },
     },
     orderBy: [{ mandatedAt: { sort: "asc", nulls: "first" } }, { outlierScore: "desc" }],
     select: { id: true, brief: true },
@@ -503,4 +563,48 @@ export async function getTopMimicBrief(
     data: { mandatedAt: new Date() },
   });
   return row.brief as unknown as MimicBrief;
+}
+
+export interface ResearchSeed {
+  /** CompetitorPost id — recorded on whatever we build from it. */
+  id: string;
+  brief: MimicBrief;
+}
+
+/**
+ * Fresh briefs for pick posts and the ad batch (2026-10-01, per Keenan:
+ * "briefs just for ads and for content"). Least-used first, then the
+ * strongest, so a week of runs rotates through them.
+ */
+export async function getResearchSeeds(brand: "ripple" | "bwk", n: number): Promise<ResearchSeed[]> {
+  const { prisma } = await import("@/lib/prisma");
+  const rows = await prisma.competitorPost.findMany({
+    where: {
+      isOutlier: true,
+      briefAt: { gte: new Date(Date.now() - BRIEF_FRESH_MS) },
+      account: { brand, status: { not: "PAUSED" } },
+    },
+    orderBy: [{ mandatedAt: { sort: "asc", nulls: "first" } }, { outlierScore: "desc" }],
+    take: n,
+    select: { id: true, brief: true },
+  });
+  return rows
+    .filter((r) => r.brief && typeof r.brief === "object")
+    .map((r) => ({ id: r.id, brief: r.brief as unknown as MimicBrief }));
+}
+
+/** Mark a seed used so the next run rotates past it. Soft. */
+export async function markResearchSeedUsed(id: string): Promise<void> {
+  const { prisma } = await import("@/lib/prisma");
+  await prisma.competitorPost.update({ where: { id }, data: { mandatedAt: new Date() } }).catch(() => {});
+}
+
+/** Seeds as a numbered prompt block (R1, R2…). "" when none. */
+export function renderResearchSeeds(seeds: ResearchSeed[]): string {
+  return seeds
+    .map(
+      (s, i) =>
+        `R${i + 1}. Hook: ${s.brief.hook} Format: ${s.brief.format} Why it worked: ${s.brief.whyItWorks} Our version: ${s.brief.howWeApply}${s.brief.phrases.length ? ` (their words: ${s.brief.phrases.join(", ")})` : ""}`
+    )
+    .join("\n");
 }

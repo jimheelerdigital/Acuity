@@ -35,6 +35,14 @@ const ACCOUNT_LINE: Record<TriageBrand, string> = {
   bwk: "Build With Key, an account for young men that posts calm, austere standards and commands: concrete plans, timelines, counts, no hype",
 };
 
+/** Who each brand's research must be made for (competitor triage, 2026-10-01). */
+const AUDIENCE_LINE: Record<TriageBrand, string> = {
+  ripple: "women roughly 40-50 carrying a heavy mental load (running a household, family and work; the invisible work, identity set aside)",
+  bwk: "men roughly 20-45 working on discipline, habits and self-respect (self-improvement, not money schemes or dating advice)",
+};
+/** Below this "made for our audience" probability, a competitor post is dropped. */
+const AUDIENCE_MIN = 0.35;
+
 /** Off-limits probability at or above this drops the item. */
 export const OFF_LIMITS_DROP = 0.7;
 /** On-audience probability below this drops the thread. */
@@ -284,7 +292,7 @@ export async function triageCompetitorPosts(
   const byBrand = new Map<TriageBrand, typeof enriched>();
   for (const e of enriched) byBrand.set(e.post.brand, [...(byBrand.get(e.post.brand) ?? []), e]);
 
-  const answers = new Map<string, { learn: number | null; promo: number | null; scored: boolean }>();
+  const answers = new Map<string, { learn: number | null; promo: number | null; audience: number | null; scored: boolean }>();
   let anyScored = false;
   for (const [brand, list] of byBrand) {
     const results = await inBatches(list, COMPETITOR_CHUNK, async (chunk) => {
@@ -294,6 +302,16 @@ export async function triageCompetitorPosts(
           type: "score",
           instructions: `Ignoring its topic and wording, is the FORMAT or angle of posts[${i}] worth learning from for our account (${ACCOUNT_LINE[brand]})? Consider the hook shape, structure and why its audience engaged (see its engagement, comments and reach buckets).`,
           criteria: LEARN_LEVELS,
+        };
+        // 2026-10-01: keyword search pulls in posts made for other people
+        // (young new moms, hustle bros); keep the ones made for OUR reader.
+        questions[`p${i}_audience`] = {
+          type: "noul",
+          instructions: `Is posts[${i}] made for ${AUDIENCE_LINE[brand]}?`,
+          criteria: {
+            true: `Its natural audience is ${AUDIENCE_LINE[brand]}`,
+            false: "It is mainly for a different audience (a different age or life stage, a different gender, or a different interest entirely)",
+          },
         };
         questions[`p${i}_promo`] = {
           type: "noul",
@@ -314,7 +332,7 @@ export async function triageCompetitorPosts(
       const r = results[Math.floor(idx / COMPETITOR_CHUNK)];
       const i = idx % COMPETITOR_CHUNK;
       if (r) anyScored = true;
-      answers.set(e.post.id, { learn: scoreOf(r, `p${i}_learn`), promo: noulOf(r, `p${i}_promo`), scored: !!r });
+      answers.set(e.post.id, { learn: scoreOf(r, `p${i}_learn`), promo: noulOf(r, `p${i}_promo`), audience: noulOf(r, `p${i}_audience`), scored: !!r });
     });
   }
   if (!anyScored) return null;
@@ -326,11 +344,13 @@ export async function triageCompetitorPosts(
   });
   const eligible = scoredRows
     .filter((s) => !(s.a.promo !== null && s.a.promo >= PROMO_DROP))
+    .filter((s) => !(s.a.audience !== null && s.a.audience < AUDIENCE_MIN))
     .sort((x, y) => y.rank - x.rank);
   const keptIds = new Set(eligible.slice(0, keep).map((s) => s.e.post.id));
 
   const rows: CompetitorTriageRow[] = scoredRows.map(({ e, a }) => {
     const isPromo = a.promo !== null && a.promo >= PROMO_DROP;
+    const offAudience = a.audience !== null && a.audience < AUDIENCE_MIN;
     const kept = keptIds.has(e.post.id);
     return {
       id: e.post.id,
@@ -343,6 +363,8 @@ export async function triageCompetitorPosts(
       kept,
       reason: isPromo
         ? `promo ${a.promo!.toFixed(2)}`
+        : offAudience
+          ? `off-audience ${a.audience!.toFixed(2)}`
         : kept
           ? a.scored ? "kept" : "kept (unscored: Jev chunk failed)"
           : `below top ${keep}`,

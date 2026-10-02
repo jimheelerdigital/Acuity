@@ -53,6 +53,8 @@ export interface PickConcept {
   why: string;
   /** Theme family (PICK_FAMILIES), so the performance loop can learn by theme. */
   family?: string;
+  /** Research seed label ("R2") when the concept builds on a competitor brief. */
+  seed?: string;
 }
 
 /**
@@ -91,6 +93,8 @@ export interface PickLoopContext {
   whatDoesnt?: string;
   /** Scoreboard label per family. */
   familyLabels?: Record<string, "proven winner" | "solid" | "weak" | "untested">;
+  /** How research-seeded posts score vs the rest (scoreboard `sources.research`). */
+  researchLabel?: "proven winner" | "solid" | "weak" | "untested";
 }
 
 export interface PickOptionDraft {
@@ -255,11 +259,12 @@ Each concept:
   }
 - "why": one line on why this audience would comment and tag on it.
 - "family": exactly one of these theme families, copied word for word: ${PICK_FAMILIES[brand].map((f) => `"${f}"`).join(", ")}.
+- "seed": only when the request lists RESEARCH SEEDS and this concept is built on one: that seed's label, e.g. "R2". Otherwise leave it out.
 The five concepts must be clearly different subjects from each other and from recent posts.
 
 ${HUMAN_VOICE_RULES}
 
-OUTPUT (JSON): { "concepts": [{ "question": "...", "why": "...", "family": "..." }] }`;
+OUTPUT (JSON): { "concepts": [{ "question": "...", "why": "...", "family": "...", "seed": "R1 (optional)" }] }`;
 }
 
 function optionsSystem(brand: PickBrand): string {
@@ -580,6 +585,24 @@ export async function generatePickTopic(opts: {
 
   // 1. Five concepts → Jev picks one.
   const history = await recentHeadlinesPromptBlock();
+  // Research seeds (2026-10-01, per Keenan: competitor briefs feed content).
+  // How many concepts may build on them follows the scoreboard: weak →
+  // usually none (1 in 4 runs still explores), proven winner → 2, else 1.
+  const seedSlots =
+    loop.researchLabel === "proven winner" ? 2 : loop.researchLabel === "weak" ? (Math.random() < 0.25 ? 1 : 0) : 1;
+  let seeds: { id: string }[] = [];
+  let seedBlock = "";
+  if (seedSlots > 0) {
+    try {
+      const { getResearchSeeds, renderResearchSeeds } = await import("./competitor-mimic");
+      const got = await getResearchSeeds(brand, 3);
+      seeds = got;
+      if (got.length)
+        seedBlock = `RESEARCH SEEDS: what posts for this same audience did far better than usual this week (mechanics, never wording):\n${renderResearchSeeds(got)}\nUp to ${seedSlots} of your concepts that are NOT approved questions may build on a seed: take its situation or angle and turn it into a pick-one question in our own words, and set "seed" to its label. Skip the seeds if none fits the pick-one format naturally.`;
+    } catch (err) {
+      console.warn(`[pick-lane] ${brand} research seeds unavailable:`, err instanceof Error ? err.message : err);
+    }
+  }
   const conceptsRaw = (await callWriter(
     `pick-concepts:${brand}`,
     conceptSystem(brand),
@@ -594,6 +617,7 @@ export async function generatePickTopic(opts: {
         : "",
       loop.whatWorks ? `What has worked on this account: ${loop.whatWorks}.` : "",
       loop.whatDoesnt ? `What has not worked: ${loop.whatDoesnt}.` : "",
+      seedBlock,
       history,
       "Write exactly five concepts.",
     ]
@@ -608,6 +632,7 @@ export async function generatePickTopic(opts: {
       why: typeof c.why === "string" ? c.why.trim() : "",
       family:
         typeof c.family === "string" && PICK_FAMILIES[brand].includes(c.family.trim()) ? c.family.trim() : undefined,
+      seed: typeof c.seed === "string" && /^R[1-9]$/.test(c.seed.trim()) ? c.seed.trim() : undefined,
     }))
     .slice(0, 5);
   const fresh: PickConcept[] = [];
@@ -696,6 +721,15 @@ export async function generatePickTopic(opts: {
   draft.coverMotion = scenes.cover.motion || draft.coverMotion;
   narrowed.options = narrowed.options.map((o, i) => ({ ...o, scene: scenes.options[i].scene, motion: scenes.options[i].motion || o.motion }));
 
+  // Research seed used by the winning concept → recorded for the loop.
+  const seedRow = concept.seed ? seeds[Number(concept.seed.slice(1)) - 1] : undefined;
+  const researchSeed = seedRow?.id;
+  if (researchSeed) {
+    const { markResearchSeedUsed } = await import("./competitor-mimic");
+    await markResearchSeedUsed(researchSeed);
+    console.log(`[pick-lane] ${brand} concept built on research seed ${concept.seed} (${researchSeed})`);
+  }
+
   const slug = `pick-${brand}-${draft.title
     .toLowerCase()
     .replace(/[^a-z0-9\s-]/g, "")
@@ -712,6 +746,7 @@ export async function generatePickTopic(opts: {
     captionQuestion: draft.captionQuestion,
     // Theme family (for the performance loop's recipe); the question is the title.
     category: concept.family ?? "unknown",
+    researchSeed,
   };
 }
 

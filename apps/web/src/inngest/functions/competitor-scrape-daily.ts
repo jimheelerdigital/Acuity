@@ -11,57 +11,86 @@ import { inngest } from "@/inngest/client";
  * APIFY_TOKEN or a scrape failure just means lanes generate without
  * the competitor signal.
  *
+ * 2026-10-01 (Keenan: "just do them all"): runs Mon + Thu; every tracked
+ * account and every search phrase gets its own step (25+ Apify runs no
+ * longer fit one 300s step); keyword discovery finds new creators; every
+ * standout is briefed from its real slides/frames, one step per post;
+ * creators auto-promote / accounts auto-pause at the end.
+ *
  * Manual trigger: "content-factory/competitor.scrape".
  */
 export const competitorScrapeDailyFn = inngest.createFunction(
   {
     id: "competitor-scrape-daily",
-    name: "Content Factory — Weekly Competitor Scrape + Mimic Briefs",
+    name: "Content Factory — Competitor Research (Mon + Thu)",
     retries: 1,
     triggers: [
-      // Weekly (Mondays 3:30 UTC, 2026-09-26 per Keenan: "run competitor
-      // research once a week"). Was monthly since 2026-09-21 for Apify
-      // plan limits — weekly is ~4x that Apify usage.
-      { cron: "30 3 * * 1" },
+      // Mon + Thu 3:30 UTC (2026-10-01, per Keenan; was Mondays only).
+      { cron: "30 3 * * 1,4" },
       { event: "content-factory/competitor.scrape" },
     ],
   },
   async ({ step, logger }) => {
-    const scraped = await step.run("scrape-accounts", async () => {
-      const { scrapeAllAccounts } = await import(
-        "@/lib/content-factory/competitor-mimic"
-      );
-      return scrapeAllAccounts();
+    const accountIds = await step.run("list-accounts", async () => {
+      const { listActiveAccountIds } = await import("@/lib/content-factory/competitor-mimic");
+      return process.env.APIFY_TOKEN ? listActiveAccountIds() : ([] as string[]);
     });
+    let scraped = 0;
+    for (const id of accountIds) {
+      if (!id) continue;
+      const n = await step.run(`scrape-account-${id}`, async () => {
+        const { scrapeAccount } = await import("@/lib/content-factory/competitor-mimic");
+        return scrapeAccount(id);
+      });
+      if (n > 0) scraped++;
+    }
+
+    // Keyword search: finds creators we don't track yet.
+    const { SEARCH_KEYWORDS } = await import("@/lib/content-factory/competitor-discovery");
+    let discovered = 0;
+    for (const brand of ["ripple", "bwk"] as const) {
+      for (const [i, keyword] of SEARCH_KEYWORDS[brand].entries()) {
+        const r = await step.run(`discover-${brand}-${i}`, async () => {
+          const { discoverKeyword } = await import("@/lib/content-factory/competitor-discovery");
+          return discoverKeyword(brand, keyword);
+        });
+        discovered += r.standouts;
+      }
+    }
 
     // Hashtag top-video feed for the admin "Top Videos" tab (Keenan
     // recreates these by hand — separate from the mimic-brief pipeline).
     const hashtags = await step.run("scrape-hashtags", async () => {
-      const { scrapeAllHashtags } = await import(
-        "@/lib/content-factory/hashtag-trends"
-      );
+      const { scrapeAllHashtags } = await import("@/lib/content-factory/hashtag-trends");
       return scrapeAllHashtags();
     });
-
-    // Daily "top 3 per hashtag" email to Keenan — fresh links right
-    // after the scrape, so morning inbox = today's recreate list.
     const emailedTags = await step.run("send-top-videos-email", async () => {
-      const { sendTopVideosEmail } = await import(
-        "@/lib/content-factory/hashtag-trends"
-      );
+      const { sendTopVideosEmail } = await import("@/lib/content-factory/hashtag-trends");
       return sendTopVideosEmail();
     });
 
-    const briefs = await step.run("write-briefs", async () => {
-      const { writeMimicBriefs } = await import(
-        "@/lib/content-factory/competitor-mimic"
-      );
-      return writeMimicBriefs();
+    // Brief every standout that passes triage, one post per step.
+    const candidates = await step.run("select-brief-candidates", async () => {
+      const { selectBriefCandidates } = await import("@/lib/content-factory/competitor-mimic");
+      return selectBriefCandidates();
+    });
+    let briefs = 0;
+    for (const id of candidates) {
+      const ok = await step.run(`brief-${id}`, async () => {
+        const { writeBriefFor } = await import("@/lib/content-factory/competitor-mimic");
+        return writeBriefFor(id);
+      });
+      if (ok) briefs++;
+    }
+
+    const roster = await step.run("promote-and-pause", async () => {
+      const { promoteAndPause } = await import("@/lib/content-factory/competitor-discovery");
+      return promoteAndPause();
     });
 
     logger.info(
-      `[competitor-mimic] ${scraped} accounts + ${hashtags} hashtags scraped, ${briefs} briefs written, top-videos email covered ${emailedTags} tags`
+      `[competitor-mimic] ${scraped}/${accountIds.length} accounts, ${discovered} keyword standouts, ${hashtags} hashtags, ${briefs}/${candidates.length} briefs, promoted ${roster.promoted.length}, paused ${roster.paused.length}, top-videos email ${emailedTags} tags`
     );
-    return { scraped, hashtags, emailedTags, briefs };
+    return { scraped, discovered, hashtags, emailedTags, briefs, promoted: roster.promoted, paused: roster.paused };
   }
 );
