@@ -11,7 +11,8 @@ import { inngest } from "@/inngest/client";
  * APIFY_TOKEN or a scrape failure just means lanes generate without
  * the competitor signal.
  *
- * 2026-10-01 (Keenan: "just do them all"): runs Mon + Thu; every tracked
+ * 2026-10-01 (Keenan: "just do them all"): runs weekly (Sundays since
+ * 10-02; was Mon + Thu for one day); every tracked
  * account and every search phrase gets its own step (25+ Apify runs no
  * longer fit one 300s step); keyword discovery finds new creators; every
  * standout is briefed from its real slides/frames, one step per post;
@@ -22,11 +23,13 @@ import { inngest } from "@/inngest/client";
 export const competitorScrapeDailyFn = inngest.createFunction(
   {
     id: "competitor-scrape-daily",
-    name: "Content Factory — Competitor Research (Mon + Thu)",
+    name: "Content Factory — Competitor Research (weekly, Sundays)",
     retries: 1,
     triggers: [
-      // Mon + Thu 3:30 UTC (2026-10-01, per Keenan; was Mondays only).
-      { cron: "30 3 * * 1,4" },
+      // Sundays 3:30 UTC = Saturday 10:30pm Central (2026-10-02, per Keenan:
+      // "cut back to one full scrape weekly on sundays" — Apify $19 plan).
+      // Runs before the Sunday 10:00 UTC ad batch so its briefs are fresh.
+      { cron: "30 3 * * 0" },
       { event: "content-factory/competitor.scrape" },
     ],
   },

@@ -7,6 +7,25 @@
 
 ---
 
+## [2026-10-02] — Competitor research runs once a week, on Sundays
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** see "fix: Run competitor research weekly on Sundays"
+
+### In plain English (for Keenan)
+Today's two research runs used half of the $19/month Apify plan. Research now runs once a week, Saturday night at 10:30pm Central, so the briefs are fresh for the Sunday ad batch. A run never pays twice to scrape the same account in a day.
+
+### Technical changes (for Jimmy)
+- `inngest/functions/competitor-scrape-daily.ts`: cron changed from `30 3 * * 1,4` to `30 3 * * 0` (Sunday 03:30 UTC, before the 10:00 UTC `adlab-weekly-batch`).
+- `lib/content-factory/competitor-mimic.ts` `scrapeAccount`: skips an account scraped in the last 20h.
+
+### Manual steps needed
+- None (Inngest re-sync is done by Claude after deploy)
+
+### Notes
+- My cost estimate of ~$3–5/month for Apify was too low. The video download add-on (used to get frames for the briefs) is the expensive part. Watch the Apify usage page after the first two Sunday runs.
+- Apify plan: $19/month (Keenan, 2026-10-02).
+
 ## [2026-10-02] — Fix competitor research inputs rejected by the scraper
 **Requested by:** Keenan
 **Committed by:** Claude Code

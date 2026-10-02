@@ -38,7 +38,7 @@ import { copyObjectives } from "./copy-objectives";
 
 const anthropic = contentAnthropic;
 const CLAUDE_MODEL = CONTENT_MODEL;
-/** Briefs stay usable for 9 days (the scrape runs Mon + Thu; slack for a missed run). */
+/** Briefs stay usable for 9 days: the scrape runs weekly (Sundays), plus slack for a missed run. */
 const BRIEF_FRESH_MS = 9 * 24 * 3600 * 1000;
 const INPUT_COST_PER_TOKEN = CONTENT_INPUT_COST_PER_TOKEN;
 const OUTPUT_COST_PER_TOKEN = CONTENT_OUTPUT_COST_PER_TOKEN;
@@ -189,6 +189,11 @@ export async function scrapeAccount(accountId: string): Promise<number> {
   const account = await prisma.competitorAccount.findUniqueOrThrow({
     where: { id: accountId },
   });
+  // Never pay Apify twice for the same account in a day (2026-10-02: a
+  // manual re-run re-scraped all 25 accounts hours after the first run).
+  if (account.lastScrapedAt && Date.now() - account.lastScrapedAt.getTime() < 20 * 3600_000) {
+    return 0;
+  }
 
   let posts: ScrapedPost[];
   try {
