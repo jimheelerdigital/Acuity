@@ -75,6 +75,8 @@ export interface PostRecipe {
   coverScene?: string;
   generatedFor: string;
   slotHourUtc?: number;
+  /** CompetitorPost id when the post was built on a research brief (2026-10-01). */
+  researchSeed?: string;
   createdAt: string;
   backfilled?: boolean;
 }
@@ -91,7 +93,7 @@ export async function readRecipe(postId: string): Promise<PostRecipe | null> {
 
 /** Post type from a Mythicals slug ("mythic-know-…" → know). */
 export function mythicModeFromSlug(slug: string): string {
-  return slug.match(/^mythic-(duo|place|know|scenario)-/)?.[1] ?? "choice";
+  return slug.match(/^mythic-(duo|place|know|scenario|size|versus)-/)?.[1] ?? "choice";
 }
 
 /**
@@ -161,7 +163,11 @@ export async function categoryCatalog(brand: LoopBrand, postType: string): Promi
         ? c.KNOW_CATEGORIES
         : postType === "scenario"
           ? c.SCENARIO_CATEGORIES
-          : c.CHOICE_CATEGORIES;
+          : postType === "size"
+            ? c.SIZE_CATEGORIES
+            : postType === "versus"
+              ? c.VERSUS_CATEGORIES
+              : c.CHOICE_CATEGORIES;
 }
 
 async function classifyCategory(title: string, options: string[], catalog: string[]): Promise<string> {
@@ -239,6 +245,8 @@ export interface ScoredPost {
   lane: string;
   postType: string;
   category: string;
+  /** "research" when built on a competitor brief, else "own". */
+  source?: "research" | "own";
   title: string;
   score: number;
   /** Instagram views, for the report. */
@@ -325,6 +333,7 @@ export async function scorePosts(opts: { minAgeHours?: number } = {}): Promise<S
       lane: any.carouselPost.lane ?? "",
       postType: recipe?.postType ?? (brand === "mythicals" ? mythicModeFromSlug(any.carouselPost.topicSlug) : "pick"),
       category: recipe?.category ?? "unknown",
+      source: recipe?.researchSeed ? "research" : "own",
       title: any.carouselPost.headline,
       score: Math.round(score * 1000) / 1000,
       views: e.ig?.views ?? null,
@@ -363,6 +372,8 @@ export interface Scoreboard {
   postTypes: Record<string, ArmStat>;
   /** Key: `${postType}::${category}`. */
   categories: Record<string, ArmStat>;
+  /** Key: "research" (built on a competitor brief) | "own" (2026-10-01). */
+  sources?: Record<string, ArmStat>;
   top: ScoredPost[];
   bottom: ScoredPost[];
 }
@@ -387,6 +398,7 @@ export function buildScoreboard(brand: LoopBrand, scored: ScoredPost[]): Scorebo
     posts: mine.length,
     postTypes: aggregate(mine, (p) => p.postType),
     categories: aggregate(mine, (p) => `${p.postType}::${p.category}`),
+    sources: aggregate(mine, (p) => p.source ?? "own"),
     top: sorted.slice(0, 3),
     bottom: sorted.length > 3 ? sorted.slice(-3).reverse() : [],
   };
@@ -476,7 +488,9 @@ export function chooseMythicPostType(
   usedToday: Set<string>,
   rng: () => number = Math.random
 ): ArmChoice {
-  const MODES = ["choice", "duo", "place", "know", "scenario"];
+  // "size" is a daily series the cron schedules itself (2026-10-01), so
+  // it never comes out of the draw; "versus" joined the draw the same day.
+  const MODES = ["choice", "duo", "place", "know", "scenario", "versus"];
   const fresh = MODES.filter((m) => !usedToday.has(m));
   const pool = fresh.length ? fresh : MODES;
   if (!board) return { arm: pool[Math.floor(rng() * pool.length)], reason: "explore" };
@@ -562,7 +576,8 @@ ${b.posts === 0 ? `<p>No posts old enough to score yet.</p>` : `
 <b>Top posts</b>${table(b.top.map(postRow).join(""), ["Post", "Type", "Score", "IG views"])}
 ${b.bottom.length ? `<b>Bottom posts</b>${table(b.bottom.map(postRow).join(""), ["Post", "Type", "Score", "IG views"])}` : ""}
 <b>By post type</b>${table(armRows(b.postTypes), ["Type", "Label", "Posts", "Avg score"])}
-<b>By topic</b>${table(armRows(b.categories), ["Topic", "Label", "Posts", "Avg score"])}`}
+<b>By topic</b>${table(armRows(b.categories), ["Topic", "Label", "Posts", "Avg score"])}
+${b.sources?.research ? `<b>Built on competitor research vs our own ideas</b>${table(armRows(b.sources), ["Source", "Label", "Posts", "Avg score"])}` : ""}`}
 <p style="margin:4px 0"><b>Doing more of:</b> ${more.length ? esc(more.join(", ")) : "nothing proven yet"}</p>
 <p style="margin:4px 0"><b>Doing less of:</b> ${less.length ? esc(less.join(", ")) : "nothing flagged weak yet"}</p>
 <p style="margin:4px 0"><b>Testing:</b> ${testing} untested types/topics in rotation; about 1 in 4 posts goes to the least-tried ones.</p>`;
@@ -624,6 +639,7 @@ export async function chooseMythicCover(opts: {
       place: '"WHERE DO YOU AND BRO MAKE YOUR LAST STAND?"',
       know: '"IF YOU KNOW HER, WHAT ARMOR DOES SHE CHOOSE?"',
       scenario: '"YOU CLEARED THE DUNGEON. CHOOSE YOUR LEGENDARY ITEM."',
+      versus: '"MONSTER VS MONSTER: WHO WOULD WIN?"',
     };
     const response = await contentAnthropic.messages.create({
       max_tokens: 700,

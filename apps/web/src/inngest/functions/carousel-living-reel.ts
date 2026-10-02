@@ -330,7 +330,8 @@ export const livingReelQueueFn = inngest.createFunction(
         claimed.push({
           bucket,
           dryRun,
-          mode: tag.startsWith("duo") ? "duo" : tag.startsWith("place") ? "place" : undefined,
+          // Tag = a Mythicals post type (2026-10-01: any of them, incl. size/versus).
+          mode: ["duo", "place", "know", "scenario", "size", "versus", "choice"].find((m) => tag.startsWith(m)),
         });
       }
       return claimed;

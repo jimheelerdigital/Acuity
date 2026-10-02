@@ -43,6 +43,8 @@ export interface ChoiceTopic {
   endCard: string;
   captionQuestion: string;
   category: string;
+  /** CompetitorPost id of the research brief this post was built on (pick lanes, 2026-10-01). */
+  researchSeed?: string;
 }
 
 export interface ChoiceLaneSpec {
@@ -233,11 +235,71 @@ const SCENARIO_RULES = `THIS POST IS A SCENARIO POST: the cover sets up a short 
 - "endCard": 2-6 words asking for their pick in the scenario's voice ("CHOOSE WISELY.", "WHAT'S YOUR PICK?", "ONE CHOICE. MAKE IT.").
 Everything else in the format above still applies.`;
 
+/**
+ * SIZE mode (2026-10-01, per Keenan: "'how big would they really be' is
+ * crushing" — part 1 got ~11x the usual views — "keep it as a series ...
+ * that consistently posts daily"). Five creatures, each pictured NEXT TO a
+ * real-world object at the same distance so the scale reads instantly,
+ * smallest to biggest. Fixed series title "HOW BIG WOULD THEY REALLY BE?
+ * PART N" (N set by the cron from how many have run).
+ */
+export const SIZE_CATEGORIES = [
+  "sea monsters next to ships, oil rigs and harbors",
+  "giant birds and flyers next to planes, towers and bridges",
+  "giant beasts next to vehicles, houses and stadiums",
+  "serpents and wyrms next to trains, highways and mountains",
+  "titans and giants next to skyscrapers and landmarks",
+  "dragons of every size next to everyday places",
+  "legendary creatures from different myths, mixed scales",
+];
+
+const SIZE_RULES = `THIS POST IS A SIZE-COMPARISON POST in the series "HOW BIG WOULD THEY REALLY BE?". It shows how big five legendary creatures would be in the real world.
+- "title": exactly the series title you are given. Do not change it.
+- Each option is ONE creature with its size: "name" is ALL-CAPS ready, 2-6 words, in the shape "CREATURE: SIZE FACT" ("KRAKEN: 120 M LONG", "THE ROC: TALLER THAN A 747", "FENRIR: 25 M AT THE SHOULDER", "LEVIATHAN: BIGGER THAN A CARRIER"). The size fact is either a measurement or a comparison to the real object in the picture. Sizes follow the legend where it says something, otherwise a plausible epic size.
+- Order the five from SMALLEST to BIGGEST, so the post builds to the biggest reveal.
+- "scene": the creature and ONE real-world object a viewer recognizes at a glance (a semi truck, a school bus, a 747, a cargo ship, a two-story house, a stadium, a skyscraper, a suspension bridge, an aircraft carrier, a mountain with a town below), side by side at the SAME distance from the camera, both fully in frame, a wide shot. The object must be clearly visible and recognizable, so the size difference reads instantly. Use a different object and setting for every creature.
+- "coverScene": a colossal creature silhouette or body looming over a real city, harbor or landmark at dusk, dwarfing it.
+- "motion": slow, heavy movement that shows its bulk, at natural speed (the kraken's tentacles tighten around the ship as waves crash; the roc raises its head and ruffles its wings beside the jet).
+- "endCard": exactly "WHICH ONE WOULD YOU RUN FROM?"
+- "captionQuestion": asks which one they'd run from, or which one they'd least want to see on their street.
+- Never repeat a creature used in recent posts of this series if you can avoid it.
+Everything else in the format above still applies.`;
+
+/**
+ * VERSUS mode (2026-10-01, per Keenan: "monsters versus monsters, who would
+ * win? 5 fights between two monsters, both pictured"). Five matchups; every
+ * slide shows BOTH monsters in one frame squaring off. Built for comments
+ * (people argue the winner of each fight).
+ */
+export const VERSUS_CATEGORIES = [
+  "sea monsters vs sky monsters",
+  "dragons vs giant beasts",
+  "monsters from Norse myth vs monsters from Greek myth",
+  "apex predators of legend, evenly matched",
+  "fire creatures vs ice creatures",
+  "serpents vs winged beasts",
+  "titans and giants vs dragons",
+  "underworld beasts vs heavenly beasts",
+  "cryptids vs mythical beasts",
+];
+
+const VERSUS_RULES = `THIS POST IS A "WHO WOULD WIN?" POST: five fights, each between TWO legendary monsters.
+- "title": the cover question, 4-9 words, ALL-CAPS ready, ending with "?" ("MONSTER VS MONSTER: WHO WOULD WIN?", "FIVE FIGHTS. WHO WINS EACH ONE?"; new words every post, never a recent title).
+- Each option is one MATCHUP: "name" is ALL-CAPS ready, "MONSTER A VS MONSTER B", 3-7 words ("KRAKEN VS LEVIATHAN", "FENRIR VS CERBERUS", "THE ROC VS THE THUNDERBIRD"). "lore" is one line (6-14 words) on why the fight is close: what each one has going for it. Make every matchup genuinely close and debatable; never an obvious mismatch. Ten different monsters across the five fights.
+- "scene": BOTH monsters in ONE frame, facing each other, squaring off or locked in combat, BOTH whole bodies clearly visible and equally prominent (neither hidden, cropped or in the far background), in a setting that suits the fight (a storm-lashed sea, a volcanic plain, a frozen fjord). Not gory: power, tension and impact, no wounds or blood.
+- "coverScene": two colossal monsters about to collide, both clearly visible, epic setting.
+- "motion": one measured clash beat in five seconds at natural speed (they lunge and collide as the waves explode around them; the dragon dives and the wolf rears up to meet it). Both keep their shapes.
+- "endCard": 2-6 words asking for their winners ("COMMENT YOUR WINNERS. 1 TO 5.", "WHO WINS EACH FIGHT?", "PICK YOUR WINNERS."); vary it.
+- "captionQuestion": asks who wins each fight, answered by number.
+Everything else in the format above still applies.`;
+
 type ChoiceTopicOpts = {
   /** "duo" = who-are-you-and-your-bro; "place" = where you two are going;
    *  "know" = if you know him/her; "scenario" = story setup + choice. */
-  mode?: "choice" | "duo" | "place" | "know" | "scenario";
+  mode?: "choice" | "duo" | "place" | "know" | "scenario" | "size" | "versus";
   category: string;
+  /** SIZE mode: the series part number for "HOW BIG WOULD THEY REALLY BE? PART N". */
+  part?: number;
   theme?: string;
   recentTitles: string[];
   recentNames: string[];
@@ -253,7 +315,14 @@ type ChoiceTopicOpts = {
  * the first draft, and a failed rewrite ships the first draft.
  */
 export async function generateChoiceTopic(opts: ChoiceTopicOpts): Promise<ChoiceTopic> {
-  return withBestTitle(await generateChoiceTopicChecked(opts), opts.mode ?? "choice");
+  const topic = await generateChoiceTopicChecked(opts);
+  // The size series keeps its fixed title (no best-of-5 cover).
+  return opts.mode === "size" ? topic : withBestTitle(topic, opts.mode ?? "choice");
+}
+
+/** The size series' title for part N. */
+export function sizeSeriesTitle(part: number): string {
+  return `HOW BIG WOULD THEY REALLY BE? PART ${part}`;
 }
 
 /**
@@ -279,11 +348,13 @@ async function withBestTitle(topic: ChoiceTopic, mode: NonNullable<ChoiceTopicOp
               ? "A cover question, 6-11 words, ALL CAPS, ending with \"?\", in the shape \"IF YOU KNOW HER, WHAT ARMOR DOES SHE CHOOSE?\" (same him/her and same item type as the original)."
               : mode === "scenario"
                 ? "A cover, 6-12 words, ALL CAPS: one short story setup then the choice, ending with \"?\" or \".\" (\"YOU CLEARED THE DUNGEON. CHOOSE YOUR LEGENDARY ITEM.\"). Same scenario as the original."
+                : mode === "versus"
+                  ? "A cover question, 4-9 words, ALL CAPS, ending with \"?\", asking who would win the five monster fights (\"MONSTER VS MONSTER: WHO WOULD WIN?\")."
                 : "A cover question, 4-9 words, ALL CAPS, ending with \"?\", asking which of the five the reader would choose or which one is him.",
     });
     const h = picked?.headline.trim();
     if (!h || h === topic.title || (mode !== "scenario" && !h.endsWith("?"))) return topic;
-    const prefix = topic.slug.match(/^mythic(-duo|-place|-know|-scenario)?/)?.[0] ?? "mythic";
+    const prefix = topic.slug.match(/^mythic(-duo|-place|-know|-scenario|-size|-versus)?/)?.[0] ?? "mythic";
     const slug = `${prefix}-${h.toLowerCase().replace(/[^a-z0-9\s-]/g, "").trim().replace(/\s+/g, "-").slice(0, 50)}`;
     console.log(`[choice-lane] best-of-5 cover "${topic.title}" -> "${h}"`);
     return { ...topic, title: h, slug };
@@ -373,6 +444,7 @@ async function generateChoiceTopicOnce(opts: ChoiceTopicOpts): Promise<ChoiceTop
   const start = Date.now();
   const user = [
     `This post's subject: ${opts.category}.`,
+    opts.mode === "size" ? `Series title for this post (use it exactly): "${sizeSeriesTitle(opts.part ?? 1)}".` : "",
     opts.theme ? `Lane notes: ${opts.theme}` : "",
     opts.recentTitles.length
       ? `Recent titles (don't repeat or lightly reword these):\n${opts.recentTitles.map((t) => `- ${t}`).join("\n")}`
@@ -396,7 +468,11 @@ async function generateChoiceTopicOnce(opts: ChoiceTopicOpts): Promise<ChoiceTop
             ? `\n\n${KNOW_RULES}`
             : opts.mode === "scenario"
               ? `\n\n${SCENARIO_RULES}`
-              : ""
+              : opts.mode === "size"
+                ? `\n\n${SIZE_RULES}`
+                : opts.mode === "versus"
+                  ? `\n\n${VERSUS_RULES}`
+                  : ""
     }\n\n${HUMAN_VOICE_RULES}`,
     messages: [{ role: "user", content: user }],
   });
@@ -503,6 +579,22 @@ export function buildMythicImagePrompt(
         : "Keep open atmosphere in the top quarter (the title is added there later).",
       "Shot like a prestige fantasy film: real weather, real light, tactile detail in wood, stone, fire, water and fabric, dramatic but natural lighting, rich color, tack-sharp focus.",
       "Not a cartoon, not anime, not a video-game render, not a painting or illustration. No text, letters, numbers, logos or watermarks anywhere in the image. Nothing gory.",
+    ].join("\n");
+  }
+  if (mode === "size" && kind === "option") {
+    return [
+      `A breathtaking, hyper-real cinematic film still, vertical composition, wide shot: ${scene}`,
+      "The creature and the real-world object stand side by side at the same distance from the camera, both whole and fully in frame. The real-world object must be clearly visible and recognizable so the size difference reads instantly. Open sky or atmosphere in the top fifth of the frame (a label is added there later).",
+      "Shot like a prestige film: real weather, real light, tactile detail, believable anatomy, true-to-life scale, tack-sharp focus.",
+      "Not a cartoon, not anime, not a video-game render, not a painting or illustration. No text, letters, numbers, logos or watermarks anywhere in the image. Nothing gory.",
+    ].join("\n");
+  }
+  if (mode === "versus" && kind === "option") {
+    return [
+      `A breathtaking, hyper-real cinematic film still, vertical composition: ${scene}`,
+      "BOTH monsters are in the frame, facing each other, whole bodies clearly visible and equally prominent in the MIDDLE of the image, neither cropped, hidden or tiny in the background. Open sky or atmosphere in the top fifth of the frame (the matchup is added there later).",
+      "Shot like a prestige fantasy film: real weather, real light, tactile detail in scales, fur, feathers and stone, believable anatomy, dramatic but natural lighting, tack-sharp focus on both.",
+      "Not a cartoon, not anime, not a video-game render, not a painting or illustration. No text, letters, numbers, logos or watermarks anywhere in the image. Nothing gory: no wounds, no blood.",
     ].join("\n");
   }
   return [

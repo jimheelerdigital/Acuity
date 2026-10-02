@@ -7,6 +7,87 @@
 
 ---
 
+## [2026-10-01] — Mythicals: "How Big" becomes a daily series, new "Who Would Win?" posts
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** see "feat: Add the daily How Big series and Who Would Win posts to Mythicals"
+
+### In plain English (for Keenan)
+"How Big Would They Really Be?" now posts every day as a numbered series (Part 3 is next). Each post shows five creatures next to real things like a bus, a 747 or an aircraft carrier, from smallest to biggest. A new post type, "Monster vs Monster: Who Would Win?", shows five fights with both monsters in every picture, so people argue in the comments. It joins the random mix of daily post types.
+
+### Technical changes (for Jimmy)
+- `lib/content-factory/choice-lane.ts`:
+  - New modes `size` and `versus`, each with `SIZE_CATEGORIES`/`SIZE_RULES` and `VERSUS_CATEGORIES`/`VERSUS_RULES`.
+  - `sizeSeriesTitle(part)`. Size posts skip best-of-5 covers and keep the series title.
+  - `buildMythicImagePrompt` has size- and versus-specific option prompts: the real object must be recognizable, and both monsters must be whole and equally prominent.
+- `inngest/functions/carousel-daily.ts`:
+  - The third Mythicals run of the day (or any later one if it hasn't run yet) is forced to `size`.
+  - Part N = count of `mythic-size-*` posts + 1.
+  - Size slides have no "N." prefix. Forced modes accept every type.
+- `lib/content-factory/performance-loop.ts`:
+  - `versus` added to the bandit draw. `size` is scheduled, not drawn.
+  - The slug parser, category catalog and cover shapes now know both types.
+- `inngest/functions/carousel-living-reel.ts`: `lane-requests/<lane>--<type>.json` accepts any post type (e.g. `mythic-picks--versus.json`).
+
+### Manual steps needed
+- None
+
+### Notes
+- Part 1 (hand-built 10-01) got 2,233 IG views vs a ~200 median. Part 2 (hand-built, posted 10-02 04:01 UTC): https://www.instagram.com/reel/Dd-k43XD1bL/
+- Mythicals stays at 6 posts a day. Size takes one of the six slots, and the bandit draws the other five.
+
+## [2026-10-01] — Competitor research engine: finds new creators, reads the real posts, feeds content and ads
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** see "feat: Rebuild competitor research to find, watch and brief standout posts"
+
+### In plain English (for Keenan)
+The competitor research ("Muse") used to look only at accounts someone typed in, and it wrote its notes from captions that were often just hashtags. Now it:
+- searches TikTok twice a week for the phrases each audience uses (like "mental load" or "winter arc"),
+- finds posts that did far better than the creator's following,
+- skips sales pitches and posts for the wrong audience,
+- looks at the actual slides, video frames and spoken words before writing its notes.
+
+Those notes now feed the daily Ripple and BWK pick posts, and the Sunday ad batch from 10/5. Each post and ad built on them is tagged, so the Monday report shows whether research-based posts beat our own ideas.
+
+### Technical changes (for Jimmy)
+- New `lib/content-factory/competitor-media.ts`: `fetchPostMedia()`.
+  - One Apify run per post: `clockworks~tiktok-scraper` `postURLs` with video, slideshow and subtitle downloads, or `apify~instagram-scraper` for IG.
+  - Returns slideshow images, or about 8 ffmpeg frames (one every 2s), plus subtitles. Falls back to the thumbnail.
+- New `lib/content-factory/competitor-discovery.ts`:
+  - `SEARCH_KEYWORDS` (12 Ripple, 10 BWK).
+  - `discoverKeyword()` runs a TikTok video search (past month, most liked, 30 results). A post is a standout when views ÷ followers ≥ 2 and views ≥ 50k. Authors are stored as `CompetitorAccount.status = "DISCOVERED"`.
+  - `isRedFlag()` filters DM funnels, link-in-bio, courses, discount codes, faceless-page sellers, nofap/redpill, crypto and TikTok Shop.
+  - `promoteAndPause()`: 2+ standouts → ACTIVE. A tracked account (30+ days, 30+ posts) with no standout in 60 days → PAUSED, with the reason in `notes`.
+- `lib/content-factory/competitor-mimic.ts`:
+  - 20 posts per account; up to 30 briefs per run; triage pool of 80.
+  - `selectBriefCandidates()` + `writeBriefFor(id)` replace the single loop. Opus gets image blocks plus subtitles.
+  - `MimicBrief.seen` records what the brief was written from.
+  - New `getResearchSeeds` / `markResearchSeedUsed` / `renderResearchSeeds`.
+  - Brief reads now include DISCOVERED accounts (status ≠ PAUSED).
+- `lib/content-factory/research-triage.ts`: new Jev "made for our audience" question. Posts under 0.35 are dropped.
+- `inngest/functions/competitor-scrape-daily.ts`:
+  - Cron moved to Mon + Thu.
+  - One step each per account, per keyword and per brief, because 25+ Apify runs don't fit one 300s step.
+  - Ends with promote/pause.
+- `lib/content-factory/pick-lane.ts`:
+  - Up to 3 research seeds go into concept writing. Seeded concepts can be up to 1 (weak: 1 in 4 runs; proven winner: 2).
+  - The chosen seed is recorded as `ChoiceTopic.researchSeed`, then in the recipe.
+- `lib/content-factory/performance-loop.ts`: `PostRecipe.researchSeed`, `ScoredPost.source`, `Scoreboard.sources`. The Monday email has a "competitor research vs our own ideas" table.
+- `lib/adlab/weekly-batch.ts`:
+  - An organic research section in the prompt, with an optional `inspiration` field.
+  - `researchNotes` gets `| organic: <CompetitorPost id>`.
+- No schema change.
+
+### Manual steps needed
+- [ ] After deploy, trigger one run (event `content-factory/competitor.scrape`) and check the Apify field names against real output: `slideshowImageLinks`, `mediaUrls`, `videoMeta.subtitleLinks`, `authorMeta.fans`. (Claude)
+
+### Notes
+- Apify input names were checked against the actor's input schema (`searchSection: "Video"`, `videoSearchSorting`, `videoSearchDateFilter`, `downloadSubtitlesOptions: "DOWNLOAD_SUBTITLES_ONLY"`). Output parsing is defensive because the field names weren't confirmed on a real run.
+- Opus can't be tested locally: the local Anthropic key returns 401, and Claude runs in prod only. Frame extraction and the red-flag filter were tested locally.
+- Example of the old problem: a no-caption BWK post was briefed as a "wordless visual statement". It was a guess.
+- Estimated cost is about $15–25/month (Apify + Opus vision). Keenan OK'd it.
+
 ## [2026-10-01] — Competitor tracker reloaded with researched accounts; Mythicals "How Big" Part 2 posted
 **Requested by:** Keenan
 **Committed by:** Claude Code
