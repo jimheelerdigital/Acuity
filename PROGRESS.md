@@ -7,6 +7,38 @@
 
 ---
 
+## [2026-10-01] — Competitor tracker reloaded with researched accounts; Mythicals "How Big" Part 2 posted
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** see "docs: Log the competitor tracker reload and How Big part 2"
+
+### In plain English (for Keenan)
+The competitor tracker only watched 4 accounts, all off-topic for BWK (an apartment-tour page, a "DM START" get-rich page, a fashion page and an empty one), and nothing at all for Ripple. It now watches 25 researched accounts (13 for Ripple, 12 for BWK) and 9 hashtags, and the 4 off-topic ones are paused. Also: a second "How Big Would They Really Be?" Mythicals post was made and sent to Instagram and Facebook, because part 1 got about 11x the usual views.
+
+### Technical changes (for Jimmy)
+- Prod DB only, no code:
+  - `CompetitorAccount`: 25 rows upserted ACTIVE, with niche and reason in `notes`.
+    - Ripple (13), mostly TikTok: sheisapaigeturner, honestly.kaitlyn, diaryofanhonestmom, thatdarnchat, likelizsaid, fitzywippakate, heylilianschmidt, tamsenfadal, abbi.mothermode.app, finchcare. Instagram: madebymammas, momlife_comics, bigtimeadulting.
+    - BWK (12), mostly TikTok: stoicwisdomquotes, motiversity, nicholasjohn__, nickpedersen__, whois.jason, pursuitreg, luisbulnes_, villainarc.app, quittr.app. Instagram: dailystoic, mattdavella, stoicapp.
+  - Set to PAUSED: comit94, thesunparis, liam.ixo, arionuruci.
+  - `HashtagWatch` ACTIVE:
+    - Ripple: mentalload, thementalload, defaultparent, honestmom, mentalloadofmotherhood.
+    - BWK: winterarc, lockin, selfdiscipline, stoicism.
+- Mythicals post `cmuqexa5z0000jz5k0qyidd7k` (slug `mythic-size-how-big-would-they-really-be-part-2`):
+  - Built by a one-off script using the same recipe as part 1: gpt-image-2 via `generateImage` + `buildMythicImagePrompt`, `renderChoiceOverlay`, `uploadOverlaySlide`, then a `video-requests/` marker so Higgsfield animates every slide.
+  - Publish rows were bumped to post now.
+
+### Manual steps needed
+- [ ] Watch Apify usage after Monday's run. Weekly items go from about 40 to about 520 (25 accounts × 10 posts + 9 tags × 30 videos). (Keenan)
+
+### Notes
+- Briefs still feed nothing: the muse/muse-men lanes are retired. Wiring briefs into Ripple/BWK pick posts and the weekly ad batch (ads after the 10-07 review) is the next build.
+- Research found that "size comparison" was not a code post type. Part 1 was a hand-built one-off from another session. If Part 2 also wins, make `size` a real Mythicals mode in `choice-lane.ts`.
+- Research cautions for the brief filter (not built yet):
+  - Ripple: #womenover40 / #genx / #perimenopause are mostly makeup, fitness and health sellers.
+  - BWK: drop bios with "DM [WORD]", "check my link", "course" or discount codes. #monkmode is co-tagged with #nofap.
+- Seasonal: BWK's "lock in" (Sep 1 to Dec 31) and "winter arc" trends are live now.
+
 ## [2026-10-01] — Every Mythicals post now points people to the quiz
 
 **Requested by:** Keenan
