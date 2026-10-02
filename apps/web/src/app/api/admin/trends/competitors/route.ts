@@ -34,6 +34,9 @@ export async function GET() {
 
   const [accounts, outliers] = await Promise.all([
     prisma.competitorAccount.findMany({
+      // DISCOVERED = creators seen in keyword search but not tracked yet
+      // (2026-10-02); they'd swamp the list. They appear once auto-tracked.
+      where: { status: { not: "DISCOVERED" } },
       orderBy: [{ brand: "asc" }, { createdAt: "desc" }],
       include: { _count: { select: { posts: true } } },
     }),

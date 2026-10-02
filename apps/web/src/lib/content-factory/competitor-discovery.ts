@@ -147,6 +147,10 @@ export async function discoverKeyword(
     const existing = await prisma.competitorAccount.findUnique({
       where: { platform_handle: { platform: "tiktok", handle } },
     });
+    // Only standouts are worth storing for a creator we don't know yet: a
+    // creator is tracked after 2 standouts, so ordinary posts never matter
+    // (2026-10-02: storing every result made ~500 DISCOVERED rows in one run).
+    if (!existing && !isOutlier) continue;
     // Never resurrect a PAUSED account or move one to another brand.
     if (existing && (existing.status === "PAUSED" || existing.brand !== brand)) continue;
     const account =
