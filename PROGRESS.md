@@ -350,6 +350,29 @@ The email people get after the Mythicals quiz now opens with a big picture of th
 - Still sent from hello@getacuity.io. Moving to a legendarymythicals.com sender needs a Resend domain plus 3 GoDaddy DNS records (optional).
 - No Stripe product is needed: checkout sends inline price_data named "Legendary Creature Portrait" with metadata brand=mythicals.
 
+## [2026-10-02] — Fix: Meta was counting every purchase twice
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** see "fix: Dedupe browser and server Purchase events for Meta"
+
+### In plain English (for Keenan)
+Ads Manager showed 7 website purchases for Oct 2 when there were 4 real funnel purchases. Each purchase reached Meta twice: once from the buyer's browser and once from our server. The two had different IDs, so Meta couldn't tell they were the same purchase. Reloading the download page could add a third. Now both carry the same ID and Meta counts each purchase once. This also matters for optimization: Meta was learning from inflated purchase numbers.
+
+### Technical changes (for Jimmy)
+- New `lib/meta-event-ids.ts`: `purchaseEventId(stripeCheckoutSessionId)` → `purchase_<cs_id>`
+- `app/api/stripe/webhook/route.ts` (checkout.session.completed CAPI Purchase): event_id = `purchaseEventId(session.id)`, was the random `generateEventId("Purchase")` (import removed)
+- `components/funnel-v9.tsx` and `components/onboarding-funnel.tsx`: browser `fbq Purchase` now passes `eventID: purchaseEventId(session_id from the return URL)`
+- Webhook tests 21/21
+
+### Manual steps needed
+- [ ] Jimmy review (webhook CAPI event id only, no billing logic touched) (Jimmy)
+- [ ] Push to main (Keenan)
+
+### Notes
+- Oct 2 CT real funnel purchases: amrigby (yearly), lgnewman, sara-evelyne, haasejeff (9:11pm CT). Meta showed 7 across "Talk it out" (2), "Fourth planner" (3) and the men's test video (2), which fits roughly 2x.
+- Older days in Ads Manager stay inflated; Meta doesn't rewrite history. Use our DB counts (or halve Meta's) for anything before this deploy.
+- The browser StartTrial event still has no server twin, so it isn't double-counted.
+
 ## [2026-10-02] — Planner ads launched in their own ad sets; main budgets trimmed $10 each
 **Requested by:** Keenan
 **Committed by:** Claude Code

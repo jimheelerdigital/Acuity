@@ -41,6 +41,7 @@ import {
 } from "lucide-react";
 
 import { fireFbq, waitForFbq } from "@/components/meta-pixel-events";
+import { purchaseEventId } from "@/lib/meta-event-ids";
 import { trackOnboardingEvent, captureUtmParams, type UtmParams } from "@/lib/track-onboarding";
 import {
   displayAnnual,
@@ -268,7 +269,7 @@ export function FunnelV9({ brand = "ripple", adMatch }: { brand?: V9Brand; adMat
             const p = saved?.plan ?? "yearly";
             track("funnel_payment_completed", p);
             fireFbq("StartTrial", { value: planValueDollars(p), currency: "USD", predicted_ltv: planValueDollars("yearly") });
-            fireFbq("Purchase", { value: planValueDollars(p), currency: "USD", content_name: "Ripple Pro Subscription" });
+            fireFbq("Purchase", { value: planValueDollars(p), currency: "USD", content_name: "Ripple Pro Subscription" }, purchaseEventId(params.get("session_id")!));
           } else {
             setStepId("paywall");
           }

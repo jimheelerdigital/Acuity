@@ -8,6 +8,7 @@ import { trackOnboardingEvent, captureUtmParams, type UtmParams } from "@/lib/tr
 import { PRIORITY_COLOR } from "@acuity/shared";
 import { AppleLogo, GoogleLogo } from "@/components/debrief-shared";
 import { fireFbq, waitForFbq, TrackCompleteRegistration } from "@/components/meta-pixel-events";
+import { purchaseEventId } from "@/lib/meta-event-ids";
 import { detectBrowserEnv, useAppStoreCta, WebviewBreakout } from "@/components/app-store-cta";
 import { PRE_TAP_KEY } from "@/components/funnel-ssr-entry";
 import { readS1Variant, S1_YESNO, type S1Variant } from "@/lib/funnel-s1-test";
@@ -377,7 +378,7 @@ export function OnboardingFunnel() {
               // signups were inflating StartTrial and polluting Meta's
               // optimization signal.
               fireFbq("StartTrial", { value: planValueDollars(selectedPlan), currency: "USD", predicted_ltv: planValueDollars("yearly") });
-              fireFbq("Purchase", { value: planValueDollars(selectedPlan), currency: "USD", content_name: "Ripple Pro Subscription" });
+              fireFbq("Purchase", { value: planValueDollars(selectedPlan), currency: "USD", content_name: "Ripple Pro Subscription" }, purchaseEventId(sessionId));
             } else {
               setStep("savings");
               setApiError("Payment didn\u2019t go through. Try again, or continue with the free plan.");

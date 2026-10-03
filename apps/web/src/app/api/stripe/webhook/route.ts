@@ -4,10 +4,7 @@ import type Stripe from "stripe";
 
 import { stripe } from "@/lib/stripe";
 import { safeLog } from "@/lib/safe-log";
-import {
-  sendConversionEvent,
-  generateEventId,
-} from "@/lib/meta-capi";
+import { sendConversionEvent } from "@/lib/meta-capi";
 import { NOT_IAP_SOURCE_WHERE } from "@/lib/entitlements";
 
 export const dynamic = "force-dynamic";
@@ -566,7 +563,12 @@ export async function POST(req: NextRequest) {
         // Meta optimizes ad delivery against that number.
         const { planValueDollars } = await import("@/lib/pricing");
         const purchaseValue = planValueDollars(interval);
-        const capiEventId = generateEventId("Purchase");
+        // Deterministic id shared with the browser pixel's Purchase (funnel
+        // download screen fires fbq with eventID purchaseEventId(session_id)),
+        // so Meta dedupes the pair. A random id here made Meta count every
+        // purchase twice (2026-10-02: 7 "website purchases" for 4 real ones).
+        const { purchaseEventId } = await import("@/lib/meta-event-ids");
+        const capiEventId = purchaseEventId(session.id);
         // The ad click id (fbclid) from the buyer's funnel session. Without
         // it Meta can only match the purchase by hashed email, which often
         // fails to attribute it to the ad (2026-09-25: a paid BWK trial
