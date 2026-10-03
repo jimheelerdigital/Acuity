@@ -17,6 +17,18 @@
  *      "pick"); the post-video builder animates ONLY the cover (see
  *      maxAnimatedSlides) and the rest are slow-zoom stills with music.
  * Every Jev step fails open: no answer → the first concept / first five.
+ *
+ * 2026-10-03 (per Keenan: "focus on first frame being much more engaging
+ * with excellent verbiage ... ripple focused on escape and relief, bwk
+ * focused on luxury aspiration and motivation. instead of set lanes ...
+ * give yourself free reign and set guidelines in jev"): the subject is now
+ * free within one guideline per brand (GUIDELINE), enforced by Jev's core
+ * gate; no approved-question quota. Every concept pitches its FIRST FRAME
+ * (opening image + cover line) and Jev judges that frame, the cover line
+ * is best-of-5 (pickCoverLine), and the cover photo is picked for
+ * stopping power. Why: watch time 09-12 → 10-03 was Mythicals 12.1s vs
+ * Ripple 1.7s / BWK 3.0s; the best-held Ripple/BWK posts were escapes
+ * ("Which house would you disappear to, alone?" 14.4s) and luxury trips.
  */
 
 import {
@@ -50,6 +62,8 @@ export function parsePickLaneSpec(raw: unknown): PickLaneSpec | null {
 
 export interface PickConcept {
   question: string;
+  /** The pitched opening photo (2026-10-03); Jev judges it with the question. */
+  firstFrame?: string;
   why: string;
   /** Theme family (PICK_FAMILIES), so the performance loop can learn by theme. */
   family?: string;
@@ -63,25 +77,25 @@ export interface PickConcept {
  * win, and the bandit picks a "focus family" for each run.
  */
 export const PICK_FAMILIES: Record<PickBrand, string[]> = {
+  // 2026-10-03: re-cut around escape & relief / luxury aspiration & motivation.
   ripple: [
-    "the mental load she carries",
-    "time and space that is only hers",
-    "the roles she plays (mother, partner, daughter, friend)",
-    "who she is becoming",
-    "saying no and taking something back",
-    "her friendships",
-    "the life she keeps postponing (trips, dreams, plans)",
+    "places she would disappear to",
+    "trips and getaways she keeps postponing",
+    "mornings, rituals and hours that are only hers",
+    "being taken care of for once",
+    "rooms and homes made for rest",
+    "the day everything is handed off",
+    "small everyday escapes",
   ],
   bwk: [
     "luxury cars",
     "luxury watches",
-    "homes, cities and views",
-    "training and the body",
-    "habits and discipline",
-    "mentors and role models",
-    "brotherhood and the friends in his corner",
-    "money, business and ambition",
+    "homes, penthouses and views",
+    "cities and travel at the top",
+    "the lifestyle at the top (yachts, jets, private tables)",
+    "the grind and discipline that pay for it",
     "the man he is becoming",
+    "brotherhood at the top",
   ],
 };
 
@@ -108,31 +122,26 @@ export interface PickOptionDraft {
   motion?: string;
 }
 
-/** Seed concepts (Keenan approved these 2026-09-30); the writer invents fresh ones in their spirit. */
+/**
+ * Examples of the target, not a quota (2026-10-03: free reign). The first
+ * ones held viewers longest on these accounts (14.4s / 9.3s vs ~2s).
+ */
 const SEEDS: Record<PickBrand, string[]> = {
   ripple: [
-    "Pick the one job you'd hand off forever",
-    "Where are you hiding for one hour where nobody needs you?",
-    "Which kind of tired are you today?",
-    "Which friend in the group chat are you?",
-    "Pick the house you'd disappear to for a week, alone",
-    "What would you finally say no to?",
-    "Which season of life are you in?",
-    "Which Sunday are you having?",
-    "Which you would you have coffee with?",
-    "What's your 'I need a minute' ritual?",
+    "Which house would you disappear to, alone?",
+    "One week, no one needs you. Where do you go?",
+    "Pick the morning you'd wake up to tomorrow",
+    "Somebody else handles everything for a day. What do you do first?",
+    "Which bath, which book, which door locked?",
+    "Pick your one hour of quiet",
   ],
   bwk: [
-    "Pick your 5am",
-    "Which training style is you?",
-    "Choose your mentor",
+    "Your brothers get one weekend. Where do you take them?",
     "Which car are you working toward?",
-    "Which room do you build first?",
     "Pick the city you rebuild your life in",
-    "Which habit would change your life fastest?",
-    "Pick your hard mode for 30 days",
-    "Which man are you at 30?",
-    "Who's in your corner?",
+    "First big check. What do you buy?",
+    "Which view do you wake up to at 30?",
+    "Which watch do you earn first?",
   ],
 };
 
@@ -142,11 +151,15 @@ const SEEDS: Record<PickBrand, string[]> = {
  * YOUR 11PM KITCHEN HABIT?" — Keenan: "what ... do they have to do with
  * our target audiences?"). Trivia with nothing at stake is out.
  */
+/**
+ * The one guideline per brand (2026-10-03, per Keenan). Jev's core gate
+ * enforces it; inside it the writer has free reign.
+ */
 const CORE: Record<PickBrand, string> = {
   ripple:
-    "the mental load she carries for everyone; being the one who remembers and holds it all together; wanting an hour where nobody needs her; the roles she plays (mother, partner, daughter caring for aging parents, the friend everyone leans on); the season of life she is in and who she is becoming at 40-50; rest, escape and time that is only hers; saying no and taking something back for herself; her friendships.",
+    "ESCAPE AND RELIEF. The moment the weight comes off: the places she would disappear to, the trips she keeps postponing, the morning or hour that is only hers, being taken care of for once, the room, bath, view or ritual where nobody needs her, handing everything off. The load she carries is only ever the thing she is escaping FROM, implied, never the subject on the cover. She should feel the exhale the moment she sees the first frame.",
   bwk:
-    "the LUXURY life he is working toward (exact luxury cars, watches, homes, cities); discipline and the habits he is building; training; money, work and ambition; the man he is becoming; the mentors and role models he learns from; the friends and brothers in his corner; his mornings and routines; where he builds his life; the hard things he chooses on purpose.",
+    "LUXURY ASPIRATION AND MOTIVATION. The exact luxury life he is working toward (luxury cars, watches, homes, penthouses, cities, travel, the lifestyle at the top) and the drive that gets him there (discipline, the grind, the brothers in his corner, the man he is becoming). Every post makes him want it and want to work for it.",
 };
 
 const OFF_BRAND =
@@ -154,8 +167,8 @@ const OFF_BRAND =
 
 const AUDIENCE_LINE: Record<PickBrand, string> = {
   ripple:
-    "Women roughly 40-50 carrying the mental load for everyone (work, kids, partner, aging parents), scrolling Instagram or Facebook on a phone. They want to feel seen and lighter.",
-  bwk: "Men roughly 18-30 building discipline and self-respect in private (training, money, focus), scrolling Instagram or Facebook on a phone. They skip hype and guru talk.",
+    "Women roughly 40-50 carrying the mental load for everyone (work, kids, partner, aging parents), scrolling Instagram or Facebook on a phone. They stop for escape and relief (a beautiful place, a quiet hour, being taken care of) and scroll past reminders of the load itself.",
+  bwk: "Men roughly 18-30 working toward a luxury life (cars, watches, homes, travel) and building the discipline to earn it, scrolling Instagram or Facebook on a phone. They stop for the life at the top and skip hype and guru talk.",
 };
 
 const COMMENT_LEVELS = [
@@ -248,11 +261,17 @@ function conceptSystem(brand: PickBrand): string {
 
 YOUR JOB: pitch five PICK-ONE posts for this account. The format: a cover that makes the reader pick one of five, then five numbered options with a photo each, then a card asking the reader to comment their number. The cover does NOT have to be "which one is you?" (2026-09-30, per Keenan: "it doesn't always have to be 'which one is you'"). Vary the shape across the five pitches: "which one is you?", "where are you going?", "what do you buy first?", "pick your...", "who's in your corner?", "if you know her, which one is she?", a one-line setup then the choice ("you get one free Saturday. how do you spend it?"). It works when every option is a version of the reader's own life, so picking one says something about her or him, commenting is as easy as typing a number, and people tag or send it to a friend.
 
-WHAT EVERY POST MUST BE ABOUT, for this audience: ${CORE[brand]}
+THE GUIDELINE, for this audience: ${CORE[brand]}
 ${OFF_BRAND}
+Inside that guideline you have free reign: any subject, any angle, as long as it fits.
 
-APPROVED QUESTIONS (Keenan picked these): ${SEEDS[brand].map((s) => `"${s}"`).join(", ")}.
-At least three of your five concepts must be one of these approved questions (reworded slightly into a clear cover is fine) that is NOT in the recent list; the rest are new questions on the same subjects and just as strong.
+THE FIRST FRAME DECIDES EVERYTHING. These accounts lose people in under two seconds (Legendary Mythicals holds them 12). The first frame is the opening photo plus the cover line, seen for one second before she or he decides to swipe. It has to be the most beautiful, wanted thing in their feed${
+    brand === "ripple"
+      ? ": the place, light or moment she would give anything to be in right now"
+      : ": the car, view or life he is working toward, shown so he can almost touch it"
+  }, and the line has to land instantly in plain words.
+
+EXAMPLES of the target (in spirit only; never reuse one from the recent list): ${SEEDS[brand].map((s) => `"${s}"`).join(", ")}.
 
 Each concept:
 - "question": the cover question, 4-10 words, the way a person would ask it out loud. ${
@@ -260,14 +279,15 @@ Each concept:
       ? "It names her situation plainly so she understands it in one second; never a cryptic command. Never medical, never preachy."
       : "Plain, concrete, calm; never hype or guru talk."
   }
-- "why": one line on why this audience would comment and tag on it.
+- "firstFrame": one sentence describing the OPENING PHOTO that sets up the question: a single stunning, specific image (where, what light, what is happening), not a collage of the options.
+- "why": one line on why this audience would stop, comment and tag on it.
 - "family": exactly one of these theme families, copied word for word: ${PICK_FAMILIES[brand].map((f) => `"${f}"`).join(", ")}.
 - "seed": only when the request lists RESEARCH SEEDS and this concept is built on one: that seed's label, e.g. "R2". Otherwise leave it out.
 The five concepts must be clearly different subjects from each other and from recent posts.
 
 ${HUMAN_VOICE_RULES}
 
-OUTPUT (JSON): { "concepts": [{ "question": "...", "why": "...", "family": "...", "seed": "R1 (optional)" }] }`;
+OUTPUT (JSON): { "concepts": [{ "question": "...", "firstFrame": "...", "why": "...", "family": "...", "seed": "R1 (optional)" }] }`;
 }
 
 function optionsSystem(brand: PickBrand): string {
@@ -279,7 +299,8 @@ function optionsSystem(brand: PickBrand): string {
 
 YOUR JOB: write the options for one pick-one post (the reader picks one of five) whose question is given below.
 
-- "title": the cover question in final form, ALL-CAPS ready, 4-10 words, ending with "?" when it is a question. It must make complete sense on its own.
+- "title": the cover line in final form, ALL-CAPS ready, 4-10 words, ending with "?" when it is a question. It must make complete sense on its own.
+- "titleOptions": FOUR more versions of the cover line (same question, different wording; Jev picks the best of the five). This is the most important copy in the post: it sits on the first frame. Plain words, said the way a person would say it out loud, instantly understood, and it makes them want to answer. Vary the shape: a direct question, a one-line setup then the choice, a "you get one..." scenario.
 - "options": write 15 candidates (Jev picks the best five later; 2026-09-30, per Keenan: "make it 15 answers and jev picks the top 5"). Each one:
   - "name": the label on the slide: a natural, complete ANSWER to the question, the way a person would actually reply, 1-8 words ("In the bathroom with the fan on", "The car in the driveway", "Tokyo, Japan", "Porsche 911 GT3 RS"). Read the question, then the name: it must make instant sense as the reply. Never a clipped caption ("Bathroom Fan On", "Target With No List"). No numbers; the renderer adds them.
   - "lore": one line on why someone picks this one and what it says about them (used for the caption and ranking, never shown on the slide).
@@ -292,7 +313,7 @@ YOUR JOB: write the options for one pick-one post (the reader picks one of five)
 - Every option must be a real, tempting answer; none is a joke or a throwaway, and no two are the same idea in different words.${
     brand === "bwk"
       ? "\n- Every option is something he would be PROUD to pick or is working toward: an ambition, a standard, a kind of man. Never a list of his failures or bad habits."
-      : "\n- Every option is a version of her own life she would recognize and feel seen by, told with warmth, never a list of her failings."
+      : "\n- Every option is an escape or a relief she would want right now (a place, a ritual, an hour, a kind of help), told with warmth, never a list of her failings or chores."
   }
 - Every option is SPECIFIC and real AND instantly recognizable, named the way most people would say it: cars as make and model ("Porsche 911 GT3 RS"), watches by brand and model ("Rolex Submariner"), places as city and country ("Tokyo, Japan", "Dubai, UAE", "New York City", "Lake Como, Italy"). Never a neighborhood, building or niche name most readers won't know ("Azabudai Tokyo", "Dubai Marina Penthouse"). Ripple options can be a clearly drawn person or moment. Never a generic category ("The Black Sedan", "The First New Car", "A Walk Alone", "The Desert Rig").${
     brand === "bwk"
@@ -300,8 +321,16 @@ YOUR JOB: write the options for one pick-one post (the reader picks one of five)
       : ""
   }
 - Stay on the post's subject, which is about: ${CORE[brand]} ${OFF_BRAND}
-- "coverScene": the cover photograph: an inviting scene that sets up the question without showing the options. Keep the top quarter of the frame calm (the title sits there).
-- "coverMotion": one sentence of calm, realistic movement for the cover's five-second clip (steam rises from the mug as rain runs down the window; mist drifts past the empty track as the light comes up). Nothing fast, no people moving quickly.
+- "coverScene": the FIRST FRAME photograph (start from the pitched opening photo when given). It is the single most important image in the post: ${
+    brand === "ripple"
+      ? "the place, light or moment of escape and relief she would give anything to step into right now (a sunlit terrace over the sea, a deep bath with the door locked, a quiet cabin porch at dawn), beautiful and inviting"
+      : "the luxury life he is working toward at its most desirable (the car in perfect light, the penthouse view at night, the yacht deck at golden hour), hyperreal and premium"
+  }. It sets up the question without showing the five options. Keep the top quarter of the frame calm (the cover line sits there).
+- "coverMotion": one sentence of movement for the cover's five-second clip that is VISIBLE FROM THE VERY FIRST FRAME, not a slow build: ${
+    brand === "ripple"
+      ? "curtains billowing in the sea breeze as sunlight sweeps the room; waves rolling in below the terrace as the camera glides forward"
+      : "the car's headlights flare on as the camera glides along its side; city lights sweep below the penthouse glass as the camera pushes in. Controlled and premium, never chaotic"
+  }. Realistic speed, no people moving quickly.
 - "endCard": 2-6 words, ALL-CAPS ready: a short, direct question asking for THEIR pick that echoes this post's question ("WHERE ARE YOU MOVING?", "WHICH CAR IS YOURS?", "WHERE ARE YOU HIDING?"). It must make sense on its own. Never a "tag the one..." instruction.
 - "captionQuestion": one short caption question that gets a number AND a reason in the comments.
 No emojis.
@@ -309,7 +338,7 @@ No emojis.
 ${HUMAN_VOICE_RULES}
 
 OUTPUT (JSON):
-{ "title": "...", "coverScene": "...", "coverMotion": "...", "options": [{ "name": "...", "lore": "...", "scene": "...", "motion": "..." }], "endCard": "...", "captionQuestion": "..." }`;
+{ "title": "...", "titleOptions": ["...", "...", "...", "..."], "coverScene": "...", "coverMotion": "...", "options": [{ "name": "...", "lore": "...", "scene": "...", "motion": "..." }], "endCard": "...", "captionQuestion": "..." }`;
 }
 
 // ─── Jev selection (pure logic, exported for tests) ──────────────────
@@ -331,20 +360,20 @@ export async function pickConcept(
   concepts.forEach((_, i) => {
     questions[`scroll_${i}`] = {
       type: "score",
-      instructions: `How strongly would the reader described in \`audience\` stop scrolling for a post whose cover asks \`concepts[${i}]\`? Use \`history\` (what has and hasn't worked on this account) as context.`,
+      instructions: `The FIRST FRAME of a video is the photo \`concepts[${i}].opening_photo\` with the line \`concepts[${i}].cover_line\` on top, seen for one second. How strongly would the reader described in \`audience\` stop scrolling for it? Use \`history\` (what has and hasn't worked on this account) as context.`,
       criteria: SCROLL_STOP_LEVELS,
     };
     questions[`comment_${i}`] = {
       type: "score",
-      instructions: `A post asks \`concepts[${i}]\` and shows five numbered options. How likely is the reader described in \`audience\` to comment their number, tag a friend or send it on?`,
+      instructions: `A post asks \`concepts[${i}].cover_line\` and shows five numbered options. How likely is the reader described in \`audience\` to comment their number, tag a friend or send it on?`,
       criteria: COMMENT_LEVELS,
     };
     questions[`core_${i}`] = {
       type: "noul",
-      instructions: `Is \`concepts[${i}]\` about something at the heart of this audience's life, as described in \`core\`, rather than everyday trivia (food, meals, chores, preferences)?`,
+      instructions: `Does \`concepts[${i}].cover_line\` fit the guideline in \`core\` (not off-topic and not everyday trivia like food, chores or preferences)?`,
       criteria: {
-        true: "Yes: it is about who they are, what they carry or who they are becoming",
-        false: "No: it is trivia or a preference with nothing at stake",
+        true: "Yes: squarely inside the guideline",
+        false: "No: off the guideline, or trivia with nothing at stake",
       },
     };
     clearQuestions[`clear_${i}`] = {
@@ -369,7 +398,7 @@ export async function pickConcept(
           best_recent_covers: loop.topTitles?.length ? loop.topTitles : "no data yet",
           worst_recent_covers: loop.bottomTitles?.length ? loop.bottomTitles : "no data yet",
         },
-        concepts: qs,
+        concepts: concepts.map((c) => ({ cover_line: c.question, opening_photo: c.firstFrame || "a photo that sets up the question" })),
       },
       questions
     ),
@@ -495,6 +524,55 @@ export async function narrowOptions(
   return { options: scored.filter((s) => keepSet.has(s.i)).map((s) => s.o), table };
 }
 
+/**
+ * Best-of-5 cover line (2026-10-03, per Keenan: "first frame ... with
+ * excellent verbiage"). Jev reads each line on the first-frame photo:
+ * scroll-stop, clear to a stranger, natural spoken words. Code composite;
+ * unclear lines are ineligible. Returns the index into `lines` (0 = the
+ * writer's own title, also the fail-open answer).
+ */
+export async function pickCoverLine(
+  brand: PickBrand,
+  lines: string[],
+  firstFrame: string
+): Promise<{ index: number; table: string }> {
+  if (lines.length <= 1) return { index: 0, table: "" };
+  const { askJev, scoreOf, noulOf, SCROLL_STOP_LEVELS } = await import("./jev");
+  const qs: Parameters<typeof askJev>[2] = {};
+  lines.forEach((_, k) => {
+    qs[`scroll_${k}`] = {
+      type: "score",
+      instructions: `The first frame of a video is \`photo\` with \`lines[${k}]\` in white text on top, seen for one second. How strongly would the reader described in \`audience\` stop scrolling?`,
+      criteria: SCROLL_STOP_LEVELS,
+    };
+    qs[`clear_${k}`] = {
+      type: "noul",
+      instructions: `Reading ONLY \`lines[${k}]\`, can a stranger tell instantly what is being asked?`,
+    };
+    qs[`natural_${k}`] = {
+      type: "noul",
+      instructions: `Does \`lines[${k}]\` sound like something a real person would say out loud, in plain words (not slogan, ad copy or a riddle)?`,
+    };
+  });
+  const r = await askJev(`pick-cover-line:${brand}`, { audience: AUDIENCE_LINE[brand], photo: firstFrame, lines }, qs);
+  if (!r) return { index: 0, table: "jev unavailable — writer's title" };
+  let best = 0;
+  let bestScore = -Infinity;
+  const rows = lines.map((line, k) => {
+    const scroll = scoreOf(r, `scroll_${k}`) ?? 0;
+    const clear = noulOf(r, `clear_${k}`) ?? 0;
+    const natural = noulOf(r, `natural_${k}`) ?? 0;
+    const score = 0.6 * scroll + 0.25 * clear + 0.15 * natural;
+    const eligible = clear >= CLEAR_MIN;
+    if (eligible && score > bestScore) {
+      bestScore = score;
+      best = k;
+    }
+    return `${score.toFixed(3)} scroll=${scroll.toFixed(2)} clear=${clear.toFixed(2)} natural=${natural.toFixed(2)}${eligible ? "" : " INELIGIBLE"}  ${line}`;
+  });
+  return { index: best, table: rows.map((row, k) => `${k === best ? "*" : " "} ${row}`).join("\n") };
+}
+
 // ─── The full topic ──────────────────────────────────────────────────
 
 const SCENE_ALTS = 4;
@@ -536,7 +614,7 @@ OUTPUT (JSON): { "cover": [{ "scene": "...", "motion": "..." }], "options": [[{ 
   }
   const { askJev, scoreOf, noulOf } = await import("./jev");
   const slides = [
-    { answer: `the cover of a post asking "${title}"`, first: fallback.cover, alts: alts.cover },
+    { answer: `the FIRST FRAME of a post asking "${title}": the single image that makes ${brand === "ripple" ? "her" : "him"} stop scrolling`, first: fallback.cover, alts: alts.cover },
     ...options.map((o, i) => ({ answer: o.name, first: fallback.options[i], alts: alts!.options[i] })),
   ];
   const picked = await Promise.all(
@@ -644,6 +722,7 @@ export async function generatePickTopic(opts: {
     .filter((c) => typeof c?.question === "string" && c.question.trim())
     .map((c) => ({
       question: c.question!.trim(),
+      firstFrame: typeof c.firstFrame === "string" ? c.firstFrame.trim() : undefined,
       why: typeof c.why === "string" ? c.why.trim() : "",
       family:
         typeof c.family === "string" && PICK_FAMILIES[brand].includes(c.family.trim()) ? c.family.trim() : undefined,
@@ -665,6 +744,7 @@ export async function generatePickTopic(opts: {
       optionsSystem(brand),
       [
         `The post's question: "${concept.question}"`,
+        concept.firstFrame ? `Pitched opening photo (first frame): ${concept.firstFrame}` : "",
         concept.why ? `Why it works: ${concept.why}` : "",
         opts.recentNames.length ? `Options used recently (don't repeat): ${opts.recentNames.slice(0, 40).join(", ")}` : "",
         extra,
@@ -674,6 +754,7 @@ export async function generatePickTopic(opts: {
       7000
     )) as {
       title?: string;
+      titleOptions?: unknown;
       coverScene?: string;
       coverMotion?: string;
       options?: Partial<PickOptionDraft>[];
@@ -703,8 +784,14 @@ export async function generatePickTopic(opts: {
         captionQuestion: (raw.captionQuestion ?? "").trim(),
       },
     });
+    const titleOptions = (Array.isArray(raw.titleOptions) ? raw.titleOptions : [])
+      .filter((t): t is string => typeof t === "string" && !!t.trim())
+      .map((t) => t.trim().replace(/\s*[—–]\s*/g, ", "))
+      .filter((t) => !copyFlagFor(t))
+      .slice(0, 4);
     return {
       title: typeof checked.title === "string" && checked.title.trim() ? checked.title.trim() : title,
+      titleOptions,
       coverScene: raw.coverScene.trim(),
       coverMotion: (raw.coverMotion ?? "").trim(),
       options: options.map((o, i) => ({
@@ -724,6 +811,11 @@ export async function generatePickTopic(opts: {
       console.warn(`[pick-lane] ${brand} rewrite failed — keeping first draft:`, err instanceof Error ? err.message : err);
     }
   }
+  // Best-of-5 cover line on the first frame (2026-10-03).
+  const lines = [draft.title, ...draft.titleOptions.filter((t) => t.toLowerCase() !== draft.title.toLowerCase())];
+  const line = await pickCoverLine(brand, lines, concept.firstFrame || draft.coverScene);
+  console.log(`[pick-lane] ${brand} cover line pick:\n${line.table}`);
+  draft.title = lines[line.index];
   const narrowed = await narrowOptions(brand, draft.title, draft.options);
   console.log(`[pick-lane] ${brand} options for "${draft.title}":\n${narrowed.table}`);
 
@@ -778,7 +870,8 @@ export async function generatePickTopic(opts: {
 export function buildPickImagePrompt(brand: PickBrand, scene: string, kind: "cover" | "option"): string {
   const style =
     brand === "ripple"
-      ? "Soft, aesthetically pleasing feminine photography — quiet luxury in warm low light: warm lamplight, candlelight, rain on dark windows, linen and dried flowers. Muted, warm, dreamy color grade with soft shadow. Beautiful, calm, intimate, dim but never cold."
+      ? // 2026-10-03: escape & relief — luminous and inviting, not dim and moody.
+        "Luminous, inviting escape photography with a feminine quiet-luxury eye: golden-hour and soft daylight, sea air, warm stone, linen, water, open windows. Rich, warm, true color with gentle contrast. Beautiful, airy and aspirational: a place she would give anything to step into right now."
       : "Dark, dominant, moody photography with a muted cinematic grade — deep blacks, charcoal and slate, cold glass and storm light — where the scene's own accent color (a sunset, burnished gold, a car's paint, an ember) is allowed to glow richly. Austere, powerful, commanding.";
   const people =
     brand === "ripple"
@@ -788,7 +881,9 @@ export function buildPickImagePrompt(brand: PickBrand, scene: string, kind: "cov
     `A REAL photograph a person actually took with a camera: ${scene}`,
     "THE SCENE COMES FIRST: show exactly the place, subject and light described above. If it is a bright store aisle, a sunny garage or a car in a driveway, show exactly that; never swap it for a different room or a generic cozy interior. The style below only sets mood and color grade.",
     style,
-    "Overall DIM and shadowed in mood — low-key with deep blacks — but with full contrast and real, crisp highlights, never flat or murky grey.",
+    brand === "ripple"
+      ? "Bright and luminous overall with real depth and contrast, never washed out, flat or hazy."
+      : "Overall DIM and shadowed in mood — low-key with deep blacks — but with full contrast and real, crisp highlights, never flat or murky grey.",
     kind === "cover"
       ? "Keep the TOP QUARTER of the frame calm and darker (the question is set there in white text); the main subject sits in the middle of the frame."
       : "Keep the TOP FIFTH of the frame calm and darker (the option's name is set there in white text); the subject sits in the middle of the frame.",
@@ -809,14 +904,14 @@ export function buildPickImagePrompt(brand: PickBrand, scene: string, kind: "cov
 export function buildPickCaption(brand: PickBrand, question: string): string {
   const pools: Record<PickBrand, string[][]> = {
     ripple: [
-      ["#mentalload", "#momlife", "#selfcare", "#whichoneareyou"],
-      ["#womenover40", "#realmotherhood", "#metime", "#pickone"],
-      ["#motherhoodunplugged", "#mentalhealthmatters", "#slowliving", "#commentyournumber"],
+      ["#metime", "#selfcare", "#escape", "#whichoneareyou"],
+      ["#womenover40", "#slowliving", "#dreamgetaway", "#pickone"],
+      ["#momneedsabreak", "#solotravel", "#quietluxury", "#commentyournumber"],
     ],
     bwk: [
-      ["#discipline", "#selfimprovement", "#mindset", "#pickone"],
-      ["#buildyourself", "#motivation", "#consistency", "#whichoneareyou"],
-      ["#selfdiscipline", "#growthmindset", "#focus", "#commentyournumber"],
+      ["#luxurylifestyle", "#motivation", "#discipline", "#pickone"],
+      ["#dreamcar", "#ambition", "#buildyourself", "#whichoneareyou"],
+      ["#luxury", "#successmindset", "#grind", "#commentyournumber"],
     ],
   };
   const tags = pools[brand][Math.floor(Math.random() * pools[brand].length)];

@@ -7,6 +7,41 @@
 
 ---
 
+## [2026-10-03] — Ripple and BWK videos rebuilt around the first frame: escape & relief / luxury aspiration
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** see "content: Aim Ripple at escape and BWK at luxury, judge the first frame"
+
+### In plain English (for Keenan)
+Ripple and BWK still post 3 videos a day each, but each video is now built around its first second.
+- **Subjects:** no fixed list of topics. Ripple posts are about escape and relief: places she'd disappear to, trips, the hour that's only hers, being taken care of. BWK posts are about luxury aspiration and motivation: cars, watches, penthouses, cities, the life at the top and the drive to get there.
+- **How each video is picked:** the AI pitches 5 ideas, each with its opening photo. Jev judges how strongly that first frame (photo plus words) would stop the scroll, rejects anything off-guideline, and the best one becomes the video.
+- **Cover words:** written 5 ways, and Jev picks the version that lands fastest.
+- **Look:** the opening shot is chosen for stopping power and moves from the very first frame. Ripple's photos are now bright and inviting instead of dim and moody.
+
+Legendary Mythicals is unchanged.
+
+### Technical changes (for Jimmy)
+- `lib/content-factory/pick-lane.ts`:
+  - `CORE` replaced by one guideline per brand (Ripple ESCAPE AND RELIEF; BWK LUXURY ASPIRATION AND MOTIVATION). Jev's core gate (`CORE_MIN` 0.6) now enforces it.
+  - `PICK_FAMILIES` re-cut to match (old families retire from the scoreboard). `SEEDS` are now examples, with no "3 of 5 must be approved" quota.
+  - Concepts gain `firstFrame` (pitched opening photo). The Jev `scroll_i` question judges photo + cover line as the first frame.
+  - New `pickCoverLine()`: the writer returns `titleOptions` (4 alternates), and Jev picks from 5 (0.6 scroll + 0.25 clear + 0.15 natural; clear < 0.3 ineligible; fails open to the writer's title).
+  - `coverScene` / `coverMotion` prompts ask for the most wanted image, with motion visible from frame one (BWK stays controlled). The scene picker judges the cover for stopping power.
+  - `buildPickImagePrompt`: Ripple style is luminous escape photography (the dim/low-key line is now BWK only). Hashtag pools updated.
+- `app/api/admin/carousels/route.ts`: `generate-daily` passes `dryRun` through (copy-only preview saved to `prompt-test-results/`).
+- No schema, env or lane-row changes (pick-ripple / pick-bwk stay at hours 6/7/8 UTC). Mythicals code is untouched.
+
+### Manual steps needed
+- [ ] Push to main ("push it") (Keenan)
+- [ ] Optional preview before the 06:00 UTC run: Inngest dashboard → send `content-factory/daily.generate` with `{"bucket":"pick-ripple","dryRun":true}` (and `pick-bwk`); the result lands in storage at `prompt-test-results/<date>/` (Keenan / Claude)
+
+### Notes
+- Why: watch time 09-12 to 10-03 was Mythicals 12.1s, BWK 3.0s, Ripple 1.7s. The best-held Ripple/BWK posts were escapes ("Which house would you disappear to, alone?" 14.4s) and the BWK brothers' weekend trip (9.3s).
+- The local dry run failed: the Anthropic key in local env is invalid (Claude runs in prod only). This prompt change is unverified until the first prod run or a dry run.
+- Watch the Monday "Is it getting better?" email. The target from the 10-03 conversation is typical watch time > 6s and views > 100 per post by day 7.
+- Ripple's mental-load angle now lives only in captions; covers never name the load.
+
 ## [2026-10-02] — Social engine can run hands-off: real-results gate, credit alerts, "is it improving?" report, learning check
 **Requested by:** Keenan
 **Committed by:** Claude Code

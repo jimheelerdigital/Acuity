@@ -264,6 +264,9 @@ export async function POST(req: NextRequest) {
           // post's cover + item scenes to one image family, e.g.
           // "epic warrior".
           sceneFamily: (body as { sceneFamily?: string }).sceneFamily,
+          // Copy-only preview (2026-10-03): no images, no post; saved to
+          // prompt-test-results/<date>/<lane>-<run>.json.
+          dryRun: (body as { dryRun?: boolean }).dryRun === true,
         },
       });
       return NextResponse.json({ ok: true, queued: true });
