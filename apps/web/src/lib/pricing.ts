@@ -119,6 +119,15 @@ export function legacyPriceDisplay(): string {
 }
 
 /**
+ * Annual-first price sentence for prose (emails, FAQs, prompts), e.g.
+ * "$89.99/year (just $7.50/month), or $9.99 month to month".
+ * 2026-10-02 (Keenan): every web surface leads with annual.
+ */
+export function displayPriceLine(): string {
+  return `${displayAnnual()}/year (just ${displayAnnualAsMonthly()}/month), or ${displayMonthly()} month to month`;
+}
+
+/**
  * The not-yet-active V2 tier, re-exported so surfaces that need to *quote*
  * the future price (internal previews, migration comms drafts) can do so
  * without importing from the shared package directly. Nothing user-facing

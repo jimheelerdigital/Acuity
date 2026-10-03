@@ -35,7 +35,7 @@ export function productTruth(): string {
 How it works: you talk to it (a voice journal entry, any time of day, no typing, no blank page). Ripple then:
 ${PRODUCT_WHAT_IT_DOES.map((x) => `- ${x}`).join("\n")}
 The point: help people see what's really going on in their own life and act on it, so they change it for the better.
-Price: ${displayMonthly()}/month or ${displayAnnual()}/year, 7-day free trial.
+Price: ${displayAnnual()}/year (lead with this) or ${displayMonthly()}/month, 7-day free trial.
 Limits (never claim beyond these): not therapy, does not diagnose or treat anything, no guaranteed outcomes. Never claim a specific recording duration.`;
 }
 

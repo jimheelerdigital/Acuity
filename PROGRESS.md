@@ -7,6 +7,34 @@
 
 ---
 
+## [2026-10-02] — Lead with the annual plan on every web paywall, page and pitch email
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** see "feat: Lead with the annual plan across web paywalls and pages"
+
+### In plain English (for Keenan)
+Every web surface now offers the yearly plan first. That's both /start paywalls, the /upgrade page, the homepage and landing price cards, the /for pages, FAQs, and the emails sent to people who haven't subscribed yet. Yearly is pre-selected; monthly is still one tap away. The test funnel already worked this way. The mobile app is untouched.
+
+### Technical changes (for Jimmy)
+- `lib/pricing.ts`: new `displayPriceLine()` → "$89.99/year (just $7.50/month), or $9.99 month to month".
+- `components/onboarding-funnel.tsx` (/start, /start-bwk): `selectedPlan` defaults to `"yearly"` (was locked to monthly since 049958d2, 2026-07-01); Yearly segment now first.
+- `app/upgrade/upgrade-plan-picker.tsx`: `interval` defaults to `"yearly"`; Yearly tab first.
+- Price cards (`components/marketing/Pricing.tsx`, `components/landing.tsx`, `components/landing-shared.tsx`): big number is now `displayAnnualAsMonthly()` "/month, billed yearly", with annual total + monthly below. FAQs, CTA sublines and the homepage JSON-LD (offer now the $89.99 yearly price, named "Pro (yearly)") updated.
+- `/for/founders`, `/for/sleep`, `/for/therapy` cost rows/headlines, `/voice-journaling` copy: annual-first.
+- Emails: `emails/trial/trial-ending.ts`, `trial-ending-day13.ts`, `recovery-signup-no-checkout.ts` use `displayPriceLine()`.
+- Prompts: `lib/positioning.ts` and `lib/content-factory/generate.ts` price lines lead with yearly.
+- Checkout/Stripe/webhook code unchanged; both plans already flowed through the same routes.
+
+### Manual steps needed
+- [ ] Jimmy review of paywall default change before push (Jimmy)
+- [ ] Push to main when approved ("push it") (Keenan)
+- [ ] At the 10-07 review, note this changed mid-split: both funnel arms now default to yearly, so the plan default is no longer a difference between them (Keenan)
+
+### Notes
+- Left alone on purpose: `emails/trial/value-recap.ts` and `trial-reminder.ts` (they state the charge the user already chose), `/terms`, the therapy testimonial quote, the "/for/weekly-report" "worth $9.99/month" value line, and the legacy founding-member drip copy in `lib/drip-emails.ts`.
+- Pre-existing failing test, unrelated: `lib/evidence/v2-product-ids.test.ts` "receipt allow-lists have NOT been widened" (Apple IAP allow-list). tsc errors in carousel-one-off/adlab meta/compose/mcp-token are also pre-existing.
+- Supporting data (DB, 2026-10-02): 30 paying, cost per paid trial ~$52 men / ~$140 women; annual upfront pays back that cost on day one, monthly takes 6+ months.
+
 ## [2026-10-02] — Mythicals back to epic: colossal beasts, legendary weapons and armor, no places
 **Requested by:** Keenan
 **Committed by:** Claude Code

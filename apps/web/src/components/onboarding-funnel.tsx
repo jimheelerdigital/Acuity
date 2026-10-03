@@ -289,11 +289,12 @@ export function OnboardingFunnel() {
   const [s1v, setS1v] = useState<S1Variant | null>(null);
   const [apiError, setApiError] = useState<string | null>(null);
   const [checkoutLoading, setCheckoutLoading] = useState(false);
-  // Monthly is the locked default-selected plan. We intentionally do NOT restore
-  // a persisted selectedPlan here — a stale "yearly" from an earlier build/session
-  // would otherwise reappear as the default. Always lead with monthly on load;
-  // the user can still switch, and the switch persists within the session.
-  const [selectedPlan, setSelectedPlan] = useState<"monthly" | "yearly">("monthly");
+  // Yearly is the default-selected plan (2026-10-02, Keenan: lead with annual
+  // everywhere; it pays back ad cost on day one). We intentionally do NOT
+  // restore a persisted selectedPlan here — a stale "monthly" from an earlier
+  // build would otherwise reappear as the default. The user can still switch,
+  // and the switch persists within the session.
+  const [selectedPlan, setSelectedPlan] = useState<"monthly" | "yearly">("yearly");
   const track = useFunnelTracker(cfg.flowVersion);
 
   // Normal arm of the normal-vs-test split: the server's inline script sets
@@ -2368,20 +2369,20 @@ function SavingsScreen({ branch, answers: _answers, track, selectedPlan, onPlanC
           </ol>
         </section>
 
-        {/* Plan toggle — monthly first and default (never lead with annual) */}
+        {/* Plan toggle — yearly first and default (lead with annual) */}
         <section className="mb-5 funnel-card-stagger" style={{ animationDelay: "160ms" }}>
           <div className="flex gap-1 rounded-full f-sub p-1" role="radiogroup" aria-label="Choose a plan">
-            <button type="button" role="radio" aria-checked={selectedPlan === "monthly"} onClick={() => pickPlan("monthly")}
-              className={segment(selectedPlan === "monthly")}
-              style={selectedPlan === "monthly" ? { boxShadow: "inset 0 0 0 1px var(--acuity-primary)" } : undefined}>
-              <span className="block text-[14px] font-semibold">Monthly</span>
-              <span className="block text-[12px] tabular-nums">{displayMonthly()}/mo</span>
-            </button>
             <button type="button" role="radio" aria-checked={selectedPlan === "yearly"} onClick={() => pickPlan("yearly")}
               className={segment(selectedPlan === "yearly")}
               style={selectedPlan === "yearly" ? { boxShadow: "inset 0 0 0 1px var(--acuity-primary)" } : undefined}>
               <span className="block text-[14px] font-semibold">Yearly <span className="text-acuity-good">&middot; save {displaySavingsPct()}</span></span>
               <span className="block text-[12px] tabular-nums">{displayAnnual()}/yr ({displayAnnualAsMonthly()}/mo)</span>
+            </button>
+            <button type="button" role="radio" aria-checked={selectedPlan === "monthly"} onClick={() => pickPlan("monthly")}
+              className={segment(selectedPlan === "monthly")}
+              style={selectedPlan === "monthly" ? { boxShadow: "inset 0 0 0 1px var(--acuity-primary)" } : undefined}>
+              <span className="block text-[14px] font-semibold">Monthly</span>
+              <span className="block text-[12px] tabular-nums">{displayMonthly()}/mo</span>
             </button>
           </div>
         </section>

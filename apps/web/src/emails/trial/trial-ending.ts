@@ -16,7 +16,7 @@
  */
 
 import { escapeHtml } from "@/lib/escape-html";
-import { displayMonthly } from "@/lib/pricing";
+import { displayPriceLine } from "@/lib/pricing";
 import { button, h1, hi, para, variant, withVariants } from "./kit";
 import type { TrialEmailTemplate, TrialVars } from "./types";
 
@@ -40,7 +40,7 @@ export const trialEnding: TrialEmailTemplate = withVariants([
       ${hi(v)}
       ${para(`Quick heads-up: your free trial ends on ${escapeHtml(v.trialEndsAt)}.`)}
       ${para(`You&rsquo;ve recorded ${debriefs(v)} so far, and Ripple is starting to see how your weeks actually go. That picture gets sharper the longer you keep at it.`)}
-      ${para(`To keep going, set up your subscription before the trial ends: ${displayMonthly()}/month, and you pick up right where you left off. If now isn&rsquo;t the time, nothing happens automatically, and your debriefs stay yours.`)}
+      ${para(`To keep going, set up your subscription before the trial ends: ${displayPriceLine()}, and you pick up right where you left off. If now isn&rsquo;t the time, nothing happens automatically, and your debriefs stay yours.`)}
       ${button(upgradeUrl(v), "Keep my subscription")}
     `
   ),
@@ -57,7 +57,7 @@ export const trialEnding: TrialEmailTemplate = withVariants([
           ? `In ${debriefs(v)}, one thing has come up more than anything else: <strong>${escapeHtml(v.topTheme)}</strong>. That&rsquo;s the kind of thing Ripple gets better at spotting the more you talk to it.`
           : `You&rsquo;ve recorded ${debriefs(v)}. Every one adds to your list, your habits and the patterns Ripple can show you.`
       )}
-      ${para(`Your trial ends on ${escapeHtml(v.trialEndsAt)}. Keep it going for ${displayMonthly()}/month and everything stays exactly where it is.`)}
+      ${para(`Your trial ends on ${escapeHtml(v.trialEndsAt)}. Keep it going for ${displayPriceLine()}, and everything stays exactly where it is.`)}
       ${button(upgradeUrl(v), "Keep my subscription")}
     `
   ),
@@ -69,7 +69,7 @@ export const trialEnding: TrialEmailTemplate = withVariants([
     (v) => `
       ${hi(v)}
       ${para(`Your Ripple trial ends in two days, on ${escapeHtml(v.trialEndsAt)}. There&rsquo;s no card on file, so nothing happens automatically.`)}
-      ${para(`If Ripple has been useful, you can keep it for ${displayMonthly()}/month and carry on where you left off. If it hasn&rsquo;t, I&rsquo;d honestly love a one-line reply telling me why.`)}
+      ${para(`If Ripple has been useful, you can keep it for ${displayPriceLine()}, and carry on where you left off. If it hasn&rsquo;t, I&rsquo;d honestly love a one-line reply telling me why.`)}
       ${button(upgradeUrl(v), "Keep my subscription")}
     `
   ),

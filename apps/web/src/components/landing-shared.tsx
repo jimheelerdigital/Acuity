@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useEffect, useRef, useState, useCallback } from "react";
 
 import { CookieSettingsLink } from "@/components/cookie-consent";
-import { displayMonthly } from "@/lib/pricing";
+import { displayAnnual, displayAnnualAsMonthly, displayMonthly } from "@/lib/pricing";
 import { SOCIAL_PROOF } from "@/lib/social-proof";
 
 /* ═══════════════════════════════════════════
@@ -704,12 +704,12 @@ export function PricingSection({
               </div>
               <p className="mt-4 flex items-baseline gap-1">
                 <span className="text-5xl font-extrabold text-white">
-                  {displayMonthly()}
+                  {displayAnnualAsMonthly()}
                 </span>
-                <span className="text-acuity-text-sec">/month</span>
+                <span className="text-acuity-text-sec">/month, billed yearly</span>
               </p>
               <p className="mt-2 text-sm text-acuity-text-sec">
-                7-day free trial &middot; No card. Quick setup.
+                {displayAnnual()}/year, or {displayMonthly()} month to month &middot; 7-day free trial &middot; No card. Quick setup.
               </p>
 
               <ul className="mt-8 space-y-3 text-sm text-acuity-text-sec">
@@ -1107,7 +1107,7 @@ export function CTABanner({
                 {buttonText}
               </a>
               <span className="text-sm text-acuity-text-sec">
-                Then {displayMonthly()}/month &middot; No
+                Then {displayAnnual()}/year ({displayAnnualAsMonthly()}/mo) &middot; No
                 card. Quick setup.
               </span>
             </div>

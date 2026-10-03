@@ -1,9 +1,9 @@
 import { escapeHtml } from "@/lib/escape-html";
-import { displayMonthly } from "@/lib/pricing";
+import { displayAnnualAsMonthly, displayPriceLine } from "@/lib/pricing";
 import { trialButton, trialCard, trialLayout } from "./layout";
 import type { TrialEmailTemplate, TrialVars } from "./types";
 
-const PRICE = displayMonthly();
+const PRICE = displayPriceLine();
 
 export const trialEndingDay13: TrialEmailTemplate = {
   subject: () => "Your Ripple trial ends tomorrow",
@@ -32,14 +32,14 @@ export const trialEndingDay13: TrialEmailTemplate = {
         <td style="padding-bottom:24px;">
           ${trialCard(`
             <p style="margin:0;font-size:15px;color:#374151;line-height:1.7;">
-              Ripple stays ${PRICE}/month — locked in for you as a Founding Member. Cancel anytime from the app.
+              Keep Ripple for ${PRICE}. Cancel anytime from the app.
             </p>
           `)}
         </td>
       </tr>
       <tr>
         <td style="padding-bottom:8px;">
-          ${trialButton(upgradeUrl, `Continue for ${PRICE}/mo`)}
+          ${trialButton(upgradeUrl, `Continue for ${displayAnnualAsMonthly()}/mo, billed yearly`)}
         </td>
       </tr>
       <tr>

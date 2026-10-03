@@ -20,7 +20,7 @@ import {
   FAQSection,
   StickyCTA,
 } from "@/components/landing-shared";
-import { displayMonthly } from "@/lib/pricing";
+import { displayAnnualAsMonthly } from "@/lib/pricing";
 
 const UTM = "founders";
 const WAITLIST = `/start?utm_campaign=${UTM}`;
@@ -328,7 +328,7 @@ export default function FoundersPage() {
           <ComparisonTable
             headers={["Executive Coach", "Therapy", "Ripple"]}
             rows={[
-              { feature: "Cost", values: ["$500+/month", "$600+/month", `${displayMonthly()}/month`] },
+              { feature: "Cost", values: ["$500+/month", "$600+/month", `${displayAnnualAsMonthly()}/month (billed yearly)`] },
               {
                 feature: "Availability",
                 values: ["Scheduled", "Scheduled", "Any time of day"],
@@ -422,7 +422,7 @@ export default function FoundersPage() {
 
       {/* ───── PRICING ───── */}
       <PricingSection
-        headline={`${displayMonthly()}/month for a personal performance system`}
+        headline={`${displayAnnualAsMonthly()}/month, billed yearly, for a personal performance system`}
         subheadline="One plan. Everything included. Cancel anytime."
         utmCampaign={UTM}
       />

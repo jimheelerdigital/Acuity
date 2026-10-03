@@ -2,7 +2,7 @@ import type { ContentBriefing, ContentPiece } from "@prisma/client";
 
 import { callContentClaude, lastJsonText } from "./claude-client";
 import { humanizePass, HUMAN_VOICE_RULES } from "./humanizer";
-import { displayMonthly } from "@/lib/pricing";
+import { displayPriceLine } from "@/lib/pricing";
 
 // ─── Shared brand system prompt ──────────────────────────────────────────────
 
@@ -29,7 +29,7 @@ NEVER use these words/phrases:
 
 Always include specific numbers, specific examples, specific experiences — never vague benefits.
 
-Pricing: ${displayMonthly()}/month after 7-day free trial, no card required.
+Pricing: ${displayPriceLine()}, after 7-day free trial, no card required. Lead with the yearly price.
 
 ${HUMAN_VOICE_RULES}`;
 

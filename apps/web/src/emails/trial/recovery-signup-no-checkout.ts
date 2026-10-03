@@ -16,17 +16,17 @@
  */
 
 import { escapeHtml } from "@/lib/escape-html";
-import { displayMonthly } from "@/lib/pricing";
+import { displayPriceLine } from "@/lib/pricing";
 import { button, exampleCard, h1, hi, men, para, variant, withVariants } from "./kit";
 import type { TrialEmailTemplate, TrialVars } from "./types";
 
-const PRICE = displayMonthly();
+const PRICE = displayPriceLine();
 
 function trialUrl(v: TrialVars): string {
   return `${escapeHtml(v.appUrl)}/pro-trial?utm_source=email&utm_medium=recovery&utm_campaign=signup_no_checkout`;
 }
 
-const TERMS = `The first 7 days are free. $0 today, we email you before you&rsquo;re charged, and you can cancel anytime from your account. After that it&rsquo;s ${PRICE}/month.`;
+const TERMS = `The first 7 days are free. $0 today, we email you before you&rsquo;re charged, and you can cancel anytime from your account. After that it&rsquo;s ${PRICE}.`;
 
 export const recoverySignupNoCheckout: TrialEmailTemplate = withVariants([
   variant(
@@ -65,7 +65,7 @@ export const recoverySignupNoCheckout: TrialEmailTemplate = withVariants([
       ${hi(v)}
       ${para("Keenan here, one of the founders of Ripple. You made an account but didn&rsquo;t start your free week of Pro, so here&rsquo;s the honest pitch.")}
       ${para(men(v) ? "Give it a week. Talk through what you&rsquo;re working on whenever it suits you, and see if having your list, your habits and your patterns in one place keeps you on track." : "Give it a week. Talk through what&rsquo;s on your plate whenever it suits you, and see if having your list, your habits and your patterns in one place takes some weight off.")}
-      ${para(`If it doesn&rsquo;t earn its place, cancel from your account before day 7 and you pay nothing. We email you before you&rsquo;re charged. After that it&rsquo;s ${PRICE}/month.`)}
+      ${para(`If it doesn&rsquo;t earn its place, cancel from your account before day 7 and you pay nothing. We email you before you&rsquo;re charged. After that it&rsquo;s ${PRICE}.`)}
       ${button(trialUrl(v), "Start my free 7 days")}
     `
   ),

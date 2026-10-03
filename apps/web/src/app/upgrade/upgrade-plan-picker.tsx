@@ -38,7 +38,8 @@ const POLICY_VERSION = "2026-06-03";
 // $4.99-era savings next to $9.99/$89.99 prices.
 const YEARLY_SAVINGS_DOLLARS_ROUNDED = displaySavingsDollars();
 export function UpgradePlanPicker() {
-  const [interval, setInterval] = useState<Interval>("monthly");
+  // Yearly is the default (2026-10-02, Keenan: lead with annual everywhere).
+  const [interval, setInterval] = useState<Interval>("yearly");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -140,15 +141,15 @@ export function UpgradePlanPicker() {
         className="mb-5 grid grid-cols-2 gap-1 rounded-full bg-zinc-100 dark:bg-[#13131F] p-1 text-sm"
       >
         <IntervalTab
-          label="Monthly"
-          selected={interval === "monthly"}
-          onClick={() => setInterval("monthly")}
-        />
-        <IntervalTab
           label="Yearly"
           selected={interval === "yearly"}
           onClick={() => setInterval("yearly")}
           badge={`Save ${displaySavingsPct()}`}
+        />
+        <IntervalTab
+          label="Monthly"
+          selected={interval === "monthly"}
+          onClick={() => setInterval("monthly")}
         />
       </div>
 

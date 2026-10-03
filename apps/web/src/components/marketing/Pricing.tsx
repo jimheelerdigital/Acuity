@@ -6,7 +6,7 @@
  * see PRODUCT_DRIFT_AUDIT.md; no axis-count claim in marketing).
  */
 import { Reveal } from "@/components/landing-shared";
-import { displayMonthly } from "@/lib/pricing";
+import { displayAnnual, displayAnnualAsMonthly, displayMonthly } from "@/lib/pricing";
 
 const FEATURES = [
   "Unlimited voice entries",
@@ -38,10 +38,10 @@ export function Pricing() {
             <div className="relative">
               <div className="mb-1.5 font-display text-[20px] font-bold text-acuity-text">Ripple Pro</div>
               <div className="mb-1 flex items-baseline gap-2">
-                <span className="font-display text-[56px] font-extrabold tracking-[-2px] text-acuity-text">{displayMonthly()}</span>
-                <span className="font-sans text-[17px] text-acuity-text-sec">/ month</span>
+                <span className="font-display text-[56px] font-extrabold tracking-[-2px] text-acuity-text">{displayAnnualAsMonthly()}</span>
+                <span className="font-sans text-[17px] text-acuity-text-sec">/ month, billed yearly</span>
               </div>
-              <div className="mb-7 font-sans text-[15px] text-acuity-text-ter">7-day free trial · cancel anytime</div>
+              <div className="mb-7 font-sans text-[15px] text-acuity-text-ter">{displayAnnual()}/year · or {displayMonthly()} month to month · 7-day free trial</div>
 
               <div className="mb-[30px] flex flex-col gap-[13px]">
                 {FEATURES.map((f) => (
