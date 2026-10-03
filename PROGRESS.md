@@ -592,6 +592,24 @@ The email people get after the Mythicals quiz now opens with a big picture of th
 - Still sent from hello@getacuity.io. Moving to a legendarymythicals.com sender needs a Resend domain plus 3 GoDaddy DNS records (optional).
 - No Stripe product is needed: checkout sends inline price_data named "Legendary Creature Portrait" with metadata brand=mythicals.
 
+## [2026-10-03] — Funnel safety audit after the Google flag
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** see "fix: Stop copying to the clipboard on page load"
+
+### In plain English (for Keenan)
+Went through all four funnels (/start, /start-bwk, /start-test, /start-test-bwk) for anything Google could read as deceptive. The one remaining issue: the old download screen copied the App Store link to people's clipboard as soon as the page loaded, before they tapped anything. That's a known malware pattern, even with a harmless link. It now only copies when they tap the button. Everything else checked out: no other redirects out of the app, no fake brand buttons, no outside scripts, real reviews only.
+
+### Technical changes (for Jimmy)
+- `components/app-store-cta.tsx`: removed the mount-time `copyAppStoreUrl("mount")` in in-app webviews. The tap-time copy (user gesture) stays
+- Audit checked: custom URL schemes (none left after 5941752f), clipboard writes, window.location redirects (Stripe checkout only), iframes/third-party scripts (none; inline scripts are A/B cookie assignment), brand look-alikes (none), fake system UI (none), testimonials (documented as real quotes)
+
+### Manual steps needed
+- None (Safe Browsing review already requested by Keenan)
+
+### Notes
+- /mic-test (hidden mic QA page) stays until the Android test is done; remove after.
+
 ## [2026-10-03] — Google flagged the men's funnel as "deceptive"; removed the likely cause
 **Requested by:** Keenan
 **Committed by:** Claude Code

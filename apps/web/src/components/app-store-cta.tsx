@@ -171,7 +171,9 @@ export function useAppStoreCta({
   useEffect(() => {
     if (!browserEnv.isWebView) return;
     if (events.webviewDetected) track(events.webviewDetected, { value: browserEnv.label });
-    copyAppStoreUrl("mount");
+    // No copy on mount (2026-10-03): writing to the clipboard before any
+    // user action is a Safe Browsing "social engineering" signal, and Google
+    // had just flagged the funnel. The copy happens on the user's tap only.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [browserEnv.isWebView, browserEnv.label]);
 
