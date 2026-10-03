@@ -28,8 +28,11 @@ import type { BatchGroupKey } from "@/lib/adlab/weekly-batch";
  *  $40 BWK $60 Ripple". Plus TEST_DAILY_BUDGET_CENTS ($15) per lane's test
  *  ad set = $130/day total. */
 export const GROUP_DAILY_BUDGET_CENTS: Record<BatchGroupKey, number> = {
-  women: 6000,
-  men: 4000,
+  // 2026-10-02, per Keenan: "raise [men] by 20 and lower womens by 20".
+  // Men's lane ~$35/paid trial vs women ~$75 since 09-30 ("Fourth planner.
+  // Still stuck." = 4 of the last 9 paid trials). Total stays $100 + $30 test.
+  women: 4000,
+  men: 6000,
 };
 
 /** 2026-09-30, per Keenan: "start to optimize for purchase". Was

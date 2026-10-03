@@ -350,6 +350,25 @@ The email people get after the Mythicals quiz now opens with a big picture of th
 - Still sent from hello@getacuity.io. Moving to a legendarymythicals.com sender needs a Resend domain plus 3 GoDaddy DNS records (optional).
 - No Stripe product is needed: checkout sends inline price_data named "Legendary Creature Portrait" with metadata brand=mythicals.
 
+## [2026-10-02] — Shift $20/day of ad budget from the women's lane to the men's lane
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** see "chore: Move $20/day of ad budget from women's lane to men's"
+
+### In plain English (for Keenan)
+The men's ads are getting paying trials at about half the cost of the women's ads (about $35 vs $75 each since Sept 30). "Fourth planner. Still stuck." alone brought in 4 of the last 9 paid trials at about $20 each. So the men's main ad set goes from $40 to $60 a day and the women's from $60 to $40. Total spend is unchanged ($100 main + $30 test).
+
+### Technical changes (for Jimmy)
+- `lib/adlab/evergreen.ts`: GROUP_DAILY_BUDGET_CENTS women 6000 → 4000, men 4000 → 6000 (re-asserted on every launch; applied to Meta via POST /api/admin/adlab/evergreen-settings `{}`)
+
+### Manual steps needed
+- None
+
+### Notes
+- Funnel audit 2026-10-02 (since the 09-30 changes): ad visitor → paid trial 1.0% → 4.8%; ~$109 → ~$54 per paid trial; 8 ad-attributed paid trials in 3 days. Other winners under the $50 rule: "Talk it out. Get your to-do list." (women main, 2), "Journals gave pages. Ripple: proof." (women test, 1 annual), "See where your week really went." (men test video, 1 annual).
+- Biggest leak: 2/3 of visitors leave on the first screen. 7 of the last 9 payers have 0 debriefs (activation, Jimmy's app fix).
+- The 25%-at-a-time advice was overridden: Keenan chose a full +$20 / −$20 step. Meta may briefly re-enter learning on both ad sets.
+
 ## [2026-10-02] — Fix: signing in with Google on the website could reset a paying customer to a free trial
 **Requested by:** Keenan
 **Committed by:** Claude Code
