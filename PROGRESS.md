@@ -7,6 +7,32 @@
 
 ---
 
+## [2026-10-03] — Owned AI music replaces the copyrighted song library on every brand
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** see "feat: Replace the music library with owned ElevenLabs tracks"
+
+### In plain English (for Keenan)
+Facebook was muting posts because their music was copyrighted songs downloaded from TikTok. Keenan approved the AI samples, so every brand's music now comes from original tracks made with ElevenLabs, which we own. Each brand gets varied tracks in its own style (Mythicals epic orchestral, BWK dark motivational trap, Ripple warm acoustic). The old songs are archived, not deleted, and only once a brand has at least 6 new tracks, so no video ever goes out silent. ElevenLabs had 30,000 credits, enough for about 9 tracks per brand now. The library tops up to 20 each when credits reset.
+
+### Technical changes (for Jimmy)
+- `lib/content-factory/music-gen.ts`: `MUSIC_FLAVORS` / `libraryBrief()` (7 style variants per brand), `creditsRemaining()` (GET `/v1/user/subscription`), `isQuotaError()`, `LIBRARY_FOLDER` (`music/mythicals`, `music/BWK`, `music/ripple`).
+- New Inngest function `inngest/functions/music-library.ts` (event `content-factory/music.library`, concurrency 1, no cron):
+  - budget = (credits − 6,000 reserve) / 900, capped at `perBrand`×3 (default 20), round-robin across brands
+  - writes 60s tracks as `ai-<n>-<ts>.mp3`, stops on a quota error, copies the 3 approved `music-samples/`
+  - moves non-`ai-` tracks to `music-removed/<folder>/` once a brand has ≥ 6 AI tracks; emails a summary
+- New `app/api/admin/music-library/route.ts` (admin session or CRON_SECRET); registered in `app/api/inngest/route.ts`.
+- Track picking is unchanged (`pickMusicTrack` lists the brand folder); no lane subfolders exist.
+- `music-sample.ts` (previous push) now emails ElevenLabs errors.
+
+### Manual steps needed
+- [ ] Re-run the library job after the ElevenLabs credit reset, or upgrade to Creator, to reach 20 per brand (Keenan / Claude)
+- [x] Inngest resync after deploy (Claude)
+
+### Notes
+- Videos already rendered before this (reels/<postId>.mp4) keep the old song until rebuilt; posts already muted stay muted.
+- AI music can very rarely false-match Content ID; dispute with the ElevenLabs commercial license.
+
 ## [2026-10-03] — AI music samples (one per brand) to replace copyrighted songs
 **Requested by:** Keenan
 **Committed by:** Claude Code
