@@ -17,7 +17,9 @@ import { inngest } from "@/inngest/client";
  */
 const SECONDS = 60;
 const CREDITS_PER_TRACK = 900; // ElevenLabs Music: 900 credits per minute
-const RESERVE = 6000; // keep for voiceovers
+// Small buffer only: no voiced lanes are active (0 voiced posts in the 14
+// days to 2026-10-03), so the library may use nearly all credits.
+const RESERVE = 1000;
 const MIN_NEW = 6;
 
 export const musicLibraryFn = inngest.createFunction(
@@ -35,8 +37,9 @@ export const musicLibraryFn = inngest.createFunction(
     const plan = await step.run("budget", async () => {
       const { creditsRemaining } = await import("@/lib/content-factory/music-gen");
       const left = await creditsRemaining();
-      const affordable = left == null ? perBrand * 3 : Math.max(0, Math.floor((left - RESERVE) / CREDITS_PER_TRACK));
-      return { left, total: Math.min(perBrand * 3, affordable) };
+      // Upper bound only: each track re-checks the real balance before
+      // composing, so the estimate never caps what credits can actually buy.
+      return { left, total: perBrand * 3 };
     });
 
     const made: Record<string, number> = { mythicals: 0, bwk: 0, ripple: 0 };
@@ -46,7 +49,11 @@ export const musicLibraryFn = inngest.createFunction(
       const brand = brands[n % 3];
       const idx = Math.floor(n / 3);
       const r = await step.run(`compose-${brand}-${idx}`, async () => {
-        const { composeTrack, libraryBrief, LIBRARY_FOLDER, isQuotaError } = await import("@/lib/content-factory/music-gen");
+        const { composeTrack, libraryBrief, LIBRARY_FOLDER, isQuotaError, creditsRemaining } = await import("@/lib/content-factory/music-gen");
+        const left = await creditsRemaining();
+        if (left != null && left < CREDITS_PER_TRACK + RESERVE) {
+          return { ok: false as const, quota: true, error: `stopped: ${left} credits left` };
+        }
         try {
           const { audio } = await composeTrack(libraryBrief(brand, idx), SECONDS);
           const { supabase } = await import("@/lib/supabase.server");
@@ -112,6 +119,11 @@ export const musicLibraryFn = inngest.createFunction(
       return out;
     });
 
+    const leftAfter = await step.run("credits-after", async () => {
+      const { creditsRemaining } = await import("@/lib/content-factory/music-gen");
+      return creditsRemaining();
+    });
+
     await step.run("email", async () => {
       const name: Record<string, string> = { mythicals: "Legendary Mythicals", bwk: "Build With Key", ripple: "Ripple" };
       const { sendEmailOrThrow } = await import("@/lib/resend");
@@ -121,13 +133,13 @@ export const musicLibraryFn = inngest.createFunction(
         subject: `AI music library: ${made.mythicals + made.bwk + made.ripple} new tracks${errors.length ? ` (${errors.length} failed)` : ""}`,
         html: `<div style="font-family:-apple-system,Helvetica,Arial,sans-serif;max-width:640px;color:#1f2430">
 <p style="font-size:17px;font-weight:700;margin:0 0 8px">AI music library update</p>
-<p style="font-size:13px;color:#555;margin:0 0 10px">Credits available at start: ${plan.left ?? "unknown"} · planned ${plan.total} tracks (${CREDITS_PER_TRACK} credits each, ${RESERVE} kept for voiceovers) · ${samples} approved samples added${stopped ? ` · <b>stopped early: ${stopped}</b>` : ""}</p>
+<p style="font-size:13px;color:#555;margin:0 0 10px">ElevenLabs credits: ${plan.left ?? "unknown"} at start → <b>${leftAfter ?? "unknown"} left</b> · up to ${perBrand} per brand · ${samples} approved samples added${stopped ? ` · stopped: ${stopped}` : ""}</p>
 <ul style="font-size:14px;line-height:1.8">${brands.map((b) => `<li><b>${name[b]}</b>: ${made[b]} new · library now ${retired[b].ai} AI tracks · ${retired[b].moved} old TikTok tracks archived to music-removed/ ${retired[b].kept ? `· ${retired[b].kept}` : ""}</li>`).join("")}</ul>
 ${errors.length ? `<p style="font-size:13px;color:#b91c1c">Failures:<br>${errors.map((e) => e.replace(/</g, "&lt;")).join("<br>")}</p>` : ""}
 <p style="font-size:13px;color:#555">Every new post video now picks from these. Brands with fewer than ${MIN_NEW} AI tracks keep their old library until topped up (re-run when credits reset).</p>
 </div>`,
       });
     });
-    return { plan, made, samples, retired, errors };
+    return { plan, leftAfter, made, samples, retired, errors };
   }
 );
