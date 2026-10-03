@@ -350,6 +350,25 @@ The email people get after the Mythicals quiz now opens with a big picture of th
 - Still sent from hello@getacuity.io. Moving to a legendarymythicals.com sender needs a Resend domain plus 3 GoDaddy DNS records (optional).
 - No Stripe product is needed: checkout sends inline price_data named "Legendary Creature Portrait" with metadata brand=mythicals.
 
+## [2026-10-02] — Seven "planner" ad variations built off the winning ad
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** see "docs: Log the planner ad variations"
+
+### In plain English (for Keenan)
+"Fourth planner. Still stuck." brought in 4 of the last 9 paid trials, so we made seven variations of the same idea (four for men, three for women) to see whether the concept itself is the winner. They're waiting on the review page as "Planner variations Oct 2". Keenan picks up to 2 per lane, and they launch into the $15/day test ad sets. All seven were emailed to Keenan with my picks.
+
+### Technical changes (for Jimmy)
+- Data only, no code: two new AdLabExperiments (awaiting_approval, tags weekly-reddit-batch + men/women + planner-iterations, optimizationEvent PURCHASE): men `cmuro7j7t0001w2w1gpmnyrvb` (4 hook-overlay creatives), women `cmuro7mvl000jw2w133xjzk8u` (2 hook-overlay + 1 statement-card)
+- Images and compliance generated in prod via POST /api/admin/adlab/regen-images (gpt-image-2 and Claude keys are Vercel-sensitive and can't be pulled locally)
+
+### Manual steps needed
+- [ ] Approve and launch up to 2 per lane from the review page (Keenan)
+
+### Notes
+- The first render of "Bought the planner" baked in "Talk for a minute" (a recording-duration claim; my copy error). Re-rendered as "No setup. Just talk…". Check baked image text against the positioning rules before emailing.
+- Compliance warnings fixed in copy: primary texts trimmed to ≤125 chars, and time-of-day habit examples removed from said/caught.
+
 ## [2026-10-02] — Shift $20/day of ad budget from the women's lane to the men's lane
 **Requested by:** Keenan
 **Committed by:** Claude Code
