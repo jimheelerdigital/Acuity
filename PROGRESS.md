@@ -541,6 +541,26 @@ The email people get after the Mythicals quiz now opens with a big picture of th
 - Still sent from hello@getacuity.io. Moving to a legendarymythicals.com sender needs a Resend domain plus 3 GoDaddy DNS records (optional).
 - No Stripe product is needed: checkout sends inline price_data named "Legendary Creature Portrait" with metadata brand=mythicals.
 
+## [2026-10-03] — Google flagged the men's funnel as "deceptive"; removed the likely cause
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** see "fix: Remove the pay-in-browser button flagged by Google Safe Browsing"
+
+### In plain English (for Keenan)
+Google Search Console reported "social engineering content" on goripple.io, with /start-bwk and /start-test-bwk (the "Fourth planner" ad's landing pages) as examples. Chrome can show a red "Deceptive site ahead" warning on flagged pages. The site wasn't hacked: no outside scripts. The likely cause is our own "Pay with Apple Pay in Safari / Google Pay in Chrome" button. It forced people out of the Instagram/Facebook browser with special links and showed Apple's logo on a look-alike Apple Pay button. Both are classic scam patterns to Google. The button had 33 views, 2 taps and 0 purchases, so it's removed. Keenan then requests a review in Search Console.
+
+### Technical changes (for Jimmy)
+- `components/pay-in-browser.tsx`: `PayInBrowserButton` is now a no-op (returns null). The x-safari-https:// / intent:// redirects and the Apple-logo button are deleted. `PaywallTrustLine` is unchanged
+- The handoff plumbing (`lib/checkout-handoff.ts`, `/api/onboarding/handoff`, `create-checkout` `handoff:true`) is left in place and unused
+
+### Manual steps needed
+- [ ] Search Console → Security Issues → "Request a review" with the explanation below (Keenan)
+- [ ] Watch Meta ad delivery for the BWK ads: Meta can reject ads whose landing page is Safe Browsing-flagged (Keenan)
+
+### Notes
+- Review request text: "The flagged pages are our own signup funnel. A paywall button used x-safari-https:// and Android intent:// links to open Stripe checkout in the phone's main browser from Instagram's in-app browser, and showed an Apple logo. We've removed that button entirely. No third-party scripts or user-generated content are on these pages, and the site was not compromised. Payments are handled by Stripe Checkout on checkout.stripe.com."
+- Don't bring back in-app-browser escapes or look-alike Apple Pay / Google Pay buttons.
+
 ## [2026-10-03] — Fix: duplicate-Apple-account alert paired two different people
 **Requested by:** Keenan
 **Committed by:** Claude Code
