@@ -50,6 +50,10 @@ const BANNED_TAGS = new Set([
   "#trending",
 ]);
 
+// 2026-10-03, per Keenan: "write as if we're talking TO the other person".
+const YOU_RULE =
+  'TALK TO THE READER: every line speaks straight to them as "you" about their own life. Never describe the reader as "she/her" or "he/him" ("when a free day shows up, she can\'t hear what she wants" becomes "when a free day shows up, you can\'t hear what you want").';
+
 const BRAND = {
   ripple: {
     audience:
@@ -62,7 +66,8 @@ const BRAND = {
     question: LIFE_QUESTION,
     // 2026-10-02: every Ripple caption that day leaned on "mental load".
     extra:
-      'VARIETY: don\'t lean on the phrases "mental load" or "invisible labor" in the caption text; name the specific thing from this post instead (the appointment, the group chat, the free Saturday). They can stay in the hashtags.',
+      'VARIETY: don\'t lean on the phrases "mental load" or "invisible labor" in the caption text; name the specific thing from this post instead (the appointment, the group chat, the free Saturday). They can stay in the hashtags. ' +
+      YOU_RULE,
   },
   bwk: {
     // 2026-09-30 BWK revamp (Keenan: "it's about grinding so you can live
@@ -75,7 +80,7 @@ const BRAND = {
       "discipline, self improvement, growth, ambition, luxury lifestyle, success, grind, hard work, becoming your best self, mindset, wealth building",
     tags: "#discipline #selfimprovement #growth #ambition #luxurylifestyle #success #mindset #grind #motivation #buildwithkey",
     question: LIFE_QUESTION,
-    extra: "",
+    extra: YOU_RULE,
   },
   mythicals: {
     audience:

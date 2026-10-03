@@ -7,6 +7,32 @@
 
 ---
 
+## [2026-10-03] — Posts talk straight to the viewer; Ripple covers show her face and feeling
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** see "content: Talk to the viewer and put her face on Ripple covers"
+
+### In plain English (for Keenan)
+- **Talking to the viewer:** every Ripple and BWK post now speaks straight to the viewer as "you", about their own life. No more posts about someone else ("Your brother is slipping, how do you pull him back?" with every answer about *him*) or covers that switch to "she" ("Your free Saturday at 50. What does she do?"). Captions follow the same rule.
+- **Ripple covers:** they now show a real-looking woman in her mid-40s with her face visible, feeling the relief (eyes closed in the sun, laughing on a porch, sinking into a bath). Before, every Ripple person was shown from behind or in shadow.
+- **Cover questions:** they're now also picked for how badly she'd want to answer them in the comments.
+
+### Technical changes (for Jimmy)
+- `lib/content-factory/pick-lane.ts`:
+  - `TALK_TO_READER` rule added to the concept and options prompts.
+  - New `talksAboutSomeoneElse()` code check (he/him/his/she/her/hers): a matching concept or cover line is ineligible in `pickConcept` and `pickCoverLine`.
+  - New Jev `own_i` noul in `narrowOptions` (`OWN_MIN` 0.4; options about acting on another person go to the back).
+  - Ripple people rules (options prompt, scene alternatives, `buildPickImagePrompt`): face visible with a genuine expression, real mid-40s woman (not a model), and the cover shows her in the escape. BWK is unchanged (faceless).
+  - `pickCoverLine` adds a Jev `reply_k` score. Composite: 0.45 scroll + 0.25 reply + 0.15 clear + 0.15 natural.
+- `lib/content-factory/caption-writer.ts`: `YOU_RULE` appended to the Ripple and BWK `extra`.
+
+### Manual steps needed
+- None (pushed with this entry)
+
+### Notes
+- Of the 14 pick posts before this change, 3 broke the rule: the BWK brother post, the Ripple "what does she do" cover, and "Mom can't be left on her own". The last one is fine as an answer; the code check only applies to covers, and options go through Jev's softer `own` check, so answers like that still pass.
+- Faces animate with Kling; the negative prompt already bans morphing faces. Watch the first Ripple videos for face warping and roll back to faceless options (not covers) if it shows.
+
 ## [2026-10-03] — Watch time now leads every score the content engine learns from
 **Requested by:** Keenan
 **Committed by:** Claude Code

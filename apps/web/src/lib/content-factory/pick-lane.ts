@@ -194,6 +194,19 @@ const PICK_LEVELS = [
   "Hugely: the one people would fight about in the comments",
 ];
 
+/**
+ * TALK TO THE READER (2026-10-03, per Keenan: "we need to write as if we're
+ * talking TO the other person"). Misses that prompted it: "YOUR BROTHER IS
+ * SLIPPING. HOW DO YOU PULL HIM BACK?" (every option about him) and "YOUR
+ * FREE SATURDAY AT 50. WHAT DOES SHE DO?" (you → she mid-line).
+ */
+const TALK_TO_READER = `TALK TO THE READER. Every post is about the reader's OWN life, said straight to them as "you" / "your". The cover, the options, the end card and the caption question are all about what YOU would pick, want, do or feel. Never make a post about another person ("your brother is slipping", "your friend who...") and never switch to "he/him/she/her" for the reader ("your free Saturday... what does she do?"). Options are answers the reader would say about themselves ("A week alone in Positano", "My own place on the water"), never what to do to or for someone else. Other people can appear inside an answer only as part of the reader's own life ("A weekend away with my girls").`;
+
+/** Cover lines that talk ABOUT someone (he/him/she/her) instead of TO the reader. Checked in code. */
+export function talksAboutSomeoneElse(line: string): boolean {
+  return /\b(he|him|his|she|her|hers)\b/i.test(line);
+}
+
 const CLEAR_MIN = 0.3;
 /** On-brand gate: a concept Jev thinks is trivia can never win. */
 const CORE_MIN = 0.6; // tested 09-30: approved concepts 0.82-0.95, trivia 0.18-0.50
@@ -209,6 +222,8 @@ const LUX_MIN = 0.5;
  * natural answers 0.46-0.82.
  */
 const ANSWER_MIN = 0.4;
+/** Option is about the reader's own life, not what they do to someone else (2026-10-03). */
+const OWN_MIN = 0.4;
 
 // ─── Sonnet calls ───────────────────────────────────────────────────
 
@@ -273,6 +288,8 @@ THE GUIDELINE, for this audience: ${CORE[brand]}
 ${OFF_BRAND}
 Inside that guideline you have free reign: any subject, any angle, as long as it fits.
 
+${TALK_TO_READER}
+
 THE FIRST FRAME DECIDES EVERYTHING. These accounts lose people in under two seconds (Legendary Mythicals holds them 12). The first frame is the opening photo plus the cover line, seen for one second before she or he decides to swipe. It has to be the most beautiful, wanted thing in their feed${
     brand === "ripple"
       ? ": the place, light or moment she would give anything to be in right now"
@@ -301,7 +318,7 @@ OUTPUT (JSON): { "concepts": [{ "question": "...", "firstFrame": "...", "why": "
 function optionsSystem(brand: PickBrand): string {
   const people =
     brand === "ripple"
-      ? `The photo must SHOW the answer, not an empty room standing in for it. When the answer is a role, a person or an action ("the mom who tracks every school form", "the daughter running Mom's appointments"), show ONE woman in her 40s DOING it, mid-action (signing a permission slip at the kitchen counter, walking her mother into a clinic), seen from behind, over the shoulder, in profile in shadow, or as hands, face not the focus. When the answer is a place or object, show it clearly. (2026-09-30, Keenan: an empty couch for "the partner who holds it all together" and shoes for "the mom of a teenager" "has literally nothing to do with it".)`
+      ? `The photo must SHOW the answer, not an empty room standing in for it. When the answer is a role, a person or an action ("the mom who tracks every school form", "the daughter running Mom's appointments"), show ONE woman in her mid-40s DOING it, mid-action, with her FACE VISIBLE and a real, readable feeling on it (eyes closed in the sun, a laugh, the exhale) (2026-10-03, per Keenan: Ripple's art and characters need more engagement). When the answer is a place or object, show it clearly, and put her in it when she makes it more wanted. (2026-09-30, Keenan: an empty couch for "the partner who holds it all together" and shoes for "the mom of a teenager" "has literally nothing to do with it".)`
       : `The photo must SHOW the answer. When it is a car, watch, city or place, show that exact thing as the hero. When it is a person or an action (a mentor, a friend, a habit), show ONE man (or two for friends) DOING it, seen from behind, over the shoulder or in profile in shadow, face not the focus.`;
   return `${copyObjectives(brand)}
 
@@ -331,7 +348,7 @@ YOUR JOB: write the options for one pick-one post (the reader picks one of five)
 - Stay on the post's subject, which is about: ${CORE[brand]} ${OFF_BRAND}
 - "coverScene": the FIRST FRAME photograph (start from the pitched opening photo when given). It is the single most important image in the post: ${
     brand === "ripple"
-      ? "the place, light or moment of escape and relief she would give anything to step into right now (a sunlit terrace over the sea, a deep bath with the door locked, a quiet cabin porch at dawn), beautiful and inviting"
+      ? "HER in the moment of escape and relief she would give anything to step into right now: one woman in her mid-40s, face visible, feeling the exhale (head tipped back with eyes closed on a sunlit terrace over the sea, laughing with her feet up on a cabin porch at dawn, sinking into a deep bath with the door locked). The viewer should see herself in that face. Beautiful and inviting"
       : "the luxury life he is working toward at its most desirable (the car in perfect light, the penthouse view at night, the yacht deck at golden hour), hyperreal and premium"
   }. It sets up the question without showing the five options. Keep the top quarter of the frame calm (the cover line sits there).
 - "coverMotion": one sentence of movement for the cover's five-second clip that is VISIBLE FROM THE VERY FIRST FRAME, not a slow build: ${
@@ -342,6 +359,8 @@ YOUR JOB: write the options for one pick-one post (the reader picks one of five)
 - "endCard": 2-6 words, ALL-CAPS ready: a short, direct question asking for THEIR pick that echoes this post's question ("WHERE ARE YOU MOVING?", "WHICH CAR IS YOURS?", "WHERE ARE YOU HIDING?"). It must make sense on its own. Never a "tag the one..." instruction.
 - "captionQuestion": one short caption question that gets a number AND a reason in the comments.
 No emojis.
+
+${TALK_TO_READER}
 
 ${HUMAN_VOICE_RULES}
 
@@ -434,7 +453,7 @@ export async function pickConcept(
     const nudge =
       (label === "proven winner" ? 0.05 : label === "weak" ? -0.05 : 0) + (fam && fam === loop.focusFamily ? 0.03 : 0);
     const score = w.scroll * scroll + w.watch * watch + w.comment * comment + w.clear * clear + w.core * core + nudge;
-    const eligible = clear >= CLEAR_MIN && core >= CORE_MIN;
+    const eligible = clear >= CLEAR_MIN && core >= CORE_MIN && !talksAboutSomeoneElse(c.question);
     if (eligible && score > bestScore) {
       bestScore = score;
       best = i;
@@ -493,6 +512,10 @@ export async function narrowOptions(
         instructions: `Would a young man see \`options[${i}]\` as a luxury, high-end, aspirational choice? If \`question\` is not about a possession or place (for example a mentor or a habit), answer yes.`,
       };
     }
+    questions[`own_${i}`] = {
+      type: "noul",
+      instructions: `Is \`options[${i}]\` something the reader would say about THEIR OWN life or choice, rather than an action done to or for another person (e.g. "Drag him to the gym", "Sit her down")?`,
+    };
     questions[`twin_${i}`] = {
       type: "noul",
       instructions: `Ignoring what every option must share to answer \`question\`, is \`options[${i}]\` nearly a copy of one OTHER entry in \`options\`: the same idea, place or look under a different name?`,
@@ -512,11 +535,12 @@ export async function narrowOptions(
     specific: noulOf(r, `specific_${i}`) ?? 1,
     answer: noulOf(r, `answer_${i}`) ?? 1,
     lux: brand === "bwk" ? noulOf(r, `lux_${i}`) ?? 1 : 1,
+    own: noulOf(r, `own_${i}`) ?? 1,
   }));
   // Generic or (BWK) non-luxury options go to the back of the line: they
   // only fill slots when too few good ones exist.
-  const good = (x: { specific: number; lux: number; answer: number }) =>
-    x.specific >= SPECIFIC_MIN && x.lux >= LUX_MIN && x.answer >= ANSWER_MIN;
+  const good = (x: { specific: number; lux: number; answer: number; own: number }) =>
+    x.specific >= SPECIFIC_MIN && x.lux >= LUX_MIN && x.answer >= ANSWER_MIN && x.own >= OWN_MIN;
   const byWant = [...scored].sort((a, b) => Number(good(b)) - Number(good(a)) || b.want - a.want);
   const chosen: typeof scored = [];
   let twinKept = false;
@@ -535,7 +559,7 @@ export async function narrowOptions(
   }
   const keepSet = new Set(chosen.map((c) => c.i));
   const table = scored
-    .map((s) => `${keepSet.has(s.i) ? "*" : " "} want=${s.want.toFixed(2)} twin=${s.twin.toFixed(2)} specific=${s.specific.toFixed(2)} lux=${s.lux.toFixed(2)} answer=${s.answer.toFixed(2)}  ${s.o.name}`)
+    .map((s) => `${keepSet.has(s.i) ? "*" : " "} want=${s.want.toFixed(2)} twin=${s.twin.toFixed(2)} specific=${s.specific.toFixed(2)} lux=${s.lux.toFixed(2)} answer=${s.answer.toFixed(2)} own=${s.own.toFixed(2)}  ${s.o.name}`)
     .join("\n");
   return { options: scored.filter((s) => keepSet.has(s.i)).map((s) => s.o), table };
 }
@@ -543,7 +567,7 @@ export async function narrowOptions(
 /**
  * Best-of-5 cover line (2026-10-03, per Keenan: "first frame ... with
  * excellent verbiage"). Jev reads each line on the first-frame photo:
- * scroll-stop, clear to a stranger, natural spoken words. Code composite;
+ * scroll-stop, want-to-reply, clear to a stranger, natural spoken words. Code composite;
  * unclear lines are ineligible. Returns the index into `lines` (0 = the
  * writer's own title, also the fail-open answer).
  */
@@ -565,6 +589,11 @@ export async function pickCoverLine(
       type: "noul",
       instructions: `Reading ONLY \`lines[${k}]\`, can a stranger tell instantly what is being asked?`,
     };
+    qs[`reply_${k}`] = {
+      type: "score",
+      instructions: `How badly would the reader described in \`audience\` want to answer \`lines[${k}]\` in the comments, about their own life?`,
+      criteria: COMMENT_LEVELS,
+    };
     qs[`natural_${k}`] = {
       type: "noul",
       instructions: `Does \`lines[${k}]\` sound like something a real person would say out loud, in plain words (not slogan, ad copy or a riddle)?`,
@@ -578,13 +607,15 @@ export async function pickCoverLine(
     const scroll = scoreOf(r, `scroll_${k}`) ?? 0;
     const clear = noulOf(r, `clear_${k}`) ?? 0;
     const natural = noulOf(r, `natural_${k}`) ?? 0;
-    const score = 0.6 * scroll + 0.25 * clear + 0.15 * natural;
-    const eligible = clear >= CLEAR_MIN;
+    const reply = scoreOf(r, `reply_${k}`) ?? 0;
+    // 2026-10-03: + reply (want to answer it), per Keenan "more engagement on ... questions".
+    const score = 0.45 * scroll + 0.25 * reply + 0.15 * clear + 0.15 * natural;
+    const eligible = clear >= CLEAR_MIN && !talksAboutSomeoneElse(line);
     if (eligible && score > bestScore) {
       bestScore = score;
       best = k;
     }
-    return `${score.toFixed(3)} scroll=${scroll.toFixed(2)} clear=${clear.toFixed(2)} natural=${natural.toFixed(2)}${eligible ? "" : " INELIGIBLE"}  ${line}`;
+    return `${score.toFixed(3)} scroll=${scroll.toFixed(2)} reply=${reply.toFixed(2)} clear=${clear.toFixed(2)} natural=${natural.toFixed(2)}${eligible ? "" : " INELIGIBLE"}  ${line}`;
   });
   return { index: best, table: rows.map((row, k) => `${k === best ? "*" : " "} ${row}`).join("\n") };
 }
@@ -612,7 +643,7 @@ export async function pickScenes(
       `pick-scenes-${brand}`,
       `${copyObjectives(brand)}
 
-YOUR JOB: write alternative PHOTO descriptions for a pick-one post. For the cover and for each option, write ${SCENE_ALTS} new scenes, each a different way to photograph it: a REAL photograph that shows that exact answer clearly at a glance (the place, car, city or moment the option names), with its own light and mood, and a "motion" line for its five-second clip (${brand === "bwk" ? "calm, controlled and premium: one slow deliberate motion and a slow steady camera drift; nothing fast or chaotic" : "the subject clearly moves and the camera makes a confident move; never a static frame"}). Show the subject WHOLE inside a vertical frame with space around it (a car at a three-quarter angle, nose to tail in frame; never cropped at the edges). Keep every scene clean: no stray props (no laptops, notebooks, books, mugs, cups, bags, phones or papers) unless the option is that object. Never swap the place for a generic cozy interior.${brand === "bwk" ? " BWK photos look like the luxury life: hyperreal, dark and premium." : " Ripple photos are warm and intimate, but the place itself always comes first."} The photo must SHOW the answer: for a role, person or action, show ONE ${brand === "ripple" ? "woman in her 40s" : "man"} doing it mid-action (from behind, over the shoulder or in profile in shadow, face not the focus), never an empty room standing in for it. No text, logos or badges.
+YOUR JOB: write alternative PHOTO descriptions for a pick-one post. For the cover and for each option, write ${SCENE_ALTS} new scenes, each a different way to photograph it: a REAL photograph that shows that exact answer clearly at a glance (the place, car, city or moment the option names), with its own light and mood, and a "motion" line for its five-second clip (${brand === "bwk" ? "calm, controlled and premium: one slow deliberate motion and a slow steady camera drift; nothing fast or chaotic" : "the subject clearly moves and the camera makes a confident move; never a static frame"}). Show the subject WHOLE inside a vertical frame with space around it (a car at a three-quarter angle, nose to tail in frame; never cropped at the edges). Keep every scene clean: no stray props (no laptops, notebooks, books, mugs, cups, bags, phones or papers) unless the option is that object. Never swap the place for a generic cozy interior.${brand === "bwk" ? " BWK photos look like the luxury life: hyperreal, dark and premium." : " Ripple photos are warm and intimate, but the place itself always comes first."} The photo must SHOW the answer: for a role, person or action, show ONE ${brand === "ripple" ? "woman in her mid-40s doing it mid-action, face visible with a real, readable feeling (relief, a laugh, eyes closed in the sun)" : "man doing it mid-action (from behind, over the shoulder or in profile in shadow, face not the focus)"}, never an empty room standing in for it.${brand === "ripple" ? " The COVER shows her in the escape, face visible, feeling it." : ""} No text, logos or badges.
 
 OUTPUT (JSON): { "cover": [{ "scene": "...", "motion": "..." }], "options": [[{ "scene": "...", "motion": "..." }]] } with "options" in the same order as given, ${SCENE_ALTS} each.`,
       JSON.stringify({ question: title, cover: coverScene, options: options.map((o) => ({ answer: o.name, why: o.lore, current_scene: o.scene })) }),
@@ -891,7 +922,7 @@ export function buildPickImagePrompt(brand: PickBrand, scene: string, kind: "cov
       : "Dark, dominant, moody photography with a muted cinematic grade — deep blacks, charcoal and slate, cold glass and storm light — where the scene's own accent color (a sunset, burnished gold, a car's paint, an ember) is allowed to glow richly. Austere, powerful, commanding.";
   const people =
     brand === "ripple"
-      ? "People: only the ones the scene names; a woman shown doing the action, from behind, over the shoulder, in profile in shadow or as hands, face not the focus. No children's faces. No animals unless the scene names one."
+      ? "People: only the ones the scene names. The woman is a REAL woman in her mid-40s, not a model: natural skin texture, fine lines, real hair and body, warm and attractive in an ordinary way. Her face is visible and expressive, with a genuine feeling (relief, a laugh, eyes closed in the sun), lit naturally and in sharp focus, anatomically perfect hands. No children's faces. No animals unless the scene names one."
       : "People: only the ones the scene names; at most ONE man (or two for a scene about friends) doing the action, from behind, over the shoulder or in profile in shadow, face not the focus. No animals unless the scene names one.";
   return [
     `A REAL photograph a person actually took with a camera: ${scene}`,
