@@ -31,8 +31,10 @@ export const GROUP_DAILY_BUDGET_CENTS: Record<BatchGroupKey, number> = {
   // 2026-10-02, per Keenan: "raise [men] by 20 and lower womens by 20".
   // Men's lane ~$35/paid trial vs women ~$75 since 09-30 ("Fourth planner.
   // Still stuck." = 4 of the last 9 paid trials). Total stays $100 + $30 test.
-  women: 4000,
-  men: 6000,
+  // 2026-10-02 (later), per Keenan: "cut back $10 per bwk main and $10 for
+  // ripple main" — funds the planner-variation ad sets ($20 men, $15 women).
+  women: 3000,
+  men: 5000,
 };
 
 /** 2026-09-30, per Keenan: "start to optimize for purchase". Was
@@ -435,6 +437,50 @@ export async function ensureTestAdSet(groupKey: BatchGroupKey): Promise<{ campai
     name: `${GROUP_NAMES[groupKey].replace("(signups)", "(purchase)")} ${TEST_SUFFIX}`,
     campaign_id: project.evergreenCampaignId,
     daily_budget: String(TEST_DAILY_BUDGET_CENTS),
+    optimization_goal: "OFFSITE_CONVERSIONS",
+    billing_event: "IMPRESSIONS",
+    bid_strategy: "LOWEST_COST_WITHOUT_CAP",
+    destination_type: "WEBSITE",
+    promoted_object: { pixel_id: project.metaPixelId, custom_event_type: GROUP_OPTIMIZATION_EVENT },
+    targeting: main.targeting,
+    ...(main.attribution_spec ? { attribution_spec: main.attribution_spec } : {}),
+    status: "ACTIVE",
+  });
+  return { campaignId: project.evergreenCampaignId, adsetId: created.id as string, created: true };
+}
+
+/**
+ * A dedicated ad set inside the lane's evergreen campaign, for a batch that
+ * should run on its own budget instead of the shared test ad set (2026-10-02,
+ * per Keenan: planner variations at $20/day men, $15/day women). Same
+ * targeting + PURCHASE optimization as MAIN. Found again by exact name, so
+ * relaunching the same batch reuses it. Not touched by the trim/graduate
+ * crons (they only manage MAIN and the "| test ad set").
+ */
+export async function ensureDedicatedAdSet(
+  groupKey: BatchGroupKey,
+  label: string,
+  budgetCents: number
+): Promise<{ campaignId: string; adsetId: string; created: boolean }> {
+  const project = await laneProject(groupKey);
+  if (!project.evergreenCampaignId || !project.evergreenAdsetId || !project.metaPixelId) {
+    throw new Error(`${groupKey}: no evergreen campaign/ad set yet`);
+  }
+  const name = `${GROUP_NAMES[groupKey].replace("(signups)", "(purchase)")} | ${label}`;
+  const list = await meta.metaGraph(`${project.evergreenCampaignId}/adsets`, "GET", { fields: "id,name,effective_status", limit: "50" });
+  const found = ((list.data as { id: string; name: string; effective_status: string }[]) ?? []).find(
+    (a) => a.name === name && !["DELETED", "ARCHIVED"].includes(a.effective_status)
+  );
+  if (found) {
+    await meta.updateAdSetBudget(found.id, budgetCents);
+    if (found.effective_status !== "ACTIVE") await meta.metaGraph(found.id, "POST", { status: "ACTIVE" });
+    return { campaignId: project.evergreenCampaignId, adsetId: found.id, created: false };
+  }
+  const main = await meta.metaGraph(project.evergreenAdsetId, "GET", { fields: "targeting,attribution_spec" });
+  const created = await meta.metaGraph(`${meta.adAccountPath()}/adsets`, "POST", {
+    name,
+    campaign_id: project.evergreenCampaignId,
+    daily_budget: String(budgetCents),
     optimization_goal: "OFFSITE_CONVERSIONS",
     billing_event: "IMPRESSIONS",
     bid_strategy: "LOWEST_COST_WITHOUT_CAP",

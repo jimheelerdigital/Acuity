@@ -236,10 +236,22 @@ export async function POST(req: NextRequest) {
       // New weekly picks go to the lane's $15/day TEST ad set first
       // (2026-09-30, per Keenan). After their test week the daily cron moves
       // winners into the main ad set (lib/adlab/evergreen.ts graduateTestAds).
-      const { ensureTestAdSet } = await import("@/lib/adlab/evergreen");
-      const test = await ensureTestAdSet(evergreenGroup);
-      adsetId = test.adsetId;
-      console.log(`[adlab-launch] Evergreen ${evergreenGroup}: campaign ${campaignId}, TEST ad set ${adsetId}${test.created ? " (created)" : ""} (main ${eg.adsetId})`);
+      // A batch tagged "own-adset" (2026-10-02, per Keenan) gets its own ad
+      // set at the experiment's adSetDailyBudgetCents instead of the shared
+      // test ad set.
+      const ownBudget = (experiment as Record<string, unknown>).adSetDailyBudgetCents as number | null;
+      if (experiment.campaignTags?.includes("own-adset") && ownBudget) {
+        const { ensureDedicatedAdSet } = await import("@/lib/adlab/evergreen");
+        const label = (experiment.campaignName ?? "dedicated").split("|").pop()!.trim();
+        const own = await ensureDedicatedAdSet(evergreenGroup, label, ownBudget);
+        adsetId = own.adsetId;
+        console.log(`[adlab-launch] Evergreen ${evergreenGroup}: campaign ${campaignId}, OWN ad set ${adsetId} "${label}" $${ownBudget / 100}/day${own.created ? " (created)" : ""}`);
+      } else {
+        const { ensureTestAdSet } = await import("@/lib/adlab/evergreen");
+        const test = await ensureTestAdSet(evergreenGroup);
+        adsetId = test.adsetId;
+        console.log(`[adlab-launch] Evergreen ${evergreenGroup}: campaign ${campaignId}, TEST ad set ${adsetId}${test.created ? " (created)" : ""} (main ${eg.adsetId})`);
+      }
     } catch (err) {
       logMetaError("Evergreen campaign/ad set", err);
       return NextResponse.json(
@@ -248,7 +260,8 @@ export async function POST(req: NextRequest) {
       );
     }
     const { TEST_DAILY_BUDGET_CENTS } = await import("@/lib/adlab/evergreen");
-    adsetBudget = TEST_DAILY_BUDGET_CENTS;
+    const ownAdsetBudget = (experiment as Record<string, unknown>).adSetDailyBudgetCents as number | null;
+    adsetBudget = experiment.campaignTags?.includes("own-adset") && ownAdsetBudget ? ownAdsetBudget : TEST_DAILY_BUDGET_CENTS;
     campaignName = experiment.campaignName ?? `${project.name} | evergreen`;
     await prisma.adLabExperiment.update({
       where: { id: experimentId },

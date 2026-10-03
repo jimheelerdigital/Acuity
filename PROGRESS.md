@@ -350,6 +350,25 @@ The email people get after the Mythicals quiz now opens with a big picture of th
 - Still sent from hello@getacuity.io. Moving to a legendarymythicals.com sender needs a Resend domain plus 3 GoDaddy DNS records (optional).
 - No Stripe product is needed: checkout sends inline price_data named "Legendary Creature Portrait" with metadata brand=mythicals.
 
+## [2026-10-02] — Planner ads launched in their own ad sets; main budgets trimmed $10 each
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** see "feat: Let an ad batch run in its own ad set; trim main budgets"
+
+### In plain English (for Keenan)
+Three of the new planner ads are going live in their own ad sets, separate from the regular test ad sets: "Five systems. Zero streaks." and "Bought the planner. Skipped the planning." for BWK at $20/day, and "Fourth planner this year. Still behind." for Ripple at $15/day. To pay for them, the main ad sets drop $10 each: BWK to $50/day, Ripple to $30/day. Daily total: $80 main + $30 test + $35 planner = $145.
+
+### Technical changes (for Jimmy)
+- `lib/adlab/evergreen.ts`: GROUP_DAILY_BUDGET_CENTS women 4000 → 3000, men 6000 → 5000. New `ensureDedicatedAdSet(groupKey, label, budgetCents)`: an ad set in the lane's evergreen campaign, copying MAIN's targeting + PURCHASE optimization, found by exact name
+- `app/api/admin/adlab/ads/launch/route.ts`: experiments tagged `own-adset` with `adSetDailyBudgetCents` launch into a dedicated ad set (named after the last segment of campaignName) instead of the shared test ad set
+- Data: planner experiments tagged `own-adset`; men cmuro7j7t0001w2w1gpmnyrvb at 2000 cents, women cmuro7mvl000jw2w133xjzk8u at 1500; approved creatives: men "Five systems…" + "Bought the planner…", women "Fourth planner this year…"
+
+### Manual steps needed
+- None
+
+### Notes
+- Dedicated ad sets aren't managed by the daily trim/graduate cron (that only handles MAIN and the "| test ad set"). The kill rules still apply to their ads. A winner here needs a manual move to MAIN.
+
 ## [2026-10-02] — Seven "planner" ad variations built off the winning ad
 **Requested by:** Keenan
 **Committed by:** Claude Code
