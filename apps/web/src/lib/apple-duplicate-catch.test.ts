@@ -39,6 +39,14 @@ describe("apple duplicate catch", () => {
     expect(after).toHaveLength(0);
   });
 
+  it("never pairs two different names (Melissa vs Sheryl Farrer, 2026-10-03)", () => {
+    const m = matchDuplicates(
+      [{ id: "d3", email: "r7@privaterelay.appleid.com", name: "Sheryl Farrer", createdAt: at("2026-10-03T09:55:05Z") }],
+      [{ id: "p6", email: "dmb121815@gmail.com", name: "Melissa", paidAt: at("2026-10-03T08:54:00Z") }]
+    );
+    expect(m).toHaveLength(0);
+  });
+
   it("signed link round-trips and rejects tampering", () => {
     const t = signLinkApple("dupe", "paid");
     expect(verifyLinkApple(t)).toEqual({ from: "dupe", to: "paid" });

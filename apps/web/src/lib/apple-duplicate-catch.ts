@@ -14,7 +14,8 @@
  *   strong   — a name from Apple matches the paid account's name or email
  *              (e.g. "Aubrey Tondreault" ↔ atondreault@me.com), paid ≤48h before
  *   possible — no name match, but exactly one such paid account paid in the
- *              2 hours before the Apple account appeared
+ *              2 hours before the Apple account appeared, AND the names don't
+ *              conflict (one side has no name). Two different names = never.
  * For each match, once:
  *   1. URGENT email to the PAID address (apple_duplicate_rescue) with a
  *      one-tap link that opens the app signed into the paid account. Safe
@@ -72,6 +73,19 @@ export function nameMatches(dupeName: string | null, paid: { name: string | null
   return null;
 }
 
+/**
+ * Do the two accounts carry DIFFERENT names? (2026-10-02, per Keenan: a
+ * "possible" alert paired "Melissa" with "Sheryl Farrer".) True only when
+ * both sides have a usable name and no token overlaps, so a missing name
+ * never counts as a conflict. Pure, for tests.
+ */
+export function namesConflict(dupeName: string | null, paid: { name: string | null; email: string }): boolean {
+  const a = tokens(dupeName);
+  const b = tokens(paid.name);
+  if (!a.length || !b.length) return false;
+  return !nameMatches(dupeName, paid);
+}
+
 /** Pick at most one paid account per dupe. Pure, for tests. */
 export function matchDuplicates(dupes: DupeAccount[], paid: PaidAccount[]): DupeMatch[] {
   const out: DupeMatch[] = [];
@@ -88,7 +102,11 @@ export function matchDuplicates(dupes: DupeAccount[], paid: PaidAccount[]): Dupe
       out.push({ dupe: d, paid: strong[0].p, confidence: "strong", why: strong[0].why });
       continue;
     }
-    const near = before.filter((p) => d.createdAt.getTime() - p.paidAt.getTime() <= POSSIBLE_GAP_MS);
+    // A timing-only guess is allowed only when nothing contradicts it: if
+    // both accounts have names and they differ, they're different people.
+    const near = before.filter(
+      (p) => d.createdAt.getTime() - p.paidAt.getTime() <= POSSIBLE_GAP_MS && !namesConflict(d.name, p)
+    );
     if (near.length === 1) {
       used.add(near[0].id);
       const mins = Math.round((d.createdAt.getTime() - near[0].paidAt.getTime()) / 60_000);

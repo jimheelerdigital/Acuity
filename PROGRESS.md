@@ -413,6 +413,25 @@ The email people get after the Mythicals quiz now opens with a big picture of th
 - Still sent from hello@getacuity.io. Moving to a legendarymythicals.com sender needs a Resend domain plus 3 GoDaddy DNS records (optional).
 - No Stripe product is needed: checkout sends inline price_data named "Legendary Creature Portrait" with metadata brand=mythicals.
 
+## [2026-10-03] — Fix: duplicate-Apple-account alert paired two different people
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** see "fix: Never pair accounts whose names differ in the Apple duplicate catch"
+
+### In plain English (for Keenan)
+The duplicate-Apple-account alert flagged Melissa (paid on the web) and Sheryl Farrer (new Apple sign-in) as "possibly the same person" just because Sheryl signed up an hour after Melissa paid. Nothing was linked; that only happens when Keenan taps the button. But the guess was wrong, and Melissa got a "your membership is on this email" note she didn't need. The check now refuses any match where both accounts have names and they differ.
+
+### Technical changes (for Jimmy)
+- `lib/apple-duplicate-catch.ts`: new `namesConflict()`. A timing-only "possible" match now excludes paid accounts whose name conflicts with the Apple name (both present, no shared token)
+- `lib/apple-duplicate-catch.test.ts`: Melissa/Sheryl regression test (5/5)
+
+### Manual steps needed
+- None
+
+### Notes
+- Verified in prod: no `apple_dupe_linked` event has ever fired, Melissa's account has no Apple ID, and Sheryl's Apple account is untouched. Sheryl looks like a genuine new in-app signup.
+- Melissa got the rescue email, a one-tap link into her OWN paid account. Harmless, and useful, since she hasn't signed into the app yet.
+
 ## [2026-10-02] — Fix: Meta was counting every purchase twice
 **Requested by:** Keenan
 **Committed by:** Claude Code
