@@ -21,10 +21,11 @@ export const redditTrendsDailyFn = inngest.createFunction(
     id: "reddit-trends-daily",
     name: "Content Factory — Weekly Reddit Audience Pulse",
     retries: 1,
-    triggers: [
-      { cron: "59 4 * * 0" },
-      { event: "content-factory/reddit.digest" },
-    ],
+    // Cron OFF since 2026-10-03 (per Keenan: "get rid of it and turn the
+    // weekly scrape off"). Reddit started refusing the anonymous RSS feeds
+    // (no digest after 09-21) and the ad batch now uses standing themes
+    // (lib/adlab/audience-themes.ts). The manual event still works.
+    triggers: [{ event: "content-factory/reddit.digest" }],
   },
   async ({ step, logger }) => {
     const ripple = await step.run("digest-ripple", async () => {

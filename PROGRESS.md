@@ -7,6 +7,30 @@
 
 ---
 
+## [2026-10-03] — Weekly Reddit scrape turned off; ads use a standing list of audience themes
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** see "chore: Turn off the weekly Reddit scrape and run ads on standing themes"
+
+### In plain English (for Keenan)
+- **Scrape off:** the weekly Reddit scrape is off. Reddit started blocking it after 09-21, which caused the "Reddit digest is stale" warning in the daily health email. That warning is gone too.
+- **Ads:** the Sunday ad batch, the only thing that still needed Reddit, now works from a saved list of the audience's own themes and phrases (taken from the last four Reddit pulls, with medical and relationship-ending topics removed). It rotates which themes lead each week. Without this, next Sunday's batch (10-11) would have failed.
+- **Side effect:** the weekly "talking-head video scripts" email also stops, because it ran off the same job.
+
+### Technical changes (for Jimmy)
+- New `lib/adlab/audience-themes.ts`: `AUDIENCE_THEMES` (Ripple 13, BWK 22, snapshot of digests through 2026-09-21, filtered) and `themesForWeek()` (stable weekly rotation of 12).
+- `lib/adlab/weekly-batch.ts`: no `RedditTrendDigest` query or 14-day throw. Themes come from `themesForWeek()`, the prompt section is renamed AUDIENCE THEMES, `digestDate` is the snapshot date, `researchNotes` say "Audience theme", and the `DigestTheme` type is removed.
+- `inngest/functions/reddit-trends-daily.ts`: cron removed (manual event `content-factory/reddit.digest` kept).
+- `inngest/functions/social-health-check.ts`: Reddit digest staleness check removed.
+- `RedditTrendDigest` table and admin trend pages untouched (they show old data).
+
+### Manual steps needed
+- [x] Inngest resync after deploy (cron removal): `curl -X PUT https://goripple.io/api/inngest` (Claude, run after this push)
+
+### Notes
+- Tested 10-03: Reddit returns 429 to the RSS feeds even on a first request with a browser user agent, so it's blocking the anonymous feeds outright.
+- For fresh language, run an occasional manual Reddit research pass (reddit-ad-angles skill) and update `AUDIENCE_THEMES` by hand.
+
 ## [2026-10-03] — Legendary Mythicals captions stop pushing the quiz
 **Requested by:** Keenan
 **Committed by:** Claude Code

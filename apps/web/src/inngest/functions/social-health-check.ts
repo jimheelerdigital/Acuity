@@ -12,7 +12,7 @@ import { inngest } from "@/inngest/client";
  *
  * Checks: publish failures/skips (24h) · nothing published in 24h ·
  * IG token/ID actually works (one cheap Graph call) · IG metrics freshness
- * · TikTok scrape freshness · Reddit digest age · competitor-account
+ * · TikTok scrape freshness · competitor-account
  * scrape errors · AdLab competitor brief age.
  *
  * Manual trigger: "content-factory/health.check".
@@ -137,17 +137,8 @@ export const socialHealthCheckFn = inngest.createFunction(
         }
       }
 
-      // 5. Research inputs
-      for (const brand of ["ripple", "bwk"]) {
-        const d = await prisma.redditTrendDigest.findFirst({
-          where: { brand },
-          orderBy: { date: "desc" },
-          select: { date: true },
-        });
-        if (!d || d.date < hoursAgo(8 * 24)) {
-          out.push(`Reddit audience digest (${brand}) is stale — last ${age(d?.date)}. Pulse lanes and the Sunday ad batch depend on it.`);
-        }
-      }
+      // 5. Research inputs (the Reddit digest check was removed 2026-10-03:
+      // the weekly Reddit scrape is off and nothing depends on it).
       const compErrors = await prisma.competitorAccount.findMany({
         where: { status: "ACTIVE", scrapeError: { not: null } },
         select: { handle: true, platform: true, scrapeError: true },

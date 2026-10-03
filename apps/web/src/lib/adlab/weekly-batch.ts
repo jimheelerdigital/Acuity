@@ -1,9 +1,9 @@
 /**
  * Weekly Reddit→AdLab ad batch (2026-09-23, per Keenan).
  *
- * Every Sunday (after the Saturday-night Reddit pulse) this generates
- * 10 ad creatives per audience group — each rooted in a different theme
- * from that week's RedditTrendDigest and explicitly bridging the pain to
+ * Every Sunday this generates 10 ad creatives per audience group — each
+ * rooted in a different audience theme (since 2026-10-03 a standing list in
+ * audience-themes.ts; the weekly Reddit scrape is off) and bridging the pain to
  * what Ripple does (AI life optimizer: habit tracker, voice journal and insight tool; see lib/positioning.ts) — formerly (AI habit tracker & voice journal with life
  * optimization). Two groups, both selling Ripple from the same Meta ad
  * account:
@@ -985,13 +985,6 @@ export function parseVideoAds(raw: string, templates: VideoTemplate[], perTempla
   return out;
 }
 
-interface DigestTheme {
-  theme: string;
-  why: string;
-  angle: string;
-  phrases: string[];
-}
-
 /**
  * Create this week's experiment + 10 angle/creative pairs for a group.
  * Copy only — images are generated separately (see generateBatchImage) so
@@ -1006,19 +999,10 @@ export async function createBatchForGroup(
   const { id: projectId } = await ensureGroupProject(groupKey);
   const project = await prisma.adLabProject.findUniqueOrThrow({ where: { id: projectId } });
 
-  // Freshest digest for this group's brand, max 14 days old
-  const digest = await prisma.redditTrendDigest.findFirst({
-    where: {
-      brand: g.digestBrand,
-      date: { gte: new Date(Date.now() - 14 * 24 * 60 * 60 * 1000) },
-    },
-    orderBy: { date: "desc" },
-  });
-  if (!digest) {
-    throw new Error(`No RedditTrendDigest (brand=${g.digestBrand}) in the last 14 days`);
-  }
-
-  const themes = (digest.themes as unknown as DigestTheme[]).slice(0, 12);
+  // Standing audience themes (2026-10-03, per Keenan: the weekly Reddit
+  // scrape is gone). Rotates which 12 lead each week; see audience-themes.ts.
+  const { themesForWeek, AUDIENCE_THEMES_AS_OF } = await import("@/lib/adlab/audience-themes");
+  const themes = themesForWeek(g.digestBrand === "bwk" ? "bwk" : "ripple", 12);
 
   // Learning loop: our own per-creative trial-start results, and what
   // long-running competitor ads are doing. Both soft — a missing brief just
@@ -1053,7 +1037,8 @@ export async function createBatchForGroup(
   const organicSection = organicSeeds.length && researchVerdict !== "worse"
     ? `${researchVerdict === "better" ? "Ads built on this research have been converting better than our own ideas, so build AT LEAST 3 of the new-concept ads on these.\n" : ""}WHAT'S WORKING IN ORGANIC SOCIAL FOR THIS AUDIENCE THIS WEEK (posts that far outran their usual reach; mechanics only, never wording, never name or allude to a creator or platform). A new-concept slot MAY build its hook on one of these when it fits the slot's fixed template; if it does, set "inspiration" to that label (e.g. "R2"), otherwise leave "inspiration" out:\n${renderResearchSeeds(organicSeeds)}`
     : "";
-  const digestDate = digest.date.toISOString().slice(0, 10);
+  // Kept as "digestDate" for the summary email / return shape: the themes' snapshot date.
+  const digestDate = AUDIENCE_THEMES_AS_OF;
   const weekLabel = new Date().toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
 
 
@@ -1106,8 +1091,8 @@ ${bestAdBlock}
 THE 10 SLOTS — every slot has a FIXED hook template and a FIXED format. Write the ad for the slot you are given; set "archetype" to the slot key.
 ${SLOTS.map((sl) => `- ${sl.key} [format: ${sl.format}]: ${sl.how}${sl[groupKey] ? `\n    Example for this lane (write your OWN, don't copy): ${sl[groupKey]}` : ""}`).join("\n")}
 ${learningSection ? `\n${learningSection}\n` : ""}${competitorSection ? `\n${competitorSection}\n` : ""}${organicSection ? `\n${organicSection}\n` : ""}
-THIS WEEK'S REDDIT AUDIENCE PULSE (real distilled pain from the audience's own threads — root every new-concept ad in one of these themes, in their own words). Use a theme only through its EVERYDAY, widely shared side; skip medical/medication, relationship-ending or other major-life-decision themes entirely, and never lift a one-off story detail from a thread:
-${themes.map((t, i) => `${i + 1}. THEME: ${t.theme}\n   WHY IT'S LIVE THIS WEEK: ${t.why}\n   SUGGESTED ANGLE: ${t.angle}\n   THEIR OWN PHRASES: ${(t.phrases ?? []).join(" | ")}`).join("\n\n")}
+AUDIENCE THEMES (real pain distilled from the audience's own Reddit threads, in their own words — root every new-concept ad in one of these). Use a theme only through its EVERYDAY, widely shared side; skip anything medical/medication, relationship-ending or another major life decision, and never lift a one-off story detail:
+${themes.map((t, i) => `${i + 1}. THEME: ${t.theme}\n   SUGGESTED ANGLE: ${t.angle}\n   THEIR OWN PHRASES: ${(t.phrases ?? []).join(" | ")}`).join("\n\n")}
 
 VALUE SURFACE DEFINITIONS (label each ad with the closest): problem, outcome, social_proof, mechanism, story, comparison, identity, urgency.
 
@@ -1144,7 +1129,7 @@ Submit the ads with the submit_ads tool.`;
   const per = Math.ceil(themes.length / halves.length);
   const themeSlices = halves.map((_, i) => themes.slice(i * per, (i + 1) * per));
   const halfPrompt = (i: number) =>
-    `This request covers ${halves[i].length} of this week's 10 slots (the batch is split into ${halves.length} requests). For EACH slot write ${VARIANTS} genuinely different drafts (a different hook, a different life moment, a different opening line each time), so ${halves[i].length * VARIANTS} ads in total. Set "archetype" to the slot key on every draft. The drafts are scored and only the strongest one per slot becomes an ad, so make each one a real contender, not a small rewording. Slots, in order: ${halves[i].map((sl) => `${sl.key} (format ${sl.format})`).join(", ")}. Root the new-concept drafts in these Reddit themes: ${themeSlices[i].map((t) => t.theme).join(" | ") || "any of the themes above"}.
+    `This request covers ${halves[i].length} of this week's 10 slots (the batch is split into ${halves.length} requests). For EACH slot write ${VARIANTS} genuinely different drafts (a different hook, a different life moment, a different opening line each time), so ${halves[i].length * VARIANTS} ads in total. Set "archetype" to the slot key on every draft. The drafts are scored and only the strongest one per slot becomes an ad, so make each one a real contender, not a small rewording. Slots, in order: ${halves[i].map((sl) => `${sl.key} (format ${sl.format})`).join(", ")}. Root the new-concept drafts in these audience themes: ${themeSlices[i].map((t) => t.theme).join(" | ") || "any of the themes above"}.
 Call the submit_ads tool IMMEDIATELY. Do not write any analysis, plan, draft or commentary before or after the tool call; think silently and put everything into the tool input.`;
 
   const generateHalf = async (i: number): Promise<z.infer<typeof BatchAdSchema>[]> => {
@@ -1310,7 +1295,7 @@ Call the submit_video_ads tool IMMEDIATELY with no text before or after it.`;
   const experiment = await prisma.adLabExperiment.create({
     data: {
       projectId,
-      topicBrief: `Weekly batch (${weekLabel}) — ${ads.length} ads for ${g.audienceLabel}, ${judgedCount ? `each the Jev-picked best of ~${VARIANTS} drafts` : "Jev unavailable, first draft per slot"}: 7 new concepts across 6+ formats and 3 extending the current best ad, rooted in the ${digestDate} audience pulse.${calibration ? ` ${calibration}` : ""}`,
+      topicBrief: `Weekly batch (${weekLabel}) — ${ads.length} ads for ${g.audienceLabel}, ${judgedCount ? `each the Jev-picked best of ~${VARIANTS} drafts` : "Jev unavailable, first draft per slot"}: 7 new concepts across 6+ formats and 3 extending the current best ad, rooted in the standing audience themes (as of ${digestDate}).${calibration ? ` ${calibration}` : ""}`,
       status: "awaiting_approval",
       campaignName: `${g.projectName} | Reddit batch ${weekLabel}`,
       // Informational: launches go into the group's evergreen ad set, which
@@ -1358,7 +1343,7 @@ Call the submit_video_ads tool IMMEDIATELY with no text before or after it.`;
         targetPersona: ad.targetPersona,
         valueSurface: ad.valueSurface,
         // "| strategy:" is parsed back by lib/adlab/learning.ts — keep format
-        researchNotes: `Reddit theme (${digestDate}): ${ad.theme} | strategy: ${strategy}${ad.archetype ? ` | type: ${ad.archetype}` : ""} | format: ${formatKey}${jevOf.get(ad) ? ` | jev: ${jevOf.get(ad)!.rank.toFixed(2)} best of ${jevOf.get(ad)!.of}` : ""}${organicSeedOf(ad) ? ` | organic: ${organicSeedOf(ad)}` : ""}`,
+        researchNotes: `Audience theme (${digestDate}): ${ad.theme} | strategy: ${strategy}${ad.archetype ? ` | type: ${ad.archetype}` : ""} | format: ${formatKey}${jevOf.get(ad) ? ` | jev: ${jevOf.get(ad)!.rank.toFixed(2)} best of ${jevOf.get(ad)!.of}` : ""}${organicSeedOf(ad) ? ` | organic: ${organicSeedOf(ad)}` : ""}`,
         score: 5,
       },
     });
@@ -1391,7 +1376,7 @@ Call the submit_video_ads tool IMMEDIATELY with no text before or after it.`;
         hypothesis: v.hypothesis || `Animated ${v.script.template} demo`,
         targetPersona: g.audienceLabel,
         valueSurface: "mechanism",
-        researchNotes: `Reddit theme (${digestDate}): ${v.theme} | strategy: explore | type: video_${v.script.template} | format: ${formatKey}`,
+        researchNotes: `Audience theme (${digestDate}): ${v.theme} | strategy: explore | type: video_${v.script.template} | format: ${formatKey}`,
         score: 5,
       },
     });
@@ -1724,7 +1709,7 @@ export async function sendWeeklyBatchEmail(summaries: GroupBatchSummary[]): Prom
     }
     return `<div style="background:#f8f9fb;border:1px solid #e5e8ee;border-radius:10px;padding:16px 18px;margin:0 0 12px;">
       <p style="font-size:16px;font-weight:700;margin:0 0 6px;">${g.projectName}</p>
-      <p style="font-size:13px;color:#3d4453;margin:0 0 10px;">${s.creativeCount} ads from the ${s.digestDate} Reddit pulse &middot; ${s.imagesOk}/${s.creativeCount} images &middot; compliance: ${s.compliance.passCount} pass / ${s.compliance.warnCount} warn / ${s.compliance.failCount} fail</p>
+      <p style="font-size:13px;color:#3d4453;margin:0 0 10px;">${s.creativeCount} ads from the audience themes (as of ${s.digestDate}) &middot; ${s.imagesOk}/${s.creativeCount} images &middot; compliance: ${s.compliance.passCount} pass / ${s.compliance.warnCount} warn / ${s.compliance.failCount} fail</p>
       <ol style="font-size:13px;color:#1f2430;margin:0;padding-left:20px;line-height:1.7;">
         ${s.headlines.map((h) => `<li>${h}</li>`).join("")}
       </ol></div>`;
