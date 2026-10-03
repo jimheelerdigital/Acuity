@@ -7,6 +7,24 @@
 
 ---
 
+## [2026-10-03] — Legendary Mythicals captions stop pushing the quiz
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** see "content: Remove the quiz line from Mythicals captions"
+
+### In plain English (for Keenan)
+Legendary Mythicals captions no longer end with "Take the free quiz at legendarymythicals.com/quiz". It's also been removed from the 7 Mythicals posts that were written but not yet posted. The quiz site itself is untouched.
+
+### Technical changes (for Jimmy)
+- `lib/content-factory/caption-writer.ts`: `MYTHICALS_QUIZ_LINE_ON = false` gates the line in `assemble()`. `ensureWrittenCaption` strips it from already-written captions via `stripQuizLine()`.
+- Data fix (prod DB, one-off): removed the line from `CarouselPost.caption` on 7 unposted Mythicals posts (no POSTED SocialPublish). Already-posted captions are untouched.
+
+### Manual steps needed
+- None
+
+### Notes
+- To bring the quiz line back, flip `MYTHICALS_QUIZ_LINE_ON` to true.
+
 ## [2026-10-03] — Posts talk straight to the viewer; Ripple covers show her face and feeling
 **Requested by:** Keenan
 **Committed by:** Claude Code

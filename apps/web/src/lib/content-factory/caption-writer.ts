@@ -114,6 +114,16 @@ interface WrittenCaption {
  */
 const MYTHICALS_QUIZ_LINE =
   "Which legendary creature are you? Take the free quiz at legendarymythicals.com/quiz";
+/**
+ * OFF since 2026-10-03 (per Keenan: "eliminate pushing people to quizzes
+ * for now on legendary mythicals in captions"). Flip to true to bring the
+ * line back; while off, it is also stripped from captions already written.
+ */
+const MYTHICALS_QUIZ_LINE_ON = false;
+
+function stripQuizLine(caption: string): string {
+  return MYTHICALS_QUIZ_LINE_ON ? caption : caption.replace(`\n\n${MYTHICALS_QUIZ_LINE}`, "").replace(MYTHICALS_QUIZ_LINE, "").trim();
+}
 
 function assemble(
   c: WrittenCaption,
@@ -130,7 +140,7 @@ function assemble(
   return [
     [c.firstLine.trim(), c.secondLine.trim()].filter(Boolean).join("\n"),
     c.question.trim(),
-    brand === "mythicals" ? MYTHICALS_QUIZ_LINE : "",
+    brand === "mythicals" && MYTHICALS_QUIZ_LINE_ON ? MYTHICALS_QUIZ_LINE : "",
     tags.join(" "),
   ]
     .filter(Boolean)
@@ -319,7 +329,7 @@ export async function ensureWrittenCaption(
       },
     });
     if (!post) return null;
-    if (post.captionWrittenAt) return post.caption;
+    if (post.captionWrittenAt) return stripQuizLine(post.caption);
 
     const { laneBrand } = await import("@/lib/content-factory/social-publish");
     const brand = await laneBrand(post.lane);
