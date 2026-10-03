@@ -188,22 +188,27 @@ async function classifyCategory(title: string, options: string[], catalog: strin
 
 // ─── 2. Scoring ──────────────────────────────────────────────────────
 
-type MetricKey = "views" | "reach" | "shares" | "saves" | "follows" | "comments" | "likes" | "profileVisits";
+type MetricKey = "avgWatchMs" | "views" | "reach" | "shares" | "saves" | "follows" | "comments" | "likes" | "profileVisits";
 
 /**
- * Weights (sum 1). Sends/shares and saves are the strongest reach signals
- * on Instagram, follows are the goal, views/reach anchor distribution,
- * comments are partly inflated on these accounts (pods), likes are cheap.
+ * Weights (sum 1). 2026-10-03 (per Keenan: "the most important thing is
+ * view time and engagement, make sure we're priming for that"): average
+ * watch time leads — it is what Instagram uses to decide whether a Reel
+ * reaches non-followers (Mythicals 12.1s vs Ripple 1.7s on 10-03). Then
+ * engagement: shares, saves, comments. Views/reach anchor distribution,
+ * follows are the goal, likes are cheap. Every brand's scoreboard, bandit
+ * and Jev / gate calibration learn from this score.
  */
 export const METRIC_WEIGHTS: Record<MetricKey, number> = {
-  views: 0.15,
-  reach: 0.15,
-  shares: 0.2,
-  saves: 0.2,
-  follows: 0.1,
-  comments: 0.1,
-  likes: 0.05,
-  profileVisits: 0.05,
+  avgWatchMs: 0.3,
+  shares: 0.15,
+  saves: 0.15,
+  comments: 0.12,
+  views: 0.1,
+  follows: 0.08,
+  reach: 0.05,
+  likes: 0.03,
+  profileVisits: 0.02,
 };
 /** One viral outlier shouldn't own the scoreboard. */
 const RATIO_CAP = 10;
@@ -289,6 +294,7 @@ export async function scorePosts(opts: { minAgeHours?: number; allLanes?: boolea
       comments: true,
       likes: true,
       profileVisits: true,
+      avgWatchMs: true,
       carouselPost: { select: { lane: true, headline: true, topicSlug: true } },
     },
   });

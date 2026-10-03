@@ -25,7 +25,8 @@ const BRAND_NAME: Record<LoopBrand, string> = {
   bwk: "Build With Key",
   mythicals: "Legendary Mythicals",
 };
-const METRICS = ["views", "saves", "shares", "follows"] as const;
+// Watch time first (2026-10-03, per Keenan): it decides Reel reach.
+const METRICS = ["avgWatchMs", "views", "saves", "shares", "follows"] as const;
 type Metric = (typeof METRICS)[number];
 const MATURE_MS = 48 * 3_600_000;
 const MIN_POSTS = 3;
@@ -48,7 +49,7 @@ export interface BrandTrend {
   heldShare: number | null;
 }
 
-function stats(rows: { views: number | null; saves: number | null; shares: number | null; follows: number | null }[]): WindowStats {
+function stats(rows: { avgWatchMs: number | null; views: number | null; saves: number | null; shares: number | null; follows: number | null }[]): WindowStats {
   const avg = {} as Record<Metric, number>;
   for (const m of METRICS) {
     const xs = rows.map((r) => r[m]).filter((x): x is number => typeof x === "number");
@@ -90,7 +91,7 @@ export async function computeTrends(now = Date.now()): Promise<BrandTrend[]> {
       accountKey: { in: BRANDS },
       postedAt: { gte: new Date(end - 60 * day), lt: new Date(end) },
     },
-    select: { accountKey: true, postedAt: true, views: true, saves: true, shares: true, follows: true },
+    select: { accountKey: true, postedAt: true, avgWatchMs: true, views: true, saves: true, shares: true, follows: true },
   });
   const inWin = (brand: LoopBrand, fromDaysAgo: number, toDaysAgo: number) =>
     rows.filter(
@@ -138,8 +139,8 @@ export function trendHtml(trends: BrandTrend[]): string {
   const line = (label: string, w: BrandTrend["week"]) =>
     `<tr><td style="padding:3px 8px">${label}</td>
 <td style="padding:3px 8px;font-weight:700;color:${COLOR[w.verdict]}">${w.verdict.toUpperCase()}${pct(w.change)}</td>
-<td style="padding:3px 8px;color:#555">${w.cur.posts} posts: ${n(w.cur.avg.views)} views, ${n(w.cur.avg.saves)} saves, ${n(w.cur.avg.shares)} shares, ${n(w.cur.avg.follows)} follows per post · ${w.cur.followsTotal} follows total
-<br/><span style="color:#9aa1ad">before: ${w.prev.posts} posts, ${n(w.prev.avg.views)} views, ${n(w.prev.avg.saves)} saves, ${n(w.prev.avg.shares)} shares, ${n(w.prev.avg.follows)} follows per post</span></td></tr>`;
+<td style="padding:3px 8px;color:#555">${w.cur.posts} posts: <b>${(w.cur.avg.avgWatchMs / 1000).toFixed(1)}s watched</b>, ${n(w.cur.avg.views)} views, ${n(w.cur.avg.saves)} saves, ${n(w.cur.avg.shares)} shares, ${n(w.cur.avg.follows)} follows per post · ${w.cur.followsTotal} follows total
+<br/><span style="color:#9aa1ad">before: ${w.prev.posts} posts, ${(w.prev.avg.avgWatchMs / 1000).toFixed(1)}s watched, ${n(w.prev.avg.views)} views, ${n(w.prev.avg.saves)} saves, ${n(w.prev.avg.shares)} shares, ${n(w.prev.avg.follows)} follows per post</span></td></tr>`;
   const sections = trends
     .map(
       (t) => `<p style="margin:12px 0 2px;font-weight:700">${BRAND_NAME[t.brand]}</p>
@@ -149,6 +150,6 @@ ${t.heldShare == null ? "" : `<p style="margin:2px 8px;font-size:12px;color:#555
     .join("");
   return `<div style="font-family:-apple-system,Segoe UI,Helvetica,Arial,sans-serif;color:#111;max-width:760px;border:1px solid #e5e7eb;border-radius:10px;padding:12px 16px;margin:0 0 18px">
 <h2 style="font-size:17px;margin:0 0 4px">Is it getting better?</h2>
-<p style="margin:0;color:#555;font-size:13px">Real Instagram numbers per post, compared with the period before (posts at least 2 days old). Improving / declining = average change of ±10% or more across views, saves, shares and follows.</p>
+<p style="margin:0;color:#555;font-size:13px">Real Instagram numbers per post, compared with the period before (posts at least 2 days old). Watch time (seconds watched per view) comes first: it decides whether Instagram shows a Reel to non-followers. Improving / declining = average change of ±10% or more across watch time, views, saves, shares and follows.</p>
 ${sections}</div>`;
 }

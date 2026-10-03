@@ -179,6 +179,14 @@ const COMMENT_LEVELS = [
   "It would start a thread: numbers, reasons, and friends tagged",
 ];
 
+const WATCH_LEVELS = [
+  "Swipes away in the first second",
+  "Watches one or two options, then leaves",
+  "Watches most of it",
+  "Watches every option to the end",
+  "Watches to the end and rewatches to decide",
+];
+
 const PICK_LEVELS = [
   "Not at all: a dull or throwaway pick nobody would choose",
   "A little: fine but forgettable next to the others",
@@ -363,6 +371,12 @@ export async function pickConcept(
       instructions: `The FIRST FRAME of a video is the photo \`concepts[${i}].opening_photo\` with the line \`concepts[${i}].cover_line\` on top, seen for one second. How strongly would the reader described in \`audience\` stop scrolling for it? Use \`history\` (what has and hasn't worked on this account) as context.`,
       criteria: SCROLL_STOP_LEVELS,
     };
+    // Watch-through (2026-10-03, per Keenan: view time comes first).
+    questions[`watch_${i}`] = {
+      type: "score",
+      instructions: `A video opens on \`concepts[${i}]\` and then shows five options, one every couple of seconds. How likely is the reader described in \`audience\` to keep watching until the fifth option before deciding, instead of swiping away?`,
+      criteria: WATCH_LEVELS,
+    };
     questions[`comment_${i}`] = {
       type: "score",
       instructions: `A post asks \`concepts[${i}].cover_line\` and shows five numbered options. How likely is the reader described in \`audience\` to comment their number, tag a friend or send it on?`,
@@ -409,6 +423,7 @@ export async function pickConcept(
   let bestScore = -Infinity;
   const rows = concepts.map((c, i) => {
     const scroll = scoreOf(r, `scroll_${i}`) ?? 0;
+    const watch = scoreOf(r, `watch_${i}`) ?? 0;
     const comment = scoreOf(r, `comment_${i}`) ?? 0;
     const clear = noulOf(rc, `clear_${i}`) ?? 0;
     const core = noulOf(r, `core_${i}`) ?? 0;
@@ -418,19 +433,20 @@ export async function pickConcept(
     const label = fam ? loop.familyLabels?.[fam] : undefined;
     const nudge =
       (label === "proven winner" ? 0.05 : label === "weak" ? -0.05 : 0) + (fam && fam === loop.focusFamily ? 0.03 : 0);
-    const score = w.scroll * scroll + w.comment * comment + w.clear * clear + w.core * core + nudge;
+    const score = w.scroll * scroll + w.watch * watch + w.comment * comment + w.clear * clear + w.core * core + nudge;
     const eligible = clear >= CLEAR_MIN && core >= CORE_MIN;
     if (eligible && score > bestScore) {
       bestScore = score;
       best = i;
     }
-    return `${score.toFixed(3)} scroll=${scroll.toFixed(2)} comment=${comment.toFixed(2)} clear=${clear.toFixed(2)} core=${core.toFixed(2)}${nudge ? ` nudge=${nudge.toFixed(2)}` : ""}${eligible ? "" : " INELIGIBLE"}  ${c.question}${fam ? ` [${fam}]` : ""}`;
+    return `${score.toFixed(3)} scroll=${scroll.toFixed(2)} watch=${watch.toFixed(2)} comment=${comment.toFixed(2)} clear=${clear.toFixed(2)} core=${core.toFixed(2)}${nudge ? ` nudge=${nudge.toFixed(2)}` : ""}${eligible ? "" : " INELIGIBLE"}  ${c.question}${fam ? ` [${fam}]` : ""}`;
   });
   // Nothing eligible: take the most on-brand concept rather than the first.
   const coreOf = (i: number) => noulOf(r, `core_${i}`) ?? 0;
   const index = best >= 0 ? best : concepts.reduce((b, _, i) => (coreOf(i) > coreOf(b) ? i : b), 0);
   const dims = {
     scroll: scoreOf(r, `scroll_${index}`) ?? 0,
+    watch: scoreOf(r, `watch_${index}`) ?? 0,
     comment: scoreOf(r, `comment_${index}`) ?? 0,
     clear: noulOf(rc, `clear_${index}`) ?? 0,
     core: noulOf(r, `core_${index}`) ?? 0,

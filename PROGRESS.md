@@ -7,6 +7,31 @@
 
 ---
 
+## [2026-10-03] — Watch time now leads every score the content engine learns from
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** see "content: Make watch time the top signal the content engine learns from"
+
+### In plain English (for Keenan)
+How long people watch a video is now the most important thing the system measures and aims for. Engagement (shares, saves, comments) comes next.
+- **Learning:** watch time is now part of every post's score. It wasn't counted at all before. It's the biggest single piece of that score, so the system's learning (which topics and formats to repeat, how much to trust Jev's judgment) now chases it.
+- **Picking ideas:** Jev asks a new question when choosing between the 5 ideas: would they watch through to the last option?
+- **Monday report:** "Is it getting better?" now leads with seconds watched.
+
+### Technical changes (for Jimmy)
+- `lib/content-factory/performance-loop.ts`: `METRIC_WEIGHTS` adds `avgWatchMs` 0.3 (shares 0.15, saves 0.15, comments 0.12, views 0.1, follows 0.08, reach 0.05, likes 0.03, profileVisits 0.02). `scorePosts` selects `avgWatchMs`. This affects every brand's scoreboard, bandit, Jev pick calibration and gate track record (Mythicals generation code untouched).
+- `lib/content-factory/pick-lane.ts`: new Jev `watch_i` score (`WATCH_LEVELS`) in `pickConcept`, recorded in the recipe's jev dims.
+- `lib/content-factory/jev-calibration.ts`: `watch` dim; `DEFAULT_PICK_WEIGHTS` scroll 0.3 / watch 0.25 / comment 0.25 / clear 0.05 / core 0.15. `readPickWeights` merges with defaults (old files lack `watch`); rho per dim uses only posts that recorded it (≥ MIN_POSTS, else 0).
+- `lib/content-factory/trend-report.ts`: `avgWatchMs` is the first verdict metric, shown as seconds watched.
+- `lib/content-factory/research-learning.test.ts`: calibration test includes `watch`.
+
+### Manual steps needed
+- [ ] Push to main ("push it") (Keenan)
+
+### Notes
+- The scoreboard's absolute numbers shift with the new weights. Compare scores from 10-03 on with each other, not with older weekly reports.
+- Instagram's `avgWatchMs` is per view, so a post with very few views can show a noisy watch time; the +1 smoothing and the 10x ratio cap still apply.
+
 ## [2026-10-03] — Ripple and BWK videos rebuilt around the first frame: escape & relief / luxury aspiration
 **Requested by:** Keenan
 **Committed by:** Claude Code

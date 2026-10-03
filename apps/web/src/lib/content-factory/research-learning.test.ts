@@ -9,10 +9,10 @@ describe("jev calibration", () => {
     expect(spearman([1, 1, 1], [1, 2, 3])).toBe(0);
   });
   it("moves weight toward predictive scores, halfway, and sums to ~1", () => {
-    const w = weightsFromRho({ scroll: 0, comment: 0.6, clear: 0, core: -0.5 }, DEFAULT_PICK_WEIGHTS);
+    const w = weightsFromRho({ scroll: 0, watch: 0, comment: 0.6, clear: 0, core: -0.5 }, DEFAULT_PICK_WEIGHTS);
     expect(w.comment).toBeGreaterThan(DEFAULT_PICK_WEIGHTS.comment);
     expect(w.core).toBeLessThan(DEFAULT_PICK_WEIGHTS.core);
-    expect(w.scroll + w.comment + w.clear + w.core).toBeCloseTo(1, 1);
+    expect(w.scroll + w.watch + w.comment + w.clear + w.core).toBeCloseTo(1, 1);
   });
 });
 

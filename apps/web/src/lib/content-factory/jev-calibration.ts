@@ -17,12 +17,14 @@
 import { readJson, writeJson, type ScoredPost } from "./performance-loop";
 
 export type PickBrand = "ripple" | "bwk";
-export type PickWeights = { scroll: number; comment: number; clear: number; core: number };
+export type PickWeights = { scroll: number; watch: number; comment: number; clear: number; core: number };
 
 /** The hand-set weights pickConcept used before calibration. */
-export const DEFAULT_PICK_WEIGHTS: PickWeights = { scroll: 0.35, comment: 0.3, clear: 0.1, core: 0.25 };
+// 2026-10-03: "watch" (would they watch to the last option?) added; watch
+// time + engagement lead, per Keenan.
+export const DEFAULT_PICK_WEIGHTS: PickWeights = { scroll: 0.3, watch: 0.25, comment: 0.25, clear: 0.05, core: 0.15 };
 const MIN_POSTS = 8;
-const DIMS = ["scroll", "comment", "clear", "core"] as const;
+const DIMS = ["scroll", "watch", "comment", "clear", "core"] as const;
 
 export interface PickCalibration {
   brand: PickBrand;
@@ -37,7 +39,8 @@ const path = (brand: PickBrand) => `calibration/pick-${brand}.json`;
 
 export async function readPickWeights(brand: PickBrand): Promise<PickWeights> {
   const c = await readJson<PickCalibration>(path(brand)).catch(() => null);
-  return c?.weights ?? DEFAULT_PICK_WEIGHTS;
+  // Files written before a dimension existed get its default.
+  return { ...DEFAULT_PICK_WEIGHTS, ...(c?.weights ?? {}) };
 }
 
 export async function readPickCalibration(brand: PickBrand): Promise<PickCalibration | null> {
@@ -97,7 +100,11 @@ export async function refreshPickCalibration(scored: ScoredPost[]): Promise<Pick
     }
     if (rows.length < MIN_POSTS) continue;
     const rho: Record<string, number> = {};
-    for (const d of DIMS) rho[d] = Math.round(spearman(rows.map((r) => r.jev[d] ?? 0), rows.map((r) => r.score)) * 1000) / 1000;
+    for (const d of DIMS) {
+      // Only posts that recorded this dimension (watch arrived 2026-10-03).
+      const have = rows.filter((r) => typeof r.jev[d] === "number");
+      rho[d] = have.length >= MIN_POSTS ? Math.round(spearman(have.map((r) => r.jev[d]), have.map((r) => r.score)) * 1000) / 1000 : 0;
+    }
     const prev = await readPickWeights(brand);
     const cal: PickCalibration = { brand, updatedAt: new Date().toISOString(), n: rows.length, rho, weights: weightsFromRho(rho, prev) };
     await writeJson(path(brand), cal);
