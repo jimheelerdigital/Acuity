@@ -18,6 +18,12 @@
  * The composite, the ranking, the keep count and the lane-diversity
  * tie-break are all computed here in code (Jev is weak at counting).
  *
+ * 2026-10-02 (fix #1 of the 30-day hands-off list): the composite now
+ * leads with each lane's REAL track record (gate-calibration.ts) and the
+ * coach penalty — the only things with evidence. Scroll / save are a
+ * tie-break until the weekly calibration shows they predict results, and
+ * cover sense is a pass/fail floor instead of a ranking input.
+ *
  * Rules:
  * - keep ceil(2/3 · n) per brand-day; a brand-day with ≤ 2 posts is never
  *   gated. Legendary Mythicals is never gated at all (all 3 fixed-slot
@@ -81,10 +87,16 @@ const MIN_GATED_POSTS = 3;
 // 0.25 → 0.21 (within-day 0.26); 0.5 → 0.32 (within-day 0.33); 1.0 → 0.37
 // (0.47). 0.5 is a deliberate half-step: 10 days of data, tuned in-sample.
 // Re-run the backtest as data grows before moving it further.
-const W_SCROLL = 0.45;
-const W_SAVE = 0.35;
-const W_SENSE = 0.2;
-const W_COACH = 0.5;
+// 2026-10-02: those hand-set weights (scroll 0.45 / save 0.35 / sense 0.2)
+// are retired. Defaults below; gate-calibration.ts re-fits them weekly.
+export type GateWeights = { track: number; scroll: number; save: number; coach: number };
+export const DEFAULT_GATE_WEIGHTS: Record<GatedBrand, GateWeights> = {
+  ripple: { track: 1, scroll: 0.05, save: 0.05, coach: 0.5 },
+  bwk: { track: 1, scroll: 0.05, save: 0.05, coach: 0 },
+};
+/** Jev's "cover makes sense alone" below this → the post ranks last. */
+const SENSE_FLOOR = 0.3;
+const SENSE_FAIL_PENALTY = 10;
 /** Composites this close count as a tie → lane diversity decides. */
 const TIE_EPSILON = 0.02;
 
@@ -121,6 +133,8 @@ export interface GateRow {
   coverSense: number | null;
   /** Ripple only: probability the post lectures / coaches. */
   coach: number | null;
+  /** Lane's real track record used (1.0 = typical post); absent on pre-10-02 markers. */
+  track?: number | null;
   composite: number | null;
   /** 1 = best. */
   rank: number;
@@ -266,8 +280,17 @@ export async function pastEngagementContext(
 export async function rankDayBatch(
   brand: GatedBrand,
   posts: GatePost[],
-  opts: { label?: string; past?: PastContext | null; protectedLanes?: Set<string> } = {}
+  opts: {
+    label?: string;
+    past?: PastContext | null;
+    protectedLanes?: Set<string>;
+    /** Calibrated weights (gate-calibration.ts); defaults per brand. */
+    weights?: GateWeights;
+    /** Lane → real track record (1.0 = typical post); missing lanes count as 1.0. */
+    laneTrack?: Record<string, number>;
+  } = {}
 ): Promise<GateRanking> {
+  const w = opts.weights ?? DEFAULT_GATE_WEIGHTS[brand];
   const n = posts.length;
   const keep = keepCount(n);
   const keepAll = (failOpen: boolean, model: string | null): GateRanking => ({
@@ -346,10 +369,15 @@ export async function rankDayBatch(
     const coach = questions[`coach_${i}`] ? noulOf(r, `coach_${i}`) : null;
     const complete =
       scrollStop != null && saveSend != null && coverSense != null && (!questions[`coach_${i}`] || coach != null);
+    const track = opts.laneTrack?.[p.lane] ?? 1;
     const composite = complete
-      ? W_SCROLL * scrollStop! + W_SAVE * saveSend! + W_SENSE * coverSense! - W_COACH * (coach ?? 0)
+      ? w.track * track +
+        w.scroll * scrollStop! +
+        w.save * saveSend! -
+        w.coach * (coach ?? 0) -
+        (coverSense! < SENSE_FLOOR ? SENSE_FAIL_PENALTY : 0)
       : null;
-    return { post: p, i, scrollStop, saveSend, coverSense, coach, composite };
+    return { post: p, i, scrollStop, saveSend, coverSense, coach, track, composite };
   });
   // Any missing answer → no opinion on the batch (fail open).
   if (scored.some((s) => s.composite == null)) return keepAll(true, r.model ?? null);
@@ -371,6 +399,7 @@ export async function rankDayBatch(
       saveSend: round(s.saveSend),
       coverSense: round(s.coverSense),
       coach: round(s.coach),
+      track: round(s.track),
       composite: round(s.composite),
       rank: rankOf.get(s.post.id)!,
       held: !kept.has(s.post.id),
@@ -435,10 +464,10 @@ export function formatGateTable(brand: string, date: string, ranking: Pick<GateR
   const f = (x: number | null) => (x == null ? "  -  " : x.toFixed(2));
   const lines = [
     `[publish-gate] ${brand} ${date}: keep ${ranking.keep}/${ranking.rows.length}${ranking.failOpen ? " (FAIL OPEN — Jev gave no answer, keeping all)" : ""}`,
-    `  rank  comp  scroll save  sense coach  ${"lane".padEnd(16)} headline`,
+    `  rank  comp  track scroll save  sense coach  ${"lane".padEnd(16)} headline`,
     ...ranking.rows.map(
       (r) =>
-        `  ${String(r.rank).padStart(2)} ${r.held ? "HOLD" : "keep"} ${f(r.composite)} ${f(r.scrollStop)} ${f(r.saveSend)} ${f(r.coverSense)} ${f(r.coach)}  ${r.lane.padEnd(16)} ${clip(r.headline, 70)}`
+        `  ${String(r.rank).padStart(2)} ${r.held ? "HOLD" : "keep"} ${f(r.composite)} ${f(r.track ?? null)} ${f(r.scrollStop)} ${f(r.saveSend)} ${f(r.coverSense)} ${f(r.coach)}  ${r.lane.padEnd(16)} ${clip(r.headline, 70)}`
     ),
   ];
   return lines.join("\n");
@@ -610,7 +639,14 @@ export async function resolveDayGate(
   const prevDate = new Date(Date.parse(`${date}T00:00:00Z`) - 86_400_000).toISOString().slice(0, 10);
   const prev = await readGateMarker(brand, prevDate).catch(() => null);
   const protectedLanes = new Set((prev?.rows ?? []).filter((r) => r.held).map((r) => r.lane));
-  const ranking = await rankDayBatch(brand, batch.posts, { label: `${brand}:${date}`, protectedLanes });
+  const { readGateCalibration } = await import("./gate-calibration");
+  const cal = await readGateCalibration(brand);
+  const ranking = await rankDayBatch(brand, batch.posts, {
+    label: `${brand}:${date}`,
+    protectedLanes,
+    weights: cal?.weights,
+    laneTrack: cal ? Object.fromEntries(Object.entries(cal.lanes).map(([k, v]) => [k, v.track])) : undefined,
+  });
   const marker = await claimGateMarker({
     version: 1,
     brand,

@@ -260,8 +260,11 @@ export interface ScoredPost {
 /**
  * Score every loop-lane post 48h–30d old. Instagram is the anchor; once
  * Facebook views/reach exist (read_insights), FB blends in at 30%.
+ * `allLanes` (2026-10-02, publish-gate calibration) scores every lane's
+ * posts, not just the loop lanes; non-loop posts get postType = lane and
+ * skip the recipe read.
  */
-export async function scorePosts(opts: { minAgeHours?: number } = {}): Promise<ScoredPost[]> {
+export async function scorePosts(opts: { minAgeHours?: number; allLanes?: boolean } = {}): Promise<ScoredPost[]> {
   const { prisma } = await import("@/lib/prisma");
   const now = Date.now();
   const minAgeMs = (opts.minAgeHours ?? 48) * 3_600_000;
@@ -303,7 +306,8 @@ export async function scorePosts(opts: { minAgeHours?: number } = {}): Promise<S
       (r) => r.accountKey === brand && r.platform === platform && old(r) && now - r.postedAt!.getTime() <= (BASELINE_DAYS + 2) * 86_400_000
     );
     const loopPool = pool.filter((r) => LOOP_LANES[r.carouselPost.lane ?? ""]);
-    const use = loopPool.length >= 5 ? loopPool : pool;
+    // allLanes compares every lane to the whole account, not the loop lanes.
+    const use = !opts.allLanes && loopPool.length >= 5 ? loopPool : pool;
     const b = {} as Record<MetricKey, number>;
     for (const m of keys) b[m] = median(use.map((r) => r[m]).filter((x): x is number => typeof x === "number"));
     baselines.set(k, b);
@@ -313,7 +317,7 @@ export async function scorePosts(opts: { minAgeHours?: number } = {}): Promise<S
   const byPost = new Map<string, { ig?: (typeof rows)[number]; fb?: (typeof rows)[number] }>();
   for (const r of rows) {
     const lane = r.carouselPost.lane ?? "";
-    if (!LOOP_LANES[lane] || !old(r) || now - r.postedAt!.getTime() > MAX_AGE_MS) continue;
+    if ((!opts.allLanes && !LOOP_LANES[lane]) || !old(r) || now - r.postedAt!.getTime() > MAX_AGE_MS) continue;
     const e = byPost.get(r.carouselPostId) ?? {};
     if (r.platform === "instagram") e.ig = r;
     else e.fb = r;
@@ -323,17 +327,21 @@ export async function scorePosts(opts: { minAgeHours?: number } = {}): Promise<S
   const out: ScoredPost[] = [];
   for (const [postId, e] of byPost) {
     const any = (e.ig ?? e.fb)!;
-    const brand = LOOP_LANES[any.carouselPost.lane ?? ""];
+    const lane = any.carouselPost.lane ?? "";
+    const loopBrand = LOOP_LANES[lane];
+    const brand = loopBrand ?? (any.accountKey as LoopBrand);
     const ig = e.ig ? scorePlatform(e.ig, baselineFor(brand, "instagram")) : null;
     const fb = e.fb ? scorePlatform(e.fb, baselineFor(brand, "facebook")) : null;
     const score = ig != null && fb != null ? 0.7 * ig + 0.3 * fb : ig ?? fb;
     if (score == null) continue;
-    const recipe = await readRecipe(postId);
+    const recipe = loopBrand ? await readRecipe(postId) : null;
     out.push({
       postId,
       brand,
-      lane: any.carouselPost.lane ?? "",
-      postType: recipe?.postType ?? (brand === "mythicals" ? mythicModeFromSlug(any.carouselPost.topicSlug) : "pick"),
+      lane,
+      postType:
+        recipe?.postType ??
+        (!loopBrand ? lane : brand === "mythicals" ? mythicModeFromSlug(any.carouselPost.topicSlug) : "pick"),
       category: recipe?.category ?? "unknown",
       source: recipe?.researchSeed ? "research" : "own",
       title: any.carouselPost.headline,
@@ -593,7 +601,11 @@ ${sections.join("\n")}
 </div>`;
 }
 
-export async function sendPerformanceReport(boards?: Scoreboard[], extraHtml = ""): Promise<{ sent: boolean; id?: string }> {
+export async function sendPerformanceReport(
+  boards?: Scoreboard[],
+  extraHtml = "",
+  opts: { topHtml?: string; subjectPrefix?: string } = {}
+): Promise<{ sent: boolean; id?: string }> {
   const use =
     boards ??
     ((await Promise.all((["mythicals", "ripple", "bwk"] as LoopBrand[]).map(readScoreboard))).filter(Boolean) as Scoreboard[]);
@@ -601,8 +613,8 @@ export async function sendPerformanceReport(boards?: Scoreboard[], extraHtml = "
   const res = await sendEmailOrThrow({
     from: process.env.CONTENT_FACTORY_EMAIL_FROM ?? '"Ripple Content" <content@getacuity.io>',
     to: process.env.CONTENT_FACTORY_EMAIL_TO ?? "keenan@heelerdigital.com",
-    subject: `Weekly content performance — ${new Date().toISOString().slice(0, 10)}`,
-    html: reportHtml(use) + extraHtml,
+    subject: `${opts.subjectPrefix ?? ""}Weekly content performance — ${new Date().toISOString().slice(0, 10)}`,
+    html: (opts.topHtml ?? "") + reportHtml(use) + extraHtml,
   });
   return { sent: true, id: res?.id };
 }

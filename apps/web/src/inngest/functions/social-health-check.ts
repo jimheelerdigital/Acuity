@@ -170,7 +170,8 @@ export const socialHealthCheckFn = inngest.createFunction(
       {
         const { supabase } = await import("@/lib/supabase.server");
         const { laneWantsReel } = await import("@/lib/content-factory/social-publish");
-        const { readVideoMarker, maxAnimatedSlides } = await import("@/lib/content-factory/post-video");
+        const { readVideoMarker, maxAnimatedSlides, readCreditsFlag, writeCreditsFlag, CREDITS_ALERT_EVERY_MS } =
+          await import("@/lib/content-factory/post-video");
         const today = new Date();
         today.setUTCHours(0, 0, 0, 0);
         const lanes = await prisma.contentLane.findMany({
@@ -193,6 +194,7 @@ export const socialHealthCheckFn = inngest.createFunction(
           out.push(`${missing.length} lane(s) produced no post overnight: ${missing.join(", ")} — re-running them now.`);
         }
         const broken: string[] = [];
+        let noCreditPosts = 0;
         for (const p of posts) {
           if (!laneWantsReel(p.lane)) continue;
           const m = await readVideoMarker(p.id);
@@ -202,6 +204,12 @@ export const socialHealthCheckFn = inngest.createFunction(
           const bad =
             !m || m.status === "failed" || (wantsAnimation && m.status === "done" && m.source !== "higgsfield");
           if (!bad) continue;
+          // Shipped as stills because Higgsfield is out of credits: on
+          // purpose, not broken — rebuilding would just fail again.
+          if (m?.stillsReason === "no-credits") {
+            noCreditPosts++;
+            continue;
+          }
           broken.push(`${p.lane} (${m ? m.status : "no build"}${m?.error ? `: ${m.error.slice(0, 80)}` : ""})`);
           await supabase.storage
             .from("content-factory")
@@ -210,6 +218,22 @@ export const socialHealthCheckFn = inngest.createFunction(
         if (broken.length) {
           out.push(`${broken.length} post video(s) failed or are missing their animation — rebuilding now: ${broken.join("; ")}`);
         }
+        // Higgsfield credits (2026-10-02): one line every 3 days while out.
+        const credits = await readCreditsFlag();
+        if (credits?.out && (!credits.alertedAt || now - Date.parse(credits.alertedAt) > CREDITS_ALERT_EVERY_MS)) {
+          out.push(
+            `Higgsfield is out of credits (since ${credits.since?.slice(0, 10) ?? "?"}). ${noCreditPosts} of today's video posts went out as slideshows instead. Top up at cloud.higgsfield.ai and videos resume on their own. Last error: ${credits.lastError?.slice(0, 160) ?? "?"}`
+          );
+          await writeCreditsFlag({ ...credits, alertedAt: new Date(now).toISOString() });
+        }
+      }
+
+      // 7. Learning loops alive (2026-10-02, fix #4 of the 30-day hands-off
+      // list): scoreboard, gate track, weekly calibration, research
+      // learning all finished on schedule, and Jev isn't mostly failing.
+      {
+        const { learningProblems } = await import("@/lib/content-factory/learning-health");
+        out.push(...(await learningProblems(now)));
       }
 
       return out;

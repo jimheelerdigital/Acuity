@@ -101,10 +101,15 @@ export const competitorScrapeDailyFn = inngest.createFunction(
     // promote/pause accounts and evolve the search phrases.
     const learning = await step.run("refresh-research-learning", async () => {
       const { refreshResearchLearning } = await import("@/lib/content-factory/research-learning");
-      return refreshResearchLearning().catch((e) => {
+      const res = await refreshResearchLearning().catch((e) => {
         console.warn("[competitor-mimic] research learning failed:", e instanceof Error ? e.message : e);
         return null;
       });
+      if (res) {
+        const { markLearningRun } = await import("@/lib/content-factory/learning-health");
+        await markLearningRun("research-learning");
+      }
+      return res;
     });
     const roster = await step.run("promote-and-pause", async () => {
       const { promoteAndPause } = await import("@/lib/content-factory/competitor-discovery");

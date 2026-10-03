@@ -36,7 +36,63 @@ export interface VideoBuildMarker {
   liveSlides?: number;
   totalSlides?: number;
   error?: string;
+  /** Why a post that wanted animation shipped as stills (2026-10-02). */
+  stillsReason?: "no-credits";
   updatedAt: string;
+}
+
+// ─── Higgsfield credits (2026-10-02, fix #2 of the 30-day hands-off list) ──
+// Out of credits, every submit fails at once, the post ships as push-in
+// stills, and the daily health check used to call that "broken" and rebuild
+// it every day (one email + retries per post). Now a submit wave where
+// EVERY error looks like a billing error flips health/higgsfield-credits.json
+// to out; the next successful submit flips it back, so videos resume on
+// their own after a top-up. The health check reports it once every 3 days.
+// The pattern is a best guess at Higgsfield's billing errors (HTTP 402 /
+// "credit" / "balance" wording); widen it if a real one slips through.
+
+const CREDITS_FLAG = "health/higgsfield-credits.json";
+export const CREDITS_ALERT_EVERY_MS = 3 * 86_400_000;
+
+export interface CreditsFlag {
+  out: boolean;
+  since?: string;
+  lastError?: string;
+  alertedAt?: string;
+  updatedAt: string;
+}
+
+export function isOutOfCreditsError(message: string): boolean {
+  return /\((402)\)|insufficient|not enough (credits|balance)|credit|balance|quota|payment required|top ?up/i.test(message);
+}
+
+export async function readCreditsFlag(): Promise<CreditsFlag | null> {
+  const { readJson } = await import("./performance-loop");
+  return readJson<CreditsFlag>(CREDITS_FLAG).catch(() => null);
+}
+
+export async function writeCreditsFlag(flag: Omit<CreditsFlag, "updatedAt">): Promise<void> {
+  const { writeJson } = await import("./performance-loop");
+  await writeJson(CREDITS_FLAG, { ...flag, updatedAt: new Date().toISOString() }).catch(() => undefined);
+}
+
+/** Record a submit wave's outcome. Returns true when it was a credits failure. */
+export async function noteSubmitWave(submittedCount: number, errors: string[]): Promise<boolean> {
+  const prev = await readCreditsFlag();
+  if (submittedCount > 0) {
+    if (prev?.out) await writeCreditsFlag({ out: false });
+    return false;
+  }
+  const credits = errors.length > 0 && errors.every(isOutOfCreditsError);
+  if (credits) {
+    await writeCreditsFlag({
+      out: true,
+      since: prev?.out ? prev.since : new Date().toISOString(),
+      lastError: errors[0].slice(0, 300),
+      alertedAt: prev?.out ? prev.alertedAt : undefined,
+    });
+  }
+  return credits;
 }
 
 const BUCKET = "content-factory";

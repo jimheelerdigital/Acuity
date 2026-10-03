@@ -7,6 +7,41 @@
 
 ---
 
+## [2026-10-02] — Social engine can run hands-off: real-results gate, credit alerts, "is it improving?" report, learning check
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** see "feat: Make the social engine safe to leave alone for 30 days"
+
+### In plain English (for Keenan)
+Four changes so the posting engine can be left alone for a month and you'd know if something went wrong:
+- **Holding posts:** the system that holds back weaker posts now ranks on each lane's real past results instead of Jev's guesses (which showed no link to engagement). It re-checks itself every week. Today it has almost nothing to rank; see Notes.
+- **Higgsfield credits:** running out of credits no longer triggers daily "broken video" rebuilds and emails. Posts go out as slideshows on purpose, you get one "top up" line every 3 days, and videos come back on their own after a top-up.
+- **Monday email:** it now opens with "Is it getting better?". For each brand, real views, saves, shares and follows per post, compared with the week and month before, with an improving / flat / declining verdict. Two declining weeks in a row put the brand in the subject line.
+- **Learning check:** the daily health email now tells you if any learning job stopped running or Jev is mostly failing, instead of the system quietly freezing.
+
+### Technical changes (for Jimmy)
+- New `lib/content-factory/gate-calibration.ts`: per-lane track record (30d mean score, shrunk toward 1.0 with 3 pseudo-posts, clamped 0.4–2.5), refreshed daily. Weekly re-fit of gate weights from Spearman of the kept posts' Jev scores vs real score (min 12, halfway steps, Jev floor 0.03, Ripple coach floor 0.2). Stored at `calibration/gate-<brand>.json`.
+- `lib/content-factory/publish-gate.ts`: composite = track·w.track + scroll·w.scroll + save·w.save − coach·w.coach − 10 if cover sense < 0.3. `DEFAULT_GATE_WEIGHTS` = track 1, scroll/save 0.05, coach 0.5 (Ripple) / 0 (BWK). `GateRow.track` added (optional); `resolveDayGate` loads the calibration.
+- `lib/content-factory/performance-loop.ts`: `scorePosts({ allLanes })` scores every lane against the whole-account baseline. `sendPerformanceReport` gains `topHtml` / `subjectPrefix`.
+- New `lib/content-factory/trend-report.ts`: IG per-post averages, 7d vs prior 7d and 30d vs prior 30d (windows end 48h ago), ±10% verdict bands, 2-week decliner flag in `health/trend-last.json`.
+- New `lib/content-factory/learning-health.ts`: `markLearningRun()` stamps `health/learning/<job>.json`. `learningProblems()` reports overdue jobs (daily ≤50h, weekly ≤8d; grace for never-run jobs until 2026-10-13) and a Jev error rate over 10% (or zero calls) from `ClaudeCallLog`.
+- `lib/content-factory/post-video.ts` + `inngest/functions/carousel-post-video.ts`: when every submit error in a wave looks like a billing error (402 / credit / balance / quota), flip `health/higgsfield-credits.json`, skip the fallback model, and mark the build `stillsReason: "no-credits"`. Any successful submit clears the flag.
+- `inngest/functions/social-health-check.ts`: no-credit stills aren't rebuilt; credits alert at most every 3 days; new section 7 for the learning check.
+- `inngest/functions/performance-loop.ts`: daily `refresh-gate-track` step; Monday `calibrate-gate` + `trend` steps; the email shows gate weights and the strongest/weakest lanes. `competitor-scrape-daily.ts` stamps research-learning.
+- Tests: `lib/content-factory/gate-calibration.test.ts` (shrinkage, clamping, weight steps, coach floor, credit-error matching).
+- No schema change, no new Inngest functions or crons (new steps only), no env vars.
+
+### Manual steps needed
+- [ ] Push to main when approved ("push it") (Keenan)
+- [ ] Decide on TikTok: it gets nothing while you're away (Keenan; see Notes)
+
+### Notes
+- **The publish gate has held nothing since it launched.** Every marker from 09-30 to 10-03 says "only 0 post(s) — never gated". Only 5 lanes are active (mythic-picks, pick-ripple, pick-bwk, reset-guide, reset-guide-men). Pick lanes are gate-exempt, which leaves at most 1 gated post per brand-day, under MIN_GATED_POSTS 3. Fix #1 is ready for when more lanes return, but it changes nothing today. What steers content now is the pick-lane topic bandit and the weekly Jev pick calibration.
+- Dry run on prod data (read-only): Ripple lane track records range from selfie 1.98 to muse 1.09; BWK from fantasy-men 1.37 to discipline-real 1.02 (all from now-retired or current lanes). Every lane averages above 1.0 because the scores are mean ratios to a median post; only the order within a day matters.
+- Trend dry run: Ripple flat week over week (+3%, 51 vs 45 posts). BWK and Mythicals don't have a full prior window on IG yet, so they read "not enough posts yet" for the first weeks.
+- The Higgsfield billing-error pattern is a best guess; nobody has seen a real out-of-credits response. If one slips through, widen `isOutOfCreditsError`.
+- TikTok via Higgsfield is not hands-off: their TikTok publish needs a human to review and submit a form in a Claude chat for every post, and only accepts Higgsfield-hosted media. Unattended TikTok would need TikTok's own Content Posting API (an app audit; until approved, posts are private-only).
+
 ## [2026-10-02] — Lead with the annual plan on every web paywall, page and pitch email
 **Requested by:** Keenan
 **Committed by:** Claude Code

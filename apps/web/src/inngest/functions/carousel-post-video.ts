@@ -212,12 +212,15 @@ export const carouselPostVideoFn = inngest.createFunction(
       "@/lib/content-factory/post-video"
     );
     const attemptModels = [...new Set([POST_VIDEO_MODEL, POST_VIDEO_FALLBACK_MODEL].filter(Boolean))];
+    // Out of Higgsfield credits (2026-10-02): stop submitting for this post
+    // and ship stills on purpose (the health check won't rebuild it).
+    let noCredits = false;
     for (let w = 0; !cached && w * POST_VIDEO_WAVE < liveIdx.length; w++) {
       let remaining = liveIdx.slice(w * POST_VIDEO_WAVE, (w + 1) * POST_VIDEO_WAVE);
       for (const i of remaining) clips[i] = null;
       // Primary model first; whatever it doesn't deliver in time (failed
       // submit, failed clip, or still queued) goes to the fallback once.
-      for (let a = 0; a < attemptModels.length && remaining.length > 0; a++) {
+      for (let a = 0; a < attemptModels.length && remaining.length > 0 && !noCredits; a++) {
         const model = attemptModels[a];
         const batch = remaining;
         const jobs = await step.run(`submit-${w}-${a}`, async () => {
@@ -248,9 +251,16 @@ export const carouselPostVideoFn = inngest.createFunction(
               Buffer.from(JSON.stringify({ at: new Date().toISOString(), submitted, errors }, null, 1)),
               { contentType: "application/json", upsert: true }
             );
-          return submitted;
+          const { noteSubmitWave } = await import("@/lib/content-factory/post-video");
+          const creditsOut = await noteSubmitWave(submitted.filter((j) => j.id).length, errors);
+          return { submitted, creditsOut };
         });
-        let pending = jobs.filter((j) => j.id);
+        if (jobs.creditsOut) {
+          noCredits = true;
+          logger.warn(`[post-video] Higgsfield is out of credits — ${postId} ships as stills`);
+          break;
+        }
+        let pending = jobs.submitted.filter((j) => j.id);
         const rounds = POST_VIDEO_ROUNDS[a] ?? 20;
         for (let round = 0; round < rounds && pending.length > 0; round++) {
           await step.sleep(`wait-${w}-${a}-${round}`, "30s");
@@ -402,6 +412,7 @@ export const carouselPostVideoFn = inngest.createFunction(
         status: "done",
         url,
         source: live > 0 ? "higgsfield" : "stills",
+        ...(live === 0 && noCredits ? { stillsReason: "no-credits" as const } : {}),
         model,
         liveSlides: live,
         totalSlides: segments.length,
