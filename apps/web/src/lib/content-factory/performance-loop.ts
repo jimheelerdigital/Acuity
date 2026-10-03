@@ -492,7 +492,9 @@ export function chooseMythicPostType(
 ): ArmChoice {
   // "size" is a daily series the cron schedules itself (2026-10-01), so
   // it never comes out of the draw; "versus" joined the draw the same day.
-  const MODES = ["choice", "duo", "place", "know", "scenario", "versus"];
+  // "place" left the draw 2026-10-02 (Keenan: "no more 'places' to go,
+  // focus more on beasts and weapons ... and sick armor").
+  const MODES = ["choice", "duo", "know", "scenario", "versus"];
   const fresh = MODES.filter((m) => !usedToday.has(m));
   const pool = fresh.length ? fresh : MODES;
   if (!board) return { arm: pool[Math.floor(rng() * pool.length)], reason: "explore" };
@@ -648,7 +650,7 @@ export async function chooseMythicCover(opts: {
       effort: "low",
       system: `${copyObjectives("mythicals")}
 
-YOUR JOB: write three different cover questions for one post. Post type: ${opts.postType} (shape like ${shape[opts.postType] ?? shape.choice}; shape only, new words). Subject: ${opts.category}. Each cover is 4-12 words, ALL-CAPS ready, makes complete sense on its own, and is easy to answer with a number in the comments. The three must take clearly different angles.${ctx.whatWorks ? `\nWhat has worked on this account: ${ctx.whatWorks}.` : ""}${ctx.whatDoesnt ? `\nWhat has not: ${ctx.whatDoesnt}.` : ""}
+YOUR JOB: write three different cover questions for one post. Post type: ${opts.postType} (shape like ${shape[opts.postType] ?? shape.choice}; shape only, new words). Subject: ${opts.category}. Each cover is 4-12 words, ALL-CAPS ready, makes complete sense on its own, and is easy to answer with a number in the comments. The three must take clearly different angles. Keep it epic: colossal mythical beasts, dragons, legendary weapons, sick armor and larger-than-life heroes; never real-world animals, places or everyday life.${ctx.whatWorks ? `\nWhat has worked on this account: ${ctx.whatWorks}.` : ""}${ctx.whatDoesnt ? `\nWhat has not: ${ctx.whatDoesnt}.` : ""}
 Never reuse these recent covers: ${opts.recentTitles.slice(0, 30).join(" | ") || "none"}.
 
 OUTPUT (JSON): { "titles": ["...", "...", "..."] }`,
@@ -708,6 +710,18 @@ export async function pickMythicCover(
       type: "noul",
       instructions: `Reading ONLY \`covers[${i}]\` as an Instagram post cover, with nothing else to go on, can a stranger tell what the post is about?`,
     };
+    // 2026-10-02, per Keenan: "make sure jev also acknowledges this in its
+    // grading. the cooler concept, the better."
+    q[`cool_${i}`] = {
+      type: "score",
+      instructions: `How epic and cool is the concept behind \`covers[${i}]\` to a fantasy fan? Colossal mythical beasts, dragons, legendary weapons, sick armor and larger-than-life heroes score high; real-world animals, places, towns, jobs and everyday life score low.`,
+      criteria: [
+        "Ordinary: real animals, places or everyday life",
+        "Mildly fantasy but tame",
+        "Cool: mythical beasts, weapons or armor",
+        "Sick: colossal mythical beasts, legendary weapons or armor fans would fight about",
+      ],
+    };
   });
   const [r, rc] = await Promise.all([
     askJev(
@@ -727,18 +741,19 @@ export async function pickMythicCover(
     // Clarity is a weight here, not a gate: Mythicals covers follow fixed,
     // proven shapes ("IF YOU KNOW HER, WHAT ARMOR DOES SHE CHOOSE?") that
     // Jev's cover-only clarity scores ~0.3 in tests (2026-09-30).
-    const score = 0.45 * scroll + 0.4 * comment + 0.15 * clear;
+    const cool = scoreOf(r, `cool_${i}`) ?? 0;
+    const score = 0.3 * scroll + 0.25 * comment + 0.1 * clear + 0.35 * cool;
     const eligible = true;
     if (eligible && score > bestScore) {
       bestScore = score;
       best = i;
     }
-    return { t, score, scroll, comment, clear, eligible };
+    return { t, score, scroll, comment, clear, cool, eligible };
   });
   return {
     title: titles[best],
     table: rows
-      .map((x, i) => `${i === best ? "*" : " "} ${x.score.toFixed(3)} scroll=${x.scroll.toFixed(2)} comment=${x.comment.toFixed(2)} clear=${x.clear.toFixed(2)}${x.eligible ? "" : " INELIGIBLE"}  ${x.t}`)
+      .map((x, i) => `${i === best ? "*" : " "} ${x.score.toFixed(3)} scroll=${x.scroll.toFixed(2)} comment=${x.comment.toFixed(2)} clear=${x.clear.toFixed(2)} cool=${x.cool.toFixed(2)}${x.eligible ? "" : " INELIGIBLE"}  ${x.t}`)
       .join("\n"),
   };
 }

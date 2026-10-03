@@ -68,13 +68,12 @@ export function parseChoiceLaneSpec(raw: unknown): ChoiceLaneSpec | null {
 export const CHOICE_CATEGORIES = [
   "a beast to ride as your mount (winged, armored, clawed, serpentine, spectral)",
   "which dragon the reader is (each dragon a temperament: storm, ember, frost, shadow, verdant, abyssal, celestial)",
-  "a legendary fighter to fight beside them (knight, samurai, valkyrie, spartan, ranger, monk, berserker, beastmaster, spellblade)",
+  "a legendary armored hero to fight beside them (dragon knight, rune-armored valkyrie, titan-slayer, demon-hunter, storm paladin, each in sick mythic armor with a legendary weapon)",
   "a guardian creature to protect their home",
   "a companion beast that follows them into the unknown",
   "a creature of the sea or deep to command",
-  "a warrior clan or order to join",
-  "a legendary wolf, lion or great cat to lead their pack",
-  "a phoenix, thunderbird or sky-beast to summon",
+  "a colossal mythical alpha to lead their pack (dire wolf the size of a house, Fenrir-kin, Nemean lion, nine-tailed beast; never an ordinary wolf, lion or big cat)",
+  "a colossal sky-beast to summon (phoenix, thunderbird, roc, storm dragon; never an ordinary bird)",
   "a beast from world mythology to have on their side (kitsune, qilin, griffin, kraken, fenrir, simurgh, thunderbird and more)",
   "an armored war-mount for battle",
   "a mythical creature that matches their personality",
@@ -83,10 +82,8 @@ export const CHOICE_CATEGORIES = [
   "legendary armor to wear into battle",
   "a legendary weapon to wield",
   "a war helm to wear",
-  "a fantasy class to be (paladin, ranger, rogue, battlemage, warlock, druid, berserker)",
   "a mythical companion to raise from a hatchling",
-  "a beast warrior to command in a strange realm",
-  "a legendary unit to command (one choice, choose wisely)",
+  "a colossal war beast to command in battle",
   // 2026-09-30, per Keenan: "add 'which superpower would you pick' and
   // 'which weapon would you choose' as options too".
   "which superpower would you pick (a legendary power: command storms, shapeshift into a beast, walk through shadow, bend fire, speak with dragons, stop time)",
@@ -116,6 +113,13 @@ YOUR JOB: write one "which would you choose?" post.
 - "captionQuestion": one short caption question that gets a pick AND a reason in the comments ("Which one, and what would you name it?").
 - Creatures of legend from any culture are welcome, and so are original inventions. Keep them respectful and not gory. No emojis.
 
+EPIC, NEVER ORDINARY (2026-10-02, per Keenan: "focus more on beasts and weapons and mythical creatures and sick armor... the cooler concept, the better. size also matters"):
+- Every creature is a MYTHICAL beast: dragons, wyverns, krakens, griffins, chimeras, hydras, basilisks, titans, phoenixes, and colossal legendary versions of animals. Never a real-world animal (no jaguars, dogs, wolves, lions, horses, tortoises, ordinary birds), even with a fancy name, unless it is unmistakably mythical: huge, armored, elemental or many-headed.
+- Every creature is BIG: colossal, towering, dwarfing the people and places around it. Say its scale in the scene.
+- Every hero is a legendary, larger-than-life warrior in sick mythic armor with a legendary weapon: dragon knights, titan-slayers, rune-armored valkyries, demon hunters. Never an ordinary person, a job or a quiet life (no fishers, cartographers, archivists, innkeepers).
+- Weapons and armor are legendary and striking: forged from dragon bone, storm-forged, glowing runes, ornate and intimidating.
+- No places, towns, inns, taverns or "new lives" as options.
+
 OUTPUT (JSON):
 {
   "title": "...",
@@ -137,16 +141,13 @@ Return only the JSON object.`;
  */
 export const DUO_CATEGORIES = [
   "warrior + beast duos (a rider and their mount, a hunter and their wolf)",
-  "two legendary fighters back to back (knight and samurai, viking and spartan, monk and ranger)",
+  "two legendary armored champions back to back, each in sick mythic armor with a legendary weapon",
   "dragon + rider duos, each pair a different kind of dragon",
   "unlikely duos: a creature and a warrior from completely different legends",
   "sibling beasts and twin guardians",
-  "a mage and a fighter on a quest together",
-  "which quest you and your bro accept",
-  "which faction you and your bro join when the realm goes to war",
-  "which guild you and your bro join when the guilds are recruiting",
-  "which ship you and your bro take on a sea quest",
-  "which ally you and your bro recruit in a strange realm",
+  "a battle-mage and an armored champion against a colossal beast",
+  "which colossal beast you and your bro ride into war",
+  "which legendary weapons you and your bro carry into the final battle",
 ];
 
 const DUO_RULES = `THIS POST IS A DUO POST: "who are you and your bro?" The reader picks the pair that is him and his best friend, then sends it to that friend.
@@ -202,7 +203,6 @@ export const KNOW_CATEGORIES = [
   "if you know her, what war helm does she choose",
   "if you know him, what warrior is he",
   "if you know her, what legendary mount does she ride into battle",
-  "if she ruled the realm, which queen would she be",
 ];
 
 const KNOW_RULES = `THIS POST IS A "IF YOU KNOW HIM / HER" POST: the reader thinks of one specific person and sends the post to them.
@@ -219,15 +219,14 @@ Everything else in the format above still applies.`;
  * LEGENDARY ITEM." The setup is the hook.
  */
 export const SCENARIO_CATEGORIES = [
-  "you cleared the dungeon: choose your legendary item",
-  "you have 100 gold: hire your mercenary company",
-  "the royal tournament begins: which event are you entering",
-  "the high priest grants you one artifact for your quest: which one",
+  "you cleared the dungeon: choose your legendary weapon",
+  "you slew the dragon: choose your armor forged from its scales",
   "they attack at dawn: choose your legendary weapon",
   "you've reached the final boss: choose your weapon",
-  "you've entered a strange realm: choose your unit",
-  "the quest paid enough to retire: choose your new life",
-  "a dying king offers you one reward: which one",
+  "a dragon egg hatches for you: choose your dragon",
+  "the realm is falling: choose the colossal beast you ride into battle",
+  "the gods offer you one set of armor: which one",
+  "you enter the beast's lair: choose the mythical creature that fights beside you",
 ];
 
 const SCENARIO_RULES = `THIS POST IS A SCENARIO POST: the cover sets up a short story moment, then asks for the choice.
@@ -392,6 +391,8 @@ async function generateChoiceTopicChecked(opts: ChoiceTopicOpts): Promise<Choice
 
 const TWIN_THRESHOLD = 0.8;
 const THROWAWAY_THRESHOLD = 0.25;
+/** Below this "epic and mythical" probability an option earns a rewrite (2026-10-02). */
+const EPIC_MIN = 0.5;
 
 async function choiceTopicProblems(topic: ChoiceTopic): Promise<string[]> {
   const problems: string[] = [];
@@ -403,6 +404,14 @@ async function choiceTopicProblems(topic: ChoiceTopic): Promise<string[]> {
     questions[`twin_${i}`] = {
       type: "noul",
       instructions: `Ignoring what every option must share to answer \`question\`, is \`options[${i}]\` nearly a copy of one OTHER entry in \`options\`: the same element, look and idea under a different name (like a frost dragon next to an ice wyrm)?`,
+    };
+    questions[`epic_${i}`] = {
+      type: "noul",
+      instructions: `Is \`options[${i}]\` an epic, mythical concept: a colossal mythical beast, a legendary weapon, legendary armor, or a larger-than-life legendary armored hero?`,
+      criteria: {
+        true: "Yes: mythical and epic, the kind of thing a fantasy fan finds sick",
+        false: "No: a real-world animal, an ordinary person or job, a place, or everyday life",
+      },
     };
     questions[`tempt_${i}`] = {
       type: "score",
@@ -423,21 +432,28 @@ async function choiceTopicProblems(topic: ChoiceTopic): Promise<string[]> {
   if (!r) return problems;
   const twins: string[] = [];
   const weak: string[] = [];
+  const ordinary: string[] = [];
   topic.options.forEach((o, i) => {
     const t = noulOf(r, `twin_${i}`);
     const s = scoreOf(r, `tempt_${i}`);
     if (t !== null && t >= TWIN_THRESHOLD) twins.push(o.name);
     if (s !== null && s < THROWAWAY_THRESHOLD) weak.push(o.name);
+    const e = noulOf(r, `epic_${i}`);
+    if (e !== null && e < EPIC_MIN) ordinary.push(o.name);
   });
   console.log(
     `[choice-lane] Jev check "${topic.title}": ` +
       topic.options
-        .map((o, i) => `${o.name} twin=${noulOf(r, `twin_${i}`)?.toFixed(2)} tempt=${scoreOf(r, `tempt_${i}`)?.toFixed(2)}`)
+        .map((o, i) => `${o.name} twin=${noulOf(r, `twin_${i}`)?.toFixed(2)} tempt=${scoreOf(r, `tempt_${i}`)?.toFixed(2)} epic=${noulOf(r, `epic_${i}`)?.toFixed(2)}`)
         .join(" | ")
   );
   // One twin flag alone can be the model noticing its partner; two or more is a real pair.
   if (twins.length >= 2) problems.push(`these options are too alike: ${twins.join(", ")}`);
   if (weak.length) problems.push(`these options are throwaways nobody would pick: ${weak.join(", ")}`);
+  if (ordinary.length)
+    problems.push(
+      `these options are realistic or ordinary, not epic: ${ordinary.join(", ")}. Replace them with colossal mythical beasts, legendary weapons, legendary armor or larger-than-life armored heroes`
+    );
   return problems;
 }
 
@@ -596,13 +612,14 @@ export function buildMythicImagePrompt(
   if (mode === "versus" && kind === "option") {
     return [
       `A breathtaking, hyper-real cinematic film still, vertical composition: ${scene}`,
-      "BOTH monsters are in the frame, facing each other, whole bodies clearly visible and equally prominent in the MIDDLE of the image, neither cropped, hidden or tiny in the background. Open sky or atmosphere in the top fifth of the frame (the matchup is added there later).",
+      "BOTH monsters are in the frame, facing each other, whole bodies clearly visible and equally prominent in the MIDDLE of the image, neither cropped, hidden or tiny in the background. Both are colossal: their scale dwarfs the landscape around them. Open sky or atmosphere in the top fifth of the frame (the matchup is added there later).",
       "Shot like a prestige fantasy film: real weather, real light, tactile detail in scales, fur, feathers and stone, believable anatomy, dramatic but natural lighting, tack-sharp focus on both.",
       "Not a cartoon, not anime, not a video-game render, not a painting or illustration. No text, letters, numbers, logos or watermarks anywhere in the image. Nothing gory: no wounds, no blood.",
     ].join("\n");
   }
   return [
     `A breathtaking, hyper-real cinematic film still, vertical composition: ${scene}`,
+    "Epic and mythical: a creature is COLOSSAL and imposing, its huge scale clear against the landscape around it; a hero is a larger-than-life warrior in ornate, intimidating legendary armor with a legendary weapon.",
     kind === "option"
       ? "The creature or fighter is the unmistakable hero of the frame, shown whole and centered in the MIDDLE of the image, with open sky or atmosphere in the top fifth of the frame (its name is added there later)."
       : "Epic scale and depth; the main subject sits in the middle of the frame, with open atmosphere in the top quarter and bottom fifth (the title is added at the top later).",

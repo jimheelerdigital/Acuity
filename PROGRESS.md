@@ -7,6 +7,36 @@
 
 ---
 
+## [2026-10-02] — Mythicals back to epic: colossal beasts, legendary weapons and armor, no places
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** see "content: Keep Mythicals on colossal beasts, legendary weapons and armor"
+
+### In plain English (for Keenan)
+Mythicals had drifted into realistic and everyday picks: a jaguar, a dog, a snow leopard, a falcon, quiet towns, inns, and a fisherman's "new life". From now on:
+- Every pick is a big mythical beast, a legendary weapon, sick armor, or a larger-than-life armored hero.
+- The "places" post type is gone from the rotation.
+- Jev scores how epic each concept is when choosing covers, and sends any ordinary option back for a rewrite.
+- Every creature is pictured colossal.
+
+### Technical changes (for Jimmy)
+- `lib/content-factory/choice-lane.ts`:
+  - New EPIC rules block in SYSTEM, applied to every mode.
+  - Categories pruned or reworded: no clan, class, quest, guild, ship, queen, tournament or new-life categories, and no ordinary wolves, cats or birds.
+  - New Jev noul `epic_i` in `choiceTopicProblems`: below `EPIC_MIN` 0.5, the option is rewritten with the problem named.
+  - `buildMythicImagePrompt` adds colossal scale and legendary-armor lines (choice and versus).
+- `lib/content-factory/performance-loop.ts`:
+  - `place` removed from the `chooseMythicPostType` draw.
+  - `pickMythicCover` adds a Jev `cool_i` score. The cover score is now 0.3 scroll + 0.25 comment + 0.1 clear + 0.35 cool.
+  - The cover candidate prompt is told to keep it epic.
+
+### Manual steps needed
+- None
+
+### Notes
+- Recent offenders: "Balam the Night Jaguar", "Black Shuck the Faithful" (a dog), "Thunder Cat of the Ridge" (a snow leopard), "The Winter Gyrfalcon", "Cartographer & Sand Tortoise", "Fisher of the Frozen Deep", and two places posts in one day.
+- Places can still be made by hand (`lane-requests/mythic-picks--place.json`), but they're never drawn automatically.
+
 ## [2026-10-02] — Jev now checks post captions and closing cards, not just covers and options
 
 **Requested by:** Keenan
