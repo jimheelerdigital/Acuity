@@ -7,6 +7,31 @@
 
 ---
 
+## [2026-10-03] — AI music samples (one per brand) to replace copyrighted songs
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** see "feat: Generate AI music samples with ElevenLabs"
+
+### In plain English (for Keenan)
+Facebook is muting Legendary Mythicals posts because their music is copyrighted (the song library is TikTok downloads). The system can now generate original music with ElevenLabs, which we own, so it can't be muted. First step: one 60-second instrumental track per brand, emailed to Keenan to judge before we build a full library.
+- **Mythicals:** epic orchestral
+- **BWK:** dark motivational trap
+- **Ripple:** warm acoustic
+
+### Technical changes (for Jimmy)
+- New `lib/content-factory/music-gen.ts`: `composeTrack()` (POST `api.elevenlabs.io/v1/music`, `force_instrumental`, tries `music_v2_5` then `music_v1`) and `MUSIC_BRIEFS` per brand.
+- New Inngest function `inngest/functions/music-sample.ts` (event `content-factory/music.sample`, no cron): composes 3 tracks into `music-samples/<date>/` (content-factory bucket) and emails them as attachments. Registered in `app/api/inngest/route.ts`.
+- New `app/api/admin/music-sample/route.ts` (admin session or CRON_SECRET bearer).
+- Uses the existing `ELEVENLABS_API_KEY`; the live `music/` folders are untouched.
+
+### Manual steps needed
+- [ ] Listen to the 3 samples and say what to keep or change (Keenan)
+- [x] Inngest resync after deploy (new function) (Claude)
+
+### Notes
+- ElevenLabs Music: about 900 credits per minute; commercial use requires a paid plan. Check that the account's plan covers commercial use before building the full library.
+- Once approved, the plan is about 25-30 tracks per brand into `music/<brand>/`, retiring the TikTok-downloaded tracks.
+
 ## [2026-10-03] — Weekly Reddit scrape turned off; ads use a standing list of audience themes
 **Requested by:** Keenan
 **Committed by:** Claude Code

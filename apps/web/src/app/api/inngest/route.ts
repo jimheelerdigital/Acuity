@@ -73,6 +73,7 @@ import { competitorScrapeDailyFn } from "@/inngest/functions/competitor-scrape-d
 import { adlabWeeklyBatchFn } from "@/inngest/functions/adlab-weekly-batch";
 import { adlabCompetitorResearchFn } from "@/inngest/functions/adlab-competitor-research";
 import { socialHealthCheckFn } from "@/inngest/functions/social-health-check";
+import { musicSampleFn } from "@/inngest/functions/music-sample";
 import { adlabRegenImagesFn } from "@/inngest/functions/adlab-regen-images";
 import { adlabDailyCronFn } from "@/inngest/functions/adlab-daily-cron";
 import { mythicalsPortraitFn } from "@/inngest/functions/mythicals-portrait";
@@ -161,6 +162,7 @@ const handler = serve({
     adlabWeeklyBatchFn,
     adlabCompetitorResearchFn,
     socialHealthCheckFn,
+    musicSampleFn,
     adlabRegenImagesFn,
     adlabDailyCronFn,
   ],
