@@ -55,14 +55,22 @@ export async function composeTrack(prompt: string, seconds = 60): Promise<{ audi
  * brief so 20 tracks don't sound like one song.
  */
 export const MUSIC_FLAVORS: Record<MusicBrand, string[]> = {
+  // 2026-10-03, per Keenan: "deeper techno/house/progressive house ... or
+  // even a combo of both house and mythical/norse". Alternates orchestral
+  // and electronic so every batch gets both.
   mythicals: [
     "Norse war-horn battle march with pounding drums",
+    "Deep progressive house, 124 bpm, four-on-the-floor kick under Norse war drums, a haunting throat-singing texture and a huge cinematic drop",
     "Dark choral dragon theme with deep cellos and timpani",
-    "Fast heroic charge with racing strings and brass stabs",
-    "Mystic ancient ritual percussion with ethnic flutes building to a full orchestra",
+    "Dark melodic techno, 126 bpm, driving bassline with epic choir stabs and a mythic horn motif",
     "Colossal slow-motion titan reveal with sub-bass hits and soaring choir",
+    "Nordic folk house: ancient bowed-lyre and frame-drum textures over a deep house groove, building to an epic brass-backed drop",
+    "Fast heroic charge with racing strings and brass stabs",
+    "Progressive house build with rolling synth arps that drops into full orchestral brass and choir",
+    "Mystic ancient ritual percussion with ethnic flutes building to a full orchestra",
+    "Deep hypnotic techno with distant Viking chants, cavernous reverb and a slow-rising epic pad",
     "Celtic legendary quest theme with fiddle over epic drums",
-    "Eastern epic with erhu, taiko and huge brass swells",
+    "Cinematic melodic house with soaring strings, a mythic choir hook and a festival-sized drop",
   ],
   bwk: [
     "Night-drive phonk with heavy cowbell and distorted 808",
@@ -86,7 +94,8 @@ export const MUSIC_FLAVORS: Record<MusicBrand, string[]> = {
 
 export function libraryBrief(brand: MusicBrand, i: number): string {
   const f = MUSIC_FLAVORS[brand];
-  return `${MUSIC_BRIEFS[brand]} Style for this track: ${f[i % f.length]}.`;
+  // The flavor wins over the brand brief where they differ (house vs orchestral).
+  return `${MUSIC_BRIEFS[brand]} STYLE FOR THIS TRACK (takes priority over the general direction above): ${f[i % f.length]}. Instrumental only (wordless chants/choir are fine), strong from the first second.`;
 }
 
 /** ElevenLabs credits left this cycle, or null if the API won't say. */
