@@ -1,7 +1,6 @@
-import { NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
+import { NextRequest, NextResponse } from "next/server";
 
-import { getAuthOptions } from "@/lib/auth";
+import { getAnySessionUserId } from "@/lib/mobile-auth";
 import { inngest } from "@/inngest/client";
 
 /**
@@ -26,12 +25,14 @@ import { inngest } from "@/inngest/client";
 const REPROCESSABLE_STATUSES = new Set(["PARTIAL", "FAILED"]);
 
 export async function POST(
-  _req: Request,
+  req: NextRequest,
   ctx: { params: { id: string } }
 ) {
-  const session = await getServerSession(getAuthOptions());
-  const userId = session?.user?.id;
+  // Web cookie OR mobile bearer (2026-10-04): this used the web session only,
+  // so a retry from the app could never authenticate.
+  const userId = await getAnySessionUserId(req);
   if (!userId) {
+    console.warn(`[reprocess] unauthorized entry=${ctx.params.id}`);
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 

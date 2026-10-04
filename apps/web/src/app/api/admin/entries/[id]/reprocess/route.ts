@@ -29,13 +29,17 @@ export async function POST(
 ) {
   const entryId = ctx.params.id;
 
-  // Admin gate (Bearer or cookie → then isAdmin).
-  const userId = await getAnySessionUserId(req);
+  // Admin gate (Bearer or cookie → then isAdmin), or the CRON_SECRET bearer
+  // for server-side ops (2026-10-04: lets a stuck entry be retried without a
+  // browser session).
+  const { prisma } = await import("@/lib/prisma");
+  const cronSecret = process.env.CRON_SECRET;
+  const viaCron = !!cronSecret && req.headers.get("authorization") === `Bearer ${cronSecret}`;
+  const userId = viaCron ? "cron" : await getAnySessionUserId(req);
   if (!userId) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
-  const { prisma } = await import("@/lib/prisma");
-  const me = await prisma.user.findUnique({
+  const me = viaCron ? { isAdmin: true } : await prisma.user.findUnique({
     where: { id: userId },
     select: { isAdmin: true },
   });
