@@ -102,10 +102,12 @@ export async function POST(req: NextRequest) {
     return new Response(null, { status: 204 });
   }
 
-  let userId = await getAnySessionUserId(req).catch(() => null);
-  if (!userId && body.userId) {
-    userId = body.userId;
-  }
+  // The user comes ONLY from the authenticated session (web cookie or mobile
+  // bearer). A userId in the body is ignored (2026-10-03, weekly audit):
+  // trusting it let anyone write events onto any account, and those events
+  // drive recovery emails and attribution. Every legitimate caller that
+  // sends one is already signed in.
+  const userId = await getAnySessionUserId(req).catch(() => null);
   const sessionToken = body.sessionToken ?? null;
 
   try {
