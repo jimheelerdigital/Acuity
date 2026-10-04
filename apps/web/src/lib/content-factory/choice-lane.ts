@@ -116,6 +116,7 @@ YOUR JOB: write one "which would you choose?" post.
 EPIC, NEVER ORDINARY (2026-10-02, per Keenan: "focus more on beasts and weapons and mythical creatures and sick armor... the cooler concept, the better. size also matters"):
 - Every creature is a MYTHICAL beast: dragons, wyverns, krakens, griffins, chimeras, hydras, basilisks, titans, phoenixes, and colossal legendary versions of animals. Never a real-world animal (no jaguars, dogs, wolves, lions, horses, tortoises, ordinary birds), even with a fancy name, unless it is unmistakably mythical: huge, armored, elemental or many-headed.
 - Every creature is BIG: colossal, towering, dwarfing the people and places around it. Say its scale in the scene.
+- NO HUMAN FACES ON CREATURES (2026-10-04, per Keenan, after "The Bronze Lamassu" with a bearded man's face): no lamassu, sphinxes, manticores, centaurs, harpies, nagas or sirens, and no man-like faces on any beast. A creature's face is fully animal, reptilian or monstrous.
 - Every hero is a legendary, larger-than-life warrior in sick mythic armor with a legendary weapon: dragon knights, titan-slayers, rune-armored valkyries, demon hunters. Never an ordinary person, a job or a quiet life (no fishers, cartographers, archivists, innkeepers).
 - Weapons and armor are legendary and striking: forged from dragon bone, storm-forged, glowing runes, ornate and intimidating.
 - No places, towns, inns, taverns or "new lives" as options.
@@ -408,6 +409,8 @@ const EPIC_MIN = 0.5;
 
 /** Below this, an option doesn't read as what the title promises (2026-10-04). */
 const KIND_MIN = 0.5;
+/** At or above this, an option is a human-faced creature (2026-10-04). */
+const HUMAN_FACE_MAX = 0.5;
 
 async function choiceTopicProblems(topic: ChoiceTopic): Promise<string[]> {
   const problems: string[] = [];
@@ -439,6 +442,10 @@ async function choiceTopicProblems(topic: ChoiceTopic): Promise<string[]> {
         false: "No: from the name you can't tell it's the promised kind of thing (e.g. 'Bogmire the Patient' for a dragon)",
       },
     };
+    questions[`humanface_${i}`] = {
+      type: "noul",
+      instructions: `Is \`options[${i}]\` a creature normally shown with a HUMAN face or human head (a lamassu, sphinx, manticore, centaur, harpy, naga, siren, or similar)? Armored human heroes and warriors are not creatures: answer no for them.`,
+    };
     questions[`tempt_${i}`] = {
       type: "score",
       instructions: `How much would a fantasy fan reading \`question\` want to pick \`options[${i}]\`?`,
@@ -460,7 +467,10 @@ async function choiceTopicProblems(topic: ChoiceTopic): Promise<string[]> {
   const weak: string[] = [];
   const ordinary: string[] = [];
   const offKind: string[] = [];
+  const humanFaced: string[] = [];
   topic.options.forEach((o, i) => {
+    const hf = noulOf(r, `humanface_${i}`);
+    if (hf !== null && hf >= HUMAN_FACE_MAX) humanFaced.push(o.name);
     const k = noulOf(r, `kind_${i}`);
     if (k !== null && k < KIND_MIN) offKind.push(o.name);
     const t = noulOf(r, `twin_${i}`);
@@ -479,6 +489,10 @@ async function choiceTopicProblems(topic: ChoiceTopic): Promise<string[]> {
   // One twin flag alone can be the model noticing its partner; two or more is a real pair.
   if (twins.length >= 2) problems.push(`these options are too alike: ${twins.join(", ")}`);
   if (weak.length) problems.push(`these options are throwaways nobody would pick: ${weak.join(", ")}`);
+  if (humanFaced.length)
+    problems.push(
+      `these creatures have human faces, which Keenan never wants: ${humanFaced.join(", ")}. Replace them with creatures whose faces are fully animal, reptilian or monstrous`
+    );
   if (offKind.length)
     problems.push(
       `these option names don't say they are what the title promises: ${offKind.join(", ")}. Rename them (and match their scenes) so the name alone makes it obvious, e.g. "Vyrnax the Emerald Dragon" or "The Storm Wyrm" when the title promises dragons`
@@ -618,6 +632,10 @@ async function generateChoiceTopicOnce(opts: ChoiceTopicOpts): Promise<ChoiceTop
  * Image prompt for a cover or option: hyper-real epic film still, subject
  * in the middle band. Places posts frame the LOCATION as the subject.
  */
+/** 2026-10-04 (Keenan: "no human faces on mythical creatures"). */
+const NO_HUMAN_FACE_LINE =
+  "No creature has a human face or human head: its face is fully animal, reptilian or monstrous (never a lamassu, sphinx, manticore or bearded man-like face on a beast).";
+
 export function buildMythicImagePrompt(
   scene: string,
   kind: "cover" | "option",
@@ -637,6 +655,7 @@ export function buildMythicImagePrompt(
   if (mode === "size" && kind === "option") {
     return [
       `A breathtaking, hyper-real cinematic film still, vertical composition, wide shot: ${scene}`,
+      NO_HUMAN_FACE_LINE,
       "The creature and the real-world object stand side by side at the same distance from the camera, both whole and fully in frame. The real-world object must be clearly visible and recognizable so the size difference reads instantly. Open sky or atmosphere in the top fifth of the frame (a label is added there later).",
       "Shot like a prestige film: real weather, real light, tactile detail, believable anatomy, true-to-life scale, tack-sharp focus.",
       "Not a cartoon, not anime, not a video-game render, not a painting or illustration. No text, letters, numbers, logos or watermarks anywhere in the image. Nothing gory.",
@@ -645,6 +664,7 @@ export function buildMythicImagePrompt(
   if (mode === "versus" && kind === "option") {
     return [
       `A breathtaking, hyper-real cinematic film still, vertical composition: ${scene}`,
+      NO_HUMAN_FACE_LINE,
       "BOTH monsters are in the frame, facing each other, whole bodies clearly visible and equally prominent in the MIDDLE of the image, neither cropped, hidden or tiny in the background. Both are colossal: their scale dwarfs the landscape around them. Open sky or atmosphere in the top fifth of the frame (the matchup is added there later).",
       "Shot like a prestige fantasy film: real weather, real light, tactile detail in scales, fur, feathers and stone, believable anatomy, dramatic but natural lighting, tack-sharp focus on both.",
       "Not a cartoon, not anime, not a video-game render, not a painting or illustration. No text, letters, numbers, logos or watermarks anywhere in the image. Nothing gory: no wounds, no blood.",
@@ -653,6 +673,7 @@ export function buildMythicImagePrompt(
   return [
     `A breathtaking, hyper-real cinematic film still, vertical composition: ${scene}`,
     "Epic and mythical: a creature is COLOSSAL and imposing, its huge scale clear against the landscape around it; a hero is a larger-than-life warrior in ornate, intimidating legendary armor with a legendary weapon.",
+    NO_HUMAN_FACE_LINE,
     kind === "option"
       ? "The creature or fighter is the unmistakable hero of the frame, shown whole and centered in the MIDDLE of the image, with open sky or atmosphere in the top fifth of the frame (its name is added there later)."
       : "Epic scale and depth; the main subject sits in the middle of the frame, with open atmosphere in the top quarter and bottom fifth (the title is added at the top later).",

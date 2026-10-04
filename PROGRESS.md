@@ -7,6 +7,30 @@
 
 ---
 
+## [2026-10-04] — No human faces on Mythicals creatures
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** see "content: Ban human-faced creatures on Mythicals"
+
+### In plain English (for Keenan)
+- **The fix:** "THE GATES ARE FALLING" had "The Bronze Lamassu", a winged bull with a bearded man's face. It's replaced with "The Golden War Griffin" (eagle head, armored, rearing before the gate), and the video is rebuilding.
+- **The rule:** Mythicals creatures never get human faces again: no lamassu, sphinxes, manticores, centaurs, harpies, nagas or sirens. It's enforced at every step:
+  - the writer is told not to pick them
+  - every image prompt says so
+  - Jev flags any that slip into a draft, and they get rewritten
+  - the photo check fails any image with a human-faced creature
+
+### Technical changes (for Jimmy)
+- `lib/content-factory/choice-lane.ts`: EPIC-block rule; `NO_HUMAN_FACE_LINE` added to the choice / versus / size image prompts; Jev `humanface_i` noul in `choiceTopicProblems` (`HUMAN_FACE_MAX` 0.5; becomes a rewrite problem).
+- `lib/content-factory/moody-carousel.ts`: QC rule 9 for `fantasy` images (human face or head on a creature).
+- Data: post cmutnu6hr slide 1 replaced (`slide-1-option-v2`, "1. The Golden War Griffin"), clips cache cleared, video rebuild queued.
+
+### Manual steps needed
+- None
+
+### Notes
+- Armored human heroes are explicitly fine; only creatures are restricted.
+
 ## [2026-10-04] — Mythicals options must be what the title promises, and look like it
 **Requested by:** Keenan
 **Committed by:** Claude Code
