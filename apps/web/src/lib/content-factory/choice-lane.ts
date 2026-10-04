@@ -116,6 +116,7 @@ YOUR JOB: write one "which would you choose?" post.
 EPIC, NEVER ORDINARY (2026-10-02, per Keenan: "focus more on beasts and weapons and mythical creatures and sick armor... the cooler concept, the better. size also matters"):
 - Every creature is a MYTHICAL beast: dragons, wyverns, krakens, griffins, chimeras, hydras, basilisks, titans, phoenixes, and colossal legendary versions of animals. Never a real-world animal (no jaguars, dogs, wolves, lions, horses, tortoises, ordinary birds), even with a fancy name, unless it is unmistakably mythical: huge, armored, elemental or many-headed.
 - Every creature is BIG: colossal, towering, dwarfing the people and places around it. Say its scale in the scene.
+- EVERY DRAGON HAS WINGS (2026-10-04, per Keenan): dragons, wyrms, drakes and wyverns always have big, clearly visible wings, and their scenes say so. No wingless serpent dragons or lizard-like dragons.
 - NO HUMAN FACES ON CREATURES (2026-10-04, per Keenan, after "The Bronze Lamassu" with a bearded man's face): no lamassu, sphinxes, manticores, centaurs, harpies, nagas or sirens, and no man-like faces on any beast. A creature's face is fully animal, reptilian or monstrous.
 - Every hero is a legendary, larger-than-life warrior in sick mythic armor with a legendary weapon: dragon knights, titan-slayers, rune-armored valkyries, demon hunters. Never an ordinary person, a job or a quiet life (no fishers, cartographers, archivists, innkeepers).
 - Weapons and armor are legendary and striking: forged from dragon bone, storm-forged, glowing runes, ornate and intimidating.
@@ -634,7 +635,7 @@ async function generateChoiceTopicOnce(opts: ChoiceTopicOpts): Promise<ChoiceTop
  */
 /** 2026-10-04 (Keenan: "no human faces on mythical creatures"). */
 const NO_HUMAN_FACE_LINE =
-  "No creature has a human face or human head: its face is fully animal, reptilian or monstrous (never a lamassu, sphinx, manticore or bearded man-like face on a beast).";
+  "No creature has a human face or human head: its face is fully animal, reptilian or monstrous (never a lamassu, sphinx, manticore or bearded man-like face on a beast). Every dragon, wyrm, drake or wyvern has large, clearly visible wings (2026-10-04, per Keenan).";
 
 export function buildMythicImagePrompt(
   scene: string,

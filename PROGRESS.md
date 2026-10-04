@@ -7,6 +7,24 @@
 
 ---
 
+## [2026-10-04] — Every Mythicals dragon has wings
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** see "content: Require wings on every Mythicals dragon"
+
+### In plain English (for Keenan)
+From now on every dragon (wyrms, drakes and wyverns too) has big, clearly visible wings. The writer is told so, every image prompt asks for wings, and the photo check rejects any image of a wingless dragon.
+
+### Technical changes (for Jimmy)
+- `lib/content-factory/choice-lane.ts`: EPIC-block wings rule; `NO_HUMAN_FACE_LINE` now also requires wings, so every Mythicals image prompt carries it.
+- `lib/content-factory/moody-carousel.ts`: QC rule 10 for fantasy images (dragon without visible wings fails).
+
+### Manual steps needed
+- None
+
+### Notes
+- Applies to new posts only; already-built posts weren't re-checked.
+
 ## [2026-10-04] — No human faces on Mythicals creatures
 **Requested by:** Keenan
 **Committed by:** Claude Code
