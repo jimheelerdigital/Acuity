@@ -18,6 +18,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import { getAnySessionUserId } from "@/lib/mobile-auth";
+import { appOnboardingCompleted } from "@/lib/app-onboarding";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -210,7 +211,8 @@ export async function GET(req: NextRequest) {
   const flat = {
     ...rest,
     createdAt: createdAt.toISOString(),
-    onboardingCompleted: Boolean(effectiveCompletedAt),
+    // PRO users count as onboarded so the app stops bouncing them off /record (lib/app-onboarding.ts).
+    onboardingCompleted: appOnboardingCompleted(effectiveCompletedAt, user.subscriptionStatus),
     onboardingStep: user.onboarding?.currentStep ?? 1,
     hasStripeCustomer: Boolean(stripeCustomerId),
     // True when the user is FREE due to a recent failed payment → drives the

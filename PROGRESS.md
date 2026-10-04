@@ -795,6 +795,28 @@ The email people get after the Mythicals quiz now opens with a big picture of th
 - Still sent from hello@getacuity.io. Moving to a legendarymythicals.com sender needs a Resend domain plus 3 GoDaddy DNS records (optional).
 - No Stripe product is needed: checkout sends inline price_data named "Legendary Creature Portrait" with metadata brand=mythicals.
 
+## [2026-10-04] — URGENT fix: paid web customers couldn't record in the app
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** see "fix: Stop the app bouncing paid users off the record screen"
+
+### In plain English (for Keenan)
+A paying customer (Christine Carty) emailed that none of the record buttons in the app worked and asked to cancel. The cause: for people who paid on the website, the app sent them back to the home screen every time they opened another screen, including the record screen. So tapping record did nothing visible. This is very likely why most recent paying customers have 0 debriefs. Fixed on our server, so it works immediately on the app people already have, with no app update needed.
+
+### Technical changes (for Jimmy)
+- New `lib/app-onboarding.ts` (+ test): `appOnboardingCompleted(completedAt, status)` returns true for PRO
+- `app/api/user/me/route.ts` and `lib/mobile-session.ts`: `onboardingCompleted` uses it
+- Root cause (app): `apps/mobile/app/_layout.tsx`'s routing effect depends on `segments`, so `decideColdStartRoute` re-runs on every navigation. For signed-in, PRO, `!onboardingCompleted` it returns "home" → `router.replace("/(tabs)")` from any non-onboarding segment, including /record. Web-paid users never complete mobile onboarding (the 3.1.3(b) bypass), so they're bounced forever
+- Evidence: Christine (Android 1.5.0, PRO, UserOnboarding completedAt null) signed in 6 times; prod logs show only /api/user/me and /api/entries, with no upload or /api/record calls. Shaun (completedAt set) records fine
+
+### Manual steps needed
+- [ ] Jimmy, app-side fix for the next release: in decideColdStartRoute, apply the PRO bypass only from auth/onboarding/root segments, otherwise "stay". Then decide whether paid users should get the first-debrief onboarding (Jimmy)
+- [ ] Reply to Christine and handle her cancel request (Keenan)
+
+### Notes
+- No DB writes: the flag is computed per response, so a deliberate QA reset of a non-PRO user still routes to onboarding.
+- Web /home still gates on UserOnboarding.completedAt (separate, unchanged).
+
 ## [2026-10-04] — Weekly audit fixes: first debrief after payment, card-trial emails, pixel off the journal, security holes
 **Requested by:** Keenan
 **Committed by:** Claude Code

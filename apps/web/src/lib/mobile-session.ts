@@ -1,6 +1,7 @@
 import "server-only";
 
 import { encode } from "next-auth/jwt";
+import { appOnboardingCompleted } from "@/lib/app-onboarding";
 
 /**
  * Shared NextAuth-JWT minter for mobile-side sign-in endpoints
@@ -108,7 +109,7 @@ export function mobileSessionResponse(params: {
       trialEndsAt: user.trialEndsAt ? user.trialEndsAt.toISOString() : null,
       // Match the flat shape /api/user/me returns so mobile's
       // AuthGate routes existing users past onboarding correctly.
-      onboardingCompleted: Boolean(user.onboarding?.completedAt),
+      onboardingCompleted: appOnboardingCompleted(user.onboarding?.completedAt, user.subscriptionStatus),
       onboardingStep: user.onboarding?.currentStep ?? 1,
       // Tour gates. Forwarded faithfully: `undefined` (JSON-omitted) when
       // the caller's select didn't include them → the mobile gate treats
