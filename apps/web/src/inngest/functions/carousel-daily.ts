@@ -872,6 +872,7 @@ export const carouselDailyCronFn = inngest.createFunction(
           recentTitles: recent.map((p) => p.headline),
           recentNames,
           feedback: `${(await getLaneFeedback(laneKey)) ?? ""}${coverGuidance}` || null,
+          ...(forcedTopic ? { fixedTitle: forcedTopic } : {}),
         });
       });
       logger.info(`[carousel-cron] Choice (${laneKey}): "${topic.title}" — ${topic.options.map((o) => o.name).join(" / ")}`);

@@ -7,6 +7,26 @@
 
 ---
 
+## [2026-10-04] — A requested Mythicals question can't be reworded anymore
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** see "fix: Lock a requested Mythicals cover question"
+
+### In plain English (for Keenan)
+- **Title lock:** the first "Which dragon are you bonding to?" request came out as "PICK ONE DRAGON TO RIDE INTO BATTLE?", because the automatic best-of-5 cover step rewrote it. A requested question is now locked exactly as asked. The dragon post is being regenerated and posted to Instagram and Facebook as soon as its video is ready.
+- **Dragon fights restored:** at Keenan's request, the cancelled "Five dragon fights" post is back in the queue. Versus posts stay out of the daily rotation.
+
+### Technical changes (for Jimmy)
+- `lib/content-factory/choice-lane.ts`: `ChoiceTopicOpts.fixedTitle`; when set, `generateChoiceTopic` uses it as the title (uppercased, adds "?" if missing) and skips `withBestTitle`.
+- `inngest/functions/carousel-daily.ts`: passes `forcedTopic` as `fixedTitle`.
+- Data: CarouselPost cmutf89t5001a13wvlsljugdv back to DRAFT (re-queued by the scan).
+
+### Manual steps needed
+- None
+
+### Notes
+- The off-title post "PICK ONE DRAGON TO RIDE INTO BATTLE?" (cmutwww5e) stays a normal draft and posts in a regular slot unless Keenan wants it dropped.
+
 ## [2026-10-04] — No more monster-fight ("versus") posts on Legendary Mythicals
 **Requested by:** Keenan
 **Committed by:** Claude Code

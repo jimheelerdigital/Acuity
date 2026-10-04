@@ -305,6 +305,11 @@ type ChoiceTopicOpts = {
   recentTitles: string[];
   recentNames: string[];
   feedback?: string | null;
+  /**
+   * Exact cover question requested by hand (2026-10-04, per Keenan). Locks
+   * the title: the best-of-5 cover step and any rewrite can't replace it.
+   */
+  fixedTitle?: string;
 };
 
 /**
@@ -317,6 +322,13 @@ type ChoiceTopicOpts = {
  */
 export async function generateChoiceTopic(opts: ChoiceTopicOpts): Promise<ChoiceTopic> {
   const topic = await generateChoiceTopicChecked(opts);
+  if (opts.fixedTitle) {
+    let title = opts.fixedTitle.trim().toUpperCase();
+    if (!/[?.!]$/.test(title)) title += "?";
+    const prefix = topic.slug.match(/^mythic(-duo|-place|-know|-scenario|-size|-versus)?/)?.[0] ?? "mythic";
+    const slug = `${prefix}-${title.toLowerCase().replace(/[^a-z0-9\s-]/g, "").trim().replace(/\s+/g, "-").slice(0, 50)}`;
+    return { ...topic, title, slug };
+  }
   // The size series keeps its fixed title (no best-of-5 cover).
   return opts.mode === "size" ? topic : withBestTitle(topic, opts.mode ?? "choice");
 }
