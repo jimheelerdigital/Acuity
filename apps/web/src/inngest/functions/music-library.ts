@@ -10,8 +10,9 @@ import { inngest } from "@/inngest/client";
  *    up to `perBrand` (default 20) 60s tracks per brand, round-robin.
  * 2. Each track → music/<brand folder>/ai-<n>-<ts>.mp3 (flavor-varied brief).
  *    The 3 approved samples (music-samples/) are copied in too.
- * 3. A brand's old (non "ai-") tracks move to music-removed/<folder>/ only
- *    once it has ≥ MIN_NEW AI tracks, so no brand ever goes silent.
+ * 3. A brand's NON-AI (downloaded) tracks move to music-removed/<folder>/
+ *    only once it has ≥ MIN_NEW AI tracks, so no brand ever goes silent.
+ *    AI tracks from earlier runs are never retired automatically.
  * 4. Summary email. Manual: "content-factory/music.library"
  *    (POST /api/admin/music-library).
  */
@@ -108,8 +109,12 @@ export const musicLibraryFn = inngest.createFunction(
         const folder = LIBRARY_FOLDER[brand];
         const { data } = await supabase.storage.from("content-factory").list(folder, { limit: 500 });
         const tracks = (data ?? []).filter((f) => f.id && /\.(mp3|m4a|wav|aac)$/i.test(f.name));
+        // Only non-AI (downloaded) tracks are ever retired. A remake ADDS to
+        // the library (2026-10-04, Keenan: "don't eliminate all the other 20...
+        // just remove the one track that i mentioned"). Removing a specific AI
+        // track is a deliberate one-off, never automatic.
         const ai = tracks.filter((f) => f.name.startsWith(prefix));
-        const old = tracks.filter((f) => !f.name.startsWith(prefix));
+        const old = tracks.filter((f) => !f.name.startsWith("ai"));
         if (ai.length < MIN_NEW) {
           out[brand] = { ai: ai.length, moved: 0, kept: `kept ${old.length} old tracks (only ${ai.length} AI tracks)` };
           continue;

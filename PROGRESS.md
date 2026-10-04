@@ -7,6 +7,25 @@
 
 ---
 
+## [2026-10-04] — Restored the 20 earlier Mythicals AI tracks; remakes never retire AI tracks
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** see "fix: Never retire AI music tracks automatically"
+
+### In plain English (for Keenan)
+- **Restored:** the dark Mythicals remake wrongly archived the 20 earlier AI tracks. Keenan only wanted the one light track from the dragon post removed. All 20 are back, so Mythicals now has 33 tracks (20 earlier + 13 new dark). Only that one track stays out.
+- **Prevention:** future remakes only add tracks. They never remove AI tracks on their own.
+
+### Technical changes (for Jimmy)
+- `inngest/functions/music-library.ts`: the retire step only moves non-`ai*` (downloaded) tracks. Earlier AI generations stay.
+- Data: moved 20 `ai-*` files from music-removed/mythicals/ back to music/mythicals/. ai-11-1791049992052.mp3 stays archived; the old TikTok tracks stay archived.
+
+### Manual steps needed
+- None
+
+### Notes
+- The remake stopped at 13 of 20 new tracks (ElevenLabs credits).
+
 ## [2026-10-04] — Darker, deeper Mythicals music (dark orchestral + deep house)
 **Requested by:** Keenan
 **Committed by:** Claude Code
