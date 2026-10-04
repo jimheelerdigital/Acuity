@@ -2032,12 +2032,15 @@ const COMPARE_MILESTONES: Milestone[] = [
   { key: "checkout", label: "Started checkout", base: "paywall", v8: ["funnel_checkout_started"], v9: ["funnel_checkout_started"] },
   { key: "trial", label: "Card trial started", base: "checkout", test: true, v8: ["funnel_payment_completed", "funnel_savings_locked_in"], v9: ["funnel_payment_completed", "funnel_savings_locked_in"] },
   { key: "free", label: "Free plan chosen", base: "paywall", v8: ["funnel_paywall_continue_selected", "funnel_paywall_skip_selected"], v9: ["funnel_paywall_skip_selected"] },
+  // First debrief right after payment (2026-10-04, components/funnel-first-debrief.tsx).
+  { key: "fd_offered", label: "Offered first debrief", base: "trial", v8: ["funnel_first_debrief_viewed"], v9: ["funnel_first_debrief_viewed"] },
+  { key: "fd_done", label: "Did first debrief in funnel", base: "fd_offered", test: true, v8: ["funnel_first_debrief_submitted"], v9: ["funnel_first_debrief_submitted"] },
   { key: "download", label: "Download", base: "passed", v8: ["funnel_download_viewed"], v9: ["funnel_v9_download_viewed"] },
   // Past the web (2026-09-28): counted per signed-in person, not by funnel
   // event. "app" = an app_signed_in event (lib/mobile-session.ts); "debrief"
-  // = at least one Entry. These are the numbers that were silently zero.
+  // = at least one Entry, web or app. These are the numbers that were silently zero.
   { key: "app", label: "Signed into the app", base: "passed", v8: [], v9: [] },
-  { key: "debrief", label: "First debrief", base: "app", v8: [], v9: [] },
+  { key: "debrief", label: "Has a debrief (web or app)", base: "passed", v8: [], v9: [] },
 ];
 
 async function getFunnelCompare(
@@ -2136,9 +2139,14 @@ async function getFunnelCompare(
       const checkout = trial || hit("checkout");
       const free = hit("free");
       const download = hit("download");
+      const fdOffered = hit("fd_offered");
+      const fdDone = hit("fd_done");
       const users = [...s.users];
       const debrief = users.some((u) => debriefed.has(u));
-      const app = debrief || users.some((u) => inApp.has(u));
+      // Before app_signed_in existed (09-28) a debrief implied the app. Since
+      // 10-04 a debrief can come from the funnel, so it only implies the app
+      // when it wasn't a funnel debrief.
+      const app = users.some((u) => inApp.has(u)) || (debrief && !fdDone);
       // A branch event means the visitor reached the step it branches from.
       if (checkout || free) furthest = Math.max(furthest, mainIdx("paywall"));
       if (download) furthest = Math.max(furthest, mainIdx("passed"));
@@ -2146,6 +2154,8 @@ async function getFunnelCompare(
       if (checkout) counts.checkout++;
       if (trial) counts.trial++;
       if (free) counts.free++;
+      if (fdOffered || fdDone) counts.fd_offered++;
+      if (fdDone) counts.fd_done++;
       if (download) counts.download++;
       if (app) counts.app++;
       if (debrief) counts.debrief++;
