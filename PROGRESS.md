@@ -795,6 +795,43 @@ The email people get after the Mythicals quiz now opens with a big picture of th
 - Still sent from hello@getacuity.io. Moving to a legendarymythicals.com sender needs a Resend domain plus 3 GoDaddy DNS records (optional).
 - No Stripe product is needed: checkout sends inline price_data named "Legendary Creature Portrait" with metadata brand=mythicals.
 
+## [2026-10-04] — Weekly audit fixes: first debrief after payment, card-trial emails, pixel off the journal, security holes
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** see the 8 commits from "fix: Keep the Meta Pixel and analytics off the private journal" to "chore: Close the weekly audit's data blind spots"
+
+### In plain English (for Keenan)
+Worked through everything from the 2026-10-03 weekly audit that didn't need Jimmy or a decision:
+- People who pay are now asked for a first debrief right away, without waiting on screen: record it (Instagram and regular browsers) or type it (Facebook's browser blocks the mic). It's processed in the background and waiting in the app when they open it.
+- Card trialists get one email about two days before they're charged: "your week so far" if they've recorded, or "try it once" with a one-tap sign-in link if they haven't.
+- The Meta Pixel and Google Analytics no longer run on journal pages.
+- Two security holes are closed: a forged-user hole in event tracking, and AdLab ad routes that ran unauthenticated if a secret went missing.
+- The daily AdLab email now shows which ads and lanes bring trialists who actually record, and who convert after day 7.
+- The App Store listing doc no longer has banned copy, with paste-ready text for both stores.
+- The weekly audit now splits results by men/women and by funnel, and reports real revenue.
+- 13 personal notes from Keenan to card trialists with no debriefs are in his Gmail drafts.
+
+### Technical changes (for Jimmy)
+- `lib/tracking-surfaces.ts` (+ test): `isPrivateAppSurface()`. `consent-gated-trackers.tsx`, `meta-pixel-events.tsx` and `google-analytics.tsx` skip GA, the pixel, advanced matching and fbq events on /home, /entries, /insights, /tasks, /goals, /habits, /life-matrix, /achievements, /account, /dashboard, /onboarding, /support, /delete-account, /actions, /shared, /voiced, /admin, /mic-test. Pixel `disablePushState`
+- `app/api/onboarding-events/route.ts`: userId only from `getAnySessionUserId` (body.userId ignored)
+- `app/api/admin/adlab/cron/route.ts`, `ads/reactivate/route.ts`: fail closed when CRON_SECRET is unset
+- New `components/funnel-first-debrief.tsx`, wired into `funnel-v9.tsx` DownloadScreen and `onboarding-funnel.tsx` DownloadScreen (paid + signed in, before PasswordStep). Voice = direct upload + /api/record; text = restored `app/api/onboarding/first-debrief-text/route.ts` (from 6dd5c57). No polling. Facebook in-app UA → typing mode. Events `funnel_first_debrief_{viewed,record_started,submitted,skipped,mic_denied,failed}`
+- New `emails/trial/card-trial-day5.ts` (`card_trial_week_so_far`, `card_trial_try_once`, 3 variants each); recovery orchestrator section: Stripe PRO, created ≤8d, stripeCurrentPeriodEnd 36–60h out; try_once is in APP_ACCESS_EMAIL_KEYS
+- New `lib/adlab/trial-quality.ts` + `GET /api/admin/adlab/trial-quality?since=`; section in the daily AdLab email
+- `docs/APP_STORE_LISTING.md` rewritten
+- `scripts/audit/collect-metrics.ts`: key_events_this/last_week, lane_funnel_split, revenue = Ripple-scoped Stripe + RC App Store/Play segments (RC Stripe segment ignored); `audits/WEEKLY_AUDIT_PROMPT.md` line 1
+
+### Manual steps needed
+- [ ] Send the 13 trialist drafts in Gmail; Justin first, he bills 10-05 (links expire ~10-07) (Keenan)
+- [ ] Paste docs/APP_STORE_LISTING.md into App Store Connect + Play Console (Keenan / Jimmy)
+- [ ] Jimmy review: first-debrief step (funnel + /api/record from web), event route auth change, pixel gating (Jimmy)
+- [ ] Decisions still open: account pre-takeover fix (needs a db:push), winner rule → cost per recording trialist, Mythicals freeze (Keenan)
+
+### Notes
+- Mic support was verified on real phones on 2026-10-03 (/mic-test): Instagram iOS records; Facebook iOS is blocked with no prompt, hence typing mode for FB. Android Instagram is still untested; any mic failure falls back to typing.
+- Trial quality on 10-04: "Fourth planner. Still stuck." had 6 paid trials, 2 recorded (~$46 per recording trialist); no trials past day 7 yet.
+- The 6 failing tests in src/lib/evidence/* (RC observer build, v10 paywall copy, V2 product IDs) are pre-existing and unrelated.
+
 ## [2026-10-03] — Funnel safety audit after the Google flag
 **Requested by:** Keenan
 **Committed by:** Claude Code
