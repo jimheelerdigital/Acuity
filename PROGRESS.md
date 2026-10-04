@@ -7,6 +7,24 @@
 
 ---
 
+## [2026-10-04] — Order a Mythicals post with a specific cover question
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** see "feat: Let a Mythicals lane request set its cover question"
+
+### In plain English (for Keenan)
+Keenan can now ask for a specific Legendary Mythicals post, and the system builds it around that exact question. First one: "Which dragon are you bonding to?", with five dragons, animated, using the new music.
+
+### Technical changes (for Jimmy)
+- `inngest/functions/carousel-living-reel.ts`: `lane-requests/<lane>[--mode].json` body may carry `{ topic }`, passed through on `content-factory/daily.generate`.
+- `inngest/functions/carousel-daily.ts`: `forcedTopic` skips `chooseMythicCover` and tells `generateChoiceTopic` to use that exact title (ALL CAPS) and build the five options as answers to it.
+
+### Manual steps needed
+- None
+
+### Notes
+- Request used: `lane-requests/mythic-picks--choice.json` = `{"topic":"Which dragon are you bonding to?"}`.
+
 ## [2026-10-04] — Hailuo leads Higgsfield animation during the discount; 3 un-animated Mythicals videos rebuilt
 **Requested by:** Keenan
 **Committed by:** Claude Code

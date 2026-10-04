@@ -314,15 +314,21 @@ export const livingReelQueueFn = inngest.createFunction(
       // Body { dryRun: true } = copy only, saved for review (prompt tests).
       // Files may be named "<lane>" or "<lane>--<tag>" so several tests of
       // one lane can queue at once.
-      const claimed: { bucket: string; dryRun: boolean; mode?: string }[] = [];
+      const claimed: { bucket: string; dryRun: boolean; mode?: string; topic?: string }[] = [];
       for (const f of (data ?? []).filter((x) => x.name.endsWith(".json"))) {
         const path = `lane-requests/${f.name}`;
         const dl = await supabase.storage.from("content-factory").download(path);
         const { error } = await supabase.storage.from("content-factory").remove([path]);
         if (error) continue;
         let dryRun = false;
+        // Body { topic: "..." } (2026-10-03, per Keenan: "build me a new video
+        // for mythicals... 'which dragon are you bonding to?'") = that exact
+        // cover question.
+        let topic: string | undefined;
         try {
-          dryRun = dl.data ? (JSON.parse(await dl.data.text()) as { dryRun?: boolean }).dryRun === true : false;
+          const j = dl.data ? (JSON.parse(await dl.data.text()) as { dryRun?: boolean; topic?: string }) : null;
+          dryRun = j?.dryRun === true;
+          if (typeof j?.topic === "string" && j.topic.trim()) topic = j.topic.trim().slice(0, 140);
         } catch {
           // empty body → a real run
         }
@@ -332,6 +338,7 @@ export const livingReelQueueFn = inngest.createFunction(
           dryRun,
           // Tag = a Mythicals post type (2026-10-01: any of them, incl. size/versus).
           mode: ["duo", "place", "know", "scenario", "size", "versus", "choice"].find((m) => tag.startsWith(m)),
+          ...(topic ? { topic } : {}),
         });
       }
       return claimed;
@@ -341,7 +348,12 @@ export const livingReelQueueFn = inngest.createFunction(
         "send-lane-runs",
         laneRuns.map((r) => ({
           name: "content-factory/daily.generate" as const,
-          data: { bucket: r.bucket, ...(r.dryRun ? { dryRun: true } : {}), ...(r.mode ? { mode: r.mode } : {}) },
+          data: {
+            bucket: r.bucket,
+            ...(r.dryRun ? { dryRun: true } : {}),
+            ...(r.mode ? { mode: r.mode } : {}),
+            ...(r.topic ? { topic: r.topic } : {}),
+          },
         }))
       );
     }

@@ -698,6 +698,8 @@ export const carouselDailyCronFn = inngest.createFunction(
       // mode "duo"/"place" (manual) overrides.
       const runAt = new Date(typeof event.ts === "number" ? event.ts : Date.now());
       const forcedMode = (event.data as { mode?: string } | undefined)?.mode;
+      // Requested cover question (lane-requests body { topic }, 2026-10-03).
+      const forcedTopic = (event.data as { topic?: string } | undefined)?.topic?.trim() || undefined;
       // 2026-09-30: no fixed lane per hour (Keenan: "i no longer want set
       // lanes... i want random variation based on the theme post"). Each
       // Mythicals run draws a post type at random, skipping types already
@@ -846,7 +848,7 @@ export const carouselDailyCronFn = inngest.createFunction(
           const recentCatsLoop = await recentLoopCategories(laneKey, 3);
           const pickCat = pl.chooseCategory(board, choiceMode, catalog, recentCatsLoop);
           category = pickCat.arm;
-          const cover = choiceMode === "size" ? null : await pl.chooseMythicCover({
+          const cover = choiceMode === "size" || forcedTopic ? null : await pl.chooseMythicCover({
             postType: choiceMode,
             category,
             recentTitles: recent.map((p) => p.headline),
@@ -858,6 +860,9 @@ export const carouselDailyCronFn = inngest.createFunction(
           }
         } catch (err) {
           console.warn("[carousel-cron] loop category/cover failed — random category:", err instanceof Error ? err.message : err);
+        }
+        if (forcedTopic) {
+          coverGuidance = `\n\nREQUESTED COVER QUESTION (Keenan asked for this exact post): "${forcedTopic}". Use it as the title, in ALL CAPS, changing nothing but capitalization and a missing "?". Build all five options as answers to exactly this question.`;
         }
         return generateChoiceTopic({
           mode: choiceMode,
