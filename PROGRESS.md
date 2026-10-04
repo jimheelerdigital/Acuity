@@ -7,6 +7,26 @@
 
 ---
 
+## [2026-10-04] — Kill individual ads by hand; "Keep the promises" and "Say it. Ripple sorts it." turned off
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** see "feat: Add a manual kill for single AdLab ads"
+
+### In plain English (for Keenan)
+Keenan asked to turn off two weak ads: "Keep the promises you make." ($26, no trials) and "Say it. Ripple sorts it." ($41, 1 trial). There's now a way to switch off any single ad without touching the rest of its campaign.
+
+### Technical changes (for Jimmy)
+- New `app/api/admin/adlab/ads/kill/route.ts` (admin session), body `{ adIds, reason?, inspect? }`:
+  - kill mode: `meta.setStatus(ad, "PAUSED")`, then AdLabAd.status = killed, decisionReason, and an AdLabDecision of type `manual`
+  - `inspect` mode: read-only Graph GET of status / effective_status / ad_review_feedback / issues_info
+- Killed: cmuo44w940001hz0wihvpz447 (Meta 120254913021320581) and cmuo46gou000thz0wuz4wpr1h (Meta 120254913049060581).
+
+### Manual steps needed
+- None
+
+### Notes
+- "23 and already behind" (cmuo45v0y…) wasn't killed by the engine's rules. It stopped spending after 10-01, and on 10-03 the engine's reconcile found it PAUSED in Ads Manager and recorded it as killed. Inspect mode shows what Meta says about it.
+
 ## [2026-10-04] — Restored the 20 earlier Mythicals AI tracks; remakes never retire AI tracks
 **Requested by:** Keenan
 **Committed by:** Claude Code
