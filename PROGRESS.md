@@ -7,6 +7,24 @@
 
 ---
 
+## [2026-10-04] — No more monster-fight ("versus") posts on Legendary Mythicals
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** see "content: Stop Mythicals monster-fight posts"
+
+### In plain English (for Keenan)
+Legendary Mythicals no longer makes "who would win" monster-fight posts. The one already queued for today ("Five dragon fights: who wins each one?") was cancelled before it posted. Posts that already went out are untouched.
+
+### Technical changes (for Jimmy)
+- `lib/content-factory/performance-loop.ts`: `chooseMythicPostType` MODES drops "versus" (choice / duo / know / scenario remain; "size" is still its own daily series). "versus" can still be forced by hand via a lane request.
+- Data: CarouselPost cmutf89t5001a13wvlsljugdv set to REJECTED, and its 2 PENDING SocialPublish rows deleted (deleted rather than set to SKIPPED, because the health check alerts on SKIPPED).
+
+### Manual steps needed
+- None
+
+### Notes
+- Memory listed "Who Would Win" as a daily series; it's retired.
+
 ## [2026-10-04] — Order a Mythicals post with a specific cover question
 **Requested by:** Keenan
 **Committed by:** Claude Code

@@ -508,7 +508,9 @@ export function chooseMythicPostType(
   // it never comes out of the draw; "versus" joined the draw the same day.
   // "place" left the draw 2026-10-02 (Keenan: "no more 'places' to go,
   // focus more on beasts and weapons ... and sick armor").
-  const MODES = ["choice", "duo", "know", "scenario", "versus"];
+  // "versus" (monster fights) left the draw 2026-10-04 (Keenan: "no more
+  // monster fight posts"); it can still be requested by hand.
+  const MODES = ["choice", "duo", "know", "scenario"];
   const fresh = MODES.filter((m) => !usedToday.has(m));
   const pool = fresh.length ? fresh : MODES;
   if (!board) return { arm: pool[Math.floor(rng() * pool.length)], reason: "explore" };
