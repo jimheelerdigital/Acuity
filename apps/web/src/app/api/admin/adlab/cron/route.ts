@@ -602,8 +602,17 @@ export async function GET(req: NextRequest) {
     const sections: string[] = [
       `# AdLab Daily Report — ${dateStr}`,
       `Metrics synced: ${syncResults.filter((r) => r.success).length}/${syncResults.length} ads`,
-      `Optimizing: paid trials (main $60 women / $40 men + $15/day test ad set each) · Kills: ${DECISIONS_ENABLED ? "ON" : "OFF"} · Auto-scale: ${AUTOSCALE_ENABLED ? "ON" : "OFF (winners flagged)"}`,
+      `Optimizing: paid trials · Kills: ${DECISIONS_ENABLED ? "ON" : "OFF"} · Auto-scale: ${AUTOSCALE_ENABLED ? "ON" : "OFF (winners flagged)"}`,
     ];
+
+    // Trial quality (2026-10-04): paid trials that record and convert, per lane/ad.
+    try {
+      const { trialQuality, formatTrialQuality } = await import("@/lib/adlab/trial-quality");
+      const since = new Date("2026-09-30T00:00:00Z");
+      sections.push(...formatTrialQuality(await trialQuality(since), "Sep 30 (purchase optimization)"));
+    } catch (err) {
+      sections.push(`\n(trial quality failed: ${err instanceof Error ? err.message : String(err)})`);
+    }
 
     // Kills
     const kills = decisions.filter((d) => d.type === "kill");
