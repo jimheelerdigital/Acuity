@@ -240,6 +240,22 @@ async function collectSupabase(db: pg.Client, cur: Win, history: Win[]) {
     return { by_platform: byPlatform, by_method: byMethod, by_utm_source_medium: bySource };
   });
 
+  // Lane (women/men) and funnel split (2026-10-04, audit blind spot): signups,
+  // paid trials (first web payment), who recorded, who reached the app.
+  out.lane_funnel_split = await safe("supabase.lane_funnel_split", async () => {
+    const rows = await q(db, `
+      SELECT CASE WHEN u."signupLandingPath" ILIKE '%bwk%' THEN 'men' ELSE 'women' END lane,
+        COALESCE(NULLIF(u."signupLandingPath", ''), '(app / none)') funnel,
+        count(*)::int signups,
+        count(*) FILTER (WHERE EXISTS (SELECT 1 FROM "OnboardingEvent" o WHERE o."userId" = u.id
+          AND o.event = 'funnel_payment_completed' AND o.value LIKE '%first_payment%'))::int paid_trials,
+        count(*) FILTER (WHERE EXISTS (SELECT 1 FROM "Entry" e WHERE e."userId" = u.id))::int recorded,
+        count(*) FILTER (WHERE EXISTS (SELECT 1 FROM "OnboardingEvent" o WHERE o."userId" = u.id AND o.event = 'app_signed_in'))::int signed_into_app
+      FROM "User" u WHERE ${NOT_ADMIN} AND u."createdAt" >= $1 AND u."createdAt" < $2
+      GROUP BY 1, 2 ORDER BY 3 DESC`, [cur.start, cur.end]);
+    return { note: "lane = men if signupLandingPath contains bwk; funnel = signupLandingPath. paid_trials = first web payment.", rows };
+  });
+
   out.activation = await safe("supabase.activation", async () => {
     const [r] = await q(db, `
       SELECT count(*)::int cohort,
@@ -288,8 +304,20 @@ async function collectSupabase(db: pg.Client, cur: Win, history: Win[]) {
         count(DISTINCT COALESCE("sessionToken", "userId"))::int uniques
       FROM "OnboardingEvent" WHERE "isBot" = false AND "createdAt" >= $1 AND "createdAt" < $2
       GROUP BY 1 ORDER BY 3 DESC LIMIT 60`, [w.start, w.end]);
+    // Always reported, whatever the top-60 cut does (2026-10-04, audit blind spot).
+    const KEY_EVENTS = [
+      "app_signed_in", "funnel_payment_completed", "funnel_v9_magic_link_sent", "funnel_app_link_sent",
+      "funnel_first_debrief_viewed", "funnel_first_debrief_submitted", "funnel_first_debrief_skipped",
+      "funnel_first_debrief_mic_denied", "apple_dupe_flagged", "email_variant_sent",
+    ];
+    const keyEvents = async (w: Win) => q(db, `
+      SELECT event, count(*)::int events, count(DISTINCT COALESCE("sessionToken", "userId"))::int uniques
+      FROM "OnboardingEvent" WHERE "isBot" = false AND "createdAt" >= $1 AND "createdAt" < $2 AND event = ANY($3)
+      GROUP BY 1 ORDER BY 1`, [w.start, w.end, KEY_EVENTS]);
     return {
-      note: "app_onboarding_steps: signups in the last 30 days by UserOnboarding.currentStep (read step meanings from the codebase). web_funnel_events: OnboardingEvent counts (bots excluded), uniques = distinct session/user.",
+      note: "app_onboarding_steps: signups in the last 30 days by UserOnboarding.currentStep (read step meanings from the codebase). web_funnel_events: OnboardingEvent counts (bots excluded), uniques = distinct session/user. key_events_this_week: the events that decide activation/attribution, always included.",
+      key_events_this_week: await keyEvents(cur),
+      key_events_last_week: await keyEvents(history[0]),
       app_onboarding_steps_last_30d: appSteps,
       web_funnel_events_this_week: await webFunnel(cur),
       web_funnel_events_last_week: await webFunnel(history[0]),
@@ -836,7 +864,21 @@ async function main() {
   const weeklyCost = (costs as any)?.weekly_known_total_usd ?? null;
   const rcRev = (revenuecat as any)?.revenue_this_week_usd ?? null;
   const stripeRev = stripeWeek?.gross_revenue_usd ?? null;
-  const weeklyRevenue = rcIncludesStripe ? rcRev : rcRev != null || stripeRev != null ? (rcRev ?? 0) + (stripeRev ?? 0) : null;
+  // RevenueCat's Stripe segment includes NON-Ripple charges from the shared
+  // Stripe account (Heeler retainers: $1,500 on 2026-10-03). Revenue =
+  // Stripe scoped to Ripple customers + RevenueCat's App Store / Play
+  // segments for the latest week (2026-10-04, audit blind spot).
+  const rcStoreRev = (() => {
+    const chart = (revenuecat as any)?.charts_by_store?.revenue;
+    if (!chart?.values?.length || !Array.isArray(chart.segments)) return null;
+    const latest = Math.max(...chart.values.map((v: any) => v.cohort));
+    return round(chart.values
+      .filter((v: any) => v.cohort === latest && v.measure === 0 && !["Total", "Stripe"].includes(chart.segments[v.segment]))
+      .reduce((n: number, v: any) => n + (Number(v.value) || 0), 0), 2);
+  })();
+  const weeklyRevenue = stripeRev != null || rcStoreRev != null
+    ? round((stripeRev ?? 0) + (rcStoreRev ?? 0), 2)
+    : rcIncludesStripe ? rcRev : rcRev != null || stripeRev != null ? (rcRev ?? 0) + (stripeRev ?? 0) : null;
   const derived = {
     dedup_rule: rcIncludesStripe
       ? "RevenueCat ingests Stripe → RevenueCat is the single revenue/subscriber source; Stripe used only for fees and refunds."
@@ -844,7 +886,11 @@ async function main() {
     paid_subscribers_by_channel_db: paidByChannel,
     paid_subscribers_total_db: paidTotal,
     weekly_revenue_usd: weeklyRevenue,
-    weekly_revenue_basis: rcRev == null ? "Stripe only (RevenueCat unavailable — mobile revenue missing)" : rcIncludesStripe ? "RevenueCat" : "RevenueCat + Stripe",
+    weekly_revenue_basis: stripeRev != null || rcStoreRev != null
+      ? "Stripe (Ripple customers only) + RevenueCat App Store/Play segments. RevenueCat's Stripe segment is ignored: the shared Stripe account carries non-Ripple charges."
+      : rcRev == null ? "RevenueCat unavailable" : rcIncludesStripe ? "RevenueCat" : "RevenueCat + Stripe",
+    weekly_revenue_revenuecat_raw_usd: rcRev,
+    weekly_revenue_app_stores_usd: rcStoreRev,
     weekly_known_cost_usd: weeklyCost,
     cost_per_weekly_active_user_usd: wau && weeklyCost != null ? round(weeklyCost / wau, 2) : null,
     gross_margin_per_paid_user_week_usd: paidTotal && weeklyRevenue != null && weeklyCost != null ? round((weeklyRevenue - weeklyCost) / paidTotal, 2) : null,
