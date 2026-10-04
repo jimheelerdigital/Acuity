@@ -7,6 +7,30 @@
 
 ---
 
+## [2026-10-04] — Mythicals options must be what the title promises, and look like it
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** see "fix: Check that Mythicals options match the title, in name and image"
+
+### In plain English (for Keenan)
+- **What happened:** "ONE EGG. FIVE POSSIBLE DRAGONS" had an option called "Bogmire the Patient" whose picture showed a knight in front of a mossy hill. Nothing said "dragon". It was swapped by hand for "Vyrnax the Emerald Hunter" (a clear dragon), and the video was rebuilt.
+- **Name check:** Jev now checks that every option's name clearly reads as what the title promises. Any that don't get rewritten.
+- **Image check:** the photo check now fails any image where that subject isn't instantly recognizable (hidden, disguised as terrain, tiny, or upstaged by a person in front).
+- **Retry loophole:** a regenerated image used to ship without being checked again. It's now checked, with one more try if it still fails.
+
+### Technical changes (for Jimmy)
+- `lib/content-factory/choice-lane.ts`: Jev noul `kind_i` in `choiceTopicProblems` (`KIND_MIN` 0.5). Off-kind names become a problem that triggers the existing one rewrite.
+- `lib/content-factory/moody-carousel.ts`: `checkMoodyImageQuality` takes `subject`; new rule 8 (hero not unmistakably the subject).
+- `lib/content-factory/carousel-generate.ts`: `generateCheckedImage` passes `subject` and re-checks the regenerated image. Item slots get a third try when time allows; the qc string records "failed twice" / "failed 3x".
+- `inngest/functions/carousel-daily.ts`: Mythicals option images pass `subject` = option name plus post title.
+- Data: slide cmutjkdcs00049eo4t0qnhkgr replaced (new image and label `slide-3-option-v2`), caption "patient hunter" changed to "emerald hunter", clips cache cleared, video rebuilt.
+
+### Manual steps needed
+- None
+
+### Notes
+- The Bogmire prompt asked for a dragon "almost submerged in a swamp", which invites the terrain-camouflage failure. The new image rule catches it, but the writer may still pitch scenes like that.
+
 ## [2026-10-04] — A requested Mythicals question can't be reworded anymore
 **Requested by:** Keenan
 **Committed by:** Claude Code

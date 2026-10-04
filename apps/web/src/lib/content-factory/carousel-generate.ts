@@ -617,16 +617,19 @@ export async function generateCheckedMoodyImage(
  */
 export async function generateCheckedImage(
   make: () => Promise<Buffer>,
-  opts: { scene: string; slot: ImageSlot; personAllowed: boolean; bakedText?: boolean; fantasy?: boolean }
+  opts: { scene: string; slot: ImageSlot; personAllowed: boolean; bakedText?: boolean; fantasy?: boolean; subject?: string }
 ): Promise<{ buffer: Buffer; qc: string }> {
   const started = Date.now();
   const first = await make();
   const { checkMoodyImageQuality } = await import("./moody-carousel");
-  const verdict = await checkMoodyImageQuality(first, opts.scene, {
-    personAllowed: opts.personAllowed,
-    bakedText: opts.bakedText,
-    fantasy: opts.fantasy,
-  });
+  const check = (img: Buffer) =>
+    checkMoodyImageQuality(img, opts.scene, {
+      personAllowed: opts.personAllowed,
+      bakedText: opts.bakedText,
+      fantasy: opts.fantasy,
+      subject: opts.subject,
+    });
+  const verdict = await check(first);
   if (verdict.ok) return { buffer: first, qc: verdict.reason };
   console.warn(`[carousel] Image failed quality check (${verdict.reason}) — regenerating once`);
   // A cover's regen can take up to 170s by itself, so it only happens
@@ -635,7 +638,17 @@ export async function generateCheckedImage(
     return { buffer: first, qc: `failed, no time to retry: ${verdict.reason}` };
   }
   try {
-    return { buffer: await make(), qc: `regenerated after: ${verdict.reason}` };
+    const second = await make();
+    // The retry is checked too (2026-10-04: it used to ship unchecked).
+    const v2 = await check(second);
+    if (v2.ok) return { buffer: second, qc: `regenerated after: ${verdict.reason}` };
+    if (opts.slot === "item" && Date.now() - started < 200_000) {
+      console.warn(`[carousel] Retry also failed (${v2.reason}) — one last try`);
+      const third = await make();
+      const v3 = await check(third);
+      return { buffer: third, qc: v3.ok ? `third try passed after: ${verdict.reason}; ${v2.reason}` : `failed 3x: ${v3.reason}` };
+    }
+    return { buffer: second, qc: `failed twice: ${v2.reason}` };
   } catch {
     return { buffer: first, qc: `failed, retry errored: ${verdict.reason}` };
   }

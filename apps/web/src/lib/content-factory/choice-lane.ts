@@ -406,6 +406,9 @@ const THROWAWAY_THRESHOLD = 0.25;
 /** Below this "epic and mythical" probability an option earns a rewrite (2026-10-02). */
 const EPIC_MIN = 0.5;
 
+/** Below this, an option doesn't read as what the title promises (2026-10-04). */
+const KIND_MIN = 0.5;
+
 async function choiceTopicProblems(topic: ChoiceTopic): Promise<string[]> {
   const problems: string[] = [];
   const flag = copyFlagFor(topic.title);
@@ -423,6 +426,17 @@ async function choiceTopicProblems(topic: ChoiceTopic): Promise<string[]> {
       criteria: {
         true: "Yes: mythical and epic, the kind of thing a fantasy fan finds sick",
         false: "No: a real-world animal, an ordinary person or job, a place, or everyday life",
+      },
+    };
+    // 2026-10-04 (Keenan, after "Bogmire the Patient" in "ONE EGG. FIVE
+    // POSSIBLE DRAGONS"): every option must read as the thing the title
+    // promises, from its name alone.
+    questions[`kind_${i}`] = {
+      type: "noul",
+      instructions: `\`question\` promises a kind of thing (for example "five possible dragons" promises dragons). From its NAME alone, does \`options[${i}].name\` unmistakably read as that kind of thing? If \`question\` doesn't promise one kind of thing, answer yes.`,
+      criteria: {
+        true: "Yes: the name alone says it is the promised kind of thing",
+        false: "No: from the name you can't tell it's the promised kind of thing (e.g. 'Bogmire the Patient' for a dragon)",
       },
     };
     questions[`tempt_${i}`] = {
@@ -445,7 +459,10 @@ async function choiceTopicProblems(topic: ChoiceTopic): Promise<string[]> {
   const twins: string[] = [];
   const weak: string[] = [];
   const ordinary: string[] = [];
+  const offKind: string[] = [];
   topic.options.forEach((o, i) => {
+    const k = noulOf(r, `kind_${i}`);
+    if (k !== null && k < KIND_MIN) offKind.push(o.name);
     const t = noulOf(r, `twin_${i}`);
     const s = scoreOf(r, `tempt_${i}`);
     if (t !== null && t >= TWIN_THRESHOLD) twins.push(o.name);
@@ -456,12 +473,16 @@ async function choiceTopicProblems(topic: ChoiceTopic): Promise<string[]> {
   console.log(
     `[choice-lane] Jev check "${topic.title}": ` +
       topic.options
-        .map((o, i) => `${o.name} twin=${noulOf(r, `twin_${i}`)?.toFixed(2)} tempt=${scoreOf(r, `tempt_${i}`)?.toFixed(2)} epic=${noulOf(r, `epic_${i}`)?.toFixed(2)}`)
+        .map((o, i) => `${o.name} kind=${noulOf(r, `kind_${i}`)?.toFixed(2)} twin=${noulOf(r, `twin_${i}`)?.toFixed(2)} tempt=${scoreOf(r, `tempt_${i}`)?.toFixed(2)} epic=${noulOf(r, `epic_${i}`)?.toFixed(2)}`)
         .join(" | ")
   );
   // One twin flag alone can be the model noticing its partner; two or more is a real pair.
   if (twins.length >= 2) problems.push(`these options are too alike: ${twins.join(", ")}`);
   if (weak.length) problems.push(`these options are throwaways nobody would pick: ${weak.join(", ")}`);
+  if (offKind.length)
+    problems.push(
+      `these option names don't say they are what the title promises: ${offKind.join(", ")}. Rename them (and match their scenes) so the name alone makes it obvious, e.g. "Vyrnax the Emerald Dragon" or "The Storm Wyrm" when the title promises dragons`
+    );
   if (ordinary.length)
     problems.push(
       `these options are realistic or ordinary, not epic: ${ordinary.join(", ")}. Replace them with colossal mythical beasts, legendary weapons, legendary armor or larger-than-life armored heroes`

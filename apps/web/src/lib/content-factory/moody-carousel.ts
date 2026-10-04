@@ -2858,7 +2858,7 @@ export async function verifyBakedQuote(
 export async function checkMoodyImageQuality(
   image: Buffer,
   scene: string,
-  opts: { personAllowed: boolean; bakedText?: boolean; fantasy?: boolean }
+  opts: { personAllowed: boolean; bakedText?: boolean; fantasy?: boolean; subject?: string }
 ): Promise<{ ok: boolean; reason: string }> {
   try {
     const { default: sharp } = await import("sharp");
@@ -2886,7 +2886,8 @@ FAIL it if ANY of these is clearly true:
 4. ${opts.personAllowed ? "More than the people the scene describes appear." : "A person appears, unless the scene explicitly describes a distant armored warrior, a rider, or a statue."}
 5. It is so dark or murky that the main subject cannot be made out.
 6. It clearly does not show the intended scene's main subject, or it shows a different place than the scene describes (for example a bedroom when the scene is a store aisle, or a living room when the scene is a car in a driveway).
-7. The main subject is a car, watch, building, ship or creature and it is cut off by the frame edge (for example a car missing its nose or tail). A person framed from behind, over the shoulder or as hands is fine.
+7. The main subject is a car, watch, building, ship or creature and it is cut off by the frame edge (for example a car missing its nose or tail). A person framed from behind, over the shoulder or as hands is fine.${opts.subject ? `
+8. At a glance, the hero of the frame is NOT unmistakably ${opts.subject}: it is hidden, camouflaged as terrain (a hill, rock or swamp), tiny in the distance, or upstaged by a person, warrior or figure standing in front of it. (2026-10-04: a "dragon" rendered as a mossy hill behind a knight.)` : ""}
 
 Otherwise PASS. Reply with exactly PASS, or FAIL: followed by a few words naming the problem.`,
             },

@@ -929,6 +929,10 @@ export const carouselDailyCronFn = inngest.createFunction(
               slot: "item",
               personAllowed: true,
               fantasy: !pickBrand,
+              // The hero must be unmistakable (2026-10-04, Bogmire): e.g.
+              // "Vyrnax the Emerald Dragon, one of the options for: ONE EGG.
+              // FIVE POSSIBLE DRAGONS...".
+              subject: `${o.name} (an option in a post titled "${topic.title}")`,
             });
             logger.info(`[carousel-cron] choice option ${i + 1} quality: ${qc}`);
             // Name only on the slide (2026-09-30, per Keenan: "it doesn't need
