@@ -19,14 +19,20 @@ const concept: CinematicConcept = {
   size: "head the size of a cathedral",
   location: "volcanic cliff in fog",
   perspective: "from low behind the tiny human",
-  still: "Aerial drone photo of a snowy ridge with two tiny hikers.",
+  still: "A colossal dragon head in fog facing a tiny man on a lava cliff.",
+  hidden: "a wall of dense blue-grey fog, a faint vast shadow inside it",
   motion: "The drone glides down.\nThe eyelid opens.\nSound: wind, a deep rumble. No dialogue, no text.",
   captionQuestion: "Would you stay on that ridge?",
 };
 
 describe("cinematic shot", () => {
   it("round-trips the stored prompt, including a multi-line motion", () => {
-    const d = decodeCinematicPrompt(encodeCinematicPrompt(concept, "STILL PROMPT"));
+    const d = decodeCinematicPrompt(
+      encodeCinematicPrompt(concept, "STILL PROMPT", { start: "https://x/start.jpg", end: "https://x/end.jpg" })
+    );
+    expect(d.startFrame).toBe("https://x/start.jpg");
+    expect(d.endFrame).toBe("https://x/end.jpg");
+    expect(decodeCinematicPrompt(encodeCinematicPrompt(concept, "S")).startFrame).toBeNull();
     expect(d.creature).toBe("ancient slate-blue dragon (head the size of a cathedral)");
     expect(d.perspective).toBe("from low behind the tiny human");
     expect(d.motion).toBe(concept.motion);

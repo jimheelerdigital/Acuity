@@ -219,6 +219,36 @@ export const socialHealthCheckFn = inngest.createFunction(
         }
       }
 
+      // 6b. Meta tokens alive (2026-10-04: the Mythicals token died when
+      // Facebook reset Keenan's login session, and two posts failed before
+      // anyone noticed). debug_token with each brand's own token.
+      {
+        const { accountForBrand } = await import("@/lib/content-factory/social-publish");
+        for (const brand of ["ripple", "bwk", "mythicals"] as const) {
+          const acct = accountForBrand(brand);
+          if (!acct) continue;
+          try {
+            const t = encodeURIComponent(acct.accessToken);
+            const res = await fetch(`https://graph.facebook.com/v21.0/debug_token?input_token=${t}&access_token=${t}`);
+            const json = (await res.json().catch(() => ({}))) as { data?: { is_valid?: boolean; expires_at?: number }; error?: { message?: string } };
+            const exp = json.data?.expires_at ?? 0;
+            if (!json.data?.is_valid) {
+              out.push(`Meta token for ${brand} is INVALID — IG/FB posts for ${brand} will fail. Generate a new one (Graph API Explorer → Ripple Post Publisher) and paste it into Claude Code. ${json.error?.message ?? ""}`.trim());
+            } else if (exp > 0 && exp * 1000 - now < 3 * 86_400_000) {
+              out.push(`Meta token for ${brand} expires ${new Date(exp * 1000).toISOString().slice(0, 10)} — refresh it now.`);
+            }
+          } catch (err) {
+            console.warn(`[health] token check ${brand} failed:`, err instanceof Error ? err.message : err);
+          }
+        }
+        // Keenan asked (2026-10-04) for a Dec 2 reminder: the user token
+        // behind the Page tokens expires 2026-12-03. Page tokens made from
+        // it never expire, but refresh to be safe.
+        if (now >= Date.parse("2026-12-02T00:00:00Z") && now < Date.parse("2026-12-04T00:00:00Z")) {
+          out.push("Reminder (set Oct 4): the Meta user token for Ripple Post Publisher expires Dec 3. Generate a new one in the Graph API Explorer (all three brands selected), click Extend Access Token, and paste it into Claude Code.");
+        }
+      }
+
       // 7. Learning loops alive (2026-10-02, fix #4 of the 30-day hands-off
       // list): scoreboard, gate track, weekly calibration, research
       // learning all finished on schedule, and Jev isn't mostly failing.

@@ -80,14 +80,17 @@ export const carouselPostVideoFn = inngest.createFunction(
       });
       if (!isCinematicSlug(post.topicSlug)) return null;
       const cover = post.slides[0];
-      const motion = cover ? decodeCinematicPrompt(cover.imagePrompt).motion : null;
+      const decoded = cover ? decodeCinematicPrompt(cover.imagePrompt) : null;
+      const motion = decoded?.motion ?? null;
       if (!cover?.rawImageUrl || !motion) throw new Error(`Cinematic post ${postId} is missing its start frame or motion prompt`);
       const { laneBrand } = await import("@/lib/content-factory/social-publish");
       return {
         lane: post.lane,
         brand: await laneBrand(post.lane),
         date: post.generatedFor.toISOString().slice(0, 10),
-        imageUrl: cover.rawImageUrl,
+        // Reveal: hidden start frame → full encounter end frame (2026-10-04).
+        imageUrl: decoded?.startFrame ?? cover.rawImageUrl,
+        lastImageUrl: decoded?.startFrame ? decoded.endFrame : null,
         motion,
       };
     });
@@ -111,7 +114,7 @@ export const carouselPostVideoFn = inngest.createFunction(
           const { submitCinematicVideo } = await import("@/lib/content-factory/cinematic-shot");
           const { noteSubmitWave } = await import("@/lib/content-factory/post-video");
           try {
-            const r = await submitCinematicVideo({ model, imageUrl: cine.imageUrl, prompt: cine.motion });
+            const r = await submitCinematicVideo({ model, imageUrl: cine.imageUrl, lastImageUrl: cine.lastImageUrl, prompt: cine.motion });
             await noteSubmitWave(1, []);
             console.log(`[post-video] ${postId} cinematic ${model} submitted ${r.requestId}, estimate ${JSON.stringify(r.estimate)}`);
             return { id: r.requestId, estimate: r.estimate, error: null as string | null, creditsOut: false };

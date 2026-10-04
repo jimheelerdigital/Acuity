@@ -12,6 +12,13 @@
  * creature's huge eye locking onto them. No text on screen; fades up from
  * black and down to black. 4K, pro as the fallback.
  *
+ * THE REVEAL (2026-10-04, per Keenan: "make the face be off screen or
+ * hidden and then reveal itself"): two frames. The END frame is the full
+ * encounter (head + human). The START frame is the same picture edited
+ * so the creature is gone (fog, cloud, dark water, shadow; a faint hint
+ * at most). Kling 3.0 gets both (image_url + last_image_url) and animates
+ * the creature rising into view.
+ *
  * Reference (Keenan's screenshot, @mfahadnaim, 11.5K likes / 1,487 sends):
  * a slate-blue dragon head emerging from blue-grey fog, filling the frame,
  * calm pale eyes, a tiny figure on a black volcanic cliff edge with
@@ -74,20 +81,27 @@ export interface CinematicConcept {
   size: string;
   location: string;
   perspective: string;
-  /** Start-frame image prompt. */
+  /** The REVEAL (end) frame: the full encounter. */
   still: string;
+  /** What fills the creature's place in the START frame (it is hidden there). */
+  hidden: string;
   /** 15-second video prompt: three beats + a "Sound:" line. */
   motion: string;
   captionQuestion: string;
 }
 
 /** Stored on the cover slide's imagePrompt; parsed back by the video builder. */
-export function encodeCinematicPrompt(c: CinematicConcept, stillPrompt: string): string {
+export function encodeCinematicPrompt(
+  c: CinematicConcept,
+  stillPrompt: string,
+  frames?: { start: string; end: string }
+): string {
   return [
     `CREATURE: ${c.creature} (${c.size})`,
     `LOCATION: ${c.location}`,
     `PERSPECTIVE: ${c.perspective}`,
     `STILL: ${stillPrompt}`,
+    ...(frames ? [`START_FRAME: ${frames.start}`, `END_FRAME: ${frames.end}`] : []),
     `MOTION: ${c.motion}`,
   ].join("\n");
 }
@@ -96,11 +110,19 @@ export function decodeCinematicPrompt(stored: string): {
   creature: string | null;
   perspective: string | null;
   motion: string | null;
+  startFrame: string | null;
+  endFrame: string | null;
 } {
   const line = (k: string) => stored.match(new RegExp(`^${k}: (.*)$`, "m"))?.[1]?.trim() ?? null;
   // MOTION is last and may run over several lines.
   const motion = stored.match(/^MOTION: ([\s\S]*)$/m)?.[1]?.trim() ?? null;
-  return { creature: line("CREATURE"), perspective: line("PERSPECTIVE"), motion };
+  return {
+    creature: line("CREATURE"),
+    perspective: line("PERSPECTIVE"),
+    motion,
+    startFrame: line("START_FRAME"),
+    endFrame: line("END_FRAME"),
+  };
 }
 
 /**
@@ -116,6 +138,18 @@ export function buildCinematicStillPrompt(c: CinematicConcept): string {
   ].join(" ");
 }
 
+/**
+ * Edit prompt for the START frame: the same picture with the creature
+ * removed, so the video can reveal it.
+ */
+export function buildCinematicHiddenPrompt(c: CinematicConcept): string {
+  return [
+    `Edit this exact image: remove the ${c.creature} completely, every part of it (head, horns, eyes, neck, wings, body).`,
+    `In its place: ${c.hidden}`,
+    "Keep everything else identical: the same framing and camera, the same light, sky and weather, the same tiny human in the same place and pose, the same ground and setting. Photorealistic, same film look. No creature, no face, no eyes visible. No text, no watermark.",
+  ].join(" ");
+}
+
 const WRITER_SYSTEM = `You write the daily 15-second cinematic shot for Legendary Mythicals, an epic mythical-creature page (mostly men 18-34). Every shot is the same kind of moment: a COLOSSAL mythical creature's HEAD, face to face with ONE tiny human.
 
 The shot that sets the bar: a colossal ancient dragon head rises out of thick blue-grey fog, filling most of the frame, almost straight on: weathered slate-blue scales like cracked stone, jagged horn-spikes along the brow and jaw, two enormous pale ice-blue eyes, half-lidded and calm. At the bottom of the frame, on a jagged black volcanic cliff edge with thin glowing lava cracks, one tiny human in a long coat stands facing it. In the video the camera pushes slowly toward the head, the eyes open and lock onto the man, the dragon lowers its head and lets out one long exhale that rolls over the cliff and whips his coat while he stands his ground, and it ends on the eye. Sound: a deep rumbling growl you feel in your chest, the huge breath, cold wind, crackling lava, a dark orchestral swell.
@@ -125,7 +159,7 @@ Every concept needs:
 - ONE tiny human (or at most two), small in the frame, standing their ground, facing the creature: on a cliff edge, a rock in the sea, a bridge, a boat, a ruined stair. Calm awe, never panic. Nobody is hurt.
 - The moment: the creature notices the human. Its eye opens, focuses, its pupil narrows; it leans in, breathes out, rumbles, tilts its head with curiosity. Slow, heavy, majestic, at natural speed. No fighting, no attacking, no gore.
 - A setting with real weather and light, and a muted cinematic palette with one warm or glowing accent (lava, sunset, embers, bioluminescence, lightning, torches). Vary it every day: volcanic cliffs, a glacier, a stormy sea, a desert canyon at dusk, a frozen lake, a misty jungle ruin, a fjord, cloud tops at sunrise, a cave mouth, a burning forest edge.
-- One continuous 15-second shot, no cuts, in the assigned framing, in three beats: (1) stillness and scale, fog or water moving, the camera easing in; (2) the creature reacts to the human: eyes open and lock on, it lowers or leans in; (3) a close, memorable beat: a breath that blows past the human, a deep rumble, the eye in extreme close detail.
+- THE REVEAL: the creature is HIDDEN when the video starts and reveals itself. The video starts on the human alone in the setting (the creature's place is filled with fog, cloud, dark water, smoke, shadow or snow) and ENDS on the full encounter frame. One continuous 15-second shot, no cuts, in the assigned framing, in three beats: (1) 0-5s: the human alone, stillness, the environment moving; a hint something is there (a rumble, the fog bulging, a glow, a vast shadow, the water swelling); (2) 5-11s: the colossal head rises, emerges or pushes out of the fog, water or cloud and its face is revealed, enormous; (3) 11-15s: its eyes open and lock onto the tiny human, a slow breath rolls past them, settling into the final frame (the head and the human facing each other).
 - Mythical only: dragons (always with big, visible wings, at least partly in frame or implied behind the head), leviathans and sea serpents, krakens, titans of stone or ice, colossal wolves of legend, phoenixes, ancient world-turtles, colossal elemental beasts. Never a plain real-world animal. No human or man-like faces on any creature (no sphinx, manticore, lamassu, naga, siren, centaur, harpy).
 - It must look like a frame from a prestige film: photoreal, never a painting or CGI render.
 - Variety: never repeat a creature, setting or idea from the recent list.
@@ -136,11 +170,12 @@ For each concept write:
 - "size": its scale, a few words.
 - "location": the setting, a few words.
 - "perspective": the framing you were assigned, in your own few words.
-- "still": the START FRAME as a film still, 80-140 words: the creature's head (shape, scales or hide, horns, eyes, expression), where it rises from, the tiny human and where they stand, the framing, light, weather, palette, the one warm accent, and the camera (e.g. "ARRI Alexa 65, anamorphic lens, film grain"). The eyes can start half-lidded or closed so they can open in the video.
-- "motion": the 15-second video, 90-170 words: the camera move and the three beats in order, then a final sentence starting "Sound:" with the sound design (the creature's growl or breath, wind, water, fire, the human's breathing, a dark orchestral or choir swell). End with "No dialogue, no text." Only what can follow from the start frame; the creature keeps its exact design and stays in frame.
+- "still": the FINAL REVEAL FRAME as a film still, 80-140 words: the creature's head (shape, scales or hide, horns, eyes, expression), where it rises from, the tiny human and where they stand (in the lower third, not at the very edge of the frame), the framing, light, weather, palette, the one warm accent, and the camera (e.g. "ARRI Alexa 65, anamorphic lens, film grain").
+- "hidden": one or two sentences: what fills the creature's place in the OPENING frame, when it is still hidden (e.g. "a towering wall of dense fog glowing faintly gold at its edges, a vast dark shadow barely visible deep inside"; "calm black water, a faint swell rising beside the boat"). Never any part of the creature's face.
+- "motion": the 15-second video, 90-170 words: the camera move and the three beats of the reveal in order, ending on the final reveal frame, then a final sentence starting "Sound:" with the sound design building with the reveal (silence and wind, a deep rumble, the creature's growl or breath, a dark orchestral or choir swell). End with "No dialogue, no text." The creature keeps one exact design.
 - "captionQuestion": one short question that gets comments ("Would you stand your ground?", "What would you say to it?").
 
-OUTPUT (JSON only): { "concepts": [ { "title": "...", "creature": "...", "size": "...", "location": "...", "perspective": "...", "still": "...", "motion": "...", "captionQuestion": "..." }, ... ] }`;
+OUTPUT (JSON only): { "concepts": [ { "title": "...", "creature": "...", "size": "...", "location": "...", "perspective": "...", "still": "...", "hidden": "...", "motion": "...", "captionQuestion": "..." }, ... ] }`;
 
 /** Perspectives for today's concepts: the ones least recently used, shuffled. */
 export function pickPerspectives(recent: string[], n: number, rng: () => number = Math.random): string[] {
@@ -203,6 +238,7 @@ export async function writeCinematicConcepts(opts: {
       location: str(c.location),
       perspective: str(c.perspective),
       still: str(c.still),
+      hidden: str(c.hidden) || "dense, billowing fog filling that part of the frame, a faint vast shadow barely visible deep inside it",
       // Kling truncates prompts past 2,500 characters.
       motion: str(c.motion).slice(0, 2400),
       captionQuestion: str(c.captionQuestion) || "Would you stay and watch, or run?",
@@ -291,6 +327,8 @@ export async function estimateCinematicCost(
 export async function submitCinematicVideo(opts: {
   model: string;
   imageUrl: string;
+  /** End frame (the reveal); omitted → Kling ends wherever the prompt takes it. */
+  lastImageUrl?: string | null;
   prompt: string;
 }): Promise<{ requestId: string; estimate: { credits?: string; usd?: string } | null }> {
   const body = {
@@ -298,6 +336,7 @@ export async function submitCinematicVideo(opts: {
     image_url: opts.imageUrl,
     duration: CINEMATIC_SECONDS,
     sound: "on",
+    ...(opts.lastImageUrl ? { last_image_url: opts.lastImageUrl } : {}),
   };
   const estimate = await estimateCinematicCost(opts.model, body);
   const res = await fetch(`https://api.higgsfield.ai/${opts.model}`, {

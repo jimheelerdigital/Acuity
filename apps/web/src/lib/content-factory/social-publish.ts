@@ -371,6 +371,11 @@ export async function laneBrand(
   return brand === "bwk" || brand === "mythicals" ? brand : "ripple";
 }
 
+/** The Meta account for a brand (null when its creds aren't configured). */
+export function accountForBrand(brand: SocialAccountKey): SocialAccount | null {
+  return brand === "bwk" ? bwkAccount() : brand === "mythicals" ? mythicalsAccount() : rippleAccount();
+}
+
 /**
  * Which Meta account a lane posts to. BWK lanes use ONLY the dedicated
  * BWK account — null until META_BWK_* creds exist, which means no IG/FB

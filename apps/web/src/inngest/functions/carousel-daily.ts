@@ -744,6 +744,35 @@ export const carouselDailyCronFn = inngest.createFunction(
           return { imageUrl, rawImageUrl, slug, stillPrompt: prompt };
         });
 
+        // The reveal (2026-10-04): the start frame is the same picture with
+        // the creature edited out. gpt-image-2's edit endpoint only returns
+        // 2:3, so both frames come from one 2:3 crop of the reveal and are
+        // then cover-cropped to 9:16 identically. Fails open: no start
+        // frame → the video animates from the reveal frame (no hiding).
+        const frames = await step.run("cinematic-start-frame", async () => {
+          const { generateImageWithReference, uploadImage } = await import("@/lib/content-factory/carousel-generate");
+          const { buildCinematicHiddenPrompt } = await import("@/lib/content-factory/cinematic-shot");
+          const { default: sharp } = await import("sharp");
+          try {
+            const res = await fetch(frame.rawImageUrl);
+            if (!res.ok) throw new Error(`reveal frame fetch failed (${res.status})`);
+            const reveal23 = await sharp(Buffer.from(await res.arrayBuffer()))
+              .resize(1024, 1536, { fit: "cover", position: "centre" })
+              .png()
+              .toBuffer();
+            const hidden = await generateImageWithReference(buildCinematicHiddenPrompt(concept.concept), reveal23, "cover");
+            const to916 = (b: Buffer) =>
+              sharp(b).resize(1080, 1920, { fit: "cover", position: "centre" }).jpeg({ quality: 95 }).toBuffer();
+            const base = `carousels/${dateStr}/${frame.slug}`;
+            const start = await uploadImage(await to916(hidden), `${base}/cinematic-start.jpg`);
+            const end = await uploadImage(await to916(reveal23), `${base}/cinematic-end.jpg`);
+            return { start, end };
+          } catch (err) {
+            console.warn("[carousel-cron] cinematic start frame failed — no reveal:", err instanceof Error ? err.message : err);
+            return null;
+          }
+        });
+
         const saved = await step.run("save-cinematic", async () => {
           const { prisma } = await import("@/lib/prisma");
           const { buildChoiceCaption } = await import("@/lib/content-factory/choice-lane");
@@ -767,7 +796,7 @@ export const carouselDailyCronFn = inngest.createFunction(
                     order: 0,
                     kind: "COVER" as const,
                     overlayText: "",
-                    imagePrompt: encodeCinematicPrompt(c, frame.stillPrompt),
+                    imagePrompt: encodeCinematicPrompt(c, frame.stillPrompt, frames ?? undefined),
                     imageUrl: frame.imageUrl,
                     rawImageUrl: frame.rawImageUrl,
                   },

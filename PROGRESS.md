@@ -7,6 +7,36 @@
 
 ---
 
+## [2026-10-04] — Colossal Encounters reveal shot; Meta tokens replaced; daily token check
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** see "feat: Reveal the creature in Colossal Encounters and watch Meta tokens"
+
+### In plain English (for Keenan)
+- **The reveal:** Colossal Encounters videos now open with the creature hidden: only the tiny person, and fog, cloud or dark water where the creature will be. Then its head rises out and its face is revealed, ending on the full face-to-face shot.
+- **Posting fixed:** Meta had cut off the Legendary Mythicals posting access around 5–6pm Central on Oct 4 (Facebook reset Keenan's login session). New permanent tokens are in place for all three brands (Ripple, Build With Key, Mythicals), and the stuck Mythicals posts can go out again. The old Facebook egg reel is deleted. Instagram doesn't let apps delete reels, so that one has to be deleted by hand.
+- **Early warning:** the daily health email now says if any brand's posting token stops working, so a dead token gets caught before posts fail. On Dec 2 it will also remind Keenan to refresh the Meta token (the login token behind them expires Dec 3).
+
+### Technical changes (for Jimmy)
+- `lib/content-factory/cinematic-shot.ts`:
+  - `CinematicConcept.hidden`; the writer now asks for a hidden opening, a reveal and the final frame
+  - `buildCinematicHiddenPrompt`; START_FRAME / END_FRAME lines in the encoded prompt
+  - `submitCinematicVideo` sends `last_image_url`
+- `inngest/functions/carousel-daily.ts`: new step `cinematic-start-frame`. It runs a gpt-image-2 edit of a 2:3 crop of the reveal frame (the edit endpoint is 2:3-only), cover-crops both frames to 1080x1920, uploads `cinematic-start.jpg` and `cinematic-end.jpg`, and fails open to no reveal.
+- `inngest/functions/carousel-post-video.ts`: when a start frame exists, the start frame goes to `image_url` and the end frame to `last_image_url`.
+- `lib/content-factory/social-publish.ts`: exported `accountForBrand(brand)`.
+- `inngest/functions/social-health-check.ts`: section 6b runs `debug_token` on each brand's token every day and reports invalid ones or ones expiring within 3 days. It also adds a reminder line on Dec 2–3, 2026.
+- Ops: from Keenan's extended user token (Ripple Post Publisher, expires 2026-12-03), `me/accounts` gave never-expiring Page tokens. Wrote them to Vercel production `META_MYTHICALS_ACCESS_TOKEN`, `IG_ACCESS_TOKEN` (Ripple) and `META_BWK_ACCESS_TOKEN` (sensitive, --force), then redeployed the current production build (`vercel redeploy`, which rebuilds from GitHub source, not local disk). Page and IG IDs unchanged. Deleted FB video 960546606529864.
+
+### Manual steps needed
+- [ ] Delete the old egg reel on Instagram by hand: https://www.instagram.com/reel/DeFqEsmjC7_/ (Keenan)
+- [ ] After the push: `curl -X PUT https://goripple.io/api/inngest` (Claude Code)
+
+### Notes
+- Meta's error was "The session has been invalidated because the user changed their password or Facebook has changed the session for security reasons." Page tokens derived from a user session die with that session, so a future password change or security reset will break all three brands. The new health-check line catches it the next morning.
+- The IG Graph API returned "Unsupported delete request" for the published reel, so IG reels can't be deleted by the API. The replace-request flow will always leave the old IG post up.
+- Resend can only schedule emails 30 days ahead, so the Dec 2 reminder lives in the daily health check instead.
+
 ## [2026-10-04] — "How Big Would They Really Be?" removed; new Mythicals lane "Colossal Encounters"
 **Requested by:** Keenan
 **Committed by:** Claude Code
