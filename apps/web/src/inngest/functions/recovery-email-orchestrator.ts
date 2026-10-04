@@ -458,6 +458,37 @@ export const recoveryEmailOrchestratorFn = inngest.createFunction(
       }
 
       // ═══════════════════════════════════════════════════════════
+      // CARD TRIAL, DAY 5 (2026-10-04, weekly audit #1). Stripe card trials
+      // ~2 days before the first charge: recorders get "your week so far",
+      // non-recorders one "try it once" with the one-tap signed-in link.
+      // Card trials got nothing here before (trial_ending and the
+      // never_recorded day-3/last-day emails are cardless-only).
+      // stripeCurrentPeriodEnd = the trial end while trialing; createdAt in
+      // the last 8 days keeps renewing monthly payers out.
+      // ═══════════════════════════════════════════════════════════
+      if (hasGlobalBudget() || config.dryRun) {
+        const { isInternalEmail } = await import("@/lib/internal-traffic");
+        const day5 = await prisma.user.findMany({
+          where: {
+            stripeSubscriptionId: { not: null },
+            subscriptionStatus: "PRO",
+            isAdmin: false,
+            createdAt: { gte: new Date(now.getTime() - 8 * 24 * 3600_000) },
+            stripeCurrentPeriodEnd: {
+              gte: new Date(now.getTime() + 36 * 3600_000),
+              lte: new Date(now.getTime() + 60 * 3600_000),
+            },
+          },
+          select: { id: true, email: true, totalRecordings: true },
+        });
+        for (const u of day5) {
+          if (!hasGlobalBudget() && !config.dryRun) break;
+          if (isInternalEmail(u.email)) continue;
+          await trySend(u.id, u.totalRecordings > 0 ? "card_trial_week_so_far" : "card_trial_try_once");
+        }
+      }
+
+      // ═══════════════════════════════════════════════════════════
       // IN THE APP, NOT RECORDING (2026-09-29, per Keenan). Keyed on the
       // first app sign-in (lib/mobile-session.ts logs app_signed_in), any
       // plan including paid. #1 ~30 min after sign-in (was 1h, 2026-10-01), #2 ~1 day after.

@@ -100,6 +100,8 @@ export type TrialEmailKey =
   | "nr_winback_1"
   | "apple_duplicate_rescue"
   | "first_debrief_followup"
+  | "card_trial_week_so_far"
+  | "card_trial_try_once"
   | "trial_cancelled"
   | "nr_winback_2"
   | "nr_winback_3"

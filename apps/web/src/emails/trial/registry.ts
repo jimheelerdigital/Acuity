@@ -60,6 +60,7 @@ import { appAccessRescue } from "./app-access-rescue";
 import { appFirstRecord1, appFirstRecord2 } from "./app-first-record";
 import { appleDuplicateRescue } from "./apple-duplicate-rescue";
 import { firstDebriefFollowup } from "./first-debrief-followup";
+import { cardTrialTryOnce, cardTrialWeekSoFar } from "./card-trial-day5";
 import { trialCancelled } from "./trial-cancelled";
 
 export const TRIAL_EMAIL_TEMPLATES: Record<TrialEmailKey, TrialEmailTemplate> =
@@ -115,6 +116,8 @@ export const TRIAL_EMAIL_TEMPLATES: Record<TrialEmailKey, TrialEmailTemplate> =
     app_first_record_2: appFirstRecord2,
     apple_duplicate_rescue: appleDuplicateRescue,
     first_debrief_followup: firstDebriefFollowup,
+    card_trial_week_so_far: cardTrialWeekSoFar,
+    card_trial_try_once: cardTrialTryOnce,
     trial_cancelled: trialCancelled,
   };
 

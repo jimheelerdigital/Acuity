@@ -65,6 +65,8 @@ export const EMAIL_ENABLED: Record<string, boolean> = {
   nr_winback_3: true, // never-recorded drip #3 (day 6): "should I take the hint?"
   app_first_record_1: true, // 2026-09-29 (30 min since 10-01): after first app sign-in, 0 recordings — what to say first
   app_first_record_2: true, // 2026-09-29: ~1 day after first app sign-in, still 0 recordings
+  card_trial_week_so_far: true, // 2026-10-04: card trial ~2 days before billing, recorded — what Ripple caught
+  card_trial_try_once: true, // 2026-10-04: card trial ~2 days before billing, never recorded — one-tap link
   first_debrief_followup: true, // 2026-10-01: ~20h after first debrief, no second yet — what Ripple caught + do #2
   trial_cancelled: true, // 2026-10-01: Stripe trial set to cancel — no-charge confirm + one-tap "why" (webhook)
   apple_duplicate_rescue: true, // 2026-10-01: URGENT — paid on web, then Sign in with Apple made a 2nd account (lib/apple-duplicate-catch.ts)
