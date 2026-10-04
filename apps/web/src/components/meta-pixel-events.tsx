@@ -5,6 +5,7 @@ import { useSearchParams } from "next/navigation";
 import { useSession } from "next-auth/react";
 
 import { planValueDollars } from "@/lib/pricing";
+import { isPrivateAppSurface } from "@/lib/tracking-surfaces";
 
 /**
  * Safe fbq wrapper — only fires if the pixel has loaded.
@@ -27,6 +28,7 @@ export function fireFbq(event: string, params?: Record<string, unknown>, eventId
   // Internal devices never fire the pixel (lib/internal-traffic.ts).
   // eslint-disable-next-line @typescript-eslint/no-require-imports
   if (require("@/lib/internal-traffic").isInternalClient()) return;
+  if (typeof window !== "undefined" && isPrivateAppSurface(window.location.pathname)) return;
   if (typeof window !== "undefined" && typeof window.fbq === "function") {
     // Enrich pixel events with UTM attribution from the funnel session
     const utm = getStoredUtm();
@@ -82,6 +84,8 @@ export function MetaPixelAdvancedMatching() {
   useEffect(() => {
     if (!session?.user?.email) return;
     if (typeof window === "undefined" || typeof window.fbq !== "function") return;
+    // Never attach an identity on the private journal (2026-10-03).
+    if (isPrivateAppSurface(window.location.pathname)) return;
 
     const userData: Record<string, string> = {};
     userData.em = session.user.email.toLowerCase().trim();

@@ -1,10 +1,12 @@
 "use client";
 
 import Script from "next/script";
+import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 
 import { effectiveConsent, readConsent } from "@/components/cookie-consent";
 import { isMythicalsSurface } from "@/lib/mythicals/site";
+import { isPrivateAppSurface } from "@/lib/tracking-surfaces";
 
 /**
  * Consent-gated tracking script loader.
@@ -39,12 +41,15 @@ export function ConsentGatedTrackers() {
   const [analytics, setAnalytics] = useState(false);
   const [marketing, setMarketing] = useState(false);
   const [recording, setRecording] = useState(false);
+  const pathname = usePathname();
 
   useEffect(() => {
     const sync = () => {
       // Legendary Mythicals (2026-10-01): keep Ripple's GA + Meta pixel
       // off legendarymythicals.com and /lm so Ripple's data stays clean.
-      if (isMythicalsSurface(window.location.pathname)) {
+      // The signed-in journal (2026-10-03): no trackers at all, see
+      // lib/tracking-surfaces.ts.
+      if (isMythicalsSurface(window.location.pathname) || isPrivateAppSurface(window.location.pathname)) {
         setAnalytics(false);
         setMarketing(false);
         setRecording(false);
@@ -58,7 +63,7 @@ export function ConsentGatedTrackers() {
     sync();
     window.addEventListener("acuity:consent-changed", sync);
     return () => window.removeEventListener("acuity:consent-changed", sync);
-  }, []);
+  }, [pathname]);
 
   return (
     <>
@@ -96,7 +101,7 @@ export function ConsentGatedTrackers() {
             {if(f.fbq)return;n=f.fbq=function(){n.callMethod?
             n.callMethod.apply(n,arguments):n.queue.push(arguments)};
             if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';
-            n.queue=[];t=b.createElement(e);t.async=!0;
+            n.queue=[];n.disablePushState=true;t=b.createElement(e);t.async=!0;
             t.src=v;s=b.getElementsByTagName(e)[0];
             s.parentNode.insertBefore(t,s)}(window, document,'script',
             'https://connect.facebook.net/en_US/fbevents.js');
