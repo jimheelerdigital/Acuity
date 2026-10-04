@@ -7,6 +7,49 @@
 
 ---
 
+## [2026-10-04] — "How Big Would They Really Be?" removed; new Mythicals lane "Colossal Encounters"
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** see "feat: Replace How Big with a Colossal Encounters cinematic lane"
+
+### In plain English (for Keenan)
+- **Gone:** the "HOW BIG WOULD THEY REALLY BE?" series is removed entirely. It isn't scheduled anymore and can't be requested by hand.
+- **New lane, "Colossal Encounters":** one post a day, modeled on the dragon reel Keenan sent: a colossal creature's head rising out of fog, sea or cloud, face to face with one tiny person who stands their ground. Its eyes open and lock onto them, it leans in or breathes out, and the video ends close on the eye.
+- **The look:** 15 seconds, 4K, Higgsfield's own sound, no text on screen. It fades up from black at the start and down to black at the end, sound included.
+- **Variety:** each day the AI writes four ideas with different creatures, settings and camera framings. Jev picks the best one.
+- **Slot:** it takes the daily slot "How big" used, so Mythicals stays at 6 posts a day.
+- **Cost:** about 90 Higgsfield credits a day (roughly $3–5). If 4K fails, it falls back to pro quality on its own.
+
+### Technical changes (for Jimmy)
+- New `lib/content-factory/cinematic-shot.ts`:
+  - encounter-focused writer (4 concepts, one per framing in `CINEMATIC_PERSPECTIVES`, avoiding the last 6 used) and Jev choice pick (fails open to the first)
+  - still-prompt builder; prompt encode/decode on the cover slide's `imagePrompt` (CREATURE / LOCATION / PERSPECTIVE / STILL / MOTION)
+  - `submitCinematicVideo`: POST `api.higgsfield.ai/kling-video/v3.0/{4k|pro}/image-to-video`, duration 15, `sound: "on"`, after a logged `/estimate` call
+  - `cinematicModels()`: 4K, then pro; `CINEMATIC_QUALITY=pro` makes pro the only model
+- `inngest/functions/carousel-daily.ts`:
+  - new ContentLane template `cinematic` branch (`load-cinematic-lane`). It writes the concept, makes one gpt-image-2 "high" start frame through the image check (transparent overlay, so no text), saves a one-slide post with slug `mythic-cinematic-…`, writes the recipe (postType `cinematic`, category = framing) and queues the video.
+  - Mythicals "size" mode removed: no daily series slot, no SIZE category roll, no part numbers, no size labels.
+- `inngest/functions/carousel-post-video.ts`: a `cinematic-check` step runs first, then submit, polling every 30s for up to 30 min per model, falling back to pro. The finish step stores the full-resolution original at `living/<postId>/cinematic-original.mp4` and caches it in `cinematic.json`, so a rebuild doesn't pay twice. The marker records source `higgsfield`.
+- `lib/content-factory/living-reel.ts`: `finishCinematicVideo`:
+  - scale to 1080x1920 30fps; 1s fade from black and 1.5s fade to black on picture and sound
+  - Kling audio loudnorm to -14 LUFS (library music only if the clip has no audio)
+  - optional text hook (unused)
+- `lib/content-factory/performance-loop.ts`: `mythicModeFromSlug` knows `cinematic`; `LOOP_LANES` adds `mythic-colossus`.
+- `inngest/functions/carousel-living-reel.ts`: lane-request tags drop `size`.
+- Test: `lib/content-factory/cinematic-shot.test.ts`.
+- Ops (no code): "ONE EGG. FIVE POSSIBLE DRAGONS…" had `music/mythicals/ai-18-1791050193728.mp3` (matched 1.000 by audio envelope). Moved to `music-removed/mythicals/`. Video rebuilt with that track excluded; its replace request ran but both deletes and reposts failed on the Mythicals token (see Notes).
+
+### Manual steps needed
+- [ ] After deploy, data change (Claude Code): create ContentLane `mythic-colossus` ("Colossal Encounters (Legendary Mythicals)", brand mythicals, template cinematic, hoursUtc [7], spec {}), and set `mythic-picks` hoursUtc to [5,6,8,9,10]. Not before deploy: the old code doesn't know template `cinematic`.
+- [ ] After deploy: `curl -X PUT https://goripple.io/api/inngest` (Claude Code)
+- [ ] New never-expiring Mythicals Page token in Vercel `META_MYTHICALS_*` + redeploy (Keenan). Meta says the session was invalidated (password change or security reset); every Mythicals IG/FB publish fails until it's replaced.
+- [ ] After the token: delete the old egg reels by hand. The replace request already reset the rows, so it won't retry the delete. FB video 960546606529864, IG media 18112222550130028 (Claude Code)
+
+### Notes
+- The dev API docs list Kling 3.0 4K/pro image-to-video with native sound (`sound` on/off) and 3–15s, with no `negative_prompt`, so none is sent. Not verified against our account: the Higgsfield keys are Vercel-sensitive and can't be pulled locally. The first live run is the check; a failed 4K submit falls back to pro.
+- An example made via the Higgsfield app MCP (Tokyo rooftop dragon, 4K, through `finishCinematicVideo`) was emailed 10-04. It still had the old How Big hook; the lane has no text.
+- `choice-lane.ts` still holds the unused SIZE_RULES / SIZE_CATEGORIES; nothing calls them now.
+
 ## [2026-10-04] — Kill individual ads by hand; "Keep the promises" and "Say it. Ripple sorts it." turned off
 **Requested by:** Keenan
 **Committed by:** Claude Code

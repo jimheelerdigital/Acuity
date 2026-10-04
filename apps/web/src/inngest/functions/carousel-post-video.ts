@@ -64,6 +64,131 @@ export const carouselPostVideoFn = inngest.createFunction(
       music?: { minSeconds?: number; exclude?: string[] };
     };
 
+    // ── 0. Legendary Mythicals cinematic shot (mythic-colossus, 2026-10-04):
+    // one Kling 3.0 15s render with its own sound, faded in and out. ──
+    const cine = await step.run("cinematic-check", async () => {
+      const { prisma } = await import("@/lib/prisma");
+      const { isCinematicSlug, decodeCinematicPrompt } = await import("@/lib/content-factory/cinematic-shot");
+      const post = await prisma.carouselPost.findUniqueOrThrow({
+        where: { id: postId },
+        select: {
+          topicSlug: true,
+          lane: true,
+          generatedFor: true,
+          slides: { where: { order: 0 }, select: { rawImageUrl: true, imagePrompt: true } },
+        },
+      });
+      if (!isCinematicSlug(post.topicSlug)) return null;
+      const cover = post.slides[0];
+      const motion = cover ? decodeCinematicPrompt(cover.imagePrompt).motion : null;
+      if (!cover?.rawImageUrl || !motion) throw new Error(`Cinematic post ${postId} is missing its start frame or motion prompt`);
+      const { laneBrand } = await import("@/lib/content-factory/social-publish");
+      return {
+        lane: post.lane,
+        brand: await laneBrand(post.lane),
+        date: post.generatedFor.toISOString().slice(0, 10),
+        imageUrl: cover.rawImageUrl,
+        motion,
+      };
+    });
+    if (cine) {
+      const { cinematicModels } = await import("@/lib/content-factory/cinematic-shot");
+      // A rebuild reuses a finished render instead of paying for another.
+      let clip = await step.run("cinematic-cached", async () => {
+        const { supabase } = await import("@/lib/supabase.server");
+        const { data } = await supabase.storage.from("content-factory").download(`living/${postId}/cinematic.json`);
+        if (!data) return null;
+        try {
+          return JSON.parse(await data.text()) as { url: string; model: string; estimate?: unknown };
+        } catch {
+          return null;
+        }
+      });
+      const tried: string[] = [];
+      for (const [a, model] of cinematicModels().entries()) {
+        if (clip) break;
+        const sub = await step.run(`cinematic-submit-${a}`, async () => {
+          const { submitCinematicVideo } = await import("@/lib/content-factory/cinematic-shot");
+          const { noteSubmitWave } = await import("@/lib/content-factory/post-video");
+          try {
+            const r = await submitCinematicVideo({ model, imageUrl: cine.imageUrl, prompt: cine.motion });
+            await noteSubmitWave(1, []);
+            console.log(`[post-video] ${postId} cinematic ${model} submitted ${r.requestId}, estimate ${JSON.stringify(r.estimate)}`);
+            return { id: r.requestId, estimate: r.estimate, error: null as string | null, creditsOut: false };
+          } catch (err) {
+            const msg = err instanceof Error ? err.message : String(err);
+            const creditsOut = await noteSubmitWave(0, [msg]);
+            return { id: null as string | null, estimate: null, error: msg, creditsOut };
+          }
+        });
+        tried.push(`${model}: ${sub.id ? "submitted" : sub.error}`);
+        if (sub.creditsOut) break;
+        if (!sub.id) continue;
+        // 4K renders take ~5-15 min; allow 30 min, then fall back.
+        for (let round = 0; round < 60 && !clip; round++) {
+          await step.sleep(`cinematic-wait-${a}-${round}`, "30s");
+          const st = await step.run(`cinematic-poll-${a}-${round}`, async () => {
+            const { checkCoverVideo } = await import("@/lib/content-factory/animate-cover");
+            try {
+              return await checkCoverVideo(sub.id!, model);
+            } catch {
+              return { status: "in_progress" as const, videoUrl: null };
+            }
+          });
+          if (st.status === "completed" && st.videoUrl) {
+            clip = { url: st.videoUrl, model, estimate: sub.estimate };
+            break;
+          }
+          if (st.status !== "queued" && st.status !== "in_progress") {
+            tried.push(`${model}: ended ${st.status}`);
+            break;
+          }
+        }
+      }
+      if (!clip) throw new Error(`Cinematic render failed: ${tried.join("; ") || "no model tried"}`);
+      const done = clip;
+
+      const result = await step.run("cinematic-finish", async () => {
+        const { supabase } = await import("@/lib/supabase.server");
+        const { finishCinematicVideo } = await import("@/lib/content-factory/living-reel");
+        const { pickMusicTrack } = await import("@/lib/content-factory/slideshow-reel");
+        const { reelPath, writeVideoMarker } = await import("@/lib/content-factory/post-video");
+        const res = await fetch(done.url);
+        if (!res.ok) throw new Error(`Cinematic clip download failed (${res.status})`);
+        const raw = Buffer.from(await res.arrayBuffer());
+        // Keep the full-resolution render (Higgsfield deletes outputs after ~7 days).
+        const origPath = `living/${postId}/cinematic-original.mp4`;
+        await supabase.storage.from("content-factory").upload(origPath, raw, { contentType: "video/mp4", upsert: true });
+        const originalUrl = supabase.storage.from("content-factory").getPublicUrl(origPath).data.publicUrl;
+        await supabase.storage
+          .from("content-factory")
+          .upload(`living/${postId}/cinematic.json`, Buffer.from(JSON.stringify({ ...done, url: originalUrl })), {
+            contentType: "application/json",
+            upsert: true,
+          });
+        // No text on screen (2026-10-04); fades in and out (finishCinematicVideo).
+        const { buf, seconds, audio } = await finishCinematicVideo({
+          clip: raw,
+          music: () => pickMusicTrack(cine.lane, undefined, { minSeconds: 15 }),
+        });
+        const path = reelPath(postId);
+        const { error } = await supabase.storage.from("content-factory").upload(path, buf, { contentType: "video/mp4", upsert: true });
+        if (error) throw new Error(`Video upload failed: ${error.message}`);
+        const url = supabase.storage.from("content-factory").getPublicUrl(path).data.publicUrl;
+        const { prisma } = await import("@/lib/prisma");
+        await prisma.carouselPost.update({ where: { id: postId }, data: { reelTransition: `higgsfield:${done.model}` } });
+        await writeVideoMarker(postId, { status: "done", url, source: "higgsfield", model: done.model, liveSlides: 1, totalSlides: 1 });
+        console.log(`[post-video] ${postId} cinematic done: ${done.model}, ${seconds.toFixed(1)}s, audio ${audio}, ${buf.length} bytes`);
+        return { url, originalUrl, seconds, bytes: buf.length, audio, model: done.model };
+      });
+
+      await step.run("digest-check", async () => {
+        const { requestDigestCheck } = await import("@/lib/content-factory/post-video");
+        await requestDigestCheck(cine.brand, cine.date);
+      });
+      return { postId, cinematic: true, ...result };
+    }
+
     // ── 1. Plan: which slides animate, which stay still ──────────────
     const plan = await step.run("plan", async () => {
       const { prisma } = await import("@/lib/prisma");

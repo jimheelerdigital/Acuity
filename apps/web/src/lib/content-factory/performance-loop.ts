@@ -32,6 +32,7 @@ export type LoopBrand = "ripple" | "bwk" | "mythicals";
 /** Lanes the loop learns from and steers. */
 export const LOOP_LANES: Record<string, LoopBrand> = {
   "mythic-picks": "mythicals",
+  "mythic-colossus": "mythicals",
   "pick-ripple": "ripple",
   "pick-bwk": "bwk",
 };
@@ -95,7 +96,7 @@ export async function readRecipe(postId: string): Promise<PostRecipe | null> {
 
 /** Post type from a Mythicals slug ("mythic-know-…" → know). */
 export function mythicModeFromSlug(slug: string): string {
-  return slug.match(/^mythic-(duo|place|know|scenario|size|versus)-/)?.[1] ?? "choice";
+  return slug.match(/^mythic-(duo|place|know|scenario|size|versus|cinematic)-/)?.[1] ?? "choice";
 }
 
 /**

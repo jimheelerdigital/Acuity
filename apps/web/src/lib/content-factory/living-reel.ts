@@ -444,3 +444,103 @@ export async function assemblePostVideo(opts: {
   }
   return joinPostVideo({ segments, ctaUrl: opts.ctaUrl, musicUrl: opts.musicUrl });
 }
+
+/**
+ * Finish a Legendary Mythicals cinematic shot (2026-10-04, cinematic-shot.ts):
+ * the Kling 3.0 clip (4K 2164x3828 or pro 1080p) scaled to 1080x1920 30fps,
+ * an optional text hook on screen for the first `hookSeconds` (fading out;
+ * the mythic-colossus lane runs with none),
+ * Kling's own sound brought to social loudness (-14 LUFS), and a fade up
+ * from black at the start and down to black at the end. A clip with
+ * no audio stream gets library music under it instead, or ships silent.
+ * One small graph: a single 15s clip encodes in well under a minute.
+ */
+const FADE_IN_SEC = 1;
+const FADE_OUT_SEC = 1.5;
+
+export async function finishCinematicVideo(opts: {
+  clip: Buffer;
+  hook?: Buffer | null;
+  hookSeconds?: number;
+  /** Called only when the clip has no audio stream. */
+  music?: () => Promise<string | null>;
+}): Promise<{ buf: Buffer; seconds: number; audio: "native" | "music" | "none" }> {
+  return withTempDir(async (dir) => {
+    const clipFile = path.join(dir, "clip.mp4");
+    fs.writeFileSync(clipFile, opts.clip);
+    const bin = ffmpegPath();
+    if (!bin) throw new Error("ffmpeg-static binary not found in this environment");
+    const info = await new Promise<string>((resolve) => {
+      const proc = spawn(bin, ["-i", clipFile]);
+      let err = "";
+      proc.stderr.on("data", (d) => (err += d.toString()));
+      proc.on("close", () => resolve(err));
+      proc.on("error", () => resolve(err));
+    });
+    const dm = info.match(/Duration: (\d+):(\d+):([\d.]+)/);
+    const seconds = dm ? +dm[1] * 3600 + +dm[2] * 60 + +dm[3] : 15;
+    const hasAudio = /Stream #\d+:\d+.*Audio:/.test(info);
+
+    const args: string[] = ["-i", clipFile];
+    let next = 1;
+    let hookIdx = -1;
+    if (opts.hook) {
+      const hookFile = path.join(dir, "hook.png");
+      fs.writeFileSync(hookFile, opts.hook);
+      args.push("-loop", "1", "-t", String((opts.hookSeconds ?? 2) + 0.6), "-i", hookFile);
+      hookIdx = next++;
+    }
+    let musicIdx = -1;
+    const musicUrl = !hasAudio && opts.music ? await opts.music().catch(() => null) : null;
+    if (musicUrl) {
+      const res = await fetch(musicUrl);
+      if (res.ok) {
+        const musicFile = path.join(dir, "music.audio");
+        fs.writeFileSync(musicFile, Buffer.from(await res.arrayBuffer()));
+        args.push("-i", musicFile);
+        musicIdx = next++;
+      }
+    }
+    const base = `[0:v]scale=${W}:${H}:force_original_aspect_ratio=increase:flags=lanczos,crop=${W}:${H},fps=30,format=yuv420p`;
+    // Cinematic open and close (2026-10-04, per Keenan: "it should fade in
+    // and fade out cinematically"): up from black, down to black, with the
+    // sound easing in and out to match.
+    const outStart = Math.max(0, seconds - FADE_OUT_SEC).toFixed(2);
+    const fades = `fade=t=in:st=0:d=${FADE_IN_SEC},fade=t=out:st=${outStart}:d=${FADE_OUT_SEC}`;
+    const audioFades = `afade=t=in:st=0:d=${FADE_IN_SEC * 0.75},afade=t=out:st=${outStart}:d=${FADE_OUT_SEC}`;
+    const filters: string[] = [];
+    if (hookIdx >= 0) {
+      filters.push(`${base}[bg]`);
+      filters.push(`[${hookIdx}:v]format=rgba,fade=t=out:st=${opts.hookSeconds ?? 2}:d=0.6:alpha=1[hk]`);
+      filters.push(`[bg][hk]overlay=0:0:eof_action=pass,${fades},format=yuv420p[v]`);
+    } else {
+      filters.push(`${base},${fades}[v]`);
+    }
+    let audio: "native" | "music" | "none" = "none";
+    if (hasAudio) {
+      filters.push(`[0:a]loudnorm=I=-14:TP=-1.5:LRA=11,${audioFades},aresample=44100,aformat=sample_fmts=fltp:channel_layouts=stereo[a]`);
+      audio = "native";
+    } else if (musicIdx >= 0) {
+      filters.push(
+        `[${musicIdx}:a]atrim=0:${seconds.toFixed(2)},loudnorm=I=-14:TP=-1.5:LRA=11,${audioFades},aresample=44100,aformat=sample_fmts=fltp:channel_layouts=stereo[a]`
+      );
+      audio = "music";
+    }
+    const out = path.join(dir, "out.mp4");
+    await runFfmpeg([
+      ...args,
+      "-filter_complex",
+      filters.join(";"),
+      "-map",
+      "[v]",
+      ...(audio !== "none" ? ["-map", "[a]", "-c:a", "aac", "-b:a", "192k"] : []),
+      "-t",
+      seconds.toFixed(2),
+      ...SEGMENT_ENCODE,
+      "-movflags",
+      "+faststart",
+      out,
+    ]);
+    return { buf: fs.readFileSync(out), seconds, audio };
+  });
+}

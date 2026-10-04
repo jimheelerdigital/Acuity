@@ -663,6 +663,148 @@ export const carouselDailyCronFn = inngest.createFunction(
       return { generated: 1, bucket: laneKey, ...paperResult };
     }
 
+    // ── CINEMATIC lanes (template "cinematic", 2026-10-04) ───────────
+    // Legendary Mythicals "Colossal Encounters" (mythic-colossus): one 15s
+    // Kling 3.0 shot a day of a colossal creature's head face to face with
+    // a tiny human, no text, fade in / fade out. See cinematic-shot.ts.
+    const cinematicLane =
+      !isLegacyBucket && b
+        ? await step.run("load-cinematic-lane", async () => {
+            const { prisma } = await import("@/lib/prisma");
+            const row = await prisma.contentLane.findUnique({ where: { key: b } });
+            return row && row.status !== "RETIRED" && row.template === "cinematic" ? row.key : null;
+          })
+        : null;
+    if (cinematicLane) {
+      const laneKey = cinematicLane;
+      const runAt = new Date(typeof event.ts === "number" ? event.ts : Date.now());
+      {
+        const concept = await step.run("cinematic-concept", async () => {
+          const { prisma } = await import("@/lib/prisma");
+          const {
+            CINEMATIC_SLUG_PREFIX,
+            decodeCinematicPrompt,
+            pickPerspectives,
+            writeCinematicConcepts,
+            pickCinematicConcept,
+          } = await import("@/lib/content-factory/cinematic-shot");
+          const { getLaneFeedback } = await import("@/lib/content-factory/performance");
+          const recent = await prisma.carouselPost.findMany({
+            where: { lane: laneKey, topicSlug: { startsWith: CINEMATIC_SLUG_PREFIX } },
+            orderBy: { createdAt: "desc" },
+            take: 21,
+            select: { headline: true, slides: { where: { order: 0 }, select: { imagePrompt: true } } },
+          });
+          const decoded = recent.map((p) => decodeCinematicPrompt(p.slides[0]?.imagePrompt ?? ""));
+          const perspectives = pickPerspectives(decoded.map((d) => d.perspective ?? ""), 4);
+          const concepts = await writeCinematicConcepts({
+            perspectives,
+            recent: decoded.map((d, i) => `${d.creature ?? "?"}, ${d.perspective ?? "?"} (${recent[i].headline})`),
+            feedback: await getLaneFeedback(laneKey),
+          });
+          const pick = await pickCinematicConcept(concepts);
+          console.log(
+            `[carousel-cron] cinematic concepts: ${concepts.map((c) => `${c.title} (${c.creature}, ${c.location})`).join(" | ")} → ${pick.concept.title} [${pick.reason}]`
+          );
+          return { ...pick, concepts: concepts.map((c) => c.title) };
+        });
+        logger.info(`[carousel-cron] Cinematic (${laneKey}): "${concept.concept.title}" — ${concept.concept.creature}`);
+        if (dryRun) return saveDryRun(laneKey, concept);
+
+        await step.run("ensure-bucket", async () => {
+          const { ensureBucket } = await import("@/lib/content-factory/carousel-generate");
+          await ensureBucket();
+        });
+
+        const frame = await step.run("cinematic-frame", async () => {
+          const { generateImage, generateCheckedImage, uploadOverlaySlide } = await import(
+            "@/lib/content-factory/carousel-generate"
+          );
+          const { buildCinematicStillPrompt, cinematicSlug } = await import("@/lib/content-factory/cinematic-shot");
+          const c = concept.concept;
+          const prompt = buildCinematicStillPrompt(c);
+          const { buffer: raw, qc } = await generateCheckedImage(() => generateImage(prompt), {
+            scene: c.still,
+            slot: "cover",
+            personAllowed: true,
+            fantasy: true,
+            subject: `the head of ${c.creature} (${c.size}), face to face with a tiny human`,
+          });
+          logger.info(`[carousel-cron] cinematic frame quality: ${qc}`);
+          // No text anywhere (2026-10-04): a transparent overlay keeps the
+          // usual renditions (9:16 + 4:5 feed crop) with the clean frame.
+          const slug = cinematicSlug(c.title);
+          const { default: sharp } = await import("sharp");
+          const overlay = await sharp({
+            create: { width: 1080, height: 1920, channels: 4, background: { r: 0, g: 0, b: 0, alpha: 0 } },
+          })
+            .png()
+            .toBuffer();
+          const { imageUrl, rawImageUrl } = await uploadOverlaySlide(raw, overlay, `carousels/${dateStr}/${slug}/slide-cover.jpg`);
+          return { imageUrl, rawImageUrl, slug, stillPrompt: prompt };
+        });
+
+        const saved = await step.run("save-cinematic", async () => {
+          const { prisma } = await import("@/lib/prisma");
+          const { buildChoiceCaption } = await import("@/lib/content-factory/choice-lane");
+          const { extractHashtags } = await import("@/lib/content-factory/carousel-generate");
+          const { encodeCinematicPrompt } = await import("@/lib/content-factory/cinematic-shot");
+          const c = concept.concept;
+          const caption = buildChoiceCaption(c.captionQuestion);
+          const post = await prisma.carouselPost.create({
+            data: {
+              topicSlug: frame.slug,
+              headline: c.title,
+              status: "DRAFT",
+              format: "PHOTO",
+              caption,
+              hashtags: extractHashtags(caption),
+              generatedFor: today,
+              lane: laneKey,
+              slides: {
+                create: [
+                  {
+                    order: 0,
+                    kind: "COVER" as const,
+                    overlayText: "",
+                    imagePrompt: encodeCinematicPrompt(c, frame.stillPrompt),
+                    imageUrl: frame.imageUrl,
+                    rawImageUrl: frame.rawImageUrl,
+                  },
+                ],
+              },
+            },
+          });
+          try {
+            const { writeRecipe, LOOP_LANES } = await import("@/lib/content-factory/performance-loop");
+            const brand = LOOP_LANES[laneKey];
+            if (brand) {
+              await writeRecipe({
+                postId: post.id,
+                brand,
+                lane: laneKey,
+                postType: "cinematic",
+                category: c.perspective,
+                title: `${c.title}: ${c.creature}`,
+                options: [c.creature],
+                coverScene: c.still,
+                generatedFor: today.toISOString().slice(0, 10),
+                slotHourUtc: runAt.getUTCHours(),
+              });
+            }
+          } catch (err) {
+            console.warn("[carousel-cron] recipe write failed:", err instanceof Error ? err.message : err);
+          }
+          const { queuePostVideo } = await import("@/lib/content-factory/post-video");
+          await queuePostVideo(post.id);
+          return { postId: post.id };
+        });
+        logger.info(`[carousel-cron] Generated cinematic (${laneKey}) "${concept.concept.title}" → video queued`);
+        return { generated: 1, bucket: laneKey, cinematic: concept.concept.title, ...saved };
+      }
+    }
+
+
     // ── CHOICE lanes (template "choice", 2026-09-29) ─────────────────
     // Legendary Mythicals "which would you choose?" posts: a question
     // cover + 5 numbered options + a varied closing card. Cover and
@@ -704,8 +846,11 @@ export const carouselDailyCronFn = inngest.createFunction(
       // lanes... i want random variation based on the theme post"). Each
       // Mythicals run draws a post type at random, skipping types already
       // posted today. Drawn inside a step so Inngest replays keep it.
-      type MythMode = "choice" | "duo" | "place" | "know" | "scenario" | "size" | "versus";
-      const MYTH_MODES: MythMode[] = ["choice", "duo", "place", "know", "scenario", "size", "versus"];
+      // "size" (How Big Would They Really Be?) removed 2026-10-04 (Keenan:
+      // "get rid of 'how big would they really be' entirely"); its slot went
+      // to the mythic-colossus cinematic lane.
+      type MythMode = "choice" | "duo" | "place" | "know" | "scenario" | "versus";
+      const MYTH_MODES: MythMode[] = ["choice", "duo", "place", "know", "scenario", "versus"];
       const choiceMode: MythMode =
         forcedMode && (MYTH_MODES as string[]).includes(forcedMode)
           ? (forcedMode as MythMode)
@@ -728,13 +873,6 @@ export const carouselDailyCronFn = inngest.createFunction(
                   select: { topicSlug: true },
                 });
                 const used = new Set(posted.map((p) => mythicModeFromSlug(p.topicSlug)));
-                // "How big would they really be?" is a daily series (2026-10-01,
-                // per Keenan: "consistently posts daily"): the third run of the
-                // day makes it, or any later run if it still hasn't happened.
-                if (!used.has("size") && posted.length >= 2) {
-                  console.log("[carousel-cron] post type: size (daily series)");
-                  return "size" as MythMode;
-                }
                 const board = await readScoreboard("mythicals");
                 const choice = chooseMythicPostType(board, used);
                 console.log(`[carousel-cron] post type: ${choice.arm} (${choice.reason}) ${choice.samples ? JSON.stringify(choice.samples) : ""}`);
@@ -797,7 +935,6 @@ export const carouselDailyCronFn = inngest.createFunction(
           PLACE_CATEGORIES,
           KNOW_CATEGORIES,
           SCENARIO_CATEGORIES,
-          SIZE_CATEGORIES,
           VERSUS_CATEGORIES,
         } = await import(
           "@/lib/content-factory/choice-lane"
@@ -826,16 +963,9 @@ export const carouselDailyCronFn = inngest.createFunction(
                 ? KNOW_CATEGORIES[Math.floor(Math.random() * KNOW_CATEGORIES.length)]
                 : choiceMode === "scenario"
                   ? SCENARIO_CATEGORIES[Math.floor(Math.random() * SCENARIO_CATEGORIES.length)]
-                  : choiceMode === "size"
-                    ? SIZE_CATEGORIES[Math.floor(Math.random() * SIZE_CATEGORIES.length)]
-                    : choiceMode === "versus"
-                      ? VERSUS_CATEGORIES[Math.floor(Math.random() * VERSUS_CATEGORIES.length)]
-                      : rollChoiceCategory(recentCats);
-        // Size series part number: every size post so far + 1.
-        const sizePart =
-          choiceMode === "size"
-            ? (await prisma.carouselPost.count({ where: { lane: laneKey, topicSlug: { startsWith: "mythic-size-" } } })) + 1
-            : undefined;
+                  : choiceMode === "versus"
+                    ? VERSUS_CATEGORIES[Math.floor(Math.random() * VERSUS_CATEGORIES.length)]
+                    : rollChoiceCategory(recentCats);
         // Performance loop: bandit picks the category within the post type,
         // then Sonnet writes 3 covers and Jev picks one with the scoreboard
         // as context. Any failure falls back to the random category above.
@@ -848,7 +978,7 @@ export const carouselDailyCronFn = inngest.createFunction(
           const recentCatsLoop = await recentLoopCategories(laneKey, 3);
           const pickCat = pl.chooseCategory(board, choiceMode, catalog, recentCatsLoop);
           category = pickCat.arm;
-          const cover = choiceMode === "size" || forcedTopic ? null : await pl.chooseMythicCover({
+          const cover = forcedTopic ? null : await pl.chooseMythicCover({
             postType: choiceMode,
             category,
             recentTitles: recent.map((p) => p.headline),
@@ -866,7 +996,6 @@ export const carouselDailyCronFn = inngest.createFunction(
         }
         return generateChoiceTopic({
           mode: choiceMode,
-          part: sizePart,
           category,
           theme: choiceLane.spec.theme,
           recentTitles: recent.map((p) => p.headline),
@@ -939,8 +1068,7 @@ export const carouselDailyCronFn = inngest.createFunction(
             // a description. just place the name of the beast on there").
             // The lore line is still written (it keeps the five picks distinct and
             // feeds the diversity check) but is no longer shown.
-            // Size series slides carry "CREATURE: SIZE" with no number (as part 1).
-            const label = choiceMode === "size" ? o.name : `${i + 1}. ${o.name}`;
+            const label = `${i + 1}. ${o.name}`;
             const overlay = await renderChoiceOverlay({ top: label });
             const { imageUrl, rawImageUrl } = await uploadOverlaySlide(
               raw,
