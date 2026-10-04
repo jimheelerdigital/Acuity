@@ -36,9 +36,16 @@ const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
   timeout: SDK_TIMEOUT_MS,
 });
+// Claude gets longer (2026-10-04): a long debrief (~3,300 chars) produces a
+// full extraction (up to CLAUDE_MAX_TOKENS of JSON) that can take more than
+// 30s to generate, so it timed out on every retry and the entry was left
+// PARTIAL "Processing took too long" (Keenan's 09-29 entry). The Inngest
+// function allows 300s, so 120s per call still leaves room for a retry.
+const CLAUDE_TIMEOUT_MS = 120_000;
 const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
-  timeout: SDK_TIMEOUT_MS,
+  timeout: CLAUDE_TIMEOUT_MS,
+  maxRetries: 1,
 });
 
 const STORAGE_BUCKET = "voice-entries";

@@ -795,6 +795,24 @@ The email people get after the Mythicals quiz now opens with a big picture of th
 - Still sent from hello@getacuity.io. Moving to a legendarymythicals.com sender needs a Resend domain plus 3 GoDaddy DNS records (optional).
 - No Stripe product is needed: checkout sends inline price_data named "Legendary Creature Portrait" with metadata brand=mythicals.
 
+## [2026-10-04] — Fix: long debriefs failing with "Processing took too long"
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** see "fix: Give long debriefs enough time to process"
+
+### In plain English (for Keenan)
+A long debrief (Keenan's, 09-29) failed with "Processing didn't finish / took too long". The AI step that pulls out tasks and patterns was cut off after 30 seconds, and a long debrief needs more than that to write everything out. It now gets up to 2 minutes. Only 1 of ~100 debriefs in the last two weeks hit this, but it would happen to anyone who talks for a while, which is exactly the user we want.
+
+### Technical changes (for Jimmy)
+- `lib/pipeline.ts`: Anthropic client timeout 30s → 120s with `maxRetries: 1` (worst case 240s inside the Inngest function's 300s maxDuration). OpenAI/Whisper stays at 30s
+- Evidence: entry cmunbz3aj0001s7a1rbio3l2k, PARTIAL extract-or-persist-failed, errorMessage "Request timed out.", transcript 3,340 chars
+
+### Manual steps needed
+- [ ] Keenan: tap Retry on the 09-29 entry after this deploys (Keenan)
+
+### Notes
+- If long entries still time out, the next lever is streaming the extraction call or raising CLAUDE_MAX_TOKENS (2048) to avoid truncated JSON.
+
 ## [2026-10-04] — URGENT fix: paid web customers couldn't record in the app
 **Requested by:** Keenan
 **Committed by:** Claude Code
