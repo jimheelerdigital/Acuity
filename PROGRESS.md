@@ -7,6 +7,26 @@
 
 ---
 
+## [2026-10-04] — Hailuo leads Higgsfield animation during the discount; 3 un-animated Mythicals videos rebuilt
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** see "chore: Lead with Hailuo 2.3 during the Higgsfield discount"
+
+### In plain English (for Keenan)
+- **Outage:** Higgsfield ran out of credits overnight (10-04 08:11 UTC). Three upcoming Legendary Mythicals videos went out with no animation, or only partial: "One egg, five possible dragons", "Five armors forged" and "The gates are falling". They're being rebuilt with full animation (and the new AI music) before they post.
+- **Model:** Keenan topped up and has a 7-day discount to Oct 11 (Hailuo 75% off, Kling 50% off). Animation now uses Hailuo 2.3, which costs about the same as Kling with the discount but has better resolution and motion. It switches back to Kling automatically when the discount ends.
+
+### Technical changes (for Jimmy)
+- `lib/content-factory/post-video.ts`: `HAILUO_PROMO_ENDS` set to 2026-10-11T14:03Z, so `POST_VIDEO_MODEL` = Hailuo 2.3 Standard with the Kling 2.5 Turbo Standard fallback until then, then reversed.
+- Ops: deleted `living/cmutjkdcs00009eo45h3vjxof/clips.json` (3/7 cached clips) and dropped `video-requests/<id>.json` for cmutjkdcs…, cmutlokhf…, cmutnu6hr…
+
+### Manual steps needed
+- None
+
+### Notes
+- The credits flag (`health/higgsfield-credits.json`) clears itself on the first successful submit.
+- A rebuild reuses `living/<id>/clips.json` when present, so a partially animated post must have it deleted to re-animate fully.
+
 ## [2026-10-03] — Owned AI music replaces the copyrighted song library on every brand
 **Requested by:** Keenan
 **Committed by:** Claude Code

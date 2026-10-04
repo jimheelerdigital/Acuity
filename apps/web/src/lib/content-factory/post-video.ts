@@ -99,8 +99,15 @@ const BUCKET = "content-factory";
 
 const HAILUO_STD = "minimax/hailuo-2.3/standard/image-to-video";
 const KLING_STD = "kling-video/v2.5-turbo/standard/image-to-video";
-/** Hailuo's 75%-off promo ends here; after it, Kling 2.5 Standard is cheapest. */
-const HAILUO_PROMO_ENDS = Date.parse("2026-10-01T00:00:00Z");
+/**
+ * Hailuo's 75%-off promo ends here; after it, Kling 2.5 Standard is cheapest.
+ * 2026-10-04 (per Keenan: "use the best possible model that's the most cost
+ * effective"): a new 7-day account discount runs to Oct 11 9:03 AM CT —
+ * Hailuo 2.3 75% off (~$0.0117/s, 768x1364) vs Kling 50% off (~$0.0116/s,
+ * 720p). Same price, Hailuo has the better resolution and motion, so it
+ * leads again until then and Kling takes over automatically after.
+ */
+const HAILUO_PROMO_ENDS = Date.parse("2026-10-11T14:03:00Z");
 const hailuoIsCheapest = () => Date.now() < HAILUO_PROMO_ENDS;
 
 /**
