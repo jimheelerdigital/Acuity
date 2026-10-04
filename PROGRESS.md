@@ -7,6 +7,28 @@
 
 ---
 
+## [2026-10-04] — Darker, deeper Mythicals music (dark orchestral + deep house)
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** see "content: Remake the Mythicals music darker with deep house"
+
+### In plain English (for Keenan)
+- **The track:** the song on "Which dragon are you bonding to?" was a light Celtic-fiddle track. It's out of the library.
+- **New library:** every Legendary Mythicals track is being remade dark, deep and epic. Half are dark orchestral (war marches, dragon themes, Viking hymns). Half are deep, progressive and melodic house with mythic layers (Norse drums, chants, choirs, cinematic drops).
+- **Retiring the old set:** once at least 6 new tracks exist, the current lighter Mythicals tracks are archived. BWK and Ripple music is untouched.
+
+### Technical changes (for Jimmy)
+- `lib/content-factory/music-gen.ts`: darker `MUSIC_BRIEFS.mythicals`; `MUSIC_FLAVORS.mythicals` rewritten (12 dark styles, every other one house/techno).
+- `inngest/functions/music-library.ts`: event data `brands[]` (subset) and `prefix` (new generation, e.g. `aiv2-`). Retires tracks not matching the prefix. Sample copy only runs on the first (`ai-`) build.
+- `app/api/admin/music-library/route.ts`: passes `brands` / `prefix`.
+- Ops: identified the dragon post's track by envelope cross-correlation of reels/cmuty59sk….mp4 against the library (exact match ai-11, the Celtic-fiddle style) and moved it to music-removed/mythicals/. Run: `{ brands: ["mythicals"], prefix: "aiv2-", perBrand: 20 }`.
+
+### Manual steps needed
+- [x] Inngest resync after deploy (Claude)
+
+### Notes
+- The track choice is only logged in Inngest, not stored. Consider saving musicUrl on the video-build marker so a track can be traced without audio matching.
+
 ## [2026-10-04] — Every Mythicals dragon has wings
 **Requested by:** Keenan
 **Committed by:** Claude Code

@@ -21,7 +21,10 @@ export async function POST(req: NextRequest) {
     if (!guard.ok) return guard.response;
   }
   const { inngest } = await import("@/inngest/client");
-  const body = (await req.json().catch(() => ({}))) as { perBrand?: number };
-  await inngest.send({ name: "content-factory/music.library", data: { perBrand: body.perBrand } });
+  const body = (await req.json().catch(() => ({}))) as { perBrand?: number; brands?: string[]; prefix?: string };
+  await inngest.send({
+    name: "content-factory/music.library",
+    data: { perBrand: body.perBrand, brands: body.brands, prefix: body.prefix },
+  });
   return NextResponse.json({ ok: true });
 }

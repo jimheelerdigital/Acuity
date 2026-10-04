@@ -31,23 +31,29 @@ export const musicLibraryFn = inngest.createFunction(
     triggers: [{ event: "content-factory/music.library" }],
   },
   async ({ event, step }) => {
-    const perBrand = Math.max(1, Math.min(40, Number((event.data as { perBrand?: number })?.perBrand) || 20));
-    const brands = ["mythicals", "bwk", "ripple"] as const;
+    const data = (event.data ?? {}) as { perBrand?: number; brands?: string[]; prefix?: string };
+    const perBrand = Math.max(1, Math.min(40, Number(data.perBrand) || 20));
+    const all = ["mythicals", "bwk", "ripple"] as const;
+    // Optional brand subset + generation prefix (2026-10-04: remake only the
+    // Mythicals library darker). Tracks not starting with the prefix are
+    // retired once a brand has MIN_NEW of the new generation.
+    const brands = all.filter((b) => !data.brands?.length || data.brands.includes(b));
+    const prefix = /^[a-z0-9]+-$/.test(data.prefix ?? "") ? data.prefix! : "ai-";
 
     const plan = await step.run("budget", async () => {
       const { creditsRemaining } = await import("@/lib/content-factory/music-gen");
       const left = await creditsRemaining();
       // Upper bound only: each track re-checks the real balance before
       // composing, so the estimate never caps what credits can actually buy.
-      return { left, total: perBrand * 3 };
+      return { left, total: perBrand * brands.length };
     });
 
     const made: Record<string, number> = { mythicals: 0, bwk: 0, ripple: 0 };
     const errors: string[] = [];
     let stopped = "";
     for (let n = 0; n < plan.total && !stopped; n++) {
-      const brand = brands[n % 3];
-      const idx = Math.floor(n / 3);
+      const brand = brands[n % brands.length];
+      const idx = Math.floor(n / brands.length);
       const r = await step.run(`compose-${brand}-${idx}`, async () => {
         const { composeTrack, libraryBrief, LIBRARY_FOLDER, isQuotaError, creditsRemaining } = await import("@/lib/content-factory/music-gen");
         const left = await creditsRemaining();
@@ -57,7 +63,7 @@ export const musicLibraryFn = inngest.createFunction(
         try {
           const { audio } = await composeTrack(libraryBrief(brand, idx), SECONDS);
           const { supabase } = await import("@/lib/supabase.server");
-          const path = `${LIBRARY_FOLDER[brand]}/ai-${idx + 1}-${Date.now()}.mp3`;
+          const path = `${LIBRARY_FOLDER[brand]}/${prefix}${idx + 1}-${Date.now()}.mp3`;
           const { error } = await supabase.storage.from("content-factory").upload(path, audio, { contentType: "audio/mpeg", upsert: false });
           if (error) return { ok: false as const, quota: false, error: `upload ${path}: ${error.message}` };
           return { ok: true as const, path };
@@ -75,6 +81,7 @@ export const musicLibraryFn = inngest.createFunction(
 
     // The 3 approved samples join their libraries.
     const samples = await step.run("copy-samples", async () => {
+      if (prefix !== "ai-") return 0; // remakes don't re-add the first samples
       const { supabase } = await import("@/lib/supabase.server");
       const { LIBRARY_FOLDER } = await import("@/lib/content-factory/music-gen");
       let copied = 0;
@@ -83,7 +90,7 @@ export const musicLibraryFn = inngest.createFunction(
         const { data: files } = await supabase.storage.from("content-factory").list(`music-samples/${d.name}`, { limit: 50 });
         for (const f of files ?? []) {
           const brand = f.name.split("-")[0] as keyof typeof LIBRARY_FOLDER;
-          if (!LIBRARY_FOLDER[brand]) continue;
+          if (!LIBRARY_FOLDER[brand] || !(brands as readonly string[]).includes(brand)) continue;
           const { error } = await supabase.storage
             .from("content-factory")
             .copy(`music-samples/${d.name}/${f.name}`, `${LIBRARY_FOLDER[brand]}/ai-sample-${f.name}`);
@@ -101,8 +108,8 @@ export const musicLibraryFn = inngest.createFunction(
         const folder = LIBRARY_FOLDER[brand];
         const { data } = await supabase.storage.from("content-factory").list(folder, { limit: 500 });
         const tracks = (data ?? []).filter((f) => f.id && /\.(mp3|m4a|wav|aac)$/i.test(f.name));
-        const ai = tracks.filter((f) => f.name.startsWith("ai-"));
-        const old = tracks.filter((f) => !f.name.startsWith("ai-"));
+        const ai = tracks.filter((f) => f.name.startsWith(prefix));
+        const old = tracks.filter((f) => !f.name.startsWith(prefix));
         if (ai.length < MIN_NEW) {
           out[brand] = { ai: ai.length, moved: 0, kept: `kept ${old.length} old tracks (only ${ai.length} AI tracks)` };
           continue;
@@ -134,7 +141,7 @@ export const musicLibraryFn = inngest.createFunction(
         html: `<div style="font-family:-apple-system,Helvetica,Arial,sans-serif;max-width:640px;color:#1f2430">
 <p style="font-size:17px;font-weight:700;margin:0 0 8px">AI music library update</p>
 <p style="font-size:13px;color:#555;margin:0 0 10px">ElevenLabs credits: ${plan.left ?? "unknown"} at start → <b>${leftAfter ?? "unknown"} left</b> · up to ${perBrand} per brand · ${samples} approved samples added${stopped ? ` · stopped: ${stopped}` : ""}</p>
-<ul style="font-size:14px;line-height:1.8">${brands.map((b) => `<li><b>${name[b]}</b>: ${made[b]} new · library now ${retired[b].ai} AI tracks · ${retired[b].moved} old TikTok tracks archived to music-removed/ ${retired[b].kept ? `· ${retired[b].kept}` : ""}</li>`).join("")}</ul>
+<ul style="font-size:14px;line-height:1.8">${brands.map((b) => `<li><b>${name[b]}</b>: ${made[b]} new · library now ${retired[b].ai} AI tracks · ${retired[b].moved} older tracks archived to music-removed/ ${retired[b].kept ? `· ${retired[b].kept}` : ""}</li>`).join("")}</ul>
 ${errors.length ? `<p style="font-size:13px;color:#b91c1c">Failures:<br>${errors.map((e) => e.replace(/</g, "&lt;")).join("<br>")}</p>` : ""}
 <p style="font-size:13px;color:#555">Every new post video now picks from these. Brands with fewer than ${MIN_NEW} AI tracks keep their old library until topped up (re-run when credits reset).</p>
 </div>`,

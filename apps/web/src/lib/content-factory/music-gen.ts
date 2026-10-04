@@ -12,8 +12,10 @@
 export type MusicBrand = "mythicals" | "bwk" | "ripple";
 
 export const MUSIC_BRIEFS: Record<MusicBrand, string> = {
+  // 2026-10-04 (Keenan: "darker and more epic ... deep epic mythical beats
+  // for all posts ... add some deep house epic music"): darker baseline.
   mythicals:
-    "Epic cinematic orchestral trailer music. Thunderous taiko and war drums from the very first second, a massive brass motif, soaring choir, rising strings, building heroic tension like a colossal beast awakening. Huge, mythic, goosebumps. Instrumental, no vocals. Strong hook immediately, no slow intro.",
+    "DARK, deep, epic mythical music. Heavy and ominous from the very first second: thunderous war drums, deep sub-bass, low brass, a brooding minor-key motif and a menacing wordless choir, like an ancient colossal beast waking in the dark. Huge, powerful, goosebumps; never bright, cheerful, folky or whimsical. Instrumental, no vocals. Strong hook immediately, no slow intro.",
   bwk: "Dark motivational hip-hop / trap instrumental. Hard 808s and a crisp beat that drops in the first second, a moody cinematic piano riff, deep bass, confident and hungry, late-night luxury drive energy, the grind before the payoff. Instrumental, no vocals. No slow intro.",
   ripple:
     "Warm, uplifting acoustic instrumental. Soft fingerpicked guitar and gentle piano with a light, steady beat from the first second, airy and sunlit, the feeling of finally exhaling on a quiet terrace by the sea. Hopeful, calm, a little dreamy, modern. Instrumental, no vocals. No slow intro.",
@@ -59,19 +61,22 @@ export const MUSIC_FLAVORS: Record<MusicBrand, string[]> = {
   // even a combo of both house and mythical/norse". Alternates orchestral
   // and electronic so every batch gets both.
   mythicals: [
-    "Norse war-horn battle march with pounding drums",
-    "Deep progressive house, 124 bpm, four-on-the-floor kick under Norse war drums, a haunting throat-singing texture and a huge cinematic drop",
-    "Dark choral dragon theme with deep cellos and timpani",
-    "Dark melodic techno, 126 bpm, driving bassline with epic choir stabs and a mythic horn motif",
-    "Colossal slow-motion titan reveal with sub-bass hits and soaring choir",
-    "Nordic folk house: ancient bowed-lyre and frame-drum textures over a deep house groove, building to an epic brass-backed drop",
-    "Fast heroic charge with racing strings and brass stabs",
-    "Progressive house build with rolling synth arps that drops into full orchestral brass and choir",
-    "Mystic ancient ritual percussion with ethnic flutes building to a full orchestra",
-    "Deep hypnotic techno with distant Viking chants, cavernous reverb and a slow-rising epic pad",
-    "Celtic legendary quest theme with fiddle over epic drums",
-    "Cinematic melodic house with soaring strings, a mythic choir hook and a festival-sized drop",
+    // Rewritten 2026-10-04: every style dark and epic; deep / progressive /
+    // melodic house alternates with dark orchestral (no folk, fiddle or bright themes).
+    "Dark epic orchestral war march in D minor: crushing low brass, taiko, deep male choir chanting, relentless and ominous",
+    "Deep progressive house, 122 bpm: dark rolling bassline, four-on-the-floor kick under Norse war drums, ominous throat-singing texture, a huge cinematic drop",
+    "Dark dragon theme: sub-bass booms, distorted low cellos, menacing choir, slow and crushing like wings beating in a storm",
+    "Dark melodic techno, 124 bpm: brooding minor-key synths, epic choir stabs, distant war horns, hypnotic and driving",
+    "Colossal titan awakening: slow, crushing drums, deep horns and a haunting wordless female vocalise over dark strings",
+    "Deep epic house, 120 bpm: hypnotic kick, dark atmospheric pads, tribal mythic percussion, a low horn motif that swells into a cinematic drop",
+    "Dark Viking battle hymn: frame drums, deep lur horns and wordless chanting building to a massive dark orchestral climax",
+    "Dark organic deep house, 118 bpm: shamanic percussion, deep sub-bass, mystic wordless chants, cinematic string swells",
+    "Dark hybrid trailer: pulsing synth bass, huge braams, choir and taiko in a relentless, ominous build",
+    "Dark progressive house with orchestral strings, 124 bpm: brooding arps rising into a cavernous, epic drop with choir",
+    "Ancient dark ritual: deep drones and low chants exploding into thunderous war drums and dark brass",
+    "Deep tech-house, 123 bpm: dark rolling groove with cinematic brass hits, Norse chants and a menacing sub-bass",
   ],
+
   bwk: [
     "Night-drive phonk with heavy cowbell and distorted 808",
     "Cinematic trap with orchestral strings and hard drums",
