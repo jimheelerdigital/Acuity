@@ -28,6 +28,7 @@ import { MoodAvatar } from "@/components/mood-avatar";
 import { FunnelEntryIntro } from "@/components/funnel-entry-intro";
 import { PayInBrowserButton, PaywallTrustLine } from "@/components/pay-in-browser";
 import { PasswordStep, passwordStepDone } from "@/components/funnel-password-step";
+import { FunnelFirstDebrief, firstDebriefOutcome, type FirstDebriefOutcome } from "@/components/funnel-first-debrief";
 import type { AdMatch } from "@/lib/funnel-ad-match";
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
@@ -1854,6 +1855,9 @@ function DownloadScreen({ answers, firstName, paid, track }: ViewProps) {
   const [gaveUp, setGaveUp] = useState(false);
   // Password step between checkout and the app (2026-09-30).
   const [pwDone, setPwDone] = useState(() => (typeof window === "undefined" ? false : passwordStepDone()));
+  // First debrief right after payment, no waiting (2026-10-04).
+  const C = useV9();
+  const [debrief, setDebrief] = useState<FirstDebriefOutcome | null>(() => (typeof window === "undefined" ? null : firstDebriefOutcome()));
   useEffect(() => {
     if (!returning) return;
     const t = window.setTimeout(() => setGaveUp(true), 10_000);
@@ -1877,8 +1881,11 @@ function DownloadScreen({ answers, firstName, paid, track }: ViewProps) {
       </div>
     );
   }
+  if (paid && !debrief) {
+    return <FunnelFirstDebrief brand={C.brand === "bwk" ? "bwk" : "ripple"} firstName={firstName} track={track} onDone={setDebrief} />;
+  }
   if (!pwDone) return <PasswordStep onDone={() => setPwDone(true)} track={track} />;
-  return <GetTheApp answers={answers} firstName={firstName} paid={paid} track={track} />;
+  return <GetTheApp answers={answers} firstName={firstName} paid={paid} track={track} debriefSaved={debrief === "voice" || debrief === "text"} />;
 }
 
 function GetTheApp({
@@ -1886,11 +1893,13 @@ function GetTheApp({
   firstName,
   paid,
   track,
+  debriefSaved = false,
 }: {
   answers: ViewProps["answers"];
   firstName: string;
   paid: boolean;
   track: ViewProps["track"];
+  debriefSaved?: boolean;
 }) {
   const [sent, setSent] = useState(false);
   const [platform, setPlatform] = useState<"ios" | "android" | "desktop">("ios");
@@ -1940,8 +1949,12 @@ function GetTheApp({
       </div>
       <Heading
         eyebrow={firstName ? `You're in, ${firstName}` : "You're in"}
-        title="Last step: get the app"
-        sub={`${paid ? "Your 7 free days of Ripple Pro have started." : "Your free Ripple account is ready."} Your first debrief happens in the app.`}
+        title={debriefSaved ? "Your results are in the app" : "Last step: get the app"}
+        sub={
+          debriefSaved
+            ? "Your first debrief is saved. Open Ripple to see the tasks and habits it pulled out, and keep going from there."
+            : `${paid ? "Your 7 free days of Ripple Pro have started." : "Your free Ripple account is ready."} Your first debrief happens in the app.`
+        }
       />
       <div className="space-y-3">
         <div className="card rounded-3xl p-5">

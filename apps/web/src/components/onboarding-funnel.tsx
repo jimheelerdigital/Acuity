@@ -15,6 +15,7 @@ import { readS1Variant, S1_YESNO, type S1Variant } from "@/lib/funnel-s1-test";
 import { FunnelEntryIntro } from "@/components/funnel-entry-intro";
 import { PayInBrowserButton, PaywallTrustLine } from "@/components/pay-in-browser";
 import { PasswordStep, passwordStepDone } from "@/components/funnel-password-step";
+import { FunnelFirstDebrief, firstDebriefOutcome, type FirstDebriefOutcome } from "@/components/funnel-first-debrief";
 import { APP_STORE_RATING_LABEL } from "@/lib/social-proof";
 import {
   type Branch,
@@ -2537,6 +2538,9 @@ function DownloadScreen({ track, paymentConfirmed, selectedPlan }: {
   const [testimonialIdx, setTestimonialIdx] = useState(0);
   // Password step between checkout and the app (2026-09-30).
   const [pwDone, setPwDone] = useState(() => (typeof window === "undefined" ? false : passwordStepDone()));
+  // First debrief right after payment, no waiting (2026-10-04).
+  const [debrief, setDebrief] = useState<FirstDebriefOutcome | null>(() => (typeof window === "undefined" ? null : firstDebriefOutcome()));
+  const debriefSaved = debrief === "voice" || debrief === "text";
   // One-tap app sign-in (2026-09-28): web signups downloaded the app, landed
   // in its new-user sign-up and never reached the account they made here.
   // Email the signed-in link on arrival (once per browser session).
@@ -2623,6 +2627,17 @@ function DownloadScreen({ track, paymentConfirmed, selectedPlan }: {
 
   const planPrice = selectedPlan === "yearly" ? displayAnnual() + "/yr" : displayMonthly() + "/mo";
 
+  if (paymentConfirmed && authStatus === "authenticated" && !debrief) {
+    return (
+      <FunnelFirstDebrief
+        brand={typeof window !== "undefined" && window.location.pathname.includes("bwk") ? "bwk" : "ripple"}
+        firstName={session?.user?.name?.split(/\s+/)[0] ?? null}
+        track={(e, v) => track(e, v ? { value: v } : undefined)}
+        onDone={setDebrief}
+      />
+    );
+  }
+
   if (!pwDone && authStatus === "authenticated") {
     return <PasswordStep onDone={() => setPwDone(true)} track={(e, v) => track(e, v ? { value: v } : undefined)} />;
   }
@@ -2634,7 +2649,11 @@ function DownloadScreen({ track, paymentConfirmed, selectedPlan }: {
           <>
             <h2 className="text-2xl sm:text-3xl font-bold tracking-tight mb-3">Your free trial is on. Welcome to Ripple.</h2>
             <p className="text-sm text-acuity-text-ter mb-2 tabular-nums">$0 today, then {planPrice} after day 7.</p>
-            <p className="text-sm text-acuity-text-ter mb-8">Last step: get the app. Your first debrief happens there.</p>
+            <p className="text-sm text-acuity-text-ter mb-8">
+              {debriefSaved
+                ? "Last step: get the app. Your first debrief is saved there, with the tasks and habits Ripple pulled out."
+                : "Last step: get the app. Your first debrief happens there."}
+            </p>
           </>
         ) : (
           <>
