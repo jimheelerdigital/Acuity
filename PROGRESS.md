@@ -825,7 +825,7 @@ Worked through everything from the 2026-10-03 weekly audit that didn't need Jimm
 - [ ] Send the 13 trialist drafts in Gmail; Justin first, he bills 10-05 (links expire ~10-07) (Keenan)
 - [ ] Paste docs/APP_STORE_LISTING.md into App Store Connect + Play Console (Keenan / Jimmy)
 - [ ] Jimmy review: first-debrief step (funnel + /api/record from web), event route auth change, pixel gating (Jimmy)
-- [ ] Decisions still open: account pre-takeover fix (needs a db:push), winner rule → cost per recording trialist, Mythicals freeze (Keenan)
+- [ ] Decisions still open: account pre-takeover fix (needs a db:push), winner rule → cost per recording trialist, (Mythicals freeze: declined by Keenan 10-04)
 
 ### Notes
 - Mic support was verified on real phones on 2026-10-03 (/mic-test): Instagram iOS records; Facebook iOS is blocked with no prompt, hence typing mode for FB. Android Instagram is still untested; any mic failure falls back to typing.
