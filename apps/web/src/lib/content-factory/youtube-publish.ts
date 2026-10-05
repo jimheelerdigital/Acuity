@@ -175,6 +175,21 @@ export async function publishYoutubeShort(
  * fails open: a refusal is logged and the Short stays up.
  */
 async function setThumbnail(token: string, videoId: string, coverUrl: string): Promise<void> {
+  // Result beside the upload so ops can see it without Inngest logs
+  // (2026-10-05: the first prod thumbnails silently didn't stick).
+  const note = async (status: Record<string, unknown>) => {
+    try {
+      const { supabase } = await import("@/lib/supabase.server");
+      await supabase.storage
+        .from("content-factory")
+        .upload(`youtube-thumbs/${videoId}.json`, Buffer.from(JSON.stringify({ at: new Date().toISOString(), coverUrl, ...status })), {
+          contentType: "application/json",
+          upsert: true,
+        });
+    } catch {
+      // status is best-effort
+    }
+  };
   try {
     const res = await fetch(coverUrl);
     if (!res.ok) throw new Error(`cover download HTTP ${res.status}`);
@@ -190,7 +205,9 @@ async function setThumbnail(token: string, videoId: string, coverUrl: string): P
     );
     if (!up.ok) throw new Error(`HTTP ${up.status}: ${(await up.text().catch(() => "")).slice(0, 300)}`);
     console.log(`[youtube-publish] thumbnail set for ${videoId}`);
+    await note({ ok: true });
   } catch (err) {
     console.warn(`[youtube-publish] thumbnail not set for ${videoId} (Short is live): ${err instanceof Error ? err.message : err}`);
+    await note({ ok: false, error: String(err instanceof Error ? err.message : err).slice(0, 500) });
   }
 }

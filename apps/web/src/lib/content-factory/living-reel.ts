@@ -66,7 +66,7 @@ export function livingMotionPrompt(
         ? `Action: ${motion}`
         : opts.realistic
           ? "Action: clearly visible, dynamic movement that belongs in the scene: the car rolls forward and its lights sweep, traffic streams, waves break, a person in the frame moves through the action, rain and steam swirl."
-          : "Action: the creature or fighter comes alive with natural movement: it breathes, turns its head toward the camera, shifts its weight and moves its wings, tail, mane or cloak as it would in life.",
+          : "Action: the creature or fighter comes alive subtly: it breathes, blinks, and its mane, cloak or the air around it stirs.",
       // Tuned 2026-09-29 (per Keenan: the first war-mount post "was perfect",
       // the next two "a bit too much movement which made it look slightly
       // unrealistic"): one clear action at real-world speed, gentle camera.
@@ -79,7 +79,10 @@ export function livingMotionPrompt(
         ? "Keep the movement calm, controlled and premium: one slow, deliberate motion (light shifting, a car rolling slowly forward, steam rising, a man turning his head) and a slow, steady camera push-in or drift. Nothing fast, no whip pans, no sudden moves, no shaking. No morphing, no warping. The WHOLE subject stays fully inside the frame for all five seconds."
         : opts.realistic
         ? "Make it move DYNAMICALLY but stay real: the subject moves clearly through the five seconds at natural speed, AND the camera makes a confident move (a steady dolly-in, a slow orbit, a tracking move alongside). Never a static frame or a barely-there zoom. No morphing, no warping. The WHOLE subject (the entire car, watch or person) stays fully inside the frame for all five seconds: the camera follows it and never lets it drive out of shot or get cut off at an edge."
-        : "Keep the movement realistic and measured: one clear action at natural, real-world speed, like footage of a real animal or actor. Nothing frantic, no sudden lunges, no morphing. The camera moves slowly and steadily (a gentle push-in or a slight drift). If the action is a power (fire, ice, lightning, flame on a blade, glowing runes), show it vividly with physically real light, heat, frost, sparks and smoke, lighting up the scene (2026-10-04, per Keenan: abilities on display).",
+        : // Powers line added 2026-10-04 (per Keenan: abilities on display).
+          // 2026-10-05 (per Keenan: powers as "glowing, flames, or anything
+          // minor", no movement abilities; openings "way too over the top").
+          "Keep it SUBTLE: the subject holds its pose and stays essentially still (slow breathing, a slight head turn or blink at most). Any power is a small effect on the subject, never an action: glowing eyes or runes, embers or sparks drifting, flames licking along armor or a blade, frost mist curling, faint lightning across horns. No attacks, no breath torrents, no swings, no rearing, no charging, no big wingbeats, no morphing. A creature never holds or uses a weapon. The camera moves slowly and steadily (a gentle push-in or slight drift).",
       "Keep the subject's design, colors, armor and setting exactly as in the image. The subject stays in frame. No text, no new creatures or people, no scene cuts.",
     ]
       .filter(Boolean)

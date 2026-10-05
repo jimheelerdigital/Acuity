@@ -7,6 +7,39 @@
 
 ---
 
+## [2026-10-05] — Mythicals powers become subtle effects; calmer openings; another song removed; YouTube backfill
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** see "content: Make Mythicals powers subtle effects, not actions"
+
+### In plain English (for Keenan)
+- **Powers:** creature and armor "powers" are no longer big actions (breathing torrents, rearing, sword swings). From now on they're small cool effects on a mostly still subject: glowing eyes or runes, embers drifting, flames along armor, frost mist, faint lightning.
+- **No weapons on beasts:** a creature never holds or swings a weapon.
+- **Openings:** cover animations only move the atmosphere (mist, embers, clouds, torchlight); no dramatic reveals or swoops.
+- **Song removed:** the song on "The Gates Are Falling" (ai-8) is out of the Mythicals library.
+- **YouTube:** all 36 Instagram-posted Mythicals posts are going to YouTube, the backlog one every 2.5 hours through Oct 8 with TikTok songs kept (Keenan's call), plus today's posts at their Instagram times. Cover thumbnails were set on the 4 Shorts uploaded so far.
+
+### Technical changes (for Jimmy)
+- `lib/content-factory/choice-lane.ts`:
+  - `motion` = power as an effect on a still subject, with movement abilities banned
+  - SIGNATURE ABILITIES rewritten as SIGNATURE POWERS AS EFFECTS
+  - new BEASTS NEVER USE WEAPONS rule
+  - `coverMotion` is subtle and environment-only
+- `lib/content-factory/living-reel.ts`: the Mythicals (non-realistic) clip prompt is subtle and effects-only; the default action is subtle breathing.
+- `lib/content-factory/youtube-publish.ts`: `setThumbnail` writes youtube-thumbs/<videoId>.json (ok / error).
+- Data:
+  - music/mythicals/ai-8 archived
+  - 35 backlog `youtube` SocialPublish rows (re-spaced every 150 min), plus 10 rows for today's and tomorrow's posts at their IG scheduledAt
+  - thumbnails.set run directly for 4 posted Shorts (all 200)
+
+### Manual steps needed
+- None
+
+### Notes
+- Custom thumbnails need Intermediate features (phone verification), which Keenan enabled ~10:40 CT on 10-05. The first two uploads predated it.
+- videos.insert is ~100 units since 2025-12 (not 1,600), so the default 10k/day quota is plenty.
+- The 16a9a624 "visible powers" commit (10-04) is what made the clips action-heavy.
+
 ## [2026-10-05] — YouTube Shorts get the title cover slide as their thumbnail
 **Requested by:** Keenan
 **Committed by:** Claude Code
