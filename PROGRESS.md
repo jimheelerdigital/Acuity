@@ -48,7 +48,7 @@
   - "Five systems. Zero streaks." is off; Meta barely spent on it.
   - For about a minute both planner ads were off while the move was tried, then they were turned back on.
 - **Budgets:** unchanged. Main is $30 women / $50 men.
-- **New weekly test:** 2 image ads + 1 video ad per lane from Sunday's batch, launched into the main ad sets.
+- **New weekly test (live):** 2 image ads + 1 video ad per lane from Sunday's batch, in each lane's $15 test ad set (winners get promoted to main). Women: "'Who signed the form?' Me. Every time.", "Said 'I'll start Monday' again", video "Your errands, listed with dates". Men: "Bought the planner. Skipped the plan.", "Said 5 workouts. Did 2.", video "See the excuse behind the misses".
 
 ### Technical changes (for Jimmy)
 - `apps/web/src/lib/adlab/evergreen.ts`: `GROUP_DAILY_BUDGET_CENTS` back to women 3000 / men 5000. This reverts 2f8f1105, which had raised it for the move.
