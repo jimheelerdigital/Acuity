@@ -120,7 +120,15 @@ export const carouselPostVideoFn = inngest.createFunction(
           const { submitCinematicVideo } = await import("@/lib/content-factory/cinematic-shot");
           const { noteSubmitWave } = await import("@/lib/content-factory/post-video");
           try {
-            const r = await submitCinematicVideo({ model, imageUrl: cine.imageUrl, lastImageUrl: cine.lastImageUrl, prompt: cine.motion });
+            // Turbo (default since 2026-10-05) animates the single encounter
+            // frame: the reveal end frame if one exists, else the cover.
+            const turbo = model.includes("v3.0-turbo");
+            const r = await submitCinematicVideo({
+              model,
+              imageUrl: turbo ? cine.lastImageUrl ?? cine.imageUrl : cine.imageUrl,
+              lastImageUrl: turbo ? null : cine.lastImageUrl,
+              prompt: cine.motion,
+            });
             await noteSubmitWave(1, []);
             console.log(`[post-video] ${postId} cinematic ${model} submitted ${r.requestId}, estimate ${JSON.stringify(r.estimate)}`);
             return { id: r.requestId, estimate: r.estimate, error: null as string | null, creditsOut: false };

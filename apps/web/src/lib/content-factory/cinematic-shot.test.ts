@@ -63,7 +63,7 @@ describe("cinematic shot", () => {
 
   it("leads with 4K and falls back to pro", () => {
     delete process.env.CINEMATIC_QUALITY;
-    expect(cinematicModels()).toEqual(["kling-video/v3.0/4k/image-to-video", "kling-video/v3.0/pro/image-to-video"]);
+    expect(cinematicModels()).toEqual(["kling-video/v3.0-turbo/image-to-video", "kling-video/v3.0-turbo/image-to-video"]);
     process.env.CINEMATIC_QUALITY = "pro";
     expect(cinematicModels()).toEqual(["kling-video/v3.0/pro/image-to-video"]);
     delete process.env.CINEMATIC_QUALITY;

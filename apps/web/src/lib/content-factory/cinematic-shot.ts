@@ -52,10 +52,35 @@ export const CINEMATIC_SECONDS = 15;
  */
 export const CINEMATIC_MODEL_4K = "kling-video/v3.0/4k/image-to-video";
 export const CINEMATIC_MODEL_PRO = "kling-video/v3.0/pro/image-to-video";
+/**
+ * Default since 2026-10-05 (per Keenan: "cut colossal encounters down to the
+ * NORMAL structure... 15 s clip kling turbo off of a high quality image"; 4K
+ * was ~$3.15/clip discounted, ~$6.30 normally). Turbo takes 3-15s, 720p by
+ * default, and has no sound or last-frame field, so it animates the single
+ * encounter frame (no hidden-to-reveal end frame).
+ */
+export const CINEMATIC_MODEL_TURBO = "kling-video/v3.0-turbo/image-to-video";
 export function cinematicModels(): string[] {
-  return process.env.CINEMATIC_QUALITY?.trim() === "pro"
-    ? [CINEMATIC_MODEL_PRO]
-    : [CINEMATIC_MODEL_4K, CINEMATIC_MODEL_PRO];
+  const q = process.env.CINEMATIC_QUALITY?.trim();
+  if (q === "4k") return [CINEMATIC_MODEL_4K, CINEMATIC_MODEL_PRO];
+  if (q === "pro") return [CINEMATIC_MODEL_PRO];
+  return [CINEMATIC_MODEL_TURBO, CINEMATIC_MODEL_TURBO];
+}
+/** Turbo can't take an end frame: the lane skips the hidden start frame. */
+export function cinematicUsesEndFrame(): boolean {
+  return !cinematicModels()[0].includes("v3.0-turbo");
+}
+/** Single-frame motion for Turbo (2026-10-05 Mythicals motion rules). */
+export function turboEncounterPrompt(motion: string): string {
+  return [
+    "Epic cinematic fantasy film shot, one continuous 15-second shot animating this exact frame.",
+    "The colossal creature and the tiny human hold the encounter: the creature breathes slowly, its eyes glow, mist, smoke or embers drift through the air, light shifts across its scales, and the camera pushes in slowly and steadily.",
+    "Allowed actions: one slow, powerful wingbeat, or the creature breathing fire or ice up into the sky, never at the human. Nothing else: no attacks, no lunging, no rearing, no charging, no morphing.",
+    motion ? `Scene notes: ${motion.slice(0, 600)}` : "",
+    "Keep the creature, the human, the colors and the setting exactly as in the image. No text, no new creatures or people, no cuts.",
+  ]
+    .filter(Boolean)
+    .join(" ");
 }
 
 /**
@@ -373,13 +398,16 @@ export async function submitCinematicVideo(opts: {
   lastImageUrl?: string | null;
   prompt: string;
 }): Promise<{ requestId: string; estimate: { credits?: string; usd?: string } | null }> {
-  const body = {
-    prompt: opts.prompt,
-    image_url: opts.imageUrl,
-    duration: CINEMATIC_SECONDS,
-    sound: "on",
-    ...(opts.lastImageUrl ? { last_image_url: opts.lastImageUrl } : {}),
-  };
+  const turbo = opts.model.includes("v3.0-turbo");
+  const body = turbo
+    ? { prompt: turboEncounterPrompt(opts.prompt), image_url: opts.imageUrl, duration: CINEMATIC_SECONDS }
+    : {
+        prompt: opts.prompt,
+        image_url: opts.imageUrl,
+        duration: CINEMATIC_SECONDS,
+        sound: "on",
+        ...(opts.lastImageUrl ? { last_image_url: opts.lastImageUrl } : {}),
+      };
   const estimate = await estimateCinematicCost(opts.model, body);
   const res = await fetch(`https://api.higgsfield.ai/${opts.model}`, {
     method: "POST",

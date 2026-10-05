@@ -7,6 +7,29 @@
 
 ---
 
+## [2026-10-05] — Colossal Encounters cut to the normal structure: one high-quality image + 15s Kling 3.0 Turbo
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** see "content: Run Colossal Encounters on Kling 3.0 Turbo"
+
+### In plain English (for Keenan)
+Colossal Encounters was rendering its daily video in 4K (about $3.15 a clip with the discount, $6.30 normally) from two images (a "creature hidden" frame and a "reveal" frame). It now works like everything else: one high-quality image animated into a 15-second Kling 3.0 Turbo clip. Motion is subtle (breathing, glowing eyes, drifting embers or mist, a slow push-in), with an occasional wingbeat or fire/ice breath into the sky. That cuts the lane's daily cost by roughly 80%.
+
+### Technical changes (for Jimmy)
+- `lib/content-factory/cinematic-shot.ts`:
+  - `CINEMATIC_MODEL_TURBO = kling-video/v3.0-turbo/image-to-video`; `cinematicModels()` defaults to [turbo, turbo] (`CINEMATIC_QUALITY=4k` or `pro` restores the old models)
+  - new `cinematicUsesEndFrame()` and `turboEncounterPrompt()`
+  - turbo submits omit `sound` / `last_image_url` (not supported)
+- `inngest/functions/carousel-post-video.ts`: turbo animates the single encounter frame (lastImageUrl ?? imageUrl).
+- `inngest/functions/carousel-daily.ts`: skips the hidden start-frame image when the model can't take an end frame.
+- `cinematic-shot.test.ts` updated.
+
+### Manual steps needed
+- None
+
+### Notes
+- The turbo price estimate is recorded in living/<postId>/cinematic.json on the first run; check it to confirm the new daily cost.
+
 ## [2026-10-05] — Ad image builder overhaul: 31 looks with per-ad randomization
 **Requested by:** Keenan
 **Committed by:** Claude Code

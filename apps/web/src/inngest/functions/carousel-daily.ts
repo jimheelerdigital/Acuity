@@ -773,6 +773,10 @@ export const carouselDailyCronFn = inngest.createFunction(
           const { buildCinematicHiddenPrompt, CINEMATIC_FORMATS } = await import("@/lib/content-factory/cinematic-shot");
           const { default: sharp } = await import("sharp");
           if (!CINEMATIC_FORMATS[concept.format].reveal) return null;
+          // Turbo can't use an end frame, so skip the extra hidden-frame
+          // image (2026-10-05, Colossal Encounters cut to the normal structure).
+          const { cinematicUsesEndFrame } = await import("@/lib/content-factory/cinematic-shot");
+          if (!cinematicUsesEndFrame()) return null;
           try {
             const res = await fetch(frame.rawImageUrl);
             if (!res.ok) throw new Error(`reveal frame fetch failed (${res.status})`);
