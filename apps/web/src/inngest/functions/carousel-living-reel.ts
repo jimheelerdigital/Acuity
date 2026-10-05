@@ -363,14 +363,17 @@ export const livingReelQueueFn = inngest.createFunction(
       const { supabase } = await import("@/lib/supabase.server");
       const { writeVideoMarker } = await import("@/lib/content-factory/post-video");
       const { data } = await supabase.storage.from("content-factory").list("video-requests", { limit: 20 });
-      const claimed: { postId: string; music?: { minSeconds?: number; exclude?: string[] } }[] = [];
+      const claimed: { postId: string; music?: { minSeconds?: number; exclude?: string[] }; model?: string }[] = [];
       for (const f of (data ?? []).filter((x) => x.name.endsWith(".json"))) {
         // Optional body (2026-09-30): { "music": { "minSeconds": 50, "exclude": ["track.mp3"] } }
+        // { "model": "kling-video/v2.5-turbo/pro/image-to-video" } re-renders every clip on that model (2026-10-05).
         let music: { minSeconds?: number; exclude?: string[] } | undefined;
+        let model: string | undefined;
         try {
           const { data: body } = await supabase.storage.from("content-factory").download(`video-requests/${f.name}`);
           const j = body ? JSON.parse(await body.text()) : null;
           if (j?.music && typeof j.music === "object") music = j.music;
+          if (typeof j?.model === "string" && j.model.trim()) model = j.model.trim();
         } catch {
           // empty or non-JSON body: plain rebuild
         }
@@ -378,7 +381,7 @@ export const livingReelQueueFn = inngest.createFunction(
         if (error) continue;
         const postId = f.name.replace(/\.json$/, "");
         await writeVideoMarker(postId, { status: "pending" });
-        claimed.push({ postId, ...(music ? { music } : {}) });
+        claimed.push({ postId, ...(music ? { music } : {}), ...(model ? { model } : {}) });
 
       }
       return claimed;

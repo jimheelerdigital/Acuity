@@ -58,10 +58,16 @@ export const carouselPostVideoFn = inngest.createFunction(
     },
   },
   async ({ event, step, logger }) => {
-    const { postId, music: musicOpts } = event.data as {
+    const { postId, music: musicOpts, model: forcedModel } = event.data as {
       postId: string;
       /** Rebuild options (2026-09-30): a longer minimum and songs to avoid. */
       music?: { minSeconds?: number; exclude?: string[] };
+      /**
+       * Rebuild with this Higgsfield model first (2026-10-05, per Keenan:
+       * "remake the same video but with kling"). Skips the clip cache so
+       * every slide is re-rendered on it.
+       */
+      model?: string;
     };
 
     // ── 0. Legendary Mythicals cinematic shot (mythic-colossus, 2026-10-04):
@@ -326,7 +332,7 @@ export const carouselPostVideoFn = inngest.createFunction(
     const cached = await step.run("load-cached-clips", async () => {
       const { supabase } = await import("@/lib/supabase.server");
       const { data } = await supabase.storage.from("content-factory").download(`living/${postId}/clips.json`);
-      if (!data) return null;
+      if (!data || forcedModel) return null;
       try {
         const c = JSON.parse(await data.text()) as { clips: Record<string, string | null>; models: string[] };
         return liveIdx.every((i) => c.clips[i]) ? c : null;
@@ -339,7 +345,7 @@ export const carouselPostVideoFn = inngest.createFunction(
     const { POST_VIDEO_WAVE, POST_VIDEO_MODEL, POST_VIDEO_FALLBACK_MODEL, POST_VIDEO_ROUNDS } = await import(
       "@/lib/content-factory/post-video"
     );
-    const attemptModels = [...new Set([POST_VIDEO_MODEL, POST_VIDEO_FALLBACK_MODEL].filter(Boolean))];
+    const attemptModels = [...new Set([forcedModel, POST_VIDEO_MODEL, POST_VIDEO_FALLBACK_MODEL].filter((m): m is string => !!m))].slice(0, 2);
     // Out of Higgsfield credits (2026-10-02): stop submitting for this post
     // and ship stills on purpose (the health check won't rebuild it).
     let noCredits = false;

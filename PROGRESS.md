@@ -7,6 +7,28 @@
 
 ---
 
+## [2026-10-05] — Rebuild any post video on a chosen model (Part 5 remade on Kling)
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** see "feat: Let a post video rebuild pick its Higgsfield model"
+
+### In plain English (for Keenan)
+Any post's video can now be remade on a specific animation model. "How Big Would They Really Be? Part 5" is being remade on Kling 2.5 Turbo Pro (1080p), to compare against Hailuo.
+
+### Technical changes (for Jimmy)
+- `inngest/functions/carousel-post-video.ts`: event data `model` is tried first (then the usual primary/fallback, max 2) and skips the clip cache.
+- `inngest/functions/carousel-living-reel.ts`: the `video-requests/<postId>.json` body accepts `{ "model": "..." }`.
+
+### Manual steps needed
+- [ ] After the push: `curl -X PUT https://goripple.io/api/inngest` (Claude Code)
+
+### Notes
+- Per Mythicals post (6 clips, rates from the post-video.ts notes):
+  - Hailuo 2.3 Std: ~$0.42 promo / ~$1.69 regular
+  - Kling 2.5 Turbo Std: ~$0.35 / ~$0.69
+  - Kling 2.5 Turbo Pro: ~$1.14 / ~$2.10
+- The Hailuo/Kling promo ends 2026-10-11 14:03 UTC, and post-video.ts switches the primary to Kling 2.5 Std automatically then.
+
 ## [2026-10-05] — "How Big Would They Really Be?" is back, as kaiju-film shots
 **Requested by:** Keenan
 **Committed by:** Claude Code
