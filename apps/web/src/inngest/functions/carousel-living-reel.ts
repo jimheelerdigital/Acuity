@@ -494,6 +494,8 @@ export const livingReelQueueFn = inngest.createFunction(
         const req = JSON.parse(await dl.data.text()) as {
           statusIds?: string[];
           submit?: { model: string; imageUrl: string; body?: Record<string, unknown> };
+          /** Price quotes, no generation (2026-10-05): POST /estimate/<model>. */
+          estimates?: { model: string; body: Record<string, unknown> }[];
         };
         const out: Record<string, unknown> = { at: new Date().toISOString() };
         for (const id of req.statusIds ?? []) {
@@ -502,6 +504,9 @@ export const livingReelQueueFn = inngest.createFunction(
               out[`status ${id} @ ${host} (${hname})`] = await call(`${host}/requests/${id}/status`, h);
             }
           }
+        }
+        for (const e of req.estimates ?? []) {
+          out[`estimate ${e.model}`] = await call(`https://api.higgsfield.ai/estimate/${e.model}`, headerSets.v2, e.body);
         }
         if (req.submit) {
           const body = req.submit.body ?? {
