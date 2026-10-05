@@ -642,6 +642,18 @@ async function generateChoiceTopicOnce(opts: ChoiceTopicOpts): Promise<ChoiceTop
 const NO_HUMAN_FACE_LINE =
   "No creature has a human face or human head: its face is fully animal, reptilian or monstrous (never a lamassu, sphinx, manticore or bearded man-like face on a beast). Every dragon, wyrm, drake or wyvern has large, clearly visible wings (2026-10-04, per Keenan).";
 
+/**
+ * The quality bar (2026-10-05, per Keenan, sending a reference frame: "we
+ * should be aiming for this level of detail and quality in all of our
+ * posts"): a colossal obsidian dragon's head filling the frame, glowing
+ * magma in every crack, orange eyes, smoke and embers, a tiny cloaked
+ * figure from behind for scale.
+ */
+const QUALITY_BAR_LINE =
+  "QUALITY BAR: extreme, tactile detail on the subject. Every scale, plate, horn and rune is sharply defined, with cracks, chips and wear; glowing seams, embers or frost add light from within. A restrained palette: deep near-black and charcoal tones with ONE vivid accent color that glows (molten orange, icy blue, emerald or violet). Dramatic low-key lighting with volumetric smoke or fog, rim light on the edges, drifting embers or particles, and glowing eyes that hold the viewer. Bold, simple composition: the subject is big, close and frontal, staring into the lens.";
+const COVER_SCALE_LINE =
+  "SCALE: the creature is so colossal that its head or body fills most of the frame; one tiny cloaked figure stands in the foreground, seen from behind, facing it, to show the scale.";
+
 export function buildMythicImagePrompt(
   scene: string,
   kind: "cover" | "option",
@@ -680,6 +692,10 @@ export function buildMythicImagePrompt(
     `A breathtaking, hyper-real cinematic film still, vertical composition: ${scene}`,
     "Epic and mythical: a creature is COLOSSAL and imposing, its huge scale clear against the landscape around it; a hero is a larger-than-life warrior in ornate, intimidating legendary armor with a legendary weapon.",
     NO_HUMAN_FACE_LINE,
+    QUALITY_BAR_LINE,
+    kind === "cover"
+      ? COVER_SCALE_LINE
+      : "Show ONLY what the scene describes: never add a warrior, knight, rider or any person unless the scene names one (2026-10-05: a frost dragon option came back with an armored knight in front).",
     kind === "option"
       ? "The creature or fighter is the unmistakable hero of the frame, shown whole and centered in the MIDDLE of the image, with open sky or atmosphere in the top fifth of the frame (its name is added there later)."
       : "Epic scale and depth; the main subject sits in the middle of the frame, with open atmosphere in the top quarter and bottom fifth (the title is added at the top later).",
