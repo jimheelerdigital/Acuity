@@ -568,7 +568,11 @@ export const socialPublishCronFn = inngest.createFunction(
             skipReason = "No reel MP4 rendered (render failed or no music) — Shorts need a video";
           } else if (yt && video) {
             publish = () =>
-              publishYoutubeShort(yt, video, { headline: post.headline, caption });
+              publishYoutubeShort(yt, video, {
+                headline: post.headline,
+                caption,
+                coverUrl: post.slides.find((s) => s.kind === "COVER")?.imageUrl ?? null,
+              });
           }
         } else if (row.platform === "threads") {
           const th = threadsAccount(await laneBrand(post.lane));

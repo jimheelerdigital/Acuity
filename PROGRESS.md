@@ -7,6 +7,25 @@
 
 ---
 
+## [2026-10-05] — YouTube Shorts get the title cover slide as their thumbnail
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** see "feat: Set the cover slide as the YouTube Short thumbnail"
+
+### In plain English (for Keenan)
+- **YouTube:** after each Short uploads, the system now also sets the post's title cover slide as its thumbnail. The first Short showed a random middle slide ("3. Hoarfrost the Unmelting"). YouTube only accepts custom Short thumbnails from phone-verified channels, and it's rolling out to Partner Program channels first, so until the channel qualifies YouTube may refuse it. The Short still posts either way.
+- **Instagram:** already uses the cover slide for new Reels (10-04). Older Reels can only be changed by hand in the app.
+
+### Technical changes (for Jimmy)
+- `lib/content-factory/youtube-publish.ts`: `publishYoutubeShort(..., { coverUrl })` calls the new `setThumbnail()` after upload. It POSTs to upload/youtube/v3/thumbnails/set (50 units, youtube.upload scope), with the cover re-encoded to a 1080x1920 JPEG (q82, under the 2 MB cap). Fails open with a warning log.
+- `inngest/functions/social-publish-cron.ts`: passes the COVER slide imageUrl.
+
+### Manual steps needed
+- [ ] Phone-verify the Legendary Mythicals channel (YouTube Studio → Settings → Channel → Feature eligibility) so custom thumbnails are allowed (Keenan)
+
+### Notes
+- The refusal reason only shows in Inngest logs ("thumbnail not set").
+
 ## [2026-10-05] — Mythicals site ready for the YouTube API audit: YouTube privacy section, Terms page, YouTube link
 **Requested by:** Keenan
 **Committed by:** Claude Code

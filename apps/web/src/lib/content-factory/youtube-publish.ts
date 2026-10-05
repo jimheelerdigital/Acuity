@@ -104,7 +104,7 @@ async function accessToken(account: YoutubeAccount): Promise<string> {
 export async function publishYoutubeShort(
   account: YoutubeAccount,
   videoUrl: string,
-  opts: { headline: string | null; caption: string }
+  opts: { headline: string | null; caption: string; coverUrl?: string | null }
 ): Promise<PublishResult> {
   const video = await fetch(videoUrl);
   if (!video.ok) {
@@ -159,8 +159,38 @@ export async function publishYoutubeShort(
       `YouTube upload failed (HTTP ${put.status}): ${json.error?.message ?? JSON.stringify(json).slice(0, 300)}`
     );
   }
+  if (opts.coverUrl) await setThumbnail(token, json.id, opts.coverUrl);
   return {
     externalId: json.id,
     permalink: `https://www.youtube.com/shorts/${json.id}`,
   };
+}
+
+/**
+ * Custom thumbnail = the post's titled cover slide (2026-10-05, per Keenan:
+ * "upload true cover photos for all posts on instagram and youtube").
+ * thumbnails.set (50 units, youtube.upload scope). YouTube only accepts
+ * custom thumbnails from phone-verified channels, and custom Shorts
+ * thumbnails are rolling out to Partner Program channels first, so this
+ * fails open: a refusal is logged and the Short stays up.
+ */
+async function setThumbnail(token: string, videoId: string, coverUrl: string): Promise<void> {
+  try {
+    const res = await fetch(coverUrl);
+    if (!res.ok) throw new Error(`cover download HTTP ${res.status}`);
+    const { default: sharp } = await import("sharp");
+    // YouTube caps thumbnails at 2 MB.
+    const jpg = await sharp(Buffer.from(await res.arrayBuffer()))
+      .resize(1080, 1920, { fit: "cover" })
+      .jpeg({ quality: 82 })
+      .toBuffer();
+    const up = await fetch(
+      `https://www.googleapis.com/upload/youtube/v3/thumbnails/set?videoId=${encodeURIComponent(videoId)}&uploadType=media`,
+      { method: "POST", headers: { Authorization: `Bearer ${token}`, "Content-Type": "image/jpeg" }, body: jpg }
+    );
+    if (!up.ok) throw new Error(`HTTP ${up.status}: ${(await up.text().catch(() => "")).slice(0, 300)}`);
+    console.log(`[youtube-publish] thumbnail set for ${videoId}`);
+  } catch (err) {
+    console.warn(`[youtube-publish] thumbnail not set for ${videoId} (Short is live): ${err instanceof Error ? err.message : err}`);
+  }
 }
