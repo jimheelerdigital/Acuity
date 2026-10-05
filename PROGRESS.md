@@ -7,6 +7,30 @@
 
 ---
 
+## [2026-10-05] — Mythicals site ready for the YouTube API audit: YouTube privacy section, Terms page, YouTube link
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** see "feat: Add YouTube terms and privacy for the API audit"
+
+### In plain English (for Keenan)
+Google's YouTube API audit needs to see a privacy policy that covers YouTube, a terms of service, and a homepage showing both a privacy link and YouTube branding. The Legendary Mythicals site now has all three:
+- a YouTube section in the privacy policy
+- a new Terms of Service page, linked in the footer
+- a YouTube icon next to Instagram, Facebook and TikTok
+
+### Technical changes (for Jimmy)
+- `app/lm/privacy/page.tsx`: "YouTube API Services" section. It links the YouTube ToS, Google Privacy Policy and Google security permissions page; states no user data is accessed; and says the stored token is deleted within 7 days of revocation.
+- New `app/lm/terms/page.tsx` (served at legendarymythicals.com/terms), with a YouTube clause.
+- `app/lm/layout.tsx`: footer "Terms of Service" link.
+- `lib/mythicals/site.ts` + `components/mythicals/socials.tsx`: youtube social (https://www.youtube.com/@legendarymythicals) with icon.
+
+### Manual steps needed
+- [ ] Confirm the channel handle is @legendarymythicals (Keenan)
+- [ ] Screenshots for the audit form: privacy page, homepage footer, terms page, YouTube Studio upload (Keenan)
+
+### Notes
+- The terms page links /refunds and /privacy as root paths, which resolve on legendarymythicals.com (not on the goripple.io/lm test path).
+
 ## [2026-10-05] — Legendary Mythicals ready for YouTube Shorts (needs Keenan's Google setup)
 **Requested by:** Keenan
 **Committed by:** Claude Code

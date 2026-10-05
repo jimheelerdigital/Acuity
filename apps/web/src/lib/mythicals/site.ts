@@ -42,8 +42,9 @@ export const MYTHICALS_FAVICON_URL =
   "https://rohjfcenylmfnqoyoirn.supabase.co/storage/v1/object/public/content-factory/mythicals-site/brand/emblem-192.png";
 
 /** Social profiles. A null url is hidden until the handle is confirmed. */
-export const MYTHICALS_SOCIALS: { key: "instagram" | "facebook" | "tiktok"; label: string; url: string | null }[] = [
+export const MYTHICALS_SOCIALS: { key: "instagram" | "facebook" | "tiktok" | "youtube"; label: string; url: string | null }[] = [
   { key: "instagram", label: "Instagram", url: "https://instagram.com/legendarymythicals" },
   { key: "facebook", label: "Facebook", url: "https://www.facebook.com/1251155438091197" },
   { key: "tiktok", label: "TikTok", url: "https://www.tiktok.com/@legendarymythicals" },
+  { key: "youtube", label: "YouTube", url: "https://www.youtube.com/@legendarymythicals" },
 ];

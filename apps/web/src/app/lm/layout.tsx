@@ -135,6 +135,7 @@ export default function MythicalsLayout({ children }: { children: React.ReactNod
             <ul className="space-y-2.5 text-[var(--lm-dim)]">
               <li><Link href={`${base}/privacy`} className="hover:text-[var(--lm-bone)]">Privacy</Link></li>
               <li><Link href={`${base}/refunds`} className="hover:text-[var(--lm-bone)]">Refunds</Link></li>
+              <li><Link href={`${base}/terms`} className="hover:text-[var(--lm-bone)]">Terms of Service</Link></li>
               <li><a href="mailto:keenan@heelerdigital.com?subject=Legendary%20Mythicals%20partnership" className="hover:text-[var(--lm-bone)]">Partnerships</a></li>
               <li><a href="mailto:keenan@heelerdigital.com" className="hover:text-[var(--lm-bone)]">Contact</a></li>
             </ul>
