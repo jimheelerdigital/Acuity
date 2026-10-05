@@ -241,6 +241,24 @@ export const socialHealthCheckFn = inngest.createFunction(
             console.warn(`[health] token check ${brand} failed:`, err instanceof Error ? err.message : err);
           }
         }
+        // Ads tokens too (not Page tokens; separate from posting).
+        for (const [label, raw] of [
+          ["ads (AdLab / CAPI)", process.env.META_ACCESS_TOKEN],
+          ["Mythicals ads", process.env.META_MYTHICALS_ADS_TOKEN],
+        ] as const) {
+          if (!raw) continue;
+          try {
+            const t = encodeURIComponent(raw);
+            const res = await fetch(`https://graph.facebook.com/v21.0/debug_token?input_token=${t}&access_token=${t}`);
+            const json = (await res.json().catch(() => ({}))) as { data?: { is_valid?: boolean; expires_at?: number } };
+            const exp = json.data?.expires_at ?? 0;
+            if (!json.data?.is_valid) out.push(`Meta ${label} token is INVALID — ads, syncing or conversion tracking will fail.`);
+            else if (exp > 0 && exp * 1000 - now < 3 * 86_400_000)
+              out.push(`Meta ${label} token expires ${new Date(exp * 1000).toISOString().slice(0, 10)} — refresh it now.`);
+          } catch {
+            // best effort
+          }
+        }
         // Keenan asked (2026-10-04) for a Dec 2 reminder: the user token
         // behind the Page tokens expires 2026-12-03. Page tokens made from
         // it never expire, but refresh to be safe.

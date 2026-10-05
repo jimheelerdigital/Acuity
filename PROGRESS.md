@@ -7,6 +7,39 @@
 
 ---
 
+## [2026-10-04] — Mythicals creatures, weapons and armor show their powers; cinematic tests posted to IG
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** see "content: Give Mythicals creatures, weapons and armor visible powers"
+
+### In plain English (for Keenan)
+- **Powers on display:** every Mythicals post now shows each option's signature power in its animation.
+  - Dragons breathe fire, ice or lightning.
+  - Sea beasts raise whirlpools and storms.
+  - Weapons ignite or crackle with lightning.
+  - Armor's runes blaze.
+- **Colossal Encounters:** after the reveal, the creature unleashes its power into the sky (never at the person), then settles on the final shot.
+- **Test videos on Instagram:** four cinematic tests are queued to post on @legendarymythicals (Instagram only), placed between the regular post times:
+  - "The Leviathan Rises": 8pm Central tonight
+  - "Above the Clouds": 9pm
+  - "Shibuya, 2am": noon tomorrow
+  - "The Summit Watcher": 7:30pm tomorrow
+- **Ads token:** the ads and conversion-tracking token survived the Oct 4 session reset and is a separate, non-expiring kind, so it was left alone. The daily health email now watches it too.
+
+### Technical changes (for Jimmy)
+- `lib/content-factory/choice-lane.ts`: new SIGNATURE ABILITIES rule in the EPIC block; the `motion` field now asks for the power on display.
+- `lib/content-factory/living-reel.ts`: the action-mode prompt renders powers vividly (physically real fire, frost, sparks).
+- `lib/content-factory/cinematic-shot.ts`: beat 3 adds a power burst into the sky, plus a POWERS rule; `creature` includes its power.
+- `inngest/functions/social-health-check.ts`: `debug_token` also runs on `META_ACCESS_TOKEN` and `META_MYTHICALS_ADS_TOKEN`.
+- Ops: 4 CarouselPosts (lane mythic-colossus, status APPROVED so the auto-enqueue skips them, reelTransition `higgsfield:kling3_0-4k-manual-test`). The reels are at `reels/<id>.mp4` with done markers, and IG-only SocialPublish rows have fixed scheduledAt. IDs: cmuui1u7q0000jmowm3v8swf5, cmuui1zt50004jmowsv39eh0j, cmuui23280008jmow0bzel0mq, cmuui272h000cjmow3074uyim.
+
+### Manual steps needed
+- [ ] After the push: `curl -X PUT https://goripple.io/api/inngest` (Claude Code)
+
+### Notes
+- `META_ACCESS_TOKEN` was checked live via `/api/admin/adlab/platform-split` (it returned Meta ads data after the session reset). Swapping in Keenan's 60-day user token would have broken ads on Dec 3.
+- Test posts can't be deleted from IG via the API, so only queue ones that are good to keep.
+
 ## [2026-10-04] — Colossal Encounters reveal shot; Meta tokens replaced; daily token check
 **Requested by:** Keenan
 **Committed by:** Claude Code
