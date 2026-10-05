@@ -31,6 +31,32 @@
   - music/mythicals/ai-8 archived
   - 35 backlog `youtube` SocialPublish rows (re-spaced every 150 min), plus 10 rows for today's and tomorrow's posts at their IG scheduledAt
   - thumbnails.set run directly for 4 posted Shorts (all 200)
+## [2026-10-05] — Ad cleanup: 6 weak ads off, planner tests moved into main, new weekly test launched
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** see "chore: Fold the planner test budgets into the main ad sets"
+
+### In plain English (for Keenan)
+- **Turned off** (all versions, 13 ads), for a weak cost per real paid trial over Sep 28–Oct 5:
+  - "Talk it out. Get your to-do list." ($130 → 2 trials)
+  - "She stopped chasing." ($78 → 0)
+  - "Journals gave pages." ($69 → 1)
+  - "See where your week really went." ($55 → 1)
+  - "All of it, out of your head."
+  - "The car is the only quiet."
+- **Planner tests moved into the main ad sets:**
+  - "Fourth planner this year. Still behind." → women main
+  - "Bought the planner. Skipped the planning." → men main
+  - Their separate test ad sets are off ("Five systems. Zero streaks." went with them; Meta barely spent on it).
+- **Budgets:** the test sets' money folds back into main. Women main goes $30 → $45, men main $50 → $70; total daily spend is unchanged.
+- **New weekly test:** 2 image ads + 1 video ad per lane from Sunday's batch, launched into the main ad sets.
+
+### Technical changes (for Jimmy)
+- `apps/web/src/lib/adlab/evergreen.ts`: `GROUP_DAILY_BUDGET_CENTS` women 4500, men 7000. `ensureEvergreenAdSet` re-applies this on every launch, so a Meta-side-only change would be reverted.
+- Ops (no code):
+  - Kills: Graph status=PAUSED plus AdLabAd status=killed and an AdLabDecision of type manual, the same writes as /api/admin/adlab/ads/kill. Done with Keenan's user token (ads_management) because the kill route is admin-session only.
+  - Moves: Graph `POST /{ad}/copies` into the evergreen ad set, registered as new AdLabAd rows on the same creative. Test ad sets paused.
+  - Launch: creatives approved in the DB, then `/api/admin/adlab/ads/launch` called with the CRON bearer.
 
 ### Manual steps needed
 - None
@@ -39,6 +65,7 @@
 - Custom thumbnails need Intermediate features (phone verification), which Keenan enabled ~10:40 CT on 10-05. The first two uploads predated it.
 - videos.insert is ~100 units since 2025-12 (not 1,600), so the default 10k/day quota is plenty.
 - The 16a9a624 "visible powers" commit (10-04) is what made the clips action-heavy.
+- Real paid trials come from `lib/adlab/trial-quality.ts`. Meta's own conversion counts ran about 2x higher, e.g. 14 vs 7 on "Fourth planner. Still stuck."
 
 ## [2026-10-05] — YouTube Shorts get the title cover slide as their thumbnail
 **Requested by:** Keenan
