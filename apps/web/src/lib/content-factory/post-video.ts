@@ -183,6 +183,11 @@ export function reelPath(postId: string): string {
   return `reels/${postId}.mp4`;
 }
 
+/** Instagram's copy of the post video, with an original song (2026-10-04). */
+export function igReelPath(postId: string): string {
+  return `reels/${postId}-ig.mp4`;
+}
+
 export async function writeVideoMarker(
   postId: string,
   marker: Omit<VideoBuildMarker, "updatedAt">

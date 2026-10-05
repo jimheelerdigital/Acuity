@@ -407,7 +407,18 @@ export const socialPublishCronFn = inngest.createFunction(
               }
               // Already rendered (the Higgsfield post video, or a previous attempt)?
               const head = await fetch(publicUrl, { method: "HEAD" });
-              if (head.ok) return publicUrl;
+              if (head.ok) {
+                // Instagram uses its original-song copy when the build made
+                // one (2026-10-04, per Keenan); Facebook keeps the AI music.
+                if (row.platform === "instagram") {
+                  const igUrl = supabase.storage
+                    .from("content-factory")
+                    .getPublicUrl(`reels/${row.carouselPostId}-ig.mp4`).data.publicUrl;
+                  const igHead = await fetch(igUrl, { method: "HEAD" }).catch(() => null);
+                  if (igHead?.ok) return igUrl;
+                }
+                return publicUrl;
+              }
 
               const { pickMusicTrack, renderSlideshowReel } = await import(
                 "@/lib/content-factory/slideshow-reel"

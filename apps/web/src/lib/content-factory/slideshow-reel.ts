@@ -105,7 +105,7 @@ export async function pickMusicTrack(
    * must be at least as long as the reel, no looping). exclude: storage
    * paths or file names never to pick (a remake that needs a new song).
    */
-  opts: { minSeconds?: number; exclude?: string[] } = {}
+  opts: { minSeconds?: number; exclude?: string[]; platform?: "instagram" } = {}
 ): Promise<string | null> {
   const { supabase } = await import("@/lib/supabase.server");
   const { laneBrand } = await import("./social-publish");
@@ -127,7 +127,16 @@ export async function pickMusicTrack(
       : isBwk
         ? ["music/bwk", "music/BWK"]
         : ["music/ripple"];
+  // Instagram (2026-10-04, per Keenan: "go back to using the old sounds ...
+  // our instagram posts only. leave the facebook posts with the current
+  // library"): the original songs in music-ig/<brand> come first; Facebook
+  // and everything else keep the owned AI library.
+  const igFolders =
+    opts.platform === "instagram"
+      ? [brand === "mythicals" ? "music-ig/mythicals" : isBwk ? "music-ig/BWK" : "music-ig/ripple"]
+      : [];
   const folders = [
+    ...igFolders,
     ...(lane ? brandFolders.map((f) => `${f}/${lane}`) : []),
     ...brandFolders,
   ];

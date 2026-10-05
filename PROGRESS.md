@@ -7,6 +7,32 @@
 
 ---
 
+## [2026-10-04] — Instagram goes back to the original songs; Facebook keeps the AI music
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** see "feat: Use the original songs on Instagram, AI music on Facebook"
+
+### In plain English (for Keenan)
+- **Instagram:** goes back to the original songs, which never had problems there.
+- **Facebook:** keeps the owned AI music, since that's where posts were being muted.
+- **How:** every post video is now built twice, the same video with a different soundtrack. Instagram publishes its copy and Facebook publishes the main one. This covers Mythicals, BWK and Ripple.
+- **Egg post:** the "One egg" song (ai-2) was removed from the Mythicals library, and the video was re-mixed with a dark track for Facebook. Its Instagram repost was held so it can get an original song.
+
+### Technical changes (for Jimmy)
+- Storage: `music-ig/{mythicals,BWK,ripple}` = the original songs archived on 10-03 (28 / 13 / 14; BWK13.mp3 excluded, Keenan removed it 10-01). Copied from music-removed/, which stays intact.
+- `lib/content-factory/slideshow-reel.ts`: `pickMusicTrack` option `platform: "instagram"` tries music-ig/<brand> first.
+- `lib/content-factory/post-video.ts`: `igReelPath()` = reels/<id>-ig.mp4.
+- `inngest/functions/carousel-post-video.ts`: new `join-ig` step. It removes any old -ig file, picks an original song long enough, re-joins the same segments, and uploads -ig. If no song fits, Instagram falls back to the main reel.
+- `inngest/functions/social-publish-cron.ts`: Instagram rows use reels/<id>-ig.mp4 when it exists.
+- Data: archived music/mythicals/ai-2 (on the egg post). Egg post cmutjkdcs: re-mixed with aiv2-11; FB requeued now; IG requeued and held 30 min for a post-deploy rebuild with an Instagram copy.
+
+### Manual steps needed
+- None
+
+### Notes
+- Slideshow-fallback posts (no Higgsfield video) still use one track for both platforms.
+- The join step now runs twice per video; each `step.run` has its own 300s budget.
+
 ## [2026-10-04] — Mythicals creatures, weapons and armor show their powers; cinematic tests posted to IG
 **Requested by:** Keenan
 **Committed by:** Claude Code
