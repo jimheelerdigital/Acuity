@@ -14,7 +14,8 @@
  *
  * Env (all trimmed — see env() in social-publish.ts):
  *   YOUTUBE_CLIENT_ID, YOUTUBE_CLIENT_SECRET — one OAuth client, shared
- *   YOUTUBE_RIPPLE_REFRESH_TOKEN / YOUTUBE_BWK_REFRESH_TOKEN — per channel
+ *   YOUTUBE_RIPPLE_REFRESH_TOKEN / YOUTUBE_BWK_REFRESH_TOKEN /
+ *   YOUTUBE_MYTHICALS_REFRESH_TOKEN — one per channel
  * A brand without all three gets no youtube rows at all.
  *
  * QUOTA: default 10,000 units/day per Cloud project, ~1,600 per upload
@@ -44,9 +45,14 @@ export interface YoutubeAccount {
 export function youtubeAccount(brand: SocialAccountKey): YoutubeAccount | null {
   const clientId = env("YOUTUBE_CLIENT_ID");
   const clientSecret = env("YOUTUBE_CLIENT_SECRET");
-  const refreshToken = env(
-    brand === "bwk" ? "YOUTUBE_BWK_REFRESH_TOKEN" : "YOUTUBE_RIPPLE_REFRESH_TOKEN"
-  );
+  // One channel per brand (2026-10-05: Mythicals got its own channel; it
+  // used to fall through to Ripple's token).
+  const TOKEN_ENV: Record<SocialAccountKey, string> = {
+    ripple: "YOUTUBE_RIPPLE_REFRESH_TOKEN",
+    bwk: "YOUTUBE_BWK_REFRESH_TOKEN",
+    mythicals: "YOUTUBE_MYTHICALS_REFRESH_TOKEN",
+  };
+  const refreshToken = env(TOKEN_ENV[brand]);
   if (!clientId || !clientSecret || !refreshToken) return null;
   return { key: brand, clientId, clientSecret, refreshToken };
 }

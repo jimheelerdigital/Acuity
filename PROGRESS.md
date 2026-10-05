@@ -7,6 +7,29 @@
 
 ---
 
+## [2026-10-05] — Legendary Mythicals ready for YouTube Shorts (needs Keenan's Google setup)
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** see "fix: Give each brand its own YouTube channel"
+
+### In plain English (for Keenan)
+- **Ready:** Keenan built the Legendary Mythicals YouTube channel. The posting system already knows how to upload Shorts; it just needs a Google login for the channel.
+- **Bug fixed:** a bug would have sent Mythicals Shorts to Ripple's channel. Each brand now has its own.
+- **Music:** YouTube uploads use the AI music version, not the Instagram TikTok-song copy, so YouTube won't flag them.
+
+### Technical changes (for Jimmy)
+- `lib/content-factory/youtube-publish.ts`: `youtubeAccount()` maps ripple / bwk / mythicals to `YOUTUBE_<BRAND>_REFRESH_TOKEN`. Previously any non-BWK brand used the Ripple token.
+- No other changes. The scan already queues a "youtube" row for reel posts when `youtubeAccount(brand)` is configured (social-publish-cron.ts), and uploads use the main (AI-music) reel.
+
+### Manual steps needed
+- [ ] Google Cloud project + YouTube Data API v3 + OAuth client; refresh token for the Mythicals channel (Keenan, steps in chat)
+- [ ] Vercel env: `YOUTUBE_CLIENT_ID`, `YOUTUBE_CLIENT_SECRET`, `YOUTUBE_MYTHICALS_REFRESH_TOKEN` (Keenan)
+- [ ] Submit the YouTube API audit form (public uploads + quota) (Keenan)
+
+### Notes
+- An unaudited API project's uploads are forced to private, and the default quota (~6 uploads/day across all channels) roughly equals Mythicals' daily volume. Until the audit passes, uploads land private; bulk-publish them in YouTube Studio.
+- Keep the OAuth consent screen "In production". In "Testing", refresh tokens expire after 7 days.
+
 ## [2026-10-04] — Fix: the Instagram original-song copy was attached to the wrong branch
 **Requested by:** Keenan
 **Committed by:** Claude Code
