@@ -7,6 +7,27 @@
 
 ---
 
+## [2026-10-05] — Kling 2.5 Turbo Standard animates every post video
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** see "chore: Make Kling 2.5 Turbo Standard the post video model"
+
+### In plain English (for Keenan)
+Every animated post now uses Kling 2.5 Turbo Standard instead of Hailuo. Hailuo only steps in if a Kling clip fails. Cost is about $0.35 per Mythicals post this week and about $0.69 after the Oct 11 price change, versus Hailuo's $1.69.
+
+### Technical changes (for Jimmy)
+- `lib/content-factory/post-video.ts`:
+  - `POST_VIDEO_MODEL` defaults to `kling-video/v2.5-turbo/standard/image-to-video`
+  - `POST_VIDEO_FALLBACK_MODEL` defaults to Hailuo 2.3 Std
+  - removed the `HAILUO_PROMO_ENDS` date switch
+- Env overrides (`HIGGSFIELD_LIVING_MODEL`, `HIGGSFIELD_FALLBACK_MODEL`) still win.
+
+### Manual steps needed
+- None
+
+### Notes
+- Part 5's comparison rebuild ran on Kling 2.5 Turbo Pro before this change.
+
 ## [2026-10-05] — Rebuild any post video on a chosen model (Part 5 remade on Kling)
 **Requested by:** Keenan
 **Committed by:** Claude Code

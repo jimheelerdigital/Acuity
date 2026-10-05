@@ -107,8 +107,7 @@ const KLING_STD = "kling-video/v2.5-turbo/standard/image-to-video";
  * 720p). Same price, Hailuo has the better resolution and motion, so it
  * leads again until then and Kling takes over automatically after.
  */
-const HAILUO_PROMO_ENDS = Date.parse("2026-10-11T14:03:00Z");
-const hailuoIsCheapest = () => Date.now() < HAILUO_PROMO_ENDS;
+// (The promo-date switch was removed 2026-10-05: Kling leads always.)
 
 /**
  * Post-video models (2026-09-28, per Keenan: "just use standard kling 2.5
@@ -121,8 +120,10 @@ const hailuoIsCheapest = () => Date.now() < HAILUO_PROMO_ENDS;
  * from Higgsfield's model list); Kling 2.5 Turbo Pro 1080p is ~$0.19→$0.35.
  * HIGGSFIELD_LIVING_MODEL / HIGGSFIELD_FALLBACK_MODEL override either.
  */
-export const POST_VIDEO_MODEL =
-  process.env.HIGGSFIELD_LIVING_MODEL?.trim() || (hailuoIsCheapest() ? HAILUO_STD : KLING_STD);
+// 2026-10-05, per Keenan ("you should use turbo standard always", after
+// "i think hailu might be way worse"): Kling 2.5 Turbo Standard leads
+// regardless of promos; Hailuo is only the backup.
+export const POST_VIDEO_MODEL = process.env.HIGGSFIELD_LIVING_MODEL?.trim() || KLING_STD;
 
 /**
  * Second model for clips the primary didn't deliver in time (failed
@@ -130,8 +131,7 @@ export const POST_VIDEO_MODEL =
  * resubmitted here once, so a slow or broken model costs a few minutes —
  * never the whole night's animation.
  */
-export const POST_VIDEO_FALLBACK_MODEL =
-  process.env.HIGGSFIELD_FALLBACK_MODEL?.trim() || (hailuoIsCheapest() ? KLING_STD : HAILUO_STD);
+export const POST_VIDEO_FALLBACK_MODEL = process.env.HIGGSFIELD_FALLBACK_MODEL?.trim() || HAILUO_STD;
 
 /**
  * Animated-slide budget per post (2026-09-29, per Keenan: "I don't want to
