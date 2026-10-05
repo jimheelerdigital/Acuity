@@ -82,7 +82,7 @@ export function livingMotionPrompt(
         : // Powers line added 2026-10-04 (per Keenan: abilities on display).
           // 2026-10-05 (per Keenan: powers as "glowing, flames, or anything
           // minor", no movement abilities; openings "way too over the top").
-          "Keep it SUBTLE: the subject holds its pose and stays essentially still (slow breathing, a slight head turn or blink at most). Any power is a small effect on the subject, never an action: glowing eyes or runes, embers or sparks drifting, flames licking along armor or a blade, frost mist curling, faint lightning across horns. No attacks, no breath torrents, no swings, no rearing, no charging, no big wingbeats, no morphing. A creature never holds or uses a weapon. The camera moves slowly and steadily (a gentle push-in or slight drift).",
+          "Keep it SUBTLE: the subject holds its pose and stays essentially still (slow breathing, a slight head turn or blink at most). Any power is a small effect on the subject: glowing eyes or runes, embers or sparks drifting, flames licking along armor or a blade, frost mist curling, faint lightning across horns. The only actions allowed are slow, powerful wingbeats and breathing fire or ice (into the sky or landscape, never at a person). No attacks, no swings, no rearing, no charging, no lunging, no morphing. A creature never holds or uses a weapon. The camera moves slowly and steadily (a gentle push-in or slight drift).",
       "Keep the subject's design, colors, armor and setting exactly as in the image. The subject stays in frame. No text, no new creatures or people, no scene cuts.",
     ]
       .filter(Boolean)
