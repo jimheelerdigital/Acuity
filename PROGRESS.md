@@ -31,10 +31,10 @@
   - music/mythicals/ai-8 archived
   - 35 backlog `youtube` SocialPublish rows (re-spaced every 150 min), plus 10 rows for today's and tomorrow's posts at their IG scheduledAt
   - thumbnails.set run directly for 4 posted Shorts (all 200)
-## [2026-10-05] — Ad cleanup: 6 weak ads off, planner tests moved into main, new weekly test launched
+## [2026-10-05] — Ad cleanup: 6 weak ads off; new weekly test launched; planner tests stay in their own ad sets
 **Requested by:** Keenan
 **Committed by:** Claude Code
-**Commit hash:** see "chore: Fold the planner test budgets into the main ad sets"
+**Commit hash:** see "fix: Keep the main ad set budgets at $30 and $50"
 
 ### In plain English (for Keenan)
 - **Turned off** (all versions, 13 ads), for a weak cost per real paid trial over Sep 28–Oct 5:
@@ -44,27 +44,24 @@
   - "See where your week really went." ($55 → 1)
   - "All of it, out of your head."
   - "The car is the only quiet."
-- **Planner tests moved into the main ad sets:**
-  - "Fourth planner this year. Still behind." → women main
-  - "Bought the planner. Skipped the planning." → men main
-  - Their separate test ad sets are off ("Five systems. Zero streaks." went with them; Meta barely spent on it).
-- **Budgets:** the test sets' money folds back into main. Women main goes $30 → $45, men main $50 → $70; total daily spend is unchanged.
+- **Planner tests:** these couldn't be moved into the main ad sets. Meta won't reuse their posts elsewhere, and rebuilding them would restart their learning and lose their likes. They keep running in their own ad sets ($20 men, $15 women).
+  - "Five systems. Zero streaks." is off; Meta barely spent on it.
+  - For about a minute both planner ads were off while the move was tried, then they were turned back on.
+- **Budgets:** unchanged. Main is $30 women / $50 men.
 - **New weekly test:** 2 image ads + 1 video ad per lane from Sunday's batch, launched into the main ad sets.
 
 ### Technical changes (for Jimmy)
-- `apps/web/src/lib/adlab/evergreen.ts`: `GROUP_DAILY_BUDGET_CENTS` women 4500, men 7000. `ensureEvergreenAdSet` re-applies this on every launch, so a Meta-side-only change would be reverted.
+- `apps/web/src/lib/adlab/evergreen.ts`: `GROUP_DAILY_BUDGET_CENTS` back to women 3000 / men 5000. This reverts 2f8f1105, which had raised it for the move.
 - Ops (no code):
   - Kills: Graph status=PAUSED plus AdLabAd status=killed and an AdLabDecision of type manual, the same writes as /api/admin/adlab/ads/kill. Done with Keenan's user token (ads_management) because the kill route is admin-session only.
-  - Moves: Graph `POST /{ad}/copies` into the evergreen ad set, registered as new AdLabAd rows on the same creative. Test ad sets paused.
+  - Graph `POST /{ad}/copies` failed with subcode 1885183, "Ads creative post was created by an app that is in development mode". The test ad sets were briefly paused, then reactivated. Ad 120254964869270581 ("Five systems") paused and its AdLabAd marked killed.
   - Launch: creatives approved in the DB, then `/api/admin/adlab/ads/launch` called with the CRON bearer.
 
 ### Manual steps needed
 - None
 
 ### Notes
-- Custom thumbnails need Intermediate features (phone verification), which Keenan enabled ~10:40 CT on 10-05. The first two uploads predated it.
-- videos.insert is ~100 units since 2025-12 (not 1,600), so the default 10k/day quota is plenty.
-- The 16a9a624 "visible powers" commit (10-04) is what made the clips action-heavy.
+- An ad can't be copied to another ad set while its post was created by the AdLab app in development mode. To really "move" an ad, relaunch the creative as a new ad (new post, learning restarts), or switch the Meta app to Live mode.
 - Real paid trials come from `lib/adlab/trial-quality.ts`. Meta's own conversion counts ran about 2x higher, e.g. 14 vs 7 on "Fourth planner. Still stuck."
 
 ## [2026-10-05] — YouTube Shorts get the title cover slide as their thumbnail

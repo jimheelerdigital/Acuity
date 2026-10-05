@@ -33,10 +33,11 @@ export const GROUP_DAILY_BUDGET_CENTS: Record<BatchGroupKey, number> = {
   // Still stuck." = 4 of the last 9 paid trials). Total stays $100 + $30 test.
   // 2026-10-02 (later), per Keenan: "cut back $10 per bwk main and $10 for
   // ripple main" — funds the planner-variation ad sets ($20 men, $15 women).
-  // 2026-10-05, per Keenan: planner tests moved into MAIN and their ad sets
-  // turned off, so their budget folds back in (women +$15, men +$20).
-  women: 4500,
-  men: 7000,
+  // 2026-10-05: tried moving the planner tests into MAIN; Meta refused to
+  // copy their posts ("created by an app in development mode"), so they stay
+  // in their own ad sets and these stay at $30 / $50.
+  women: 3000,
+  men: 5000,
 };
 
 /** 2026-09-30, per Keenan: "start to optimize for purchase". Was
