@@ -7,6 +7,26 @@
 
 ---
 
+## [2026-10-04] — Fix: the Instagram original-song copy was attached to the wrong branch
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** see "fix: Run the Instagram song copy on normal post videos"
+
+### In plain English (for Keenan)
+- **The bug:** Instagram posts were still going out with the AI music instead of Keenan's original TikTok songs. The step that makes the Instagram copy was accidentally placed inside the code for the new Colossal Encounters videos, so normal posts never ran it. It's now in the right place.
+- **Speed:** each original song's length is now measured once and saved, so picking one takes a fraction of a second.
+
+### Technical changes (for Jimmy)
+- `inngest/functions/carousel-post-video.ts`: moved `join-ig` out of the cinematic branch (where it sat before the cinematic `digest-check`, referencing `segments` / `plan`, which are TDZ there) into the main path after `join`. The cinematic branch is restored to its prior shape.
+- Ops: pre-cached `music/_durations.json` for music-ig/{mythicals,BWK,ripple} (28/13/14). The first Instagram pick had to probe all 28 Mythicals tracks (~35s).
+- `join-ig` writes living/<id>/ig-status.json (started / joining / done / skipped / error).
+
+### Manual steps needed
+- None
+
+### Notes
+- Root cause: the edit anchored on the first `step.run("digest-check"` in the file. Another session's Colossal Encounters commit (1fffeb43) had added an earlier, cinematic one. Anchor edits on unique context, not the first match.
+
 ## [2026-10-04] — Instagram Reels get the title cover slide as their cover
 **Requested by:** Keenan
 **Committed by:** Claude Code

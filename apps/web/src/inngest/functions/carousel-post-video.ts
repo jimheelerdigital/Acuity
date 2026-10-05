@@ -185,69 +185,7 @@ export const carouselPostVideoFn = inngest.createFunction(
         return { url, originalUrl, seconds, bytes: buf.length, audio, model: done.model };
       });
 
-      // Instagram copy (2026-10-04, per Keenan): same video, but the music comes
-    // from the original-songs library (music-ig/). Facebook keeps the AI-music
-    // reel above. Any old -ig file is removed first so a rebuild can never
-    // leave Instagram on a stale video.
-    await step.run("join-ig", async () => {
-      const { supabase } = await import("@/lib/supabase.server");
-      // Status beside the build so ops can see why an Instagram copy is
-      // missing without Inngest logs (2026-10-04: it silently never appeared).
-      const note = async (status: Record<string, unknown>) => {
-        await supabase.storage
-          .from("content-factory")
-          .upload(`living/${postId}/ig-status.json`, Buffer.from(JSON.stringify({ at: new Date().toISOString(), ...status })), {
-            contentType: "application/json",
-            upsert: true,
-          });
-      };
-      await note({ stage: "started" });
-      try {
-      const { joinPostVideo } = await import("@/lib/content-factory/living-reel");
-      const { pickMusicTrack } = await import("@/lib/content-factory/slideshow-reel");
-      const { igReelPath } = await import("@/lib/content-factory/post-video");
-      const igPath = igReelPath(postId);
-      await supabase.storage.from("content-factory").remove([igPath]);
-      const ctaSec = plan.brand === "mythicals" || (plan.lane?.startsWith("pick-") && process.env.PICK_CTA !== "1") ? 0 : 3;
-      const reelSec = segments.reduce((a, sg) => a + sg.seconds, 0) + ctaSec;
-      const music = await pickMusicTrack(plan.lane, undefined, {
-        minSeconds: Math.max(Math.ceil(reelSec), musicOpts?.minSeconds ?? 0),
-        exclude: musicOpts?.exclude,
-        platform: "instagram",
-      });
-      if (!music || !music.includes("/music-ig/")) {
-        await note({ stage: "skipped", reason: "no original song long enough", music });
-        return { ig: false, reason: "no original song long enough — Instagram uses the main reel" };
-      }
-      await note({ stage: "joining", music });
-      const bufs = await Promise.all(
-        segments.map(async (sg) => {
-          const r = await fetch(sg.url);
-          if (!r.ok) throw new Error(`Segment download failed (${r.status}): ${sg.url}`);
-          return { buf: Buffer.from(await r.arrayBuffer()), seconds: sg.seconds, still: sg.still };
-        })
-      );
-      const { buf } = await joinPostVideo({
-        segments: bufs,
-        ctaUrl:
-          plan.brand === "mythicals" || (plan.lane?.startsWith("pick-") && process.env.PICK_CTA !== "1")
-            ? null
-            : `https://goripple.io/cta-slide-${plan.brand}.jpg`,
-        musicUrl: music,
-      });
-      const { error } = await supabase.storage.from("content-factory").upload(igPath, buf, { contentType: "video/mp4", upsert: true });
-      if (error) throw new Error(`IG video upload failed: ${error.message}`);
-      console.log(`[post-video] ${postId}: instagram copy with ${music.split("/content-factory/")[1] ?? music}`);
-      await note({ stage: "done", music, bytes: buf.length });
-      return { ig: true, music: music.split("/content-factory/")[1] ?? music };
-      } catch (err) {
-        await note({ stage: "error", error: String(err instanceof Error ? err.stack ?? err.message : err).slice(0, 1500) });
-        // Instagram falls back to the main reel; never fail the whole build.
-        return { ig: false, error: String(err).slice(0, 300) };
-      }
-    });
-
-    await step.run("digest-check", async () => {
+      await step.run("digest-check", async () => {
         const { requestDigestCheck } = await import("@/lib/content-factory/post-video");
         await requestDigestCheck(cine.brand, cine.date);
       });
@@ -608,6 +546,68 @@ export const carouselPostVideoFn = inngest.createFunction(
         totalSlides: segments.length,
       });
       return { url, seconds, bytes: buf.length, live, total: segments.length };
+    });
+
+    // Instagram copy (2026-10-04, per Keenan): same video, but the music comes
+    // from the original-songs library (music-ig/). Facebook keeps the AI-music
+    // reel above. Any old -ig file is removed first so a rebuild can never
+    // leave Instagram on a stale video.
+    await step.run("join-ig", async () => {
+      const { supabase } = await import("@/lib/supabase.server");
+      // Status beside the build so ops can see why an Instagram copy is
+      // missing without Inngest logs (2026-10-04: it silently never appeared).
+      const note = async (status: Record<string, unknown>) => {
+        await supabase.storage
+          .from("content-factory")
+          .upload(`living/${postId}/ig-status.json`, Buffer.from(JSON.stringify({ at: new Date().toISOString(), ...status })), {
+            contentType: "application/json",
+            upsert: true,
+          });
+      };
+      await note({ stage: "started" });
+      try {
+      const { joinPostVideo } = await import("@/lib/content-factory/living-reel");
+      const { pickMusicTrack } = await import("@/lib/content-factory/slideshow-reel");
+      const { igReelPath } = await import("@/lib/content-factory/post-video");
+      const igPath = igReelPath(postId);
+      await supabase.storage.from("content-factory").remove([igPath]);
+      const ctaSec = plan.brand === "mythicals" || (plan.lane?.startsWith("pick-") && process.env.PICK_CTA !== "1") ? 0 : 3;
+      const reelSec = segments.reduce((a, sg) => a + sg.seconds, 0) + ctaSec;
+      const music = await pickMusicTrack(plan.lane, undefined, {
+        minSeconds: Math.max(Math.ceil(reelSec), musicOpts?.minSeconds ?? 0),
+        exclude: musicOpts?.exclude,
+        platform: "instagram",
+      });
+      if (!music || !music.includes("/music-ig/")) {
+        await note({ stage: "skipped", reason: "no original song long enough", music });
+        return { ig: false, reason: "no original song long enough — Instagram uses the main reel" };
+      }
+      await note({ stage: "joining", music });
+      const bufs = await Promise.all(
+        segments.map(async (sg) => {
+          const r = await fetch(sg.url);
+          if (!r.ok) throw new Error(`Segment download failed (${r.status}): ${sg.url}`);
+          return { buf: Buffer.from(await r.arrayBuffer()), seconds: sg.seconds, still: sg.still };
+        })
+      );
+      const { buf } = await joinPostVideo({
+        segments: bufs,
+        ctaUrl:
+          plan.brand === "mythicals" || (plan.lane?.startsWith("pick-") && process.env.PICK_CTA !== "1")
+            ? null
+            : `https://goripple.io/cta-slide-${plan.brand}.jpg`,
+        musicUrl: music,
+      });
+      const { error } = await supabase.storage.from("content-factory").upload(igPath, buf, { contentType: "video/mp4", upsert: true });
+      if (error) throw new Error(`IG video upload failed: ${error.message}`);
+      console.log(`[post-video] ${postId}: instagram copy with ${music.split("/content-factory/")[1] ?? music}`);
+      await note({ stage: "done", music, bytes: buf.length });
+      return { ig: true, music: music.split("/content-factory/")[1] ?? music };
+      } catch (err) {
+        await note({ stage: "error", error: String(err instanceof Error ? err.stack ?? err.message : err).slice(0, 1500) });
+        // Instagram falls back to the main reel; never fail the whole build.
+        return { ig: false, error: String(err).slice(0, 300) };
+      }
     });
 
     await step.run("digest-check", async () => {
