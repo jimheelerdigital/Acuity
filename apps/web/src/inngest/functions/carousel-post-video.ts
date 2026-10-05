@@ -191,6 +191,18 @@ export const carouselPostVideoFn = inngest.createFunction(
     // leave Instagram on a stale video.
     await step.run("join-ig", async () => {
       const { supabase } = await import("@/lib/supabase.server");
+      // Status beside the build so ops can see why an Instagram copy is
+      // missing without Inngest logs (2026-10-04: it silently never appeared).
+      const note = async (status: Record<string, unknown>) => {
+        await supabase.storage
+          .from("content-factory")
+          .upload(`living/${postId}/ig-status.json`, Buffer.from(JSON.stringify({ at: new Date().toISOString(), ...status })), {
+            contentType: "application/json",
+            upsert: true,
+          });
+      };
+      await note({ stage: "started" });
+      try {
       const { joinPostVideo } = await import("@/lib/content-factory/living-reel");
       const { pickMusicTrack } = await import("@/lib/content-factory/slideshow-reel");
       const { igReelPath } = await import("@/lib/content-factory/post-video");
@@ -203,7 +215,11 @@ export const carouselPostVideoFn = inngest.createFunction(
         exclude: musicOpts?.exclude,
         platform: "instagram",
       });
-      if (!music || !music.includes("/music-ig/")) return { ig: false, reason: "no original song long enough — Instagram uses the main reel" };
+      if (!music || !music.includes("/music-ig/")) {
+        await note({ stage: "skipped", reason: "no original song long enough", music });
+        return { ig: false, reason: "no original song long enough — Instagram uses the main reel" };
+      }
+      await note({ stage: "joining", music });
       const bufs = await Promise.all(
         segments.map(async (sg) => {
           const r = await fetch(sg.url);
@@ -222,7 +238,13 @@ export const carouselPostVideoFn = inngest.createFunction(
       const { error } = await supabase.storage.from("content-factory").upload(igPath, buf, { contentType: "video/mp4", upsert: true });
       if (error) throw new Error(`IG video upload failed: ${error.message}`);
       console.log(`[post-video] ${postId}: instagram copy with ${music.split("/content-factory/")[1] ?? music}`);
+      await note({ stage: "done", music, bytes: buf.length });
       return { ig: true, music: music.split("/content-factory/")[1] ?? music };
+      } catch (err) {
+        await note({ stage: "error", error: String(err instanceof Error ? err.stack ?? err.message : err).slice(0, 1500) });
+        // Instagram falls back to the main reel; never fail the whole build.
+        return { ig: false, error: String(err).slice(0, 300) };
+      }
     });
 
     await step.run("digest-check", async () => {
