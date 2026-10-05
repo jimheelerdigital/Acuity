@@ -243,31 +243,34 @@ Everything else in the format above still applies.`;
 /**
  * SIZE mode (2026-10-01, per Keenan: "'how big would they really be' is
  * crushing" — part 1 got ~11x the usual views — "keep it as a series ...
- * that consistently posts daily"). Five creatures, each pictured NEXT TO a
- * real-world object at the same distance so the scale reads instantly,
- * smallest to biggest. Fixed series title "HOW BIG WOULD THEY REALLY BE?
+ * that consistently posts daily"). Removed 2026-10-04, back 2026-10-05 as
+ * five kaiju-film shots: each creature in an iconic real place from a
+ * cinematic angle (no "as big as a school bus" comparisons), smallest to
+ * biggest. Fixed series title "HOW BIG WOULD THEY REALLY BE?
  * PART N" (N set by the cron from how many have run).
  */
 export const SIZE_CATEGORIES = [
-  "sea monsters next to ships, oil rigs and harbors",
-  "giant birds and flyers next to planes, towers and bridges",
-  "giant beasts next to vehicles, houses and stadiums",
-  "serpents and wyrms next to trains, highways and mountains",
-  "titans and giants next to skyscrapers and landmarks",
-  "dragons of every size next to everyday places",
-  "legendary creatures from different myths, mixed scales",
+  // 2026-10-05 rewrite (Keenan: "super cool perspective shots ... no more
+  // 'as big as a school bus'. that's super lame. think more godzilla
+  // standing in a city, dragon on a football stadium, kraken over an
+  // aircraft carrier"): iconic real places, cinematic angles.
+  "monsters in great cities: avenues, skylines, bridges, harbors",
+  "monsters at sea: carrier groups, container ports, oil rigs, lighthouses",
+  "monsters on landmarks and arenas: stadiums, towers, dams, monuments",
+  "monsters in the sky and on mountains: airliners, summits, cloud tops over cities",
+  "mixed legends from different myths across the world's most famous places",
 ];
 
-const SIZE_RULES = `THIS POST IS A SIZE-COMPARISON POST in the series "HOW BIG WOULD THEY REALLY BE?". It shows how big five legendary creatures would be in the real world.
+const SIZE_RULES = `THIS POST IS A POST in the series "HOW BIG WOULD THEY REALLY BE?": five colossal legendary creatures shown at their true size in the real world, each in a jaw-dropping cinematic shot.
 - "title": exactly the series title you are given. Do not change it.
-- Each option is ONE creature with its size: "name" is ALL-CAPS ready, 2-6 words, in the shape "CREATURE: SIZE FACT" ("KRAKEN: 120 M LONG", "THE ROC: TALLER THAN A 747", "FENRIR: 25 M AT THE SHOULDER", "LEVIATHAN: BIGGER THAN A CARRIER"). The size fact is either a measurement or a comparison to the real object in the picture. Sizes follow the legend where it says something, otherwise a plausible epic size.
+- Each option is ONE colossal creature. "name" is ALL-CAPS ready, 2-6 words: the creature and ONE bold measurement ("THE KRAKEN: 400 M", "BAHAMUT: 2 KM LONG", "FENRIR: 90 M AT THE SHOULDER", "THE ROC: 300 M WINGSPAN"). NEVER compare it to an everyday object (no "as big as a school bus", no "taller than a house", no "size of a bus"); the picture shows the scale. Sizes are huge and epic: tens to hundreds of meters, up to kilometers for the biggest.
 - Order the five from SMALLEST to BIGGEST, so the post builds to the biggest reveal.
-- "scene": the creature and ONE real-world object a viewer recognizes at a glance (a semi truck, a school bus, a 747, a cargo ship, a two-story house, a stadium, a skyscraper, a suspension bridge, an aircraft carrier, a mountain with a town below), side by side at the SAME distance from the camera, both fully in frame, a wide shot. The object must be clearly visible and recognizable, so the size difference reads instantly. Use a different object and setting for every creature.
-- "coverScene": a colossal creature silhouette or body looming over a real city, harbor or landmark at dusk, dwarfing it.
-- "motion": slow, heavy movement that shows its bulk, at natural speed (the kraken's tentacles tighten around the ship as waves crash; the roc raises its head and ruffles its wings beside the jet).
+- "scene": the creature in an ICONIC, instantly recognizable real place, filmed like a blockbuster, in the spirit of a kaiju film: a titan standing between skyscrapers on a city avenue at night with traffic and people far below, a dragon perched on the rim of a packed football stadium under the floodlights, a kraken rising out of the ocean and wrapping an aircraft carrier, a serpent coiled around a suspension bridge, a phoenix over a cityscape at dusk, a colossal wolf on a mountain above a lit town, a sky whale passing an airliner. Say the camera angle and why it's dramatic: street level looking up, from a helicopter, from the stadium stands, from the deck of a ship, from a skyscraper roof, from inside an airliner window. The real place, the people and the vehicles must be clearly visible and recognizable so the scale is obvious and stunning. Different place, creature type and angle for all five.
+- "coverScene": the most iconic colossal shot of all: a giant silhouette looming over a famous skyline or harbor at dusk.
+- "motion": slow, heavy, majestic movement that shows its bulk, at natural speed (the titan takes one ground-shaking step as cars stop; the kraken's tentacles tighten around the carrier as spray explodes; the dragon spreads its wings over the stadium as floodlights flicker).
 - "endCard": exactly "WHICH ONE WOULD YOU RUN FROM?"
-- "captionQuestion": asks which one they'd run from, or which one they'd least want to see on their street.
-- Never repeat a creature used in recent posts of this series if you can avoid it.
+- "captionQuestion": asks which one they'd run from, or which one they'd least want to see in their city.
+- Never repeat a creature or a place used in recent posts of this series if you can avoid it.
 Everything else in the format above still applies.`;
 
 /**
@@ -659,7 +662,7 @@ export function buildMythicImagePrompt(
     return [
       `A breathtaking, hyper-real cinematic film still, vertical composition, wide shot: ${scene}`,
       NO_HUMAN_FACE_LINE,
-      "The creature and the real-world object stand side by side at the same distance from the camera, both whole and fully in frame. The real-world object must be clearly visible and recognizable so the size difference reads instantly. Open sky or atmosphere in the top fifth of the frame (a label is added there later).",
+      "A blockbuster kaiju-film shot at true scale: the colossal creature in an iconic, instantly recognizable real place (city, stadium, harbor, bridge, carrier, skyline), from a dramatic cinematic angle. The real place, the people and the vehicles are clearly visible and tiny next to it, so the scale is obvious and awe-inspiring. The creature is the clear hero of the frame. Open sky or atmosphere in the top fifth of the frame (a label is added there later).",
       "Shot like a prestige film: real weather, real light, tactile detail, believable anatomy, true-to-life scale, tack-sharp focus.",
       "Not a cartoon, not anime, not a video-game render, not a painting or illustration. No text, letters, numbers, logos or watermarks anywhere in the image. Nothing gory.",
     ].join("\n");

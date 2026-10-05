@@ -895,11 +895,13 @@ export const carouselDailyCronFn = inngest.createFunction(
       // lanes... i want random variation based on the theme post"). Each
       // Mythicals run draws a post type at random, skipping types already
       // posted today. Drawn inside a step so Inngest replays keep it.
-      // "size" (How Big Would They Really Be?) removed 2026-10-04 (Keenan:
-      // "get rid of 'how big would they really be' entirely"); its slot went
-      // to the mythic-colossus cinematic lane.
-      type MythMode = "choice" | "duo" | "place" | "know" | "scenario" | "versus";
-      const MYTH_MODES: MythMode[] = ["choice", "duo", "place", "know", "scenario", "versus"];
+      // "size" (How Big Would They Really Be?) was removed 2026-10-04 and
+      // brought back 2026-10-05 (Keenan: "re-continue the 'how big would they
+      // really be?' with super cool perspective shots of 5 different mythical
+      // creatures... godzilla standing in a city, dragon on a football
+      // stadium, kraken over an aircraft carrier").
+      type MythMode = "choice" | "duo" | "place" | "know" | "scenario" | "size" | "versus";
+      const MYTH_MODES: MythMode[] = ["choice", "duo", "place", "know", "scenario", "size", "versus"];
       const choiceMode: MythMode =
         forcedMode && (MYTH_MODES as string[]).includes(forcedMode)
           ? (forcedMode as MythMode)
@@ -922,6 +924,14 @@ export const carouselDailyCronFn = inngest.createFunction(
                   select: { topicSlug: true },
                 });
                 const used = new Set(posted.map((p) => mythicModeFromSlug(p.topicSlug)));
+                // "How big would they really be?" is a daily series (2026-10-01,
+                // per Keenan: "consistently posts daily"; back 2026-10-05): the
+                // third run of the day makes it, or any later run if it still
+                // hasn't happened.
+                if (!used.has("size") && posted.length >= 2) {
+                  console.log("[carousel-cron] post type: size (daily series)");
+                  return "size" as MythMode;
+                }
                 const board = await readScoreboard("mythicals");
                 const choice = chooseMythicPostType(board, used);
                 console.log(`[carousel-cron] post type: ${choice.arm} (${choice.reason}) ${choice.samples ? JSON.stringify(choice.samples) : ""}`);
@@ -984,6 +994,7 @@ export const carouselDailyCronFn = inngest.createFunction(
           PLACE_CATEGORIES,
           KNOW_CATEGORIES,
           SCENARIO_CATEGORIES,
+          SIZE_CATEGORIES,
           VERSUS_CATEGORIES,
         } = await import(
           "@/lib/content-factory/choice-lane"
@@ -1012,9 +1023,16 @@ export const carouselDailyCronFn = inngest.createFunction(
                 ? KNOW_CATEGORIES[Math.floor(Math.random() * KNOW_CATEGORIES.length)]
                 : choiceMode === "scenario"
                   ? SCENARIO_CATEGORIES[Math.floor(Math.random() * SCENARIO_CATEGORIES.length)]
-                  : choiceMode === "versus"
-                    ? VERSUS_CATEGORIES[Math.floor(Math.random() * VERSUS_CATEGORIES.length)]
-                    : rollChoiceCategory(recentCats);
+                  : choiceMode === "size"
+                    ? SIZE_CATEGORIES[Math.floor(Math.random() * SIZE_CATEGORIES.length)]
+                    : choiceMode === "versus"
+                      ? VERSUS_CATEGORIES[Math.floor(Math.random() * VERSUS_CATEGORIES.length)]
+                      : rollChoiceCategory(recentCats);
+        // Size series part number: every size post so far + 1.
+        const sizePart =
+          choiceMode === "size"
+            ? (await prisma.carouselPost.count({ where: { lane: laneKey, topicSlug: { startsWith: "mythic-size-" } } })) + 1
+            : undefined;
         // Performance loop: bandit picks the category within the post type,
         // then Sonnet writes 3 covers and Jev picks one with the scoreboard
         // as context. Any failure falls back to the random category above.
@@ -1027,7 +1045,7 @@ export const carouselDailyCronFn = inngest.createFunction(
           const recentCatsLoop = await recentLoopCategories(laneKey, 3);
           const pickCat = pl.chooseCategory(board, choiceMode, catalog, recentCatsLoop);
           category = pickCat.arm;
-          const cover = forcedTopic ? null : await pl.chooseMythicCover({
+          const cover = choiceMode === "size" || forcedTopic ? null : await pl.chooseMythicCover({
             postType: choiceMode,
             category,
             recentTitles: recent.map((p) => p.headline),
@@ -1045,6 +1063,7 @@ export const carouselDailyCronFn = inngest.createFunction(
         }
         return generateChoiceTopic({
           mode: choiceMode,
+          part: sizePart,
           category,
           theme: choiceLane.spec.theme,
           recentTitles: recent.map((p) => p.headline),
@@ -1117,7 +1136,8 @@ export const carouselDailyCronFn = inngest.createFunction(
             // a description. just place the name of the beast on there").
             // The lore line is still written (it keeps the five picks distinct and
             // feeds the diversity check) but is no longer shown.
-            const label = `${i + 1}. ${o.name}`;
+            // Size series slides carry the creature line with no number.
+            const label = choiceMode === "size" ? o.name : `${i + 1}. ${o.name}`;
             const overlay = await renderChoiceOverlay({ top: label });
             const { imageUrl, rawImageUrl } = await uploadOverlaySlide(
               raw,

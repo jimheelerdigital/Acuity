@@ -336,8 +336,8 @@ export const livingReelQueueFn = inngest.createFunction(
         claimed.push({
           bucket,
           dryRun,
-          // Tag = a Mythicals post type (2026-10-01: any of them, incl. versus; size removed 2026-10-04).
-          mode: ["duo", "place", "know", "scenario", "versus", "choice"].find((m) => tag.startsWith(m)),
+          // Tag = a Mythicals post type (2026-10-01: any of them, incl. size/versus).
+          mode: ["duo", "place", "know", "scenario", "size", "versus", "choice"].find((m) => tag.startsWith(m)),
           ...(topic ? { topic } : {}),
         });
       }

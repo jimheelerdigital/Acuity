@@ -7,6 +7,34 @@
 
 ---
 
+## [2026-10-05] — "How Big Would They Really Be?" is back, as kaiju-film shots
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** see "content: Bring back How Big as kaiju-style perspective shots"
+
+### In plain English (for Keenan)
+- **The series is back:** "HOW BIG WOULD THEY REALLY BE? PART N" posts daily again on Legendary Mythicals, continuing at Part 5.
+- **Each post:** five colossal creatures, each shown like a scene from a monster movie in a famous real place:
+  - a titan standing between skyscrapers
+  - a dragon on the rim of a packed football stadium
+  - a kraken wrapped around an aircraft carrier
+- **Labels:** each slide gives the creature and one bold size ("THE KRAKEN: 400 M"). No more "as big as a school bus" comparisons.
+- **Colossal Encounters is unaffected:** it stays its own daily post, so Mythicals still posts 6 times a day.
+
+### Technical changes (for Jimmy)
+- `inngest/functions/carousel-daily.ts`: restores Mythicals `size` mode (the MythMode list, the daily slot on the 3rd run, the SIZE_CATEGORIES roll, the part number, no cover pick, unnumbered labels).
+- `lib/content-factory/choice-lane.ts`:
+  - `SIZE_CATEGORIES` rewritten (cities, sea, landmarks/arenas, sky/mountains, mixed)
+  - `SIZE_RULES` rewritten: iconic places plus a cinematic angle; name = creature plus one measurement; everyday comparisons banned
+  - the size image prompt is now a kaiju-film true-scale shot instead of "side by side with an object"
+- `inngest/functions/carousel-living-reel.ts`: lane-request tag `size` works again.
+
+### Manual steps needed
+- [ ] Push when Keenan says so, then `curl -X PUT https://goripple.io/api/inngest` (Claude Code)
+
+### Notes
+- With the picks lane at hours [5,6,8,9,10], the 3rd run of the day (08:00 UTC) makes the size post. Mythicals stays at 6 posts a day (5 picks including How Big, plus 1 Colossal Encounters).
+
 ## [2026-10-05] — Colossal Encounters rotates four formats
 **Requested by:** Keenan
 **Committed by:** Claude Code
