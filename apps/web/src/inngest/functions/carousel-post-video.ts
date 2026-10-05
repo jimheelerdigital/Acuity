@@ -345,7 +345,10 @@ export const carouselPostVideoFn = inngest.createFunction(
     const { POST_VIDEO_WAVE, POST_VIDEO_MODEL, POST_VIDEO_FALLBACK_MODEL, POST_VIDEO_ROUNDS } = await import(
       "@/lib/content-factory/post-video"
     );
-    const attemptModels = [...new Set([forcedModel, POST_VIDEO_MODEL, POST_VIDEO_FALLBACK_MODEL].filter((m): m is string => !!m))].slice(0, 2);
+    // Two passes: the (forced or default) model, then the backup. Since
+    // 2026-10-05 both are Kling, so the second pass retries undelivered clips
+    // on Kling again (Keenan: no Hailuo, "only the kling we use").
+    const attemptModels = [forcedModel || POST_VIDEO_MODEL, POST_VIDEO_FALLBACK_MODEL].filter((m): m is string => !!m);
     // Out of Higgsfield credits (2026-10-02): stop submitting for this post
     // and ship stills on purpose (the health check won't rebuild it).
     let noCredits = false;

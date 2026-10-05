@@ -97,7 +97,6 @@ export async function noteSubmitWave(submittedCount: number, errors: string[]): 
 
 const BUCKET = "content-factory";
 
-const HAILUO_STD = "minimax/hailuo-2.3/standard/image-to-video";
 const KLING_STD = "kling-video/v2.5-turbo/standard/image-to-video";
 /**
  * Hailuo's 75%-off promo ends here; after it, Kling 2.5 Standard is cheapest.
@@ -131,7 +130,9 @@ export const POST_VIDEO_MODEL = process.env.HIGGSFIELD_LIVING_MODEL?.trim() || K
  * resubmitted here once, so a slow or broken model costs a few minutes —
  * never the whole night's animation.
  */
-export const POST_VIDEO_FALLBACK_MODEL = process.env.HIGGSFIELD_FALLBACK_MODEL?.trim() || HAILUO_STD;
+// 2026-10-05, per Keenan: "i don't want hailuo as the model... i only want
+// the kling we use". The backup is a second try on the same Kling model.
+export const POST_VIDEO_FALLBACK_MODEL = process.env.HIGGSFIELD_FALLBACK_MODEL?.trim() || KLING_STD;
 
 /**
  * Animated-slide budget per post (2026-09-29, per Keenan: "I don't want to

@@ -7,6 +7,27 @@
 
 ---
 
+## [2026-10-05] — Kling only for post videos (Hailuo removed as backup); model comparison tool
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** see "chore: Use Kling only for post videos"
+
+### In plain English (for Keenan)
+- **Kling only:** post videos are now made only with Kling 2.5 Turbo Standard. Hailuo was still the backup model and is now fully removed. If a clip fails, it's retried once more on Kling.
+- **Quality test:** there's a small admin tool to make the same clip on different Higgsfield models, for side-by-side quality checks.
+
+### Technical changes (for Jimmy)
+- `lib/content-factory/post-video.ts`: `POST_VIDEO_FALLBACK_MODEL` defaults to KLING_STD; the `HAILUO_STD` constant is removed.
+- `inngest/functions/carousel-post-video.ts`: `attemptModels = [forcedModel || POST_VIDEO_MODEL, POST_VIDEO_FALLBACK_MODEL]` (no Set dedupe), so pass 2 retries undelivered clips on the same Kling model.
+- New `app/api/admin/video-compare/route.ts` (admin): submit one image to several dev-API models, then poll with `{ check }`.
+
+### Manual steps needed
+- None
+
+### Notes
+- The live main model was already Kling (another session, 10-05 "you should use turbo standard always"); this removes the last Hailuo path.
+- `HIGGSFIELD_LIVING_MODEL` / `HIGGSFIELD_FALLBACK_MODEL` env overrides still win if set.
+
 ## [2026-10-05] — Ads restructured: production + testing ad set per lane
 **Requested by:** Keenan
 **Committed by:** Claude Code
