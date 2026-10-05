@@ -638,16 +638,27 @@ export async function publishFbPhotoPost(
 export async function publishIgReel(
   account: SocialAccount,
   videoUrl: string,
-  caption: string
+  caption: string,
+  /**
+   * Reel cover (2026-10-04, per Keenan: "add a better cover for instagram
+   * posts"): the post's 9:16 cover slide with its title, instead of a frame
+   * Instagram picks mid-animation. The title sits inside the profile grid's
+   * centered 3:4 crop. If Meta rejects the cover, the Reel posts without it.
+   */
+  coverUrl?: string | null
 ): Promise<PublishResult> {
   if (!account.igUserId) {
     throw new Error(`IG user id not configured for account "${account.key}"`);
   }
-  const container = await graphPost(
-    `${account.igUserId}/media`,
-    { media_type: "REELS", video_url: videoUrl, caption },
-    account.accessToken
-  );
+  const base = { media_type: "REELS", video_url: videoUrl, caption };
+  let container: Record<string, unknown>;
+  try {
+    container = await graphPost(`${account.igUserId}/media`, coverUrl ? { ...base, cover_url: coverUrl } : base, account.accessToken);
+  } catch (err) {
+    if (!coverUrl) throw err;
+    console.warn(`[social-publish] IG reel container with cover failed — retrying without cover: ${err instanceof Error ? err.message : err}`);
+    container = await graphPost(`${account.igUserId}/media`, base, account.accessToken);
+  }
   const creationId = String(container.id);
 
   await waitForContainer(creationId, account.accessToken, 40, 5000);

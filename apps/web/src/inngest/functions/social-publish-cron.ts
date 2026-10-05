@@ -539,7 +539,7 @@ export const socialPublishCronFn = inngest.createFunction(
           if (account && row.platform === "instagram" && account.igUserId) {
             publish = () =>
               video
-                ? publishIgReel(account, video, caption)
+                ? publishIgReel(account, video, caption, post.slides.find((s) => s.kind === "COVER")?.imageUrl ?? null)
                 : publishIgCarousel(
                     account,
                     imageUrls.slice(0, IG_MAX_CAROUSEL_IMAGES),

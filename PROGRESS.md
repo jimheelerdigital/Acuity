@@ -7,6 +7,25 @@
 
 ---
 
+## [2026-10-04] — Instagram Reels get the title cover slide as their cover
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** see "feat: Set the cover slide as the Instagram Reel cover"
+
+### In plain English (for Keenan)
+Instagram Reels used to show whatever frame Instagram picked, often mid-animation and without the question. Every Reel now uses the post's cover slide (the image with the title) as its cover. That's what people see in the profile grid and the Reels tab. The title fits inside the grid's crop. Applies to all three brands.
+
+### Technical changes (for Jimmy)
+- `lib/content-factory/social-publish.ts`: `publishIgReel(..., coverUrl?)` sends `cover_url`. If the container fails with a cover, it retries once without it.
+- `inngest/functions/social-publish-cron.ts`: passes the post's COVER slide imageUrl.
+
+### Manual steps needed
+- None
+
+### Notes
+- Verified on the egg post's cover: the centered 3:4 grid crop (rows 240–1680 of 1920) keeps the whole title.
+- Facebook Reels are unchanged (no cover param used).
+
 ## [2026-10-04] — Instagram goes back to the original songs; Facebook keeps the AI music
 **Requested by:** Keenan
 **Committed by:** Claude Code
