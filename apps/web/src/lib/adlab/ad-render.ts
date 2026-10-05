@@ -181,6 +181,48 @@ export const THEME: Record<BatchGroupKey, { bg: string; text: string; sub: strin
   },
 };
 
+/**
+ * Theme pool for the code-drawn formats (2026-10-05, per Keenan: "it spits
+ * out virtually the same ad look and feel every time ... the more variance
+ * the better"). Each ad picks one from its headline, so a re-render keeps
+ * the same look; the lane theme above is one of the options. The phone
+ * asset stays per lane.
+ */
+const THEME_POOL: Omit<(typeof THEME)["women"], "phone">[] = [
+  { bg: "#F6EFE6", text: "#2B2522", sub: "#6B5E57", accent: "#C8623C", ctaText: "#FFFFFF" },
+  { bg: "#111111", text: "#F5F1EA", sub: "#A8A29E", accent: "#F2A93B", ctaText: "#111111" },
+  { bg: "#FFFFFF", text: "#111111", sub: "#6B6B6B", accent: "#2F5BFF", ctaText: "#FFFFFF" },
+  { bg: "#0E2A47", text: "#FFFFFF", sub: "#A9C1DB", accent: "#FF8A3D", ctaText: "#0E2A47" },
+  { bg: "#E9F2EC", text: "#173528", sub: "#4F6B5D", accent: "#1F7A4D", ctaText: "#FFFFFF" },
+  { bg: "#FFE14D", text: "#151515", sub: "#4A4A2A", accent: "#151515", ctaText: "#FFE14D" },
+  { bg: "#2B1B3D", text: "#F7F0FF", sub: "#B9A6CF", accent: "#FF6FB5", ctaText: "#2B1B3D" },
+  { bg: "#FDE8E4", text: "#4A1F1A", sub: "#8C5A52", accent: "#D6453A", ctaText: "#FFFFFF" },
+  { bg: "#1D1F1E", text: "#E8FF5A", sub: "#A7B08A", accent: "#E8FF5A", ctaText: "#1D1F1E" },
+  { bg: "#EAE6FF", text: "#1E1A3D", sub: "#5D5884", accent: "#5B4BDB", ctaText: "#FFFFFF" },
+  { bg: "#F2F2F0", text: "#1A1A1A", sub: "#777777", accent: "#E03A1E", ctaText: "#FFFFFF" },
+  { bg: "#123C3A", text: "#F4EFE4", sub: "#9DBAB4", accent: "#F4C95D", ctaText: "#123C3A" },
+];
+
+/** Notes-app chrome pool (light and dark) for the text-wall format. */
+const NOTES_POOL: { bg: string; text: string; sub: string; chrome: string }[] = [
+  { bg: "#FFFFFF", text: "#1C1C1E", sub: "#8E8E93", chrome: "#D9A21B" },
+  { bg: "#1C1C1E", text: "#F2F2F7", sub: "#8E8E93", chrome: "#E5A823" },
+  { bg: "#FFFBEA", text: "#2A2414", sub: "#8A7F5C", chrome: "#C9A227" },
+  { bg: "#F4F7FB", text: "#14202E", sub: "#7A8899", chrome: "#2F6FDB" },
+  { bg: "#101418", text: "#E6EDF3", sub: "#7D8590", chrome: "#3FB950" },
+];
+
+function seedIndex(seed: string, n: number): number {
+  let h = 0;
+  for (const ch of seed) h = (h * 31 + ch.charCodeAt(0)) | 0;
+  return Math.abs(h) % n;
+}
+
+/** The theme for one ad: picked from the pool by its headline, phone asset from the lane. */
+export function themeFor(groupKey: BatchGroupKey, seed: string): (typeof THEME)["women"] {
+  return { ...THEME_POOL[seedIndex(seed, THEME_POOL.length)], phone: THEME[groupKey].phone };
+}
+
 export const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 
 export async function textBlock(
@@ -226,7 +268,7 @@ async function renderAppProof(
   size: { w: number; h: number },
   story: boolean
 ): Promise<Buffer> {
-  const t = THEME[groupKey];
+  const t = themeFor(groupKey, copy.headline);
   const bold = await ensureFontFile("Bold");
   const medium = await ensureFontFile("Medium");
 
@@ -324,7 +366,7 @@ async function renderSayCatch(
   size: { w: number; h: number },
   story: boolean
 ): Promise<Buffer> {
-  const t = THEME[groupKey];
+  const t = themeFor(groupKey, copy.headline);
   const bold = await ensureFontFile("Bold");
   const medium = await ensureFontFile("Medium");
   const italic = await ensureFontFile("MediumItalic").catch(() => medium);
@@ -454,10 +496,6 @@ export interface TextWallCopy {
   ctaLabel: string;
 }
 
-const NOTES: Record<BatchGroupKey, { bg: string; text: string; sub: string; chrome: string }> = {
-  women: { bg: "#FFFFFF", text: "#1C1C1E", sub: "#8E8E93", chrome: "#D9A21B" },
-  men: { bg: "#1C1C1E", text: "#F2F2F7", sub: "#8E8E93", chrome: "#E5A823" },
-};
 
 async function renderTextWall(
   groupKey: BatchGroupKey,
@@ -465,8 +503,8 @@ async function renderTextWall(
   size: { w: number; h: number },
   story: boolean
 ): Promise<Buffer> {
-  const n = NOTES[groupKey];
-  const t = THEME[groupKey];
+  const n = NOTES_POOL[seedIndex(copy.headline + "|notes", NOTES_POOL.length)];
+  const t = themeFor(groupKey, copy.headline);
   const bold = await ensureFontFile("Bold");
   const medium = await ensureFontFile("Medium");
   const k = story ? 1.12 : 1;
@@ -559,7 +597,7 @@ async function renderWeeklyReport(
   size: { w: number; h: number },
   story: boolean
 ): Promise<Buffer> {
-  const t = THEME[groupKey];
+  const t = themeFor(groupKey, copy.headline);
   const bold = await ensureFontFile("Bold");
   const medium = await ensureFontFile("Medium");
   const k = story ? 1.32 : 1.15;

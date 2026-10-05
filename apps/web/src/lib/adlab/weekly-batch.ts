@@ -28,13 +28,14 @@ import { lastJsonText } from "@/lib/content-factory/claude-client";
 import { AD_CLAIM_GUARDRAIL, PRODUCT_CATEGORY, VOICE_PRINCIPLE, productTruth } from "@/lib/positioning";
 import { displayMonthly } from "@/lib/pricing";
 import { HOOK_STYLES, VIDEO_TEMPLATES, validateVideoScript, type HookStyle, type VideoScript, type VideoTemplate } from "@/lib/adlab/ad-video";
+import { LOOK_KEYS, assignLooks, buildLookPrompt, copyFitsLook, fallbackLook, lookByKey, lookNeedsText, randomVariant } from "@/lib/adlab/ad-looks";
 import { SAFE_ZONE_RULES, SOURCE_SIZE, cutPlacements, renderAppProofPlacements, renderSayCatchPlacements, renderTextWallPlacements, renderWeeklyReportPlacements } from "@/lib/adlab/ad-render";
 
 // ─── Groups ───────────────────────────────────────────────────────────────
 
 export type BatchGroupKey = "women" | "men";
 
-interface GroupConfig {
+export interface GroupConfig {
   key: BatchGroupKey;
   projectSlug: string;
   projectName: string;
@@ -436,6 +437,8 @@ export interface AdImageCopy {
    *  creatives rebuild with the lane default. */
   visualStyle?: string;
   cardPalette?: string;
+  /** Per-ad randomization for the look library (ad-looks.ts, 2026-10-05). */
+  lookVariant?: import("@/lib/adlab/ad-looks").LookVariant;
   /** text-wall format: the first-person note, 4–8 short lines. */
   lines?: string[];
   /** weekly-report format: three stat tiles + one insight. */
@@ -458,7 +461,7 @@ export interface AdImageCopy {
 // anything reaches the image model; the regen path parses it back.
 const AD_COPY_TAG = "[[AD_COPY:";
 export function encodeAdCopy(c: AdImageCopy): string {
-  const extra = { solutionLine: c.solutionLine, benefits: c.benefits, said: c.said, caught: c.caught, visualStyle: c.visualStyle, cardPalette: c.cardPalette, lines: c.lines, stats: c.stats, insight: c.insight, imageScene: c.imageScene || undefined, video: c.video, videoUrl: c.videoUrl, openerRequestId: c.openerRequestId, openerModel: c.openerModel, openerClipUrl: c.openerClipUrl, openerFailed: c.openerFailed, jev: c.jev };
+  const extra = { solutionLine: c.solutionLine, benefits: c.benefits, said: c.said, caught: c.caught, visualStyle: c.visualStyle, cardPalette: c.cardPalette, lookVariant: c.lookVariant, lines: c.lines, stats: c.stats, insight: c.insight, imageScene: c.imageScene || undefined, video: c.video, videoUrl: c.videoUrl, openerRequestId: c.openerRequestId, openerModel: c.openerModel, openerClipUrl: c.openerClipUrl, openerFailed: c.openerFailed, jev: c.jev };
   return `\n${AD_COPY_TAG}${JSON.stringify(extra)}]]`;
 }
 export function decodeAdCopy(prompt: string | null | undefined): Partial<AdImageCopy> {
@@ -628,6 +631,14 @@ export function buildAdImagePrompt(
   copy: AdImageCopy,
   groupKey: BatchGroupKey
 ): string {
+  // Look library (2026-10-05): image-model looks build from the ad's own
+  // variant (palette, type, CTA style, scene, light, camera).
+  const look = typeof format === "string" ? lookByKey(format) : undefined;
+  if (look && look.family !== "code") {
+    const lookVariant = copy.lookVariant ?? randomVariant(groupKey);
+    const withVariant = { ...copy, lookVariant };
+    return buildLookPrompt(look, withVariant, BATCH_GROUPS[groupKey], lookVariant) + encodeAdCopy(withVariant);
+  }
   return resolveAdFormat(format).build(copy, BATCH_GROUPS[groupKey]) + encodeAdCopy(copy);
 }
 
@@ -705,7 +716,8 @@ const BatchAdSchema = z.object({
   caught: z.array(z.string().max(80)).min(3).transform((c) => c.slice(0, 3)),
   // Learning loop (2026-09-24): which image format carries this ad, and
   // whether it applies a proven winning pattern or tests something new.
-  format: z.enum(AD_FORMAT_KEYS).optional(),
+  // Any format or look key (2026-10-05: the look library adds ~30 keys; the slot decides anyway).
+  format: z.string().max(40).optional(),
   archetype: z.string().max(40).optional(),
   strategy: z.enum(["exploit", "explore"]).optional(),
   // Research rebuild (2026-09-29): text-wall + weekly-report copy.
@@ -745,7 +757,7 @@ const SUBMIT_ADS_TOOL = {
             benefits: { type: "array", items: { type: "string" } },
             said: { type: "string" },
             caught: { type: "array", items: { type: "string" } },
-            format: { type: "string", enum: [...AD_FORMAT_KEYS] },
+            format: { type: "string", enum: [...new Set([...AD_FORMAT_KEYS, ...LOOK_KEYS])] },
             strategy: { type: "string", enum: ["exploit", "explore"] },
             lines: { type: "array", items: { type: "string" } },
             stats: {
@@ -995,7 +1007,24 @@ export async function createBatchForGroup(
 ): Promise<{ experimentId: string; creativeIds: string[]; videoCreativeIds: string[]; digestDate: string }> {
   const g = BATCH_GROUPS[groupKey];
   // Each lane has its own slots (2026-09-30): the men's are BWK-shaped.
-  const SLOTS = SLOTS_BY_LANE[groupKey];
+  // LOOKS (2026-10-05, per Keenan: "the more variance the better"): the slot
+  // keeps its hook angle, but its look comes from the look library, unique
+  // in the batch and avoiding the last two weeks' looks (lib/adlab/ad-looks.ts).
+  const recentLooks = new Set(
+    (
+      await prisma.adLabCreative.findMany({
+        where: {
+          createdAt: { gte: new Date(Date.now() - 14 * 86_400_000) },
+          angle: { experiment: { campaignTags: { hasEvery: ["weekly-reddit-batch", groupKey] } } },
+        },
+        select: { formatKey: true },
+      })
+    )
+      .map((c) => c.formatKey)
+      .filter((k): k is string => !!k)
+  );
+  const assignedLooks = assignLooks(SLOTS_BY_LANE[groupKey].length, recentLooks);
+  const SLOTS = SLOTS_BY_LANE[groupKey].map((sl, i) => ({ ...sl, format: assignedLooks[i].key }));
   const { id: projectId } = await ensureGroupProject(groupKey);
   const project = await prisma.adLabProject.findUniqueOrThrow({ where: { id: projectId } });
 
@@ -1088,8 +1117,8 @@ ${JSON.stringify(g.usps, null, 2)}
 
 ${recentBlock}
 ${bestAdBlock}
-THE 10 SLOTS — every slot has a FIXED hook template and a FIXED format. Write the ad for the slot you are given; set "archetype" to the slot key.
-${SLOTS.map((sl) => `- ${sl.key} [format: ${sl.format}]: ${sl.how}${sl[groupKey] ? `\n    Example for this lane (write your OWN, don't copy): ${sl[groupKey]}` : ""}`).join("\n")}
+THE 10 SLOTS — every slot has a FIXED hook template and an assigned LOOK (the visual format for this week). Write the ad for the slot you are given; set "archetype" to the slot key. If a slot's description mentions a format, the assigned LOOK overrides it: write the hook for that look, and fill the copy fields the look needs.
+${SLOTS.map((sl) => { const look = lookByKey(sl.format); return `- ${sl.key} [look: ${look?.label ?? sl.format} — ${look ? lookNeedsText(look) : "headline + solutionLine"}; format: ${sl.format}]: ${sl.how}${sl[groupKey] ? `\n    Example for this lane (write your OWN, don't copy): ${sl[groupKey]}` : ""}`; }).join("\n")}
 ${learningSection ? `\n${learningSection}\n` : ""}${competitorSection ? `\n${competitorSection}\n` : ""}${organicSection ? `\n${organicSection}\n` : ""}
 AUDIENCE THEMES (real pain distilled from the audience's own Reddit threads, in their own words — root every new-concept ad in one of these). Use a theme only through its EVERYDAY, widely shared side; skip anything medical/medication, relationship-ending or another major life decision, and never lift a one-off story detail:
 ${themes.map((t, i) => `${i + 1}. THEME: ${t.theme}\n   SUGGESTED ANGLE: ${t.angle}\n   THEIR OWN PHRASES: ${(t.phrases ?? []).join(" | ")}`).join("\n\n")}
@@ -1104,9 +1133,10 @@ FIELD RULES:
 - benefits: exactly 3 lines, each max 40 characters, concrete things Ripple does for this situation.
 - said: max 140 characters, a realistic, specific thing this person would say out loud (names, days, errands, excuses).
 - caught: exactly 3 lines, each max 44 characters — tasks with dates, habits missed, promises, or a repeat, all actually contained in "said".
-- lines: text-wall slots ONLY — 4–7 first-person lines, each ≤70 characters. Omit elsewhere.
-- stats + insight: weekly-report slots ONLY — exactly 3 stats {value ≤6 chars, label ≤18 chars} and insight ≤90 chars. Believable, small, specific numbers — an example of one person's week, never a claim about users. Omit elsewhere.
-- imageScene: 1 sentence. Only used by photo formats: a PLACE or OBJECTS (a kitchen counter with a phone and car keys, a car dashboard, a desk with a half-crossed list, a gym bag by the door). No people, no faces, no hands in focus, no moody stock lighting. For non-photo formats write "n/a".
+- lines: ONLY for slots whose look REQUIRES lines — 4–6 short lines, each ≤60 characters, written for that look (chat messages for a message thread, handwritten notes for a notebook, short phrases for a bingo card, first-person lines for a phone note). Omit elsewhere.
+- stats + insight: ONLY for slots whose look REQUIRES stats — exactly 3 stats {value ≤6 chars, label ≤18 chars} and insight ≤90 chars. Believable, small, specific numbers — an example of one person's week, never a claim about users. Omit elsewhere.
+- benefits: always 3 lines; looks that REQUIRE benefits show them as the list, calendar events, notifications, receipt items or cover lines, so write them to fit the look.
+- imageScene: 1 sentence, for photo looks: a specific, everyday PLACE or OBJECTS from this person's week (school pickup line, gym bench at 6am, kitchen counter at 7am). No people, no faces. Never a dark desk with a planner, notebook, lamp and coffee (overused). For non-photo looks write "n/a".
 - cta: always "SIGN_UP".
 - format: copy the slot's format exactly.
 - strategy: "exploit" for the iterate_* slots, "explore" for the rest.
@@ -1129,7 +1159,7 @@ Submit the ads with the submit_ads tool.`;
   const per = Math.ceil(themes.length / halves.length);
   const themeSlices = halves.map((_, i) => themes.slice(i * per, (i + 1) * per));
   const halfPrompt = (i: number) =>
-    `This request covers ${halves[i].length} of this week's 10 slots (the batch is split into ${halves.length} requests). For EACH slot write ${VARIANTS} genuinely different drafts (a different hook, a different life moment, a different opening line each time), so ${halves[i].length * VARIANTS} ads in total. Set "archetype" to the slot key on every draft. The drafts are scored and only the strongest one per slot becomes an ad, so make each one a real contender, not a small rewording. Slots, in order: ${halves[i].map((sl) => `${sl.key} (format ${sl.format})`).join(", ")}. Root the new-concept drafts in these audience themes: ${themeSlices[i].map((t) => t.theme).join(" | ") || "any of the themes above"}.
+    `This request covers ${halves[i].length} of this week's 10 slots (the batch is split into ${halves.length} requests). For EACH slot write ${VARIANTS} genuinely different drafts (a different hook, a different life moment, a different opening line each time), so ${halves[i].length * VARIANTS} ads in total. Set "archetype" to the slot key on every draft. The drafts are scored and only the strongest one per slot becomes an ad, so make each one a real contender, not a small rewording. Slots, in order: ${halves[i].map((sl) => `${sl.key} (look: ${lookByKey(sl.format)?.label ?? sl.format}, format ${sl.format})`).join(", ")}. Root the new-concept drafts in these audience themes: ${themeSlices[i].map((t) => t.theme).join(" | ") || "any of the themes above"}.
 Call the submit_ads tool IMMEDIATELY. Do not write any analysis, plan, draft or commentary before or after the tool call; think silently and put everything into the tool input.`;
 
   const generateHalf = async (i: number): Promise<z.infer<typeof BatchAdSchema>[]> => {
@@ -1313,6 +1343,7 @@ Call the submit_video_ads tool IMMEDIATELY with no text before or after it.`;
   // position). The slot decides the format, not the model; if the copy a
   // code-drawn format needs is missing, fall back to a statement card.
   const usedSlots = new Set<string>();
+  const usedLookKeys = new Set<string>(SLOTS.map((sl) => sl.format));
   let photoCount = 0;
   for (const [adIndex, ad] of ads.slice(0, 10).entries()) {
     const slot =
@@ -1323,9 +1354,14 @@ Call the submit_video_ads tool IMMEDIATELY with no text before or after it.`;
     let formatKey = slot?.format ?? ad.format ?? "statement-card";
     // Iteration B keeps the winner's own format when it was a photo ad.
     if (slot?.key === "iterate_new_scene" && bestAd && PHOTO_FORMATS.includes(bestAd.format)) formatKey = bestAd.format;
-    if (formatKey === TEXT_WALL_FORMAT && !(ad.lines && ad.lines.length >= 3)) formatKey = "statement-card";
-    if (formatKey === WEEKLY_REPORT_FORMAT && !(ad.stats && ad.stats.length === 3 && ad.insight)) formatKey = "statement-card";
-    if (PHOTO_FORMATS.includes(formatKey) && ++photoCount > 2) formatKey = "statement-card";
+    // A look the copy can't fill (missing lines/stats/said/benefits) falls
+    // back to a headline-only look not yet used in this batch.
+    const look = lookByKey(formatKey);
+    if (look && !copyFitsLook(look, ad)) formatKey = fallbackLook(usedLookKeys).key;
+    if (!look && formatKey === TEXT_WALL_FORMAT && !(ad.lines && ad.lines.length >= 3)) formatKey = fallbackLook(usedLookKeys).key;
+    if (!look && formatKey === WEEKLY_REPORT_FORMAT && !(ad.stats && ad.stats.length === 3 && ad.insight)) formatKey = fallbackLook(usedLookKeys).key;
+    if ((PHOTO_FORMATS.includes(formatKey) || lookByKey(formatKey)?.family === "photo") && ++photoCount > 2) formatKey = fallbackLook(usedLookKeys).key;
+    usedLookKeys.add(formatKey);
     ad.archetype = slot?.key ?? ad.archetype;
     ad.strategy = slot?.iteration ? "exploit" : "explore";
     // One visual style + palette per ad, rotated from a random start so
@@ -1358,7 +1394,7 @@ Call the submit_video_ads tool IMMEDIATELY with no text before or after it.`;
         description: ad.description,
         cta: ad.cta,
         formatKey,
-        generationPrompt: buildAdImagePrompt(formatKey, { ...ad, visualStyle, cardPalette, jev: jevOf.get(ad) ?? undefined }, groupKey),
+        generationPrompt: buildAdImagePrompt(formatKey, { ...ad, visualStyle, cardPalette, lookVariant: randomVariant(groupKey), jev: jevOf.get(ad) ?? undefined }, groupKey),
         complianceStatus: "pending",
         approved: false,
       },
@@ -1420,6 +1456,32 @@ function openai(): OpenAI {
  * an image. Pass force=true to regenerate over an existing image (filename
  * is timestamped so the public URL changes — no stale CDN cache).
  */
+/**
+ * One sample ad in a given look (2026-10-05, look-library review): the
+ * same renderers a real creative uses, returning the 4:5 feed crop. Used by
+ * the look-samples job so Keenan can cut looks before a batch runs.
+ */
+export async function renderLookSample(lookKey: string, copy: AdImageCopy, groupKey: BatchGroupKey): Promise<Buffer> {
+  const cta = ctaLabel(copy.cta);
+  let placements: { feed: Buffer; story: Buffer };
+  if (lookKey === SAY_CATCH_FORMAT) {
+    placements = await renderSayCatchPlacements(groupKey, { headline: copy.headline, said: copy.said ?? "", caught: copy.caught ?? [], solution: copy.solutionLine ?? copy.description, ctaLabel: cta });
+  } else if (lookKey === TEXT_WALL_FORMAT) {
+    placements = await renderTextWallPlacements(groupKey, { headline: copy.headline, lines: copy.lines ?? [], ctaLabel: cta });
+  } else if (lookKey === WEEKLY_REPORT_FORMAT) {
+    placements = await renderWeeklyReportPlacements(groupKey, { headline: copy.headline, stats: copy.stats ?? [], insight: copy.insight ?? "", ctaLabel: cta });
+  } else if (lookKey === APP_PROOF_FORMAT) {
+    placements = await renderAppProofPlacements(groupKey, { headline: copy.headline, subline: copy.description, ctaLabel: cta });
+  } else {
+    const prompt = stripAdCopy(buildAdImagePrompt(lookKey, { ...copy, lookVariant: randomVariant(groupKey) }, groupKey));
+    const response = await openai().images.generate({ model: "gpt-image-2", quality: "high", prompt, n: 1, size: SOURCE_SIZE });
+    const b64 = response.data?.[0]?.b64_json;
+    if (!b64) throw new Error("gpt-image-2 returned no image data");
+    placements = await cutPlacements(Buffer.from(b64, "base64"));
+  }
+  return placements.feed;
+}
+
 export async function generateBatchImage(
   creativeId: string,
   opts?: { force?: boolean }

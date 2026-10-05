@@ -7,6 +7,47 @@
 
 ---
 
+## [2026-10-05] — Ad image builder overhaul: 31 looks with per-ad randomization
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** see "feat: Give the AdLab image builder a 31-look library"
+
+### In plain English (for Keenan)
+- **The problem:** weekly ad batches all looked the same. The last 86 ads used about 5 looks, and every photo was a dark desk with a planner. Each of the 10 weekly slots had a fixed format, the photos had one style per lane, and the code-drawn formats had one design each.
+- **Now:** each ad gets its own look from a library of 31, in five families:
+  - phone-native: message thread, lock screen, voice memo, search bar, calendar, a "week wrapped" card, a reminders list
+  - paper and real world: sticky note, notebook page, receipt, whiteboard, bingo card, chalkboard, Polaroid
+  - editorial: newspaper, magazine cover, poster, handwritten card, chart, flowchart, split panel, nutrition-facts label, report card, statement card
+  - real-place photos
+  - the code-drawn formats
+- **Batch rules:** no look repeats in a batch, the last two weeks' looks are avoided, and no family dominates.
+- **Per-ad randomization on top:** 26 color palettes, 12 type styles, 7 button styles, and for photos 16 real places per lane, 8 lighting setups and 7 camera angles. The code-drawn formats now pick from 12 color themes.
+- **Review before use:** a contact sheet with one sample of every look is being emailed, so Keenan can cut looks before Sunday's batch.
+
+### Technical changes (for Jimmy)
+- New `lib/adlab/ad-looks.ts`:
+  - `LOOKS` (27 image-model looks plus the 4 code looks), the variation pools, `randomVariant`
+  - `assignLooks(n, recent)`: unique, avoids recent; caps native 3, paper 3, editorial 3, photo 2, code 2
+  - `copyFitsLook`, `fallbackLook`, `lookNeedsText`, `buildLookPrompt`
+  - no fabricated third-party proof (no reviews, ratings, usernames or press)
+- `lib/adlab/weekly-batch.ts`:
+  - `createBatchForGroup` assigns a look to each slot from the last 14 days' formatKeys; `formatKey` = the look key
+  - the writer prompt shows each slot's look and the fields it needs; FIELD RULES updated (lines, stats and benefits per look; no dark-desk photo scenes)
+  - the copy-fit fallback goes to an unused headline-only look; photo looks capped at 2
+  - `AdImageCopy.lookVariant` is stored in the AD_COPY tag; `buildAdImagePrompt` routes look keys
+  - the format schema accepts look keys
+  - new `renderLookSample`
+- `lib/adlab/ad-render.ts`: `THEME_POOL` (12 themes) and `NOTES_POOL` (5), picked per ad by a hash of the headline via `themeFor`. The fixed `NOTES` was removed.
+- New Inngest `adlab-look-samples` (event `adlab/look-samples.requested`, 4 renders per step) and `POST /api/admin/adlab/look-samples` (admin or CRON bearer). It emails a labeled contact sheet.
+- Tests: `lib/adlab/ad-looks.test.ts`.
+
+### Manual steps needed
+- [ ] Keenan: reply with any look numbers to cut, before Sunday's batch (Oct 11).
+
+### Notes
+- The samples cost about 27 gpt-image-2 "high" renders. Code looks are free.
+- Not built yet: a batch-level visual similarity / "looks obviously AI" gate. Variety is enforced by construction for now.
+
 ## [2026-10-05] — Kling only for post videos (Hailuo removed as backup); model comparison tool
 **Requested by:** Keenan
 **Committed by:** Claude Code
