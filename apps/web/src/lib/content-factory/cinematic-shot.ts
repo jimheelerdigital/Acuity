@@ -139,12 +139,49 @@ export function buildCinematicStillPrompt(c: CinematicConcept): string {
 }
 
 /**
+ * Formats the lane rotates through (2026-10-04, per Keenan "ok sounds good"
+ * to: rotate "it was never a mountain", the bond, and legendary weapon
+ * reveals alongside the encounter, and let the data pick). The performance
+ * loop's bandit picks one per day (recipe category = format key).
+ * reveal = the video starts on an edited start frame (see
+ * buildCinematicHiddenPrompt); false = Kling animates from the final frame.
+ */
+export const CINEMATIC_FORMATS = {
+  encounter: { label: "a colossal creature's head face to face with a tiny human", reveal: true, rules: "" },
+  "never-a-mountain": {
+    label: "the landscape is the creature: a ridge, island or glacier wakes up",
+    reveal: true,
+    rules: `TODAY'S FORMAT: "IT WAS NEVER A MOUNTAIN" (this overrides the head-rising-out-of-fog description where they differ). Tiny people are ON or BESIDE what looks like ordinary terrain: a snowy ridge, a rocky island, a glacier, a desert mesa, a forested hill. It is actually a colossal sleeping creature. The FINAL frame shows the truth: a wide shot where the terrain clearly is the creature's head or body, one enormous eye open beside the tiny people, its shape readable (brow, horns, snout or shell edges in the rock). "hidden" describes the same terrain with the creature fully disguised: its eye closed and grown over with rock, snow, moss or ice, no face readable. The motion: stillness, then a tremor, snow or rocks or water sliding, the eyelid splitting open, the creature stirring and the camera easing back so the scale lands. Its power can show as frost, magma glowing in the cracks, lightning in the clouds above.`,
+  },
+  bond: {
+    label: "the bond: a human touches a colossal creature's snout and it closes its eyes",
+    reveal: false,
+    rules: `TODAY'S FORMAT: "THE BOND" (this overrides the hidden reveal: the creature is already in frame at the start). One human stands right before the colossal creature's lowered head, close to its snout, still tiny beside it. In 15 seconds: the creature breathes, watching; the human slowly raises a hand and lays it on the creature's snout or scales; the creature exhales softly, its eyes slowly close, it leans into the touch; a gentle sign of its power (embers drifting, frost blooming where the hand rests, a soft glow along its scales). Calm, emotional, awe and trust, never threat. "hidden" is unused (write "none").`,
+  },
+  "legendary-weapon": {
+    label: "a legendary weapon or armor rises before a lone warrior, its power blazing",
+    reveal: true,
+    rules: `TODAY'S FORMAT: "LEGENDARY WEAPON" (this replaces the creature: the subject is a legendary weapon or suit of armor). A colossal or legendary sword, axe, spear, hammer or suit of armor rises out of a frozen lake, a lava pool, a stone altar, the sea or a glacier before ONE lone warrior, small in the frame. "creature" names the weapon or armor and its power ("frost-forged greatsword, ice runes"). The FINAL frame shows it fully risen and blazing with its power (runes alight, fire, frost, lightning), the warrior facing it. "hidden" describes the same place with the weapon not yet risen (unbroken ice, still lava, a bare altar, calm water) with only a faint glow beneath. The motion: stillness and a glow building, the surface cracking, the weapon rising slowly, its power igniting, then settling into the final frame.`,
+  },
+} as const;
+export type CinematicFormat = keyof typeof CINEMATIC_FORMATS;
+export const CINEMATIC_FORMAT_KEYS = Object.keys(CINEMATIC_FORMATS) as CinematicFormat[];
+
+/**
  * Edit prompt for the START frame: the same picture with the creature
  * removed, so the video can reveal it.
  */
-export function buildCinematicHiddenPrompt(c: CinematicConcept): string {
+export function buildCinematicHiddenPrompt(c: CinematicConcept, format: CinematicFormat = "encounter"): string {
+  if (format === "never-a-mountain") {
+    return [
+      `Edit this exact image: disguise the ${c.creature} as ordinary terrain. Its eye is fully closed and grown over with rock, snow, ice or moss; no eye, face, horns or snout are recognizable; it reads as a natural ${c.location}.`,
+      `It should look like: ${c.hidden}`,
+      "Keep everything else identical: the same framing and camera, the same light, sky and weather, the same tiny people in the same place and pose. Photorealistic, same film look. No text, no watermark.",
+    ].join(" ");
+  }
+  const what = format === "legendary-weapon" ? "every part of it" : "every part of it (head, horns, eyes, neck, wings, body)";
   return [
-    `Edit this exact image: remove the ${c.creature} completely, every part of it (head, horns, eyes, neck, wings, body).`,
+    `Edit this exact image: remove the ${c.creature} completely, ${what}.`,
     `In its place: ${c.hidden}`,
     "Keep everything else identical: the same framing and camera, the same light, sky and weather, the same tiny human in the same place and pose, the same ground and setting. Photorealistic, same film look. No creature, no face, no eyes visible. No text, no watermark.",
   ].join(" ");
@@ -193,6 +230,7 @@ export function pickPerspectives(recent: string[], n: number, rng: () => number 
 
 /** Four concepts, one per perspective. Throws when the writer returns nothing usable. */
 export async function writeCinematicConcepts(opts: {
+  format?: CinematicFormat;
   perspectives: string[];
   recent: string[];
   feedback?: string | null;
@@ -210,7 +248,9 @@ export async function writeCinematicConcepts(opts: {
     .join("\n");
   const response = await contentAnthropic.messages.create({
     max_tokens: 6000,
-    system: WRITER_SYSTEM,
+    system: CINEMATIC_FORMATS[opts.format ?? "encounter"].rules
+      ? `${WRITER_SYSTEM}\n\n${CINEMATIC_FORMATS[opts.format ?? "encounter"].rules}`
+      : WRITER_SYSTEM,
     messages: [{ role: "user", content: user }],
   });
   const tokensIn = response.usage.input_tokens;
@@ -254,7 +294,8 @@ export async function writeCinematicConcepts(opts: {
  * the end. Fails open to the first concept.
  */
 export async function pickCinematicConcept(
-  concepts: CinematicConcept[]
+  concepts: CinematicConcept[],
+  format: CinematicFormat = "encounter"
 ): Promise<{ concept: CinematicConcept; reason: string; jev?: { choice: string; p: number } }> {
   if (concepts.length === 1) return { concept: concepts[0], reason: "only concept" };
   const { askJev, choiceOf } = await import("./jev");
@@ -266,7 +307,7 @@ export async function pickCinematicConcept(
     "cinematic-concept",
     {
       page: "Legendary Mythicals, an epic mythical-creature page (mostly men 18-34)",
-      format: "one 15-second vertical cinematic video: a colossal mythical creature's head face to face with one tiny human, no text",
+      format: `one 15-second vertical cinematic video, no text: ${CINEMATIC_FORMATS[format].label}`,
       concepts: concepts.map((c) => ({ title: c.title, creature: c.creature, size: c.size, location: c.location, perspective: c.perspective, video: c.motion })),
     },
     {

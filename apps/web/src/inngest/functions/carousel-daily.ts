@@ -687,8 +687,21 @@ export const carouselDailyCronFn = inngest.createFunction(
             pickPerspectives,
             writeCinematicConcepts,
             pickCinematicConcept,
+            CINEMATIC_FORMAT_KEYS,
           } = await import("@/lib/content-factory/cinematic-shot");
           const { getLaneFeedback } = await import("@/lib/content-factory/performance");
+          // Format rotation (2026-10-04): the performance-loop bandit picks
+          // today's format from the scoreboard, avoiding the last two days'.
+          let format: (typeof CINEMATIC_FORMAT_KEYS)[number] = "encounter";
+          try {
+            const pl = await import("@/lib/content-factory/performance-loop");
+            const board = await pl.readScoreboard("mythicals");
+            const pickFmt = pl.chooseCategory(board, "cinematic", CINEMATIC_FORMAT_KEYS, await recentLoopCategories(laneKey, 2));
+            if ((CINEMATIC_FORMAT_KEYS as string[]).includes(pickFmt.arm)) format = pickFmt.arm as typeof format;
+            console.log(`[carousel-cron] cinematic format: ${format} (${pickFmt.reason})`);
+          } catch (err) {
+            console.warn("[carousel-cron] cinematic format pick failed — encounter:", err instanceof Error ? err.message : err);
+          }
           const recent = await prisma.carouselPost.findMany({
             where: { lane: laneKey, topicSlug: { startsWith: CINEMATIC_SLUG_PREFIX } },
             orderBy: { createdAt: "desc" },
@@ -698,15 +711,16 @@ export const carouselDailyCronFn = inngest.createFunction(
           const decoded = recent.map((p) => decodeCinematicPrompt(p.slides[0]?.imagePrompt ?? ""));
           const perspectives = pickPerspectives(decoded.map((d) => d.perspective ?? ""), 4);
           const concepts = await writeCinematicConcepts({
+            format,
             perspectives,
             recent: decoded.map((d, i) => `${d.creature ?? "?"}, ${d.perspective ?? "?"} (${recent[i].headline})`),
             feedback: await getLaneFeedback(laneKey),
           });
-          const pick = await pickCinematicConcept(concepts);
+          const pick = await pickCinematicConcept(concepts, format);
           console.log(
             `[carousel-cron] cinematic concepts: ${concepts.map((c) => `${c.title} (${c.creature}, ${c.location})`).join(" | ")} → ${pick.concept.title} [${pick.reason}]`
           );
-          return { ...pick, concepts: concepts.map((c) => c.title) };
+          return { ...pick, format: format as (typeof CINEMATIC_FORMAT_KEYS)[number], concepts: concepts.map((c) => c.title) };
         });
         logger.info(`[carousel-cron] Cinematic (${laneKey}): "${concept.concept.title}" — ${concept.concept.creature}`);
         if (dryRun) return saveDryRun(laneKey, concept);
@@ -728,7 +742,12 @@ export const carouselDailyCronFn = inngest.createFunction(
             slot: "cover",
             personAllowed: true,
             fantasy: true,
-            subject: `the head of ${c.creature} (${c.size}), face to face with a tiny human`,
+            subject:
+              concept.format === "legendary-weapon"
+                ? `${c.creature}, a legendary weapon or armor before a lone warrior`
+                : concept.format === "never-a-mountain"
+                  ? `${c.creature} (${c.size}) whose body is the landscape, eye open beside tiny people`
+                  : `the head of ${c.creature} (${c.size}), with a tiny human`,
           });
           logger.info(`[carousel-cron] cinematic frame quality: ${qc}`);
           // No text anywhere (2026-10-04): a transparent overlay keeps the
@@ -751,8 +770,9 @@ export const carouselDailyCronFn = inngest.createFunction(
         // frame → the video animates from the reveal frame (no hiding).
         const frames = await step.run("cinematic-start-frame", async () => {
           const { generateImageWithReference, uploadImage } = await import("@/lib/content-factory/carousel-generate");
-          const { buildCinematicHiddenPrompt } = await import("@/lib/content-factory/cinematic-shot");
+          const { buildCinematicHiddenPrompt, CINEMATIC_FORMATS } = await import("@/lib/content-factory/cinematic-shot");
           const { default: sharp } = await import("sharp");
+          if (!CINEMATIC_FORMATS[concept.format].reveal) return null;
           try {
             const res = await fetch(frame.rawImageUrl);
             if (!res.ok) throw new Error(`reveal frame fetch failed (${res.status})`);
@@ -760,7 +780,7 @@ export const carouselDailyCronFn = inngest.createFunction(
               .resize(1024, 1536, { fit: "cover", position: "centre" })
               .png()
               .toBuffer();
-            const hidden = await generateImageWithReference(buildCinematicHiddenPrompt(concept.concept), reveal23, "cover");
+            const hidden = await generateImageWithReference(buildCinematicHiddenPrompt(concept.concept, concept.format), reveal23, "cover");
             const to916 = (b: Buffer) =>
               sharp(b).resize(1080, 1920, { fit: "cover", position: "centre" }).jpeg({ quality: 95 }).toBuffer();
             const base = `carousels/${dateStr}/${frame.slug}`;
@@ -813,7 +833,7 @@ export const carouselDailyCronFn = inngest.createFunction(
                 brand,
                 lane: laneKey,
                 postType: "cinematic",
-                category: c.perspective,
+                category: concept.format,
                 title: `${c.title}: ${c.creature}`,
                 options: [c.creature],
                 coverScene: c.still,

@@ -1,6 +1,8 @@
 import { describe, it, expect } from "vitest";
 import {
+  CINEMATIC_FORMATS,
   CINEMATIC_PERSPECTIVES,
+  buildCinematicHiddenPrompt,
   cinematicModels,
   cinematicSlug,
   decodeCinematicPrompt,
@@ -51,6 +53,12 @@ describe("cinematic shot", () => {
     const picked = pickPerspectives(recent, 4, () => 0.3);
     expect(new Set(picked).size).toBe(4);
     for (const p of picked) expect(recent).not.toContain(p);
+  });
+
+  it("has a disguise edit for never-a-mountain and a removal edit otherwise", () => {
+    expect(buildCinematicHiddenPrompt(concept, "never-a-mountain")).toMatch(/disguise/);
+    expect(buildCinematicHiddenPrompt(concept, "encounter")).toMatch(/remove/);
+    expect(CINEMATIC_FORMATS.bond.reveal).toBe(false);
   });
 
   it("leads with 4K and falls back to pro", () => {

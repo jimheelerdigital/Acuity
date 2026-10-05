@@ -7,6 +7,37 @@
 
 ---
 
+## [2026-10-05] — Colossal Encounters rotates four formats
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** see "feat: Rotate four formats in the Colossal Encounters lane"
+
+### In plain English (for Keenan)
+The daily Colossal Encounters video now rotates four kinds of shot, and the engagement data decides which ones run more often:
+- **Encounter:** a giant head rising face to face with a tiny person.
+- **"It was never a mountain":** a ridge, island or glacier opens an eye and turns out to be the creature.
+- **The bond:** a person lays a hand on the creature's snout and it closes its eyes.
+- **Legendary weapon:** a blade or suit of armor rises out of ice, lava or stone in front of a lone warrior.
+
+### Technical changes (for Jimmy)
+- `lib/content-factory/cinematic-shot.ts`:
+  - `CINEMATIC_FORMATS` (label, reveal flag, writer rules) and `CINEMATIC_FORMAT_KEYS`
+  - `writeCinematicConcepts({ format })` adds the format's rules to the system prompt
+  - `pickCinematicConcept(concepts, format)`
+  - `buildCinematicHiddenPrompt(c, format)`: never-a-mountain disguises the creature as terrain instead of removing it
+- `inngest/functions/carousel-daily.ts`:
+  - the format is picked by the performance-loop bandit (`chooseCategory`, postType `cinematic`, avoiding the last 2 days' formats)
+  - the recipe category is now the format
+  - the QC subject is per format
+  - the bond skips the hidden start frame
+- Test: hidden-prompt variants and the bond's no-reveal flag.
+
+### Manual steps needed
+- [ ] Push when Keenan says so, then `curl -X PUT https://goripple.io/api/inngest` (Claude Code)
+
+### Notes
+- Formats with no posts yet get explored first; there's no data on them until each has run a few times.
+
 ## [2026-10-05] — Mythicals powers become subtle effects; calmer openings; another song removed; YouTube backfill
 **Requested by:** Keenan
 **Committed by:** Claude Code
