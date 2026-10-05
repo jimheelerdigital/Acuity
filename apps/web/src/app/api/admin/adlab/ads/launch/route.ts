@@ -261,7 +261,7 @@ export async function POST(req: NextRequest) {
     }
     const { TEST_DAILY_BUDGET_CENTS } = await import("@/lib/adlab/evergreen");
     const ownAdsetBudget = (experiment as Record<string, unknown>).adSetDailyBudgetCents as number | null;
-    adsetBudget = experiment.campaignTags?.includes("own-adset") && ownAdsetBudget ? ownAdsetBudget : TEST_DAILY_BUDGET_CENTS;
+    adsetBudget = experiment.campaignTags?.includes("own-adset") && ownAdsetBudget ? ownAdsetBudget : TEST_DAILY_BUDGET_CENTS[evergreenGroup];
     campaignName = experiment.campaignName ?? `${project.name} | evergreen`;
     await prisma.adLabExperiment.update({
       where: { id: experimentId },

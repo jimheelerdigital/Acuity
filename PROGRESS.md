@@ -7,6 +7,36 @@
 
 ---
 
+## [2026-10-05] — Ads restructured: production + testing ad set per lane
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** see "feat: Run each ad lane as one production and one testing ad set"
+
+### In plain English (for Keenan)
+- **Each lane now has exactly two ad sets:** production (proven ads) and testing (this week's new ads).
+- **Budgets ($150/day total):**
+  - men production $70 and women production $30
+  - men testing $30 and women testing $20
+- **Planner ads:** the two winners, "Bought the planner. Skipped the planning." and "Fourth planner this year. Still behind.", move into production. Their separate planner ad sets are turned off.
+- **Weekly cycle:**
+  - new picks run 7 days in testing
+  - winners move to production and the rest switch off
+  - production keeps at most 8 ads
+
+### Technical changes (for Jimmy)
+- `lib/adlab/evergreen.ts`:
+  - `GROUP_DAILY_BUDGET_CENTS` men 7000
+  - `TEST_DAILY_BUDGET_CENTS` is now per lane `{ women: 2000, men: 3000 }`, and `ensureTestAdSet` re-asserts it on every launch
+  - new `createInMain(group, ad)`: a new ad in MAIN on the same Meta creative, registered as a live AdLabAd. `graduateTestAds` now uses it.
+- New `app/api/admin/adlab/ads/promote/route.ts` (admin or CRON bearer), body `{ adIds }`: createInMain, then pause the old ad. The old ad is only paused after the new one exists.
+- `app/api/admin/adlab/ads/launch/route.ts`: uses the per-lane test budget.
+
+### Manual steps needed
+- None
+
+### Notes
+- Graph `/copies` failed this morning ("created by an app in development mode" with Keenan's user token). `createInMain` reuses the creative_id with the AdLab app's own token instead.
+
 ## [2026-10-05] — Kling 2.5 Turbo Standard animates every post video
 **Requested by:** Keenan
 **Committed by:** Claude Code

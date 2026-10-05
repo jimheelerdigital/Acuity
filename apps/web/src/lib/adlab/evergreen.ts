@@ -33,11 +33,11 @@ export const GROUP_DAILY_BUDGET_CENTS: Record<BatchGroupKey, number> = {
   // Still stuck." = 4 of the last 9 paid trials). Total stays $100 + $30 test.
   // 2026-10-02 (later), per Keenan: "cut back $10 per bwk main and $10 for
   // ripple main" — funds the planner-variation ad sets ($20 men, $15 women).
-  // 2026-10-05: tried moving the planner tests into MAIN; Meta refused to
-  // copy their posts ("created by an app in development mode"), so they stay
-  // in their own ad sets and these stay at $30 / $50.
+  // 2026-10-05, per Keenan: two ad sets per lane, production + testing.
+  // Production $30 women / $70 men; testing $20 / $30 (TEST_DAILY_BUDGET_CENTS).
+  // The planner ads were promoted into production and their ad sets retired.
   women: 3000,
-  men: 5000,
+  men: 7000,
 };
 
 /** 2026-09-30, per Keenan: "start to optimize for purchase". Was
@@ -412,8 +412,8 @@ export async function makeRoomInAdSet(
 // The test ad set is found by name inside the lane's campaign (no schema
 // column), created on first use with the main ad set's exact targeting.
 
-/** Per lane: $15 × 2 lanes = the $30/day test budget. */
-export const TEST_DAILY_BUDGET_CENTS = 1500;
+/** Per-lane test budget (2026-10-05, per Keenan: "men testing $30 women testing $20"). Was $15 each. */
+export const TEST_DAILY_BUDGET_CENTS: Record<BatchGroupKey, number> = { women: 2000, men: 3000 };
 export const TEST_DAYS = 7;
 const TEST_SUFFIX = "| test ad set";
 
@@ -433,13 +433,14 @@ export async function ensureTestAdSet(groupKey: BatchGroupKey): Promise<{ campai
   );
   if (found) {
     if (found.effective_status !== "ACTIVE") await meta.metaGraph(found.id, "POST", { status: "ACTIVE" });
+    await meta.updateAdSetBudget(found.id, TEST_DAILY_BUDGET_CENTS[groupKey]);
     return { campaignId: project.evergreenCampaignId, adsetId: found.id, created: false };
   }
   const main = await meta.metaGraph(project.evergreenAdsetId, "GET", { fields: "targeting,attribution_spec" });
   const created = await meta.metaGraph(`${meta.adAccountPath()}/adsets`, "POST", {
     name: `${GROUP_NAMES[groupKey].replace("(signups)", "(purchase)")} ${TEST_SUFFIX}`,
     campaign_id: project.evergreenCampaignId,
-    daily_budget: String(TEST_DAILY_BUDGET_CENTS),
+    daily_budget: String(TEST_DAILY_BUDGET_CENTS[groupKey]),
     optimization_goal: "OFFSITE_CONVERSIONS",
     billing_event: "IMPRESSIONS",
     bid_strategy: "LOWEST_COST_WITHOUT_CAP",
@@ -562,7 +563,7 @@ export async function sendToTest(groupKey: BatchGroupKey, creativeId: string): P
     status: "ACTIVE",
   });
   await prisma.adLabAd.create({
-    data: { creativeId, metaCampaignId: test.campaignId, metaAdsetId: test.adsetId, metaAdId: made.id as string, status: "live", launchedAt: new Date(), dailyBudgetCents: TEST_DAILY_BUDGET_CENTS },
+    data: { creativeId, metaCampaignId: test.campaignId, metaAdsetId: test.adsetId, metaAdId: made.id as string, status: "live", launchedAt: new Date(), dailyBudgetCents: TEST_DAILY_BUDGET_CENTS[groupKey] },
   });
   return made.id as string;
 }
@@ -573,6 +574,42 @@ export async function sendToTest(groupKey: BatchGroupKey, creativeId: string): P
  * re-capped. Ads still inside their week are left alone (the normal audit
  * still stops ones clearly not working).
  */
+/**
+ * A new ad in the lane's MAIN ad set on the same Meta creative as an
+ * existing ad (same post, so likes and comments carry over), registered as
+ * a live AdLabAd. Used by graduation and by /api/admin/adlab/ads/promote.
+ * (A Graph /copies of the ad was refused 2026-10-05 — "created by an app in
+ * development mode" — so this reuses the creative instead.)
+ */
+export async function createInMain(
+  groupKey: BatchGroupKey,
+  ad: { metaAdId: string; creativeId: string; headline: string }
+): Promise<string> {
+  const project = await laneProject(groupKey);
+  if (!project.evergreenCampaignId || !project.evergreenAdsetId) throw new Error(`${groupKey}: no main ad set`);
+  const src = await meta.metaGraph(ad.metaAdId, "GET", { fields: "name,creative{id}" });
+  const metaCreativeId = (src.creative as { id?: string } | undefined)?.id;
+  if (!metaCreativeId) throw new Error("no Meta creative on source ad");
+  const made = await meta.metaGraph(`${meta.adAccountPath()}/ads`, "POST", {
+    name: String(src.name ?? ad.headline),
+    adset_id: project.evergreenAdsetId,
+    creative: { creative_id: metaCreativeId },
+    status: "ACTIVE",
+  });
+  await prisma.adLabAd.create({
+    data: {
+      creativeId: ad.creativeId,
+      metaCampaignId: project.evergreenCampaignId,
+      metaAdsetId: project.evergreenAdsetId,
+      metaAdId: made.id as string,
+      status: "live",
+      launchedAt: new Date(),
+      dailyBudgetCents: GROUP_DAILY_BUDGET_CENTS[groupKey],
+    },
+  });
+  return made.id as string;
+}
+
 export async function graduateTestAds(groupKey: BatchGroupKey): Promise<Record<string, unknown>> {
   const project = await laneProject(groupKey);
   if (!project.evergreenAdsetId || !project.evergreenCampaignId) return { skipped: "no evergreen ad set" };
@@ -590,26 +627,7 @@ export async function graduateTestAds(groupKey: BatchGroupKey): Promise<Record<s
     const j = judged.get(a.creativeId)!;
     try {
       if (j.verdict === "winner" && a.metaAdId) {
-        const src = await meta.metaGraph(a.metaAdId, "GET", { fields: "name,creative{id}" });
-        const creativeId = (src.creative as { id?: string } | undefined)?.id;
-        if (!creativeId) throw new Error("no Meta creative on test ad");
-        const made = await meta.metaGraph(`${meta.adAccountPath()}/ads`, "POST", {
-          name: String(src.name ?? a.creative.headline),
-          adset_id: project.evergreenAdsetId,
-          creative: { creative_id: creativeId },
-          status: "ACTIVE",
-        });
-        await prisma.adLabAd.create({
-          data: {
-            creativeId: a.creativeId,
-            metaCampaignId: project.evergreenCampaignId,
-            metaAdsetId: project.evergreenAdsetId,
-            metaAdId: made.id as string,
-            status: "live",
-            launchedAt: new Date(),
-            dailyBudgetCents: GROUP_DAILY_BUDGET_CENTS[groupKey],
-          },
-        });
+        await createInMain(groupKey, { metaAdId: a.metaAdId, creativeId: a.creativeId, headline: a.creative.headline });
         await pauseAd(a, "paused", `GRADUATED to main ad set after its test week: ${j.reason}`, "maintain");
         graduated.push(`${a.creative.headline} — ${j.reason}`);
       } else {
