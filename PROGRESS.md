@@ -7,6 +7,30 @@
 
 ---
 
+## [2026-10-06] — YouTube posts only each day's 3 best posts; backlog dropped
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** see "feat: Post only the day's 3 best posts to YouTube"
+
+### In plain English (for Keenan)
+YouTube now gets only that day's 3 best Mythicals posts, picked by Jev from the day's posts once they all exist. Older posts never go to YouTube. The backlog was dropped: 40 queued Shorts, including the 8 that hit the upload limit, were skipped. This replaces yesterday's "work through the backlog at 3 a day".
+
+### Technical changes (for Jimmy)
+- `inngest/functions/social-publish-cron.ts`:
+  - new step `youtube-daily-pick` replaces `youtube-jev-pick`:
+    - SKIPs PENDING YouTube rows for posts generatedFor before today (UTC)
+    - from 11:00 UTC, once the day's posts exist, Jev (`youtube-daily-pick` choice, on title hooks) ranks today's pending rows; it keeps `YOUTUBE_DAILY_CAP` (3) minus today's posted count and SKIPs the rest
+    - falls back to queue order
+  - the cap backstop now counts per UTC day instead of a rolling 24h (rolling could push a pick past midnight, where it would be skipped as stale)
+  - the upload-limit back-off (+24h, no attempt used) stays
+- Data: 40 PENDING YouTube rows for older posts set to SKIPPED.
+
+### Manual steps needed
+- None
+
+### Notes
+- Mythicals posts generate 05:00–10:00 UTC and the first Mythicals slot is 15:00 UTC, so the 11:00 UTC pick sees the whole day.
+
 ## [2026-10-05] — YouTube capped at 3 Shorts a day after hitting the upload limit
 **Requested by:** Keenan
 **Committed by:** Claude Code

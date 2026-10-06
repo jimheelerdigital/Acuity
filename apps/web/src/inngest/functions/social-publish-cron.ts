@@ -321,75 +321,67 @@ export const socialPublishCronFn = inngest.createFunction(
       return ready.length;
     });
 
-    // ── 1b. YouTube: Jev picks which Shorts use today's slots (2026-10-05,
-    // per Keenan: "have jev pick the top 3"). With the daily cap (3) and a
-    // backlog, only the open slots' worth of due rows stay due; Jev ranks
-    // the rest by how they'll do on YouTube Shorts (with each post's IG/FB
-    // views as evidence), and the others wait 6h to be ranked again.
-    await step.run("youtube-jev-pick", async () => {
+    // ── 1b. YouTube = the day's 3 best posts only (2026-10-06, per Keenan:
+    // "you need to post the 3 best posts of the day from here on out. no
+    // more retroactive posts"). YouTube rows for posts from earlier days are
+    // skipped. Once the day's posts all exist (from 11:00 UTC; they generate
+    // 05:00–10:00), Jev picks the best of today's still-pending rows to fill
+    // the day's 3 slots (YOUTUBE_DAILY_CAP) and the rest are skipped.
+    await step.run("youtube-daily-pick", async () => {
       const { prisma } = await import("@/lib/prisma");
       const cap = Math.max(1, Number(process.env.YOUTUBE_DAILY_CAP) || 3);
-      const due = await prisma.socialPublish.findMany({
-        where: { platform: "youtube", status: "PENDING", scheduledAt: { lte: new Date() }, attempts: { lt: MAX_ATTEMPTS } },
-        select: { id: true, accountKey: true, carouselPostId: true, carouselPost: { select: { headline: true, topicSlug: true, lane: true } } },
+      const today = new Date();
+      today.setUTCHours(0, 0, 0, 0);
+      const stale = await prisma.socialPublish.updateMany({
+        where: { platform: "youtube", status: "PENDING", carouselPost: { generatedFor: { lt: today } } },
+        data: { status: "SKIPPED", error: "Not one of its day's top posts for YouTube (only the day's best 3 post, 2026-10-06)" },
       });
-      const out: Record<string, unknown> = {};
-      for (const account of [...new Set(due.map((d) => d.accountKey))]) {
-        const rows = due.filter((d) => d.accountKey === account);
-        const posted = await prisma.socialPublish.count({
-          where: { platform: "youtube", accountKey: account, status: "POSTED", postedAt: { gte: new Date(Date.now() - 24 * 3600_000) } },
-        });
-        const open = Math.max(0, cap - posted);
-        if (rows.length <= open) continue;
-        // Evidence: the same post's views on Instagram/Facebook.
-        const other = await prisma.socialPublish.findMany({
-          where: { carouselPostId: { in: rows.map((r) => r.carouselPostId) }, platform: { in: ["instagram", "facebook"] }, status: "POSTED" },
-          select: { carouselPostId: true, views: true },
-        });
-        const views = new Map<string, number>();
-        for (const o of other) views.set(o.carouselPostId, (views.get(o.carouselPostId) ?? 0) + (o.views ?? 0));
-        const ranked = [...rows].sort((a, b) => (views.get(b.carouselPostId) ?? 0) - (views.get(a.carouselPostId) ?? 0));
-        const cands = ranked.slice(0, 30);
-        let order = cands.map((c) => c.id);
-        let how = "by IG/FB views";
-        if (open > 0) {
-          try {
-            const { askJev } = await import("@/lib/content-factory/jev");
-            const criteria: Record<string, string> = {};
-            cands.forEach((c, i) => {
-              criteria[`r${i}`] = `${c.carouselPost.headline} (IG+FB views so far: ${views.get(c.carouselPostId) ?? 0})`;
-            });
-            const r = await askJev(
-              "youtube-pick",
-              { channel: `${account} YouTube Shorts`, goal: "the Short most likely to get views and subscribers on YouTube Shorts today", candidates: cands.length },
-              {
-                best: {
-                  type: "choice",
-                  instructions: "Which of these Shorts will get the most views and new subscribers on YouTube Shorts? Weigh the hook of the title and how the post already did on Instagram/Facebook.",
-                  criteria,
-                },
-              }
-            );
-            const a = r?.answers?.best;
-            if (a && a.type === "choice" && a.probabilities) {
-              order = cands
-                .map((c, i) => ({ id: c.id, p: a.probabilities[`r${i}`] ?? 0 }))
-                .sort((x, y) => y.p - x.p)
-                .map((x) => x.id);
-              how = "jev";
+      if (new Date().getUTCHours() < 11) return { staleSkipped: stale.count, picked: "waiting for the day's posts" };
+      const rows = await prisma.socialPublish.findMany({
+        where: { platform: "youtube", carouselPost: { generatedFor: today }, status: { in: ["PENDING", "POSTED"] } },
+        select: { id: true, status: true, accountKey: true, carouselPost: { select: { headline: true, topicSlug: true } } },
+      });
+      const out: Record<string, unknown> = { staleSkipped: stale.count };
+      for (const account of [...new Set(rows.map((r) => r.accountKey))]) {
+        const mine = rows.filter((r) => r.accountKey === account);
+        const open = Math.max(0, cap - mine.filter((r) => r.status === "POSTED").length);
+        const pending = mine.filter((r) => r.status === "PENDING");
+        if (pending.length <= open) continue;
+        let order = pending.map((p) => p.id);
+        let how = "queue order";
+        try {
+          const { askJev } = await import("@/lib/content-factory/jev");
+          const criteria: Record<string, string> = {};
+          pending.forEach((c, i) => {
+            criteria[`r${i}`] = c.carouselPost.headline;
+          });
+          const r = await askJev(
+            "youtube-daily-pick",
+            { channel: `${account} YouTube Shorts`, goal: "views and new subscribers on YouTube Shorts", picking: `${open} of today's ${pending.length} posts` },
+            {
+              best: {
+                type: "choice",
+                instructions: "Which of today's posts will get the most views and new subscribers as a YouTube Short? Judge the hook of the title: curiosity, scale, an instant debate or a pick people will comment on.",
+                criteria,
+              },
             }
-          } catch (err) {
-            console.warn("[social-publish] youtube jev pick failed — using views:", err instanceof Error ? err.message : err);
+          );
+          const ans = r?.answers?.best;
+          if (ans && ans.type === "choice" && ans.probabilities) {
+            order = pending.map((c, i) => ({ id: c.id, p: ans.probabilities[`r${i}`] ?? 0 })).sort((x, y) => y.p - x.p).map((x) => x.id);
+            how = "jev";
           }
+        } catch (err) {
+          console.warn("[social-publish] youtube daily pick: jev failed — queue order:", err instanceof Error ? err.message : err);
         }
         const keep = new Set(order.slice(0, open));
-        const wait = rows.filter((r) => !keep.has(r.id)).map((r) => r.id);
+        const skip = pending.filter((p) => !keep.has(p.id)).map((p) => p.id);
         await prisma.socialPublish.updateMany({
-          where: { id: { in: wait } },
-          data: { scheduledAt: new Date(Date.now() + 6 * 3600_000) },
+          where: { id: { in: skip } },
+          data: { status: "SKIPPED", error: `Not in today's top ${cap} for YouTube (${how})` },
         });
-        out[account] = { open, kept: [...keep].length, waiting: wait.length, how };
-        console.log(`[social-publish] youtube/${account}: ${open} open slot(s), kept ${keep.size} (${how}), ${wait.length} wait 6h`);
+        out[account] = { open, kept: [...keep].length, skipped: skip.length, how };
+        console.log(`[social-publish] youtube/${account}: today's top ${open} kept (${how}), ${skip.length} skipped`);
       }
       return out;
     });
@@ -670,17 +662,20 @@ export const socialPublishCronFn = inngest.createFunction(
         // uploads per channel per rolling 24h (3 by default, per Keenan "revert to 3 only for now"); extra rows wait, no attempt used.
         if (row.platform === "youtube") {
           const cap = Math.max(1, Number(process.env.YOUTUBE_DAILY_CAP) || 3);
-          const since = new Date(Date.now() - 24 * 3600_000);
+          // Per UTC day (2026-10-06): the daily pick works per day, so a
+          // rolling window could push one of today's picks past midnight.
+          const since = new Date();
+          since.setUTCHours(0, 0, 0, 0);
           const recent = await prisma.socialPublish.findMany({
             where: { platform: "youtube", accountKey: row.accountKey, status: "POSTED", postedAt: { gte: since } },
             orderBy: { postedAt: "asc" },
             select: { postedAt: true },
           });
           if (recent.length >= cap) {
-            const freesAt = new Date(recent[0].postedAt!.getTime() + 24 * 3600_000 + 5 * 60_000);
+            const freesAt = new Date(since.getTime() + 24 * 3600_000 + 5 * 60_000);
             await prisma.socialPublish.update({
               where: { id: row.id },
-              data: { scheduledAt: freesAt, error: `YouTube daily cap (${cap}/24h) reached; waiting until ${freesAt.toISOString()}` },
+              data: { scheduledAt: freesAt, error: `YouTube daily cap (${cap}/day) reached; waiting until ${freesAt.toISOString()}` },
             });
             return false;
           }
