@@ -7,6 +7,50 @@
 
 ---
 
+## [2026-10-06] — Dragon egg hatching: a new daily Mythicals post
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** see "content: Add the daily dragon egg hatching post to Mythicals"
+
+### In plain English (for Keenan)
+Mythicals now posts one "What dragon hatches from this egg?" video a day, built exactly like the example you approved.
+- The egg cracks and glows under the title.
+- It slowly fades to black, then the dragon slowly fades in with only its name at the bottom.
+- The dragon breathes, then roars and breathes fire or ice. The roar plays under the music.
+
+It takes one of the existing daily slots, so Mythicals stays at 6 posts a day. Each one costs about $1.30.
+
+### Technical changes (for Jimmy)
+- New `apps/web/src/lib/content-factory/egg-hatch.ts`:
+  - concept writer (Opus: name, element, egg, dragon, fire|ice breath, caption)
+  - image prompts, motion prompts, encode/decode
+  - `submitEggClip` (Higgsfield dev API)
+  - `EGG_MODELS` = v3.0-turbo then v2.5-turbo standard; `DRAGON_MODELS` = v3.0/std with `sound:"on"` then v3.0/pro
+- `living-reel.ts`: new `assembleEggVideo`.
+  - Egg 5s with title on top, 1.5s fade to black, 0.3s black, dragon 10s with 1.5s fade-in and name at the bottom.
+  - Music at 0.9 with the dragon's own audio at 0.75 underneath, using concat (not xfade).
+- `carousel-daily.ts`: new mythic picks mode `"egg"`, forced on the 4th run of the day (after How Big on the 3rd).
+  - Two "high" images; slug `mythic-egg-`.
+  - Slide 0 imagePrompt stores the concept; slide 1 imagePrompt stores the dragon motion prompt.
+- `carousel-post-video.ts`: new `egg-check` branch.
+  - Renders both clips (cached in `living/<id>/egg.json` plus originals), assembles the main reel with AI music, and adds an Instagram copy with a music-ig song.
+- `performance-loop.ts`: `mythicModeFromSlug` knows `egg`.
+- `choice-lane.ts`: exported `QUALITY_BAR_LINE` and `NO_HUMAN_FACE_LINE`.
+- `carousel-living-reel.ts`: `lane-requests/mythic-picks--egg.json` forces an egg run.
+- New `egg-hatch.test.ts` (3 tests).
+
+### Manual steps needed
+- None
+
+### Notes
+- Kling 3.0 Turbo can't make sound, so the dragon clip uses Kling 3.0 Standard with sound (docs list `kling-video/v3.0/std/image-to-video`). Pro is the fallback if std is refused.
+- Approved example (Higgsfield app account, 2026-10-06):
+  - egg clip: Turbo, 5s, 7.5 credits
+  - dragon clip: Kling 3.0 std with sound, 10s, 20 credits
+  - images: gpt-image-2 high
+- On local test clips the assembler runs in about 5s.
+- The concept writer was not run locally (Claude is prod-only), so the first prod run is its first real test.
+
 ## [2026-10-06] — New brand and copy rules: "brain dump" allowed in ads, new claims rule, pain-branch tags, second persona
 **Requested by:** Keenan
 **Committed by:** Claude Code

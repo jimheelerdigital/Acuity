@@ -96,7 +96,7 @@ export async function readRecipe(postId: string): Promise<PostRecipe | null> {
 
 /** Post type from a Mythicals slug ("mythic-know-…" → know). */
 export function mythicModeFromSlug(slug: string): string {
-  return slug.match(/^mythic-(duo|place|know|scenario|size|versus|cinematic)-/)?.[1] ?? "choice";
+  return slug.match(/^mythic-(duo|place|know|scenario|size|versus|cinematic|egg)-/)?.[1] ?? "choice";
 }
 
 /**

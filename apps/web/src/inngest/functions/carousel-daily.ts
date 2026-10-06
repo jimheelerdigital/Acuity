@@ -904,8 +904,9 @@ export const carouselDailyCronFn = inngest.createFunction(
       // really be?' with super cool perspective shots of 5 different mythical
       // creatures... godzilla standing in a city, dragon on a football
       // stadium, kraken over an aircraft carrier").
-      type MythMode = "choice" | "duo" | "place" | "know" | "scenario" | "size" | "versus";
-      const MYTH_MODES: MythMode[] = ["choice", "duo", "place", "know", "scenario", "size", "versus"];
+      // "egg" (dragon egg hatching) is a daily series since 2026-10-06.
+      type MythMode = "choice" | "duo" | "place" | "know" | "scenario" | "size" | "versus" | "egg";
+      const MYTH_MODES: MythMode[] = ["choice", "duo", "place", "know", "scenario", "size", "versus", "egg"];
       const choiceMode: MythMode =
         forcedMode && (MYTH_MODES as string[]).includes(forcedMode)
           ? (forcedMode as MythMode)
@@ -936,11 +937,138 @@ export const carouselDailyCronFn = inngest.createFunction(
                   console.log("[carousel-cron] post type: size (daily series)");
                   return "size" as MythMode;
                 }
+                // Dragon egg hatching (2026-10-06, per Keenan: "add that as one
+                // of the posts. just one of the 6"): the fourth run of the day,
+                // or any later run if it still hasn't happened.
+                if (!used.has("egg") && posted.length >= 3) {
+                  console.log("[carousel-cron] post type: egg (daily series)");
+                  return "egg" as MythMode;
+                }
                 const board = await readScoreboard("mythicals");
                 const choice = chooseMythicPostType(board, used);
                 console.log(`[carousel-cron] post type: ${choice.arm} (${choice.reason}) ${choice.samples ? JSON.stringify(choice.samples) : ""}`);
                 return choice.arm as MythMode;
               });
+      // ── Dragon egg hatching (2026-10-06): two slides, its own video. ──
+      if (choiceMode === "egg") {
+        const concept = await step.run("egg-concept", async () => {
+          const { prisma } = await import("@/lib/prisma");
+          const { writeEggConcept, EGG_SLUG_PREFIX, decodeEggPrompt } = await import("@/lib/content-factory/egg-hatch");
+          const { getLaneFeedback } = await import("@/lib/content-factory/performance");
+          const recent = await prisma.carouselPost.findMany({
+            where: { lane: laneKey, topicSlug: { startsWith: EGG_SLUG_PREFIX } },
+            orderBy: { createdAt: "desc" },
+            take: 30,
+            select: { slides: { where: { order: 0 }, select: { imagePrompt: true } } },
+          });
+          const seen = recent
+            .map((p) => decodeEggPrompt(p.slides[0]?.imagePrompt ?? ""))
+            .map((d) => `${d.name ?? "?"} (${d.element ?? "?"})`);
+          return writeEggConcept({ recent: seen, feedback: await getLaneFeedback(laneKey) });
+        });
+        logger.info(`[carousel-cron] Egg (${laneKey}): ${concept.name} — ${concept.element}`);
+        if (dryRun) return saveDryRun(laneKey, concept);
+
+        await step.run("ensure-bucket", async () => {
+          const { ensureBucket } = await import("@/lib/content-factory/carousel-generate");
+          await ensureBucket();
+        });
+
+        const eggSlides: { imageUrl: string; rawImageUrl: string; overlayText: string; imagePrompt: string }[] = [];
+        for (const part of ["egg", "dragon"] as const) {
+          eggSlides.push(
+            await step.run(`egg-image-${part}`, async () => {
+              const { generateImage, generateCheckedImage, uploadOverlaySlide } = await import(
+                "@/lib/content-factory/carousel-generate"
+              );
+              const { renderChoiceOverlay } = await import("@/lib/content-factory/compose");
+              const egg = await import("@/lib/content-factory/egg-hatch");
+              const prompt = part === "egg" ? egg.buildEggImagePrompt(concept) : egg.buildDragonImagePrompt(concept);
+              // Both slides at cover ("high") quality: they are the whole post.
+              const { buffer: raw, qc } = await generateCheckedImage(() => generateImage(prompt, "cover"), {
+                scene: part === "egg" ? concept.egg : concept.dragon,
+                slot: "cover",
+                personAllowed: false,
+                fantasy: true,
+                subject: part === "egg" ? `a colossal ${concept.element} dragon egg` : `${concept.name}, a newly hatched winged dragon`,
+              });
+              logger.info(`[carousel-cron] egg ${part} quality: ${qc}`);
+              const text = part === "egg" ? egg.EGG_TITLE : concept.name;
+              const overlay = await renderChoiceOverlay({ top: text, topSize: 66, place: part === "egg" ? "top" : "bottom" });
+              const slug = egg.eggSlug(concept.name);
+              const { imageUrl, rawImageUrl } = await uploadOverlaySlide(
+                raw,
+                overlay,
+                `carousels/${dateStr}/${slug}/slide-${part}.jpg`
+              );
+              return {
+                imageUrl,
+                rawImageUrl,
+                overlayText: text,
+                // Slide 0 carries the concept; slide 1 the dragon's motion prompt.
+                imagePrompt: part === "egg" ? egg.encodeEggPrompt(concept, prompt) : egg.dragonMotionPrompt(concept),
+              };
+            })
+          );
+        }
+
+        const eggResult = await step.run("save-egg", async () => {
+          const { prisma } = await import("@/lib/prisma");
+          const { buildChoiceCaption } = await import("@/lib/content-factory/choice-lane");
+          const { extractHashtags } = await import("@/lib/content-factory/carousel-generate");
+          const { eggSlug, EGG_TITLE } = await import("@/lib/content-factory/egg-hatch");
+          const caption = buildChoiceCaption(concept.captionQuestion);
+          const post = await prisma.carouselPost.create({
+            data: {
+              topicSlug: eggSlug(concept.name),
+              headline: EGG_TITLE,
+              status: "DRAFT",
+              format: "PHOTO",
+              caption,
+              hashtags: extractHashtags(caption),
+              generatedFor: today,
+              lane: laneKey,
+              slides: {
+                create: eggSlides.map((sl, i) => ({
+                  order: i,
+                  kind: i === 0 ? ("COVER" as const) : ("REASON" as const),
+                  overlayText: sl.overlayText,
+                  imagePrompt: sl.imagePrompt,
+                  imageUrl: sl.imageUrl,
+                  rawImageUrl: sl.rawImageUrl,
+                })),
+              },
+            },
+          });
+          try {
+            const { writeRecipe, LOOP_LANES } = await import("@/lib/content-factory/performance-loop");
+            const brand = LOOP_LANES[laneKey];
+            if (brand) {
+              await writeRecipe({
+                postId: post.id,
+                brand,
+                lane: laneKey,
+                postType: "egg",
+                category: concept.element,
+                title: `${EGG_TITLE} ${concept.name}`,
+                options: [concept.name],
+                coverScene: concept.egg,
+                generatedFor: today.toISOString().slice(0, 10),
+                slotHourUtc: runAt.getUTCHours(),
+              });
+            }
+          } catch (err) {
+            console.warn("[carousel-cron] recipe write failed:", err instanceof Error ? err.message : err);
+          }
+          const { queuePostVideo } = await import("@/lib/content-factory/post-video");
+          await queuePostVideo(post.id);
+          // Two "high" images (~25¢ each) + checks; the clips are billed by Higgsfield.
+          return { postId: post.id, slideCount: 2, estimatedCostCents: 52 };
+        });
+        logger.info(`[carousel-cron] Generated egg (${laneKey}) ${concept.name} → video queued`);
+        return { generated: 1, bucket: laneKey, ...eggResult };
+      }
+
       const pickBrand = choiceLane.pickBrand;
       const topic = await step.run("generate-choice-topic", async () => {
         const { prisma } = await import("@/lib/prisma");

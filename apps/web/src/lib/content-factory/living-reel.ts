@@ -547,3 +547,100 @@ export async function finishCinematicVideo(opts: {
     return { buf: fs.readFileSync(out), seconds, audio };
   });
 }
+
+/**
+ * Dragon egg hatching video (2026-10-06, Keenan-approved example v2): the
+ * egg clip with its title, a slow fade to black, a beat of black, then the
+ * dragon clip fading in slowly with its name. The dragon clip's own sound
+ * (the roar) plays under the music. See egg-hatch.ts.
+ */
+export async function assembleEggVideo(opts: {
+  eggClip: Buffer;
+  dragonClip: Buffer;
+  eggOverlay: Buffer;
+  dragonOverlay: Buffer;
+  musicUrl: string | null;
+  eggSeconds?: number;
+}): Promise<{ buf: Buffer; seconds: number; roar: boolean }> {
+  return withTempDir(async (dir) => {
+    const bin = ffmpegPath();
+    if (!bin) throw new Error("ffmpeg-static binary not found in this environment");
+    const files = {
+      egg: path.join(dir, "egg.mp4"),
+      dragon: path.join(dir, "dragon.mp4"),
+      eggOv: path.join(dir, "egg-ov.png"),
+      dragonOv: path.join(dir, "dragon-ov.png"),
+      music: path.join(dir, "music.audio"),
+    };
+    fs.writeFileSync(files.egg, opts.eggClip);
+    fs.writeFileSync(files.dragon, opts.dragonClip);
+    fs.writeFileSync(files.eggOv, opts.eggOverlay);
+    fs.writeFileSync(files.dragonOv, opts.dragonOverlay);
+    const info = await new Promise<string>((resolve) => {
+      const proc = spawn(bin, ["-i", files.dragon]);
+      let err = "";
+      proc.stderr.on("data", (d) => (err += d.toString()));
+      proc.on("close", () => resolve(err));
+      proc.on("error", () => resolve(err));
+    });
+    const dm = info.match(/Duration: (\d+):(\d+):([\d.]+)/);
+    const dragonSec = dm ? +dm[1] * 3600 + +dm[2] * 60 + +dm[3] : 10;
+    const roar = /Stream #\d+:\d+.*Audio:/.test(info);
+    const eggSec = opts.eggSeconds ?? 5;
+    const GAP = 0.3;
+    const FADE = 1.5;
+    const total = eggSec + GAP + dragonSec;
+    let haveMusic = false;
+    if (opts.musicUrl) {
+      const res = await fetch(opts.musicUrl).catch(() => null);
+      if (res?.ok) {
+        fs.writeFileSync(files.music, Buffer.from(await res.arrayBuffer()));
+        haveMusic = true;
+      }
+    }
+    const fit = `scale=${W}:${H}:force_original_aspect_ratio=increase:flags=lanczos,crop=${W}:${H},setsar=1,fps=30,format=yuv420p`;
+    const filters = [
+      `[0:v]${fit}[e]`,
+      `[e][2:v]overlay=0:0,trim=0:${eggSec},setpts=PTS-STARTPTS,fade=t=out:st=${(eggSec - FADE).toFixed(2)}:d=${FADE}[v0]`,
+      `[1:v]${fit}[d]`,
+      `[d][3:v]overlay=0:0,setpts=PTS-STARTPTS,tpad=start_duration=${GAP}:color=black,fade=t=in:st=${GAP}:d=${FADE}[v1]`,
+      `[v0][v1]concat=n=2:v=1:a=0,format=yuv420p[v]`,
+    ];
+    const delayMs = Math.round((eggSec + GAP) * 1000);
+    const norm = "aresample=44100,aformat=sample_fmts=fltp:channel_layouts=stereo";
+    const audioOut = (() => {
+      const fadeOut = `afade=t=out:st=${(total - 1.5).toFixed(2)}:d=1.5`;
+      if (haveMusic && roar) {
+        filters.push(`[4:a]atrim=0:${total.toFixed(2)},volume=0.9,${fadeOut},${norm}[m]`);
+        filters.push(`[1:a]${norm},adelay=${delayMs}|${delayMs},volume=0.75[sfx]`);
+        filters.push(`[m][sfx]amix=inputs=2:duration=first:normalize=0[a]`);
+        return true;
+      }
+      if (haveMusic) {
+        filters.push(`[4:a]atrim=0:${total.toFixed(2)},volume=0.9,${fadeOut},${norm}[a]`);
+        return true;
+      }
+      if (roar) {
+        filters.push(`[1:a]${norm},adelay=${delayMs}|${delayMs},apad,atrim=0:${total.toFixed(2)}[a]`);
+        return true;
+      }
+      return false;
+    })();
+    const out = path.join(dir, "out.mp4");
+    await runFfmpeg([
+      "-i", files.egg,
+      "-i", files.dragon,
+      "-i", files.eggOv,
+      "-i", files.dragonOv,
+      ...(haveMusic ? ["-i", files.music] : []),
+      "-filter_complex", filters.join(";"),
+      "-map", "[v]",
+      ...(audioOut ? ["-map", "[a]", "-c:a", "aac", "-b:a", "192k"] : []),
+      "-t", total.toFixed(2),
+      ...SEGMENT_ENCODE,
+      "-movflags", "+faststart",
+      out,
+    ]);
+    return { buf: fs.readFileSync(out), seconds: total, roar };
+  });
+}

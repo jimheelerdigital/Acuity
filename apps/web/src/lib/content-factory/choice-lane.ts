@@ -681,7 +681,7 @@ async function generateChoiceTopicOnce(opts: ChoiceTopicOpts): Promise<ChoiceTop
  * in the middle band. Places posts frame the LOCATION as the subject.
  */
 /** 2026-10-04 (Keenan: "no human faces on mythical creatures"). */
-const NO_HUMAN_FACE_LINE =
+export const NO_HUMAN_FACE_LINE =
   "No creature has a human face or human head: its face is fully animal, reptilian or monstrous (never a lamassu, sphinx, manticore or bearded man-like face on a beast). Every dragon, wyrm, drake or wyvern has large, clearly visible wings (2026-10-04, per Keenan).";
 
 /**
@@ -691,7 +691,7 @@ const NO_HUMAN_FACE_LINE =
  * magma in every crack, orange eyes, smoke and embers, a tiny cloaked
  * figure from behind for scale.
  */
-const QUALITY_BAR_LINE =
+export const QUALITY_BAR_LINE =
   "QUALITY BAR: extreme, tactile detail on the subject. Every scale, plate, horn and rune is sharply defined, with cracks, chips and wear; glowing seams, embers or frost add light from within. A restrained palette: deep near-black and charcoal tones with ONE vivid accent color that glows (molten orange, icy blue, emerald or violet). Dramatic low-key lighting with volumetric smoke or fog, rim light on the edges, drifting embers or particles, and glowing eyes that hold the viewer. Bold, simple composition: the subject is big, close and frontal, staring into the lens.";
 const COVER_SCALE_LINE =
   "SCALE: the creature is so colossal that its head or body fills most of the frame; one tiny cloaked figure stands in the foreground, seen from behind, facing it, to show the scale.";

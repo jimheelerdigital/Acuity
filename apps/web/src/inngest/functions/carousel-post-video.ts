@@ -206,6 +206,164 @@ export const carouselPostVideoFn = inngest.createFunction(
       return { postId, cinematic: true, ...result };
     }
 
+    // ── 0b. Dragon egg hatching (mythic-egg-, 2026-10-06): egg crack
+    // (Turbo) → fade → dragon roar (Kling 3.0 with sound). See egg-hatch.ts.
+    const egg = await step.run("egg-check", async () => {
+      const { prisma } = await import("@/lib/prisma");
+      const { isEggSlug, decodeEggPrompt, EGG_TITLE } = await import("@/lib/content-factory/egg-hatch");
+      const post = await prisma.carouselPost.findUniqueOrThrow({
+        where: { id: postId },
+        select: {
+          topicSlug: true,
+          lane: true,
+          generatedFor: true,
+          slides: { orderBy: { order: "asc" }, select: { rawImageUrl: true, imagePrompt: true, overlayText: true } },
+        },
+      });
+      if (!isEggSlug(post.topicSlug)) return null;
+      const [eggSlide, dragonSlide] = post.slides;
+      if (!eggSlide?.rawImageUrl || !dragonSlide?.rawImageUrl) throw new Error(`Egg post ${postId} is missing its raw images`);
+      const decoded = decodeEggPrompt(eggSlide.imagePrompt);
+      const { laneBrand } = await import("@/lib/content-factory/social-publish");
+      return {
+        lane: post.lane,
+        brand: await laneBrand(post.lane),
+        date: post.generatedFor.toISOString().slice(0, 10),
+        eggUrl: eggSlide.rawImageUrl,
+        dragonUrl: dragonSlide.rawImageUrl,
+        title: eggSlide.overlayText || EGG_TITLE,
+        name: dragonSlide.overlayText || decoded.name || "",
+        dragonMotion: dragonSlide.imagePrompt,
+      };
+    });
+    if (egg) {
+      const { EGG_MODELS, DRAGON_MODELS, EGG_CLIP_SEC, DRAGON_CLIP_SEC, eggMotionPrompt } = await import(
+        "@/lib/content-factory/egg-hatch"
+      );
+      // A rebuild reuses finished renders instead of paying for new ones.
+      const cached = await step.run("egg-cached", async () => {
+        const { supabase } = await import("@/lib/supabase.server");
+        const { data } = await supabase.storage.from("content-factory").download(`living/${postId}/egg.json`);
+        if (!data) return {} as { egg?: string; dragon?: string };
+        try {
+          return JSON.parse(await data.text()) as { egg?: string; dragon?: string };
+        } catch {
+          return {} as { egg?: string; dragon?: string };
+        }
+      });
+      const render = async (part: "egg" | "dragon"): Promise<{ url: string; model: string }> => {
+        const models = part === "egg" ? EGG_MODELS : DRAGON_MODELS;
+        const tried: string[] = [];
+        for (const [a, model] of models.entries()) {
+          const sub = await step.run(`egg-${part}-submit-${a}`, async () => {
+            const { submitEggClip } = await import("@/lib/content-factory/egg-hatch");
+            const { noteSubmitWave } = await import("@/lib/content-factory/post-video");
+            try {
+              const r = await submitEggClip({
+                model,
+                imageUrl: part === "egg" ? egg.eggUrl : egg.dragonUrl,
+                prompt: part === "egg" ? eggMotionPrompt() : egg.dragonMotion,
+                seconds: part === "egg" ? EGG_CLIP_SEC : DRAGON_CLIP_SEC,
+                sound: part === "dragon",
+              });
+              await noteSubmitWave(1, []);
+              console.log(`[post-video] ${postId} egg ${part} ${model} submitted ${r.requestId}, estimate ${JSON.stringify(r.estimate)}`);
+              return { id: r.requestId as string | null, error: null as string | null, creditsOut: false };
+            } catch (err) {
+              const msg = err instanceof Error ? err.message : String(err);
+              return { id: null as string | null, error: msg, creditsOut: await noteSubmitWave(0, [msg]) };
+            }
+          });
+          tried.push(`${model}: ${sub.id ? "submitted" : sub.error}`);
+          if (sub.creditsOut) break;
+          if (!sub.id) continue;
+          for (let round = 0; round < 40; round++) {
+            await step.sleep(`egg-${part}-wait-${a}-${round}`, "30s");
+            const st = await step.run(`egg-${part}-poll-${a}-${round}`, async () => {
+              const { checkCoverVideo } = await import("@/lib/content-factory/animate-cover");
+              try {
+                return await checkCoverVideo(sub.id!, model);
+              } catch {
+                return { status: "in_progress" as const, videoUrl: null };
+              }
+            });
+            if (st.status === "completed" && st.videoUrl) return { url: st.videoUrl, model };
+            if (st.status !== "queued" && st.status !== "in_progress") {
+              tried.push(`${model}: ended ${st.status}`);
+              break;
+            }
+          }
+        }
+        throw new Error(`Egg ${part} render failed: ${tried.join("; ") || "no model tried"}`);
+      };
+      const eggClip = cached.egg ? { url: cached.egg, model: "cached" } : await render("egg");
+      const dragonClip = cached.dragon ? { url: cached.dragon, model: "cached" } : await render("dragon");
+
+      const result = await step.run("egg-finish", async () => {
+        const { supabase } = await import("@/lib/supabase.server");
+        const { assembleEggVideo } = await import("@/lib/content-factory/living-reel");
+        const { renderChoiceOverlay } = await import("@/lib/content-factory/compose");
+        const { pickMusicTrack } = await import("@/lib/content-factory/slideshow-reel");
+        const { reelPath, igReelPath, writeVideoMarker } = await import("@/lib/content-factory/post-video");
+        const bucket = supabase.storage.from("content-factory");
+        const get = async (url: string) => {
+          const r = await fetch(url);
+          if (!r.ok) throw new Error(`Egg clip download failed (${r.status}): ${url}`);
+          return Buffer.from(await r.arrayBuffer());
+        };
+        const [eggBuf, dragonBuf] = await Promise.all([get(eggClip.url), get(dragonClip.url)]);
+        // Keep the originals (Higgsfield deletes outputs after ~7 days).
+        const keep = async (name: string, buf: Buffer) => {
+          await bucket.upload(`living/${postId}/${name}`, buf, { contentType: "video/mp4", upsert: true });
+          return bucket.getPublicUrl(`living/${postId}/${name}`).data.publicUrl;
+        };
+        const [eggKept, dragonKept] = await Promise.all([keep("egg-original.mp4", eggBuf), keep("dragon-original.mp4", dragonBuf)]);
+        await bucket.upload(`living/${postId}/egg.json`, Buffer.from(JSON.stringify({ egg: eggKept, dragon: dragonKept })), {
+          contentType: "application/json",
+          upsert: true,
+        });
+        // Title at the top on the egg; the dragon's name only, at the bottom.
+        const [eggOverlay, dragonOverlay] = await Promise.all([
+          renderChoiceOverlay({ top: egg.title, topSize: 66 }),
+          renderChoiceOverlay({ top: egg.name, topSize: 66, place: "bottom" }),
+        ]);
+        const minSeconds = Math.max(16, musicOpts?.minSeconds ?? 0);
+        const build = (musicUrl: string | null) =>
+          assembleEggVideo({ eggClip: eggBuf, dragonClip: dragonBuf, eggOverlay, dragonOverlay, musicUrl });
+        const main = await build(await pickMusicTrack(egg.lane, undefined, { minSeconds, exclude: musicOpts?.exclude }));
+        const path = reelPath(postId);
+        const { error } = await bucket.upload(path, main.buf, { contentType: "video/mp4", upsert: true });
+        if (error) throw new Error(`Video upload failed: ${error.message}`);
+        const url = bucket.getPublicUrl(path).data.publicUrl;
+        // Instagram copy with an original song (same rule as every post);
+        // falls back to the main reel when none is long enough.
+        const igPath = igReelPath(postId);
+        await bucket.remove([igPath]);
+        let ig: string | null = null;
+        try {
+          const igMusic = await pickMusicTrack(egg.lane, undefined, { minSeconds, exclude: musicOpts?.exclude, platform: "instagram" });
+          if (igMusic?.includes("/music-ig/")) {
+            const igVid = await build(igMusic);
+            const up = await bucket.upload(igPath, igVid.buf, { contentType: "video/mp4", upsert: true });
+            if (!up.error) ig = igMusic.split("/content-factory/")[1] ?? igMusic;
+          }
+        } catch (err) {
+          console.warn(`[post-video] ${postId} egg instagram copy failed:`, err instanceof Error ? err.message : err);
+        }
+        const { prisma } = await import("@/lib/prisma");
+        await prisma.carouselPost.update({ where: { id: postId }, data: { reelTransition: `higgsfield:${dragonClip.model}` } });
+        await writeVideoMarker(postId, { status: "done", url, source: "higgsfield", model: dragonClip.model, liveSlides: 2, totalSlides: 2 });
+        console.log(`[post-video] ${postId} egg done: ${main.seconds.toFixed(1)}s, roar ${main.roar}, ig ${ig ?? "main reel"}`);
+        return { url, seconds: main.seconds, roar: main.roar, ig, eggModel: eggClip.model, dragonModel: dragonClip.model };
+      });
+
+      await step.run("digest-check", async () => {
+        const { requestDigestCheck } = await import("@/lib/content-factory/post-video");
+        await requestDigestCheck(egg.brand, egg.date);
+      });
+      return { postId, egg: true, ...result };
+    }
+
     // ── 1. Plan: which slides animate, which stay still ──────────────
     const plan = await step.run("plan", async () => {
       const { prisma } = await import("@/lib/prisma");
