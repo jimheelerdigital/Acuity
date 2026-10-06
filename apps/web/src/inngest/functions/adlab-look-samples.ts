@@ -49,7 +49,8 @@ export const adlabLookSamplesFn = inngest.createFunction(
     triggers: [{ event: "adlab/look-samples.requested" }],
   },
   async ({ step }) => {
-    const runId = `${Date.now()}`;
+    // Inside a step so Inngest replays reuse it (a bare Date.now() changed per step).
+    const runId = await step.run("run-id", async () => `${Date.now()}`);
     const { LOOKS } = await import("@/lib/adlab/ad-looks");
     const looks = LOOKS.map((l, i) => ({ key: l.key, label: l.label, lane: (i % 2 === 0 ? "women" : "men") as "women" | "men" }));
     const samples: Sample[] = [];
@@ -89,9 +90,21 @@ export const adlabLookSamplesFn = inngest.createFunction(
         ok.map(async (s, i) => {
           const r = await fetch(s.url!);
           const img = await sharp(Buffer.from(await r.arrayBuffer())).resize(W, H, { fit: "cover" }).toBuffer();
-          const label = Buffer.from(
-            `<svg width="${W}" height="${LABEL}" xmlns="http://www.w3.org/2000/svg"><rect width="100%" height="100%" fill="#ffffff"/><text x="8" y="19" font-family="Helvetica, Arial" font-size="15" font-weight="700" fill="#111">${samples.indexOf(s) + 1}. ${esc(s.label).slice(0, 30)}</text><text x="8" y="38" font-family="Helvetica, Arial" font-size="12" fill="#777">${esc(s.key)} · ${s.lane}</text></svg>`
+          // Pango + the embedded font (SVG <text> rendered as tofu on Vercel: no system fonts).
+          const { textBlock } = await import("@/lib/adlab/ad-render");
+          const { ensureFontFile } = await import("@/lib/content-factory/compose");
+          const font = await ensureFontFile("Bold");
+          const txt = await textBlock(
+            `<span foreground="#111111" size="11000">${samples.indexOf(s) + 1}. ${esc(s.label).slice(0, 34)}</span>\n<span foreground="#777777" size="8500">${esc(s.key)} · ${s.lane}</span>`,
+            font,
+            W - 12,
+            2,
+            "left"
           );
+          const label = await sharp({ create: { width: W, height: LABEL, channels: 4, background: "#ffffff" } })
+            .composite([{ input: txt.buffer, left: 6, top: 4 }])
+            .png()
+            .toBuffer();
           return [
             { input: img, left: (i % cols) * W, top: Math.floor(i / cols) * (H + LABEL) },
             { input: label, left: (i % cols) * W, top: Math.floor(i / cols) * (H + LABEL) + H },

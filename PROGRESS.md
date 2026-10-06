@@ -7,6 +7,32 @@
 
 ---
 
+## [2026-10-05] — Look library fixes after the first sample sheet
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** see "fix: Keep code-drawn ad text readable on every theme"
+
+### In plain English (for Keenan)
+The first look sample sheet surfaced three problems:
+- Two code-drawn looks (say-catch, weekly report) hid their text on some color themes. That would have hit real ads.
+- The sheet's labels rendered as boxes.
+- The sticky-note look made the note tiny.
+
+All three are fixed, and a corrected sheet is sent.
+
+### Technical changes (for Jimmy)
+- `lib/adlab/ad-render.ts`: new `cardFillFor(bg)` sets the card fill from the theme's luminance. It was keyed on lane, which gave dark-on-dark cards once themes varied per ad. Checked locally across all 12 themes.
+- `inngest/functions/adlab-look-samples.ts`:
+  - runId is created inside a step (a bare Date.now() changed on every Inngest replay, which scattered files across folders)
+  - labels are rendered with Pango and the embedded font (SVG text was tofu on Vercel)
+- `lib/adlab/ad-looks.ts`: the sticky-note prompt now shows a close-up, frame-filling note.
+
+### Manual steps needed
+- None
+
+### Notes
+- Vercel has no system fonts. Any sharp SVG `<text>` renders as boxes there, so use `textBlock` + `ensureFontFile`.
+
 ## [2026-10-05] — Colossal Encounters cut to the normal structure: one high-quality image + 15s Kling 3.0 Turbo
 **Requested by:** Keenan
 **Committed by:** Claude Code

@@ -218,6 +218,22 @@ function seedIndex(seed: string, n: number): number {
   return Math.abs(h) % n;
 }
 
+/** True for a dark hex background (relative luminance below ~0.4). */
+function isDarkHex(hex: string): boolean {
+  const n = parseInt(hex.replace("#", ""), 16);
+  const r = (n >> 16) & 255, g = (n >> 8) & 255, b = n & 255;
+  return (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255 < 0.4;
+}
+
+/**
+ * Card surface that keeps the theme's text readable: a slightly lifted dark
+ * card on dark themes, white on light ones (2026-10-05: lane-keyed fills made
+ * dark-on-dark cards once themes varied per ad).
+ */
+export function cardFillFor(bg: string): string {
+  return isDarkHex(bg) ? "#2A2A2E" : "#FFFFFF";
+}
+
 /** The theme for one ad: picked from the pool by its headline, phone asset from the lane. */
 export function themeFor(groupKey: BatchGroupKey, seed: string): (typeof THEME)["women"] {
   return { ...THEME_POOL[seedIndex(seed, THEME_POOL.length)], phone: THEME[groupKey].phone };
@@ -429,7 +445,7 @@ async function renderSayCatch(
   }
   const rowGap = Math.round(24 * k);
   const listH = rows.reduce((n, r) => n + r.height, 0) + rowGap * (rows.length - 1) + pad * 2;
-  const cardFill = groupKey === "men" ? "#1C1C1E" : "#FFFFFF";
+  const cardFill = cardFillFor(t.bg);
   blocks.push({ input: roundedRect(cardW, listH, 28, cardFill), y, left: side });
   let ry = y + pad;
   for (const r of rows) {
@@ -605,7 +621,7 @@ async function renderWeeklyReport(
   const bottom = story ? 340 : 56;
   const side = 64;
   const cardW = size.w - side * 2;
-  const cardFill = groupKey === "men" ? "#1C1C1E" : "#FFFFFF";
+  const cardFill = cardFillFor(t.bg);
 
   const blocks: { input: Buffer; y: number; left: number }[] = [];
   let y = 0;

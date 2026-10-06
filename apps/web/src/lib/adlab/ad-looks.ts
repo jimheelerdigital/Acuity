@@ -315,7 +315,7 @@ ${textRules(v)}`;
     label: "Handwritten sticky note photo",
     family: "paper",
     needs: "none",
-    build: (c, g, v) => `A real photo, vertical 2:3: one square sticky note (color to suit ${v.palette}) stuck on ${v.scene}. ${v.light}, ${v.camera}. The note is handwritten in marker: "${c.headline}"
+    build: (c, g, v) => `A real close-up photo, vertical 2:3: one large square sticky note (color to suit ${v.palette}) filling the middle of the frame, stuck on a surface from ${v.scene} (softly out of focus behind it). ${v.light}. The note is handwritten in big marker letters: "${c.headline}"
 Below the note, as a clean overlay caption in ${v.type}: "${sub(c)}"
 ${ctaLine(c, v)}
 ${textRules(v)}`,
