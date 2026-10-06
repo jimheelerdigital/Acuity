@@ -18,6 +18,7 @@
 - **Email 2, two days later:** goes out if they haven't started the week.
 - **Each email has 3 versions.** Jev picks between them and learns which one gets the most people to start the week.
 - **Backlog:** the 83 free-plan signups since 09-24 get the offer too, a few at a time.
+- **After tapping:** they land on a page that says "Your free week is activated", with App Store and Google Play download buttons and then an "Open Ripple, signed in" button, so they get into the account they just activated instead of making a new one.
 - **What it replaces:** the two old "start your free week, card required" emails are off. The new offer reaches the same people sooner.
 - **Unchanged:** the paywall in the funnel still asks for a card. The no-card week only goes to people who already said no to the card, so it doesn't undercut the 09-24 change. That change was made because no-card weeks at signup made the card ask pointless.
 

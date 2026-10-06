@@ -7,10 +7,14 @@
  * 7-day clock before she has seen it. The token identifies the account, so
  * no sign-in is needed; after claiming, "Open Ripple, signed in" uses the
  * one-tap app link (lib/app-access.ts).
+ *
+ * After claiming (Keenan 2026-10-06): "your trial is activated, download
+ * here" with App Store + Google Play, then the signed-in open button.
  */
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
+import { APP_STORE_URL, PLAY_STORE_URL } from "@/lib/app-access";
 import { claimFreeWeek, freeWeekState, verifyFreeWeekToken } from "@/lib/free-week";
 
 export const dynamic = "force-dynamic";
@@ -105,9 +109,15 @@ export default async function FreeWeekPage({ searchParams }: { searchParams: { t
           </>
         ) : onTrial ? (
           <>
-            <Title>Your free week of Pro is on</Title>
-            <Body>It runs until {until}. Open Ripple and say what&apos;s on your plate. Pro turns it into your list and tracks the habits you mention.</Body>
-            <Body>On your phone, tap the button below and Ripple opens already signed in. No password.</Body>
+            <Title>Your free week is activated</Title>
+            <Body>Pro is on until {until}. No card, nothing to cancel.</Body>
+            <p className="mb-3 text-[15px] font-semibold text-zinc-900 dark:text-zinc-50">1. Download Ripple</p>
+            <div className="mb-6 space-y-3">
+              <a href={APP_STORE_URL} className={btnPrimary}>Download on the App Store</a>
+              <a href={PLAY_STORE_URL} className={btnSecondary}>Get it on Google Play</a>
+            </div>
+            <p className="mb-1 text-[15px] font-semibold text-zinc-900 dark:text-zinc-50">2. Open it signed in</p>
+            <Body>Once it&apos;s installed, tap the button below on your phone. Ripple opens on this account, no password. Please don&apos;t make a new account in the app: your free week is on this one.</Body>
           </>
         ) : (
           <>
@@ -116,7 +126,7 @@ export default async function FreeWeekPage({ searchParams }: { searchParams: { t
           </>
         )}
         <div className="mt-6 space-y-3">
-          {signInUrl && <a href={signInUrl} className={btnPrimary}>Open Ripple, signed in</a>}
+          {signInUrl && <a href={signInUrl} className={onTrial ? btnSecondary : btnPrimary}>Open Ripple, signed in</a>}
           <Link href="/home" className={btnSecondary}>Use Ripple on the web</Link>
         </div>
       </Card>
