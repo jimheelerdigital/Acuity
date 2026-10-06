@@ -28,6 +28,9 @@ export interface TrialVars {
   /** Which funnel she came from (2026-10-01): "men" = BWK (/start-bwk,
    *  /start-test-bwk), "women" = everything else. Drives example lines. */
   lane?: "women" | "men";
+  /** Signed /free-week claim link (lib/free-week.ts). Set only for the
+   *  free_week_offer / free_week_followup emails. */
+  freeWeekUrl?: string | null;
 }
 
 /**
@@ -107,4 +110,6 @@ export type TrialEmailKey =
   | "nr_winback_3"
   | "app_access_rescue"
   | "app_first_record_1"
-  | "app_first_record_2";
+  | "app_first_record_2"
+  | "free_week_offer"
+  | "free_week_followup";

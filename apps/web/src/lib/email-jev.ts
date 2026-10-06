@@ -29,12 +29,13 @@ const GOAL_WINDOW_MS = 72 * 3600_000;
 const LOOKBACK_MS = 120 * 24 * 3600_000;
 const EXPLORE = 0.2;
 
-export type EmailGoal = "record" | "app" | "pay" | "click";
+export type EmailGoal = "record" | "app" | "pay" | "claim" | "click";
 
 /** What each email is for. Anything not listed counts clicks. */
 export function goalFor(emailKey: string): EmailGoal {
   if (["recovery_paid_no_app", "app_access_rescue", "apple_duplicate_rescue", "rescue_signup_only", "rescue_viewed_no_tap", "rescue_tapped_app_store", "rescue_webview_blocked"].includes(emailKey)) return "app";
   if (["recovery_signup_no_checkout", "recovery_checkout_abandoned", "trial_ending"].includes(emailKey)) return "pay";
+  if (emailKey.startsWith("free_week_")) return "claim";
   if (/^(app_first_record|first_debrief_followup|card_trial_|never_recorded|nr_winback|stall_|winback_|keep_momentum)/.test(emailKey)) return "record";
   return "click";
 }
@@ -43,6 +44,7 @@ const GOAL_TEXT: Record<EmailGoal, string> = {
   record: "record a debrief in the app within 3 days",
   app: "get into the Ripple app (signed in) within 3 days",
   pay: "start a paid membership or trial within 3 days",
+  claim: "start the free no-card week of Pro within 3 days",
   click: "click the email's button",
 };
 
@@ -90,6 +92,12 @@ export async function variantStats(emailKey: string, variantIds: string[]): Prom
     } else if (goal === "app") {
       const ev = await prisma.onboardingEvent.findMany({
         where: { userId: { in: userIds }, event: "app_signed_in", createdAt: { gte: earliest } },
+        select: { userId: true, createdAt: true },
+      });
+      for (const e of ev) if (within(e.userId, e.createdAt)) reached.add(e.userId!);
+    } else if (goal === "claim") {
+      const ev = await prisma.onboardingEvent.findMany({
+        where: { userId: { in: userIds }, event: "free_week_claimed", createdAt: { gte: earliest } },
         select: { userId: true, createdAt: true },
       });
       for (const e of ev) if (within(e.userId, e.createdAt)) reached.add(e.userId!);

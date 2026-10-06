@@ -7,6 +7,52 @@
 
 ---
 
+## [2026-10-06] — Signups who don't pay get a free week of Pro by email, no card
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** see "feat: Offer a no-card free week to signups who leave without paying"
+
+### In plain English (for Keenan)
+- **Who gets it:** people who make an account in the web funnel but leave without paying.
+- **Email 1, 20 minutes after they leave:** a free week of Ripple Pro with no card. One tap on the email button starts it; nothing to cancel. When the week ends they drop back to the free plan, and the existing "your trial ends in 2 days" email asks them to keep Pro.
+- **Email 2, two days later:** goes out if they haven't started the week.
+- **Each email has 3 versions.** Jev picks between them and learns which one gets the most people to start the week.
+- **Backlog:** the 83 free-plan signups since 09-24 get the offer too, a few at a time.
+- **What it replaces:** the two old "start your free week, card required" emails are off. The new offer reaches the same people sooner.
+- **Unchanged:** the paywall in the funnel still asks for a card. The no-card week only goes to people who already said no to the card, so it doesn't undercut the 09-24 change. That change was made because no-card weeks at signup made the card ask pointless.
+
+### Technical changes (for Jimmy)
+- New `apps/web/src/lib/free-week.ts`:
+  - HMAC claim token (`free-week:` + NEXTAUTH_SECRET, 30-day TTL)
+  - `FREE_WEEK_ELIGIBLE_WHERE`: FREE, no Stripe sub, `trialExpiredAt` null, created ≥ 2026-09-24, not IAP, no `free_week_claimed` event
+  - `claimFreeWeek()`: in one transaction, updateMany → TRIAL, trialEndsAt +7d, plus OnboardingEvent `free_week_claimed`. Idempotent.
+  - `freeWeekState()`
+- New `apps/web/src/app/free-week/page.tsx` (public, noindex):
+  - the GET shows the offer; starting the week is a server-action form POST, so link-prefetching mail scanners can't start the 7-day clock
+  - the claimed state shows the one-tap "Open Ripple, signed in" link (`createAppSignInUrl`) plus /home
+- New `apps/web/src/emails/trial/free-week.ts`: `free_week_offer` and `free_week_followup`, 3 variants each. Registered in `emails/trial/registry.ts` and `types.ts` (new TrialEmailKeys + `TrialVars.freeWeekUrl`).
+- `lib/trial-emails.ts`: sets `vars.freeWeekUrl` for the two keys.
+- `lib/email-enabled.ts`:
+  - `free_week_offer` / `free_week_followup` on
+  - `recovery_signup_no_checkout` / `recovery_checkout_abandoned` off (superseded)
+- `lib/email-jev.ts`: new `claim` goal, `free_week_claimed` within 72h of the send.
+- `inngest/functions/recovery-email-orchestrator.ts`, new section 2b:
+  - **Offer:** eligible users 20+ min after signup, newest first, take 200. Skips internal/admin users and anyone with `funnel_checkout_started` in the last 20 min or `funnel_payment_completed`. Signups under 24h old skip the 24h throttle; the backlog is throttled and budget-capped.
+  - **Follow-up:** offer sent 2–14 days ago, still eligible.
+- No schema change and no new env vars.
+
+### Manual steps needed
+- [ ] **Jimmy review before push:** this grants Pro entitlement (FREE → TRIAL) from an email link. Check `lib/free-week.ts` eligibility and `app/free-week/page.tsx` (Jimmy)
+- [ ] Inngest resync is not needed: the cron is unchanged and only the function body changed
+
+### Notes
+- Verified against prod data before commit:
+  - **Dry-run query:** 83 offer candidates (4 are unsubscribed, so sendTrialEmail skips them)
+  - **Throwaway account, deleted afterwards:** eligible → claimed → already_claimed, TRIAL with 7.00 days left; re-claim after expiry is refused
+  - **Local /free-week:** both the invalid-token state and the eligible state render
+- After the claim, the existing cardless-trial lifecycle takes over: `trial_ending` (recorded) or `never_recorded_3day` / `never_recorded_lastday` (not recorded) before the end, then trial-expiration-cron flips to FREE. The countdown cron emails, including the T+0 "trial ended" email, are still paused in email-enabled, so nothing is sent after the week ends.
+- Why claim-on-tap and not automatic: about 88% of these signups never open the app (10 of 85 since 09-24), so an automatic week would mostly run out unused.
+
 ## [2026-10-06] — Slide text moves off the subject; smaller option labels; relabel job
 **Requested by:** Keenan
 **Committed by:** Claude Code

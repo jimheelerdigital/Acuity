@@ -218,6 +218,76 @@ export const recoveryEmailOrchestratorFn = inngest.createFunction(
       }
 
       // ═══════════════════════════════════════════════════════════
+      // 2b. NO-CARD FREE WEEK (2026-10-06, per Keenan; lib/free-week.ts)
+      //    Replaces #1 and #2 above (both keys now off in email-enabled).
+      //    Offer: web-funnel free-plan signups since 09-24 that can still
+      //    claim, 20+ min after signup and after any checkout attempt.
+      //    Signups under 24h old skip the 24h throttle so the 20-minute
+      //    timing holds; the backlog is throttled and drains newest-first.
+      //    Follow-up: 2 days after the offer, still unclaimed.
+      // ═══════════════════════════════════════════════════════════
+      if (hasGlobalBudget() || config.dryRun) {
+        const { FREE_WEEK_ELIGIBLE_WHERE } = await import("@/lib/free-week");
+        const { isInternalEmail } = await import("@/lib/internal-traffic");
+        const OFFER_DELAY_MS = 20 * 60_000;
+        const DAY_MS = 24 * 3600_000;
+
+        const offerCandidates = await prisma.user.findMany({
+          where: {
+            ...FREE_WEEK_ELIGIBLE_WHERE,
+            isAdmin: false,
+            createdAt: { ...FREE_WEEK_ELIGIBLE_WHERE.createdAt, lte: new Date(now.getTime() - OFFER_DELAY_MS) },
+            trialEmailLogs: { none: { emailKey: "free_week_offer" } },
+          },
+          orderBy: { createdAt: "desc" },
+          select: { id: true, email: true, createdAt: true },
+          take: 200,
+        });
+
+        for (const u of offerCandidates) {
+          if (!hasGlobalBudget() && !config.dryRun) break;
+          if (isInternalEmail(u.email)) continue;
+          // Still on the paywall / in Stripe checkout, or just paid and the
+          // webhook hasn't landed: leave them alone this tick.
+          const busy = await prisma.onboardingEvent.findFirst({
+            where: {
+              userId: u.id,
+              OR: [
+                { event: "funnel_checkout_started", createdAt: { gte: new Date(now.getTime() - OFFER_DELAY_MS) } },
+                { event: "funnel_payment_completed" },
+              ],
+            },
+            select: { id: true },
+          });
+          if (busy) continue;
+          await trySend(u.id, "free_week_offer", {
+            skipThrottle: now.getTime() - u.createdAt.getTime() < DAY_MS,
+          });
+        }
+
+        const followupCandidates = await prisma.user.findMany({
+          where: {
+            ...FREE_WEEK_ELIGIBLE_WHERE,
+            isAdmin: false,
+            trialEmailLogs: {
+              some: {
+                emailKey: "free_week_offer",
+                sentAt: { gte: new Date(now.getTime() - 14 * DAY_MS), lte: new Date(now.getTime() - 2 * DAY_MS) },
+              },
+              none: { emailKey: "free_week_followup" },
+            },
+          },
+          select: { id: true, email: true },
+        });
+
+        for (const u of followupCandidates) {
+          if (!hasGlobalBudget() && !config.dryRun) break;
+          if (isInternalEmail(u.email)) continue;
+          await trySend(u.id, "free_week_followup");
+        }
+      }
+
+      // ═══════════════════════════════════════════════════════════
       // 3. PAID BUT NEVER OPENED APP (forward-only: narrow window)
       // ═══════════════════════════════════════════════════════════
       if (hasGlobalBudget() || config.dryRun) {

@@ -266,6 +266,11 @@ export async function sendTrialEmail(
     }
   }
 
+  if (emailKey === "free_week_offer" || emailKey === "free_week_followup") {
+    const { freeWeekUrl } = await import("@/lib/free-week");
+    vars.freeWeekUrl = freeWeekUrl(user.id, emailKey);
+  }
+
   // Several versions of this email → Jev picks one (lib/email-jev.ts).
   let variantId: string | null = null;
   let subject = template.subject(vars);

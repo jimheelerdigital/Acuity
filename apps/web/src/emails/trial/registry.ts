@@ -62,6 +62,7 @@ import { appleDuplicateRescue } from "./apple-duplicate-rescue";
 import { firstDebriefFollowup } from "./first-debrief-followup";
 import { cardTrialTryOnce, cardTrialWeekSoFar } from "./card-trial-day5";
 import { trialCancelled } from "./trial-cancelled";
+import { freeWeekFollowup, freeWeekOffer } from "./free-week";
 
 export const TRIAL_EMAIL_TEMPLATES: Record<TrialEmailKey, TrialEmailTemplate> =
   {
@@ -119,6 +120,8 @@ export const TRIAL_EMAIL_TEMPLATES: Record<TrialEmailKey, TrialEmailTemplate> =
     card_trial_week_so_far: cardTrialWeekSoFar,
     card_trial_try_once: cardTrialTryOnce,
     trial_cancelled: trialCancelled,
+    free_week_offer: freeWeekOffer,
+    free_week_followup: freeWeekFollowup,
   };
 
 export type { TrialEmailKey, TrialEmailTemplate } from "./types";
