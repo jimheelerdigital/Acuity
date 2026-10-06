@@ -7,6 +7,37 @@
 
 ---
 
+## [2026-10-06] — Mythicals questions read naturally; every option's picture matches the question
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** see "fix: Make Mythicals questions read naturally and pictures match them"
+
+### In plain English (for Keenan)
+- **The bad post:** "ONE ARMOR TO SURVIVE A DRAGON'S BREATH. IF YOU KNOW HIM, WHICH?" read badly, and 3 of its 5 "armor" options were pictures of dragons. It's replaced with a rebuilt post, "PICK YOUR ARMOR TO SURVIVE A DRAGON'S FIRE BREATH", with five armor options.
+- **What changes for every post:**
+  - **Questions** must be plain, natural questions or instructions to the reader, the way a person would say them. Keenan's three lines are the examples. No fragments, no stitched-together sentences, no "if you know him" tacked on.
+  - **Every option's picture** must show what the question asks about as the hero. For an armor question, every option shows armor; a dragon can only be small in the background.
+  - **Jev checks both** before any images are made, and anything that fails gets rewritten.
+  - **"If you know him/her" posts** come out of the automatic mix; they stay available on request.
+  - **Ripple and BWK "which one is you?" covers** get the same plain-question rule.
+
+### Technical changes (for Jimmy)
+- `lib/content-factory/choice-lane.ts`:
+  - new TITLE STYLE block in SYSTEM, with Keenan's three examples and the bad one
+  - `choiceTopicProblems` adds Jev nouls `scene_i` (each option's scene shows the asked-for thing as hero; `SCENE_MIN` 0.5) and `title_clear` (`TITLE_CLEAR_MIN` 0.5); both become rewrite problems
+  - option scenes are now passed in the Jev state
+- `lib/content-factory/performance-loop.ts`:
+  - `chooseMythicPostType` MODES drops "know" (it can still be requested by hand)
+  - the cover-candidate prompt requires plain reader-facing questions
+- `lib/content-factory/pick-lane.ts`: title rule asks for plain reader-facing questions.
+- Ops: post "ONE ARMOR TO SURVIVE..." set to REJECTED and its pending publish rows removed; a rebuild was requested via lane-requests with the topic "PICK YOUR ARMOR TO SURVIVE A DRAGON'S FIRE BREATH".
+
+### Manual steps needed
+- None
+
+### Notes
+- The old option check (`kind_i`) only looked at option NAMES. The dragon pictures came from scenes in which the dragon attacking the armor dominated.
+
 ## [2026-10-06] — YouTube posts only each day's 3 best posts; backlog dropped
 **Requested by:** Keenan
 **Committed by:** Claude Code

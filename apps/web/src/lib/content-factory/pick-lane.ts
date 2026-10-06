@@ -324,7 +324,7 @@ function optionsSystem(brand: PickBrand): string {
 
 YOUR JOB: write the options for one pick-one post (the reader picks one of five) whose question is given below.
 
-- "title": the cover line in final form, ALL-CAPS ready, 4-10 words, ending with "?" when it is a question. It must make complete sense on its own.
+- "title": the cover line in final form, ALL-CAPS ready, 4-10 words, ending with "?" when it is a question. It must make complete sense on its own. Write it as a plain, natural question or instruction to the reader, the way a person would actually say it out loud (2026-10-06, per Keenan): never a fragment, never two ideas stitched together, and ask what THEY would pick rather than telling them to send it to someone.
 - "titleOptions": FOUR more versions of the cover line (same question, different wording; Jev picks the best of the five). This is the most important copy in the post: it sits on the first frame. Plain words, said the way a person would say it out loud, instantly understood, and it makes them want to answer. Vary the shape: a direct question, a one-line setup then the choice, a "you get one..." scenario.
 - "options": write 15 candidates (Jev picks the best five later; 2026-09-30, per Keenan: "make it 15 answers and jev picks the top 5"). Each one:
   - "name": the label on the slide: a natural, complete ANSWER to the question, the way a person would actually reply, 1-8 words ("In the bathroom with the fan on", "The car in the driveway", "Tokyo, Japan", "Porsche 911 GT3 RS"). Read the question, then the name: it must make instant sense as the reply. Never a clipped caption ("Bathroom Fan On", "Target With No List"). No numbers; the renderer adds them.

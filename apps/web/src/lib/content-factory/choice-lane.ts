@@ -113,6 +113,12 @@ YOUR JOB: write one "which would you choose?" post.
 - "captionQuestion": one short caption question that gets a pick AND a reason in the comments ("Which one, and what would you name it?").
 - Creatures of legend from any culture are welcome, and so are original inventions. Keep them respectful and not gory. No emojis.
 
+TITLE STYLE (2026-10-06, per Keenan, after "ONE ARMOR TO SURVIVE A DRAGON'S BREATH. IF YOU KNOW HIM, WHICH?": "this makes no sense and sounds horrible... just ask the reader what they'd pick"):
+- The title is a plain, natural question or instruction TO THE READER, the way a person would actually say it out loud. Read it aloud: if it sounds odd, rewrite it.
+- Good: "A DRAGON IS BREATHING FIRE AT YOU. WHICH ARMOR DO YOU USE TO DEFEND YOURSELF?", "PICK YOUR ARMOR TO SURVIVE A DRAGON'S FIRE BREATH", "PICK THE ARMOR YOU'RE SURVIVING A DRAGON'S FIRE BREATH IN".
+- Never a fragment ("ONE ARMOR TO SURVIVE..."), never two ideas stitched together, never "IF YOU KNOW HIM/HER" or "SEND THIS TO..." unless this post is explicitly an if-you-know post. Ask what THEY would pick.
+- Every option answers the title. If the title asks for armor, all five options are armor, and each scene shows that armor as the hero (worn by a warrior or on display); a dragon or other threat may appear only small in the background.
+
 EPIC, NEVER ORDINARY (2026-10-02, per Keenan: "focus more on beasts and weapons and mythical creatures and sick armor... the cooler concept, the better. size also matters"):
 - Every creature is a MYTHICAL beast: dragons, wyverns, krakens, griffins, chimeras, hydras, basilisks, titans, phoenixes, and colossal legendary versions of animals. Never a real-world animal (no jaguars, dogs, wolves, lions, horses, tortoises, ordinary birds), even with a fancy name, unless it is unmistakably mythical: huge, armored, elemental or many-headed.
 - Every creature is BIG: colossal, towering, dwarfing the people and places around it. Say its scale in the scene.
@@ -415,6 +421,10 @@ const EPIC_MIN = 0.5;
 
 /** Below this, an option doesn't read as what the title promises (2026-10-04). */
 const KIND_MIN = 0.5;
+/** 2026-10-06: each option's PICTURE must show the asked-for thing as the hero. */
+const SCENE_MIN = 0.5;
+/** 2026-10-06: the title must read as a natural question/instruction to the reader. */
+const TITLE_CLEAR_MIN = 0.5;
 /** At or above this, an option is a human-faced creature (2026-10-04). */
 const HUMAN_FACE_MAX = 0.5;
 
@@ -448,6 +458,14 @@ async function choiceTopicProblems(topic: ChoiceTopic): Promise<string[]> {
         false: "No: from the name you can't tell it's the promised kind of thing (e.g. 'Bogmire the Patient' for a dragon)",
       },
     };
+    questions[`scene_${i}`] = {
+      type: "noul",
+      instructions: `\`question\` asks the reader to pick one kind of thing (armor, a weapon, a dragon, a mount...). Does \`options[${i}].scene\` make THAT thing the clear hero of the picture? A creature or threat in the background is fine; a scene where something else (like a dragon, when the question asks for armor) dominates is not.`,
+      criteria: {
+        true: "Yes: the picture's hero is the kind of thing the question asks the reader to pick",
+        false: "No: something else dominates the picture (e.g. a dragon when the question is about armor)",
+      },
+    };
     questions[`humanface_${i}`] = {
       type: "noul",
       instructions: `Is \`options[${i}]\` a creature normally shown with a HUMAN face or human head (a lamassu, sphinx, manticore, centaur, harpy, naga, siren, or similar)? Armored human heroes and warriors are not creatures: answer no for them.`,
@@ -463,9 +481,18 @@ async function choiceTopicProblems(topic: ChoiceTopic): Promise<string[]> {
       ],
     };
   });
+  questions.title_clear = {
+    type: "noul",
+    instructions:
+      "Is `question` a plain, natural, grammatical question or instruction to the reader, the way a person would actually say it out loud? Good: 'PICK YOUR ARMOR TO SURVIVE A DRAGON'S FIRE BREATH', 'A DRAGON IS BREATHING FIRE AT YOU. WHICH ARMOR DO YOU USE?'. Bad: 'ONE ARMOR TO SURVIVE A DRAGON'S BREATH. IF YOU KNOW HIM, WHICH?' (a fragment plus a stitched-on 'if you know him').",
+    criteria: {
+      true: "Yes: reads naturally and asks the reader something clear",
+      false: "No: a fragment, stitched-together, awkward or unclear",
+    },
+  };
   const r = await askJev(
     "choice-diversity",
-    { question: topic.title, options: topic.options.map((o) => ({ name: o.name, lore: o.lore })) },
+    { question: topic.title, options: topic.options.map((o) => ({ name: o.name, lore: o.lore, scene: o.scene })) },
     questions
   );
   if (!r) return problems;
@@ -474,7 +501,10 @@ async function choiceTopicProblems(topic: ChoiceTopic): Promise<string[]> {
   const ordinary: string[] = [];
   const offKind: string[] = [];
   const humanFaced: string[] = [];
+  const offScene: string[] = [];
   topic.options.forEach((o, i) => {
+    const sc = noulOf(r, `scene_${i}`);
+    if (sc !== null && sc < SCENE_MIN) offScene.push(o.name);
     const hf = noulOf(r, `humanface_${i}`);
     if (hf !== null && hf >= HUMAN_FACE_MAX) humanFaced.push(o.name);
     const k = noulOf(r, `kind_${i}`);
@@ -498,6 +528,15 @@ async function choiceTopicProblems(topic: ChoiceTopic): Promise<string[]> {
   if (humanFaced.length)
     problems.push(
       `these creatures have human faces, which Keenan never wants: ${humanFaced.join(", ")}. Replace them with creatures whose faces are fully animal, reptilian or monstrous`
+    );
+  if (offScene.length)
+    problems.push(
+      `these options' pictures don't show what the title asks the reader to pick as the hero: ${offScene.join(", ")}. Rewrite their scenes so that thing fills the frame (worn, wielded or on display); any creature or threat stays small in the background`
+    );
+  const clear = noulOf(r, "title_clear");
+  if (clear !== null && clear < TITLE_CLEAR_MIN && !/^IF YOU KNOW/i.test(topic.title))
+    problems.push(
+      `the title doesn't read naturally ("${topic.title}"). Rewrite it as a plain question or instruction to the reader, e.g. "PICK YOUR ARMOR TO SURVIVE A DRAGON'S FIRE BREATH"`
     );
   if (offKind.length)
     problems.push(

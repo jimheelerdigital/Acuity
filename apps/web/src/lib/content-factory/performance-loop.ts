@@ -511,7 +511,10 @@ export function chooseMythicPostType(
   // focus more on beasts and weapons ... and sick armor").
   // "versus" (monster fights) left the draw 2026-10-04 (Keenan: "no more
   // monster fight posts"); it can still be requested by hand.
-  const MODES = ["choice", "duo", "know", "scenario"];
+  // "know" (if you know him/her) left the draw 2026-10-06 (Keenan: "NOT EVERY
+  // POST NEEDS TO BE A 'IF YOU KNOW HIM, WHICH?' just ask the reader what
+  // they'd pick"); it can still be requested by hand.
+  const MODES = ["choice", "duo", "scenario"];
   const fresh = MODES.filter((m) => !usedToday.has(m));
   const pool = fresh.length ? fresh : MODES;
   if (!board) return { arm: pool[Math.floor(rng() * pool.length)], reason: "explore" };
@@ -671,7 +674,7 @@ export async function chooseMythicCover(opts: {
       effort: "low",
       system: `${copyObjectives("mythicals")}
 
-YOUR JOB: write three different cover questions for one post. Post type: ${opts.postType} (shape like ${shape[opts.postType] ?? shape.choice}; shape only, new words). Subject: ${opts.category}. Each cover is 4-12 words, ALL-CAPS ready, makes complete sense on its own, and is easy to answer with a number in the comments. The three must take clearly different angles. Keep it epic: colossal mythical beasts, dragons, legendary weapons, sick armor and larger-than-life heroes; never real-world animals, places or everyday life.${ctx.whatWorks ? `\nWhat has worked on this account: ${ctx.whatWorks}.` : ""}${ctx.whatDoesnt ? `\nWhat has not: ${ctx.whatDoesnt}.` : ""}
+YOUR JOB: write three different cover questions for one post. Post type: ${opts.postType} (shape like ${shape[opts.postType] ?? shape.choice}; shape only, new words). Subject: ${opts.category}. Each cover is 4-12 words, ALL-CAPS ready, makes complete sense on its own, and is easy to answer with a number in the comments. The three must take clearly different angles. Each is a plain, natural question or instruction TO THE READER, the way a person would say it out loud ("PICK YOUR ARMOR TO SURVIVE A DRAGON'S FIRE BREATH", "A DRAGON IS BREATHING FIRE AT YOU. WHICH ARMOR DO YOU USE?"): never a fragment, never two ideas stitched together, never "IF YOU KNOW HIM/HER" unless the post type is know. Keep it epic: colossal mythical beasts, dragons, legendary weapons, sick armor and larger-than-life heroes; never real-world animals, places or everyday life.${ctx.whatWorks ? `\nWhat has worked on this account: ${ctx.whatWorks}.` : ""}${ctx.whatDoesnt ? `\nWhat has not: ${ctx.whatDoesnt}.` : ""}
 Never reuse these recent covers: ${opts.recentTitles.slice(0, 30).join(" | ") || "none"}.
 
 OUTPUT (JSON): { "titles": ["...", "...", "..."] }`,
