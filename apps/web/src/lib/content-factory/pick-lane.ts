@@ -301,7 +301,7 @@ EXAMPLES of the target (in spirit only; never reuse one from the recent list): $
 Each concept:
 - "question": the cover question, 4-10 words, the way a person would ask it out loud. ${
     brand === "ripple"
-      ? "It names her situation plainly so she understands it in one second; never a cryptic command. Never medical, never preachy."
+      ? "It names her situation plainly so she understands it in one second; never a cryptic command. Never preachy, and never a claim that anything treats, diagnoses, cures or replaces therapy."
       : "Plain, concrete, calm; never hype or guru talk."
   }
 - "firstFrame": one sentence describing the OPENING PHOTO that sets up the question: a single stunning, specific image (where, what light, what is happening), not a collage of the options.

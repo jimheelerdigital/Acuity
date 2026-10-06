@@ -129,7 +129,7 @@ export async function judgeDraft(ctx: {
     policyRisk: {
       type: "noul",
       instructions:
-        "Does the ad (headline, primaryText or onScreen text) say or imply that the reader has a health or mental-health condition or a negative feeling state (including as a question such as 'Overwhelmed?'), mention the reader's age or life stage, promise a health or life outcome, or use before/after framing?",
+        "Does the ad (headline, primaryText or onScreen text) say or imply that the reader has a health or mental-health condition or a negative feeling state (including as a question such as 'Overwhelmed?'), mention the reader's age or life stage, promise a health or life outcome, use before/after framing, or claim Ripple treats, diagnoses, cures or replaces therapy? (A creator stating their own credentials or personal experience is fine. Words like \"brain dump\" or \"voice journal\" are fine in ads.)",
       criteria: { true: "breaks one of these rules", false: "breaks none of them" },
     },
     duplicate: {

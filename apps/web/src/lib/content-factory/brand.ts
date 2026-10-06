@@ -159,13 +159,42 @@ export const SELFIE_AESTHETIC_DNA = [
 // 3. illustrated — animated-film illustration scenes, NO people
 // 4. nature      — hyper-realistic nature photography, NO people
 
-export const CAROUSEL_AVATAR_DNA = [
-  "Soft 3D animated illustration in the style of a modern Pixar/DreamWorks film — one warm, expressive animated scene. Never a photograph.",
-  "CHARACTER: ONE relatable animated woman in her 40s — soft rounded features, believable tiredness and warmth, everyday clothes (sweatshirt, cardigan, jeans). She is mid-moment, physically acting out this slide's exact feeling with her posture, face, and hands. The SAME character appears on every slide of this carousel — identical hair, build, and outfit each time.",
-  "WORLD: a cozy, lived-in animated home — warm cinematic lighting, rounded shapes, rich color, gentle depth of field, small honest details (mugs, laundry, lamps).",
-  "9:16 vertical portrait composition.",
-  "IMPORTANT: absolutely NO text anywhere in the image — no words, letters, numbers, screens with UI, logos, or watermarks.",
-].join("\n");
+// ─── Personas (2026-10-06, per Keenan) ──────────────────────────────────────
+// Two audiences, two Toon 3D leads in the SAME style block. "midlife" is the
+// original heroine (a woman in her 40s); "ambitious" is a mid-20s lead.
+
+export type Persona = "midlife" | "ambitious";
+
+/** Which persona the Toon 3D avatar carousels render. */
+export const CAROUSEL_PERSONA: Persona = "midlife";
+
+const TOON3D_STYLE =
+  "Soft 3D animated illustration in the style of a modern Pixar/DreamWorks film — one warm, expressive animated scene. Never a photograph.";
+
+/** One Toon 3D character line per persona. */
+export const TOON3D_CHARACTERS: Record<Persona, string> = {
+  midlife:
+    "CHARACTER: ONE relatable animated woman in her 40s — soft rounded features, believable tiredness and warmth, everyday clothes (sweatshirt, cardigan, jeans). She is mid-moment, physically acting out this slide's exact feeling with her posture, face, and hands. The SAME character appears on every slide of this carousel — identical hair, build, and outfit each time.",
+  // DRAFT (2026-10-06): Keenan's draft character line, to be edited before
+  // this persona is switched on. The continuity sentence after it matches
+  // the midlife line's.
+  ambitious:
+    "Character: a driven animated lead in their mid-20s — bright focused eyes, slightly tired but determined expression, short tousled dark hair, charcoal overshirt over a white tee, wireless earbuds — an animated film's lead, never a background character. They are mid-moment, physically acting out this slide's exact feeling with posture, face, and hands. The SAME character appears on every slide of this carousel — identical hair, build, and outfit each time.",
+};
+
+/** The Toon 3D avatar style block for one persona. */
+export function carouselAvatarDna(persona: Persona = CAROUSEL_PERSONA): string {
+  return [
+    TOON3D_STYLE,
+    TOON3D_CHARACTERS[persona],
+    "WORLD: a cozy, lived-in animated home — warm cinematic lighting, rounded shapes, rich color, gentle depth of field, small honest details (mugs, laundry, lamps).",
+    "9:16 vertical portrait composition.",
+    "IMPORTANT: absolutely NO text anywhere in the image — no words, letters, numbers, screens with UI, logos, or watermarks.",
+  ].join("\n");
+}
+
+/** The midlife heroine's block (unchanged text; kept for existing imports). */
+export const CAROUSEL_AVATAR_DNA = carouselAvatarDna("midlife");
 
 export const CAROUSEL_ILLUSTRATED_DNA = [
   "Beautiful stylized illustration in the style of a modern animated film's background art — painterly, warm, richly textured, atmospheric. Never a photograph.",

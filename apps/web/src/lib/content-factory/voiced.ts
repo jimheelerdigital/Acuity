@@ -25,6 +25,7 @@
  */
 
 import { createHmac, timingSafeEqual } from "crypto";
+import { CLAIMS_RULE } from "@/lib/positioning";
 
 export type VoicedBrand = "ripple" | "bwk";
 export const VOICED_BRANDS: VoicedBrand[] = ["bwk", "ripple"];
@@ -189,7 +190,7 @@ WRITE FOR THE EAR:
 - ONE idea for the whole script. Every line moves it forward; the last line lands it (${ripple ? "a line of recognition or a small permission she can feel, never a lecture or a list of tips" : "a plain order he can act on today, never hype"}).
 - Speak to the viewer as "you". The reader of the script could be any adult, so never claim a personal life for the speaker ("as a mom", "my kids", "my wife", "when I was your age").
 - Words that sound natural spoken aloud: contractions, short words, no parentheses, no symbols, no hashtags, no numbers written as digits (spell them out), no em or en dashes.
-${ripple ? '- Ripple rules: never preachy, clinical or medical; never "brain dump"; never tie anything to a fixed time of day ("nightly", "before bed").' : "- BWK rules: calm and certain, no hype words, no bro-slang, nothing toxic, no emojis."}
+${ripple ? `- Ripple rules: never preachy or clinical in tone; ${CLAIMS_RULE} Never tie anything to a fixed time of day ("nightly", "before bed").` : "- BWK rules: calm and certain, no hype words, no bro-slang, nothing toxic, no emojis."}
 
 FOR EACH LINE ALSO WRITE:
 - "read": the SAME words with pacing marks for the speaker: "/" a short pause, "//" a longer pause, and *asterisks* around the one word to lean on (at most one per line). Do not change any words.

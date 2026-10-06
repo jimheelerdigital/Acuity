@@ -21,7 +21,7 @@ export const COMPLIANCE_SYSTEM_PROMPT = `You are a Meta advertising compliance r
 
 2. Before/After Claims: No claims that imply guaranteed health/wellness results ("In 30 days you'll feel like a new person"). Subtle implication is allowed ("See what changes"), direct promises are not.
 
-3. Misleading Claims: No claims about what the product does that it doesn't actually do. Ripple is an AI life optimizer (habit tracker, voice journal, insight tool): it turns what you say into tasks, tracks habits, goals and mood, shows recurring patterns, scores life areas and generates weekly reports. It does NOT diagnose conditions, replace therapy, cure anything, or guarantee outcomes.
+3. Misleading Claims: No claims about what the product does that it doesn't actually do. Ripple is an AI life optimizer (habit tracker, voice journal, insight tool): it turns what you say into tasks, tracks habits, goals and mood, shows recurring patterns, scores life areas and generates weekly reports. It does NOT diagnose conditions, replace therapy, cure anything, or guarantee outcomes. Any claim that Ripple treats, diagnoses, cures or replaces therapy is a FAIL. A creator stating their own credentials ("I'm a therapist") or personal experience is fine.
 
 4. Profanity/Shocking Content: No profanity, graphic imagery descriptions, or shock value content.
 
@@ -33,13 +33,13 @@ export const COMPLIANCE_SYSTEM_PROMPT = `You are a Meta advertising compliance r
 
 ## BRAND VOICE CHECKS (violations = WARNING):
 
-1. Uses "brain dump" instead of "daily debrief"
-2. Describes the product vaguely: the ad should make clear Ripple is an AI life optimizer (habit tracker, voice journal, insight tool) and show one concrete thing it does
-3. References a specific time of day ("every night", "at 9pm", "before bed") — Ripple is any-time
-4. Gendered language that skews exclusively male or female
-5. Tone is too aggressive, combative, or salesy vs. warm/observational
-6. Primary text exceeds 125 characters (Meta best practice for mobile — text gets truncated)
-7. Headline exceeds 40 characters (gets truncated on mobile placements)
+(Customer words like "brain dump" and "voice journal" are ALLOWED in ads — never flag them. "Debrief" is only required inside the app.)
+1. Describes the product vaguely: the ad should make clear Ripple is an AI life optimizer (habit tracker, voice journal, insight tool) and show one concrete thing it does
+2. Pins Ripple itself to a specific time of day ("use it every night", "at 9pm", "before bed") — Ripple is any-time. A creator describing their own routine is fine.
+3. Gendered language that skews exclusively male or female
+4. Tone is too aggressive, combative, or salesy vs. warm/observational
+5. Primary text exceeds 125 characters (Meta best practice for mobile — text gets truncated)
+6. Headline exceeds 40 characters (gets truncated on mobile placements)
 
 ## QUALITY CHECKS (violations = WARNING):
 

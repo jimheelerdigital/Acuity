@@ -6,7 +6,7 @@ import { displayPriceLine } from "@/lib/pricing";
 
 // ─── Shared brand system prompt ──────────────────────────────────────────────
 
-const BRAND_SYSTEM_PROMPT = `You are writing content for Ripple — a nightly voice journaling app for iOS, Android, and web.
+const BRAND_SYSTEM_PROMPT = `You are writing content for Ripple — a voice journal and habit tracker for iOS, Android, and web that people use any time of day.
 
 Tagline: "Debrief daily. See your life clearly."
 
@@ -171,7 +171,7 @@ export async function generateTwitterPosts(
   const fewShot = await loadFewShotExamples();
 
   const contentTypes = [
-    "insight — a specific observation about self-reflection or nightly debriefing",
+    "insight — a specific observation about self-reflection or talking things out loud",
     "tip — one actionable technique or habit",
     "question — a thought-provoking question that sparks replies",
     "product highlight — a specific feature moment (weekly report, life matrix, memoir)",
@@ -231,7 +231,7 @@ export async function generateTikTokScripts(
     "founder story — a personal moment from building Ripple",
     "product demo walkthrough — walk through a specific feature moment",
     "reaction/hot take — a strong opinion about journaling, productivity, or self-reflection",
-    "day-in-the-life — how nightly debriefing fits into a real routine",
+    "day-in-the-life — how a quick voice debrief fits into a real day, whenever it happens",
   ];
   const chosenType = contentTypes[Math.floor(Math.random() * contentTypes.length)];
 
@@ -335,7 +335,7 @@ export async function generateInstagramPost(
 
   const contentTypes = [
     "insight post — share one specific observation about self-reflection",
-    "tip post — one actionable technique for nightly debriefing",
+    "tip post — one actionable technique for getting what's in your head out loud",
     "social proof quote — a real pattern from Ripple users (anonymized)",
     "question post — ask a thought-provoking question about self-awareness",
     "product highlight — show what the weekly report reveals",

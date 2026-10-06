@@ -10,10 +10,12 @@
  * Sonnet 5.5 works best: goals and reasons in plain sentences, not a wall
  * of capitalized prohibitions (the lane prompts keep their hard rules).
  *
- * Sources: docs/acuity-positioning.md (audience, mirror-not-coach, brand
+ * Sources: docs/acuity-positioning.md (audience, voice, brand
  * language), Keenan's locked content rules, and IG/FB/TikTok engagement
  * from the 2026-09-26 audit (14-day window).
  */
+
+import { CLAIMS_RULE } from "@/lib/positioning";
 
 export type CopyBrand = "ripple" | "bwk" | "mythicals";
 
@@ -49,7 +51,7 @@ WHAT MAKES A RIPPLE POST WIN:
 
 WHAT OUR NUMBERS SAY: the selfie posts reach the most people; the question and recognition posts are the ones women answer. Covers that name her situation in plain words beat clever or cryptic ones. Abstract uplift ("you deserve rest", "choose yourself") is what every other account posts and gets scrolled past.
 
-BRAND LANGUAGE (mandatory, from docs/acuity-positioning.md): never "brain dump" (say "debrief" if it comes up); never tie anything to a fixed time of day like "nightly" or "before bed"; never medical, never promise health or mental-health outcomes, never before/after claims; no emojis. Warm, plain, specific. She should read it and think "how did they know," then "I want that."`,
+BRAND LANGUAGE (mandatory, from docs/acuity-positioning.md): customer words like "brain dump" are fine in a hook; never tie anything to a fixed time of day like "nightly" or "before bed"; ${CLAIMS_RULE} Never promise health or mental-health outcomes, never before/after claims; no emojis. Warm, plain, specific. She should read it and think "how did they know," then "I want that."`,
 
   // Rewritten 2026-09-30 per Keenan: "bwk is all about growth, being your
   // best self, and pushing for your highest possible output. you can

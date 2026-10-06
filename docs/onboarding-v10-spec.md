@@ -39,11 +39,12 @@
 ## 1. Hard rules
 - The word is **debrief**. Never "brain dump", "journal entry", "check-in".
 - No bedtime / nightly / morning-routine / ritual framing of the mechanism.
-- No medical, diagnostic, therapeutic, or guaranteed-outcome claims.
+- Never claim Ripple treats, diagnoses, cures, or replaces therapy; no guaranteed-outcome claims. (Updated 2026-10-06.)
 - No account or paywall before the first recording and reveal.
 - No invented metrics, fake progress, synthetic testimonials, or insight not supported by the transcript.
 - No logo or brand name until the reveal.
-- No free-trial toggle. No fake strike-through prices.
+- No fake strike-through prices.
+- **Free-trial toggle: planned paywall test** (2026-10-06, Keenan; was a "no free-trial toggle" rule). Not built yet; the current paywall has no toggle until the test is designed.
 - All prices/renewal language from central store config + localized product metadata.
 - Screens 1–2 dark; 3+ light.
 

@@ -119,13 +119,14 @@ Before writing or editing ANY customer-facing copy (landing pages, ad scripts, o
 That file is the canonical positioning and brand reference. It defines who we serve, what we sell, voice rules, and mandatory language rules. When anything conflicts with this file, this file wins.
 
 Key rules to internalize (read the full doc for details):
-- Acuity is an **AI-powered voice self-reflection app**. It's a **mirror, not a coach** — reflect, don't advise.
+- Ripple is an **AI life optimizer: a habit tracker, voice journal and insight tool that helps people change their lives for the better**. Voice: **on their side**; never preachy. Never say "mirror, not a coach" (retired 2026-09-29). Code source of truth: `apps/web/src/lib/positioning.ts`.
 - Our audience is **women ~40–50** carrying a heavy mental load. Write for them, not productivity hackers.
-- ✅ "debrief," "commit to memory" — ❌ "brain dump"
-- ✅ records any time of day — ❌ "nightly," "before bed," any fixed time
+- "Debrief" is the feature's name in the app and product UI. Ads, hooks, SEO pages, outreach emails and creator briefs may use customer words like "brain dump" and "voice journal".
+- Ripple's own copy and visuals never pin the product to a time of day ("nightly," "before bed," "9pm"); creators can describe their own routine however they like.
+- Never claim Ripple treats, diagnoses, cures, or replaces therapy. Creators may state their credentials and personal experience.
 - ❌ no recording-duration claims ("60-second," "90-second," etc.)
 - Value is **multi-surface** (tasks, mood, patterns, Life Matrix, weekly report) — don't frame any single feature as the sole conversion driver.
-- Pricing: **$4.99/month**, $39.99/year, 14-day free trial.
+- Pricing: **$9.99/month**, $89.99/year, 7-day free trial. (Pre-2026-09 subscribers grandfathered at $4.99/$39.99.)
 
 ---
 

@@ -13,7 +13,7 @@
 
 import { inngest } from "@/inngest/client";
 import type { PrismaClient } from "@prisma/client";
-import { PRODUCT_ONE_LINER, VOICE_PRINCIPLE } from "@/lib/positioning";
+import { ACQUISITION_TERM_RULE, CLAIMS_RULE, PRODUCT_ONE_LINER, VOICE_PRINCIPLE } from "@/lib/positioning";
 
 // ─── Personas for internal linking ──────────────────────────────────────────
 
@@ -61,10 +61,9 @@ const BANNED_PHRASES = [
   "empower",
   "cutting-edge",
   "leverage",
-  // Positioning rules (docs/acuity-positioning.md): "debrief" not
-  // "brain dump", no fixed-time framing, no duration claims
-  "brain dump",
-  "brain-dump",
+  // Positioning rules (docs/acuity-positioning.md): no fixed-time
+  // framing, no duration claims. "Brain dump" is allowed on SEO pages
+  // since 2026-10-06 (a customer search word).
   "60-second",
   "90-second",
   "nightly",
@@ -1291,7 +1290,8 @@ PRODUCT CONTEXT:
 - Life Matrix: six life domains tracked over time
 - Weekly report every Sunday: a written narrative of the user's week
 - How Ripple talks: ${VOICE_PRINCIPLE}
-- Call the voice entry a "debrief". NEVER call it a "brain dump".
+- ${ACQUISITION_TERM_RULE}
+- ${CLAIMS_RULE}
 - Never claim a recording length ("60-second", "two-minute"). Never frame it as a night or bedtime habit. Any time of day.
 - Do not state pricing or "founding member" scarcity in the post body. Evergreen posts outlive prices and promos, and stale claims read as neglect.
 
@@ -1317,7 +1317,7 @@ HOW TO WRITE LIKE A PERSON (hard rules, checked by an editor):
 BANNED PHRASES (never use these):
 "unlock", "elevate", "journey", "transform", "AI-powered", "seamless", "game-changer",
 "in today's fast-paced world", "revolutionize", "harness the power of", "empower",
-"cutting-edge", "leverage", "brain dump", "delve", "tapestry", "testament to",
+"cutting-edge", "leverage", "delve", "tapestry", "testament to",
 "let's dive", "let's explore", "in the heart of", "nightly", "before bed", "Acuity"
 (The product's old name was "Acuity". It must never appear; the product is Ripple.)
 

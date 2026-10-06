@@ -7,11 +7,15 @@
  * 35-55 carrying everyone's load watches and thinks "this account
  * understands me." Scripts follow HOOK → UNFOLDING → TRUTH → REFRAME
  * (no CTA of any kind — 2026-08-28, per Keenan: "it should never tell
- * people to follow"), rotate across five core pain branches, and read
+ * people to follow"), start from one of five pain branches, and read
  * as relaxing, meditative listen-alongs.
  *
  * ambient-video.ts embeds SCRIPT_STYLE_GUIDE in its system prompt and
- * picks one PAIN_BRANCH per run for variety.
+ * suggests one PAIN_BRANCH per run for variety. 2026-10-06, per Keenan:
+ * the five branches (The Load, The Treadmill, The Loop, The Gap, The
+ * Planner; keys match PAIN_BRANCH_STARTERS in lib/positioning.ts) are a
+ * starting set, not a requirement. The writer may follow a different
+ * pain when it fits better.
  */
 
 export interface PainBranch {
@@ -20,35 +24,35 @@ export interface PainBranch {
   truth: string;
 }
 
-/** The five core pain branches — one is assigned per script for variety. */
+/** The five starter pain branches; one is suggested per script for variety. */
 export const PAIN_BRANCHES: PainBranch[] = [
   {
-    key: "mental overload",
+    key: "load",
     theme: "She is exhausted from thinking about everything and finishing nothing.",
     truth:
       "She is not tired because she did too little. She is tired because she is tracking too much.",
   },
   {
-    key: "busy but not moving",
+    key: "treadmill",
     theme:
       "She is always doing something but does not feel like she is moving forward.",
     truth:
       "She is confusing motion with progress because her life is filled with maintenance tasks.",
   },
   {
-    key: "repeating patterns",
+    key: "loop",
     theme: "She keeps having the same fights, same stress, same emotional loops.",
     truth:
       "The problem is not that she lacks awareness. Awareness without space becomes another thing to feel guilty about.",
   },
   {
-    key: "knowing without acting",
+    key: "gap",
     theme: "She knows what she should do, but cannot seem to do it.",
     truth:
       "She does not need more advice. She needs fewer invisible demands draining her ability to act.",
   },
   {
-    key: "planning instead of progress",
+    key: "planner",
     theme:
       "She keeps planning, organizing, rewriting lists, and starting systems.",
     truth:
@@ -91,9 +95,10 @@ HARD BANS: never mention Ripple, Acuity, any app, AI, journaling, or any product
 THE ENDING (2026-08-28, per Keenan: "it should never tell people to follow"): NO call to action of any kind — never tell her to follow, share, save, send, comment, or do anything at all. The last line is a soft, settling release in the same quiet voice — a permission or a landing, like an exhale ("Tonight, nothing needs you." / "You're allowed to just be here for a minute."). The script simply ends, gently.`;
 
 /**
- * Prompt block assigning this run's pain branch. Injected into the
- * system prompt so consecutive posts don't hammer the same ache.
+ * Prompt block suggesting this run's pain branch. Injected into the
+ * system prompt so consecutive posts don't hammer the same ache. A
+ * suggestion only (2026-10-06): never forces the script into it.
  */
 export function painBranchBlock(branch: PainBranch): string {
-  return `TODAY'S PAIN BRANCH (write inside it): ${branch.key.toUpperCase()} — ${branch.theme} The emotional truth underneath: ${branch.truth}`;
+  return `SUGGESTED STARTING PAIN (a starting point, not a requirement; follow a different pain if it makes a truer script): THE ${branch.key.toUpperCase()}: ${branch.theme} The emotional truth underneath: ${branch.truth}`;
 }

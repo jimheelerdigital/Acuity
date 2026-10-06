@@ -7,6 +7,70 @@
 
 ---
 
+## [2026-10-06] — New brand and copy rules: "brain dump" allowed in ads, new claims rule, pain-branch tags, second persona
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** see "docs: Update Ripple brand and copy rules across docs and prompts"
+
+### In plain English (for Keenan)
+- **Wording:** ads, hooks, SEO pages, outreach emails and creator briefs can now say "brain dump" and "voice journal". Inside the app (and in emails to people who have it) it's still a "debrief".
+- **Time of day:** Ripple's own copy still never ties the product to a time of day, but a creator can describe their own routine.
+- **Claims:** "no medical or clinical claims anywhere" is now "never claim Ripple treats, diagnoses, cures or replaces therapy". Creators can state their credentials and their own experience. Jev now rejects ads that cross that line, and it no longer flags "brain dump" in ads.
+- **Pain branches:** The Load, The Treadmill, The Loop, The Gap and The Planner are now a starting set, not a requirement. Every new ad records which branch it used, so we can rank branches by results.
+- **Rating:** the rating and user count now live in one setting. The numbers are unchanged until Keenan confirms the live ones.
+- **Second character:** there's now a persona setting. "Midlife" (the current Toon 3D heroine, the default) and "ambitious" (a mid-20s lead, draft description for Keenan to edit).
+- **UGC brief format:** a loose creator brief (hook, problem, demo, call to action) that always includes the claims rule.
+- **Free-trial toggle:** the onboarding doc now lists it as a planned paywall test instead of a ban. No screens or paywall code changed.
+
+### Technical changes (for Jimmy)
+- `lib/positioning.ts` (single source):
+  - new `CLAIMS_RULE`, `IN_APP_TERM_RULE`, `ACQUISITION_TERM_RULE`, `TIME_OF_DAY_RULE`
+  - new `PAIN_BRANCH_STARTERS` (load/treadmill/loop/gap/planner), `painBranchMenu()`, `normalizePainBranch()`
+  - `VOICE_PRINCIPLE`, `productTruth()` and `AD_CLAIM_GUARDRAIL` now carry the claims rule (the Meta policy lines are kept)
+- Jev / gates:
+  - `adlab/jev-judge.ts`: the `policyRisk` noul now also covers treats/diagnoses/cures/replaces-therapy claims, and states that creator credentials and "brain dump" are fine
+  - `adlab/compliance.ts`: dropped the "brain dump" brand-voice warning; the time-of-day check is now about pinning Ripple itself; replace-therapy claims are a FAIL
+  - `content-factory/humanizer.ts`: `BANNED_RE` no longer bans "brain dump" (nightly / before bed / every night stay)
+- Ad generation (`adlab/weekly-batch.ts`):
+  - `painBranch` added to `BatchAdSchema` (unknown → normalized, not length-capped) and to the submit_ads + submit_video_ads tools
+  - the prompts now include `painBranchMenu()`, `ACQUISITION_TERM_RULE` and `TIME_OF_DAY_RULE`
+  - `| branch: <key>` is appended to `AdLabAngle.researchNotes` for image and video ads
+  - the men's lane says "daily self-audit" (was "nightly-audit")
+- `adlab/learning.ts`: new `branchFromNotes()`; `CreativePerf.painBranch` ("untagged" for older ads).
+- New `adlab/ugc-brief.ts`: `UGC_BRIEF_BEATS`, `buildUgcBrief()`. Not wired to anything yet.
+- `adlab/landing-page.ts`: the ad-lander prompt uses the new term, time and claims rules.
+- `auto-blog.ts`, `blog-rewrite-triage.ts`: "brain dump" removed from the banned lists; the prompt adds `ACQUISITION_TERM_RULE` + `CLAIMS_RULE`.
+- Organic prompts:
+  - `copy-objectives.ts`, `video-scripts.ts`, `voiced.ts`, `caption-writer.ts`, `pick-lane.ts`: "brain dump" bans removed; "never medical" replaced by the claims rule
+  - `generate.ts`: removed "nightly" from the brand prompt and from 3 post-type lines
+- `script-style-guide.ts`: branch keys renamed to load/treadmill/loop/gap/planner; `painBranchBlock` is now a "suggested starting pain", not "write inside it".
+- Personas:
+  - `content-factory/brand.ts`: `Persona` type, `CAROUSEL_PERSONA = "midlife"`, `TOON3D_CHARACTERS` (ambitious line marked DRAFT), `carouselAvatarDna(persona)`. `CAROUSEL_AVATAR_DNA` is byte-identical to before (verified).
+  - `carousel-generate.ts` `buildCarouselImagePrompt({ persona? })` and the `generate-topic.ts` avatar scene direction follow the persona.
+- Social proof:
+  - `lib/social-proof.ts`: new `APP_RATING { stars: "4.9", count: 127 }`; `SOCIAL_PROOF.rating`, `SOCIAL_PROOF.users` and `STATS_STRIP` derive from it
+  - `components/try-debrief-flow.tsx`: the 2 hardcoded "4.9 … from 127+ users" lines now read `SOCIAL_PROOF`
+- Docs: `docs/acuity-positioning.md` (terminology, claims, pain branches, personas, ad formats), `CLAUDE.md`, `AGENTS.md` (the stale mirror-not-coach line and $4.99 pricing fixed), `_design/DESIGN_SYSTEM.md` §7.2/7.4/7.6, `docs/onboarding-v10-spec.md` §1.
+- No schema change. No new env vars. No onboarding screens or paywall code touched.
+
+### Manual steps needed
+- [ ] Confirm the live rating and user count, then edit `APP_RATING` in `lib/social-proof.ts` (Keenan)
+- [ ] Edit the DRAFT "ambitious" character line in `content-factory/brand.ts` before switching `CAROUSEL_PERSONA` (Keenan)
+- [ ] Decide the open questions in Notes (Keenan)
+
+### Notes
+- Several items in the brief don't exist in this repo, so nothing was changed for them:
+  - the Visual DNA line "Mood: intimate, quiet, warm, calm — the last hour of the day." (not in any branch's history)
+  - a "6-beat, 22-second" script (the in-house animated ads are the ~12–15s per-template scripts in weekly-batch)
+  - any UGC outreach draft prompt or creator brief (`ugc-brief.ts` is new)
+- Pain-branch mapping: the five script-style-guide pains map onto the new names. overload → Load, busy-not-moving → Treadmill, repeating patterns → Loop, knowing-without-acting → Gap, planning-instead-of-progress → Planner. Ads never used branches before; they're tagged from this commit on.
+- The "Toon 3D heroine" is `CAROUSEL_AVATAR_DNA` ("a woman in her 40s"). The "early 40s" text in the repo belongs to a photo-real selfie avatar (`RIPPLE_AVATAR_IDENTITIES.texts-younger`), which was left alone.
+- Organic posts and the blog keep their stricter time-of-day bans (they block "every night"/"before bed" even when the product isn't mentioned). This doesn't conflict with the new rule but is broader than it.
+- The onboarding v10 "The load / The loop / The treadmill" cards are a separate 6-branch set in the app; untouched per the brief.
+- Lifecycle emails (`emails/trial/*`, `email-jev.test.ts`) still ban "brain dump": they go to people who have the app, so they count as in-app.
+- The landing pages still show "4.9 ★" via `SOCIAL_PROOF.rating`, and try-debrief-flow shows "4.9 from 127+ users". Both conflict with Keenan's 09-24 "five stars on the App Store, no number" call. Numbers and display left as-is per the brief.
+- Typecheck: no new errors in touched files (the repo has 174 pre-existing tsc errors). Vitest adlab + content-factory + email-jev + funnel-config: 81/81 pass.
+
 ## [2026-10-06] — Signups who don't pay get a free week of Pro by email, no card
 **Requested by:** Keenan
 **Committed by:** Claude Code

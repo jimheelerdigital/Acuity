@@ -4,6 +4,7 @@ import { useEffect, useRef, useState, useCallback } from "react";
 import confetti from "canvas-confetti";
 import { signIn } from "next-auth/react";
 import { trackOnboardingEvent } from "@/lib/track-onboarding";
+import { SOCIAL_PROOF } from "@/lib/social-proof";
 import {
   type ExtractionResult,
   MOOD_LABELS,
@@ -452,7 +453,7 @@ function TryRecordScreen({
           <div className={`transition-all duration-700 ${showExtra ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"}`}>
             <div className="mb-6">
               <p className="text-sm font-medium text-zinc-400 mb-2">
-                4.9 <span className="text-amber-400">&#9733;&#9733;&#9733;&#9733;&#9733;</span> from 127+ users
+                {SOCIAL_PROOF.rating} <span className="text-amber-400">&#9733;&#9733;&#9733;&#9733;&#9733;</span> from {SOCIAL_PROOF.users} users
               </p>
               <div className="relative h-10 overflow-hidden">
                 {MINI_TESTIMONIALS.map((t, i) => (
@@ -1093,7 +1094,7 @@ function TryExtractionScreen({
           {/* Social proof */}
           <div className="mt-6 text-center">
             <p className="text-sm font-medium text-zinc-400 mb-1">
-              4.9 <span className="text-amber-400">&#9733;&#9733;&#9733;&#9733;&#9733;</span> from 127+ users
+              {SOCIAL_PROOF.rating} <span className="text-amber-400">&#9733;&#9733;&#9733;&#9733;&#9733;</span> from {SOCIAL_PROOF.users} users
             </p>
             <p className="text-xs text-zinc-400">
               7-day free trial. No credit card.

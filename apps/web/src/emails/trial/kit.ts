@@ -2,8 +2,10 @@
  * Small building blocks for the 2026-10-01 email rewrite (variants picked by
  * Jev, lib/email-jev.ts). Keeps every variant short and on-voice:
  *   - one headline, 2-4 short paragraphs, ONE call to action
- *   - Keenan's voice: plain, warm, on her side; never preachy, never medical
- *   - no "brain dump", no fixed time of day, no recording-duration claims
+ *   - Keenan's voice: plain, warm, on her side; never preachy; never claim
+ *     Ripple treats, diagnoses, cures or replaces therapy
+ *   - these go to people who have the app, so the word is "debrief" (never
+ *     "brain dump"); no fixed time of day, no recording-duration claims
  *   - examples follow her lane (women = Ripple, men = BWK)
  */
 import { escapeHtml } from "@/lib/escape-html";

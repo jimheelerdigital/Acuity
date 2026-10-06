@@ -93,7 +93,9 @@ FALSE POSITIVES, leave these alone: short declarative fragments in an account's 
  * Never throws; with Jev off it just returns the payload (dash-fixed).
  */
 const FLAG_THRESHOLD = 0.8;
-const BANNED_RE = /\bbrain[- ]?dump|\bnightly\b|\bbefore bed\b|\bevery night\b/i;
+// 2026-10-06, per Keenan: "brain dump" is allowed in hooks and posts (a
+// customer word); only fixed-time framing stays banned here.
+const BANNED_RE = /\bnightly\b|\bbefore bed\b|\bevery night\b/i;
 
 /** Normalized string → retry feedback, for strings from flagged payloads. */
 const copyFlags = new Map<string, string>();
@@ -149,7 +151,7 @@ export async function humanizePass<T>(opts: {
   const banned = lines.find((l) => BANNED_RE.test(l));
   if (banned) {
     problems.push(
-      `"${banned}" uses banned language (never "brain dump", never a fixed time like "nightly" or "before bed")`
+      `"${banned}" uses banned language (never a fixed time like "nightly" or "before bed")`
     );
   }
 

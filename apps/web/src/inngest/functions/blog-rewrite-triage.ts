@@ -23,7 +23,7 @@
 
 import { inngest } from "@/inngest/client";
 import { displayAnnual, displayMonthly } from "@/lib/pricing";
-import { PRODUCT_ONE_LINER, VOICE_PRINCIPLE } from "@/lib/positioning";
+import { ACQUISITION_TERM_RULE, CLAIMS_RULE, PRODUCT_ONE_LINER, VOICE_PRINCIPLE } from "@/lib/positioning";
 
 // Authoritative list from .tmp/rewrite-slugs.txt (blog-triage.ts output,
 // Keenan sign-off 2026-09-23) — all 41 verified live in prod DB.
@@ -75,7 +75,7 @@ const BANNED = [
   "unlock", "elevate", "journey", "transform", "ai-powered", "seamless",
   "game-changer", "in today's fast-paced world", "revolutionize",
   "harness the power of", "empower", "cutting-edge", "leverage",
-  "brain dump", "delve", "tapestry", "testament to", "let's dive",
+  "delve", "tapestry", "testament to", "let's dive",
   "let's explore", "in the heart of", "nightly", "before bed", "acuity",
 ];
 
@@ -86,6 +86,8 @@ PRODUCT FACTS (never contradict):
 - ${PRODUCT_ONE_LINER}
 - How Ripple talks: ${VOICE_PRINCIPLE}
 - Users can record any time of day. NEVER frame it as a night-time/bedtime habit and NEVER claim a specific recording duration.
+- ${ACQUISITION_TERM_RULE}
+- ${CLAIMS_RULE}
 - Pricing: ${displayMonthly()}/month, ${displayAnnual()}/year, 7-day free trial, no credit card required.
 
 BANNED WORDS/PHRASES (never output any of these, any casing): ${BANNED.join(", ")}. The old product name "Acuity" must never appear — the product is Ripple.

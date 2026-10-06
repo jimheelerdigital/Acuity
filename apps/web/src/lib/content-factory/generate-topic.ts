@@ -14,6 +14,7 @@ import {
   lastJsonText,
 } from "./claude-client";
 import {
+  CAROUSEL_PERSONA,
   FORCED_STYLE_LANE,
   isMood,
   type CarouselVisualStyle,
@@ -78,7 +79,14 @@ const SCENE_DIRECTION: Record<CarouselVisualStyle, string> = {
 - NO PEOPLE, EVER. No faces, no bodies, no silhouettes, no reflections of anyone, no mirrors. At most a hand at the edge of frame holding a mug or resting on a table.
 - The feeling lives in objects and light: a mug going cold beside an open laptop, a phone face-down on rumpled sheets, rain on the kitchen window over an untouched to-do list, one lit candle in a dark kitchen, a kettle steaming with nobody there.
 - Each scene must be DIFFERENT from every other slide's — different room, different subject, different light, different distance (close-up, tabletop, doorway). Under 30 words, concrete nouns only, no abstractions.`,
-  avatar: `For each slide write a "scene" — ONE moment starring the SAME animated character: a relatable, tired-but-warm woman in her 40s rendered like a modern Pixar film, physically ACTING OUT that slide's exact text with her posture, face, and hands (slumped at the kitchen table over cold coffee, mid-laugh pulling on sneakers by the door, staring at a glowing phone in the dark).
+  // Persona-aware since 2026-10-06 (brand.ts CAROUSEL_PERSONA). The
+  // midlife text is the original heroine's, unchanged.
+  avatar:
+    CAROUSEL_PERSONA === "ambitious"
+      ? `For each slide write a "scene" — ONE moment starring the SAME animated character: a driven, slightly tired but determined lead in their mid-20s rendered like a modern Pixar film, physically ACTING OUT that slide's exact text with posture, face, and hands (hunched over a laptop at a cluttered desk, pulling on a jacket at the door with earbuds in, staring at a glowing phone in the dark).
+- Describe their action, expression, and the room. They appear in EVERY slide and must read as the same person each time.
+- Each scene must be DIFFERENT from every other slide's — different room, different action, different light, different distance. Under 30 words, concrete.`
+      : `For each slide write a "scene" — ONE moment starring the SAME animated character: a relatable, tired-but-warm woman in her 40s rendered like a modern Pixar film, physically ACTING OUT that slide's exact text with her posture, face, and hands (slumped at the kitchen table over cold coffee, mid-laugh pulling on sneakers by the door, staring at a glowing phone in the dark).
 - Describe her action, expression, and the room. She appears in EVERY slide and must read as the same woman each time.
 - Each scene must be DIFFERENT from every other slide's — different room, different action, different light, different distance. Under 30 words, concrete.`,
   illustrated: `For each slide write a "scene" — ONE illustrated still, like a frame of background art from a modern animated film. NO people, no characters, no silhouettes:

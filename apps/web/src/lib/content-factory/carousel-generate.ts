@@ -8,7 +8,7 @@
  */
 
 import OpenAI from "openai";
-import { VISUAL_DNA, VISUAL_DNA_NOTEXT, STYLE_LANES, MOOD_EXPRESSIONS, isMood, resolveStyleLane, SELFIE_PERSONA, SELFIE_VISUAL_DNA, SELFIE_AESTHETIC_DNA, CAROUSEL_VISUAL_STYLES, type CarouselVisualStyle } from "./brand";
+import { VISUAL_DNA, VISUAL_DNA_NOTEXT, STYLE_LANES, MOOD_EXPRESSIONS, isMood, resolveStyleLane, SELFIE_PERSONA, SELFIE_VISUAL_DNA, SELFIE_AESTHETIC_DNA, CAROUSEL_VISUAL_STYLES, carouselAvatarDna, type CarouselVisualStyle, type Persona } from "./brand";
 import { CAROUSEL_TOPICS, type CarouselTopic } from "./topics";
 import { composeSlide, composeCTASlide } from "./compose";
 import type { QuoteSurface, TextsLane, RippleAvatarLane } from "./moody-carousel";
@@ -334,11 +334,13 @@ export function buildCarouselImagePrompt(opts: {
   /** The slide's burned-on line — the image quietly acts it out. */
   slideText: string;
   headline: string;
+  /** Toon 3D lead for the avatar style; defaults to CAROUSEL_PERSONA. */
+  persona?: Persona;
 }): string {
   return [
     `Scene (follow exactly): ${opts.scene}`,
     `Context (convey through the image only — subtly, shown not told): this image belongs to a carousel titled "${opts.headline}"; this slide's moment is "${opts.slideText}".`,
-    CAROUSEL_VISUAL_STYLES[opts.style],
+    opts.style === "avatar" ? carouselAvatarDna(opts.persona) : CAROUSEL_VISUAL_STYLES[opts.style],
   ].join("\n");
 }
 

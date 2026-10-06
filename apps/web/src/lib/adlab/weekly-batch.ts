@@ -25,7 +25,7 @@ import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { AD_COPY_MODELS, callAdLabClaude, extractJson } from "@/lib/adlab/claude";
 import { lastJsonText } from "@/lib/content-factory/claude-client";
-import { AD_CLAIM_GUARDRAIL, PRODUCT_CATEGORY, VOICE_PRINCIPLE, productTruth } from "@/lib/positioning";
+import { ACQUISITION_TERM_RULE, AD_CLAIM_GUARDRAIL, PRODUCT_CATEGORY, TIME_OF_DAY_RULE, VOICE_PRINCIPLE, normalizePainBranch, painBranchMenu, productTruth } from "@/lib/positioning";
 import { displayMonthly } from "@/lib/pricing";
 import { HOOK_STYLES, VIDEO_TEMPLATES, validateVideoScript, type HookStyle, type VideoScript, type VideoTemplate } from "@/lib/adlab/ad-video";
 import { LOOK_KEYS, assignLooks, buildLookPrompt, copyFitsLook, fallbackLook, lookByKey, lookNeedsText, randomVariant } from "@/lib/adlab/ad-looks";
@@ -336,7 +336,7 @@ Show what she'll see and get done with Ripple, and the better, lighter life it p
     brandVoiceGuide: `Direct, grounded, zero hype. A man who has his act together talking straight — not a guru, not a drill sergeant.
 Write for a young man who knows exactly what he should be doing and hates that he isn't doing it.
 Short declarative sentences. No motivation-speak, no "grindset" clichés. Respect his intelligence.
-Frame Ripple as the nightly-audit / self-accountability tool: say it out loud, see the pattern, keep the promise. (Never claim a fixed time of day — he records whenever.)
+Frame Ripple as the daily self-audit / self-accountability tool: say it out loud, see the pattern, keep the promise. (Never claim a fixed time of day — he records whenever.)
 Never shame him. Name the gap between knowing and doing without moralizing.
 Show the mechanism: spoken debrief → tracked habits → visible pattern → kept promises → a life he respects. ${AD_CLAIM_GUARDRAIL}`,
     targetAudience: {
@@ -729,6 +729,10 @@ const BatchAdSchema = z.object({
   insight: z.string().max(140).optional(),
   // Organic research seed label ("R2") this ad built on (2026-10-01).
   inspiration: z.string().max(8).optional(),
+  // Pain branch this ad used (2026-10-06): a PAIN_BRANCH_STARTERS key or a
+  // short new label. Tagged into researchNotes so branches can be ranked.
+  // Not length-capped: one overlong label must never reject the batch.
+  painBranch: z.unknown().optional().transform((b) => normalizePainBranch(b)),
 });
 
 /** JSON schema for the submit_ads tool (structured output, 2026-09-29). */
@@ -766,8 +770,9 @@ const SUBMIT_ADS_TOOL = {
             },
             insight: { type: "string" },
             inspiration: { type: "string" },
+            painBranch: { type: "string" },
           },
-          required: ["theme", "hypothesis", "targetPersona", "valueSurface", "archetype", "headline", "primaryText", "description", "cta", "imageScene", "solutionLine", "benefits", "said", "caught", "format", "strategy"],
+          required: ["theme", "hypothesis", "targetPersona", "valueSurface", "archetype", "painBranch", "headline", "primaryText", "description", "cta", "imageScene", "solutionLine", "benefits", "said", "caught", "format", "strategy"],
         },
       },
     },
@@ -882,6 +887,7 @@ const SUBMIT_VIDEOS_TOOL = {
             template: { type: "string", enum: [...VIDEO_TEMPLATES] },
             theme: { type: "string" },
             hypothesis: { type: "string" },
+            painBranch: { type: "string" },
             hook: { type: "string" },
             endHeadline: { type: "string" },
             openerScene: { type: "string" },
@@ -905,7 +911,7 @@ const SUBMIT_VIDEOS_TOOL = {
             total: { type: "integer" },
             insight: { type: "string" },
           },
-          required: ["template", "theme", "hypothesis", "hook", "endHeadline", "openerScene", "primaryText", "description"],
+          required: ["template", "theme", "hypothesis", "painBranch", "hook", "endHeadline", "openerScene", "primaryText", "description"],
         },
       },
     },
@@ -917,6 +923,7 @@ interface VideoAdDraft {
   script: VideoScript;
   theme: string;
   hypothesis: string;
+  painBranch?: string;
   primaryText: string;
   description: string;
 }
@@ -990,6 +997,7 @@ export function parseVideoAds(raw: string, templates: VideoTemplate[], perTempla
       script,
       theme: clip(v.theme, 200) ?? "",
       hypothesis: clip(v.hypothesis, 400) ?? "",
+      painBranch: normalizePainBranch(v.painBranch),
       primaryText: clip(v.primaryText, 200) ?? "",
       description: clip(v.description, 100) ?? "",
     });
@@ -1140,12 +1148,13 @@ FIELD RULES:
 - cta: always "SIGN_UP".
 - format: copy the slot's format exactly.
 - strategy: "exploit" for the iterate_* slots, "explore" for the rest.
+- painBranch: ${painBranchMenu()}
 
 HARD RULES (Meta policy + brand — violations get ads rejected):
 - NEVER imply the reader has a condition or feeling state — including as a QUESTION. Banned: "Overwhelmed?", "Burned out?", "Stressed?", "anxious", "your anxiety", "depressed", "exhausted mom?". Name the situation instead ("23 things in your head", "the dentist is Tuesday").
 - NEVER reference the reader's age or life stage in copy ("over 40", "in your 40s", "midlife", "menopause", "hormones", "at your age"). Age lives in targeting only.
 - No health or mental-health outcome claims, no before/after transformation, no invented user counts, ratings, reviews, testimonials or press.
-- No recording-duration claims, never "brain dump", never a fixed time of day for recording ("nightly", "before bed").
+- No recording-duration claims. ${ACQUISITION_TERM_RULE} ${TIME_OF_DAY_RULE}
 - CLAIMS: ${AD_CLAIM_GUARDRAIL}
 
 Submit the ads with the submit_ads tool.`;
@@ -1226,6 +1235,7 @@ COMMON FIELDS (every video):
 - primaryText: ≤125 chars: hook/scene, then one literal line on what Ripple does. No price.
 - description: ≤60 chars.
 - theme: which Reddit theme it's rooted in. hypothesis: one sentence on why it should convert.
+- painBranch: ${painBranchMenu()}
 Only fill the template's own fields (plus the common ones); leave the rest out.
 Call the submit_video_ads tool IMMEDIATELY with no text before or after it.`;
   const generateVideos = async (): Promise<VideoAdDraft[]> => {
@@ -1379,7 +1389,7 @@ Call the submit_video_ads tool IMMEDIATELY with no text before or after it.`;
         targetPersona: ad.targetPersona,
         valueSurface: ad.valueSurface,
         // "| strategy:" is parsed back by lib/adlab/learning.ts — keep format
-        researchNotes: `Audience theme (${digestDate}): ${ad.theme} | strategy: ${strategy}${ad.archetype ? ` | type: ${ad.archetype}` : ""} | format: ${formatKey}${jevOf.get(ad) ? ` | jev: ${jevOf.get(ad)!.rank.toFixed(2)} best of ${jevOf.get(ad)!.of}` : ""}${organicSeedOf(ad) ? ` | organic: ${organicSeedOf(ad)}` : ""}`,
+        researchNotes: `Audience theme (${digestDate}): ${ad.theme} | strategy: ${strategy}${ad.archetype ? ` | type: ${ad.archetype}` : ""} | format: ${formatKey}${jevOf.get(ad) ? ` | jev: ${jevOf.get(ad)!.rank.toFixed(2)} best of ${jevOf.get(ad)!.of}` : ""}${organicSeedOf(ad) ? ` | organic: ${organicSeedOf(ad)}` : ""}${ad.painBranch ? ` | branch: ${ad.painBranch}` : ""}`,
         score: 5,
       },
     });
@@ -1412,7 +1422,7 @@ Call the submit_video_ads tool IMMEDIATELY with no text before or after it.`;
         hypothesis: v.hypothesis || `Animated ${v.script.template} demo`,
         targetPersona: g.audienceLabel,
         valueSurface: "mechanism",
-        researchNotes: `Audience theme (${digestDate}): ${v.theme} | strategy: explore | type: video_${v.script.template} | format: ${formatKey}`,
+        researchNotes: `Audience theme (${digestDate}): ${v.theme} | strategy: explore | type: video_${v.script.template} | format: ${formatKey}${v.painBranch ? ` | branch: ${v.painBranch}` : ""}`,
         score: 5,
       },
     });

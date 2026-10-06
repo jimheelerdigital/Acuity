@@ -5,15 +5,27 @@
  * Update this file as real numbers grow. The values below are intentionally
  * conservative for an early-access product.
  */
+/**
+ * THE rating and review count (2026-10-06, per Keenan: one config value,
+ * used everywhere; nothing else hardcodes "4.9" or "127"). Numbers are
+ * unchanged pending Keenan confirming the live App Store figures.
+ */
+export const APP_RATING = {
+  /** Star rating shown next to the stars. */
+  stars: "4.9",
+  /** Users/reviews count behind it; shown as "127+". */
+  count: 127,
+} as const;
+
 export const SOCIAL_PROOF = {
   /** Total active users (rounded) */
-  users: "127+",
+  users: `${APP_RATING.count}+`,
   /** Total debriefs recorded */
   debriefs: "1,400+",
   /** % who say they'd miss Ripple if gone */
   wouldMiss: "94%",
   /** App star rating */
-  rating: "4.9",
+  rating: APP_RATING.stars,
   /** Under-hero count — rounded down from `users` for defensibility */
   underHeroCount: "100+",
   /** Seconds per entry — product mechanic, not a stat */
@@ -46,7 +58,7 @@ export type StatStripItem = {
  * every item.
  */
 export const STATS_STRIP: readonly StatStripItem[] = [
-  { value: 127, suffix: "+", label: "Early users" },
+  { value: APP_RATING.count, suffix: "+", label: "Early users" },
   { value: 1400, suffix: "+", label: "Debriefs recorded" },
   { value: 94, suffix: "%", label: "Still journaling after week one" },
   { value: 60, suffix: "s", label: "Per entry" },

@@ -478,10 +478,10 @@ Acuity copy is governed by the **sales-copy rubric** in `docs/acuity-positioning
 
 ### 7.2 Acquisition vs. in-product register
 
-- **Acquisition** (ads, landing, App Store, waitlist): primary term is **"debrief"**. A friend's voice, not a marketer's.
-- **In-product** (onboarding, daily app, push, weekly reports, memoirs): primary term is **"debrief"**. The voice of a product the user has chosen.
+- **Acquisition** (ads, hooks, landing/SEO pages, outreach emails, creator briefs): customer words like **"brain dump"** and **"voice journal"** are allowed, because that is how people search and talk. When naming the feature itself, it's a **"debrief"**. A friend's voice, not a marketer's.
+- **In-product** (onboarding, daily app, push, weekly reports, memoirs): the term is **"debrief"**. Never "brain dump". The voice of a product the user has chosen.
 
-> Updated 2026-08-20. This section previously mandated **"brain dump"** for acquisition and **"daily debrief"** in-product. Both are now banned: `docs/acuity-positioning.md` bans "brain dump" outright, and the v10 onboarding spec §1 bans any fixed-cadence framing ("daily", "nightly"). The word is **debrief**, everywhere, with no cadence attached.
+> Updated 2026-10-06 (Keenan). "Brain dump" is allowed again in acquisition copy only; in-product it stays banned. Ripple's own copy and visuals still never attach a time of day to the product. History: on 2026-08-20 "brain dump" had been banned everywhere.
 
 Don't mix registers.
 
@@ -499,8 +499,8 @@ Hard bans across every customer-facing surface:
 ### 7.4 Conditional bans
 
 - **"Journaling" / "journal"** — allowed as part of the category ("voice journal") since 2026-09-29. Don't lead with journaling alone; always pair it with what Ripple does (habits, tasks, insights).
-- **"Brain dump"** — banned everywhere. Was previously the mandated acquisition term; see 7.2.
-- **"Nightly" / "bedtime" / "shutdown ritual" / any fixed time of day** — banned. Ripple records any time of day, and v10 §1 bans ritual framing of the mechanism.
+- **"Brain dump"** — banned in-product; allowed in acquisition copy (ads, hooks, SEO, outreach, creator briefs). See 7.2.
+- **"Nightly" / "bedtime" / "shutdown ritual" / any fixed time of day** — banned in Ripple's own copy and visuals. Ripple records any time of day, and v10 §1 bans ritual framing of the mechanism. Creators can describe their own routine however they like.
 - **Recording-duration claims** ("60-second", "90-second") — banned. There is no minimum and no countdown.
 - **"AI"** — discouraged. Use only when it earns trust (FAQ, naming Whisper + Claude). Never above the fold.
 
@@ -517,7 +517,7 @@ If any test fails, rewrite.
 - **Category** — AI life optimizer: habit tracker, voice journal and insight tool (2026-09-29, replaces "voice self-reflection"). Not a wellness or mental-health app. (Was "shutdown ritual" — retired 2026-08-20 as ritual/time-of-day framing.)
 - **Hero driver is the weekly report**, not the daily recording. Daily recording is the input; weekly report is the output worth paying for.
 - **Memory is the product, not intelligence.** "Remembers" and "memory" are approved; "insights" and "intelligence" are discouraged.
-- **Never promise therapeutic outcomes.** Acuity is not a medical device. "What happens the other 167 hours of the week" is the approved framing around therapy.
+- **Never claim Ripple treats, diagnoses, cures, or replaces therapy** (2026-10-06). Creators may state their credentials and personal experience. "What happens the other 167 hours of the week" is the approved framing around therapy.
 - **Privacy is a structural claim, not a tone.** "Your data is secure" fails. "Voice recordings are deleted within 24 hours of transcription" passes.
 
 ### 7.7 Mechanical rules

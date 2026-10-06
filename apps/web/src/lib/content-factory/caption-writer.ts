@@ -177,7 +177,7 @@ THE FIELDS:
 - "question": ${b.question}${b.extra ? `\n\n${b.extra}` : ""}
 - "hashtags": exactly 4, one broad and three niche, chosen for this post (prefer from: ${b.tags}). Never #fyp, #foryou or #viral, which add noise and no reach.
 
-LIMITS, and why: no app name, product mention, "link in bio", "follow for more", "save this" or "send this to", because asking reads as marketing and the post has to earn it. Never "brain dump", never a recording duration ("60 seconds", "one minute"), never a fixed time of day ("nightly", "before bed", "at 9pm"). No medical or mental-health claims about the reader ("your anxiety"). At most one emoji. Avoid AI tells like "in a world where", "it's not just X, it's Y", "let's dive in", "journey", "unlock", "transform", "game-changer" and chains of em-dashes.
+LIMITS, and why: no app name, product mention, "link in bio", "follow for more", "save this" or "send this to", because asking reads as marketing and the post has to earn it. Never a recording duration ("60 seconds", "one minute"), never a fixed time of day ("nightly", "before bed", "at 9pm"). No mental-health claims about the reader ("your anxiety"), and never claim anything treats, diagnoses, cures or replaces therapy. At most one emoji. Avoid AI tells like "in a world where", "it's not just X, it's Y", "let's dive in", "journey", "unlock", "transform", "game-changer" and chains of em-dashes.
 
 Return only the JSON object: {"firstLine": string, "secondLine": string, "question": string, "hashtags": string[]}`,
         messages: [

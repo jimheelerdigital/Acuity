@@ -20,6 +20,7 @@ import {
   lastJsonText,
 } from "./claude-client";
 import { copyObjectives } from "./copy-objectives";
+import { CLAIMS_RULE } from "@/lib/positioning";
 
 const anthropic = contentAnthropic;
 
@@ -56,7 +57,7 @@ const SPEAKER: Record<Brand, string> = {
 };
 
 /** Brand language for spoken Ripple scripts (docs/acuity-positioning.md). */
-const RIPPLE_SPOKEN_RULES = `RIPPLE LANGUAGE: she never says "brain dump" (if she talks about saying it all out loud, the word is "debrief"); no habit or ritual is tied to a fixed time ("every night", "before bed", "at 9pm"); no durations for talking or recording ("60 seconds", "five minutes a day"); no app, product, AI or journaling mentions.`;
+const RIPPLE_SPOKEN_RULES = `RIPPLE LANGUAGE: she can use everyday words like "brain dump" if that's how she'd say it; no habit or ritual is tied to a fixed time ("every night", "before bed", "at 9pm"); no durations for talking or recording ("60 seconds", "five minutes a day"); no app, product, AI or journaling mentions. ${CLAIMS_RULE}`;
 
 /**
  * 2026-09-28 (Sonnet 5.5 rewrite): opens with copyObjectives(brand);

@@ -96,6 +96,8 @@ export interface CreativePerf {
   strategy: string; // "exploit" | "explore" | "unknown"
   /** "research" = built on an organic competitor brief (2026-10-02), else "own". */
   source: "research" | "own";
+  /** Pain branch the ad used (2026-10-06), "untagged" before then. */
+  painBranch: string;
   spendCents: number;
   impressions: number;
   clicks: number;
@@ -169,6 +171,12 @@ function themeFromNotes(notes: string): string {
   // Weekly-batch notes: "Reddit theme (2026-09-19): <theme>[ | strategy: …]"
   const m = notes.match(/Reddit theme \([^)]*\):\s*([^|\n]+)/);
   return (m ? m[1] : notes.split("\n")[0]).trim().slice(0, 160);
+}
+
+/** Pain branch tag ("| branch: load") written by weekly-batch since 2026-10-06. */
+export function branchFromNotes(notes: string | null | undefined): string {
+  const m = (notes ?? "").match(/\| branch:\s*([a-z0-9-]+)/);
+  return m ? m[1] : "untagged";
 }
 
 function strategyFromNotes(notes: string): string {
@@ -320,6 +328,7 @@ export async function buildLearningStats(groupKey: BatchGroupKey): Promise<Learn
       formatKey: c.formatKey ?? inferFormatKey(c.generationPrompt),
       strategy: strategyFromNotes(c.angle.researchNotes),
       source: /\| organic: /.test(c.angle.researchNotes ?? "") ? "research" : "own",
+      painBranch: branchFromNotes(c.angle.researchNotes),
       ...m,
       landings: landings.get(c.id) ?? 0,
       ...f,
