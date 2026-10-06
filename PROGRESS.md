@@ -137,6 +137,33 @@ It takes one of the existing daily slots, so Mythicals stays at 6 posts a day. E
 - The landing pages still show "4.9 ★" via `SOCIAL_PROOF.rating`, and try-debrief-flow shows "4.9 from 127+ users". Both conflict with Keenan's 09-24 "five stars on the App Store, no number" call. Numbers and display left as-is per the brief.
 - Typecheck: no new errors in touched files (the repo has 174 pre-existing tsc errors). Vitest adlab + content-factory + email-jev + funnel-config: 81/81 pass.
 
+## [2026-10-06] — Very strong Apple duplicate matches now link themselves; LeJean linked
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** see "feat: Link very strong Apple duplicate matches automatically"
+
+### In plain English (for Keenan)
+- **LeJean Carter is fixed.** They paid on the web at 12:20 PM, then Sign in with Apple made a second, empty account. Their Apple sign-in is now moved onto the paid account (done by hand at Keenan's "link it").
+- **From now on,** when the name matches AND the Apple account shows up within 2 hours of paying, the accounts link automatically. Keenan gets a "Fixed automatically" email instead of a button to press.
+- **Everything else still emails first with the "Link these accounts" button:** a name match more than 2 hours later, or a match on timing only with no name.
+
+### Technical changes (for Jimmy)
+- `lib/apple-duplicate-catch.ts`:
+  - new `linkAppleAccounts(from, to, "manual" | "auto")`, moved out of the route with the same guards (dupe holds an Apple ID with 0 debriefs; paid account has no Apple ID). It logs `apple_dupe_linked` with value `<dupeId>:<how>`.
+  - new `isVeryStrong()`: strong match and an Apple account created 0–2h after payment.
+  - the sweep auto-links very strong matches before sending the rescue email.
+  - the founder email reports "Linked automatically ✓", or why the auto-link was refused, and still shows the button otherwise.
+- `app/api/admin/link-apple/route.ts`: now calls `linkAppleAccounts`; behaviour unchanged.
+- `lib/apple-duplicate-catch.test.ts`: LeJean case, a late name match, and a no-name case.
+- Data: LeJean's appleSubject moved from fbvtygw772@privaterelay.appleid.com to lejeanc59@gmail.com.
+
+### Manual steps needed
+- [ ] Jimmy review before push: auto-moving appleSubject is an account-access change (Jimmy)
+- [ ] LeJean has to sign out of the app and sign in with Apple again (or tap the rescue email link) to see the membership. Nothing for us to do unless they write in.
+
+### Notes
+- Why there's a 2h cap: the "strong" name check matches any 3+ letter name token. A common first name could match a different payer up to 48h later, so those still go to a founder.
+
 ## [2026-10-06] — Signups who don't pay get a free week of Pro by email, no card
 **Requested by:** Keenan
 **Committed by:** Claude Code

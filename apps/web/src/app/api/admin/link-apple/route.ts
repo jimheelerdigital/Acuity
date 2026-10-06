@@ -12,7 +12,7 @@
  */
 import { NextRequest, NextResponse } from "next/server";
 
-import { verifyLinkApple } from "@/lib/apple-duplicate-catch";
+import { linkAppleAccounts, verifyLinkApple } from "@/lib/apple-duplicate-catch";
 
 export const dynamic = "force-dynamic";
 
@@ -27,22 +27,11 @@ export async function GET(req: NextRequest) {
   const ids = verifyLinkApple(req.nextUrl.searchParams.get("t"));
   if (!ids) return page("Link expired or invalid", "Ask Claude to link these accounts by hand.", 400);
 
-  const { prisma } = await import("@/lib/prisma");
-  const [dupe, paid] = await Promise.all([
-    prisma.user.findUnique({ where: { id: ids.from }, select: { id: true, email: true, appleSubject: true, totalRecordings: true } }),
-    prisma.user.findUnique({ where: { id: ids.to }, select: { id: true, email: true, appleSubject: true } }),
-  ]);
-  if (!dupe || !paid) return page("Account not found", "One of the two accounts no longer exists.", 404);
-  if (paid.appleSubject && !dupe.appleSubject) return page("Already linked", `Sign in with Apple already opens ${paid.email}.`);
-  if (!dupe.appleSubject) return page("Nothing to move", `${dupe.email} has no Apple sign-in on it.`, 409);
-  if (paid.appleSubject) return page("Not linked", `${paid.email} already has a different Apple sign-in. Linking by hand needed.`, 409);
-  if (dupe.totalRecordings > 0) return page("Not linked", `${dupe.email} has ${dupe.totalRecordings} debrief(s), so it isn't an empty duplicate. Linking by hand needed.`, 409);
-
-  const subject = dupe.appleSubject;
-  await prisma.$transaction([
-    prisma.user.update({ where: { id: dupe.id }, data: { appleSubject: null } }),
-    prisma.user.update({ where: { id: paid.id }, data: { appleSubject: subject } }),
-    prisma.onboardingEvent.create({ data: { userId: paid.id, event: "apple_dupe_linked", value: dupe.id } }),
-  ]);
-  return page("Linked ✓", `Sign in with Apple now opens <strong>${paid.email}</strong> (the paid account). They need to sign out of the app and sign in with Apple again, or use the one-tap link we already emailed them.`);
+  const res = await linkAppleAccounts(ids.from, ids.to, "manual");
+  if (!res.ok) {
+    if (res.reason === "already_linked") return page("Already linked", res.detail);
+    if (res.reason === "not_found") return page("Account not found", res.detail, 404);
+    return page(res.reason === "no_apple_id" ? "Nothing to move" : "Not linked", res.detail, 409);
+  }
+  return page("Linked ✓", `Sign in with Apple now opens <strong>${res.paidEmail}</strong> (the paid account). They need to sign out of the app and sign in with Apple again, or use the one-tap link we already emailed them.`);
 }

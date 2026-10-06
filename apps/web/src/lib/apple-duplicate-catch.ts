@@ -24,8 +24,13 @@
  *   2. URGENT alert to the founders with both accounts and a signed
  *      "link these accounts" button (/api/admin/link-apple), which moves the
  *      Apple ID onto the paid account so Sign in with Apple works from then on.
- * The Apple ID is never moved automatically: a wrong guess there would put
- * a stranger into someone's paid account.
+ * 2026-10-06 (Keenan): VERY STRONG matches (name match + Apple account within
+ * 2h of paying, isVeryStrong) now move the Apple ID automatically
+ * (linkAppleAccounts, same guards as the button: dupe has 0 debriefs, paid
+ * account has no Apple ID yet) and the founder email reports it as fixed.
+ * Everything else (name match >2h later, timing-only POSSIBLE) still waits
+ * for the button in the founder email, because a wrong
+ * guess there would put a stranger into someone's paid account.
  */
 import "server-only";
 
@@ -142,6 +147,51 @@ export function verifyLinkApple(token: string | null | undefined): { from: strin
   return { from, to };
 }
 
+// ── Moving the Apple sign-in ──────────────────────────────────────────────
+const AUTO_LINK_GAP_MS = 2 * 3600_000;
+
+/**
+ * Safe to link without a founder: the Apple name matches the paid account
+ * AND the Apple account appeared within 2h of the payment (LeJean: 2 min).
+ * A name match a day later could be a different person with the same first
+ * name, so that still goes to the founders first. Pure, for tests.
+ */
+export function isVeryStrong(m: DupeMatch): boolean {
+  const gap = m.dupe.createdAt.getTime() - m.paid.paidAt.getTime();
+  return m.confidence === "strong" && gap >= 0 && gap <= AUTO_LINK_GAP_MS;
+}
+
+export type LinkResult =
+  | { ok: true; paidEmail: string }
+  | { ok: false; reason: "not_found" | "already_linked" | "no_apple_id" | "paid_has_apple_id" | "dupe_has_debriefs"; detail: string };
+
+/**
+ * Move the Apple sign-in from the empty duplicate onto the paid account, so
+ * Sign in with Apple opens the paid account from then on. Refuses unless the
+ * duplicate still holds an Apple ID and has 0 debriefs, and the paid account
+ * has no Apple ID yet. Undo = move appleSubject back by hand.
+ */
+export async function linkAppleAccounts(fromUserId: string, toUserId: string, how: "manual" | "auto"): Promise<LinkResult> {
+  const { prisma } = await import("@/lib/prisma");
+  const [dupe, paid] = await Promise.all([
+    prisma.user.findUnique({ where: { id: fromUserId }, select: { id: true, email: true, appleSubject: true, totalRecordings: true } }),
+    prisma.user.findUnique({ where: { id: toUserId }, select: { id: true, email: true, appleSubject: true } }),
+  ]);
+  if (!dupe || !paid) return { ok: false, reason: "not_found", detail: "One of the two accounts no longer exists." };
+  if (paid.appleSubject && !dupe.appleSubject) return { ok: false, reason: "already_linked", detail: `Sign in with Apple already opens ${paid.email}.` };
+  if (!dupe.appleSubject) return { ok: false, reason: "no_apple_id", detail: `${dupe.email} has no Apple sign-in on it.` };
+  if (paid.appleSubject) return { ok: false, reason: "paid_has_apple_id", detail: `${paid.email} already has a different Apple sign-in. Linking by hand needed.` };
+  if (dupe.totalRecordings > 0) return { ok: false, reason: "dupe_has_debriefs", detail: `${dupe.email} has ${dupe.totalRecordings} debrief(s), so it isn't an empty duplicate. Linking by hand needed.` };
+
+  const subject = dupe.appleSubject;
+  await prisma.$transaction([
+    prisma.user.update({ where: { id: dupe.id }, data: { appleSubject: null } }),
+    prisma.user.update({ where: { id: paid.id }, data: { appleSubject: subject } }),
+    prisma.onboardingEvent.create({ data: { userId: paid.id, event: "apple_dupe_linked", value: `${dupe.id}:${how}` } }),
+  ]);
+  return { ok: true, paidEmail: paid.email };
+}
+
 // ── The sweep ─────────────────────────────────────────────────────────────
 export async function runAppleDuplicateCatch(opts: { dryRun?: boolean } = {}): Promise<DupeMatch[]> {
   const { prisma } = await import("@/lib/prisma");
@@ -200,23 +250,31 @@ export async function runAppleDuplicateCatch(opts: { dryRun?: boolean } = {}): P
   for (const m of matches) {
     // Flag first so a send failure never turns into an email every 15 minutes.
     await prisma.onboardingEvent.create({ data: { userId: m.paid.id, event: FLAG_EVENT, value: `${m.dupe.id}:${m.confidence}` } });
+    // Very strong matches link on their own (2026-10-06, per Keenan: "if the
+    // name matches and it's a very strong match, do it automatically";
+    // "anything mismatched send me email first"). Everything else waits for
+    // the button in the founder email.
+    const link = isVeryStrong(m) ? await linkAppleAccounts(m.dupe.id, m.paid.id, "auto") : null;
     const result = await sendTrialEmail(m.paid.id, "apple_duplicate_rescue");
-    await alertFounders(m, result.sent ? "sent" : `not sent (${result.reason ?? "unknown"})`);
+    await alertFounders(m, result.sent ? "sent" : `not sent (${result.reason ?? "unknown"})`, link);
   }
   return matches;
 }
 
-async function alertFounders(m: DupeMatch, rescue: string): Promise<void> {
+async function alertFounders(m: DupeMatch, rescue: string, link: LinkResult | null): Promise<void> {
   try {
     const { getResendClient } = await import("@/lib/resend");
     const origin = (process.env.NEXTAUTH_URL ?? "https://goripple.io").replace(/\/$/, "");
     const linkUrl = `${origin}/api/admin/link-apple?t=${encodeURIComponent(signLinkApple(m.dupe.id, m.paid.id))}`;
+    const linked = !!link?.ok;
     const t = (d: Date) => d.toLocaleString("en-US", { timeZone: "America/Chicago", dateStyle: "medium", timeStyle: "short" });
     const { error } = await getResendClient().emails.send({
       from: "hello@goripple.io",
       to: ["keenan@heelerdigital.com", "jim@heelerdigital.com"],
       replyTo: "keenan@heelerdigital.com",
-      subject: `🚨 URGENT: paid customer stuck in a duplicate Apple account — ${m.paid.email} (${m.confidence})`,
+      subject: linked
+        ? `Fixed automatically: duplicate Apple account linked to ${m.paid.email}`
+        : `🚨 URGENT: paid customer stuck in a duplicate Apple account — ${m.paid.email} (${m.confidence})`,
       html: `
         <div style="font-family:-apple-system,BlinkMacSystemFont,sans-serif;max-width:520px;margin:0 auto;padding:24px;">
           <h2 style="color:#C4451C;margin:0 0 12px;">Paid on the web, then Sign in with Apple made a second account</h2>
@@ -227,9 +285,13 @@ async function alertFounders(m: DupeMatch, rescue: string): Promise<void> {
             <tr><td style="padding:6px 0;color:#666;">Match</td><td style="padding:6px 0;">${m.confidence.toUpperCase()}: ${m.why}</td></tr>
             <tr><td style="padding:6px 0;color:#666;">Rescue email</td><td style="padding:6px 0;">${rescue} (one-tap sign-in link to the paid address)</td></tr>
           </table>
+          ${linked
+            ? `<p style="margin:20px 0 8px;color:#15803d;font-weight:700;line-height:1.6;">Linked automatically ✓ (name match, Apple account within 2h of paying)</p>
+          <p style="margin:0;color:#374151;line-height:1.6;">Sign in with Apple now opens the paid account. Next time they sign in with Apple (or tap the rescue link) they'll see their membership. Wrong person? Tell Claude to move the Apple sign-in back to ${m.dupe.email}.</p>`
+            : `${link && !link.ok ? `<p style="margin:20px 0 8px;color:#b45309;line-height:1.6;">Tried to link automatically, but didn't: ${link.detail}</p>` : ""}
           <p style="margin:20px 0 8px;color:#374151;line-height:1.6;">If this is the same person, link the accounts so Sign in with Apple opens the paid one from now on:</p>
           <p style="margin:0 0 16px;"><a href="${linkUrl}" style="display:inline-block;background:#C4451C;color:#fff;padding:12px 20px;border-radius:999px;text-decoration:none;font-weight:700;">Link these accounts</a></p>
-          <p style="margin:0;color:#6b7280;font-size:13px;line-height:1.6;">Only moves the Apple sign-in, only if the Apple account has no debriefs. Link works for 14 days. Not the same person? Ignore this; the rescue email is harmless.</p>
+          <p style="margin:0;color:#6b7280;font-size:13px;line-height:1.6;">Only moves the Apple sign-in, only if the Apple account has no debriefs. Link works for 14 days. Not the same person? Ignore this; the rescue email is harmless.</p>`}
         </div>`,
     });
     if (error) throw new Error(`${error.name}: ${error.message}`);

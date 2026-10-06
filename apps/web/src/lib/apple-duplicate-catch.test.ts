@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 vi.mock("@/lib/prisma", () => ({ prisma: {} }));
 process.env.NEXTAUTH_SECRET = "test-secret";
 
-import { matchDuplicates, nameMatches, signLinkApple, verifyLinkApple } from "./apple-duplicate-catch";
+import { isVeryStrong, matchDuplicates, nameMatches, signLinkApple, verifyLinkApple } from "./apple-duplicate-catch";
 
 const at = (iso: string) => new Date(iso);
 
@@ -52,5 +52,19 @@ describe("apple duplicate catch", () => {
     expect(verifyLinkApple(t)).toEqual({ from: "dupe", to: "paid" });
     expect(verifyLinkApple(t.slice(0, -2) + "xx")).toBeNull();
     expect(verifyLinkApple("nope")).toBeNull();
+  });
+
+  it("auto-links only a name match within 2h of paying (LeJean)", () => {
+    const paid = { id: "p", email: "lejeanc59@gmail.com", name: null, paidAt: at("2026-10-06T17:20:58Z") };
+    const dupe = (iso: string, name: string | null) => ({ id: "d", email: "x@privaterelay.appleid.com", name, createdAt: at(iso) });
+    const [lejean] = matchDuplicates([dupe("2026-10-06T17:22:13Z", "LeJean Carter")], [paid]);
+    expect(lejean.confidence).toBe("strong");
+    expect(isVeryStrong(lejean)).toBe(true);
+    const [late] = matchDuplicates([dupe("2026-10-07T09:00:00Z", "LeJean Carter")], [paid]);
+    expect(late.confidence).toBe("strong");
+    expect(isVeryStrong(late)).toBe(false);
+    const [noName] = matchDuplicates([dupe("2026-10-06T17:22:13Z", null)], [paid]);
+    expect(noName.confidence).toBe("possible");
+    expect(isVeryStrong(noName)).toBe(false);
   });
 });
