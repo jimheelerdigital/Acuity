@@ -211,8 +211,8 @@ export async function GET(req: NextRequest) {
   const flat = {
     ...rest,
     createdAt: createdAt.toISOString(),
-    // PRO users count as onboarded so the app stops bouncing them off /record (lib/app-onboarding.ts).
-    onboardingCompleted: appOnboardingCompleted(effectiveCompletedAt, user.subscriptionStatus),
+    // PRO and web-trial users count as onboarded so the app stops bouncing them off /record (lib/app-onboarding.ts).
+    onboardingCompleted: appOnboardingCompleted(effectiveCompletedAt, user.subscriptionStatus, user.subscriptionSource),
     onboardingStep: user.onboarding?.currentStep ?? 1,
     hasStripeCustomer: Boolean(stripeCustomerId),
     // True when the user is FREE due to a recent failed payment → drives the

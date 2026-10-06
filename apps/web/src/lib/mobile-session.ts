@@ -22,6 +22,8 @@ export type MobileSessionUser = {
   name: string | null;
   image: string | null;
   subscriptionStatus?: string | null;
+  /** "stripe" | "apple" | "google_play" — web trials count as onboarded (app-onboarding.ts). */
+  subscriptionSource?: string | null;
   trialEndsAt?: Date | null;
   // Tour gates — surfaced so the mobile first-login tour trigger can
   // decide at sign-in instead of failing open on undefined (vc24 bug).
@@ -109,7 +111,7 @@ export function mobileSessionResponse(params: {
       trialEndsAt: user.trialEndsAt ? user.trialEndsAt.toISOString() : null,
       // Match the flat shape /api/user/me returns so mobile's
       // AuthGate routes existing users past onboarding correctly.
-      onboardingCompleted: appOnboardingCompleted(user.onboarding?.completedAt, user.subscriptionStatus),
+      onboardingCompleted: appOnboardingCompleted(user.onboarding?.completedAt, user.subscriptionStatus, user.subscriptionSource),
       onboardingStep: user.onboarding?.currentStep ?? 1,
       // Tour gates. Forwarded faithfully: `undefined` (JSON-omitted) when
       // the caller's select didn't include them → the mobile gate treats

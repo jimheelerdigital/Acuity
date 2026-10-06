@@ -7,6 +7,28 @@
 
 ---
 
+## [2026-10-06] — Web trial users no longer bounced off the record screen (Christine Carty, again)
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** see "fix: Treat web trial users as onboarded so the app lets them record"
+
+### In plain English (for Keenan)
+- **What happened:** Christine Carty's record buttons stopped working again. The Oct 4 fix only covered paying (PRO) users, and she's on a web trial, so the app still treated her as not onboarded and bounced her off the record screen.
+- **Her fix:** her account is marked onboarded, so it works on her next app open.
+- **Everyone else:** all web trial users (card trial from the funnel) now count as onboarded too. Nobody else was in her state today.
+
+### Technical changes (for Jimmy)
+- `lib/app-onboarding.ts`: `appOnboardingCompleted(completedAt, status, source?)` now also returns true for TRIAL with subscriptionSource "stripe". Apple and Google in-app trials are unchanged (they start mid-app-onboarding).
+- `app/api/user/me/route.ts` passes `user.subscriptionSource` (already selected). `lib/mobile-session.ts`: `MobileSessionUser.subscriptionSource?` is passed through.
+- Test: `lib/app-onboarding.test.ts` covers stripe vs apple trials.
+- Data: Christine's (cmusli6zu000skhfbdbdjg48c) UserOnboarding.completedAt set.
+
+### Manual steps needed
+- [ ] Jimmy: review (auth / app routing). The real fix is still the app-side one: `decideColdStartRoute` should only take the PRO/v10 bypass from the auth/onboarding/root segments, not on every segment change.
+
+### Notes
+- The mobile-login/callback routes' selects don't include subscriptionSource yet, so the sign-in payload may still say false for a web trial. `/api/user/me` (refreshed by the app) carries the fix.
+
 ## [2026-10-06] — Dragon egg hatching: a new daily Mythicals post
 **Requested by:** Keenan
 **Committed by:** Claude Code

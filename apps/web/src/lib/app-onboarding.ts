@@ -14,6 +14,19 @@
  * shipped app builds: no release needed. The app-side fix (only bypass from
  * auth/onboarding/root segments) is for Jimmy's next release.
  */
-export function appOnboardingCompleted(completedAt: Date | null | undefined, subscriptionStatus: string | null | undefined): boolean {
-  return Boolean(completedAt) || subscriptionStatus === "PRO";
+export function appOnboardingCompleted(
+  completedAt: Date | null | undefined,
+  subscriptionStatus: string | null | undefined,
+  subscriptionSource?: string | null
+): boolean {
+  // Web TRIAL (a Stripe card trial from the funnel) too (2026-10-06,
+  // Christine Carty again: she's TRIAL, not PRO, so the PRO-only rule still
+  // bounced her). Their onboarding happened in the web funnel. In-app trials
+  // (apple/google) are left alone: they start mid-app-onboarding, which must
+  // finish.
+  return (
+    Boolean(completedAt) ||
+    subscriptionStatus === "PRO" ||
+    (subscriptionStatus === "TRIAL" && subscriptionSource === "stripe")
+  );
 }
