@@ -19,13 +19,15 @@
   - YouTube posts at most 3 Shorts a day
   - if YouTube says the limit is hit, it waits 24 hours instead of failing
   - the 8 failed Shorts are back in the queue
-  - the backlog will drain at 3 a day
+  - the backlog will drain at 3 a day, with Jev picking which 3 are most likely to get views, using how each post already did on Instagram and Facebook
 
 ### Technical changes (for Jimmy)
 - `inngest/functions/social-publish-cron.ts`:
   - before a YouTube upload, count the channel's POSTED YouTube rows in the last 24h. At or above `YOUTUBE_DAILY_CAP` (default 3), set scheduledAt to when the oldest falls out of the window, with no attempt used.
   - in catch, an "exceeded the number of videos" / uploadLimitExceeded error sets scheduledAt to +24h, with no attempt used.
 - Data: 8 FAILED Mythicals YouTube rows reset to PENDING with attempts 0.
+
+- Jev picks the Shorts (Keenan: "have jev pick the top 3"): new step `youtube-jev-pick` runs before `load-due`. When a channel has more due YouTube rows than open slots (cap minus posted in the last 24h), it pre-ranks up to 30 by the same post's IG+FB views, then asks Jev (`youtube-pick`, a choice question) and ranks by its probabilities. It keeps the top N and pushes the rest +6h. If Jev fails it falls back to the views order.
 
 ### Manual steps needed
 - None

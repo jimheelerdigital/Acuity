@@ -321,6 +321,79 @@ export const socialPublishCronFn = inngest.createFunction(
       return ready.length;
     });
 
+    // ── 1b. YouTube: Jev picks which Shorts use today's slots (2026-10-05,
+    // per Keenan: "have jev pick the top 3"). With the daily cap (3) and a
+    // backlog, only the open slots' worth of due rows stay due; Jev ranks
+    // the rest by how they'll do on YouTube Shorts (with each post's IG/FB
+    // views as evidence), and the others wait 6h to be ranked again.
+    await step.run("youtube-jev-pick", async () => {
+      const { prisma } = await import("@/lib/prisma");
+      const cap = Math.max(1, Number(process.env.YOUTUBE_DAILY_CAP) || 3);
+      const due = await prisma.socialPublish.findMany({
+        where: { platform: "youtube", status: "PENDING", scheduledAt: { lte: new Date() }, attempts: { lt: MAX_ATTEMPTS } },
+        select: { id: true, accountKey: true, carouselPostId: true, carouselPost: { select: { headline: true, topicSlug: true, lane: true } } },
+      });
+      const out: Record<string, unknown> = {};
+      for (const account of [...new Set(due.map((d) => d.accountKey))]) {
+        const rows = due.filter((d) => d.accountKey === account);
+        const posted = await prisma.socialPublish.count({
+          where: { platform: "youtube", accountKey: account, status: "POSTED", postedAt: { gte: new Date(Date.now() - 24 * 3600_000) } },
+        });
+        const open = Math.max(0, cap - posted);
+        if (rows.length <= open) continue;
+        // Evidence: the same post's views on Instagram/Facebook.
+        const other = await prisma.socialPublish.findMany({
+          where: { carouselPostId: { in: rows.map((r) => r.carouselPostId) }, platform: { in: ["instagram", "facebook"] }, status: "POSTED" },
+          select: { carouselPostId: true, views: true },
+        });
+        const views = new Map<string, number>();
+        for (const o of other) views.set(o.carouselPostId, (views.get(o.carouselPostId) ?? 0) + (o.views ?? 0));
+        const ranked = [...rows].sort((a, b) => (views.get(b.carouselPostId) ?? 0) - (views.get(a.carouselPostId) ?? 0));
+        const cands = ranked.slice(0, 30);
+        let order = cands.map((c) => c.id);
+        let how = "by IG/FB views";
+        if (open > 0) {
+          try {
+            const { askJev } = await import("@/lib/content-factory/jev");
+            const criteria: Record<string, string> = {};
+            cands.forEach((c, i) => {
+              criteria[`r${i}`] = `${c.carouselPost.headline} (IG+FB views so far: ${views.get(c.carouselPostId) ?? 0})`;
+            });
+            const r = await askJev(
+              "youtube-pick",
+              { channel: `${account} YouTube Shorts`, goal: "the Short most likely to get views and subscribers on YouTube Shorts today", candidates: cands.length },
+              {
+                best: {
+                  type: "choice",
+                  instructions: "Which of these Shorts will get the most views and new subscribers on YouTube Shorts? Weigh the hook of the title and how the post already did on Instagram/Facebook.",
+                  criteria,
+                },
+              }
+            );
+            const a = r?.answers?.best;
+            if (a && a.type === "choice" && a.probabilities) {
+              order = cands
+                .map((c, i) => ({ id: c.id, p: a.probabilities[`r${i}`] ?? 0 }))
+                .sort((x, y) => y.p - x.p)
+                .map((x) => x.id);
+              how = "jev";
+            }
+          } catch (err) {
+            console.warn("[social-publish] youtube jev pick failed — using views:", err instanceof Error ? err.message : err);
+          }
+        }
+        const keep = new Set(order.slice(0, open));
+        const wait = rows.filter((r) => !keep.has(r.id)).map((r) => r.id);
+        await prisma.socialPublish.updateMany({
+          where: { id: { in: wait } },
+          data: { scheduledAt: new Date(Date.now() + 6 * 3600_000) },
+        });
+        out[account] = { open, kept: [...keep].length, waiting: wait.length, how };
+        console.log(`[social-publish] youtube/${account}: ${open} open slot(s), kept ${keep.size} (${how}), ${wait.length} wait 6h`);
+      }
+      return out;
+    });
+
     // ── 2. PUBLISH: fire everything that's due ──────────────────────
     const dueRows = await step.run("load-due", async () => {
       const { prisma } = await import("@/lib/prisma");
