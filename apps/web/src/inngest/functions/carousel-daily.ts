@@ -1063,7 +1063,7 @@ export const carouselDailyCronFn = inngest.createFunction(
           console.warn("[carousel-cron] loop category/cover failed — random category:", err instanceof Error ? err.message : err);
         }
         if (forcedTopic) {
-          coverGuidance = `\n\nREQUESTED COVER QUESTION (Keenan asked for this exact post): "${forcedTopic}". Use it as the title, in ALL CAPS, changing nothing but capitalization and a missing "?". Build all five options as answers to exactly this question.`;
+          coverGuidance = `\n\nREQUESTED COVER QUESTION (Keenan asked for this exact post): "${forcedTopic}". Use it as the title, in ALL CAPS, changing nothing but capitalization (add a "?" only if it is a question; instructions like \"PICK YOUR ARMOR...\" keep no question mark). Build all five options as answers to exactly this question.`;
         }
         return generateChoiceTopic({
           mode: choiceMode,

@@ -337,7 +337,10 @@ export async function generateChoiceTopic(opts: ChoiceTopicOpts): Promise<Choice
   const topic = await generateChoiceTopicChecked(opts);
   if (opts.fixedTitle) {
     let title = opts.fixedTitle.trim().toUpperCase();
-    if (!/[?.!]$/.test(title)) title += "?";
+    // Only questions get a "?" (2026-10-06: "PICK YOUR ARMOR TO SURVIVE A
+    // DRAGON'S FIRE BREATH" is an instruction and got one tacked on).
+    const isQuestion = /^(WHICH|WHAT|WHO|WHERE|WHEN|WHY|HOW|WOULD|DO|DOES|ARE|IS|CAN|WILL|SHOULD|COULD)\b/.test(title) || /\b(WHICH|WHAT|WHO)\b[^.]*$/.test(title);
+    if (!/[?.!]$/.test(title) && isQuestion) title += "?";
     const prefix = topic.slug.match(/^mythic(-duo|-place|-know|-scenario|-size|-versus)?/)?.[0] ?? "mythic";
     const slug = `${prefix}-${title.toLowerCase().replace(/[^a-z0-9\s-]/g, "").trim().replace(/\s+/g, "-").slice(0, 50)}`;
     return { ...topic, title, slug };
