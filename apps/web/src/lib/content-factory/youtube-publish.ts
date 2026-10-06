@@ -98,6 +98,26 @@ async function accessToken(account: YoutubeAccount): Promise<string> {
 }
 
 /**
+ * Category per brand (2026-10-06): Legendary Mythicals is Entertainment (24);
+ * Ripple / BWK stay People & Blogs (22).
+ */
+export function youtubeCategory(brand: SocialAccountKey): string {
+  return brand === "mythicals" ? "24" : "22";
+}
+
+/**
+ * Description per brand (2026-10-06, after the channel's advanced-features
+ * verification made description links clickable): Mythicals adds the quiz
+ * link, the brand's one funnel, above the hashtags.
+ */
+export function youtubeDescription(brand: SocialAccountKey, caption: string): string {
+  const body = clean(caption);
+  const link = brand === "mythicals" ? "Which legendary creature are you? Take the quiz: https://legendarymythicals.com/quiz" : "";
+  const text = link ? `${link}\n\n${body}` : body;
+  return text.slice(0, DESCRIPTION_MAX);
+}
+
+/**
  * Upload the rendered reel MP4 as a public Short. Returns the video id +
  * the /shorts/ permalink.
  */
@@ -126,13 +146,17 @@ export async function publishYoutubeShort(
     body: JSON.stringify({
       snippet: {
         title: shortsTitle(opts.headline),
-        description: clean(opts.caption).slice(0, DESCRIPTION_MAX),
-        categoryId: "22", // People & Blogs
+        description: youtubeDescription(account.key, opts.caption),
+        categoryId: youtubeCategory(account.key),
         ...(tags.length ? { tags } : {}),
       },
       status: {
         privacyStatus: "public",
         selfDeclaredMadeForKids: false,
+        // Altered/synthetic content disclosure (2026-10-06, per Keenan): our
+        // visuals and animation are AI-generated and realistic, which YouTube
+        // requires creators to disclose.
+        containsSyntheticMedia: true,
       },
     }),
   });
@@ -210,4 +234,48 @@ async function setThumbnail(token: string, videoId: string, coverUrl: string): P
     console.warn(`[youtube-publish] thumbnail not set for ${videoId} (Short is live): ${err instanceof Error ? err.message : err}`);
     await note({ ok: false, error: String(err instanceof Error ? err.message : err).slice(0, 500) });
   }
+}
+
+/**
+ * Bring an already-posted Short up to the current settings (2026-10-06,
+ * after advanced-features verification): re-apply the cover thumbnail, and
+ * update description (quiz link), category and the AI disclosure. The
+ * metadata update needs the full "youtube" scope; with an upload-only token
+ * it fails and is reported, while the thumbnail (upload scope) still applies.
+ */
+export async function refreshShortMetadata(
+  account: YoutubeAccount,
+  videoId: string,
+  opts: { headline: string | null; caption: string; coverUrl?: string | null }
+): Promise<{ metadata: string; thumbnail: string }> {
+  const token = await accessToken(account);
+  const tags = (opts.caption.match(/#[\p{L}\p{N}_]+/gu) ?? []).map((t) => t.slice(1));
+  let metadata = "ok";
+  try {
+    const res = await fetch("https://www.googleapis.com/youtube/v3/videos?part=snippet,status", {
+      method: "PUT",
+      headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json; charset=UTF-8" },
+      body: JSON.stringify({
+        id: videoId,
+        snippet: {
+          title: shortsTitle(opts.headline),
+          description: youtubeDescription(account.key, opts.caption),
+          categoryId: youtubeCategory(account.key),
+          ...(tags.length ? { tags } : {}),
+        },
+        status: { privacyStatus: "public", selfDeclaredMadeForKids: false, containsSyntheticMedia: true },
+      }),
+    });
+    if (!res.ok) metadata = `HTTP ${res.status}: ${(await res.text().catch(() => "")).slice(0, 200)}`;
+  } catch (err) {
+    metadata = err instanceof Error ? err.message : String(err);
+  }
+  let thumbnail = "skipped (no cover)";
+  if (opts.coverUrl) {
+    await setThumbnail(token, videoId, opts.coverUrl);
+    const { supabase } = await import("@/lib/supabase.server");
+    const { data } = await supabase.storage.from("content-factory").download(`youtube-thumbs/${videoId}.json`);
+    thumbnail = data ? ((JSON.parse(await data.text()) as { ok?: boolean; error?: string }).ok ? "ok" : `failed: ${(JSON.parse(await data.text()) as { error?: string }).error?.slice(0, 160)}`) : "unknown";
+  }
+  return { metadata, thumbnail };
 }

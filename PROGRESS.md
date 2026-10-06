@@ -7,6 +7,38 @@
 
 ---
 
+## [2026-10-06] — YouTube: 5pm/8pm slots, Central-day logic, verified-channel features
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** see "feat: Use the verified YouTube channel's features and add 5pm/8pm slots"
+
+### In plain English (for Keenan)
+- **Daily schedule:** YouTube posts 5 Shorts a day (Jev picks the day's best). The last two go up at 5pm and 8pm Central.
+- **Verified channel:** now that the Mythicals channel passed advanced-features verification:
+  - every Short gets its designed cover as the thumbnail
+  - every description starts with a clickable quiz link (legendarymythicals.com/quiz)
+  - Shorts are categorized as Entertainment instead of People & Blogs
+  - every Short carries YouTube's AI-content disclosure
+- **Already-posted Shorts:** they were updated to match.
+
+### Technical changes (for Jimmy)
+- `inngest/functions/social-publish-cron.ts`:
+  - the YouTube day is now the Central day for the stale skip, the daily pick and the cap backstop (8pm CT is after midnight UTC)
+  - new `retimeTail`: the last two kept rows of the day move to 17:00 and 20:00 CT (only if in the future), whether or not anything was skipped
+- `lib/content-factory/youtube-publish.ts`:
+  - `youtubeCategory` (Mythicals "24" Entertainment, others "22")
+  - `youtubeDescription` (Mythicals quiz link above the caption)
+  - `status.containsSyntheticMedia: true` on upload
+  - new `refreshShortMetadata` (videos.update for snippet and status, plus thumbnails.set)
+- New `POST /api/admin/youtube/refresh` (admin or CRON bearer), body `{ brand, limit }`: refreshes posted Shorts.
+
+### Manual steps needed
+- None
+
+### Notes
+- videos.update needs the full `youtube` OAuth scope. If the stored token only has `youtube.upload`, the metadata update returns 403 while thumbnails still apply, and the existing Shorts would need a re-consent with the broader scope. New uploads set everything at insert either way.
+- Quota: an upload is 1600 units and a thumbnail 50, so 5 a day is about 8,250 of the default 10,000.
+
 ## [2026-10-06] — Web trial users no longer bounced off the record screen (Christine Carty, again)
 **Requested by:** Keenan
 **Committed by:** Claude Code
