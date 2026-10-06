@@ -7,6 +7,32 @@
 
 ---
 
+## [2026-10-05] — YouTube capped at 3 Shorts a day after hitting the upload limit
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** see "fix: Cap YouTube at 3 Shorts a day and wait out upload limits"
+
+### In plain English (for Keenan)
+- **What happened:** the Mythicals YouTube channel stopped posting at about 2pm Central. YouTube rejected every upload with "the user has exceeded the number of videos they may upload". The backlog fill had pushed Shorts in a burst, and new channels have a low daily upload limit.
+- **What failed:** 8 Shorts used up all their retries.
+- **Now:**
+  - YouTube posts at most 3 Shorts a day
+  - if YouTube says the limit is hit, it waits 24 hours instead of failing
+  - the 8 failed Shorts are back in the queue
+  - the backlog will drain at 3 a day
+
+### Technical changes (for Jimmy)
+- `inngest/functions/social-publish-cron.ts`:
+  - before a YouTube upload, count the channel's POSTED YouTube rows in the last 24h. At or above `YOUTUBE_DAILY_CAP` (default 3), set scheduledAt to when the oldest falls out of the window, with no attempt used.
+  - in catch, an "exceeded the number of videos" / uploadLimitExceeded error sets scheduledAt to +24h, with no attempt used.
+- Data: 8 FAILED Mythicals YouTube rows reset to PENDING with attempts 0.
+
+### Manual steps needed
+- None
+
+### Notes
+- `YOUTUBE_DAILY_CAP` in Vercel raises the cap without a code change, once the channel ages or is verified.
+
 ## [2026-10-05] — Weekly ad batches get a variety check before review
 **Requested by:** Keenan
 **Committed by:** Claude Code

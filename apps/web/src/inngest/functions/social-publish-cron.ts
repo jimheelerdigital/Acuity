@@ -591,6 +591,28 @@ export const socialPublishCronFn = inngest.createFunction(
           return false;
         }
 
+        // YouTube daily cap (2026-10-05: the Mythicals channel hit "The user
+        // has exceeded the number of videos they may upload" after a backlog
+        // burst; 8 Shorts burned all retries). At most YOUTUBE_DAILY_CAP
+        // uploads per channel per rolling 24h (3 by default, per Keenan "revert to 3 only for now"); extra rows wait, no attempt used.
+        if (row.platform === "youtube") {
+          const cap = Math.max(1, Number(process.env.YOUTUBE_DAILY_CAP) || 3);
+          const since = new Date(Date.now() - 24 * 3600_000);
+          const recent = await prisma.socialPublish.findMany({
+            where: { platform: "youtube", accountKey: row.accountKey, status: "POSTED", postedAt: { gte: since } },
+            orderBy: { postedAt: "asc" },
+            select: { postedAt: true },
+          });
+          if (recent.length >= cap) {
+            const freesAt = new Date(recent[0].postedAt!.getTime() + 24 * 3600_000 + 5 * 60_000);
+            await prisma.socialPublish.update({
+              where: { id: row.id },
+              data: { scheduledAt: freesAt, error: `YouTube daily cap (${cap}/24h) reached; waiting until ${freesAt.toISOString()}` },
+            });
+            return false;
+          }
+        }
+
         try {
           const result = await publish();
 
@@ -627,6 +649,15 @@ export const socialPublishCronFn = inngest.createFunction(
           };
         } catch (err) {
           const message = err instanceof Error ? err.message : String(err);
+          // YouTube's own upload limit: wait a day instead of burning retries.
+          if (row.platform === "youtube" && /exceeded the number of videos|uploadLimitExceeded/i.test(message)) {
+            await prisma.socialPublish.update({
+              where: { id: row.id },
+              data: { scheduledAt: new Date(Date.now() + 24 * 3600_000), error: `YouTube upload limit hit; retrying in 24h. ${message.slice(0, 200)}` },
+            });
+            console.warn(`[social-publish] youtube/${row.accountKey} upload limit — row ${row.id} deferred 24h`);
+            return false;
+          }
           const updated = await prisma.socialPublish.update({
             where: { id: row.id },
             data: {
