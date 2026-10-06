@@ -121,6 +121,22 @@ export const adlabWeeklyBatchFn = inngest.createFunction(
         if (result.ok) imagesOk++;
       }
 
+      // 2b. Variety check (2026-10-05, per Keenan: "the more variance the
+      // better"): Opus compares the batch's images side by side; look-alikes,
+      // obvious-AI renders and broken text (max 3) move to a new look and
+      // re-render. Fails open.
+      const variety = await step.run(`variety-${groupKey}`, async () => {
+        const { runVarietyCheck } = await import("@/lib/adlab/variety-check");
+        return runVarietyCheck(batch.experimentId, groupKey);
+      });
+      logger.info(`[adlab-weekly] ${groupKey} variety: ${variety.note}`);
+      for (let i = 0; i < variety.redo.length; i++) {
+        await step.run(`variety-redo-${groupKey}-${i + 1}`, async () => {
+          const { generateBatchImage } = await import("@/lib/adlab/weekly-batch");
+          return generateBatchImage(variety.redo[i], { force: true });
+        });
+      }
+
       // 3. Compliance (batched Claude review; FAILs auto-unapproved)
       const compliance = await step.run(`compliance-${groupKey}`, async () => {
         try {

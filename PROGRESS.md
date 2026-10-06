@@ -7,6 +7,30 @@
 
 ---
 
+## [2026-10-05] — Weekly ad batches get a variety check before review
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** see "feat: Check each ad batch for look-alikes before review"
+
+### In plain English (for Keenan)
+After Sunday's ads render, the AI image checker looks at all of them side by side. It flags any two that look alike, anything that obviously reads as AI-made, and broken or misspelled text. Up to 3 flagged ads per lane are switched to a different, unused look and re-rendered before the review email goes out.
+
+### Technical changes (for Jimmy)
+- New `lib/adlab/variety-check.ts`:
+  - `runVarietyCheck(experimentId, group, { dryRun })` builds a numbered contact sheet (Pango badges) and asks VISION_MODEL (Opus 5.5) for `{ similar, fake, brokenText }`
+  - `pickRedos` puts broken text and fakes first, then the later ad of each similar pair, up to 3
+  - each flagged creative moves to an unused look from a different family that its copy can fill, with a fresh variant; its formatKey, generationPrompt and the angle's `| format:` tag are updated and its images cleared
+  - fails open
+- `inngest/functions/adlab-weekly-batch.ts`: steps `variety-<group>` and `variety-redo-<group>-<i>` (generateBatchImage force) run after the image steps and before compliance.
+- New `POST /api/admin/adlab/variety-check` (admin or CRON bearer), body `{ experimentId, dryRun }`. dryRun defaults to true.
+- Test: `pickRedos` (in ad-looks.test.ts).
+
+### Manual steps needed
+- None
+
+### Notes
+- Re-rendered ads still go through compliance, because the variety step runs first.
+
 ## [2026-10-05] — Look library fixes after the first sample sheet
 **Requested by:** Keenan
 **Committed by:** Claude Code

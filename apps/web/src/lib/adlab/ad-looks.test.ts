@@ -52,3 +52,11 @@ describe("ad look library", () => {
     expect(fb.key).not.toBe("look-statement");
   });
 });
+
+describe("variety check redo picking", () => {
+  it("redoes broken text and fakes first, then the later ad of each similar pair, max 3", async () => {
+    const { pickRedos } = await import("./variety-check");
+    expect(pickRedos({ similar: [[2, 7], [4, 5]], fake: [{ n: 9, reason: "" }], brokenText: [{ n: 3, reason: "" }] })).toEqual([3, 9, 7]);
+    expect(pickRedos({ similar: [], fake: [], brokenText: [] })).toEqual([]);
+  });
+});
