@@ -54,23 +54,27 @@ export async function runVarietyCheck(
     const { textBlock } = await import("./ad-render");
     const { ensureFontFile } = await import("@/lib/content-factory/compose");
     const font = await ensureFontFile("Bold");
-    const W = 300, H = 375, cols = 5;
+    // Number strip UNDER each tile: a badge on the ad itself covered its
+    // top-left text and read as "cut off" (2026-10-05 dry run).
+    const W = 300, H = 375, STRIP = 34, cols = 5;
     const tiles = await Promise.all(
       creatives.map(async (c, i) => {
         const r = await fetch(c.imageUrl!);
         const img = await sharp(Buffer.from(await r.arrayBuffer())).resize(W, H, { fit: "cover" }).toBuffer();
-        const tag = await textBlock(`<span foreground="#FFFFFF" size="16000">${i + 1}</span>`, font, 60, 0);
-        const badge = await sharp({ create: { width: 46, height: 40, channels: 4, background: "#E11D48" } })
-          .composite([{ input: tag.buffer, left: 8, top: 4 }])
+        const tag = await textBlock(`<span foreground="#FFFFFF" size="15000">${i + 1}</span>`, font, 80, 0);
+        const strip = await sharp({ create: { width: W, height: STRIP, channels: 4, background: "#E11D48" } })
+          .composite([{ input: tag.buffer, left: Math.max(0, Math.round((W - tag.width) / 2)), top: 2 }])
           .png()
           .toBuffer();
+        const x = (i % cols) * (W + 10), y = Math.floor(i / cols) * (H + STRIP + 10);
         return [
-          { input: img, left: (i % cols) * W, top: Math.floor(i / cols) * H },
-          { input: badge, left: (i % cols) * W, top: Math.floor(i / cols) * H },
+          { input: img, left: x, top: y },
+          { input: strip, left: x, top: y + H },
         ];
       })
     );
-    const sheet = await sharp({ create: { width: cols * W, height: Math.ceil(creatives.length / cols) * H, channels: 3, background: "#ffffff" } })
+    const rowsN = Math.ceil(creatives.length / cols);
+    const sheet = await sharp({ create: { width: cols * (W + 10), height: rowsN * (H + STRIP + 10), channels: 3, background: "#ffffff" } })
       .composite(tiles.flat())
       .jpeg({ quality: 80 })
       .toBuffer();
@@ -87,7 +91,7 @@ export async function runVarietyCheck(
             { type: "image", source: { type: "base64", media_type: "image/jpeg", data: sheet.toString("base64") } },
             {
               type: "text",
-              text: `These are ${creatives.length} Facebook/Instagram ads from one weekly batch, numbered by the red badge. The goal is maximum VISUAL variety: every ad should look different at a glance (layout, style, colors, medium).
+              text: `These are ${creatives.length} Facebook/Instagram ads from one weekly batch, numbered by the red strip under each ad (the strip is not part of the ad). The goal is maximum VISUAL variety: every ad should look different at a glance (layout, style, colors, medium).
 Report:
 1. "similar": pairs of numbers that look too alike at a glance (same layout or visual style, could be mistaken for the same template). Only real look-alikes.
 2. "fake": ads that obviously read as AI-generated in under a second (warped objects or hands, uncanny plastic photo, nonsense details). Not just "it's a render".
