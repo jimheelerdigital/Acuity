@@ -7,6 +7,30 @@
 
 ---
 
+## [2026-10-06] — Slide text moves off the subject; smaller option labels; relabel job
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** see "feat: Place slide text off the subject and shrink option labels"
+
+### In plain English (for Keenan)
+- **Text placement:** on the skull-helm post, the label covered the helm. Now, before each "which would you choose" slide gets its text, the AI image checker looks at the picture and puts the text at the top or the bottom, whichever covers less of the face, helm, eyes, or the item the slide is about. This applies to Mythicals and to the Ripple/BWK pick posts.
+- **Text size:** labels on every slide except the cover are smaller.
+- **Relabel job:** a new job can fix any already-built post the same way and rebuild its video without paying for new animation. It's being used on the helm post now.
+- **Holds:** the helm post and the rebuilt armor post are held off every platform until they're fixed and Keenan has seen them.
+
+### Technical changes (for Jimmy)
+- New `lib/content-factory/text-placement.ts`: `chooseTextPlacement(image, subject)` asks VISION_MODEL (low effort, 512px) to choose the band covering less of the subject. Fails open to top.
+- `lib/content-factory/compose.ts`: `renderChoiceOverlay({ place })`, where bottom puts the line's bottom edge at row 1590.
+- `inngest/functions/carousel-daily.ts`: choice/pick cover and option overlays call `chooseTextPlacement`; option labels are topSize 44 (was 56); the cover stays 66.
+- New `inngest/functions/carousel-relabel.ts` (event `content-factory/relabel.post`): re-renders the cover/option overlays with placement and the new sizes, updates the slides, then rebuilds the post video from cached clips. Triggered by `relabel-requests/<postId>.json`, claimed in carousel-living-reel. Registered in api/inngest.
+- Data: "FIVE LEGEND SKULLS" publish rows held (+48h) pending the relabel.
+
+### Manual steps needed
+- [ ] Keenan approves the fixed helm and armor posts before they're released (Claude Code re-schedules them)
+
+### Notes
+- The relabel re-uploads the raw image under a new path; the clip cache is per slide index, so the animation is reused.
+
 ## [2026-10-06] — Mythicals questions read naturally; every option's picture matches the question
 **Requested by:** Keenan
 **Committed by:** Claude Code

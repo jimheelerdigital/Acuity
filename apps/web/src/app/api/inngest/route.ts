@@ -56,6 +56,7 @@ import { carouselGenerateOneOffFn } from "@/inngest/functions/carousel-one-off";
 import { carouselAnimateCoverFn } from "@/inngest/functions/carousel-animate-cover";
 import { carouselLivingReelFn, livingReelQueueFn } from "@/inngest/functions/carousel-living-reel";
 import { carouselPostVideoFn } from "@/inngest/functions/carousel-post-video";
+import { carouselRelabelFn } from "@/inngest/functions/carousel-relabel";
 import { voicedScriptDailyFn, voicedClipsFn, voicedBuildFn } from "@/inngest/functions/voiced-video";
 import { storyboardTestFn } from "@/inngest/functions/storyboard-test";
 import { scoreboardRefreshFn, performanceReportFn } from "@/inngest/functions/performance-loop";
@@ -144,6 +145,7 @@ const handler = serve({
     carouselLivingReelFn,
     livingReelQueueFn,
     carouselPostVideoFn,
+    carouselRelabelFn,
     voicedScriptDailyFn,
     voicedClipsFn,
     voicedBuildFn,

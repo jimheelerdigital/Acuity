@@ -2089,6 +2089,12 @@ export async function renderChoiceOverlay(opts: {
   bottom?: string;
   /** Top line size: covers run larger than option names. */
   topSize?: number;
+  /**
+   * Where the main line sits (2026-10-06): "top" (default, rows ~330 down)
+   * or "bottom" (ending at row ~1590), chosen per image by
+   * text-placement.ts so the words don't cover the subject.
+   */
+  place?: "top" | "bottom";
 }): Promise<Buffer> {
   const maxTextW = OUTPUT_W - PADDING_X * 2;
   const layers: { input: Buffer; top: number; left: number }[] = [];
@@ -2114,7 +2120,7 @@ export async function renderChoiceOverlay(opts: {
 
   const topSize = opts.topSize ?? 56;
   const t = await block(opts.top, "Bold", topSize, topSize >= 60 ? 16 : 20, true);
-  const tTop = 330;
+  const tTop = opts.place === "bottom" ? 1590 - t.main.height : 330;
   const tLeft = Math.round((OUTPUT_W - t.main.width) / 2);
   layers.push({ input: t.shadow, top: tTop + 4, left: tLeft + 2 }, { input: t.main.buffer, top: tTop, left: tLeft });
 

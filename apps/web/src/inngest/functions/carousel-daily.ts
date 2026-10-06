@@ -1101,7 +1101,10 @@ export const carouselDailyCronFn = inngest.createFunction(
           fantasy: !pickBrand,
         });
         logger.info(`[carousel-cron] choice cover quality: ${qc}`);
-        const overlay = await renderChoiceOverlay({ top: topic.title, topSize: 66 });
+        // Text goes where it covers the least of the subject (2026-10-06).
+        const { chooseTextPlacement } = await import("@/lib/content-factory/text-placement");
+        const place = await chooseTextPlacement(raw, topic.coverScene);
+        const overlay = await renderChoiceOverlay({ top: topic.title, topSize: 66, place });
         const { imageUrl, rawImageUrl } = await uploadOverlaySlide(
           raw,
           overlay,
@@ -1142,7 +1145,12 @@ export const carouselDailyCronFn = inngest.createFunction(
             // feeds the diversity check) but is no longer shown.
             // Size series slides carry the creature line with no number.
             const label = choiceMode === "size" ? o.name : `${i + 1}. ${o.name}`;
-            const overlay = await renderChoiceOverlay({ top: label });
+            // Smaller than the cover (2026-10-06, per Keenan: "reduce the text
+            // size on all slides that aren't cover slides"; was 56), placed
+            // where it covers the least of the subject.
+            const { chooseTextPlacement } = await import("@/lib/content-factory/text-placement");
+            const place = await chooseTextPlacement(raw, `${o.name}: ${o.scene}`);
+            const overlay = await renderChoiceOverlay({ top: label, topSize: 44, place });
             const { imageUrl, rawImageUrl } = await uploadOverlaySlide(
               raw,
               overlay,

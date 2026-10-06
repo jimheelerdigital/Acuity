@@ -392,6 +392,25 @@ export const livingReelQueueFn = inngest.createFunction(
         videoRuns.map((r) => ({ name: "content-factory/post-video.build" as const, data: r }))
       );
     }
+    // Relabel a built post (2026-10-06): `relabel-requests/<postId>.json` →
+    // content-factory/relabel.post (text re-placed off the subject, smaller
+    // option labels, video rebuilt from cached clips).
+    const relabels = await step.run("claim-relabel-requests", async () => {
+      const { supabase } = await import("@/lib/supabase.server");
+      const { data } = await supabase.storage.from("content-factory").list("relabel-requests", { limit: 20 });
+      const claimed: string[] = [];
+      for (const f of (data ?? []).filter((x) => x.name.endsWith(".json"))) {
+        const { error } = await supabase.storage.from("content-factory").remove([`relabel-requests/${f.name}`]);
+        if (!error) claimed.push(f.name.replace(/\.json$/, ""));
+      }
+      return claimed;
+    });
+    if (relabels.length > 0) {
+      await step.sendEvent(
+        "send-relabels",
+        relabels.map((postId) => ({ name: "content-factory/relabel.post" as const, data: { postId } }))
+      );
+    }
     // Replace published slideshow posts with the Higgsfield video
     // (2026-09-28): `replace-requests/<postId>.json`. Claimed only once the
     // post's video is done, so nothing is deleted before its replacement
