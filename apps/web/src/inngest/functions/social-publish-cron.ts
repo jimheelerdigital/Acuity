@@ -329,7 +329,7 @@ export const socialPublishCronFn = inngest.createFunction(
     // the day's 3 slots (YOUTUBE_DAILY_CAP) and the rest are skipped.
     await step.run("youtube-daily-pick", async () => {
       const { prisma } = await import("@/lib/prisma");
-      const cap = Math.max(1, Number(process.env.YOUTUBE_DAILY_CAP) || 3);
+      const cap = Math.max(1, Number(process.env.YOUTUBE_DAILY_CAP) || 5);
       const today = new Date();
       today.setUTCHours(0, 0, 0, 0);
       const stale = await prisma.socialPublish.updateMany({
@@ -659,9 +659,9 @@ export const socialPublishCronFn = inngest.createFunction(
         // YouTube daily cap (2026-10-05: the Mythicals channel hit "The user
         // has exceeded the number of videos they may upload" after a backlog
         // burst; 8 Shorts burned all retries). At most YOUTUBE_DAILY_CAP
-        // uploads per channel per rolling 24h (3 by default, per Keenan "revert to 3 only for now"); extra rows wait, no attempt used.
+        // uploads per channel per rolling 24h (5 by default since 2026-10-06, per Keenan "keep youtube at 5 posts actually"); extra rows wait, no attempt used.
         if (row.platform === "youtube") {
-          const cap = Math.max(1, Number(process.env.YOUTUBE_DAILY_CAP) || 3);
+          const cap = Math.max(1, Number(process.env.YOUTUBE_DAILY_CAP) || 5);
           // Per UTC day (2026-10-06): the daily pick works per day, so a
           // rolling window could push one of today's picks past midnight.
           const since = new Date();
