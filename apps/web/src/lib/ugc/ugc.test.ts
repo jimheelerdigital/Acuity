@@ -211,3 +211,14 @@ describe("metrics", () => {
     expect(s.paidCents).toBe(5000);
   });
 });
+
+describe("draft greeting name (10-06 dry run)", () => {
+  it("skips non-name words and handle-only display names", async () => {
+    const { firstName } = await import("./draft");
+    const c = (displayName: string | null, handle: string) => ({ displayName, handle }) as never;
+    expect(firstName(c("UGC Mairim", "ugc.mairim"))).toBe("Mairim");
+    expect(firstName(c("liindsxo", "liindsxo"))).toBeNull();
+    expect(firstName(c("Judy Kim", "itsjudykim"))).toBe("Judy");
+    expect(firstName(c(null, "x"))).toBeNull();
+  });
+});

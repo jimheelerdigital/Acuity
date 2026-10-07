@@ -80,9 +80,16 @@ export async function checkDm(c: Candidate, dm: string): Promise<ClaimsResult> {
   return claimsCheck("dm", dm, { allowedDollars: allowedDollars(c), maxWords: DM_MAX_WORDS, maxLinks: 1 });
 }
 
+// Words creators put in display names that aren't names ("UGC Mairim" → "Hi UGC," in the 10-06 dry run).
+const NOT_A_NAME = new Set(["ugc", "creator", "creators", "creates", "content", "official", "the", "by", "its", "it's", "im", "i'm", "mrs", "miss", "ms", "mr", "mama", "mom", "team", "shop", "studio", "media"]);
+
+/** First real name from the display name, or null (the draft then says "Hi there,"). */
 function firstName(c: Candidate): string | null {
-  const n = (c.displayName ?? "").replace(/[^\p{L}\s'-]/gu, " ").trim().split(/\s+/)[0];
-  return n && n.length >= 2 && n.length <= 20 ? n : null;
+  const words = (c.displayName ?? "").replace(/[^\p{L}\s'-]/gu, " ").trim().split(/\s+/);
+  const n = words.find((w) => !NOT_A_NAME.has(w.toLowerCase()));
+  if (!n || n.length < 2 || n.length > 20) return null;
+  if (n.toLowerCase() === c.handle.toLowerCase().replace(/[^a-z]/g, "")) return null; // display name is just the handle
+  return n[0].toUpperCase() + n.slice(1);
 }
 
 function rateSituation(c: Candidate): string {
@@ -99,8 +106,10 @@ What Ripple is: ${PRODUCT_ONE_LINER}
 Ripple pricing (only if relevant): ${RIPPLE_PRICING}.
 
 Rules:
-- Keenan's email address says "Heeler Digital", so the FIRST TWO LINES after the greeting must make clear this is about Ripple and who he is (co-founder of Ripple).
+- Greeting: "Hi <firstName>," using the firstName given. If firstName is null, write "Hi there," and never use their handle or username as a name.
+- Keenan's email address says "Heeler Digital", so the FIRST TWO LINES after the greeting must make clear this is about Ripple and who he is (co-founder of Ripple). Never mention Heeler Digital or his email address in the text.
 - Open with ONE specific, real detail from their content, taken only from the "detail", captions or transcripts provided. Never invent one. No generic compliments ("love your content", "your energy").
+- Pick a detail about their work as a creator (a hook, a video idea, their delivery, what they said about their routine, workload or goals). Never their private life: no engagements, relationships, pregnancies, kids' diagnoses, health, money troubles or where they live. A stranger quoting those reads as creepy.
 - ONE clear ask: reply with their rate and availability (or, if they quoted, availability).
 - No links in the body. No images. Don't add a sign-off, opt-out line or signature; those are appended automatically.
 - ${CLAIMS_RULE}

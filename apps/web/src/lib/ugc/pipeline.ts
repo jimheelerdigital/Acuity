@@ -54,6 +54,24 @@ export async function startRun(kind: RunKind): Promise<string> {
   return run.id;
 }
 
+/**
+ * Make scraped text safe for a Postgres JSON column (2026-10-06): a caption
+ * sliced through the middle of an emoji leaves half a surrogate pair, and
+ * Prisma rejects the whole write ("unexpected end of hex escape"), which
+ * dropped a discovery batch. Also strips NULs, which jsonb refuses.
+ */
+function cleanJson<T>(value: T): Prisma.InputJsonValue {
+  const fix = (v: unknown): unknown => {
+    if (typeof v === "string")
+      return v.replace(/[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]|\u0000/g, "");
+    if (Array.isArray(v)) return v.map(fix);
+    if (v && typeof v === "object" && !(v instanceof Date))
+      return Object.fromEntries(Object.entries(v).map(([k, x]) => [k, fix(x)]));
+    return v;
+  };
+  return fix(value) as Prisma.InputJsonValue;
+}
+
 export async function loadRun(runId: string) {
   const prisma = await db();
   const run = await prisma.ugcRun.findUniqueOrThrow({ where: { id: runId } });
@@ -65,7 +83,7 @@ export async function saveCandidates(runId: string, list: Candidate[], stage?: s
   await prisma.ugcRun.update({
     where: { id: runId },
     data: {
-      candidates: list as unknown as Prisma.InputJsonValue,
+      candidates: cleanJson(list),
       profilesFound: list.length,
       ...(stage ? { stage } : {}),
     },
@@ -95,7 +113,7 @@ export async function recordError(runId: string, stage: string, err: unknown, fa
   await prisma.ugcRun.update({
     where: { id: runId },
     data: {
-      errors: errors as unknown as Prisma.InputJsonValue,
+      errors: cleanJson(errors),
       ...(fatal ? { status: "failed", finishedAt: new Date() } : {}),
     },
   });
@@ -220,14 +238,15 @@ export function rowToCandidate(r: {
 export async function commitScored(runId: string, list: Candidate[]): Promise<Record<string, string>> {
   const prisma = await db();
   const ids: Record<string, string> = {};
-  for (const c of list) {
-    if (c.score == null) continue;
+  for (const raw of list) {
+    if (raw.score == null) continue;
+    const c = cleanJson(raw) as unknown as Candidate & { score: number }; // bio/name text too, not just the JSON columns
     const data = {
       persona: c.persona ?? null,
       creatorType: c.creatorType ?? null,
       score: c.score,
       scoreReason: c.scoreReason ?? null,
-      scoreDetail: (c.scoreDetail ?? {}) as Prisma.InputJsonValue,
+      scoreDetail: cleanJson(c.scoreDetail ?? {}),
       displayName: c.displayName ?? null,
       profileUrl: c.profileUrl,
       bio: c.bio ?? null,
@@ -240,7 +259,7 @@ export async function commitScored(runId: string, list: Candidate[]): Promise<Re
       listsRates: !!c.listsRates,
       credentials: c.credentials ?? null,
       avgViews: c.avgViews ?? null,
-      recentVideos: (c.recentVideos ?? []) as unknown as Prisma.InputJsonValue,
+      recentVideos: cleanJson(c.recentVideos ?? []),
       runId,
     };
     const row = await prisma.ugcCreator.upsert({
@@ -288,7 +307,7 @@ export async function finishRun(runId: string, report: Record<string, unknown>, 
       status: "done",
       stage: "done",
       queued,
-      report: report as Prisma.InputJsonValue,
+      report: cleanJson(report),
       finishedAt: new Date(),
       // Dry runs keep their working set for the report page; real runs drop it.
       ...(report.dryRun ? {} : { candidates: [] }),

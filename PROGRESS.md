@@ -7,6 +7,35 @@
 
 ---
 
+## [2026-10-06] — UGC outreach: fix a save crash, wrong greetings and creepy openers
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** see "fix: Stop UGC runs dropping creators and drafts greeting by handle"
+
+### In plain English (for Keenan)
+Fixes from the second UGC dry run (25 creators):
+- **Save crash:** one search (#ugccreator on Instagram) failed to save because a caption was cut through the middle of an emoji. Every creator from that search was lost. That can't happen now.
+- **Greetings:** drafts said "Hi UGC," and "Hi liindsxo,". They now use a real first name or "Hi there,".
+- **Odd lines:** one draft said "Writing from my Heeler Digital address". Drafts no longer mention Heeler Digital.
+- **Personal openers:** drafts opened on things like someone's engagement or a college vlog. They now open on the creator's work (a hook, a video idea, their routine), never private life.
+
+### Technical changes (for Jimmy)
+- `apps/web/src/lib/ugc/pipeline.ts`: new `cleanJson()` strips lone UTF-16 surrogates and NULs. It's applied to `UgcRun.candidates`, `errors` and `report`, and to the whole candidate in `commitScored`.
+- `apps/web/src/lib/ugc/draft.ts`:
+  - `firstName()` skips non-name words (ugc, creator, official…) and display names that equal the handle
+  - SYSTEM rules for the "Hi there," fallback, never naming Heeler Digital, and a work-only opening detail
+- `apps/web/src/lib/ugc/ugc.test.ts`: greeting-name cases.
+
+### Manual steps needed
+- None
+
+### Notes
+- Prisma's query engine rejects a request containing half a surrogate pair ("unexpected end of hex escape"). Any `.slice()` on scraped text can produce one, so clean the text before every write.
+- Still open for Keenan, not changed here:
+  - **The mix is mostly young creators:** 19 of 25 were "ambitious" and 6 "midlife", the reverse of the 60/40 midlife split.
+  - **8 of 25 emails are still over 120 words** after the rewrite, because the model rewrites the offer terms every time.
+  - **11 of 25 scored below the bar of 70.**
+
 ## [2026-10-06] — AI-content label turned on for Instagram and Facebook (YouTube already on)
 
 **Requested by:** Keenan
