@@ -36,6 +36,35 @@ Fixes from the second UGC dry run (25 creators):
   - **8 of 25 emails are still over 120 words** after the rewrite, because the model rewrites the offer terms every time.
   - **11 of 25 scored below the bar of 70.**
 
+## [2026-10-07] — Ad engine now judges ads against a $20-per-paid-trial target
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** see git log (feat: Judge ads against a $20 per paid trial target)
+
+### In plain English (for Keenan)
+The ad engine now holds every ad to Keenan's target of $20 or less per paid trial. An ad counts as a winner only at $20 or under. Ads that clearly can't get there are paused on the engine's normal runs:
+- $40 spent with no paid trial
+- over $30 per trial after $60 spent
+- over $15 per signup
+
+Keenan already paused the 3 ads this would have caught, so nothing was changed by hand with this push.
+
+### Technical changes (for Jimmy)
+- `apps/web/src/lib/adlab/evergreen.ts` (`judgeCreatives`):
+  - `WINNER_MAX_COST_PER_TRIAL_CENTS` 5000 -> 2000.
+  - New `NO_TRIAL_MAX_SPEND_CENTS` 4000.
+  - `EXPENSIVE_MIN_SPEND_CENTS` 10000 -> 6000 with `EXPENSIVE_COST_PER_TRIAL_CENTS` 10000 -> 3000.
+  - `BAD_CPL_CENTS` 4000 -> 1500.
+  - Verdict reasons cite "target $20".
+
+### Manual steps needed
+None
+
+### Notes
+- No manual engine run. The rules apply on the next scheduled audit, daily cron or new upload.
+- Pre-push dry run, 10-07: the three paused ads were "See where your week really went." ($61.83/trial), "Touched out. Guilty about it, too." ($41.51/trial) and "You track everyone. Who tracks you?" ($35.39/trial). Best live ad: "Fourth planner. Still stuck." at $24.92/trial (12 trials), kept as it's under the $30 line.
+
 ## [2026-10-07] — App sign-in tells web signups to use their website email
 
 **Requested by:** Keenan

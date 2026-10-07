@@ -257,13 +257,14 @@ export async function ensureEvergreenAdSet(
  * ones that weren't working").
  *
  * No ad is paused just to make room. Each live ad gets a verdict:
- *   WINNER      >=1 paid trial at <= $50 per paid trial (2026-10-01; was
- *               "any paid trial or 3+ cheap signups"). Never paused.
- *   NOT WORKING >= $100 spent at > $100 per paid trial (or none), OR the
- *               early signals, judged after >= $15 spent AND >= 72h live:
- *               >= $20 spent with 0 signups, OR cost per signup > $40, OR
- *               link CTR < 0.5% over >= 1,500 impressions with 0 signups.
- *               Paused.
+ *   WINNER      >=1 paid trial at <= $20 per paid trial (2026-10-07, per
+ *               Keenan: "we need ads that convert at $20 or less"; was $50).
+ *               Never paused.
+ *   NOT WORKING >= $40 spent with no paid trial, or >= $60 spent at > $30
+ *               per paid trial, OR the early signals, judged after >= $15
+ *               spent AND >= 72h live: >= $20 spent with 0 signups, OR cost
+ *               per signup > $15, OR link CTR < 0.5% over >= 1,500
+ *               impressions with 0 signups. Paused.
  *   KEEP        everything else, including ads too new to judge.
  * Signups = the higher of Meta-reported conversions and our own
  * funnel_account_created sessions for the ad (utm_content = creative id).
@@ -280,13 +281,21 @@ export async function ensureEvergreenAdSet(
  * The early signals below (no signups, $40+ per signup, low CTR) still stop
  * obvious duds before they reach $100.
  */
-const WINNER_MAX_COST_PER_TRIAL_CENTS = 5000;
-const EXPENSIVE_MIN_SPEND_CENTS = 10000;
-const EXPENSIVE_COST_PER_TRIAL_CENTS = 10000;
+// 2026-10-07, per Keenan: "from here on out, we need ads that convert at $20
+// or less. this is the only feasible way to get signups who pay and stick
+// around at a reasonable price." Target = $20 per paid (card) trial.
+const WINNER_MAX_COST_PER_TRIAL_CENTS = 2000;
+/** No paid trial after 2x the target spend → stop. */
+const NO_TRIAL_MAX_SPEND_CENTS = 4000;
+/** After 3x the target spend, anything over 1.5x the target per trial → stop. */
+const EXPENSIVE_MIN_SPEND_CENTS = 6000;
+const EXPENSIVE_COST_PER_TRIAL_CENTS = 3000;
 const JUDGE_MIN_SPEND_CENTS = 1500;
 const JUDGE_MIN_HOURS = 72;
 const DEAD_SPEND_CENTS = 2000;
-const BAD_CPL_CENTS = 4000;
+// ~1 in 3 signups enters a card, so a $20 trial needs signups under ~$7;
+// > $15 per signup can't get there (was $40).
+const BAD_CPL_CENTS = 1500;
 const LOW_CTR_PCT = 0.5;
 const LOW_CTR_MIN_IMPRESSIONS = 1500;
 
@@ -350,12 +359,15 @@ export async function judgeCreatives(creativeIds: string[]): Promise<Map<string,
     if (trials > 0 && perTrial <= WINNER_MAX_COST_PER_TRIAL_CENTS) {
       verdict = "winner";
       why = `${trials} paid trial${trials > 1 ? "s" : ""} at ${$(perTrial)} each`;
+    } else if (trials === 0 && spend >= NO_TRIAL_MAX_SPEND_CENTS) {
+      verdict = "not_working";
+      why = `${$(spend)} spent with no paid trial (target $20)`;
     } else if (spend >= EXPENSIVE_MIN_SPEND_CENTS && perTrial > EXPENSIVE_COST_PER_TRIAL_CENTS) {
       verdict = "not_working";
-      why = trials > 0 ? `${$(perTrial)} per paid trial (over $100)` : `${$(spend)} spent with no paid trial`;
+      why = `${$(perTrial)} per paid trial (target $20)`;
     } else if (spend >= JUDGE_MIN_SPEND_CENTS && hours >= JUDGE_MIN_HOURS) {
       if (signups === 0 && spend >= DEAD_SPEND_CENTS) { verdict = "not_working"; why = `${$(spend)} spent with no signups`; }
-      else if (signups > 0 && spend / signups > BAD_CPL_CENTS) { verdict = "not_working"; why = `${$(spend / signups)} per signup (over $40)`; }
+      else if (signups > 0 && spend / signups > BAD_CPL_CENTS) { verdict = "not_working"; why = `${$(spend / signups)} per signup (over $15)`; }
       else if (signups === 0 && imps >= LOW_CTR_MIN_IMPRESSIONS && ctr < LOW_CTR_PCT) { verdict = "not_working"; why = `${ctr.toFixed(2)}% click rate, no signups`; }
       else why = "working well enough to keep";
     }
