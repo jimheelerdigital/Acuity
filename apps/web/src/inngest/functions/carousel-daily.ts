@@ -1270,9 +1270,16 @@ export const carouselDailyCronFn = inngest.createFunction(
               // The hero must be unmistakable (2026-10-04, Bogmire): e.g.
               // "Vyrnax the Emerald Dragon, one of the options for: ONE EGG.
               // FIVE POSSIBLE DRAGONS...".
-              subject: `${o.name} (an option in a post titled "${topic.title}")`,
+              // The scene's own first sentence, not just the name: "The
+              // Stormcaller's Horn" passed as a horned dragon (2026-10-07).
+              subject: `${o.name} (an option in a post titled "${topic.title}"), which must look like: ${(o.scene.split(/(?<=[.!?])\s/)[0] ?? o.scene).slice(0, 220)}`,
             });
             logger.info(`[carousel-cron] choice option ${i + 1} quality: ${qc}`);
+            // Every try failed the picture check (2026-10-07, Keenan: dragons
+            // shipped for "The Stormcaller's Horn"): hold the post from
+            // auto-posting (social-publish-cron skips IMAGE-UNVERIFIED) rather
+            // than publish a picture that doesn't match its option.
+            const unverified = !pickBrand && /^failed/i.test(qc) ? `\nIMAGE-UNVERIFIED: ${qc.slice(0, 200)}` : "";
             // Name only on the slide (2026-09-30, per Keenan: "it doesn't need
             // a description. just place the name of the beast on there").
             // The lore line is still written (it keeps the five picks distinct and
@@ -1305,7 +1312,7 @@ export const carouselDailyCronFn = inngest.createFunction(
               // "it also didn't animate every slide which it needs to").
               rawImageUrl,
               overlayText: label,
-              imagePrompt: withMotion(prompt, o.motion),
+              imagePrompt: withMotion(prompt, o.motion) + unverified,
             };
           })
         );

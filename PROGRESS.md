@@ -36,6 +36,29 @@ Fixes from the second UGC dry run (25 creators):
   - **8 of 25 emails are still over 120 words** after the rewrite, because the model rewrites the offer terms every time.
   - **11 of 25 scored below the bar of 70.**
 
+## [2026-10-07] — Mythicals option pictures must match their option; Ripple/BWK cut to 2 posts a day
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** see git log (fix: Stop Mythicals option pictures swapping items for dragons)
+
+### In plain English (for Keenan)
+In "YOU CAN TAKE ONE POWER FROM THE OLD GODS", two options (a war horn and a shadow cloak) came out as pictures of dragons. Pictures now have to show exactly what each option describes. If an option's picture still fails its check after every retry, the post is held back from auto-posting instead of going out wrong. Today's post was fixed by hand before it posted. Separately, Ripple and BWK now make 2 posts a day each instead of 3.
+
+### Technical changes (for Jimmy)
+- `apps/web/src/lib/content-factory/choice-lane.ts` (`buildMythicImagePrompt`): "draw exactly the subject the scene names first; no creature replaces a warrior/item"; the "colossal creature" line now only applies when the subject is a creature.
+- `apps/web/src/inngest/functions/carousel-daily.ts`: the option image check's `subject` now includes the scene's first sentence (the name alone let "The Stormcaller's Horn" pass as a horned dragon); an option whose check fails every try gets an `IMAGE-UNVERIFIED:` line on its imagePrompt.
+- `apps/web/src/inngest/functions/social-publish-cron.ts`: auto-enqueue skips posts with `IMAGE-UNVERIFIED` slides (alongside `TEXT-UNVERIFIED`).
+- DB (data only): ContentLane `pick-ripple` and `pick-bwk` hoursUtc [6,7,8] -> [6,7].
+- One-off: post cmuxpml6n000qy2ez5vr626ce slides 1 and 3 regenerated with the fixed template, clip cache cleared, relabel + video rebuild requested.
+
+### Manual steps needed
+- [ ] Held posts (IMAGE-UNVERIFIED) arrive by email only; post by hand or skip (Keenan)
+
+### Notes
+- Jev's option check reads the written scene, not the picture, so a correct scene with a wrong picture passed. The picture check (`generateCheckedImage`) ships the last attempt even after 3 failures. This change is what stops those from posting.
+- Search Console "Page with redirect": all 137 sitemap URLs return 200. The redirects are www->apex, http->https and trailing slash, all intentional. Real issue found: legendarymythicals.com serves Ripple's sitemap.xml and robots.txt (Ripple paths 404 there). Not fixed yet; awaiting Keenan.
+
 ## [2026-10-07] — Mythicals video scripts use a Fable-designed layout (Opus writes them daily)
 
 **Requested by:** Keenan

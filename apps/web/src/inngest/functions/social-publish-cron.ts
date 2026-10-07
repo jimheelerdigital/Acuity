@@ -126,7 +126,13 @@ export const socialPublishCronFn = inngest.createFunction(
           // unverified attempt marked "TEXT-UNVERIFIED … PROOFREAD BEFORE
           // POSTING" and it was going live with possible typos. These
           // still reach Keenan by email to proofread and post by hand.
-          slides: { none: { imagePrompt: { contains: "TEXT-UNVERIFIED" } } },
+          // IMAGE-UNVERIFIED (2026-10-07): a Mythicals option picture failed
+          // every quality check, so it may not match its option.
+          slides: {
+            none: {
+              OR: [{ imagePrompt: { contains: "TEXT-UNVERIFIED" } }, { imagePrompt: { contains: "IMAGE-UNVERIFIED" } }],
+            },
+          },
         },
         orderBy: { createdAt: "asc" },
         select: { id: true, lane: true, headline: true, generatedFor: true },

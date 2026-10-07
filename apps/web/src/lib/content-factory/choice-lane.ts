@@ -775,7 +775,11 @@ export function buildMythicImagePrompt(
   }
   return [
     `A breathtaking, hyper-real cinematic film still, vertical composition: ${scene}`,
-    "Epic and mythical: a creature is COLOSSAL and imposing, its huge scale clear against the landscape around it; a hero is a larger-than-life warrior in ornate, intimidating legendary armor with a legendary weapon.",
+    // 2026-10-07 (Keenan, "YOU CAN TAKE ONE POWER FROM THE OLD GODS": "The
+    // Stormcaller's Horn" and "The Shadowwalker's Cloak" came back as
+    // dragons): draw the scene's own subject, never a creature in its place.
+    "DRAW EXACTLY THE SUBJECT THE SCENE NAMES FIRST. If it is a warrior, hero, weapon, armor or item, that warrior and item fill the frame and no dragon or creature replaces them or stands in front of them; a creature appears only if the scene names one, and only where the scene puts it (often small in the background).",
+    "Epic and mythical: when the subject is a creature it is COLOSSAL and imposing, its huge scale clear against the landscape around it; a hero is a larger-than-life warrior in ornate, intimidating legendary armor with a legendary weapon.",
     NO_HUMAN_FACE_LINE,
     QUALITY_BAR_LINE,
     kind === "cover"
