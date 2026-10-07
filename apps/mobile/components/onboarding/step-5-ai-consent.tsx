@@ -109,85 +109,90 @@ export function Step5AiConsent() {
     );
   };
 
+  // 2026-10-07, per Keenan (Mark Raeburn couldn't get past this screen:
+  // with large iPhone text the tick box scrolled off the top): "make this
+  // screen much easier and smaller font... just have them check an easy box
+  // and make it extremely simple". One short line, the full legal detail
+  // behind "Read the details", and a big tick-box row right above Continue.
+  // Still an affirmative, unticked box (GDPR Art. 9 explicit consent) and
+  // still names OpenAI + Anthropic (App Store 5.1.2). Text is capped at 1.3x
+  // so large accessibility sizes can't push the box off screen.
+  const [showDetails, setShowDetails] = useState(false);
+  const cap = 1.3;
+
   return (
     <View className="flex-1">
       <Text
-        className="text-3xl font-semibold tracking-tight"
+        className="text-2xl font-semibold tracking-tight"
         style={{ color: tokens.text }}
-        adjustsFontSizeToFit
-        minimumFontScale={0.75}
+        maxFontSizeMultiplier={cap}
       >
-        Before your first entry
+        Quick privacy check
       </Text>
       <Text
-        className="mt-3 text-base leading-relaxed"
+        className="mt-2 text-sm leading-relaxed"
         style={{ color: tokens.textSec }}
+        maxFontSizeMultiplier={cap}
       >
-        Ripple sends your voice recordings to{" "}
-        <Text className="font-semibold" style={{ color: tokens.text }}>
-          OpenAI (Whisper)
-        </Text>{" "}
-        for transcription and{" "}
-        <Text className="font-semibold" style={{ color: tokens.text }}>
-          Anthropic (Claude)
-        </Text>{" "}
-        for themes, tasks, and your weekly narrative. Recordings are
-        encrypted in transit, never sold, and never used to train AI
-        models.
-      </Text>
-      <Text
-        className="mt-3 text-base leading-relaxed"
-        style={{ color: tokens.textSec }}
-      >
-        Because you&rsquo;re speaking freely, your entries may include
-        sensitive personal information &mdash; things like your health,
-        your beliefs, or your relationships. UK and EU data-protection
-        law treats that as a special category that needs your explicit
-        consent.
+        Ripple uses AI (OpenAI and Anthropic) to turn what you say into
+        notes, to-dos and patterns. Encrypted, never sold, never used to
+        train AI.
       </Text>
 
       <Pressable
-        onPress={() => setAccepted((v) => !v)}
-        className="mt-6 flex-row gap-3 rounded-xl border p-4"
-        style={{ borderColor: tokens.line, backgroundColor: tokens.bgInset }}
+        onPress={() => setShowDetails((v) => !v)}
+        className="mt-2 flex-row items-center gap-1 self-start py-1"
+        accessibilityRole="button"
       >
-        <GradientCheckbox
-          checked={accepted}
-          onPress={() => setAccepted((v) => !v)}
-          accessibilityLabel="I explicitly consent to Ripple transcribing and analysing voice entries that may contain special-category information"
-        />
-        <Text
-          className="flex-1 text-sm leading-relaxed"
-          style={{ color: tokens.textSec }}
-        >
-          I understand my voice entries may contain special-category
-          information (such as health, religious or political beliefs,
-          or sexuality), and I explicitly consent to Ripple transcribing
-          and analysing that content to provide the service. I can
-          withdraw this consent at any time by deleting entries or my
-          account.
+        <Text className="text-xs font-medium" style={{ color: tokens.textTer }} maxFontSizeMultiplier={cap}>
+          {showDetails ? "Hide the details" : "Read the details"}
         </Text>
+        <Ionicons name={showDetails ? "chevron-up" : "chevron-down"} size={12} color={tokens.textTer} />
       </Pressable>
 
-      <Text className="mt-3 text-xs leading-relaxed" style={{ color: tokens.textTer }}>
-        You choose what to say. You can use Ripple without sharing
-        sensitive details, and you can withdraw consent anytime in
-        Profile &rarr; Privacy.
-      </Text>
-
-      {accepted && (
-        <View className="mt-4 flex-row gap-2 items-center">
-          <Ionicons name="checkmark-circle" size={20} color={tokens.good} />
-          <Text className="text-sm" style={{ color: tokens.good }}>
-            Consent recorded. Tap Continue to proceed.
+      {showDetails && (
+        <View className="mt-1 rounded-xl border p-3" style={{ borderColor: tokens.line, backgroundColor: tokens.bgInset }}>
+          <Text className="text-xs leading-relaxed" style={{ color: tokens.textTer }} maxFontSizeMultiplier={cap}>
+            Your voice recordings go to OpenAI (Whisper) for transcription and
+            to Anthropic (Claude) for themes, tasks and your weekly report.
+            Because you speak freely, entries may include sensitive personal
+            information (health, beliefs, relationships), which UK and EU law
+            treats as a special category needing your explicit consent.
+          </Text>
+          <Text className="mt-2 text-xs leading-relaxed" style={{ color: tokens.textTer }} maxFontSizeMultiplier={cap}>
+            {ART9_CONSENT_TEXT}
+          </Text>
+          <Text className="mt-2 text-xs leading-relaxed" style={{ color: tokens.textTer }} maxFontSizeMultiplier={cap}>
+            You choose what to say, and you can withdraw consent anytime in
+            Profile &rarr; Privacy.
           </Text>
         </View>
       )}
 
-      <View className="mt-auto pt-6">
+      <View className="mt-auto pt-4">
+        <Pressable
+          onPress={() => setAccepted((v) => !v)}
+          className="flex-row items-center gap-3 rounded-xl border p-4"
+          style={{ borderColor: accepted ? tokens.good : tokens.line, backgroundColor: tokens.bgInset }}
+          accessibilityRole="checkbox"
+          accessibilityState={{ checked: accepted }}
+          accessibilityLabel="I agree to Ripple's AI processing of my entries, including any sensitive details I share"
+        >
+          <GradientCheckbox
+            checked={accepted}
+            onPress={() => setAccepted((v) => !v)}
+            size={26}
+            accessibilityLabel="I agree to Ripple's AI processing of my entries, including any sensitive details I share"
+          />
+          <Text className="flex-1 text-sm font-medium" style={{ color: tokens.text }} maxFontSizeMultiplier={cap}>
+            I agree to AI processing of my entries, including any sensitive
+            details I share.
+          </Text>
+        </Pressable>
+
         <Pressable onPress={handleDecline} className="py-3 items-center">
-          <Text className="text-sm font-medium" style={{ color: tokens.textTer }}>
-            I don&rsquo;t consent
+          <Text className="text-xs" style={{ color: tokens.textTer }} maxFontSizeMultiplier={cap}>
+            I don&rsquo;t agree
           </Text>
         </Pressable>
       </View>

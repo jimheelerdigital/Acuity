@@ -53,7 +53,7 @@ export interface OnboardingStep {
  * at new step 1 with no data loss.
  */
 export const ONBOARDING_STEPS: OnboardingStep[] = [
-  { step: 1, title: "How we process your voice", Component: Step5AiConsent },
+  { step: 1, title: "Privacy", Component: Step5AiConsent },
   { step: 2, title: "Microphone access", Component: Step4Microphone },
   { step: 3, title: "Practice round", Component: Step5Practice },
   { step: 4, title: "Reminders", Component: Step9Reminders },

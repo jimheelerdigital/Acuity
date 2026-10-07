@@ -36,6 +36,28 @@ Fixes from the second UGC dry run (25 creators):
   - **8 of 25 emails are still over 120 words** after the rewrite, because the model rewrites the offer terms every time.
   - **11 of 25 scored below the bar of 70.**
 
+## [2026-10-07] — iPhone consent screen made short and simple (fixes users stuck at step 1)
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** see git log (fix: Simplify the app's AI consent screen so users can't get stuck)
+
+### In plain English (for Keenan)
+A user (Mark Raeburn) couldn't get past the first onboarding screen. His phone uses large text, which pushed the consent tick box off the top of the screen, so Continue never turned on. The screen is now one short line, a "Read the details" link for the legal text, and one big tick box right above Continue that always stays on screen. It reaches users in the next app build.
+
+### Technical changes (for Jimmy)
+- `apps/mobile/components/onboarding/step-5-ai-consent.tsx`: new layout. Title "Quick privacy check", one-line summary naming OpenAI + Anthropic, collapsible details holding the full Art. 9 text (`ART9_CONSENT_TEXT`), and a full-width tick-box row at `mt-auto` (`accessibilityRole="checkbox"`). All Text capped with `maxFontSizeMultiplier={1.3}`. Decline link renamed "I don't agree" (same Alert flow).
+- `apps/mobile/components/onboarding/index.tsx`: step 1 title "Privacy".
+- Consent logic unchanged: unticked by default, `recordConsent` still writes `ART9_CONSENT_TEXT` / `art9-v1`.
+
+### Manual steps needed
+- [ ] Jimmy: review (GDPR Art. 9 + App Store 5.1.2 wording). Consider bumping `ART9_WORDING_VERSION` to art9-v2 and recording the new tick-box sentence alongside the full text, since that sentence is what the user now ticks.
+- [ ] Jimmy: ship in the next iOS/Android build (mobile changes don't deploy with the web push).
+- [ ] Keenan: reply to Mark with the workaround (tap the consent paragraph or scroll up to the tick box).
+
+### Notes
+- Root cause: Dynamic Type at accessibility sizes made the consent card taller than the screen, and the checkbox sat at the card's top-left. The whole card was tappable, but nothing said so.
+
 ## [2026-10-07] — Meta budgets cut to $125/day ($20/day moving to Apple App Store ads)
 
 **Requested by:** Keenan
