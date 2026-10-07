@@ -102,6 +102,7 @@ export type TrialEmailKey =
   | "milestone_365"
   | "nr_winback_1"
   | "apple_duplicate_rescue"
+  | "apple_duplicate_linked"
   | "first_debrief_followup"
   | "card_trial_week_so_far"
   | "card_trial_try_once"

@@ -255,7 +255,9 @@ export async function runAppleDuplicateCatch(opts: { dryRun?: boolean } = {}): P
     // "anything mismatched send me email first"). Everything else waits for
     // the button in the founder email.
     const link = isVeryStrong(m) ? await linkAppleAccounts(m.dupe.id, m.paid.id, "auto") : null;
-    const result = await sendTrialEmail(m.paid.id, "apple_duplicate_rescue");
+    // Linked → "you're all set, sign back in with Apple"; not linked → the
+    // original "use this email" rescue (2026-10-07).
+    const result = await sendTrialEmail(m.paid.id, link?.ok ? "apple_duplicate_linked" : "apple_duplicate_rescue");
     await alertFounders(m, result.sent ? "sent" : `not sent (${result.reason ?? "unknown"})`, link);
   }
   return matches;

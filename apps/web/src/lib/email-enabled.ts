@@ -69,6 +69,7 @@ export const EMAIL_ENABLED: Record<string, boolean> = {
   card_trial_try_once: true, // 2026-10-04: card trial ~2 days before billing, never recorded — one-tap link
   first_debrief_followup: true, // 2026-10-01: ~20h after first debrief, no second yet — what Ripple caught + do #2
   trial_cancelled: true, // 2026-10-01: Stripe trial set to cancel — no-charge confirm + one-tap "why" (webhook)
+  apple_duplicate_linked: true, // 2026-10-07: the auto-linked version of the rescue ("you're all set")
   apple_duplicate_rescue: true, // 2026-10-01: URGENT — paid on web, then Sign in with Apple made a 2nd account (lib/apple-duplicate-catch.ts)
   app_access_rescue: true, // 2026-09-28 one-off: web signups who never got into the app, one-tap signed-in link
 

@@ -36,6 +36,25 @@ Fixes from the second UGC dry run (25 creators):
   - **8 of 25 emails are still over 120 words** after the rewrite, because the model rewrites the offer terms every time.
   - **11 of 25 scored below the bar of 70.**
 
+## [2026-10-07] — Auto-linked Apple duplicates get a "you're all set" email
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** see git log (fix: Send a "you're all set" email when Apple accounts auto-link)
+
+### In plain English (for Keenan)
+When someone pays on the web and then Sign in with Apple creates a second account, we link them automatically when the match is strong. The email they got still said "avoid Sign in with Apple", which was confusing once it was fixed. Linked customers now get "You're all set: sign out and back in with Apple (or tap the button)". Cases that still need Keenan's approval keep the original email.
+
+### Technical changes (for Jimmy)
+- New template `apps/web/src/emails/trial/apple-duplicate-linked.ts` (key `apple_duplicate_linked`, variant `linked_sign_in_again`), registered in `emails/trial/registry.ts`, `types.ts`, `lib/email-enabled.ts`, `APP_ACCESS_EMAIL_KEYS` (one-tap link) and `lib/email-jev.ts`.
+- `lib/apple-duplicate-catch.ts`: sends `apple_duplicate_linked` when `linkAppleAccounts(..., "auto")` succeeds, else `apple_duplicate_rescue`.
+
+### Manual steps needed
+None
+
+### Notes
+- Trigger case: kdmc42@gmail.com (Kevin), paid 5:36pm CT 10-07, Apple dupe 6:02pm, auto-linked 6:04pm, old rescue sent 6:05pm. He wasn't re-emailed.
+
 ## [2026-10-07] — iPhone consent screen made short and simple (fixes users stuck at step 1)
 
 **Requested by:** Keenan
