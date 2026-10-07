@@ -77,7 +77,7 @@ Rules:
 - Epic, dark and premium: obsidian, frost, storm, crystal, shadow, gold, emerald, bone, magma, moonlight... Vary the element, palette and nest every day.
 - The dragon is young but already magnificent and powerful, not cute. It has large, clearly visible wings. Its face is fully reptilian (never human).
 - The dragon never holds or uses a weapon.
-- Its only power is breath: "fire" or "ice".
+- Its only ability is breath: "fire" or "ice", matching its element (2026-10-06, per Keenan: dragons get full fire/ice bursts; no other magic effects).
 - name: 2-4 words, ALL CAPS, starting with "THE" (e.g. "THE EMBER WYRM", "THE GLACIER DRAKE"). Never reuse a recent name or element.
 - egg: one paragraph describing the egg and its nest for an image model (shell texture, glowing cracks, nest, light, accent color).
 - dragon: one paragraph describing the hatched dragon for an image model, perched on the shattered shell of that same egg, wings half-spread, head raised, glowing eyes on the lens, mouth closed.
@@ -149,9 +149,10 @@ export function eggMotionPrompt(): string {
 }
 
 export function dragonMotionPrompt(c: EggConcept): string {
+  // 2026-10-06 (Keenan: "dragons can be normal full fire/ice bursts depending on the dragon type").
   const breath = c.breath === "ice" ? "a long blast of glittering ice breath" : "a long burst of fire";
   const sound = c.breath === "ice" ? "a crackling, rushing blast of freezing wind and ice" : "roaring fire";
-  return `The newly hatched dragon sits still at first, breathing slowly, particles drifting, its glowing eyes locked on the camera. Then it slowly raises its head, opens its jaws and lets out a deep, powerful roar, and breathes ${breath} up into the sky. Its wings flare open with one strong wingbeat, then it settles and stares back at the camera. Slow push-in camera. Sound: low breathing and crackling, then a deep, thunderous dragon roar and ${sound}. No music, no speech.`;
+  return `The newly hatched dragon sits still at first, breathing slowly, dust drifting, its eyes locked on the camera. Then it slowly raises its head, opens its jaws, lets out a deep roar and breathes ${breath} up into the sky. Its wings flare open with one strong wingbeat, then it settles and stares back at the camera. Slow push-in camera. Sound: low breathing and crackling shell, then a deep, thunderous dragon roar and ${sound}. No music, no speech.`;
 }
 
 /** Stored on slide 0's imagePrompt so the video builder can rebuild without the concept. */

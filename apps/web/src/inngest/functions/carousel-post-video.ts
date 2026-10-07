@@ -75,7 +75,9 @@ export const carouselPostVideoFn = inngest.createFunction(
        */
       shotSheet?: boolean;
     };
-    const sheetsWanted = shotSheetForced === true || process.env.MYTHIC_SHOT_SHEETS === "1";
+    // Default ON since 2026-10-06 (Keenan: "update our prompts to now reflect
+    // the new format"); MYTHIC_SHOT_SHEETS=0 switches back to the old prompts.
+    const sheetsWanted = shotSheetForced === true || process.env.MYTHIC_SHOT_SHEETS !== "0";
 
     // ── 0. Legendary Mythicals cinematic shot (mythic-colossus, 2026-10-04):
     // one Kling 3.0 15s render with its own sound, faded in and out. ──
@@ -136,8 +138,7 @@ export const carouselPostVideoFn = inngest.createFunction(
               brief: cine.motion,
               constraints: [
                 "The colossal creature and the tiny human keep their exact scale relationship in every shot.",
-                "The creature never attacks the human; fire or ice only goes into the sky or landscape.",
-                "Powers are optional and subtle; never more than one power beat.",
+                "The creature never attacks the human.",
               ],
             });
           })
@@ -294,7 +295,7 @@ export const carouselPostVideoFn = inngest.createFunction(
                 sound: true,
                 imageUrl: egg.dragonUrl,
                 brief: egg.dragonMotion,
-                constraints: ["Fire or ice breath goes up into the sky, never at the camera or a person."],
+                constraints: ["Fire or ice breath goes up into the sky, never at the camera or a person.", "No magic effects beyond the breath: no auras, sparkles or energy glows."],
               }),
             ]);
             return { egg: eggSheet, dragon: dragonSheet };
@@ -539,8 +540,8 @@ export const carouselPostVideoFn = inngest.createFunction(
         // format; the old prompt is its brief and its fallback.
         let sheet: string | null = null;
         if (sheetsWanted && plan.brand === "mythicals") {
-          const { writeShotSheet, SUBTLE_POWER_RULES } = await import("@/lib/content-factory/shot-sheet");
-          sheet = await writeShotSheet({ mode: "single", seconds: 5, sound: false, imageUrl: baseUrl, brief: prompt, constraints: SUBTLE_POWER_RULES });
+          const { writeShotSheet, SUBTLE_MOTION_RULES } = await import("@/lib/content-factory/shot-sheet");
+          sheet = await writeShotSheet({ mode: "single", seconds: 5, sound: false, imageUrl: baseUrl, brief: prompt, constraints: SUBTLE_MOTION_RULES });
         }
         return { baseUrl, layerUrl, prompt: sheet ?? prompt };
       });

@@ -66,13 +66,15 @@ Output ONE JSON object with exactly these keys, in this order:
 - "environment_continuity": the place exactly as it appears in the frame: terrain, structures, weather, scale cues, where the subject stands. What must stay consistent.
 - "lighting": light source and direction, color temperature, rim light, haze, as seen in the frame; keep it consistent.
 - "character_continuity": an object keyed by snake_case character name, each a precise description of that character AS IT APPEARS IN THE IMAGE (anatomy, size, colors, materials, horns, wings, armor, eyes, distinguishing marks) and "preserve ... throughout".
-- "weapon_continuity": the weapon, armor, power or prop and exactly how it behaves (e.g. fire breath: where it goes, when it starts and stops). If none, say what stays absent.
+- "weapon_continuity": the weapon, armor, prop or slight ability and exactly how it behaves (weapons rest, never swing; a dragon's fire or ice breath: when it starts and stops). If none, say what stays absent.
 - "shots": array of shots, each {"shot_number","duration","framing" (shot size + lens, e.g. "low full-body, 24mm lens"),"camera_motion","action" (beat by beat, with timings for longer shots),"emotion"SOUND_FIELD}. Shot durations must add up exactly to the total.
 - "visual_constraints": array of short hard rules (include every given rule, plus any specific to this shot).
 
 Rules:
 - Shot 1 must START on the exact start frame: same subject, pose, framing and place. Describe only motion that is physically believable for this subject.
-- Make the action specific and cinematic: concrete physical beats (breath fogging, scales catching light, muscles shifting, dust lifting, embers drifting), never vague words like "comes alive".
+- Make the action specific and cinematic: concrete physical beats (breath fogging, scales catching light, muscles shifting, wind in a mane, dust lifting), never vague words like "comes alive".
+- EVERYTHING BLENDS PERFECTLY (2026-10-06, per Keenan): fire, ice, runes, mist and light all match the frame's lighting, color and materials, lit like they are really there, never pasted on.
+- ABILITIES (2026-10-06, per Keenan): a dragon may breathe a full burst of fire or ice matching its type, into the sky or landscape, never at a person; armor and weapons may have softly pulsing runes that blend into the material. No magic effects otherwise: no auras, ghostfire, crawling lightning, energy glows or sparkles.
 - Write dense, precise prose. The whole JSON must stay under ${SHOT_SHEET_MAX_CHARS} characters: this is a hard limit.
 - JSON only, no markdown fences.`;
 
@@ -105,7 +107,7 @@ export async function writeShotSheet(opts: {
       `What should happen: ${opts.brief.slice(0, 1500)}`,
       `Rules to include in visual_constraints:\n${rules.map((r) => `- ${r}`).join("\n")}`,
       opts.sound
-        ? 'Each shot has a "sound" line: sound effects only (breath, growls, roars, wind, impacts, crackling fire), no music, no speech.'
+        ? 'Each shot has a "sound" line: sound effects only (breath, growls, roars, wind, impacts), no music, no speech.'
         : "No sound field (this model renders silent video).",
     ].join("\n\n");
     let feedback = "";
@@ -180,11 +182,13 @@ export function sheetProblem(sheet: ShotSheet, opts: { mode: "single" | "multi";
   return null;
 }
 
-/** Subtle-powers rule for Mythicals slides (living-reel.ts action mode, 2026-10-05). */
-export const SUBTLE_POWER_RULES = [
+/** Mythicals slide motion rules (2026-10-06, per Keenan: dragon breath yes, runes that blend yes, magic effects no). */
+export const SUBTLE_MOTION_RULES = [
   "Keep it subtle: the subject holds its pose (slow breathing, a slight head turn or blink at most).",
-  "Powers are small effects on the subject: glowing eyes or runes, embers, flames licking along armor or a blade, frost mist, faint lightning.",
-  "The only big actions allowed are slow powerful wingbeats and breathing fire or ice into the sky or landscape, never at a person.",
+  "Everything blends perfectly into the scene: any effect matches the frame's light, color and materials and never looks pasted on.",
+  "A dragon may breathe a full burst of fire or ice matching its type, into the sky or landscape, never at a person.",
+  "Armor and weapons may have softly pulsing runes that blend into the material.",
+  "No magic effects otherwise: no auras, ghostfire, crawling lightning, energy glows or sparkles.",
   "No attacks, swings, rearing, charging or lunging. A creature never holds or uses a weapon.",
   "Camera moves slowly and steadily.",
 ];
