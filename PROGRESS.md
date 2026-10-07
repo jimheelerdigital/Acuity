@@ -36,6 +36,26 @@ Fixes from the second UGC dry run (25 creators):
   - **8 of 25 emails are still over 120 words** after the rewrite, because the model rewrites the offer terms every time.
   - **11 of 25 scored below the bar of 70.**
 
+## [2026-10-07] — App sign-in tells web signups to use their website email
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** see git log (feat: Tell web signups to sign in with their website email in the app)
+
+### In plain English (for Keenan)
+The app's sign-in and sign-up screens now show "Just signed up on our website? Sign in with the email you used there (below), not Apple or Google, so your membership shows up", right above the Apple/Google buttons. This stops people who paid on the web from accidentally creating a second, empty account. The sign-in tagline no longer says "nightly" (brand rule). It reaches users in the next app build.
+
+### Technical changes (for Jimmy)
+- New `apps/mobile/components/auth/web-signup-callout.tsx` (`WebSignupCallout`), rendered above `SocialAuthButtons` in `app/(auth)/sign-in.tsx` and `app/(auth)/sign-up.tsx`; text capped at `maxFontSizeMultiplier={1.3}`.
+- `sign-in.tsx` tagline: "Talk it out. Ripple turns it into your to-dos, habits and patterns." (was "Your nightly recording...").
+
+### Manual steps needed
+- [ ] Jimmy: include in the next mobile build (with the consent-screen change).
+- [ ] Jimmy: consider making email the first sign-in option with a 6-digit email code (the Headway/BetterMe pattern). Codes work regardless of install order, unlike links.
+
+### Notes
+- Pre-existing expo-router typed-route errors in sign-in.tsx (Link hrefs) are unrelated to this change.
+
 ## [2026-10-07] — Auto-linked Apple duplicates get a "you're all set" email
 
 **Requested by:** Keenan

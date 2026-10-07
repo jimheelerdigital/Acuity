@@ -29,6 +29,7 @@ import {
   SocialAuthButtons,
   type AuthLoading,
 } from "@/components/auth/social-auth-buttons";
+import { WebSignupCallout } from "@/components/auth/web-signup-callout";
 import { useAuth } from "@/contexts/auth-context";
 import { useTheme } from "@/contexts/theme-context";
 import { signUpWithPassword } from "@/lib/auth";
@@ -177,6 +178,8 @@ export default function SignUpScreen() {
         {/* Apple + Google. Same component and same handlers as sign-in —
             OAuth sign-up and sign-in are the identical call, so only the
             Apple button's label differs. */}
+        <WebSignupCallout tokens={tokens} />
+
         <SocialAuthButtons
           loading={loading}
           setLoading={setLoading}

@@ -25,6 +25,7 @@
 
 import { Ionicons } from "@expo/vector-icons";
 import * as AppleAuthentication from "expo-apple-authentication";
+import { WebSignupCallout } from "@/components/auth/web-signup-callout";
 import { Link } from "expo-router";
 import { useState } from "react";
 import {
@@ -196,8 +197,10 @@ export default function SignInScreen() {
           className="text-sm mb-8 text-center"
           style={{ color: tokens.textTer }}
         >
-          Your nightly recording, pattern recognition across your own words.
+          Talk it out. Ripple turns it into your to-dos, habits and patterns.
         </Text>
+
+        <WebSignupCallout tokens={tokens} />
 
         {/* Apple + Google. Shared with sign-up so the two screens cannot
             drift again — see components/auth/social-auth-buttons.tsx. */}
