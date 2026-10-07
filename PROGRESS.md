@@ -36,6 +36,25 @@ Fixes from the second UGC dry run (25 creators):
   - **8 of 25 emails are still over 120 words** after the rewrite, because the model rewrites the offer terms every time.
   - **11 of 25 scored below the bar of 70.**
 
+## [2026-10-07] — Instagram AI-content label paused
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** see git log (chore: Pause the Instagram AI-content label)
+
+### In plain English (for Keenan)
+New Instagram posts no longer carry Meta's "AI info" label, because it was crushing view counts. Facebook uploads still carry the AI file tag, and YouTube still declares AI content. Either can be switched off too.
+
+### Technical changes (for Jimmy)
+- `apps/web/src/lib/content-factory/social-publish.ts`: `IG_AI` now `{}` unless env `IG_AI_LABEL=1` (was always `is_ai_generated=true`, added 2026-10-06).
+
+### Manual steps needed
+None
+
+### Notes
+- Posts already published keep their label; Meta doesn't allow removing it after publishing.
+- Also on 10-07: two manual AI-mom videos were posted to Ripple IG/FB (Eiffel to-do-list dance via Higgsfield motion transfer, and knight vs dragon). Reference set: content-factory/persona/ripple-mom/refs/.
+
 ## [2026-10-07] — Admin Users tab: card trials stored as "TRIAL" now show "Paid trial"
 
 **Requested by:** Keenan

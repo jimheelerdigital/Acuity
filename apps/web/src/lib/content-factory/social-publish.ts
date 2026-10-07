@@ -436,7 +436,9 @@ async function graphPostFile(
  * containers (not on carousel children; the CAROUSEL parent carries it).
  * If Meta ever rejects the field, the post still goes out without it.
  */
-const IG_AI = { is_ai_generated: "true" };
+// Paused 2026-10-07 (Keenan: "turn off instagram ai content labels for
+// now"). Set IG_AI_LABEL=1 in Vercel to turn it back on.
+const IG_AI: Record<string, string> = process.env.IG_AI_LABEL === "1" ? { is_ai_generated: "true" } : {};
 async function igContainer(
   igUserId: string,
   params: Record<string, string>,
