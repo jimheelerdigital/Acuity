@@ -71,10 +71,11 @@ Output ONE JSON object with exactly these keys, in this order:
 - "visual_constraints": array of short hard rules (include every given rule, plus any specific to this shot).
 
 Rules:
+- THE BRIEF IS THE PROVEN SCRIPT (2026-10-06, per Keenan: "use the new formatting and incorporate the best possible script in the old way"). The "What should happen" text is the script that already made our best videos. Keep every one of its beats, in its order, with its direction of movement and its camera move, and reuse its wording in the shots' "action" and "camera_motion". Your job is to add the structure and continuity detail around it, never to change, add or drop what happens.
 - Shot 1 must START on the exact start frame: same subject, pose, framing and place. Describe only motion that is physically believable for this subject.
 - Make the action specific and cinematic: concrete physical beats (breath fogging, scales catching light, muscles shifting, wind in a mane, dust lifting), never vague words like "comes alive".
 - EVERYTHING BLENDS PERFECTLY (2026-10-06, per Keenan): fire, ice, runes, mist and light all match the frame's lighting, color and materials, lit like they are really there, never pasted on.
-- ABILITIES (2026-10-06, per Keenan): a dragon may breathe a full burst of fire or ice matching its type, into the sky or landscape, never at a person; armor and weapons may have softly pulsing runes that blend into the material. No magic effects otherwise: no auras, ghostfire, crawling lightning, energy glows or sparkles.
+- ABILITIES (2026-10-06, per Keenan): a dragon may breathe a full burst of fire or ice matching its type. BREATH GOES UP (Keenan: dragons "spitting fire downwards... doesn't look as good"): the dragon raises its head first and breathes UP into the sky, jaws pointed skyward, or at most straight out at the horizon; never downward, never at the ground, nest, water, camera or a person. Say "up into the sky" explicitly in the action; armor and weapons may have softly pulsing runes that blend into the material. No magic effects otherwise: no auras, ghostfire, crawling lightning, energy glows or sparkles.
 - Write dense, precise prose. The whole JSON must stay under ${SHOT_SHEET_MAX_CHARS} characters: this is a hard limit.
 - JSON only, no markdown fences.`;
 
@@ -186,7 +187,7 @@ export function sheetProblem(sheet: ShotSheet, opts: { mode: "single" | "multi";
 export const SUBTLE_MOTION_RULES = [
   "Keep it subtle: the subject holds its pose (slow breathing, a slight head turn or blink at most).",
   "Everything blends perfectly into the scene: any effect matches the frame's light, color and materials and never looks pasted on.",
-  "A dragon may breathe a full burst of fire or ice matching its type, into the sky or landscape, never at a person.",
+  "A dragon may breathe a full burst of fire or ice matching its type, head raised, UP into the sky; never downward, at the ground or at a person.",
   "Armor and weapons may have softly pulsing runes that blend into the material.",
   "No magic effects otherwise: no auras, ghostfire, crawling lightning, energy glows or sparkles.",
   "No attacks, swings, rearing, charging or lunging. A creature never holds or uses a weapon.",
