@@ -7,6 +7,29 @@
 
 ---
 
+## [2026-10-06] — Mythicals music: epic orchestral only, EDM and downloaded songs removed
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** see "content: Keep Mythicals music epic orchestral only"
+
+### In plain English (for Keenan)
+- **Removed:** every EDM / house / techno-style Mythicals track. That's 6 ElevenLabs tracks, plus 2 downloaded songs ("Galactic", "Hero Journey"), which are the kind YouTube's copyright system flags.
+- **Library now:** 24 epic orchestral AI tracks we own. Every Mythicals post, YouTube included, now uses one of them.
+- **Generator:** the music generator for Mythicals makes epic orchestral only.
+- **Today:** "How Big Would They Really Be? Part 6" was due to post with "Galactic", so its video was rebuilt with an epic track before posting.
+
+### Technical changes (for Jimmy)
+- Storage: moved `music/mythicals/aiv2-{2,4,6,8,10,12}-*.mp3` (the house/techno flavors; odd `idx` in `libraryBrief`) plus `Galactic.mp4` and `Hero Journey (1).mp4` to `music-removed/mythicals/`. The 16 `ai-*` and 7 odd `aiv2-*` orchestral tracks (and the sample) remain.
+- `lib/content-factory/music-gen.ts`: `MUSIC_FLAVORS.mythicals` is 12 epic orchestral styles, with no house, techno or EDM.
+- Ops: the pending Mythicals reels were audio-matched against the removed tracks. Part 6 (cmuwek52k0000or55u46x5uid) matched Galactic at 1.00 and was rebuilt via video-requests with `music.exclude`.
+
+### Manual steps needed
+- None
+
+### Notes
+- Already-posted videos keep their audio.
+- Downloaded songs must never be in `music/*`: Facebook muted them on 10-03, and YouTube Content ID flags them.
+
 ## [2026-10-06] — YouTube: 6 Shorts a day on the Instagram cadence
 **Requested by:** Keenan
 **Committed by:** Claude Code

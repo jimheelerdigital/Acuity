@@ -57,25 +57,26 @@ export async function composeTrack(prompt: string, seconds = 60): Promise<{ audi
  * brief so 20 tracks don't sound like one song.
  */
 export const MUSIC_FLAVORS: Record<MusicBrand, string[]> = {
-  // 2026-10-03, per Keenan: "deeper techno/house/progressive house ... or
-  // even a combo of both house and mythical/norse". Alternates orchestral
-  // and electronic so every batch gets both.
+  // 2026-10-03 to 10-05 the Mythicals list alternated orchestral with
+  // house/techno; retired 2026-10-06 (see below).
   mythicals: [
-    // Rewritten 2026-10-04: every style dark and epic; deep / progressive /
-    // melodic house alternates with dark orchestral (no folk, fiddle or bright themes).
+    // 2026-10-06, per Keenan: "eliminate the edm type songs... go with the
+    // mythical epic music instead FOR ALL posts" (YouTube flagged some). Epic
+    // orchestral only: no house, techno, EDM or four-on-the-floor beats.
     "Dark epic orchestral war march in D minor: crushing low brass, taiko, deep male choir chanting, relentless and ominous",
-    "Deep progressive house, 122 bpm: dark rolling bassline, four-on-the-floor kick under Norse war drums, ominous throat-singing texture, a huge cinematic drop",
+    "Norse war-horn battle march with pounding drums and a massive choir",
     "Dark dragon theme: sub-bass booms, distorted low cellos, menacing choir, slow and crushing like wings beating in a storm",
-    "Dark melodic techno, 124 bpm: brooding minor-key synths, epic choir stabs, distant war horns, hypnotic and driving",
+    "Fast heroic charge with racing strings, brass stabs and thunderous timpani",
     "Colossal titan awakening: slow, crushing drums, deep horns and a haunting wordless female vocalise over dark strings",
-    "Deep epic house, 120 bpm: hypnotic kick, dark atmospheric pads, tribal mythic percussion, a low horn motif that swells into a cinematic drop",
+    "Mystic ancient ritual percussion with ethnic flutes building to a full epic orchestra",
     "Dark Viking battle hymn: frame drums, deep lur horns and wordless chanting building to a massive dark orchestral climax",
-    "Dark organic deep house, 118 bpm: shamanic percussion, deep sub-bass, mystic wordless chants, cinematic string swells",
-    "Dark hybrid trailer: pulsing synth bass, huge braams, choir and taiko in a relentless, ominous build",
-    "Dark progressive house with orchestral strings, 124 bpm: brooding arps rising into a cavernous, epic drop with choir",
+    "Eastern epic with erhu, taiko and huge brass swells",
+    "Dark hybrid trailer: huge braams, choir and taiko in a relentless, ominous orchestral build",
+    "Legendary quest theme: soaring French horns over driving strings and war drums",
     "Ancient dark ritual: deep drones and low chants exploding into thunderous war drums and dark brass",
-    "Deep tech-house, 123 bpm: dark rolling groove with cinematic brass hits, Norse chants and a menacing sub-bass",
+    "Mythic sea-monster theme: rolling low strings, booming percussion, eerie choir and a vast brass climax",
   ],
+
 
   bwk: [
     "Night-drive phonk with heavy cowbell and distorted 808",
