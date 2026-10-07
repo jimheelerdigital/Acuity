@@ -36,6 +36,26 @@ Fixes from the second UGC dry run (25 creators):
   - **8 of 25 emails are still over 120 words** after the rewrite, because the model rewrites the offer terms every time.
   - **11 of 25 scored below the bar of 70.**
 
+## [2026-10-07] — Ripple and BWK organic posting turned off
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** n/a (data change only; logged with the picture-fix push)
+
+### In plain English (for Keenan)
+Ripple and BWK no longer make or post organic social content, because engagement was too low. The 10 posts already queued for today were cancelled before any went out. Mythicals, the paid ads and the email-only reset guides are unchanged. The plan is to rethink that side from scratch, starting with an AI-mom video concept.
+
+### Technical changes (for Jimmy)
+- DB: ContentLane `pick-ripple` and `pick-bwk` -> status RETIRED (retiredAt set). Earlier today they had been cut to hours [6,7].
+- DB: 10 PENDING SocialPublish rows (accountKey ripple/bwk) -> SKIPPED with error "2026-10-07: Ripple/BWK organic posting turned off by Keenan".
+- `reset-guide` and `reset-guide-men` stay ACTIVE (emailOnly).
+
+### Manual steps needed
+None
+
+### Notes
+- To turn it back on, set those two lanes ACTIVE again. No code change is needed.
+
 ## [2026-10-07] — Mythicals option pictures must match their option; Ripple/BWK cut to 2 posts a day
 
 **Requested by:** Keenan
