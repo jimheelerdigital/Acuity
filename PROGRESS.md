@@ -36,6 +36,26 @@ Fixes from the second UGC dry run (25 creators):
   - **8 of 25 emails are still over 120 words** after the rewrite, because the model rewrites the offer terms every time.
   - **11 of 25 scored below the bar of 70.**
 
+## [2026-10-07] — Admin Users tab: signups who never started a trial show "Free (no trial)"
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** see git log (fix: Label never-trialed signups as Free (no trial) in admin)
+
+### In plain English (for Keenan)
+People who signed up but skipped the paywall or abandoned checkout were showing "Expired 1d ago", as if a trial had run out. They never had a trial, so they now show "Free (no trial)". Also on 10-07: all 7 AI-generated EDM tracks were removed from the Mythicals music library (17 orchestral tracks remain).
+
+### Technical changes (for Jimmy)
+- `apps/web/src/app/api/admin/users/route.ts`: `computePlanStatus` takes `createdAt`; `FREE` with `trialEndsAt` within 1h of `createdAt` -> "Free (no trial)".
+- Storage (data only): music/mythicals ai-4, ai-6, ai-10, ai-12, ai-14, ai-16, ai-20 moved to music-removed/mythicals.
+
+### Manual steps needed
+None
+
+### Notes
+- These users have FREE + trialEndsAt == signup time (checked 5 from 10-06: 2 skipped the paywall and installed Android, 1 abandoned checkout, 2 left at the paywall or signup).
+- EDM detection: on 10-03 the Mythicals flavor list alternated orchestral (odd) and house/techno (even); a kick-band beat-regularity test confirmed the same 7 tracks.
+
 ## [2026-10-07] — Main ad sets now $60 men / $40 women
 
 **Requested by:** Keenan

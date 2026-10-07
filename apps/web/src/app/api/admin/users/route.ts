@@ -178,7 +178,8 @@ function computePlanStatus(
   stripeSubscriptionId: string | null,
   stripeCustomerId: string | null,
   now: Date,
-  paidTrialEndsAt?: Date
+  paidTrialEndsAt?: Date,
+  createdAt?: Date
 ): string {
   if (subscriptionStatus === "PRO" && paidTrialEndsAt) {
     const daysLeft = Math.ceil((paidTrialEndsAt.getTime() - now.getTime()) / 86400000);
@@ -203,6 +204,12 @@ function computePlanStatus(
     return `Trial — ${daysLeft}d left`;
   }
   if (subscriptionStatus === "TRIAL") return "Trial";
+  // A trial end at (or within an hour of) signup means no trial was ever
+  // granted: paywall skipped or checkout abandoned (2026-10-07, Keenan:
+  // these showed "Expired 1d ago" though they never started a trial).
+  if (subscriptionStatus === "FREE" && trialEndsAt && createdAt && Math.abs(trialEndsAt.getTime() - createdAt.getTime()) < 3600000) {
+    return "Free (no trial)";
+  }
   if (subscriptionStatus === "FREE" && trialEndsAt) {
     const daysAgo = Math.floor((now.getTime() - trialEndsAt.getTime()) / 86400000);
     return `Expired ${daysAgo}d ago`;
@@ -487,7 +494,7 @@ export async function GET(req: NextRequest) {
     const platform = computePlatform(u.appFirstOpenedAt, entryCount, u.devicePlatform);
     const userDownloadEvents = downloadEventsByUser.get(u.id) ?? EMPTY_EVENT_SET;
     const lifecycle = computeLifecycle(entryCount, lastEntryAt, u.appFirstOpenedAt, userDownloadEvents, now);
-    const planStatus = computePlanStatus(u.subscriptionStatus, u.trialEndsAt, u.stripeSubscriptionId, u.stripeCustomerId, now, paidTrials.get(u.id));
+    const planStatus = computePlanStatus(u.subscriptionStatus, u.trialEndsAt, u.stripeSubscriptionId, u.stripeCustomerId, now, paidTrials.get(u.id), u.createdAt);
 
     // Last active: most recent of lastSeenAt, lastEntryAt, appFirstOpenedAt
     const candidates = [u.lastSeenAt, lastEntryAt, u.appFirstOpenedAt].filter(Boolean) as Date[];
