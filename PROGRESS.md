@@ -36,6 +36,26 @@ Fixes from the second UGC dry run (25 creators):
   - **8 of 25 emails are still over 120 words** after the rewrite, because the model rewrites the offer terms every time.
   - **11 of 25 scored below the bar of 70.**
 
+## [2026-10-06] — Mythicals videos keep the proven motion script; dragon breath always goes up
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** see git log (fix: Keep the proven motion script inside Mythicals shot sheets)
+
+### In plain English (for Keenan)
+The new video prompt format was making dragons spit fire downward. Each video's plan now keeps the old motion script that made our best videos word for word, adds the new structure around it, and always sends dragon fire or ice up into the sky.
+
+### Technical changes (for Jimmy)
+- `apps/web/src/lib/content-factory/shot-sheet.ts`: SYSTEM treats the brief (old `livingMotionPrompt` / egg / cinematic motion) as the script to preserve; upward-breath rule; `SUBTLE_MOTION_RULES` breath line.
+- `apps/web/src/inngest/functions/carousel-post-video.ts`: egg dragon constraint says breath goes up.
+
+### Manual steps needed
+None
+
+### Notes
+- Friday's egg test post (10/9) keeps its already-built video, which has the downward fire (Keenan: "leave whatever's cheapest").
+- Fable 5.1 is $10/$50 per MTok vs Opus 5.5 $4/$20 (~+$0.58 per 6-clip post if Fable wrote daily). Plan: Fable designs the sheet layout once, Opus writes daily.
+
 ## [2026-10-06] — Mythicals: new video prompt format, toned-down effects, colossus retired, TOP 5 countdown lane
 
 **Requested by:** Keenan
