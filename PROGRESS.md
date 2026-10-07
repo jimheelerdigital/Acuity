@@ -36,6 +36,27 @@ Fixes from the second UGC dry run (25 creators):
   - **8 of 25 emails are still over 120 words** after the rewrite, because the model rewrites the offer terms every time.
   - **11 of 25 scored below the bar of 70.**
 
+## [2026-10-07] — Mythicals video scripts use a Fable-designed layout (Opus writes them daily)
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 082e177a
+
+### In plain English (for Keenan)
+Claude Fable 5.1 designed the step-by-step layout that every Mythicals video script now follows, and Opus 5.5 keeps writing the scripts daily at the same cost. The new framework leads, with the old scripts' approach behind it. Dragon fire is written as three beats (head up, a column of fire rising out of the top of the frame, jaws close), and scripts that would make Kling misbehave are rejected and rewritten automatically.
+
+### Technical changes (for Jimmy)
+- `apps/web/src/lib/content-factory/shot-sheet.ts`: SYSTEM replaced by the Fable layout (precedence, 8-step procedure, field spec, action/breath/blend rules, per-field char budget). Standing rules compacted (`BASE_CONSTRAINTS` 4 lines, `SUBTLE_MOTION_RULES` 1 line), appended by code; the writer's budget excludes them. 3 attempts with per-field size feedback, rule dedupe, 100-char style fallback, size logging.
+- `sheetProblem()` now rejects negations ("no", "never", "without") and forbidden verbs (lunge, swing, attack, flies...) inside action/camera_motion, breath without a prior head-raise beat, and downward/ground/nest/camera words in a breath beat or in weapon_continuity.
+
+### Manual steps needed
+None
+
+### Notes
+- Fable's audit: the long standing rules used 1,001 of the 2,450 chars (41%). The compact set frees ~2x room for the shot.
+- The sheet that rendered fire downward had "no fire" inside its action text. Kling executes every verb it reads, so prohibitions belong only in visual_constraints. The new check catches it (tested).
+- Fable's full design notes and worked example: `.tmp/fable-shot-sheet-system.md` (local only).
+
 ## [2026-10-06] — Mythicals videos keep the proven motion script; dragon breath always goes up
 
 **Requested by:** Keenan
