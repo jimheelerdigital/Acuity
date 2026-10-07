@@ -89,9 +89,9 @@
 - No new required env vars.
 
 ### Manual steps needed
-- [ ] Push the schema from main, in this order (Keenan, home network): `npm run db:guard` to preview (must show additive only), then `npm run db:push`. Do it in the same sitting as "push it", since the new pages need the tables.
+- [x] Schema pushed to prod 10-07 by Claude Code from main: guard said "additive only", then `prisma db push` using apps/web/.env.local (the root `npm run db:guard`/`db:push` fail with --require-db because there is no root .env.local).
 - [x] Inngest resynced after the deploy (10-07 01:2x UTC, "modified": true). Keenan's earlier PUT ran before the build finished.
-- [ ] Right after `db:push`, run `supabase/migrations/2026-10-06_ugc_outreach_rls.sql` in the Supabase SQL editor (Keenan). It turns RLS on (deny-all for non-service) for the 8 UGC tables.
+- [x] RLS SQL applied 10-07 via `prisma db execute`. Verified: all 8 Ugc* tables have relrowsecurity=true and 1 policy each.
 - [ ] Run a dry run from /admin/ugc ("Dry run (25)") and check the emailed report (Keenan).
 - [ ] Before turning sending on (Keenan, Jimmy optional):
   - create an OAuth client in a Google Cloud project owned by the Heeler Digital Workspace, consent screen type **Internal**
