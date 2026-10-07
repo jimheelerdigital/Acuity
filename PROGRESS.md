@@ -31,6 +31,88 @@
 - We don't store Stripe's `trialing` status, and the local env only has the Stripe test key, so this is inferred from our own data rather than a live Stripe call. Checked against all 43 PRO stripe/apple users on 2026-10-06: every current card trial has exactly a 7.0-day span; the payers have 31/365-day spans or a renewal.
 - Gotcha: `funnel_payment_completed :first_payment` fires at trial START ($0), so it is not proof of payment. Anything that counts it as "paid" overcounts.
 
+## [2026-10-06] — UGC creator outreach: find, score, draft, review weekly (sending off)
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** see "feat: Add UGC creator outreach pipeline with weekly review"
+
+### In plain English (for Keenan)
+- **What it does:** every Sunday the system finds small UGC creators on Instagram and TikTok and scores them on how well they'd film Ripple ads. It then writes a personal offer email plus a short DM for the best 10 (6 midlife, 4 ambitious).
+- **Your part:** Monday morning you get one email with those 10. On the review page you Approve, Edit or Skip each one. Nothing moves without your Approve.
+- **Sending is off:** approved creators wait in a "ready to send" list. You copy the email or DM, send it yourself, and click "Mark emailed" / "Mark DM'd". When you later turn sending on, it goes out from keenan@heelerdigital.com through Gmail, max 5 a day, with one follow-up after 5 days.
+- **When someone says yes:** mark them "deal" with the agreed fee. It writes their brief (3 videos, 2 hooks each, talking points, rules, money terms) for you to approve.
+- **Tracking:** after delivery you flag winners and type in ad spend and trials per video. The dashboard then shows cost per trial, a KILL list (ads that spent $30 with no trials), a REHIRE list and a RIGHTS list (usage ending in 14 days).
+- **Creator links:** every creator gets their own link (goripple.io/u/<code>), so signups from their ads are counted.
+- **Try it first:** a dry run checks 25 creators and emails you the results and what it cost, without saving or sending anything.
+
+### Technical changes (for Jimmy)
+- Prisma (additive only): enums `UgcStatus`, `UgcCreatorType`; models `UgcCreator`, `UgcStatusEvent`, `UgcOutreach`, `UgcBrief`, `UgcVideo`, `UgcRun`, `UgcDoNotContact`, `UgcMailbox`.
+- `lib/ugc/config.ts`: every setting (personas + 60/40 split, creator types, fee $100, bonus $50, bundle 3×2 hooks, rights 3 months, extension $25, caps, Apify $10/run, 500 profiles, top 50, send flag off, signature + mailing address). Reuses `Persona` from `content-factory/brand.ts`. Prices come from `lib/pricing.ts` `displayMonthly/displayAnnual`.
+- Sources: `lib/ugc/sources/types.ts` (one `Candidate` shape + dedupe by platform:handle), `apify-hashtags.ts`, `manual.ts`, `meta-marketplace.ts` (stub with TODO for app review).
+- `lib/ugc/apify.ts`: `runApifyCapped`. It runs async with `maxItems` + `maxTotalChargeUsd`, waits inside the step, and reports the run's cost. The rest of the repo's sync runner can't cap spend.
+- `lib/ugc/enrich.ts`:
+  - cheap stage: batched IG profile scrape, TikTok data straight from the hashtag items, link-in-bio pages fetched directly (free)
+  - text signals for email, portfolio, UGC, rates and credentials
+  - expensive stage (top 50): IG posts plus Whisper on reels ≤20MB, TikTok with its own subtitles
+- `lib/ugc/score.ts`:
+  - rough pass on Haiku 4.5, 20 per call
+  - final pass on Opus 5.5 with up to 3 cover frames, scoring fit 35 / camera 30 / proof 20
+  - active 15 and the total computed in code; follower count never scored
+  - `pickQueue` enforces the split, never backfills and only queues 70+; manual adds bypass the cap
+- `lib/ugc/draft.ts`: the model writes the body; code appends the opt-out, signature and address. Includes the respond-to-their-rate variant and a fixed follow-up template.
+- `lib/ugc/claims-check.ts`:
+  - code checks: therapy claims, "mirror, not a coach", time of day, stray prices, word/link limits, required lines, Ripple up top
+  - Jev check with its own two questions (the ads `policyRisk` would flag "life stage")
+  - FAILS CLOSED: if Jev doesn't answer the draft is `unchecked` and can't be approved
+- `lib/ugc/brief.ts`: builds on `adlab/ugc-brief.ts` `buildUgcBrief`, adding per-video pain branch tags, 2 hooks, talking points, rules, the credentialed line and money terms.
+- `lib/ugc/gmail.ts`:
+  - OAuth with `gmail.send` + `gmail.metadata`; refresh token encrypted via `calendar/encryption.ts` in `UgcMailbox`
+  - plain-text RFC 2822 send; the follow-up threads with In-Reply-To
+  - reply detection from headers only
+- `lib/ugc/status.ts` (status log, DNC, tracking codes), `lib/ugc/actions.ts` (all admin actions, `planSends` / `sendOne` / `checkReplies`), `lib/ugc/metrics.ts`, `lib/ugc/digest.ts`, `lib/ugc/pipeline.ts`.
+- Inngest:
+  - `ugc-pipeline.ts`: `ugc-discover` (cron `0 5 * * 0`), `ugc-enrich`, `ugc-score-rough`, `ugc-enrich-deep`, `ugc-score-final`, `ugc-draft`, chained by `ugc/*.requested` events carrying `runId`
+  - `ugc-ops.ts`: `ugc-brief`, `ugc-send-daily` (`0 15 * * *`; reply check only while sending is off), `ugc-weekly-digest` (`0 13 * * 1`)
+  - all registered in `api/inngest/route.ts`
+- Routes:
+  - `POST /api/admin/ugc/action` (every admin action)
+  - `/api/admin/ugc/gmail/connect` + `/callback`
+  - `/u/[code]` (tracking redirect to `/start` with `utm_source=ugc&utm_medium=creator&utm_campaign=ugc-<code>`; other params pass through)
+- Admin pages:
+  - `/admin/ugc`: stats by persona and type, KILL/REHIRE/RIGHTS, the 40-offers/<2-deals warning, manual add, run buttons, filterable table
+  - `/admin/ugc/review`
+  - `/admin/ugc/creators/[id]`
+  - `/admin/ugc/runs/[id]`
+  - link added to the admin dashboard tools
+- Tests: `lib/ugc/ugc.test.ts`, 24 passing. No new tsc errors (168 pre-existing). adlab + content-factory tests are 53/53.
+- No new required env vars.
+
+### Manual steps needed
+- [ ] Push the schema from main, in this order (Keenan, home network): `npm run db:guard` to preview (must show additive only), then `npm run db:push`. Do it in the same sitting as "push it", since the new pages need the tables.
+- [ ] After the deploy, resync Inngest so the 3 new crons register: `curl -X PUT https://goripple.io/api/inngest` (Keenan or Jimmy).
+- [ ] Run a dry run from /admin/ugc ("Dry run (25)") and check the emailed report (Keenan).
+- [ ] Before turning sending on (Keenan, Jimmy optional):
+  - create an OAuth client in a Google Cloud project owned by the Heeler Digital Workspace, consent screen type **Internal**
+  - add `https://goripple.io/api/admin/ugc/gmail/callback` as a redirect URI
+  - set `GMAIL_OUTREACH_CLIENT_ID` / `GMAIL_OUTREACH_CLIENT_SECRET` in Vercel and redeploy
+  - click "Connect Gmail" on /admin/ugc
+  - only then flip `OUTREACH_SEND_ENABLED` in `lib/ugc/config.ts`
+- [ ] Jimmy: review the Gmail OAuth/token storage (`lib/ugc/gmail.ts`).
+
+### Notes
+- **Jev:** Jev is an outside yes/no judge (TypeSafe), not a Claude model, so it can't score a 0–100 rubric. The final score uses Opus 5.5; Jev does the claims check. If `JEV_API_KEY` is missing or Jev is down, every draft shows "unchecked" and can't be approved until "Re-check claims" passes. That's deliberate.
+- **Weekly only, per Keenan 10-06:**
+  - discovery runs Sunday 5:00 UTC, after the 3:30 competitor scrape
+  - the digest goes out Monday 8am Central
+  - the send job stays daily only because of the 5-a-day cap
+  - digest buttons open the logged-in review page; email links never approve anything, because link scanners click links
+- **Apify:** we're on the $19/month plan. A full weekly run is estimated at $3–6 of Apify, capped at $10; the competitor scrape shares that plan. Real costs show on each run, and the first dry run will tell us.
+- **Signatures:** every outreach email ends with "Keenan, co-founder of Ripple — goripple.io" and 8733 Southwestern Blvd #1737, Dallas, TX 75206 (CAN-SPAM). The 120-word limit counts everything above the signature.
+- **Do-not-contact:** skips, opt-outs, rejections and anyone contacted go on the list. Follow-ups and briefs still go to people we've already contacted.
+- **Tracked trials:** "tracked signups / trials" counts users whose first-touch `signupUtmCampaign` is `ugc-<code>`; a trial is a user with a `subscriptionSource`. It's a cross-check only; the canonical per-video trials are typed by hand as specced. Meta's URL parameters (utm_content) pass through the `/u` redirect.
+- **Not tested end to end:** the pipeline was never run locally because Claude, Apify and Jev are prod-only, so the dry run is the first real test. Apify actor field names follow the existing scrapers; TikTok `bioLink` and IG `businessEmail` are read only if present.
+- **Prices:** prices come from `displayTier()`. Prod has `NEXT_PUBLIC_NEW_PRICING_ENABLED` on ($9.99/$89.99); local shows $4.99 without it, and the test sets the flag.
+
 ## [2026-10-06] — Mythicals music: epic orchestral only, EDM and downloaded songs removed
 **Requested by:** Keenan
 **Committed by:** Claude Code

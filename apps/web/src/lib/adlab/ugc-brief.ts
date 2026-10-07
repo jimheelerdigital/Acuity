@@ -9,7 +9,7 @@
  *
  * Every brief carries the claims rule and the copy rules from
  * lib/positioning.ts, so an outreach email or brief can never drift from
- * them. Nothing calls this yet; the UGC outreach system will.
+ * them. Used by the UGC outreach system (lib/ugc/brief.ts, 2026-10-06).
  */
 import {
   ACQUISITION_TERM_RULE,

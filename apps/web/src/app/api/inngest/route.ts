@@ -28,6 +28,15 @@ import { scanRedFlagsFn } from "@/inngest/functions/scan-red-flags";
 import { calendarSyncCronFn } from "@/inngest/functions/calendar-sync-cron";
 import { peopleBackfillFn } from "@/inngest/functions/people-backfill";
 import { trialCountdownEmailsCronFn } from "@/inngest/functions/trial-countdown-emails-cron";
+import {
+  ugcDiscoverFn,
+  ugcDraftFn,
+  ugcEnrichDeepFn,
+  ugcEnrichFn,
+  ugcScoreFinalFn,
+  ugcScoreRoughFn,
+} from "@/inngest/functions/ugc-pipeline";
+import { ugcBriefFn, ugcSendDailyFn, ugcWeeklyDigestFn } from "@/inngest/functions/ugc-ops";
 import { trialCountdownPushCronFn } from "@/inngest/functions/trial-countdown-push-cron";
 import { v10Day2PushCronFn } from "@/inngest/functions/v10-day2-push-cron";
 import { trialEmailOrchestratorFn } from "@/inngest/functions/trial-email-orchestrator";
@@ -171,6 +180,15 @@ const handler = serve({
     musicLibraryFn,
     adlabRegenImagesFn,
     adlabDailyCronFn,
+    ugcDiscoverFn,
+    ugcEnrichFn,
+    ugcScoreRoughFn,
+    ugcEnrichDeepFn,
+    ugcScoreFinalFn,
+    ugcDraftFn,
+    ugcBriefFn,
+    ugcSendDailyFn,
+    ugcWeeklyDigestFn,
   ],
 });
 
