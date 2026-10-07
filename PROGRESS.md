@@ -36,6 +36,32 @@ Fixes from the second UGC dry run (25 creators):
   - **8 of 25 emails are still over 120 words** after the rewrite, because the model rewrites the offer terms every time.
   - **11 of 25 scored below the bar of 70.**
 
+## [2026-10-06] — Mythicals: new video prompt format, toned-down effects, colossus retired, TOP 5 countdown lane
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 709df9c5, f6a8934a, a7f91c89
+
+### In plain English (for Keenan)
+Every Legendary Mythicals video is now directed by a detailed shot plan in the format you supplied, built from the picture it animates: style, setting, lighting, character details, camera, action and hard rules. Dragons still breathe full fire or ice to match their type, armor can have softly pulsing runes that blend in, and all other magic effects are gone. The close-up colossus lane is retired. In its place, a daily "TOP 5" countdown ranks five things from #5 up to #1, on a different subject every day. Mythicals stays at 5 posts a day, and YouTube now takes the best 5.
+
+### Technical changes (for Jimmy)
+- New `apps/web/src/lib/content-factory/shot-sheet.ts`: `writeShotSheet()` (Opus vision on the start frame → JSON sheet with style / aspect_ratio / duration / environment_continuity / lighting / character_continuity / weapon_continuity / shots[] / visual_constraints[]; validated by `sheetProblem()`; ≤2,450 chars for Kling's 2,500 cap; falls back to the old prompt on any failure). Single shot for the 5-10s clips, 3-4 cut shots for 15s.
+- `carousel-post-video.ts`: sheets ON by default for Mythicals (slides, egg, cinematic); `MYTHIC_SHOT_SHEETS=0` reverts; event flag `shotSheet` forces sheets and skips clip caches. `video-requests` body accepts `{ "shotSheet": true }`. `submitCinematicVideo` takes `raw` prompts.
+- Ability rules rewritten in `choice-lane.ts`, `living-reel.ts`, `shot-sheet.ts` (`SUBTLE_MOTION_RULES`) and `egg-hatch.ts`: dragon breath allowed, blended runes allowed, no auras, ghostfire, crawling lightning or energy glows, and everything blends perfectly.
+- TOP 5 countdown: `choice-lane.ts` (`COUNTDOWN_SUBJECTS`, `COUNTDOWN_RULES`, `ChoiceLaneSpec.mode`, "TOP N" titles exempt from the title check); `carousel-daily.ts` (lane-locked mode, "#5 … #1" labels, no best-of-5 cover); `performance-loop.ts` (countdown slug/catalog, `mythic-countdown` loop lane).
+- `social-publish-cron.ts`: `YOUTUBE_DAILY_CAP` default 6 → 5 (env var not set in Vercel).
+- DB (data only, no schema): ContentLane `mythic-colossus` → RETIRED; new `mythic-countdown` (template choice, brand mythicals, hour 7 UTC, spec `{ "mode": "countdown" }`); `mythic-picks` hours 5,6,8,9,10 → 5,6,8,9.
+
+### Manual steps needed
+- [ ] Review the two test posts emailed 10-06 (choice post Wed 10/7 7pm CT, egg hatch Fri 10/9 7pm CT; IG + FB only, extra slots) (Keenan)
+
+### Notes
+- Test renders ran WITHOUT deploying: the local Anthropic key is invalid, so sheets were written in-session and submitted through the `hf-probe` storage trigger. That trigger submits to BOTH Higgsfield hosts, so every probe render bills twice. Don't use it for volume.
+- Kling truncates prompts past 2,500 characters, which is why sheets are serialized compactly.
+- Seedance 2.0 is on the Higgsfield API (`bytedance/seedance-2.0/image-to-video`) but costs ~5-14× Kling. Keenan: not worth it yet.
+- Keenan: only stacked short-clip list formats have worked for Mythicals; new formats should be lists.
+
 ## [2026-10-06] — AI-content label turned on for Instagram and Facebook (YouTube already on)
 
 **Requested by:** Keenan
