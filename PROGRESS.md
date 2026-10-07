@@ -31,6 +31,26 @@
 - We don't store Stripe's `trialing` status, and the local env only has the Stripe test key, so this is inferred from our own data rather than a live Stripe call. Checked against all 43 PRO stripe/apple users on 2026-10-06: every current card trial has exactly a 7.0-day span; the payers have 31/365-day spans or a renewal.
 - Gotcha: `funnel_payment_completed :first_payment` fires at trial START ($0), so it is not proof of payment. Anything that counts it as "paid" overcounts.
 
+## [2026-10-07] — UGC dry run blocked by Apify's monthly limit; discovery now stops on it
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** see "fix: Stop UGC discovery when Apify's monthly limit blocks the account"
+
+### In plain English (for Keenan)
+- **What happened:** the first UGC dry run found 0 creators. Apify blocked every call with "Monthly usage hard limit exceeded", which is the whole Apify account, not this feature. It cost $0.
+- **Also affected:** competitor research, TikTok metrics and anything else on Apify, until the limit is raised or the month resets.
+- **The fix:** the UGC run now stops at the first "limit exceeded" and shows one clear line in the report, instead of trying all ~40 hashtags.
+
+### Technical changes (for Jimmy)
+- `inngest/functions/ugc-pipeline.ts`: a discover step that catches a `hard limit` / `platform-feature-disabled` error records one "Apify account blocked" error and returns `"blocked"`, which breaks the hashtag loop.
+
+### Manual steps needed
+- [ ] Raise the Apify monthly usage limit (Apify Console → Billing → Limits) or upgrade from the $19 plan, then run "Dry run (25)" again (Keenan)
+
+### Notes
+- The dry run `cmuxf87qj0005c5o1oolbqnl8` (10-07 01:20 UTC) hit the block on every hashtag. The 403 came from Apify's platform, not from our $10 per-run cap.
+- `APIFY_TOKEN` is prod-only, so usage can't be checked from a local machine; check the Apify console.
+
 ## [2026-10-06] — UGC creator outreach: find, score, draft, review weekly (sending off)
 **Requested by:** Keenan
 **Committed by:** Claude Code

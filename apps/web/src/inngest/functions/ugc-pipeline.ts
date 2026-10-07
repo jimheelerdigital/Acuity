@@ -105,11 +105,19 @@ export const ugcDiscoverFn = inngest.createFunction(
             const found = p.mergeFound(run.list.filter((c) => c.source === "apify-hashtag"), r.candidates, skip, max);
             await p.saveCandidates(runId, [...manual, ...found]);
           } catch (err) {
-            await p.recordError(runId, `discover #${job.tag} (${job.platform})`, err);
+            // Account-wide block (monthly hard limit): every further call
+            // fails the same way, so record it once and stop.
+            const blocked = /hard limit|platform-feature-disabled/i.test(String(err));
+            await p.recordError(
+              runId,
+              blocked ? "discover: Apify account blocked" : `discover #${job.tag} (${job.platform})`,
+              blocked ? `Apify monthly usage hard limit reached — raise it in Apify Console → Billing → Limits, or wait for the cycle to reset. (${String(err).slice(0, 120)})` : err
+            );
+            if (blocked) return "blocked";
           }
           return "ok";
         });
-        if (status === "full" || status === "budget") break;
+        if (status === "full" || status === "budget" || status === "blocked") break;
       }
     }
 
