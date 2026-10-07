@@ -38,8 +38,11 @@ export const GROUP_DAILY_BUDGET_CENTS: Record<BatchGroupKey, number> = {
   // The planner ads were promoted into production and their ad sets retired.
   // 2026-10-07, per Keenan: "change budgets to 60 men 40 women for main
   // adsets". Testing stays $20 women / $30 men = $150/day total.
-  women: 4000,
-  men: 6000,
+  // 2026-10-07 (later), per Keenan: "cut women funnel down to $30, men funnel
+  // down to $50, test funnels to $25 men $20 women... going to re-allocate
+  // $20 a day to app store ads". Meta = $125/day.
+  women: 3000,
+  men: 5000,
 };
 
 /** 2026-09-30, per Keenan: "start to optimize for purchase". Was
@@ -415,7 +418,8 @@ export async function makeRoomInAdSet(
 // column), created on first use with the main ad set's exact targeting.
 
 /** Per-lane test budget (2026-10-05, per Keenan: "men testing $30 women testing $20"). Was $15 each. */
-export const TEST_DAILY_BUDGET_CENTS: Record<BatchGroupKey, number> = { women: 2000, men: 3000 };
+/** 2026-10-07: men $30 -> $25 (Keenan); women stays $20. */
+export const TEST_DAILY_BUDGET_CENTS: Record<BatchGroupKey, number> = { women: 2000, men: 2500 };
 export const TEST_DAYS = 7;
 const TEST_SUFFIX = "| test ad set";
 

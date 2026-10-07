@@ -36,6 +36,26 @@ Fixes from the second UGC dry run (25 creators):
   - **8 of 25 emails are still over 120 words** after the rewrite, because the model rewrites the offer terms every time.
   - **11 of 25 scored below the bar of 70.**
 
+## [2026-10-07] — Meta budgets cut to $125/day ($20/day moving to Apple App Store ads)
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** see git log (chore: Cut Meta budgets to $125/day for App Store ads)
+
+### In plain English (for Keenan)
+Meta ad budgets are now: men main $50, women main $30, men test $25, women test $20, so $125/day in total (was $150). $20/day is moving to Apple App Store ads (Apple Ads Basic, set up by Keenan).
+
+### Technical changes (for Jimmy)
+- `apps/web/src/lib/adlab/evergreen.ts`: `GROUP_DAILY_BUDGET_CENTS` women 3000 / men 5000; `TEST_DAILY_BUDGET_CENTS` women 2000 / men 2500.
+- Applied on Meta via POST /api/admin/adlab/evergreen-settings (main) and `{ setupTest: true }` (test ad sets) after deploy.
+
+### Manual steps needed
+- [ ] Set up Apple Ads Basic at ads.apple.com/app-store: US, ~$20/day (~$600/mo), max CPI ~$3 (Keenan)
+- [ ] Turn on Apple Ads attribution (AdServices token via RevenueCat) in the next iOS build, so App Store ad installs can be tied to trials and payments (Jimmy)
+
+### Notes
+- Pending separately (not in this commit): retuning the ad verdicts to a $20-per-paid-trial target, awaiting Keenan's OK because it pauses 3 live ads.
+
 ## [2026-10-07] — Sunday metrics email for the founders
 
 **Requested by:** Keenan
