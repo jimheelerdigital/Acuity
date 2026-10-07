@@ -7,6 +7,31 @@
 
 ---
 
+## [2026-10-06] — AI-content label turned on for Instagram and Facebook (YouTube already on)
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 8afce09d
+
+### In plain English (for Keenan)
+Every new post we publish now declares itself as AI-made on all three platforms, so nothing is labeled on one place and missing on another. YouTube already did this. Instagram now gets Meta's official "AI info" switch on every post. Facebook has no switch for automated posting, so the files we upload now carry the standard hidden "made with AI" tag that Meta reads to apply the same label.
+
+### Technical changes (for Jimmy)
+- New `apps/web/src/lib/content-factory/ai-metadata.ts`: `tagJpegAi` (inserts an XMP APP1 segment after SOI), `tagMp4Ai` (appends a top-level XMP `uuid` box BE7ACFCB-…), `fetchTaggedAiMedia(url)`. XMP sets `Iptc4xmpExt:DigitalSourceType = trainedAlgorithmicMedia`. No re-encode; idempotent.
+- `social-publish.ts`: new `igContainer()` adds `is_ai_generated=true` to IG single-image, CAROUSEL parent and REELS containers (not allowed on carousel children); if Meta rejects the field it retries without it.
+- `social-publish.ts`: new `graphPostFile()` (multipart `source`). FB photos and `/videos` now upload tagged bytes; FB Reels upload phase sends bytes (`offset`/`file_size` headers) instead of `file_url`. Each falls back to the old URL upload on error.
+- YouTube unchanged: `containsSyntheticMedia: true` was already set on uploads.
+
+### Manual steps needed
+- [ ] Check the next IG post shows "AI info" under the account name (Keenan)
+- [ ] Check the next FB post/reel shows "AI info"; if not, Meta isn't reading our file tag and the only option left is the toggle in Meta Business Suite (Keenan)
+
+### Notes
+- IG flag is `is_ai_generated` per the IG User Media reference; it can't be added after publishing, so posts already live stay unlabeled (same for existing YouTube Shorts: our OAuth token is upload-only).
+- FB Graph API (`/photos`, `/videos`, `/video_reels`) has no AI-disclosure parameter as of 10-06; Meta labels from C2PA/IPTC metadata. Our sharp/ffmpeg renders strip metadata, which is why the tag is added at publish time.
+- Meta's detection of XMP inside MP4 is less documented than for JPEG; verify on the first FB reel.
+- Paid ads (AdLab) untouched.
+
 ## [2026-10-06] — Admin users tab shows "Paid trial" for card trials that haven't been charged yet
 **Requested by:** Keenan
 **Committed by:** Claude Code
