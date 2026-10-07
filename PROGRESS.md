@@ -43,10 +43,10 @@ Fixes from the second UGC dry run (25 creators):
 **Commit hash:** see git log (chore: Cut Meta budgets to $125/day for App Store ads)
 
 ### In plain English (for Keenan)
-Meta ad budgets are now: men main $50, women main $30, men test $25, women test $20, so $125/day in total (was $150). $20/day is moving to Apple App Store ads (Apple Ads Basic, set up by Keenan).
+Meta ad budgets are now: men main $50, women main $30, men test $20, women test $15, so $115/day in total (was $150). A week of testing is $140 for men and $105 for women, enough to judge each new batch. $20/day is moving to Apple App Store ads (Apple Ads Basic, set up by Keenan).
 
 ### Technical changes (for Jimmy)
-- `apps/web/src/lib/adlab/evergreen.ts`: `GROUP_DAILY_BUDGET_CENTS` women 3000 / men 5000; `TEST_DAILY_BUDGET_CENTS` women 2000 / men 2500.
+- `apps/web/src/lib/adlab/evergreen.ts`: `GROUP_DAILY_BUDGET_CENTS` women 3000 / men 5000; `TEST_DAILY_BUDGET_CENTS` women 1500 / men 2000 (briefly 2000/2500 earlier the same day).
 - Applied on Meta via POST /api/admin/adlab/evergreen-settings (main) and `{ setupTest: true }` (test ad sets) after deploy.
 
 ### Manual steps needed
