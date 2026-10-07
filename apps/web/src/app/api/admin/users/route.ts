@@ -188,6 +188,15 @@ function computePlanStatus(
   if (subscriptionStatus === "PAST_DUE") return "Past Due";
   if (stripeSubscriptionId && subscriptionStatus === "FREE") return "Churned";
   if (stripeCustomerId && !stripeSubscriptionId && subscriptionStatus === "FREE") return "Churned";
+  // Card trials can also be stored as TRIAL with a Stripe subscription
+  // (2026-10-07, Keenan: patrickbraley1@ entered a card in the funnel but
+  // showed as a plain trial). A free trial never has a Stripe subscription.
+  if (subscriptionStatus === "TRIAL" && stripeSubscriptionId) {
+    const end = trialEndsAt ?? paidTrialEndsAt;
+    if (!end) return "Paid trial";
+    const daysLeft = Math.ceil((end.getTime() - now.getTime()) / 86400000);
+    return daysLeft > 0 ? `Paid trial — ${daysLeft}d left` : "Paid trial — charge due";
+  }
   if (subscriptionStatus === "TRIAL" && trialEndsAt) {
     const daysLeft = Math.ceil((trialEndsAt.getTime() - now.getTime()) / 86400000);
     if (daysLeft <= 0) return `Trial — Expired ${Math.abs(daysLeft)}d ago`;

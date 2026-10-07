@@ -36,6 +36,24 @@ Fixes from the second UGC dry run (25 creators):
   - **8 of 25 emails are still over 120 words** after the rewrite, because the model rewrites the offer terms every time.
   - **11 of 25 scored below the bar of 70.**
 
+## [2026-10-07] — Admin Users tab: card trials stored as "TRIAL" now show "Paid trial"
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** see git log (fix: Show Stripe-backed TRIAL users as Paid trial in admin)
+
+### In plain English (for Keenan)
+Pat Braley entered his card through the funnel but showed in admin as a plain "Trial — 7d left". Anyone with a card on file during their 7-day trial now shows "Paid trial", however their account happens to be stored.
+
+### Technical changes (for Jimmy)
+- `apps/web/src/app/api/admin/users/route.ts` (`computePlanStatus`): `subscriptionStatus === "TRIAL"` with a `stripeSubscriptionId` -> "Paid trial — Nd left" (from trialEndsAt), or "Paid trial — charge due" once past. The 10-06 logic only looked at PRO users.
+
+### Manual steps needed
+- [ ] Jimmy: confirm why some Stripe card trials land as TRIAL (3 users, e.g. patrickbraley1@, created 10-07 via /start-bwk) while others land as PRO. Display only; no billing logic touched.
+
+### Notes
+- Pat: stripeSubscriptionId sub_1UNoDB…, trialEndsAt = stripeCurrentPeriodEnd = 2026-10-14, source stripe.
+
 ## [2026-10-07] — Ripple and BWK organic posting turned off
 
 **Requested by:** Keenan
