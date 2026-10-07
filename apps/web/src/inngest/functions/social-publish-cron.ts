@@ -326,10 +326,10 @@ export const socialPublishCronFn = inngest.createFunction(
     // more retroactive posts"). YouTube rows for posts from earlier days are
     // skipped. Once the day's posts all exist (from 11:00 UTC; they generate
     // 05:00–10:00), Jev picks the best of today's still-pending rows to fill
-    // the day's 6 slots (YOUTUBE_DAILY_CAP) and the rest are skipped.
+    // the day's 5 slots (YOUTUBE_DAILY_CAP; 5 since 2026-10-06, Mythicals cut to 5 posts a day) and the rest are skipped.
     await step.run("youtube-daily-pick", async () => {
       const { prisma } = await import("@/lib/prisma");
-      const cap = Math.max(1, Number(process.env.YOUTUBE_DAILY_CAP) || 6);
+      const cap = Math.max(1, Number(process.env.YOUTUBE_DAILY_CAP) || 5);
       // The Mythicals day runs on Central time (2026-10-06): its last YouTube
       // slot is 8pm CT = after midnight UTC, so a UTC day would drop it.
       const centralDay = new Date().toLocaleDateString("en-CA", { timeZone: "America/Chicago" });
@@ -665,7 +665,7 @@ export const socialPublishCronFn = inngest.createFunction(
         // burst; 8 Shorts burned all retries). At most YOUTUBE_DAILY_CAP
         // uploads per channel per rolling 24h (6 by default since 2026-10-06, per Keenan "go up to 6 a day now"; ~9,900 of the 10,000 daily API units); extra rows wait, no attempt used.
         if (row.platform === "youtube") {
-          const cap = Math.max(1, Number(process.env.YOUTUBE_DAILY_CAP) || 6);
+          const cap = Math.max(1, Number(process.env.YOUTUBE_DAILY_CAP) || 5);
           // Per UTC day (2026-10-06): the daily pick works per day, so a
           // rolling window could push one of today's picks past midnight.
           // Central day (matches the daily pick; 8pm CT is after midnight UTC).

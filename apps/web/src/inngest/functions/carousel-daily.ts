@@ -905,12 +905,15 @@ export const carouselDailyCronFn = inngest.createFunction(
       // creatures... godzilla standing in a city, dragon on a football
       // stadium, kraken over an aircraft carrier").
       // "egg" (dragon egg hatching) is a daily series since 2026-10-06.
-      type MythMode = "choice" | "duo" | "place" | "know" | "scenario" | "size" | "versus" | "egg";
-      const MYTH_MODES: MythMode[] = ["choice", "duo", "place", "know", "scenario", "size", "versus", "egg"];
+      type MythMode = "choice" | "duo" | "place" | "know" | "scenario" | "size" | "versus" | "egg" | "countdown";
+      const MYTH_MODES: MythMode[] = ["choice", "duo", "place", "know", "scenario", "size", "versus", "egg", "countdown"];
       const choiceMode: MythMode =
         forcedMode && (MYTH_MODES as string[]).includes(forcedMode)
           ? (forcedMode as MythMode)
-          : choiceLane.pickBrand
+          : // A lane locked to one type (2026-10-06: mythic-countdown, the TOP 5 countdown).
+            choiceLane.spec.mode
+            ? choiceLane.spec.mode
+            : choiceLane.pickBrand
             ? "choice"
             : await step.run("pick-post-type", async () => {
                 // Performance loop (2026-09-30): a bandit over post types
@@ -1128,6 +1131,7 @@ export const carouselDailyCronFn = inngest.createFunction(
           SCENARIO_CATEGORIES,
           SIZE_CATEGORIES,
           VERSUS_CATEGORIES,
+          COUNTDOWN_SUBJECTS,
         } = await import(
           "@/lib/content-factory/choice-lane"
         );
@@ -1159,7 +1163,9 @@ export const carouselDailyCronFn = inngest.createFunction(
                     ? SIZE_CATEGORIES[Math.floor(Math.random() * SIZE_CATEGORIES.length)]
                     : choiceMode === "versus"
                       ? VERSUS_CATEGORIES[Math.floor(Math.random() * VERSUS_CATEGORIES.length)]
-                      : rollChoiceCategory(recentCats);
+                      : choiceMode === "countdown"
+                        ? COUNTDOWN_SUBJECTS[Math.floor(Math.random() * COUNTDOWN_SUBJECTS.length)]
+                        : rollChoiceCategory(recentCats);
         // Size series part number: every size post so far + 1.
         const sizePart =
           choiceMode === "size"
@@ -1177,7 +1183,7 @@ export const carouselDailyCronFn = inngest.createFunction(
           const recentCatsLoop = await recentLoopCategories(laneKey, 3);
           const pickCat = pl.chooseCategory(board, choiceMode, catalog, recentCatsLoop);
           category = pickCat.arm;
-          const cover = choiceMode === "size" || forcedTopic ? null : await pl.chooseMythicCover({
+          const cover = choiceMode === "size" || choiceMode === "countdown" || forcedTopic ? null : await pl.chooseMythicCover({
             postType: choiceMode,
             category,
             recentTitles: recent.map((p) => p.headline),
@@ -1272,7 +1278,13 @@ export const carouselDailyCronFn = inngest.createFunction(
             // The lore line is still written (it keeps the five picks distinct and
             // feeds the diversity check) but is no longer shown.
             // Size series slides carry the creature line with no number.
-            const label = choiceMode === "size" ? o.name : `${i + 1}. ${o.name}`;
+            // Countdown (2026-10-06): options run #5 → #1.
+            const label =
+              choiceMode === "size"
+                ? o.name
+                : choiceMode === "countdown"
+                  ? `#${topic.options.length - i} ${o.name}`
+                  : `${i + 1}. ${o.name}`;
             // Smaller than the cover (2026-10-06, per Keenan: "reduce the text
             // size on all slides that aren't cover slides"; was 56), placed
             // where it covers the least of the subject.

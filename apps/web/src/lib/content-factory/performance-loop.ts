@@ -33,6 +33,7 @@ export type LoopBrand = "ripple" | "bwk" | "mythicals";
 export const LOOP_LANES: Record<string, LoopBrand> = {
   "mythic-picks": "mythicals",
   "mythic-colossus": "mythicals",
+  "mythic-countdown": "mythicals",
   "pick-ripple": "ripple",
   "pick-bwk": "bwk",
 };
@@ -96,7 +97,7 @@ export async function readRecipe(postId: string): Promise<PostRecipe | null> {
 
 /** Post type from a Mythicals slug ("mythic-know-…" → know). */
 export function mythicModeFromSlug(slug: string): string {
-  return slug.match(/^mythic-(duo|place|know|scenario|size|versus|cinematic|egg)-/)?.[1] ?? "choice";
+  return slug.match(/^mythic-(duo|place|know|scenario|size|versus|cinematic|egg|countdown)-/)?.[1] ?? "choice";
 }
 
 /**
@@ -170,7 +171,9 @@ export async function categoryCatalog(brand: LoopBrand, postType: string): Promi
             ? c.SIZE_CATEGORIES
             : postType === "versus"
               ? c.VERSUS_CATEGORIES
-              : c.CHOICE_CATEGORIES;
+              : postType === "countdown"
+                ? c.COUNTDOWN_SUBJECTS
+                : c.CHOICE_CATEGORIES;
 }
 
 async function classifyCategory(title: string, options: string[], catalog: string[]): Promise<string> {

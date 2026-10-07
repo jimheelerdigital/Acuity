@@ -51,13 +51,19 @@ export interface ChoiceTopic {
 
 export interface ChoiceLaneSpec {
   theme?: string;
+  /** Lock the lane to one post type instead of the daily mix. */
+  mode?: "countdown";
 }
 
 export function parseChoiceLaneSpec(raw: unknown): ChoiceLaneSpec | null {
   if (raw === null || raw === undefined) return {};
   if (typeof raw !== "object") return null;
   const r = raw as Record<string, unknown>;
-  return { theme: typeof r.theme === "string" ? r.theme : undefined };
+  return {
+    theme: typeof r.theme === "string" ? r.theme : undefined,
+    // A lane locked to one post type (2026-10-06: mythic-countdown = "countdown").
+    mode: r.mode === "countdown" ? "countdown" : undefined,
+  };
 }
 
 /**
@@ -307,10 +313,45 @@ const VERSUS_RULES = `THIS POST IS A "WHO WOULD WIN?" POST: five fights, each be
 - "captionQuestion": asks who wins each fight, answered by number.
 Everything else in the format above still applies.`;
 
+/**
+ * TOP 5 COUNTDOWN (2026-10-06, per Keenan: "do the rotating top 5
+ * countdown... new lane", picked from "the 5 deadliest legendary weapons,
+ * ranked... go from 5 to 1"). Its own lane (mythic-countdown); the subject
+ * rotates every day so it never runs dry.
+ */
+export const COUNTDOWN_SUBJECTS = [
+  "the deadliest legendary weapons (swords, axes, spears, hammers, bows forged from beasts, storms and stars)",
+  "the strongest legendary armor (forged from dragon scale, titan bone, storm iron, kraken shell)",
+  "the most feared dragons (every one winged, colossal and a different kind)",
+  "the hardest mythical beasts to tame",
+  "the rarest mythical creatures ever seen",
+  "the most powerful sea monsters of the deep",
+  "the greatest legendary war-mounts (armored beasts built to carry a warrior into battle)",
+  "the most terrifying beasts of the night",
+  "the oldest dragons alive",
+  "the largest mythical beasts that ever lived",
+  "the most legendary shields ever forged",
+  "the most feared legendary helms and war-masks",
+  "the strongest mythical beasts of the sky",
+  "the deadliest monsters of the frozen north",
+  "the most powerful guardian beasts (each guarding something: a gate, a treasure, a tomb)",
+];
+
+const COUNTDOWN_RULES = `THIS POST IS A "TOP 5" COUNTDOWN: five entries ranked from #5 up to #1, the best saved for last.
+- "title": "TOP 5 ..." naming exactly what is ranked, 4-9 words, ALL-CAPS ready, no question mark ("TOP 5 DEADLIEST LEGENDARY WEAPONS", "TOP 5 MOST FEARED DRAGONS"; new words every post, never a recent title).
+- "options": exactly five, IN COUNTDOWN ORDER: options[0] is #5, options[4] is #1. Each one beats the one before it, and #1 is the most impressive of all, worth waiting for.
+  - "name": 2-4 words in Title Case, legendary-sounding, the thing being ranked ("Fenrir's Fang", "The Abyssal Wyrm"). No numbers; the renderer adds them.
+  - "lore": one line, 6-12 words, on why it earns its rank.
+  - "scene": the ranked thing as the clear hero of the frame (a weapon or armor worn or wielded by one heroic figure, or shown on display; a beast whole and colossal), each in a completely different setting, palette and silhouette.
+- "coverScene": an epic shot that sets up the countdown without showing the five (a legendary armory hall, a battlefield at dusk, a vast lair).
+- "endCard": 2-6 words inviting debate about the ranking ("AGREE WITH #1?", "WHAT'S YOUR #1?", "WRONG ORDER? COMMENT."); vary it.
+- "captionQuestion": asks what they'd put at #1, or what's missing from the list.
+Everything else in the format above still applies.`;
+
 type ChoiceTopicOpts = {
   /** "duo" = who-are-you-and-your-bro; "place" = where you two are going;
    *  "know" = if you know him/her; "scenario" = story setup + choice. */
-  mode?: "choice" | "duo" | "place" | "know" | "scenario" | "size" | "versus";
+  mode?: "choice" | "duo" | "place" | "know" | "scenario" | "size" | "versus" | "countdown";
   category: string;
   /** SIZE mode: the series part number for "HOW BIG WOULD THEY REALLY BE? PART N". */
   part?: number;
@@ -341,12 +382,12 @@ export async function generateChoiceTopic(opts: ChoiceTopicOpts): Promise<Choice
     // DRAGON'S FIRE BREATH" is an instruction and got one tacked on).
     const isQuestion = /^(WHICH|WHAT|WHO|WHERE|WHEN|WHY|HOW|WOULD|DO|DOES|ARE|IS|CAN|WILL|SHOULD|COULD)\b/.test(title) || /\b(WHICH|WHAT|WHO)\b[^.]*$/.test(title);
     if (!/[?.!]$/.test(title) && isQuestion) title += "?";
-    const prefix = topic.slug.match(/^mythic(-duo|-place|-know|-scenario|-size|-versus)?/)?.[0] ?? "mythic";
+    const prefix = topic.slug.match(/^mythic(-duo|-place|-know|-scenario|-size|-versus|-countdown)?/)?.[0] ?? "mythic";
     const slug = `${prefix}-${title.toLowerCase().replace(/[^a-z0-9\s-]/g, "").trim().replace(/\s+/g, "-").slice(0, 50)}`;
     return { ...topic, title, slug };
   }
-  // The size series keeps its fixed title (no best-of-5 cover).
-  return opts.mode === "size" ? topic : withBestTitle(topic, opts.mode ?? "choice");
+  // The size series and countdowns keep their fixed-shape titles (no best-of-5 cover).
+  return opts.mode === "size" || opts.mode === "countdown" ? topic : withBestTitle(topic, opts.mode ?? "choice");
 }
 
 /** The size series' title for part N. */
@@ -383,7 +424,7 @@ async function withBestTitle(topic: ChoiceTopic, mode: NonNullable<ChoiceTopicOp
     });
     const h = picked?.headline.trim();
     if (!h || h === topic.title || (mode !== "scenario" && !h.endsWith("?"))) return topic;
-    const prefix = topic.slug.match(/^mythic(-duo|-place|-know|-scenario|-size|-versus)?/)?.[0] ?? "mythic";
+    const prefix = topic.slug.match(/^mythic(-duo|-place|-know|-scenario|-size|-versus|-countdown)?/)?.[0] ?? "mythic";
     const slug = `${prefix}-${h.toLowerCase().replace(/[^a-z0-9\s-]/g, "").trim().replace(/\s+/g, "-").slice(0, 50)}`;
     console.log(`[choice-lane] best-of-5 cover "${topic.title}" -> "${h}"`);
     return { ...topic, title: h, slug };
@@ -537,7 +578,7 @@ async function choiceTopicProblems(topic: ChoiceTopic): Promise<string[]> {
       `these options' pictures don't show what the title asks the reader to pick as the hero: ${offScene.join(", ")}. Rewrite their scenes so that thing fills the frame (worn, wielded or on display); any creature or threat stays small in the background`
     );
   const clear = noulOf(r, "title_clear");
-  if (clear !== null && clear < TITLE_CLEAR_MIN && !/^IF YOU KNOW/i.test(topic.title))
+  if (clear !== null && clear < TITLE_CLEAR_MIN && !/^(IF YOU KNOW|TOP \d)/i.test(topic.title))
     problems.push(
       `the title doesn't read naturally ("${topic.title}"). Rewrite it as a plain question or instruction to the reader, e.g. "PICK YOUR ARMOR TO SURVIVE A DRAGON'S FIRE BREATH"`
     );
@@ -585,7 +626,9 @@ async function generateChoiceTopicOnce(opts: ChoiceTopicOpts): Promise<ChoiceTop
                 ? `\n\n${SIZE_RULES}`
                 : opts.mode === "versus"
                   ? `\n\n${VERSUS_RULES}`
-                  : ""
+                  : opts.mode === "countdown"
+                    ? `\n\n${COUNTDOWN_RULES}`
+                    : ""
     }\n\n${HUMAN_VOICE_RULES}`,
     messages: [{ role: "user", content: user }],
   });
