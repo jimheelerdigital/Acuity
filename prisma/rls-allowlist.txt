@@ -136,3 +136,18 @@ SocialPublish no-rls        # auto-publish queue, service-role only
 # so RLS on even though it's service-role-only. After schema push:
 #   ALTER TABLE public."SocialToken" ENABLE ROW LEVEL SECURITY;
 SocialToken rls
+
+# ─── UGC creator outreach (2026-10-06) ───────────────────────
+# Creator emails/handles (third-party PII), outreach bodies, and an
+# encrypted Gmail refresh token (UgcMailbox). Accessed only by the
+# service-role Prisma client (/api/admin/ugc/*, ugc-* Inngest jobs), so
+# RLS on with deny-all for non-service. After schema push run:
+#   supabase/migrations/2026-10-06_ugc_outreach_rls.sql
+UgcCreator rls
+UgcStatusEvent rls
+UgcOutreach rls
+UgcBrief rls
+UgcVideo rls
+UgcRun rls
+UgcDoNotContact rls
+UgcMailbox rls

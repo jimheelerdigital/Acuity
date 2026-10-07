@@ -84,12 +84,14 @@
   - `/admin/ugc/creators/[id]`
   - `/admin/ugc/runs/[id]`
   - link added to the admin dashboard tools
+- `prisma/rls-allowlist.txt`: all 8 UGC tables marked `rls`. New `supabase/migrations/2026-10-06_ugc_outreach_rls.sql` (the AdminInsight deny-all pattern), added in a follow-up commit after CI's rls-coverage check flagged them.
 - Tests: `lib/ugc/ugc.test.ts`, 24 passing. No new tsc errors (168 pre-existing). adlab + content-factory tests are 53/53.
 - No new required env vars.
 
 ### Manual steps needed
 - [ ] Push the schema from main, in this order (Keenan, home network): `npm run db:guard` to preview (must show additive only), then `npm run db:push`. Do it in the same sitting as "push it", since the new pages need the tables.
-- [ ] After the deploy, resync Inngest so the 3 new crons register: `curl -X PUT https://goripple.io/api/inngest` (Keenan or Jimmy).
+- [x] Inngest resynced after the deploy (10-07 01:2x UTC, "modified": true). Keenan's earlier PUT ran before the build finished.
+- [ ] Right after `db:push`, run `supabase/migrations/2026-10-06_ugc_outreach_rls.sql` in the Supabase SQL editor (Keenan). It turns RLS on (deny-all for non-service) for the 8 UGC tables.
 - [ ] Run a dry run from /admin/ugc ("Dry run (25)") and check the emailed report (Keenan).
 - [ ] Before turning sending on (Keenan, Jimmy optional):
   - create an OAuth client in a Google Cloud project owned by the Heeler Digital Workspace, consent screen type **Internal**
@@ -111,6 +113,7 @@
 - **Do-not-contact:** skips, opt-outs, rejections and anyone contacted go on the list. Follow-ups and briefs still go to people we've already contacted.
 - **Tracked trials:** "tracked signups / trials" counts users whose first-touch `signupUtmCampaign` is `ugc-<code>`; a trial is a user with a `subscriptionSource`. It's a cross-check only; the canonical per-video trials are typed by hand as specced. Meta's URL parameters (utm_content) pass through the `/u` redirect.
 - **Not tested end to end:** the pipeline was never run locally because Claude, Apify and Jev are prod-only, so the dry run is the first real test. Apify actor field names follow the existing scrapers; TikTok `bioLink` and IG `businessEmail` are read only if present.
+- **rls-coverage CI:** the check still fails on 11 OLDER models missing from `rls-allowlist.txt` (TikTokVideo, ContentLane, RedditTrendDigest, CompetitorAccount, CompetitorPost, HashtagWatch, HashtagVideo, AdLabCompetitorAd, AdLabCompetitorBrief, AdLabLearning, McpAccessToken). It has been failing since at least 09-24. I didn't decide those here.
 - **Prices:** prices come from `displayTier()`. Prod has `NEXT_PUBLIC_NEW_PRICING_ENABLED` on ($9.99/$89.99); local shows $4.99 without it, and the test sets the flag.
 
 ## [2026-10-06] — Mythicals music: epic orchestral only, EDM and downloaded songs removed
