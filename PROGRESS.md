@@ -36,6 +36,25 @@ Fixes from the second UGC dry run (25 creators):
   - **8 of 25 emails are still over 120 words** after the rewrite, because the model rewrites the offer terms every time.
   - **11 of 25 scored below the bar of 70.**
 
+## [2026-10-07] — Main ad sets now $60 men / $40 women
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** see git log (chore: Set main ad set budgets to $60 men / $40 women)
+
+### In plain English (for Keenan)
+The main (production) Meta ad sets are now $60/day for men and $40/day for women, up from $70 and $30. Testing ad sets are unchanged ($30 men, $20 women), so total spend stays $150/day.
+
+### Technical changes (for Jimmy)
+- `apps/web/src/lib/adlab/evergreen.ts`: `GROUP_DAILY_BUDGET_CENTS` women 3000 -> 4000, men 7000 -> 6000.
+- Applied to Meta via POST /api/admin/adlab/evergreen-settings (applyEvergreenSettings) after deploy.
+
+### Manual steps needed
+None
+
+### Notes
+- The constant is the source of truth: applyEvergreenSettings pushes it onto both evergreen ad sets, so a Meta-side edit alone would get overwritten.
+
 ## [2026-10-07] — Instagram AI-content label paused
 
 **Requested by:** Keenan

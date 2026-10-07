@@ -36,8 +36,10 @@ export const GROUP_DAILY_BUDGET_CENTS: Record<BatchGroupKey, number> = {
   // 2026-10-05, per Keenan: two ad sets per lane, production + testing.
   // Production $30 women / $70 men; testing $20 / $30 (TEST_DAILY_BUDGET_CENTS).
   // The planner ads were promoted into production and their ad sets retired.
-  women: 3000,
-  men: 7000,
+  // 2026-10-07, per Keenan: "change budgets to 60 men 40 women for main
+  // adsets". Testing stays $20 women / $30 men = $150/day total.
+  women: 4000,
+  men: 6000,
 };
 
 /** 2026-09-30, per Keenan: "start to optimize for purchase". Was
