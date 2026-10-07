@@ -7,6 +7,30 @@
 
 ---
 
+## [2026-10-06] — Admin users tab shows "Paid trial" for card trials that haven't been charged yet
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** see "fix: Label uncharged card trials as Paid trial in admin users"
+
+### In plain English (for Keenan)
+- **The bug:** the admin Users tab showed "Paid" for anyone on Pro, including people who had only entered a card for the 7-day trial.
+- **The fix:** those people now show "Paid trial — Nd left" in blue, and "Paid" (green) only appears once a real charge has happened. Apple free trials get the same label.
+
+### Technical changes (for Jimmy)
+- `apps/web/src/app/api/admin/users/route.ts`: new `paidTrialEnds()`, with an extra arg on `computePlanStatus`.
+  - **Stripe PRO:** paid trial when `stripeCurrentPeriodEnd` is ≤10 days after the `:first_payment` funnel event and there's no `:renewal` event. Trial checkouts log first_payment at the $0 trial start, and the period end is the trial end.
+  - **Apple/Google PRO:** paid trial when the latest receipt has `offerDiscountType: "FREE_TRIAL"` and an unexpired `expiresDate`.
+  - Past the period end with no charge yet: "Paid trial — charge due".
+- `apps/web/src/app/admin/tabs/UsersTab.tsx`: `PlanPill` shows "Paid trial" in sky blue.
+- No schema change.
+
+### Manual steps needed
+- None
+
+### Notes
+- We don't store Stripe's `trialing` status, and the local env only has the Stripe test key, so this is inferred from our own data rather than a live Stripe call. Checked against all 43 PRO stripe/apple users on 2026-10-06: every current card trial has exactly a 7.0-day span; the payers have 31/365-day spans or a renewal.
+- Gotcha: `funnel_payment_completed :first_payment` fires at trial START ($0), so it is not proof of payment. Anything that counts it as "paid" overcounts.
+
 ## [2026-10-06] — Mythicals music: epic orchestral only, EDM and downloaded songs removed
 **Requested by:** Keenan
 **Committed by:** Claude Code

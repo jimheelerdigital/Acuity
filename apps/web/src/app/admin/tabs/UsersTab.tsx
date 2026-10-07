@@ -455,7 +455,8 @@ function SortHeader({ label, field, current, dir, onClick }: { label: string; fi
 
 function PlanPill({ status }: { status: string }) {
   const s = status.toLowerCase();
-  const bg = s.startsWith("paid") ? "bg-acuity-good-soft text-green-300"
+  const bg = s.startsWith("paid trial") ? "bg-sky-500/20 text-sky-300"
+    : s.startsWith("paid") ? "bg-acuity-good-soft text-green-300"
     : s.startsWith("trial") ? "bg-acuity-warn-soft text-yellow-300"
     : s.startsWith("expired") ? "bg-orange-500/20 text-orange-300"
     : s === "churned" ? "bg-acuity-bad-soft text-acuity-bad"

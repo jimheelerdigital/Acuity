@@ -128,6 +128,48 @@ function computePlatform(
   return "None";
 }
 
+// ── Paid trial: card on file, not charged yet (2026-10-06) ───────
+// PRO is granted the moment a card trial starts, so PRO alone doesn't mean
+// money changed hands. We don't store Stripe's "trialing" status, so:
+//   - Stripe: the checkout's first_payment event is logged at trial start
+//     (a $0 invoice), and during the trial stripeCurrentPeriodEnd is the
+//     trial end (checkout + 7d). A real charge moves it 28+ days out and
+//     logs a ":renewal" event. Period ≤ 10 days after checkout and no
+//     renewal = still in the card trial.
+//   - Apple/Google: the latest receipt says offerDiscountType FREE_TRIAL
+//     and hasn't expired yet.
+// Returns userId → when the trial ends (first charge due).
+async function paidTrialEnds(userIds: string[], now: Date): Promise<Map<string, Date>> {
+  const out = new Map<string, Date>();
+  if (userIds.length === 0) return out;
+  const pro = await prisma.user.findMany({
+    where: { id: { in: userIds }, subscriptionStatus: "PRO", subscriptionSource: { in: ["stripe", "apple", "google"] } },
+    select: { id: true, subscriptionSource: true, stripeCurrentPeriodEnd: true, appleLatestReceiptInfo: true, googleLatestReceiptInfo: true },
+  });
+  const stripeIds = pro.filter((u) => u.subscriptionSource === "stripe").map((u) => u.id);
+  const payments = stripeIds.length
+    ? await prisma.onboardingEvent.findMany({
+        where: { userId: { in: stripeIds }, event: "funnel_payment_completed" },
+        select: { userId: true, value: true, createdAt: true },
+        orderBy: { createdAt: "asc" },
+      })
+    : [];
+  for (const u of pro) {
+    if (u.subscriptionSource === "stripe") {
+      const mine = payments.filter((e) => e.userId === u.id);
+      const first = mine.find((e) => e.value?.endsWith(":first_payment"));
+      const renewed = mine.some((e) => e.value?.endsWith(":renewal"));
+      const end = u.stripeCurrentPeriodEnd;
+      if (first && end && !renewed && end.getTime() - first.createdAt.getTime() <= 10 * 86400000) out.set(u.id, end);
+    } else {
+      const r = (u.subscriptionSource === "apple" ? u.appleLatestReceiptInfo : u.googleLatestReceiptInfo) as Record<string, unknown> | null;
+      const exp = typeof r?.expiresDate === "number" ? new Date(r.expiresDate) : null;
+      if (r?.offerDiscountType === "FREE_TRIAL" && exp && exp > now) out.set(u.id, exp);
+    }
+  }
+  return out;
+}
+
 // ── Plan status with trial days ──────────────────────────────────
 
 function computePlanStatus(
@@ -135,8 +177,13 @@ function computePlanStatus(
   trialEndsAt: Date | null,
   stripeSubscriptionId: string | null,
   stripeCustomerId: string | null,
-  now: Date
+  now: Date,
+  paidTrialEndsAt?: Date
 ): string {
+  if (subscriptionStatus === "PRO" && paidTrialEndsAt) {
+    const daysLeft = Math.ceil((paidTrialEndsAt.getTime() - now.getTime()) / 86400000);
+    return daysLeft > 0 ? `Paid trial — ${daysLeft}d left` : "Paid trial — charge due";
+  }
   if (subscriptionStatus === "PRO") return "Paid";
   if (subscriptionStatus === "PAST_DUE") return "Past Due";
   if (stripeSubscriptionId && subscriptionStatus === "FREE") return "Churned";
@@ -422,6 +469,8 @@ export async function GET(req: NextRequest) {
     latestRecoveryByUser.set(r.userId, { emailKey: r.emailKey, sentAt: r.sentAt });
   }
 
+  const paidTrials = await paidTrialEnds(page.filter((u) => u.subscriptionStatus === "PRO").map((u) => u.id), now);
+
   const mappedUsers = page.map((u) => {
     const entryCount = u._count.entries;
     const entriesThisWeek = u.entries.length;
@@ -429,7 +478,7 @@ export async function GET(req: NextRequest) {
     const platform = computePlatform(u.appFirstOpenedAt, entryCount, u.devicePlatform);
     const userDownloadEvents = downloadEventsByUser.get(u.id) ?? EMPTY_EVENT_SET;
     const lifecycle = computeLifecycle(entryCount, lastEntryAt, u.appFirstOpenedAt, userDownloadEvents, now);
-    const planStatus = computePlanStatus(u.subscriptionStatus, u.trialEndsAt, u.stripeSubscriptionId, u.stripeCustomerId, now);
+    const planStatus = computePlanStatus(u.subscriptionStatus, u.trialEndsAt, u.stripeSubscriptionId, u.stripeCustomerId, now, paidTrials.get(u.id));
 
     // Last active: most recent of lastSeenAt, lastEntryAt, appFirstOpenedAt
     const candidates = [u.lastSeenAt, lastEntryAt, u.appFirstOpenedAt].filter(Boolean) as Date[];
