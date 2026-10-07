@@ -408,6 +408,50 @@ async function graphPost(
   return json;
 }
 
+/**
+ * Multipart POST with the file's bytes (FB photos/videos), used so the AI
+ * metadata tagged in ai-metadata.ts reaches Meta; a file_url/url upload
+ * would hand Meta our untagged render.
+ */
+async function graphPostFile(
+  path: string,
+  params: Record<string, string>,
+  file: { buf: Buffer; contentType: string; filename: string },
+  accessToken: string
+): Promise<Record<string, unknown>> {
+  const form = new FormData();
+  for (const [k, v] of Object.entries({ ...params, access_token: accessToken })) form.append(k, v);
+  form.append("source", new Blob([new Uint8Array(file.buf)], { type: file.contentType }), file.filename);
+  const res = await fetch(`${GRAPH}/${path}`, { method: "POST", body: form });
+  const json = (await res.json()) as { error?: { message?: string }; [k: string]: unknown };
+  if (!res.ok || json.error) {
+    throw new Error(`Graph API POST ${path} (file) failed: ${json.error?.message ?? `HTTP ${res.status}`}`);
+  }
+  return json;
+}
+
+/**
+ * Instagram AI label (2026-10-06, per Keenan: AI label on everywhere).
+ * is_ai_generated is Meta's documented self-disclosure on IG media
+ * containers (not on carousel children; the CAROUSEL parent carries it).
+ * If Meta ever rejects the field, the post still goes out without it.
+ */
+const IG_AI = { is_ai_generated: "true" };
+async function igContainer(
+  igUserId: string,
+  params: Record<string, string>,
+  accessToken: string
+): Promise<Record<string, unknown>> {
+  try {
+    return await graphPost(`${igUserId}/media`, { ...params, ...IG_AI }, accessToken);
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    if (!/is_ai_generated|param/i.test(msg)) throw err;
+    console.warn(`[social-publish] IG rejected is_ai_generated — posting without it: ${msg}`);
+    return graphPost(`${igUserId}/media`, params, accessToken);
+  }
+}
+
 async function graphGet(
   path: string,
   params: Record<string, string>,
@@ -481,11 +525,7 @@ export async function publishIgCarousel(
 
   let creationId: string;
   if (urls.length === 1) {
-    const single = await graphPost(
-      `${account.igUserId}/media`,
-      { image_url: urls[0], caption },
-      account.accessToken
-    );
+    const single = await igContainer(account.igUserId, { image_url: urls[0], caption }, account.accessToken);
     creationId = String(single.id);
   } else {
     const childIds: string[] = [];
@@ -498,8 +538,8 @@ export async function publishIgCarousel(
       childIds.push(String(child.id));
       await sleep(500); // stay friendly with rate limits
     }
-    const carousel = await graphPost(
-      `${account.igUserId}/media`,
+    const carousel = await igContainer(
+      account.igUserId,
       { media_type: "CAROUSEL", children: childIds.join(","), caption },
       account.accessToken
     );
@@ -593,12 +633,17 @@ export async function publishFbPhotoPost(
   const pageToken = await fbPageToken(account);
 
   const photoIds: string[] = [];
+  const { fetchTaggedAiMedia } = await import("./ai-metadata");
   for (const url of imageUrls) {
-    const photo = await graphPost(
-      `${account.fbPageId}/photos`,
-      { url, published: "false" },
-      pageToken
-    );
+    // AI-tagged bytes so Facebook shows "AI info" (no API flag on Pages);
+    // falls back to the plain URL upload if the byte upload fails.
+    let photo: Record<string, unknown>;
+    try {
+      photo = await graphPostFile(`${account.fbPageId}/photos`, { published: "false" }, await fetchTaggedAiMedia(url), pageToken);
+    } catch (err) {
+      console.warn(`[social-publish] FB tagged photo upload failed — using url: ${err instanceof Error ? err.message : err}`);
+      photo = await graphPost(`${account.fbPageId}/photos`, { url, published: "false" }, pageToken);
+    }
     photoIds.push(String(photo.id));
     await sleep(500);
   }
@@ -653,11 +698,11 @@ export async function publishIgReel(
   const base = { media_type: "REELS", video_url: videoUrl, caption };
   let container: Record<string, unknown>;
   try {
-    container = await graphPost(`${account.igUserId}/media`, coverUrl ? { ...base, cover_url: coverUrl } : base, account.accessToken);
+    container = await igContainer(account.igUserId, coverUrl ? { ...base, cover_url: coverUrl } : base, account.accessToken);
   } catch (err) {
     if (!coverUrl) throw err;
     console.warn(`[social-publish] IG reel container with cover failed — retrying without cover: ${err instanceof Error ? err.message : err}`);
-    container = await graphPost(`${account.igUserId}/media`, base, account.accessToken);
+    container = await igContainer(account.igUserId, base, account.accessToken);
   }
   const creationId = String(container.id);
 
@@ -716,14 +761,29 @@ export async function publishFbReel(
     );
   }
 
-  // Meta pulls the MP4 from Supabase itself — no byte upload from us.
-  const up = await fetch(uploadUrl, {
-    method: "POST",
-    headers: {
-      Authorization: `OAuth ${pageToken}`,
-      file_url: videoUrl,
-    },
-  });
+  // Upload the AI-tagged bytes (Facebook has no AI flag for Page reels;
+  // the label comes from the file's metadata). If tagging/downloading
+  // fails, Meta pulls the untagged MP4 from Supabase as before.
+  let up: Response;
+  try {
+    const { fetchTaggedAiMedia } = await import("./ai-metadata");
+    const file = await fetchTaggedAiMedia(videoUrl);
+    up = await fetch(uploadUrl, {
+      method: "POST",
+      headers: {
+        Authorization: `OAuth ${pageToken}`,
+        offset: "0",
+        file_size: String(file.buf.length),
+      },
+      body: new Uint8Array(file.buf),
+    });
+  } catch (err) {
+    console.warn(`[social-publish] FB reel tagged upload failed — using file_url: ${err instanceof Error ? err.message : err}`);
+    up = await fetch(uploadUrl, {
+      method: "POST",
+      headers: { Authorization: `OAuth ${pageToken}`, file_url: videoUrl },
+    });
+  }
   const upJson = (await up.json().catch(() => ({}))) as {
     success?: boolean;
     debug_info?: unknown;
@@ -769,11 +829,14 @@ export async function publishFbVideo(
     throw new Error(`FB page id not configured for account "${account.key}"`);
   }
   const pageToken = await fbPageToken(account);
-  const post = await graphPost(
-    `${account.fbPageId}/videos`,
-    { file_url: videoUrl, description: caption },
-    pageToken
-  );
+  let post: Record<string, unknown>;
+  try {
+    const { fetchTaggedAiMedia } = await import("./ai-metadata");
+    post = await graphPostFile(`${account.fbPageId}/videos`, { description: caption }, await fetchTaggedAiMedia(videoUrl), pageToken);
+  } catch (err) {
+    console.warn(`[social-publish] FB tagged video upload failed — using file_url: ${err instanceof Error ? err.message : err}`);
+    post = await graphPost(`${account.fbPageId}/videos`, { file_url: videoUrl, description: caption }, pageToken);
+  }
   const videoId = String(post.id);
 
   let permalink: string | null = null;
