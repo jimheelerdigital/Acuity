@@ -58,7 +58,7 @@ export const carouselPostVideoFn = inngest.createFunction(
     },
   },
   async ({ event, step, logger }) => {
-    const { postId, music: musicOpts, model: forcedModel } = event.data as {
+    const { postId, music: musicOpts, model: forcedModel, shotSheet: shotSheetForced } = event.data as {
       postId: string;
       /** Rebuild options (2026-09-30): a longer minimum and songs to avoid. */
       music?: { minSeconds?: number; exclude?: string[] };
@@ -68,7 +68,14 @@ export const carouselPostVideoFn = inngest.createFunction(
        * every slide is re-rendered on it.
        */
       model?: string;
+      /**
+       * JSON shot-sheet prompts (shot-sheet.ts, 2026-10-06, per Keenan's
+       * reference format) for Legendary Mythicals videos. Test flag; the
+       * env MYTHIC_SHOT_SHEETS=1 makes it the default. Skips clip caches.
+       */
+      shotSheet?: boolean;
     };
+    const sheetsWanted = shotSheetForced === true || process.env.MYTHIC_SHOT_SHEETS === "1";
 
     // ── 0. Legendary Mythicals cinematic shot (mythic-colossus, 2026-10-04):
     // one Kling 3.0 15s render with its own sound, faded in and out. ──
@@ -104,6 +111,7 @@ export const carouselPostVideoFn = inngest.createFunction(
       const { cinematicModels } = await import("@/lib/content-factory/cinematic-shot");
       // A rebuild reuses a finished render instead of paying for another.
       let clip = await step.run("cinematic-cached", async () => {
+        if (shotSheetForced) return null;
         const { supabase } = await import("@/lib/supabase.server");
         const { data } = await supabase.storage.from("content-factory").download(`living/${postId}/cinematic.json`);
         if (!data) return null;
@@ -113,6 +121,27 @@ export const carouselPostVideoFn = inngest.createFunction(
           return null;
         }
       });
+      // Shot sheet (2026-10-06): 3-4 cut shots in Keenan's JSON format,
+      // written by Opus from the frame Kling will animate.
+      const cineSheet = sheetsWanted && !clip
+        ? await step.run("cinematic-sheet", async () => {
+            const { writeShotSheet } = await import("@/lib/content-factory/shot-sheet");
+            const first = cinematicModels()[0];
+            const turbo = first.includes("v3.0-turbo");
+            return writeShotSheet({
+              mode: "multi",
+              seconds: 15,
+              sound: !turbo,
+              imageUrl: turbo ? cine.lastImageUrl ?? cine.imageUrl : cine.imageUrl,
+              brief: cine.motion,
+              constraints: [
+                "The colossal creature and the tiny human keep their exact scale relationship in every shot.",
+                "The creature never attacks the human; fire or ice only goes into the sky or landscape.",
+                "Powers are optional and subtle; never more than one power beat.",
+              ],
+            });
+          })
+        : null;
       const tried: string[] = [];
       for (const [a, model] of cinematicModels().entries()) {
         if (clip) break;
@@ -127,7 +156,8 @@ export const carouselPostVideoFn = inngest.createFunction(
               model,
               imageUrl: turbo ? cine.lastImageUrl ?? cine.imageUrl : cine.imageUrl,
               lastImageUrl: turbo ? null : cine.lastImageUrl,
-              prompt: cine.motion,
+              prompt: cineSheet ?? cine.motion,
+              raw: !!cineSheet,
             });
             await noteSubmitWave(1, []);
             console.log(`[post-video] ${postId} cinematic ${model} submitted ${r.requestId}, estimate ${JSON.stringify(r.estimate)}`);
@@ -242,6 +272,7 @@ export const carouselPostVideoFn = inngest.createFunction(
       );
       // A rebuild reuses finished renders instead of paying for new ones.
       const cached = await step.run("egg-cached", async () => {
+        if (shotSheetForced) return {} as { egg?: string; dragon?: string };
         const { supabase } = await import("@/lib/supabase.server");
         const { data } = await supabase.storage.from("content-factory").download(`living/${postId}/egg.json`);
         if (!data) return {} as { egg?: string; dragon?: string };
@@ -251,6 +282,24 @@ export const carouselPostVideoFn = inngest.createFunction(
           return {} as { egg?: string; dragon?: string };
         }
       });
+      // Shot sheets (2026-10-06): one continuous shot per clip.
+      const eggSheets = sheetsWanted
+        ? await step.run("egg-sheets", async () => {
+            const { writeShotSheet } = await import("@/lib/content-factory/shot-sheet");
+            const [eggSheet, dragonSheet] = await Promise.all([
+              writeShotSheet({ mode: "single", seconds: EGG_CLIP_SEC, sound: false, imageUrl: egg.eggUrl, brief: eggMotionPrompt() }),
+              writeShotSheet({
+                mode: "single",
+                seconds: DRAGON_CLIP_SEC,
+                sound: true,
+                imageUrl: egg.dragonUrl,
+                brief: egg.dragonMotion,
+                constraints: ["Fire or ice breath goes up into the sky, never at the camera or a person."],
+              }),
+            ]);
+            return { egg: eggSheet, dragon: dragonSheet };
+          })
+        : { egg: null, dragon: null };
       const render = async (part: "egg" | "dragon"): Promise<{ url: string; model: string }> => {
         const models = part === "egg" ? EGG_MODELS : DRAGON_MODELS;
         const tried: string[] = [];
@@ -262,7 +311,7 @@ export const carouselPostVideoFn = inngest.createFunction(
               const r = await submitEggClip({
                 model,
                 imageUrl: part === "egg" ? egg.eggUrl : egg.dragonUrl,
-                prompt: part === "egg" ? eggMotionPrompt() : egg.dragonMotion,
+                prompt: (part === "egg" ? eggSheets.egg : eggSheets.dragon) ?? (part === "egg" ? eggMotionPrompt() : egg.dragonMotion),
                 seconds: part === "egg" ? EGG_CLIP_SEC : DRAGON_CLIP_SEC,
                 sound: part === "dragon",
               });
@@ -478,17 +527,22 @@ export const carouselPostVideoFn = inngest.createFunction(
           base = built.base;
           layerUrl = await up(`living/${postId}/layer-${i}.png`, built.layer, "image/png");
         }
-        return {
-          baseUrl: await up(`living/${postId}/base-${i}.jpg`, base, "image/jpeg"),
-          layerUrl,
-          // Legendary Mythicals: the creature itself acts (action mode).
-          prompt: livingMotionPrompt(s.imagePrompt, {
-            person: s.person,
-            action: plan.brand === "mythicals" || !!plan.lane?.startsWith("pick-"),
-            realistic: !!plan.lane?.startsWith("pick-"),
-            calm: plan.lane === "pick-bwk",
-          }),
-        };
+        const baseUrl = await up(`living/${postId}/base-${i}.jpg`, base, "image/jpeg");
+        // Legendary Mythicals: the creature itself acts (action mode).
+        const prompt = livingMotionPrompt(s.imagePrompt, {
+          person: s.person,
+          action: plan.brand === "mythicals" || !!plan.lane?.startsWith("pick-"),
+          realistic: !!plan.lane?.startsWith("pick-"),
+          calm: plan.lane === "pick-bwk",
+        });
+        // Shot sheet (2026-10-06): one continuous shot in Keenan's JSON
+        // format; the old prompt is its brief and its fallback.
+        let sheet: string | null = null;
+        if (sheetsWanted && plan.brand === "mythicals") {
+          const { writeShotSheet, SUBTLE_POWER_RULES } = await import("@/lib/content-factory/shot-sheet");
+          sheet = await writeShotSheet({ mode: "single", seconds: 5, sound: false, imageUrl: baseUrl, brief: prompt, constraints: SUBTLE_POWER_RULES });
+        }
+        return { baseUrl, layerUrl, prompt: sheet ?? prompt };
       });
     }
 
@@ -498,7 +552,7 @@ export const carouselPostVideoFn = inngest.createFunction(
     const cached = await step.run("load-cached-clips", async () => {
       const { supabase } = await import("@/lib/supabase.server");
       const { data } = await supabase.storage.from("content-factory").download(`living/${postId}/clips.json`);
-      if (!data || forcedModel) return null;
+      if (!data || forcedModel || shotSheetForced) return null;
       try {
         const c = JSON.parse(await data.text()) as { clips: Record<string, string | null>; models: string[] };
         return liveIdx.every((i) => c.clips[i]) ? c : null;

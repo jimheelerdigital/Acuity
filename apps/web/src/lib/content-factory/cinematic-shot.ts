@@ -397,10 +397,12 @@ export async function submitCinematicVideo(opts: {
   /** End frame (the reveal); omitted → Kling ends wherever the prompt takes it. */
   lastImageUrl?: string | null;
   prompt: string;
+  /** Send the prompt as is (a shot sheet), without the Turbo wrapper. */
+  raw?: boolean;
 }): Promise<{ requestId: string; estimate: { credits?: string; usd?: string } | null }> {
   const turbo = opts.model.includes("v3.0-turbo");
   const body = turbo
-    ? { prompt: turboEncounterPrompt(opts.prompt), image_url: opts.imageUrl, duration: CINEMATIC_SECONDS }
+    ? { prompt: opts.raw ? opts.prompt : turboEncounterPrompt(opts.prompt), image_url: opts.imageUrl, duration: CINEMATIC_SECONDS }
     : {
         prompt: opts.prompt,
         image_url: opts.imageUrl,
