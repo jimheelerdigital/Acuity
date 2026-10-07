@@ -36,6 +36,32 @@ Fixes from the second UGC dry run (25 creators):
   - **8 of 25 emails are still over 120 words** after the rewrite, because the model rewrites the offer terms every time.
   - **11 of 25 scored below the bar of 70.**
 
+## [2026-10-07] — Sunday metrics email for the founders
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** see git log (feat: Email the weekly founder metrics every Sunday)
+
+### In plain English (for Keenan)
+Every Sunday at 9am Central, Keenan gets one email with the numbers that matter for the past 7 days next to the week before:
+- signups (Meta vs App Store)
+- how many entered a card, no-card trials and the free plan
+- trial-to-paid and free-to-paid
+- paying subscribers
+- how many new people recorded, active recorders and 3+ day recorders
+- Meta spend with cost per signup and per card
+
+### Technical changes (for Jimmy)
+- New `apps/web/src/lib/weekly-metrics.ts`: `weekMetrics(start, end)` and `weeklyMetricsHtml(cur, prev)`. Card state is inferred like the admin Users tab: Stripe `:first_payment` / `:renewal` events + billing span, and Apple/Google receipts. Internal and comp accounts are excluded.
+- New Inngest function `weekly-metrics-email` (`apps/web/src/inngest/functions/weekly-metrics-email.ts`): cron `TZ=America/Chicago 0 9 * * 0`, plus manual event `founders/weekly-metrics.send`. Registered in `api/inngest/route.ts`. Sent from hello@goripple.io to keenan@.
+
+### Manual steps needed
+- [ ] Inngest resync after deploy (new cron) — done by Claude via PUT /api/inngest
+
+### Notes
+- "Card trial cancelled" can't tell a cancel from a failed charge (e.g. rickrrp1962 insufficient funds, kkarey44 Radar block on 10-06/07). Stripe Smart Retries, unpaid-on-failure, failed-payment emails and the card updater were confirmed ON by Keenan 10-07.
+- Each cohort's trial/free state is as of send time, so last week's "no-card trial" reads 0 once those trials end.
+
 ## [2026-10-07] — Admin Users tab: signups who never started a trial show "Free (no trial)"
 
 **Requested by:** Keenan
