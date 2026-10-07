@@ -7,6 +7,28 @@
 
 ---
 
+## [2026-10-06] — YouTube: 6 Shorts a day on the Instagram cadence
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** see "chore: Post 6 YouTube Shorts a day on the Instagram cadence"
+
+### In plain English (for Keenan)
+- **6 a day:** YouTube now posts 6 Mythicals Shorts a day, each at the same time as its Instagram post. The 5pm/8pm slots are retired. If a day has more than 6 posts, Jev picks the best 6.
+- **API allowance:** 6 a day uses about 9,900 of YouTube's 10,000 free daily API units. If YouTube ever says the allowance is used up, the Short waits a day instead of failing.
+
+### Technical changes (for Jimmy)
+- `inngest/functions/social-publish-cron.ts`:
+  - `YOUTUBE_DAILY_CAP` default is 6
+  - `retimeTail` (17:00/20:00 CT) removed
+  - the upload-limit back-off now also matches `quotaExceeded` / "exceeded your quota"
+  - the day boundary stays on Central time
+
+### Manual steps needed
+- [ ] Optional (Keenan or Jimmy): request a YouTube Data API quota increase in Google Cloud Console (YouTube Data API v3 → Quotas) to get headroom above 6 a day
+
+### Notes
+- Cost: videos.insert is 1600 units and thumbnails.set 50, so 6 × 1650 = 9,900. Any extra API calls the same day (metadata refreshes, analytics) can push past 10,000; the back-off then delays the last Short a day.
+
 ## [2026-10-06] — YouTube: 5pm/8pm slots, Central-day logic, verified-channel features
 **Requested by:** Keenan
 **Committed by:** Claude Code

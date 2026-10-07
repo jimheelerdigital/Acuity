@@ -326,13 +326,12 @@ export const socialPublishCronFn = inngest.createFunction(
     // more retroactive posts"). YouTube rows for posts from earlier days are
     // skipped. Once the day's posts all exist (from 11:00 UTC; they generate
     // 05:00–10:00), Jev picks the best of today's still-pending rows to fill
-    // the day's 5 slots (YOUTUBE_DAILY_CAP) and the rest are skipped.
+    // the day's 6 slots (YOUTUBE_DAILY_CAP) and the rest are skipped.
     await step.run("youtube-daily-pick", async () => {
       const { prisma } = await import("@/lib/prisma");
-      const cap = Math.max(1, Number(process.env.YOUTUBE_DAILY_CAP) || 5);
+      const cap = Math.max(1, Number(process.env.YOUTUBE_DAILY_CAP) || 6);
       // The Mythicals day runs on Central time (2026-10-06): its last YouTube
       // slot is 8pm CT = after midnight UTC, so a UTC day would drop it.
-      const { centralWallTimeToUtc } = await import("@/lib/content-factory/social-publish");
       const centralDay = new Date().toLocaleDateString("en-CA", { timeZone: "America/Chicago" });
       const today = new Date(`${centralDay}T00:00:00Z`); // generatedFor key for the Central day
       const stale = await prisma.socialPublish.updateMany({
@@ -349,25 +348,9 @@ export const socialPublishCronFn = inngest.createFunction(
         const mine = rows.filter((r) => r.accountKey === account);
         const open = Math.max(0, cap - mine.filter((r) => r.status === "POSTED").length);
         const pending = mine.filter((r) => r.status === "PENDING");
-        // Last two of the day go up at 5pm and 8pm Central (2026-10-06, per
-        // Keenan: "have it run at 5 cst and 8 cst to put the last two up").
-        const retimeTail = async (keepIds: string[]) => {
-          const kept = await prisma.socialPublish.findMany({
-            where: { id: { in: keepIds }, status: "PENDING" },
-            orderBy: { scheduledAt: "asc" },
-            select: { id: true },
-          });
-          const tail = [centralWallTimeToUtc(centralDay, 17), centralWallTimeToUtc(centralDay, 20)];
-          const last = kept.slice(-2);
-          for (const [i, row] of last.entries()) {
-            const when = tail[tail.length - last.length + i];
-            if (when.getTime() > Date.now()) await prisma.socialPublish.update({ where: { id: row.id }, data: { scheduledAt: when } });
-          }
-        };
-        if (pending.length <= open) {
-          await retimeTail(pending.map((p) => p.id));
-          continue;
-        }
+        // Same cadence as Instagram (2026-10-06, per Keenan: "go up to 6 a day
+        // now with the normal cadence"); the 5pm/8pm tail slots are retired.
+        if (pending.length <= open) continue;
         let order = pending.map((p) => p.id);
         let how = "queue order";
         try {
@@ -401,7 +384,6 @@ export const socialPublishCronFn = inngest.createFunction(
           where: { id: { in: skip } },
           data: { status: "SKIPPED", error: `Not in today's top ${cap} for YouTube (${how})` },
         });
-        await retimeTail([...keep]);
         out[account] = { open, kept: [...keep].length, skipped: skip.length, how };
         console.log(`[social-publish] youtube/${account}: today's top ${open} kept (${how}), ${skip.length} skipped`);
       }
@@ -681,9 +663,9 @@ export const socialPublishCronFn = inngest.createFunction(
         // YouTube daily cap (2026-10-05: the Mythicals channel hit "The user
         // has exceeded the number of videos they may upload" after a backlog
         // burst; 8 Shorts burned all retries). At most YOUTUBE_DAILY_CAP
-        // uploads per channel per rolling 24h (5 by default since 2026-10-06, per Keenan "keep youtube at 5 posts actually"); extra rows wait, no attempt used.
+        // uploads per channel per rolling 24h (6 by default since 2026-10-06, per Keenan "go up to 6 a day now"; ~9,900 of the 10,000 daily API units); extra rows wait, no attempt used.
         if (row.platform === "youtube") {
-          const cap = Math.max(1, Number(process.env.YOUTUBE_DAILY_CAP) || 5);
+          const cap = Math.max(1, Number(process.env.YOUTUBE_DAILY_CAP) || 6);
           // Per UTC day (2026-10-06): the daily pick works per day, so a
           // rolling window could push one of today's picks past midnight.
           // Central day (matches the daily pick; 8pm CT is after midnight UTC).
@@ -741,7 +723,7 @@ export const socialPublishCronFn = inngest.createFunction(
         } catch (err) {
           const message = err instanceof Error ? err.message : String(err);
           // YouTube's own upload limit: wait a day instead of burning retries.
-          if (row.platform === "youtube" && /exceeded the number of videos|uploadLimitExceeded/i.test(message)) {
+          if (row.platform === "youtube" && /exceeded the number of videos|uploadLimitExceeded|quotaExceeded|exceeded your quota/i.test(message)) {
             await prisma.socialPublish.update({
               where: { id: row.id },
               data: { scheduledAt: new Date(Date.now() + 24 * 3600_000), error: `YouTube upload limit hit; retrying in 24h. ${message.slice(0, 200)}` },
