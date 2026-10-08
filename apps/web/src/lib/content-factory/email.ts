@@ -9,6 +9,13 @@
 
 import { getResendClient } from "@/lib/resend";
 
+/**
+ * TikTok is posted by hand, so its AI label is a toggle Keenan flips in the
+ * app (2026-10-07, per Keenan: "turn on ai content across the board for
+ * everything we do"). IG/FB/YouTube are labeled automatically.
+ */
+const TIKTOK_AI_REMINDER = `<p style="font-size:13px;color:#F5C26B;margin:0 0 12px;">Posting on TikTok: turn on <strong>AI-generated content</strong> (More options) before you post.</p>`;
+
 const FROM_ADDRESS =
   process.env.CONTENT_FACTORY_EMAIL_FROM ?? '"Ripple Content" <content@getacuity.io>';
 const TO_ADDRESS =
@@ -412,6 +419,7 @@ export async function sendCarouselEmail(
       <pre style="white-space:pre-wrap;font-size:14px;color:#DDD;font-family:-apple-system,sans-serif;margin:0;line-height:1.5;">${escapeHtml(post.caption)}</pre>
     </div>
 
+    ${TIKTOK_AI_REMINDER}
     ${postedButton}
 
     ${video ? `<div style="background:#1A1A1A;border-radius:12px;padding:14px 16px;margin:0 0 16px;">
@@ -604,6 +612,7 @@ async function sendStitchedVideoEmail(
       <pre style="white-space:pre-wrap;font-size:14px;color:#DDD;font-family:-apple-system,sans-serif;margin:0;line-height:1.5;">${escapeHtml(post.caption)}</pre>
     </div>
 
+    ${TIKTOK_AI_REMINDER}
     ${postedButton}
     <p style="font-size:14px;color:#DDD;line-height:1.6;margin:0 0 16px;">
       ${
@@ -815,6 +824,7 @@ export async function sendStoryVideoEmail(
       <pre style="white-space:pre-wrap;font-size:14px;color:#DDD;font-family:-apple-system,sans-serif;margin:0;line-height:1.5;">${escapeHtml(post.caption)}</pre>
     </div>
 
+    ${TIKTOK_AI_REMINDER}
     ${postedButton}
 
     <p style="font-size:14px;color:#DDD;line-height:1.6;">

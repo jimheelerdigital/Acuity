@@ -7,6 +7,28 @@
 
 ---
 
+## [2026-10-07] — AI-content label back on everywhere (Instagram re-enabled, TikTok reminder)
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** see "chore: Turn the AI-content label back on across every platform"
+
+### In plain English (for Keenan)
+- **"Turn on AI content across the board for everything we do":**
+  - Instagram posts carry Meta's "AI info" label again. It was paused earlier today because it hurt views; Keenan confirmed he wants it on anyway.
+  - Facebook and YouTube were already labeled.
+  - TikTok is posted by hand, so every TikTok post email now carries a reminder to switch on "AI-generated content" before posting.
+
+### Technical changes (for Jimmy)
+- `lib/content-factory/social-publish.ts`: `IG_AI` is now ON by default (`is_ai_generated=true`); env `IG_AI_LABEL=0` turns it off. It used to be off unless the env was 1.
+- `lib/content-factory/email.ts`: `TIKTOK_AI_REMINDER` line above the "I posted this on TikTok" button in all three post emails.
+
+### Manual steps needed
+- [ ] Keenan: flip "AI-generated content" on in TikTok when posting (the email reminds)
+
+### Notes
+- Facebook is labeled through the IPTC XMP tag in the uploaded bytes (ai-metadata.ts). YouTube is labeled with containsSyntheticMedia. Threads has no label in our publisher.
+- Meta ads (AdLab) don't carry an AI label from our side.
+
 ## [2026-10-07] — Jev now grades Mythicals for engagement and relatability, not just "epic"
 **Requested by:** Keenan
 **Committed by:** Claude Code
