@@ -7,6 +7,35 @@
 
 ---
 
+## [2026-10-08] — Facebook capped at 2 posts a day per Page; "Save to camera roll" button on every video email
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** see "feat: Cap Facebook at 2 posts a day and save email videos to camera roll"
+
+### In plain English (for Keenan)
+- **Facebook:** each Page now gets at most 2 automatic posts a day, down from every post. Organic reach there has been close to zero, and Keenan will post one more a day by hand. Extra posts are skipped for Facebook (they still go to Instagram/YouTube), so nothing piles up.
+- **Video emails:** every post email with a video now has a big "Save video to camera roll" button.
+  - It opens a small page that loads the video.
+  - One tap brings up the iPhone share menu, and "Save Video" puts it in Photos.
+  - Before, the download link saved to the Files app, or just played the video.
+  - If the video was still rendering when the email went out, the button works once it's done.
+
+### Technical changes (for Jimmy)
+- `inngest/functions/social-publish-cron.ts`: Facebook cap before publish. If a Page has `FB_DAILY_CAP` (default 2) POSTED rows since Central midnight, the row is set to SKIPPED with the reason.
+- New `app/save-video/page.tsx` (public client page): fetches the MP4 through the download proxy, then on tap calls `navigator.share({ files })`. Falls back to a download link where file sharing isn't supported.
+- `app/api/content-factory/download/route.ts`: PATH_RE allows `reels/` (the finished post videos) as well as `carousels/`.
+- `lib/content-factory/email.ts`:
+  - `saveToPhoneUrl()`
+  - the post email's video block is now a big save button, shown even while the video renders (pendingVideo)
+  - the stitched carousel and story/quote/calm emails use the save page too
+
+### Manual steps needed
+- [ ] Keenan: post 1 extra Facebook reel a day by hand per Page
+
+### Notes
+- iOS only opens the share sheet from a tap, so the page downloads the video first and enables the button once it's ready.
+- Organic FB views per post have averaged 0–3 on Ripple, BWK and Mythicals for 3 weeks. The 4.5K views in Business Suite were the paid $10/day boost. Page status still needs checking for restrictions.
+
 ## [2026-10-08] — Legendary Mythicals site: own favicon and real share buttons
 
 **Requested by:** Keenan

@@ -34,6 +34,17 @@ const MAX_ATTACHMENT_BYTES = 28 * 1024 * 1024; // 28MB raw
  * Supabase links (even with the ?download flag) get played inline by some
  * mail apps' in-app browsers, with no way to save the video.
  */
+/**
+ * "Save to camera roll" page for a video (2026-10-08, per Keenan): opens the
+ * iPhone share sheet with the file, where "Save Video" goes to Photos.
+ * Anything outside the proxied bucket paths falls back to the download link.
+ */
+function saveToPhoneUrl(url: string, filename: string): string {
+  const bucketPath = url.split("/content-factory/")[1]?.split("?")[0];
+  if (!bucketPath || !/^(carousels|reels)\//.test(bucketPath)) return forceDownloadUrl(url, filename);
+  return `${REVIEW_BASE_URL}/save-video?path=${encodeURIComponent(bucketPath)}&name=${encodeURIComponent(filename)}`;
+}
+
 function forceDownloadUrl(url: string, filename: string): string {
   const bucketPath = url.split("/content-factory/")[1];
   if (!bucketPath) return url;
@@ -339,6 +350,9 @@ export async function sendCarouselEmail(
   // The post's finished video (Higgsfield post video, 2026-09-28) — what
   // goes to IG/FB. Attached first when everything fits, else linked.
   let video: { url: string; downloadUrl: string; buf: Buffer | null; label: string } | null = null;
+  // Video still rendering when the email goes out: the button still points
+  // at where it will land, so it works as soon as the video is done.
+  let pendingVideo: { url: string; downloadUrl: string } | null = null;
   {
     const { readVideoMarker, reelPath } = await import("./post-video");
     const { laneWantsReel } = await import("./social-publish");
@@ -353,13 +367,18 @@ export async function sendCarouselEmail(
         if (fits) totalBytes += buf.length;
         video = {
           url,
-          downloadUrl: `${url}?download=${encodeURIComponent(`${post.lane ?? "post"}-video.mp4`)}`,
+          // Through our download proxy (2026-10-08, per Keenan: "a video
+          // downloadable portion that I can download right to my phone"):
+          // Supabase's ?download flag gets played inline by mail apps.
+          downloadUrl: saveToPhoneUrl(url, `${post.lane ?? "post"}-${post.id.slice(-6)}.mp4`),
           buf: fits ? buf : null,
           label:
             marker?.source === "higgsfield"
               ? `Higgsfield video (${marker.liveSlides} of ${marker.totalSlides} slides animated${marker.model ? ` · ${marker.model}` : ""})`
               : "Video",
         };
+      } else {
+        pendingVideo = { url, downloadUrl: saveToPhoneUrl(url, `${post.lane ?? "post"}-${post.id.slice(-6)}.mp4`) };
       }
     }
   }
@@ -423,9 +442,11 @@ export async function sendCarouselEmail(
     ${postedButton}
 
     ${video ? `<div style="background:#1A1A1A;border-radius:12px;padding:14px 16px;margin:0 0 16px;">
-      <p style="font-size:13px;color:#DDD;margin:0 0 8px;">🎬 ${escapeHtml(video.label)}${video.buf && useAttachments ? " — attached" : ""}</p>
-      <a href="${escapeHtml(video.downloadUrl)}" style="color:#F97E4E;font-size:13px;font-weight:600;">Download video</a>
-      &nbsp;·&nbsp;<a href="${escapeHtml(video.url)}" style="color:#F97E4E;font-size:13px;">Watch</a>
+      <a href="${escapeHtml(video.downloadUrl)}" style="display:block;background:#F97E4E;color:#fff;font-weight:700;font-size:16px;padding:14px 20px;border-radius:12px;text-decoration:none;text-align:center;margin:0 0 10px;">⬇ Save video to camera roll</a>
+      <p style="font-size:12px;color:#999;margin:0;">🎬 ${escapeHtml(video.label)}${video.buf && useAttachments ? " (also attached)" : ""} · <a href="${escapeHtml(video.url)}" style="color:#F97E4E;">Watch</a></p>
+    </div>` : pendingVideo ? `<div style="background:#1A1A1A;border-radius:12px;padding:14px 16px;margin:0 0 16px;">
+      <a href="${escapeHtml(pendingVideo.downloadUrl)}" style="display:block;background:#F97E4E;color:#fff;font-weight:700;font-size:16px;padding:14px 20px;border-radius:12px;text-decoration:none;text-align:center;margin:0 0 10px;">⬇ Save video to camera roll</a>
+      <p style="font-size:12px;color:#999;margin:0;">The video was still rendering when this email went out. The button works once it's done, usually within the hour.</p>
     </div>` : ""}
 
     ${coverUrl ? `<img src="${escapeHtml(coverUrl)}" alt="Cover" style="width:100%;border-radius:12px;margin-bottom:16px;" />` : ""}
@@ -583,12 +604,12 @@ async function sendStitchedVideoEmail(
   const attachIt =
     attachment !== null && attachment.buf.length <= MAX_ATTACHMENT_BYTES;
   const compilationLink = compilationUrl
-    ? forceDownloadUrl(compilationUrl, `carousel-${dateStr}.mp4`)
+    ? saveToPhoneUrl(compilationUrl, `carousel-${dateStr}.mp4`)
     : null;
   // Only if the stitch itself failed do we fall back to per-slide links —
   // otherwise it's strictly the one finished video.
   const linkList = compilationLink
-    ? `<a href="${escapeHtml(compilationLink)}" style="display:block;background:#F97E4E;color:#fff;font-weight:600;font-size:15px;padding:14px 20px;border-radius:12px;text-decoration:none;">🎬 Download carousel video (MP4)</a>`
+    ? `<a href="${escapeHtml(compilationLink)}" style="display:block;background:#F97E4E;color:#fff;font-weight:600;font-size:15px;padding:14px 20px;border-radius:12px;text-decoration:none;">🎬 Save video to camera roll</a>`
     : videoSlides
         .map((s) => `<p style="font-size:13px;"><a href="${escapeHtml(forceDownloadUrl(s.videoUrl!, `slide-${s.order + 1}-animated.mp4`))}" style="color:#F97E4E;">Download slide ${s.order + 1} animation</a></p>`)
         .join("\n");
@@ -742,7 +763,7 @@ export async function sendStoryVideoEmail(
   const emoji = opts.quote ? "🖤" : opts.calm ? "🌙" : "🎥";
   const label = opts.quote ? "Quote loop" : opts.calm ? "Calm video" : "Story video";
   const filename = `${opts.quote ? "quote" : opts.calm ? "calm" : "story"}-${dateStr}.mp4`;
-  const downloadUrl = forceDownloadUrl(videoUrl, filename);
+  const downloadUrl = saveToPhoneUrl(videoUrl, filename);
 
   // Attach when it fits under the Resend cap; always include the button.
   let videoBuf: Buffer | null = null;
@@ -833,7 +854,7 @@ export async function sendStoryVideoEmail(
 
     <div style="text-align:center;margin:20px 0;">
       <a href="${escapeHtml(downloadUrl)}" style="display:block;background:#F97E4E;color:#fff;font-weight:600;font-size:15px;padding:14px 20px;border-radius:12px;text-decoration:none;">
-        ${emoji} Download ${kind} (MP4)
+        ${emoji} Save ${kind} to camera roll
       </a>
     </div>
 

@@ -692,6 +692,27 @@ export const socialPublishCronFn = inngest.createFunction(
           }
         }
 
+        // Facebook daily cap (2026-10-08, per Keenan: "do 2 per day on
+        // facebook and i'll manually post one more per day"). Organic FB reach
+        // was ~0 on every Page at full volume. At most FB_DAILY_CAP posts per
+        // Page per Central day; the rest are SKIPPED, not pushed to tomorrow,
+        // so no backlog builds up.
+        if (row.platform === "facebook") {
+          const cap = Math.max(1, Number(process.env.FB_DAILY_CAP) || 2);
+          const { centralWallTimeToUtc } = await import("@/lib/content-factory/social-publish");
+          const since = centralWallTimeToUtc(new Date().toLocaleDateString("en-CA", { timeZone: "America/Chicago" }), 0);
+          const postedToday = await prisma.socialPublish.count({
+            where: { platform: "facebook", accountKey: row.accountKey, status: "POSTED", postedAt: { gte: since } },
+          });
+          if (postedToday >= cap) {
+            await prisma.socialPublish.update({
+              where: { id: row.id },
+              data: { status: "SKIPPED", error: `Facebook daily cap (${cap}/day per Page) reached` },
+            });
+            return false;
+          }
+        }
+
         try {
           const result = await publish();
 

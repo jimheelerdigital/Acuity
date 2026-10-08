@@ -8,15 +8,16 @@
  * (even with the ?download flag) get played inline by some mail apps'
  * in-app browsers.
  *
- * Only paths inside the public content-factory bucket's carousels/ prefix
- * are allowed, so this cannot be used as an open proxy.
+ * Only paths inside the public content-factory bucket's carousels/ and
+ * reels/ prefixes are allowed, so this cannot be used as an open proxy.
+ * reels/ (the finished post videos) added 2026-10-08 for /save-video.
  */
 
 import { NextRequest, NextResponse } from "next/server";
 
 export const dynamic = "force-dynamic";
 
-const PATH_RE = /^carousels\/[A-Za-z0-9\-_/.]+\.(mp4|jpg|jpeg|png)$/;
+const PATH_RE = /^(carousels|reels)\/[A-Za-z0-9\-_/.]+\.(mp4|jpg|jpeg|png)$/;
 
 export async function GET(req: NextRequest) {
   const path = req.nextUrl.searchParams.get("path") ?? "";
