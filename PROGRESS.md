@@ -7,6 +7,29 @@
 
 ---
 
+## [2026-10-07] — Mythicals: "which weapon" posts can show the weapons on their own
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** see "content: Add standalone-weapon choice posts to Mythicals"
+
+### In plain English (for Keenan)
+Mythicals "which would you choose" posts have a new type, based on veyra_lore's "ONLY ONE WEAPON WILL OBEY YOU. WHICH ONE WOULD YOU TRUST?":
+- **Each option** is a legendary weapon shown by itself, with nobody holding it: on an altar, a pedestal or an anvil, driven into stone, or in a dark cathedral, forge or crypt.
+- **The cover** can show several weapons waiting in one dark hall.
+- **Variety:** it joins the daily rotation alongside the existing weapon posts, which still show a warrior holding the weapon.
+
+### Technical changes (for Jimmy)
+- `apps/web/src/lib/content-factory/choice-lane.ts`:
+  - new `CHOICE_CATEGORIES` entry for standalone weapons
+  - new STANDALONE WEAPONS rule in SYSTEM (no person, hand, wielder or creature in any option; the cover may show the weapons on altars in one hall)
+  - the option image line now says "creature, fighter or item" and keeps items unheld
+
+### Manual steps needed
+- None
+
+### Notes
+- `rollChoiceCategory` avoids recent categories, so the new type shows up in normal rotation. It isn't forced on any particular day.
+
 ## [2026-10-06] — UGC outreach: fix a save crash, wrong greetings and creepy openers
 **Requested by:** Keenan
 **Committed by:** Claude Code
