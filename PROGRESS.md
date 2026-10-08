@@ -7,6 +7,25 @@
 
 ---
 
+## [2026-10-08] — All automatic Instagram/Facebook posting off
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** see "chore: Turn off automatic Instagram and Facebook posting for every brand"
+
+### In plain English (for Keenan)
+Nothing posts to Instagram or Facebook automatically anymore, for any brand. Keenan posts Mythicals by hand from the daily email. YouTube still posts automatically.
+
+### Technical changes (for Jimmy)
+- `apps/web/src/inngest/functions/social-publish-cron.ts`: `IG_MANUAL_BRANDS` and `FB_VIA_IG_BRANDS` now default to `"mythicals,ripple,bwk"`, so no instagram/facebook SocialPublish rows are created. No PENDING rows existed at the change.
+
+### Manual steps needed
+- None. To turn a brand back on, set the env vars in Vercel without it (for example `IG_MANUAL_BRANDS=mythicals`) and redeploy.
+
+### Notes
+- Ripple/BWK lanes were already retired on 10-07. This also stops one-off Ripple posts (like the AI-mom reels) from auto-posting.
+
+---
+
 ## [2026-10-08] — Mythicals: one daily email with every video to post on Instagram by hand
 **Requested by:** Keenan
 **Committed by:** Claude Code

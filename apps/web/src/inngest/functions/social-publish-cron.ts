@@ -301,10 +301,12 @@ export const socialPublishCronFn = inngest.createFunction(
           // we upload to neither. IG_MANUAL_BRANDS="" and FB_VIA_IG_BRANDS=""
           // restore direct uploads.
           const list = (v: string | undefined, d: string) => (v ?? d).split(",").map((s) => s.trim());
-          if (!list(process.env.IG_MANUAL_BRANDS, "mythicals").includes(brand)) platforms.push("instagram");
+          // Every brand since 2026-10-08 (Keenan: "turn off autoposting to meta/
+          // facebook for now, no need").
+          if (!list(process.env.IG_MANUAL_BRANDS, "mythicals,ripple,bwk").includes(brand)) platforms.push("instagram");
           // FB via Instagram's share (2026-10-08: Mythicals FB averaged 0–5
           // views per direct upload).
-          if (!list(process.env.FB_VIA_IG_BRANDS, "mythicals").includes(brand)) platforms.push("facebook");
+          if (!list(process.env.FB_VIA_IG_BRANDS, "mythicals,ripple,bwk").includes(brand)) platforms.push("facebook");
         }
         // Threads + YouTube have their own per-brand creds (2026-09-23)
         // and only get rows when those exist — no SKIPPED noise.
