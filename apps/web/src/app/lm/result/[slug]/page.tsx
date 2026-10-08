@@ -85,7 +85,7 @@ export default function ResultPage({ params, searchParams }: Props) {
           </blockquote>
 
           <div className="mt-8">
-            <ShareButtons slug={a.slug} name={a.name} path={`${base}/result/${a.slug}`} />
+            <ShareButtons slug={a.slug} name={a.name} path={`${base}/result/${a.slug}`} imageUrl={archetypeImageUrl(a.slug)} />
           </div>
 
           <div className="mt-10 rounded-xl border border-white/10 bg-white/[0.03] p-5">

@@ -7,6 +7,27 @@
 
 ---
 
+## [2026-10-08] — Legendary Mythicals site: own favicon and real share buttons
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** see git log (fix: Give the Mythicals site its own favicon and social share buttons)
+
+### In plain English (for Keenan)
+legendarymythicals.com showed Ripple's icon in the browser tab; it now shows the Legendary Mythicals emblem. The quiz result page now has share buttons for Instagram, Facebook, X, WhatsApp, Reddit and Copy link, instead of only the device's share sheet. Instagram shares the creature image through the phone (Stories), or saves it on a computer. Email capture was checked: submissions are saved to the subscriber list and get the creature-profile email.
+
+### Technical changes (for Jimmy)
+- `apps/web/next.config.js`: redirect on host legendarymythicals.com for `favicon.ico`, `favicon-96x96.png`, `apple-touch-icon.png` and `favicon.svg` to the Mythicals emblem PNG. The root layout hardcodes Ripple's favicon links for every host.
+- `apps/web/src/components/mythicals/result-actions.tsx`: `ShareButtons` takes `imageUrl` and adds Facebook sharer, X intent, WhatsApp, Reddit submit, Instagram (Web Share Level 2 file share, falling back to image download + link copy) and Copy link; each fires a `share` beacon with its method.
+- `apps/web/src/app/lm/result/[slug]/page.tsx`: passes `archetypeImageUrl(slug)`.
+
+### Manual steps needed
+None
+
+### Notes
+- Quiz stats to 10-08: about 110 page views since 10-01. The only quiz starts and completions are Keenan's tests (10-01, 10-08), and the only subscriber is keenan@. The bio link went in 10-08.
+- Subscribers live in the Supabase storage bucket `mythicals-data`, file `mythicals-site/subscribers.jsonl`.
+
 ## [2026-10-07] — AI-content label back on everywhere (Instagram re-enabled, TikTok reminder)
 **Requested by:** Keenan
 **Committed by:** Claude Code

@@ -4,22 +4,59 @@ import { useState } from "react";
 
 import { beacon } from "./track";
 
-export function ShareButtons({ slug, name, path }: { slug: string; name: string; path: string }) {
-  const [copied, setCopied] = useState(false);
+/**
+ * Share row (2026-10-08, per Keenan: "the share button should let them share
+ * on facebook, instagram, x, social media channels"). Facebook, X, WhatsApp
+ * and Reddit open their share pages. Instagram has no web share link, so it
+ * shares the creature image through the phone's share sheet (where Instagram
+ * Stories appears); on a computer it saves the image and copies the link.
+ */
+export function ShareButtons({ slug, name, path, imageUrl }: { slug: string; name: string; path: string; imageUrl?: string }) {
+  const [note, setNote] = useState("");
   const url = () => `${window.location.origin}${path}`;
   const text = `I'm the ${name}. Which legendary creature are you?`;
-
+  const flash = (t: string) => {
+    setNote(t);
+    setTimeout(() => setNote(""), 3500);
+  };
+  const open = (method: string, href: string) => {
+    window.open(href, "_blank", "noopener,noreferrer");
+    beacon("share", { slug, method });
+  };
   const copy = async () => {
     try {
       await navigator.clipboard.writeText(url());
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
+      flash("Link copied");
       beacon("share", { slug, method: "copy" });
     } catch {
       // clipboard blocked; nothing to do
     }
   };
-  const share = async () => {
+  const instagram = async () => {
+    beacon("share", { slug, method: "instagram" });
+    try {
+      if (imageUrl && navigator.canShare) {
+        const blob = await (await fetch(imageUrl)).blob();
+        const file = new File([blob], `${slug}.jpg`, { type: blob.type || "image/jpeg" });
+        if (navigator.canShare({ files: [file] })) {
+          await navigator.share({ files: [file], text: `${text} ${url()}` });
+          return;
+        }
+      }
+    } catch {
+      // cancelled or unsupported: fall back below
+    }
+    if (imageUrl) {
+      const a = document.createElement("a");
+      a.href = imageUrl;
+      a.download = `${slug}.jpg`;
+      a.target = "_blank";
+      a.click();
+    }
+    await navigator.clipboard?.writeText(url()).catch(() => {});
+    flash("Image saved and link copied. Post it to your Instagram Story.");
+  };
+  const native = async () => {
     if (!navigator.share) return copy();
     try {
       await navigator.share({ title: "Legendary Mythicals", text, url: url() });
@@ -28,15 +65,22 @@ export function ShareButtons({ slug, name, path }: { slug: string; name: string;
       // user cancelled
     }
   };
-
+  const enc = encodeURIComponent;
+  const btn = "lm-btn-ghost !px-3 !py-2.5 text-sm";
   return (
-    <div className="grid grid-cols-2 gap-3">
-      <button type="button" onClick={share} className="lm-btn-gold">
+    <div className="grid gap-3">
+      <button type="button" onClick={native} className="lm-btn-gold">
         Share my creature
       </button>
-      <button type="button" onClick={copy} className="lm-btn-ghost">
-        {copied ? "Link copied" : "Copy link"}
-      </button>
+      <div className="grid grid-cols-3 gap-2 sm:grid-cols-6">
+        <button type="button" className={btn} onClick={instagram}>Instagram</button>
+        <button type="button" className={btn} onClick={() => open("facebook", `https://www.facebook.com/sharer/sharer.php?u=${enc(url())}`)}>Facebook</button>
+        <button type="button" className={btn} onClick={() => open("x", `https://twitter.com/intent/tweet?text=${enc(text)}&url=${enc(url())}`)}>X</button>
+        <button type="button" className={btn} onClick={() => open("whatsapp", `https://wa.me/?text=${enc(`${text} ${url()}`)}`)}>WhatsApp</button>
+        <button type="button" className={btn} onClick={() => open("reddit", `https://www.reddit.com/submit?url=${enc(url())}&title=${enc(text)}`)}>Reddit</button>
+        <button type="button" className={btn} onClick={copy}>Copy link</button>
+      </div>
+      {note && <p className="text-sm text-[var(--lm-gold)]">{note}</p>}
     </div>
   );
 }

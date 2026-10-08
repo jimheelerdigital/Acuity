@@ -228,6 +228,15 @@ const nextConfig = {
   async redirects() {
     return [
       {
+        // Mythicals favicon (2026-10-08, per Keenan: the tab showed Ripple's
+        // icon). The root layout links Ripple's favicon files for every host;
+        // on legendarymythicals.com those paths go to the Mythicals emblem.
+        source: "/:file(favicon\\.ico|favicon-96x96\\.png|apple-touch-icon\\.png|favicon\\.svg)",
+        has: [{ type: "host", value: "legendarymythicals\\.com" }],
+        destination: "https://rohjfcenylmfnqoyoirn.supabase.co/storage/v1/object/public/content-factory/mythicals-site/brand/emblem-192.png",
+        permanent: false,
+      },
+      {
         // www → apex for the Mythicals domain (2026-10-01).
         source: "/:path*",
         has: [{ type: "host", value: "www.legendarymythicals.com" }],
