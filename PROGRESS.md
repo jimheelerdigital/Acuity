@@ -7,6 +7,28 @@
 
 ---
 
+## [2026-10-08] — Mythicals stops uploading to Facebook separately; Instagram shares to it instead
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** see "feat: Send Mythicals reels to Facebook through Instagram sharing"
+
+### In plain English (for Keenan)
+Mythicals reels uploaded straight to Facebook have averaged 0–5 views each since day one, while the same videos get 1,000–6,000 on Instagram. We now stop uploading them to Facebook ourselves. Keenan turns on Instagram's "share to Facebook" setting so the Facebook page gets each reel as the same post Instagram publishes.
+
+### Technical changes (for Jimmy)
+- `apps/web/src/inngest/functions/social-publish-cron.ts`: new env `FB_VIA_IG_BRANDS` (default `"mythicals"`). Brands listed there get no `facebook` SocialPublish row. Setting it to `""` restores direct uploads for every brand.
+- Pending Mythicals Facebook rows already queued were set to SKIPPED so nothing posts twice.
+
+### Manual steps needed
+- [ ] Turn on Instagram → Settings → Accounts Center → Sharing across profiles → share reels to the Legendary Mythicals Facebook page (Keenan)
+- [ ] 10-09: check that the morning's API-published reels actually appear on the Facebook page. If they don't, set `FB_VIA_IG_BRANDS=""` in Vercel and redeploy (Claude/Keenan)
+
+### Notes
+- Keenan checked Page status on 10-08 and it showed no restrictions, so the page isn't penalized; it just never got reach.
+- Not verified yet: whether Instagram's auto-share applies to reels published through the API and not only to reels posted in the app. That's what the 10-09 check is for.
+
+---
+
 ## [2026-10-08] — Facebook capped at 2 posts a day per Page; "Save to camera roll" button on every video email
 **Requested by:** Keenan
 **Committed by:** Claude Code
