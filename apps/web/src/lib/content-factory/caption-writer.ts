@@ -5,12 +5,14 @@
  * Replaces the generator's caption (a bare question + tags, or tags only
  * on the moody lanes) with a full caption written for DISCOVERY:
  *
- *   <searchable first line — the phrases this audience actually types>
- *   <one relatable line in the brand voice>
- *
- *   <the post's thought-provoking question — drives comments>
+ *   <one or two short, relatable lines that end in a question>
  *
  *   <4 hashtags: 1 broad + 3 niche, never #fyp/#foryou/#viral>
+ *
+ * 2026-10-07, per Keenan ("they suck... we want quick, relatable, finish
+ * with a question"): the old searchable-line + extra line + separate deep
+ * question read like mini-essays. Now it's one quick beat plus one easy
+ * question, no emojis, modeled on the captions he picked (CAPTION_EXAMPLES).
  *
  * Why: IG and TikTok discovery in 2026 leans on caption keywords (search),
  * and a question is the cheapest comment trigger. #fyp is noise.
@@ -34,7 +36,7 @@ import {
 import { prisma } from "@/lib/prisma";
 import { copyObjectives } from "./copy-objectives";
 
-const LIFE_QUESTION = `one question the reader genuinely wants to answer about their own life, the kind someone answers in the comments with a real sentence and not just "yes". It is personal and specific to this post, and easy to answer honestly ("what's the one thing you'd drop tomorrow if nobody would notice?" is the kind, not the words). A yes/no question, a quiz, or "which one are you?" earns little. If an existing question is given and it already does this, keep it or tighten it; if it's generic, replace it.`;
+const LIFE_QUESTION = `one short question (12 words at most) about the reader's own life that is easy to answer in a few words, the way a friend would ask it ("Where are you going?", "What's been on your list since March?"). One thing to answer, never two questions joined with "and".`;
 
 const anthropic = contentAnthropic;
 const CLAUDE_MODEL = CONTENT_MODEL;
@@ -93,15 +95,37 @@ const BRAND = {
     // 2026-10-02: the life-question rule turned fantasy posts into self-help
     // ("what's the real-life habit behind that?"). Mythicals stays fun.
     question:
-      'one question that stays INSIDE the fantasy: which one they pick and why, who wins and how, what they would do with it, who they would bring. It should be fun to argue about in the comments with a real sentence ("which one do you pick, and what\'s the first thing you\'d make it guard?" is the kind, not the words). Never turn it into a real-life lesson, habit, self-improvement or "what does this say about you" question; this audience is here for fun. If the post names a person (your bro, her), the question is about that same person.',
+      'one short question (12 words at most) that stays INSIDE the fantasy and is answered with a pick: which one, who they trust, which one they run from ("Who are you trusting?", "Which one are you taking?"). One thing to answer, never two questions joined with "and". Never turn it into a real-life lesson, habit, self-improvement or "what does this say about you" question; this audience is here for fun. If the post names a person (your bro, her), the question is about that same person.',
     extra: "",
   },
 } as const;
 
+/**
+ * Captions Keenan picked on 2026-10-07 (endings turned into questions where
+ * his pick ended on a command, per his rule "finish with a question").
+ * Shown to the writer as the bar; it must write new words every time.
+ */
+const CAPTION_EXAMPLES: Record<"ripple" | "bwk" | "mythicals", string[]> = {
+  mythicals: [
+    'Post "A storm is coming for your house. Which guardian beast stands at the door?" → "Power\'s out. Wind\'s screaming. Something is scratching at the door, and only one of these five is between you and it. Who are you trusting?"',
+    'Post "You can take one power from the old gods" → "The vault opens once. You get one. Which one are you taking?"',
+    'Post "Five powers, one titan" → "The titan\'s already walking toward you. One power. No backup. Which one gets you out?"',
+  ],
+  ripple: [
+    'Post "Where would you hide for a week with zero signal?" → "No texts. No \'Mom, where\'s my...\'. Just you. Where are you going?"',
+    'Post "When I finally check off everything on my to-do list" → "It lasts about four seconds. What\'s the thing that always gets added back?"',
+  ],
+  bwk: [
+    'Post "Which watch is your reward for 365 days straight?" → "365 days without missing. Which one\'s on your wrist?"',
+    'Post "Which car do you take to your first track day?" → "First time on the track. Which one are you taking out?"',
+  ],
+};
+
+/** Caption text before the hashtags: short enough to read in one glance. */
+const MAX_CAPTION_CHARS = 220;
+
 interface WrittenCaption {
-  firstLine: string;
-  secondLine: string;
-  question: string;
+  caption: string;
   hashtags: string[];
 }
 
@@ -138,8 +162,7 @@ function assemble(
     .filter((t) => t.length > 1 && !BANNED_TAGS.has(t))
     .slice(0, 4);
   return [
-    [c.firstLine.trim(), c.secondLine.trim()].filter(Boolean).join("\n"),
-    c.question.trim(),
+    c.caption.trim(),
     brand === "mythicals" && MYTHICALS_QUIZ_LINE_ON ? MYTHICALS_QUIZ_LINE : "",
     tags.join(" "),
   ]
@@ -147,7 +170,7 @@ function assemble(
     .join("\n\n");
 }
 
-async function writeCaption(opts: {
+export async function writeCaption(opts: {
   brand: "ripple" | "bwk" | "mythicals";
   headline: string;
   slideText: string[];
@@ -171,15 +194,17 @@ THIS JOB: write the caption under one post that is already made (Instagram, Face
 READER: ${b.audience}.
 VOICE: ${b.voice}
 
-THE FIELDS:
-- "firstLine" (110 characters at most): add something the slides don't already say. A specific moment, the thought behind the post, the part that usually goes unsaid. Repeating the headline wastes the most-read line of the caption. Use words this audience actually searches for where they fit naturally (${b.keywords}), but it must read like a person talking, never like a keyword list. Lowercase is fine.
-- "secondLine" (120 characters at most, optional): one more line that makes the reader feel seen. Return "" if it would only be filler; a short caption beats a padded one.
-- "question": ${b.question}${b.extra ? `\n\n${b.extra}` : ""}
+THE CAPTION: quick, relatable, and it finishes with a question.
+- Write in normal sentence case with full punctuation: a capital at the start of every sentence and a period, question mark or exclamation mark at the end of every one.
+- "caption": one or two short lines, ${MAX_CAPTION_CHARS} characters at most, ending with ONE question. Open with a quick beat that drops the reader into the moment or says the thing they're already thinking: short punchy sentences, plain words, no setup and no explaining. Don't repeat the headline. Then ask the question: ${b.question}${b.extra ? `\n\n${b.extra}` : ""}
+- Captions Keenan picked as the bar (match the feel, never reuse the words):
+${CAPTION_EXAMPLES[opts.brand].map((e) => `  ${e}`).join("\n")}
+- What he rejected: mini-essays, a line of setup then a line of commentary then a separate question, two-part questions ("which one, and what would you..."), hot takes like "fight me" or "change my mind", and emojis.
 - "hashtags": exactly 4, one broad and three niche, chosen for this post (prefer from: ${b.tags}). Never #fyp, #foryou or #viral, which add noise and no reach.
 
-LIMITS, and why: no app name, product mention, "link in bio", "follow for more", "save this" or "send this to", because asking reads as marketing and the post has to earn it. Never a recording duration ("60 seconds", "one minute"), never a fixed time of day ("nightly", "before bed", "at 9pm"). No mental-health claims about the reader ("your anxiety"), and never claim anything treats, diagnoses, cures or replaces therapy. At most one emoji. Avoid AI tells like "in a world where", "it's not just X, it's Y", "let's dive in", "journey", "unlock", "transform", "game-changer" and chains of em-dashes.
+LIMITS, and why: no app name, product mention, "link in bio", "follow for more", "save this" or "send this to", because asking reads as marketing and the post has to earn it. Never a recording duration ("60 seconds", "one minute"), never a fixed time of day ("nightly", "before bed", "at 9pm"). No mental-health claims about the reader ("your anxiety"), and never claim anything treats, diagnoses, cures or replaces therapy. No emojis. Avoid AI tells like "in a world where", "it's not just X, it's Y", "let's dive in", "journey", "unlock", "transform", "game-changer" and chains of em-dashes.
 
-Return only the JSON object: {"firstLine": string, "secondLine": string, "question": string, "hashtags": string[]}`,
+Return only the JSON object: {"caption": string, "hashtags": string[]}`,
         messages: [
           {
             role: "user",
@@ -212,15 +237,12 @@ EXISTING QUESTION: ${opts.question ?? "(none)"}${feedback ? `\n\nA REVIEWER REJE
         })
         .catch(() => {});
       const parsed = JSON.parse(lastJsonText(text)) as WrittenCaption;
-      if (
-        !parsed.firstLine ||
-        !parsed.question ||
-        !Array.isArray(parsed.hashtags)
-      )
-        return null;
+      if (!parsed.caption || !Array.isArray(parsed.hashtags)) return null;
+      parsed.caption = punctuate(stripEmoji(parsed.caption));
+      const shape = shapeProblem(parsed.caption);
       const problem =
         attempt === 0
-          ? await captionProblem(
+          ? shape ?? await captionProblem(
               opts.brand,
               opts.headline,
               opts.slideText,
@@ -245,6 +267,36 @@ EXISTING QUESTION: ${opts.question ?? "(none)"}${feedback ? `\n\nA REVIEWER REJE
   return null;
 }
 
+/** Keenan's rules that code can check: short, and ends with a question. */
+export function shapeProblem(caption: string): string | null {
+  const t = caption.trim();
+  if (t.length > MAX_CAPTION_CHARS) return `it's ${t.length} characters; keep it to ${MAX_CAPTION_CHARS} or fewer, quick and punchy.`;
+  if (!t.endsWith("?")) return "it must finish with a question.";
+  if ((t.match(/\?/g) ?? []).length > 2) return "ask one question, not several.";
+  return null;
+}
+
+/**
+ * Sentence case and a closing mark on every line (2026-10-07, per Keenan:
+ * "the periods also aren't making it into captions"; the old prompt allowed
+ * all-lowercase lines and some shipped with no full stop).
+ */
+export function punctuate(text: string): string {
+  return text
+    .split("\n")
+    .map((line) => {
+      const t = line.trim();
+      if (!t) return t;
+      const capped = (t[0].toUpperCase() + t.slice(1)).replace(/([.?!]\s+)([a-z])/g, (_, gap: string, ch: string) => gap + ch.toUpperCase());
+      return /[.?!…"'”’)]$/.test(capped) ? capped : `${capped}.`;
+    })
+    .join("\n");
+}
+
+export function stripEmoji(text: string): string {
+  return text.replace(/[\p{Extended_Pictographic}\u{FE0F}\u{200D}]/gu, "").replace(/ {2,}/g, " ").trim();
+}
+
 /**
  * Jev caption check (2026-10-02, per Keenan: "TRIPLE CHECK that all of our
  * social scripts were run through jev"). Captions were the one piece of
@@ -259,9 +311,7 @@ async function captionProblem(
   c: WrittenCaption
 ): Promise<string | null> {
   const { askJev, noulOf } = await import("./jev");
-  const caption = [c.firstLine, c.secondLine, c.question]
-    .filter(Boolean)
-    .join("\n");
+  const caption = c.caption;
   const questions: Parameters<typeof askJev>[2] = {
     fits: {
       type: "noul",
