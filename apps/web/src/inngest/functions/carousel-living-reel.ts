@@ -314,7 +314,7 @@ export const livingReelQueueFn = inngest.createFunction(
       // Body { dryRun: true } = copy only, saved for review (prompt tests).
       // Files may be named "<lane>" or "<lane>--<tag>" so several tests of
       // one lane can queue at once.
-      const claimed: { bucket: string; dryRun: boolean; mode?: string; topic?: string }[] = [];
+      const claimed: { bucket: string; dryRun: boolean; mode?: string; topic?: string; category?: string; optionCount?: number }[] = [];
       for (const f of (data ?? []).filter((x) => x.name.endsWith(".json"))) {
         const path = `lane-requests/${f.name}`;
         const dl = await supabase.storage.from("content-factory").download(path);
@@ -325,10 +325,16 @@ export const livingReelQueueFn = inngest.createFunction(
         // for mythicals... 'which dragon are you bonding to?'") = that exact
         // cover question.
         let topic: string | undefined;
+        // Body { category, optionCount } (2026-10-07): lock the subject and
+        // the number of options for a hand-requested post.
+        let category: string | undefined;
+        let optionCount: number | undefined;
         try {
-          const j = dl.data ? (JSON.parse(await dl.data.text()) as { dryRun?: boolean; topic?: string }) : null;
+          const j = dl.data ? (JSON.parse(await dl.data.text()) as { dryRun?: boolean; topic?: string; category?: string; optionCount?: number }) : null;
           dryRun = j?.dryRun === true;
           if (typeof j?.topic === "string" && j.topic.trim()) topic = j.topic.trim().slice(0, 140);
+          if (typeof j?.category === "string" && j.category.trim()) category = j.category.trim().slice(0, 600);
+          if (typeof j?.optionCount === "number") optionCount = j.optionCount;
         } catch {
           // empty body → a real run
         }
@@ -339,6 +345,8 @@ export const livingReelQueueFn = inngest.createFunction(
           // Tag = a Mythicals post type (2026-10-01: any of them, incl. size/versus).
           mode: ["duo", "place", "know", "scenario", "size", "versus", "egg", "choice"].find((m) => tag.startsWith(m)),
           ...(topic ? { topic } : {}),
+          ...(category ? { category } : {}),
+          ...(optionCount ? { optionCount } : {}),
         });
       }
       return claimed;
@@ -353,6 +361,8 @@ export const livingReelQueueFn = inngest.createFunction(
             ...(r.dryRun ? { dryRun: true } : {}),
             ...(r.mode ? { mode: r.mode } : {}),
             ...(r.topic ? { topic: r.topic } : {}),
+            ...(r.category ? { category: r.category } : {}),
+            ...(r.optionCount ? { optionCount: r.optionCount } : {}),
           },
         }))
       );

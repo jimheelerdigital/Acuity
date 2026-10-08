@@ -895,6 +895,9 @@ export const carouselDailyCronFn = inngest.createFunction(
       const forcedMode = (event.data as { mode?: string } | undefined)?.mode;
       // Requested cover question (lane-requests body { topic }, 2026-10-03).
       const forcedTopic = (event.data as { topic?: string } | undefined)?.topic?.trim() || undefined;
+      // Requested subject and option count (lane-requests body, 2026-10-07).
+      const forcedCategory = (event.data as { category?: string } | undefined)?.category?.trim() || undefined;
+      const forcedOptionCount = (event.data as { optionCount?: number } | undefined)?.optionCount;
       // 2026-09-30: no fixed lane per hour (Keenan: "i no longer want set
       // lanes... i want random variation based on the theme post"). Each
       // Mythicals run draws a post type at random, skipping types already
@@ -1196,8 +1199,9 @@ export const carouselDailyCronFn = inngest.createFunction(
         } catch (err) {
           console.warn("[carousel-cron] loop category/cover failed — random category:", err instanceof Error ? err.message : err);
         }
+        if (forcedCategory) category = forcedCategory;
         if (forcedTopic) {
-          coverGuidance = `\n\nREQUESTED COVER QUESTION (Keenan asked for this exact post): "${forcedTopic}". Use it as the title, in ALL CAPS, changing nothing but capitalization (add a "?" only if it is a question; instructions like \"PICK YOUR ARMOR...\" keep no question mark). Build all five options as answers to exactly this question.`;
+          coverGuidance = `\n\nREQUESTED COVER QUESTION (Keenan asked for this exact post): "${forcedTopic}". Use it as the title, in ALL CAPS, changing nothing but capitalization (add a "?" only if it is a question; instructions like \"PICK YOUR ARMOR...\" keep no question mark). Build all ${forcedOptionCount ?? "five"} options as answers to exactly this question.`;
         }
         return generateChoiceTopic({
           mode: choiceMode,
@@ -1208,6 +1212,7 @@ export const carouselDailyCronFn = inngest.createFunction(
           recentNames,
           feedback: `${(await getLaneFeedback(laneKey)) ?? ""}${coverGuidance}` || null,
           ...(forcedTopic ? { fixedTitle: forcedTopic } : {}),
+          ...(forcedOptionCount ? { optionCount: forcedOptionCount } : {}),
         });
       });
       logger.info(`[carousel-cron] Choice (${laneKey}): "${topic.title}" — ${topic.options.map((o) => o.name).join(" / ")}`);

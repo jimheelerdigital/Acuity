@@ -7,6 +7,36 @@
 
 ---
 
+## [2026-10-07] — Captions are now quick, relatable and end with a question; one-off posts can have 3 options
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** see "content: Rewrite captions to be quick and end on a question" and "feat: Let a requested choice post lock its subject and option count"
+
+### In plain English (for Keenan)
+- **Captions:** every caption on Ripple, BWK and Mythicals is now one or two short lines that end with one easy question, then the hashtags.
+  - No emojis, no hot takes, no two-part questions.
+  - The captions Keenan picked today are now the examples the writer works from.
+  - Every sentence gets a capital and a period. Some captions had been going out all lowercase with no full stop.
+- **Hand-requested posts:** these can now lock the subject (e.g. standalone weapons) and use 3 options instead of 5. First use: "WHICH MYTHICAL WEAPON CHOOSES YOU?" with 3 standalone weapons.
+
+### Technical changes (for Jimmy)
+- `lib/content-factory/caption-writer.ts`:
+  - output is now `{caption, hashtags}`, with `CAPTION_EXAMPLES` per brand and `MAX_CAPTION_CHARS` 220
+  - `shapeProblem()` triggers the one rewrite if the caption is too long, doesn't end with "?" or asks several questions
+  - `stripEmoji()`, and `punctuate()` for sentence case plus a closing mark on every line
+  - shorter question rules for every brand
+  - `writeCaption` is exported for testing
+- `lib/content-factory/choice-lane.ts`: `ChoiceTopicOpts.optionCount` (2–5, default 5) carries through the prompt, validation and the rewrite feedback.
+- `inngest/functions/carousel-living-reel.ts`: the lane-request body now accepts `category` and `optionCount` and passes them on the daily.generate event.
+- `inngest/functions/carousel-daily.ts`: forcedCategory overrides the bandit category; forcedOptionCount goes to generateChoiceTopic.
+
+### Manual steps needed
+- None
+
+### Notes
+- Captions already written stay as they are, because the writer runs once per post (captionWrittenAt). New posts get the new style.
+- Claude can't be called locally (the API key is prod-only), so the new captions are first seen on the next real posts.
+
 ## [2026-10-07] — Mythicals: "which weapon" posts can show the weapons on their own
 **Requested by:** Keenan
 **Committed by:** Claude Code

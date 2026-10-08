@@ -369,6 +369,11 @@ type ChoiceTopicOpts = {
    * the title: the best-of-5 cover step and any rewrite can't replace it.
    */
   fixedTitle?: string;
+  /**
+   * Options on the post (default 5). 2026-10-07, per Keenan: "a new 'which
+   * mythical weapon chooses you?' post with 3 weapons". Requested by hand only.
+   */
+  optionCount?: number;
 };
 
 /**
@@ -449,7 +454,7 @@ async function generateChoiceTopicChecked(opts: ChoiceTopicOpts): Promise<Choice
       ...opts,
       feedback: `${opts.feedback ?? ""}\n\nREJECTED DRAFT "${first.title}" (${first.options
         .map((o) => o.name)
-        .join(", ")}): ${firstProblems.join("; ")}. Write a new post that fixes this: five options that are each tempting and clearly different from each other.`,
+        .join(", ")}): ${firstProblems.join("; ")}. Write a new post that fixes this: ${optionCount(opts)} options that are each tempting and clearly different from each other.`,
     });
     const secondProblems = await choiceTopicProblems(second);
     if (secondProblems.length > firstProblems.length) {
@@ -598,6 +603,10 @@ async function choiceTopicProblems(topic: ChoiceTopic): Promise<string[]> {
   return problems;
 }
 
+function optionCount(opts: ChoiceTopicOpts): number {
+  return opts.optionCount && opts.optionCount >= 2 && opts.optionCount <= 5 ? Math.round(opts.optionCount) : 5;
+}
+
 async function generateChoiceTopicOnce(opts: ChoiceTopicOpts): Promise<ChoiceTopic> {
   const { prisma } = await import("@/lib/prisma");
   const start = Date.now();
@@ -612,6 +621,9 @@ async function generateChoiceTopicOnce(opts: ChoiceTopicOpts): Promise<ChoiceTop
       ? `Options used recently (pick different creatures and fighters):\n${opts.recentNames.slice(0, 60).join(", ")}`
       : "",
     opts.feedback ?? "",
+    optionCount(opts) !== 5
+      ? `OPTION COUNT FOR THIS POST: exactly ${optionCount(opts)} options, not five. Everywhere the rules say five, use ${optionCount(opts)}.`
+      : "",
   ]
     .filter(Boolean)
     .join("\n\n");
@@ -667,9 +679,9 @@ async function generateChoiceTopicOnce(opts: ChoiceTopicOpts): Promise<ChoiceTop
       scene: o.scene!.trim(),
       motion: typeof o.motion === "string" ? o.motion.trim() : "",
     }))
-    .slice(0, 5);
+    .slice(0, optionCount(opts));
   const title = (parsed.title ?? "").trim();
-  if (!title || options.length < 5 || !parsed.coverScene) {
+  if (!title || options.length < optionCount(opts) || !parsed.coverScene) {
     throw new Error(`choice topic unusable: title="${title}", ${options.length} options`);
   }
   let endCard = (parsed.endCard ?? "").trim() || "WHICH ONE IS YOURS?";
