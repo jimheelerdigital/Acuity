@@ -7,6 +7,29 @@
 
 ---
 
+## [2026-10-08] — Mythicals: one daily email with every video to post on Instagram by hand
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** see "feat: Email all Mythicals posts in one daily email for manual posting"
+
+### In plain English (for Keenan)
+We tested it: Instagram's "share to Facebook/Threads" only works for reels posted from the Instagram app, not for ones our system posts. So we've stopped posting Mythicals to Instagram automatically. Each morning, one email arrives with all of the day's Mythicals posts. Each post has a "Save video to camera roll" button and the caption to copy. Keenan posts them in the Instagram app, and Instagram shares them to Facebook and Threads. YouTube keeps posting automatically.
+
+### Technical changes (for Jimmy)
+- `apps/web/src/inngest/functions/social-publish-cron.ts`: new env `IG_MANUAL_BRANDS` (default `"mythicals"`) means no `instagram` SocialPublish row for that brand. Together with `FB_VIA_IG_BRANDS`, Mythicals now only gets `youtube` rows.
+- `apps/web/src/lib/content-factory/email.ts`: new `sendMythicalsDailyEmail(postIds, date)`. One email, each post has its cover, a save-to-camera-roll button (`/save-video`, regular reel with owned music, not the `-ig` copy), and its caption. Videos are linked, not attached. Sets `emailedAt` on all posts.
+- `apps/web/src/inngest/functions/carousel-daily-digest.ts`: the per-post email loop now leaves out `mythic*` lanes and sends them as one email (`email-mythicals` step) once the batch is complete, or at the 13:00 UTC deadline.
+
+### Manual steps needed
+- None. Undo with `IG_MANUAL_BRANDS=""` and `FB_VIA_IG_BRANDS=""` in Vercel, then redeploy.
+
+### Notes
+- Test 10-08: a reel posted through the API to IG was not shared to FB, but one Keenan posted in the app went to FB and Threads.
+- Mythicals IG metrics and the learning loop lose their source for new posts, because manual posts have no externalId. To restore that, match manual IG posts back by caption through the IG API (not built).
+- Videos sent are the regular reels (owned AI music). The IG-only song copy would get muted once it's shared to Facebook.
+
+---
+
 ## [2026-10-08] — Mythicals stops uploading to Facebook separately; Instagram shares to it instead
 **Requested by:** Keenan
 **Committed by:** Claude Code

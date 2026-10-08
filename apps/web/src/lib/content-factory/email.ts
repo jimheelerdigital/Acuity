@@ -922,6 +922,75 @@ export async function sendStoryVideoEmail(
   return { emailId };
 }
 
+/**
+ * Legendary Mythicals daily posting email (2026-10-08, per Keenan: "send me
+ * all 5 posts in ONE email, that I can download every single video from that
+ * email and post daily on instagram ... save the video to my camera roll
+ * right from that email for all 5 videos"). Keenan posts these to Instagram
+ * by hand, and Instagram's share setting carries them to Facebook + Threads
+ * (that share skips API-published reels). Each post: cover, a "Save video to
+ * camera roll" button, and the caption to paste. Videos are linked, never
+ * attached (5 videos blow Resend's 40MB cap). The regular reel (owned music)
+ * is sent, not the -ig copy, because the share puts it on Facebook too,
+ * which mutes the IG song. YouTube keeps auto-posting.
+ */
+export async function sendMythicalsDailyEmail(postIds: string[], dateStr: string): Promise<{ emailId: string }> {
+  if (!postIds.length) return { emailId: "" };
+  const { prisma } = await import("@/lib/prisma");
+  const { readVideoMarker, reelPath } = await import("./post-video");
+  const { ensureWrittenCaption } = await import("@/lib/content-factory/caption-writer");
+  const { supabase } = await import("@/lib/supabase.server");
+
+  const posts = await prisma.carouselPost.findMany({
+    where: { id: { in: postIds } },
+    include: { slides: { orderBy: { order: "asc" } } },
+  });
+  posts.sort((a, b) => postIds.indexOf(a.id) - postIds.indexOf(b.id));
+
+  const blocks: string[] = [];
+  const textParts: string[] = [];
+  let missing = 0;
+  for (const [i, post] of posts.entries()) {
+    const caption = (await ensureWrittenCaption(post.id).catch(() => null)) ?? post.caption;
+    const marker = await readVideoMarker(post.id).catch(() => null);
+    const url = marker?.url ?? supabase.storage.from("content-factory").getPublicUrl(reelPath(post.id)).data.publicUrl;
+    const ready = (await fetch(url, { method: "HEAD" }).catch(() => null))?.ok === true;
+    if (!ready) missing++;
+    const save = saveToPhoneUrl(url, `mythicals-${dateStr}-${i + 1}.mp4`);
+    const cover = post.slides[0]?.imageUrl ?? "";
+    blocks.push(`
+      <div style="border-top:1px solid #333;padding:20px 0;">
+        <p style="margin:0 0 10px;font-size:13px;color:#999;">POST ${i + 1} OF ${posts.length}</p>
+        <h3 style="margin:0 0 12px;font-size:18px;color:#fff;">${escapeHtml(post.headline)}</h3>
+        ${cover ? `<img src="${cover}" alt="" width="160" style="border-radius:8px;display:block;margin-bottom:12px;" />` : ""}
+        <a href="${save}" style="display:inline-block;padding:14px 22px;background:#F5C26B;color:#111;border-radius:10px;text-decoration:none;font-weight:700;font-size:16px;">Save video to camera roll</a>
+        ${ready ? "" : `<p style="font-size:13px;color:#E06C75;margin:8px 0 0;">Video still rendering. The button works once it's done.</p>`}
+        <p style="margin:14px 0 4px;font-size:13px;color:#999;">Caption (press and hold to copy):</p>
+        <pre style="white-space:pre-wrap;font-family:inherit;font-size:14px;color:#eee;background:#1a1a1a;padding:12px;border-radius:8px;margin:0;">${escapeHtml(caption)}</pre>
+      </div>`);
+    textParts.push(`POST ${i + 1}: ${post.headline}\nSave video: ${save}\n\n${caption}\n`);
+  }
+
+  const html = `<div style="font-family:-apple-system,sans-serif;max-width:560px;margin:0 auto;padding:24px;background:#111;color:#eee;line-height:1.5;">
+    <h2 style="margin:0 0 6px;color:#fff;">Legendary Mythicals: today's ${posts.length} posts</h2>
+    <p style="margin:0 0 4px;font-size:14px;color:#bbb;">Post each one to Instagram. Sharing sends it on to Facebook and Threads. YouTube posts on its own.</p>
+    ${blocks.join("")}
+  </div>`;
+
+  const resend = getResendClient();
+  const resp = await resend.emails.send({
+    from: FROM_ADDRESS,
+    to: TO_ADDRESS,
+    subject: `[Legendary Mythicals] Today's ${posts.length} posts to put on Instagram, ${dateStr}${missing ? ` (${missing} still rendering)` : ""}`,
+    html,
+    text: textParts.join("\n"),
+  });
+  const emailId = resendEmailId(resp);
+  await prisma.carouselPost.updateMany({ where: { id: { in: postIds } }, data: { emailedAt: new Date(), emailId } });
+  console.log(`[mythicals-email] Sent ${posts.length} posts for ${dateStr} (resendId=${emailId})`);
+  return { emailId };
+}
+
 function escapeHtml(s: string): string {
   return s
     .replace(/&/g, "&amp;")

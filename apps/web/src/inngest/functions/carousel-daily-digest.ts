@@ -52,20 +52,27 @@ export const carouselDailyDigestFn = inngest.createFunction(
           if (blocker && blocker !== "no posts") waiting.push(`${brand}: ${blocker}`);
           ids.push(...state.posts.map((p) => p.id));
         }
-        if (waiting.length) return { ids: [] as string[], waiting };
+        if (waiting.length) return { ids: [] as string[], mythicals: [] as string[], waiting };
         const unsent = await prisma.carouselPost.findMany({
           where: { id: { in: ids }, emailedAt: null },
-          select: { id: true },
+          select: { id: true, lane: true },
         });
         const open = new Set(unsent.map((p) => p.id));
-        return { ids: ids.filter((id) => open.has(id)), waiting };
+        // Legendary Mythicals goes out as ONE email with all the day's
+        // posts (2026-10-08, per Keenan) — see sendMythicalsDailyEmail.
+        const myth = new Set(unsent.filter((p) => p.lane?.startsWith("mythic")).map((p) => p.id));
+        return {
+          ids: ids.filter((id) => open.has(id) && !myth.has(id)),
+          mythicals: ids.filter((id) => myth.has(id)),
+          waiting,
+        };
       });
       if (order.waiting.length) return { date, waiting: order.waiting };
       // Jev #2 publish gate (2026-09-30): the batch is complete here, so
       // rank each brand-day now (if the social cron hasn't yet) — held
       // posts' emails then carry the "HELD by Jev" label — and kick the
       // social scan so the kept posts queue right away. Fail open.
-      if (order.ids.length) {
+      if (order.ids.length || order.mythicals.length) {
         await step.run("publish-gate", async () => {
           const { publishGateEnabled, resolveDayGate } = await import("@/lib/content-factory/publish-gate");
           if (!publishGateEnabled()) return "off";
@@ -88,8 +95,14 @@ export const carouselDailyDigestFn = inngest.createFunction(
           await sendCarouselEmail(id, false, { allLanes: true });
         });
       }
-      logger.info(`[post-emails] ${date}: sent ${order.ids.length} post email(s), BWK first`);
-      return { date, sent: order.ids.length };
+      if (order.mythicals.length) {
+        await step.run("email-mythicals", async () => {
+          const { sendMythicalsDailyEmail } = await import("@/lib/content-factory/email");
+          await sendMythicalsDailyEmail(order.mythicals, date);
+        });
+      }
+      logger.info(`[post-emails] ${date}: sent ${order.ids.length} post email(s) + ${order.mythicals.length} Mythicals in one`);
+      return { date, sent: order.ids.length, mythicals: order.mythicals.length };
     }
     const isCron = event?.name !== "content-factory/digest.check";
     const data = (event?.data ?? {}) as { brand?: "ripple" | "bwk"; date?: string; force?: boolean };

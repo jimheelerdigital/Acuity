@@ -295,13 +295,16 @@ export const socialPublishCronFn = inngest.createFunction(
         const mythBacklog =
           brand === "mythicals" && (!mythStart || post.generatedFor < new Date(`${mythStart}T00:00:00Z`));
         if (!bwkBacklog && !mythBacklog && (await resolveAccount(post.lane))) {
-          platforms.push("instagram");
-          // Brands whose Facebook page gets the reel through Instagram's own
-          // "share to Facebook" setting instead of a separate upload
-          // (2026-10-08: Mythicals FB averaged 0–5 views per direct upload).
-          // FB_VIA_IG_BRANDS="" restores direct uploads for every brand.
-          const viaIg = (process.env.FB_VIA_IG_BRANDS ?? "mythicals").split(",").map((s) => s.trim());
-          if (!viaIg.includes(brand)) platforms.push("facebook");
+          // Brands Keenan posts to Instagram by hand from the daily email
+          // (2026-10-08: Mythicals). Instagram's "share to Facebook/Threads"
+          // only works for app-posted reels, so his post reaches all three;
+          // we upload to neither. IG_MANUAL_BRANDS="" and FB_VIA_IG_BRANDS=""
+          // restore direct uploads.
+          const list = (v: string | undefined, d: string) => (v ?? d).split(",").map((s) => s.trim());
+          if (!list(process.env.IG_MANUAL_BRANDS, "mythicals").includes(brand)) platforms.push("instagram");
+          // FB via Instagram's share (2026-10-08: Mythicals FB averaged 0–5
+          // views per direct upload).
+          if (!list(process.env.FB_VIA_IG_BRANDS, "mythicals").includes(brand)) platforms.push("facebook");
         }
         // Threads + YouTube have their own per-brand creds (2026-09-23)
         // and only get rows when those exist — no SKIPPED noise.
