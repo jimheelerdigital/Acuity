@@ -54,7 +54,7 @@ export function ShareButtons({ slug, name, path, imageUrl }: { slug: string; nam
       a.click();
     }
     await navigator.clipboard?.writeText(url()).catch(() => {});
-    flash("Image saved and link copied. Post it to your Instagram Story.");
+    flash("Image saved. Open Instagram, add it to your Story, and paste the link sticker.");
   };
   const native = async () => {
     if (!navigator.share) return copy();
@@ -73,7 +73,7 @@ export function ShareButtons({ slug, name, path, imageUrl }: { slug: string; nam
         Share my creature
       </button>
       <div className="grid grid-cols-3 gap-2 sm:grid-cols-6">
-        <button type="button" className={btn} onClick={instagram}>Instagram</button>
+        <button type="button" className={btn} onClick={instagram}>IG Story</button>
         <button type="button" className={btn} onClick={() => open("facebook", `https://www.facebook.com/sharer/sharer.php?u=${enc(url())}`)}>Facebook</button>
         <button type="button" className={btn} onClick={() => open("x", `https://twitter.com/intent/tweet?text=${enc(text)}&url=${enc(url())}`)}>X</button>
         <button type="button" className={btn} onClick={() => open("whatsapp", `https://wa.me/?text=${enc(`${text} ${url()}`)}`)}>WhatsApp</button>
