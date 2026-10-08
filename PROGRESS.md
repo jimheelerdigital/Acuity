@@ -7,6 +7,34 @@
 
 ---
 
+## [2026-10-07] — Jev now grades Mythicals for engagement and relatability, not just "epic"
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** see "feat: Grade Mythicals posts for engagement and relatability"
+
+### In plain English (for Keenan)
+- **The problem:** Mythicals posts had drifted over the top: made-up names like "The Wyrmfang Spear", obscure concepts, and everything pushed to maximum "epic".
+- **Jev's new checks:**
+  - Can a typical fantasy fan instantly recognize and connect with each option? Fans love dragons, cool beasts, cool weapons and cool characters they already know.
+  - Would the post as a whole get fans to comment their pick?
+- **What fails:** obscure options and low-engagement posts get rewritten.
+- **The cover question:** relatability is now a quarter of Jev's pick, and "how epic" dropped from 35% to 15%.
+- **The writer** is told to lean on what fans love, with plain readable names.
+- **Spear fix:** whole weapons stay in frame, and long ones stand upright.
+
+### Technical changes (for Jimmy)
+- `lib/content-factory/choice-lane.ts`:
+  - per-option `relate_i` score (RELATE_MIN 0.35) and a post-level `engage` score (ENGAGE_MIN 0.4) in `choiceTopicProblems`, both producing rewrite problems
+  - new RELATABLE TO FANTASY FANS rule in SYSTEM
+  - framing rule on the option image line (commit d1d2c2ad)
+- `lib/content-factory/performance-loop.ts`: Jev cover pick gains `relate_i`. Weights changed from scroll .30 / comment .25 / clear .10 / cool .35 to scroll .25 / comment .25 / clear .10 / cool .15 / relate .25.
+
+### Manual steps needed
+- None
+
+### Notes
+- The "epic" check stays as a floor (no real-world animals or everyday life). It just no longer dominates.
+
 ## [2026-10-07] — Captions are now quick, relatable and end with a question; one-off posts can have 3 options
 **Requested by:** Keenan
 **Committed by:** Claude Code

@@ -137,6 +137,7 @@ EPIC, NEVER ORDINARY (2026-10-02, per Keenan: "focus more on beasts and weapons 
 - Every hero is a legendary, larger-than-life warrior in sick mythic armor with a legendary weapon: dragon knights, titan-slayers, rune-armored valkyries, demon hunters. Never an ordinary person, a job or a quiet life (no fishers, cartographers, archivists, innkeepers).
 - Weapons and armor are legendary and striking: forged from dragon bone, storm-forged, glowing runes, ornate and intimidating.
 - ABILITIES, TONED DOWN (2026-10-06, per Keenan: "dragons can be normal full fire/ice bursts depending on the dragon type, but everything else is toned down. pulsing runes are ok as long as they blend properly. it's more so the magic stuff"): dragons breathe full fire or ice to match their type; armor and weapons may have softly pulsing runes that blend into the material; everything else stays natural. No magic effects: no auras, ghostfire, crawling lightning, energy glows or sparkles. Everything blends perfectly into the scene's light, color and materials ("everything just needs to blend perfectly"). The design, scale and setting make it epic, not effects.
+- RELATABLE TO FANTASY FANS (2026-10-07, per Keenan: "most love dragons, cool beasts, etc. anything they can identify with"): lean on what fans already love and picture themselves with: dragons and cool beasts (dire wolves, griffins, phoenixes, krakens), cool weapons (a great sword, a war axe, a dragon-bone bow) and cool characters (a dragon knight, a valkyrie, a ranger, a dark warlord). Make each option instantly recognizable from its name and picture; a cool twist on a familiar thing beats an obscure invented one. Names stay plain and readable ("The Frost Dragon", "The Knight's Greatsword"), not stacks of made-up words.
 - BEASTS NEVER USE WEAPONS (2026-10-05, per Keenan: "it's a god damn beast, it can't use a sword"): a creature never holds, swings or wields a sword, axe, spear or any weapon. Only a humanoid hero or warrior may hold a weapon, and even then it rests in hand, never swung.
 - No places, towns, inns, taverns or "new lives" as options.
 - STANDALONE WEAPONS: when this post's subject says the weapons are standalone, every option scene shows ONLY the weapon, alone and unheld (on an altar, pedestal or anvil, driven into stone, or hung upright), standing vertical or on a steep diagonal and whole in the frame, lit dramatically in its own setting, with no person, hand, wielder or creature anywhere. The cover may show several weapons waiting on altars in one dark hall, like an armory or cathedral. A title in the spirit of "ONLY ONE WEAPON WILL OBEY YOU. WHICH ONE WOULD YOU TRUST?" fits; write new words.
@@ -473,6 +474,14 @@ const THROWAWAY_THRESHOLD = 0.25;
 /** Below this "epic and mythical" probability an option earns a rewrite (2026-10-02). */
 const EPIC_MIN = 0.5;
 
+/**
+ * Engagement + relatability (2026-10-07, per Keenan: "we want Jev to also
+ * grade for engagement and relatability... fantasy lovers... most love
+ * dragons, cool beasts, etc. anything they can identify with").
+ */
+const RELATE_MIN = 0.35;
+const ENGAGE_MIN = 0.4;
+
 /** Below this, an option doesn't read as what the title promises (2026-10-04). */
 const KIND_MIN = 0.5;
 /** 2026-10-06: each option's PICTURE must show the asked-for thing as the hero. */
@@ -534,7 +543,28 @@ async function choiceTopicProblems(topic: ChoiceTopic): Promise<string[]> {
         "Hugely: the one people would fight about in the comments",
       ],
     };
+    questions[`relate_${i}`] = {
+      type: "score",
+      instructions: `How instantly would a typical fantasy fan recognize \`options[${i}]\` and connect with it, without needing any lore explained? Fans love dragons and cool beasts (dire wolves, griffins, phoenixes, krakens), cool weapons (a great sword, a war axe, a dragon-bone bow) and cool characters (a dragon knight, a valkyrie, a ranger, a dark warlord): things they already know and picture themselves with.`,
+      criteria: [
+        "Not at all: an obscure or invented thing they'd need explained",
+        "A little: recognizable, but nothing they feel drawn to",
+        "Clearly: a fan instantly gets it and likes it",
+        "Hugely: a fan favorite they'd picture themselves with right away",
+      ],
+    };
   });
+  questions.engage = {
+    type: "score",
+    instructions:
+      "Scrolling past this post, how likely is a fantasy fan to stop, read every option and comment their pick? Judge the question and the five options together: is it a choice fans genuinely care about and would argue over?",
+    criteria: [
+      "Unlikely: they'd scroll on",
+      "Some: a few would comment",
+      "Likely: plenty of fans would comment a pick",
+      "Very likely: the comments turn into a debate",
+    ],
+  };
   questions.title_clear = {
     type: "noul",
     instructions:
@@ -556,6 +586,7 @@ async function choiceTopicProblems(topic: ChoiceTopic): Promise<string[]> {
   const offKind: string[] = [];
   const humanFaced: string[] = [];
   const offScene: string[] = [];
+  const obscure: string[] = [];
   topic.options.forEach((o, i) => {
     const sc = noulOf(r, `scene_${i}`);
     if (sc !== null && sc < SCENE_MIN) offScene.push(o.name);
@@ -569,16 +600,27 @@ async function choiceTopicProblems(topic: ChoiceTopic): Promise<string[]> {
     if (s !== null && s < THROWAWAY_THRESHOLD) weak.push(o.name);
     const e = noulOf(r, `epic_${i}`);
     if (e !== null && e < EPIC_MIN) ordinary.push(o.name);
+    const rel = scoreOf(r, `relate_${i}`);
+    if (rel !== null && rel < RELATE_MIN) obscure.push(o.name);
   });
+  const engage = scoreOf(r, "engage");
   console.log(
     `[choice-lane] Jev check "${topic.title}": ` +
       topic.options
-        .map((o, i) => `${o.name} kind=${noulOf(r, `kind_${i}`)?.toFixed(2)} twin=${noulOf(r, `twin_${i}`)?.toFixed(2)} tempt=${scoreOf(r, `tempt_${i}`)?.toFixed(2)} epic=${noulOf(r, `epic_${i}`)?.toFixed(2)}`)
-        .join(" | ")
+        .map((o, i) => `${o.name} kind=${noulOf(r, `kind_${i}`)?.toFixed(2)} twin=${noulOf(r, `twin_${i}`)?.toFixed(2)} tempt=${scoreOf(r, `tempt_${i}`)?.toFixed(2)} epic=${noulOf(r, `epic_${i}`)?.toFixed(2)} relate=${scoreOf(r, `relate_${i}`)?.toFixed(2)}`)
+        .join(" | ") + ` | engage=${engage?.toFixed(2)}`
   );
   // One twin flag alone can be the model noticing its partner; two or more is a real pair.
   if (twins.length >= 2) problems.push(`these options are too alike: ${twins.join(", ")}`);
   if (weak.length) problems.push(`these options are throwaways nobody would pick: ${weak.join(", ")}`);
+  if (obscure.length)
+    problems.push(
+      `fantasy fans wouldn't instantly recognize or connect with these: ${obscure.join(", ")}. Swap them for things fans already love and picture themselves with (a dragon, a dire wolf, a griffin, a great sword, a dragon knight), named plainly`
+    );
+  if (engage !== null && engage < ENGAGE_MIN)
+    problems.push(
+      "as a whole this post wouldn't get fantasy fans to comment a pick. Make the choice one they genuinely care about and would argue over, with options they love"
+    );
   if (humanFaced.length)
     problems.push(
       `these creatures have human faces, which Keenan never wants: ${humanFaced.join(", ")}. Replace them with creatures whose faces are fully animal, reptilian or monstrous`

@@ -749,6 +749,20 @@ export async function pickMythicCover(
         "Sick: colossal mythical beasts, legendary weapons or armor fans would fight about",
       ],
     };
+    // 2026-10-07, per Keenan: "jev [should] also grade for engagement and
+    // relatability... most love dragons, cool beasts... cool weapons, cool
+    // characters... anything they can identify with". Cool alone was pushing
+    // covers over the top.
+    q[`relate_${i}`] = {
+      type: "score",
+      instructions: `How much would a typical fantasy fan identify with the choice in \`covers[${i}]\` and picture themselves making it? Fans love dragons, cool beasts, cool weapons and cool characters they already know; obscure or invented concepts that need explaining score low.`,
+      criteria: [
+        "Not at all: obscure, needs explaining",
+        "A little: they get it but don't feel it",
+        "Clearly: a fan pictures their own pick right away",
+        "Hugely: every fan has an instant answer and wants to share it",
+      ],
+    };
   });
   const [r, rc] = await Promise.all([
     askJev(
@@ -769,18 +783,20 @@ export async function pickMythicCover(
     // proven shapes ("IF YOU KNOW HER, WHAT ARMOR DOES SHE CHOOSE?") that
     // Jev's cover-only clarity scores ~0.3 in tests (2026-09-30).
     const cool = scoreOf(r, `cool_${i}`) ?? 0;
-    const score = 0.3 * scroll + 0.25 * comment + 0.1 * clear + 0.35 * cool;
+    const relate = scoreOf(r, `relate_${i}`) ?? 0;
+    // 2026-10-07: cool 0.35 → 0.15, relatability 0.25 (it was making covers over the top).
+    const score = 0.25 * scroll + 0.25 * comment + 0.1 * clear + 0.15 * cool + 0.25 * relate;
     const eligible = true;
     if (eligible && score > bestScore) {
       bestScore = score;
       best = i;
     }
-    return { t, score, scroll, comment, clear, cool, eligible };
+    return { t, score, scroll, comment, clear, cool, relate, eligible };
   });
   return {
     title: titles[best],
     table: rows
-      .map((x, i) => `${i === best ? "*" : " "} ${x.score.toFixed(3)} scroll=${x.scroll.toFixed(2)} comment=${x.comment.toFixed(2)} clear=${x.clear.toFixed(2)} cool=${x.cool.toFixed(2)}${x.eligible ? "" : " INELIGIBLE"}  ${x.t}`)
+      .map((x, i) => `${i === best ? "*" : " "} ${x.score.toFixed(3)} scroll=${x.scroll.toFixed(2)} comment=${x.comment.toFixed(2)} clear=${x.clear.toFixed(2)} cool=${x.cool.toFixed(2)} relate=${x.relate.toFixed(2)}${x.eligible ? "" : " INELIGIBLE"}  ${x.t}`)
       .join("\n"),
   };
 }
