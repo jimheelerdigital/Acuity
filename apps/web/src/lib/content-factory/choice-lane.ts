@@ -467,9 +467,19 @@ async function withBestTitle(topic: ChoiceTopic, mode: NonNullable<ChoiceTopicOp
  * rewrites, then the run fails (no post that hour) instead of publishing a
  * mismatch. Twins and throwaways stay soft (best draft ships).
  */
-const HARD_PROBLEM = /don't say they are what the title promises|pictures don't show|human faces|title doesn't read naturally|realistic or ordinary|copy check flagged/;
+const HARD_PROBLEM_ALL = /don't say they are what the title promises|pictures don't show|human faces|title doesn't read naturally|realistic or ordinary|copy check flagged/;
+/**
+ * "HOW BIG WOULD THEY REALLY BE? PART N" (size mode) has a fixed series title
+ * and real-world scale shots, and asks no "pick a kind" question, so the
+ * title, picture-hero, name and "ordinary" checks don't fit it: after the
+ * hard gate landed (f623ffa3) every size run failed all four drafts and the
+ * day lost its posts (2026-10-09: only 3 Mythicals posts; runs 08/09 UTC
+ * died). Size posts only hard-fail on human faces or a flagged line.
+ */
+const SIZE_HARD_PROBLEM = /human faces|copy check flagged/;
 
 async function generateChoiceTopicChecked(opts: ChoiceTopicOpts): Promise<ChoiceTopic> {
+  const HARD_PROBLEM = opts.mode === "size" ? SIZE_HARD_PROBLEM : HARD_PROBLEM_ALL;
   let best: { topic: ChoiceTopic; problems: string[] } | null = null;
   let feedback = opts.feedback ?? "";
   for (let attempt = 0; attempt < 4; attempt++) {
@@ -653,7 +663,7 @@ async function choiceTopicProblems(topic: ChoiceTopic): Promise<string[]> {
       `these options' pictures don't show what the title asks the reader to pick as the hero: ${offScene.join(", ")}. Rewrite their scenes so that thing fills the frame (worn, wielded or on display); any creature or threat stays small in the background`
     );
   const clear = noulOf(r, "title_clear");
-  if (clear !== null && clear < TITLE_CLEAR_MIN && !/^(IF YOU KNOW|TOP \d)/i.test(topic.title))
+  if (clear !== null && clear < TITLE_CLEAR_MIN && !/^(IF YOU KNOW|TOP \d|HOW BIG)/i.test(topic.title))
     problems.push(
       `the title doesn't read naturally ("${topic.title}"). Rewrite it as a plain question or instruction to the reader, e.g. "PICK YOUR ARMOR TO SURVIVE A DRAGON'S FIRE BREATH"`
     );

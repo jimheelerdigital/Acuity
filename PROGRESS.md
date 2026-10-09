@@ -7,6 +7,27 @@
 
 ---
 
+## [2026-10-09] — Fix: the daily "How big would they really be?" post was failing every day
+
+- **Requested by:** Keenan
+- **Committed by:** Claude Code
+- **Commit hash:** (see git log: "fix: Stop the Mythicals size post failing the quality gate")
+
+### In plain English (for Keenan)
+Since last night, the daily "How big would they really be? Part N" Mythicals post failed every time and was never made. That's why only 3 Mythicals posts went out today instead of 5. The quality check was judging it like a "pick one" post, which it isn't. It now only blocks a size post for a human-faced creature or a nonsense line.
+
+### Technical changes (for Jimmy)
+- `apps/web/src/lib/content-factory/choice-lane.ts`:
+  - `generateChoiceTopicChecked` uses `SIZE_HARD_PROBLEM` (/human faces|copy check flagged/) for mode "size". Other modes keep `HARD_PROBLEM_ALL`.
+  - The title_clear check also exempts titles starting "HOW BIG", next to "IF YOU KNOW" and "TOP N".
+
+### Manual steps needed
+None
+
+### Notes
+- Cause: f623ffa3 (10-08 23:07 CT) turned the Jev topic check into a hard gate: 4 drafts, then the run throws. Size posts have a fixed series title, real-world scale shots and no "pick a kind" question, so they failed title/hero/name/ordinary checks on all 4 drafts, × 3 Inngest retries (24 choice-topic calls per run in ClaudeCallLog, against 2-3 for a healthy run).
+- How to spot this again without Inngest access: count `choice-topic` rows in ClaudeCallLog per hour. Around 12 per run with no new CarouselPost means the gate is failing every draft.
+
 ## [2026-10-09] — Mythicals videos on Kling 3 with their own sound; YouTube gets music and a daily catch-up
 
 - **Requested by:** Keenan
