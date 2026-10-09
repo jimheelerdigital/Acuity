@@ -7,6 +7,28 @@
 
 ---
 
+## [2026-10-08] — Automatic Instagram and Facebook posting back on; no YouTube backlog
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** see "feat: Turn automatic Instagram and Facebook posting back on"
+
+### In plain English (for Keenan)
+Posts go to Instagram and Facebook automatically again, uploaded to each one separately as before. The planned catch-up of old Mythicals videos on YouTube is cancelled; YouTube only gets new posts from now on.
+
+### Technical changes (for Jimmy)
+- `apps/web/src/inngest/functions/social-publish-cron.ts`: `IG_MANUAL_BRANDS` / `FB_VIA_IG_BRANDS` now default to `""`, so every brand gets instagram + facebook SocialPublish rows again. The env vars still switch a brand to manual posting.
+- The held `youtube-backlog` step was dropped from the 10-08 animation patch before it shipped. The existing daily pick still skips old pending YouTube rows.
+- The Facebook cap of 2 posts a day per Page (`FB_DAILY_CAP`) still applies.
+
+### Manual steps needed
+- None.
+
+### Notes
+- Same day: we tested Instagram's share-to-Facebook and it doesn't fire for API-published reels. Keenan chose direct uploads to both instead of posting by hand.
+- The single daily Mythicals email (`sendMythicalsDailyEmail`) still goes out.
+
+---
+
 ## [2026-10-08] — Server route for one-off viral Instagram research
 **Requested by:** Keenan
 **Committed by:** Claude Code
