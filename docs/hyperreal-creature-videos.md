@@ -14,8 +14,9 @@ Living playbook for the Legendary Mythicals "it's real footage" creature clips: 
 
 1. **Start photo:** the empty real-world scene. No creature anywhere in it.
 2. **End photo:** an edit of the start photo (same camera, same foreground), with the creature at its peak moment.
-3. **One clip:** Seedance 2.5, start and end photos, 15s, 720p, sound on, 9:16. The model animates the journey between the two frames.
-4. **Delivery:** upload to our storage, then email with a "Save to camera roll" button (`/save-video`). Use a direct REST/curl upload for files over ~10MB, because supabase-js timed out.
+3. **Extra references for multi-step clips** (Seedance `image_references`, 10-09): add (a) a clean full-body **creature reference** to lock its design, and (b) a **mid-moment reference** for each big change between the start and end (e.g. "dragon landing on the first jet"). In the script, say which reference shows what and when ("reference 2 is the moment at 6-10s"). References guide the look; they aren't timed keyframes. Only the start and end are exact.
+4. **One clip:** Seedance 2.5, start and end photos, 15s, 720p, sound on, 9:16. The model animates the journey between the two frames.
+5. **Delivery:** upload to our storage, then email with a "Save to camera roll" button (`/save-video`). Use a direct REST/curl upload for files over ~10MB, because supabase-js timed out.
 
 | Item | Setting | Cost |
 |---|---|---|
@@ -52,6 +53,7 @@ Seedance 2.0 (67.5 credits) was tested once, on the roller coaster, and judged n
 ### Prompt wording
 - **Never put a prohibition inside the action beats.** Video models execute every verb they read: a 10-07 shot sheet with "no fire" inside its action text rendered fire downward. Keep the beats purely positive ("breathes a jet of fire up into the sky"). Put the few must-nots in ONE short closing line ("No people, no text.") and nowhere else.
 - **Give a clear, confident action in every beat.** Ambient "stay still" prompts made clips that were "basically just zooming in" (09-29). Action prompts produced 2–3× more motion and "looks way better".
+- **Fire looks like a DIRECTED BEAM, never a house fire** (Keenan, 10-09: "it needs to be almost like a directed fire energy beam and right now it looks like a house fire"). Write: a tightly focused, coherent straight jet, like a high-pressure flamethrower or an energy beam, with a blinding white-hot core, a sharp yellow-orange sheath and a thin outer flame licking off its edges, heat distortion along it, almost no smoke except at the impact point. Never "billowing", "torrent", "fireball from the mouth" or "smoke clouds".
 - **Fire or ice breath:** a head-raise beat first, then a powerful sustained jet (about 2s of a 5s clip, 3–4s of 10s+), up into the sky or sideways across the scene, never at a person. Writing it as head up → column of fire → jaws close fixed the downward-fire bug.
 - **Make the whole scene move:** 2–3 secondary motions (water surging, mist drifting, trees swaying, spray, debris), not just the creature (10-08).
 - Every photo and video prompt includes **"hyper-realistic, high detail, 4K"**. It's wording only; it doesn't change the render resolution.
