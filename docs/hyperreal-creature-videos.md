@@ -69,7 +69,7 @@ Seedance 2.0 (67.5 credits) was tested once, on the roller coaster, and judged n
 
 **Video: Keenan's SHOT SHEET format (required; supplied 10-06, used by `lib/content-factory/shot-sheet.ts`)**
 
-Every video prompt is ONE compact JSON shot sheet. Never a prose paragraph: the 10-09 clips were written as paragraphs, and lost the continuity locks that stop morphing (the serpent) and dissolves (the giant). Keys, in order:
+Every video prompt is ONE JSON shot sheet broken down SCENE BY SCENE (Keenan, 10-09: "the script breakdown that we talked about using for all future videos where it breaks it down into scenes"). Never a prose paragraph: the 10-09 clips were written as paragraphs, and lost the continuity locks that stop morphing (the serpent) and dissolves (the giant). Keys, in order:
 
 ```json
 {
@@ -83,15 +83,13 @@ Every video prompt is ONE compact JSON shot sheet. Never a prose paragraph: the 
     "<creature>": "<from the END frame: species, anatomy WITH COUNTS (exactly two eyes, eight tentacles, two wings, four legs), colors, skin/scale texture, size relative to the vehicle, one single continuous body>. Preserve exactly."
   },
   "effect_continuity": "<breath / water / debris behaviour in positive terms. Breath: head turns to one side, long straight jet shoots sideways out of the side of the frame, ~3-4s, then jaws close. Or: No breath, no effects.>",
-  "shots": [{
-    "shot_number": 1,
-    "duration": "15s",
-    "framing": "Start frame: <matches start image>. Ends on the end frame: <matches end image>.",
-    "camera_motion": "<the vehicle's steady drift/glide plus slight natural handheld sway; direction; end state>",
-    "action": "0-4s: <calm, concrete life>. 4-7s: <physical warning signs>. 7-11s: <creature physically enters from water/cloud/frame edge or a hidden terrain shape rises, as one body; first contact>. 11-15s: <peak: physical damage or contact, vehicle reacts with weight; creature turns its eyes to the lens>.",
-    "emotion": "<2-4 words>",
-    "sound": "<2-4 effects in beat order>. No music, no speech."
-  }],
+  "take": "One continuous 15-second real-time take, broken down into the scenes below. Scenes flow into each other through physical motion only.",
+  "scenes": [
+    {"scene": 1, "time": "0-4s", "framing": "Start frame: <matches start image exactly>", "camera_motion": "<vehicle drift + slight natural sway>", "action": "<calm, concrete life: what moves, what is heard>", "emotion": "<calm, ordinary>", "sound": "<ambient bed>"},
+    {"scene": 2, "time": "4-7s", "framing": "<same view>", "camera_motion": "<continues>", "action": "<physical warning signs: water darkens and bulges, trees lean, birds lift off, a shadow passes>", "emotion": "<unease>", "sound": "<rumble, creak>"},
+    {"scene": 3, "time": "7-11s", "framing": "<same view, creature entering>", "camera_motion": "<continues; may tilt to follow>", "action": "<creature physically emerges from water/cloud/frame edge, or the hidden terrain shape rises, step by step, as ONE connected body; first physical contact>", "emotion": "<shock>", "sound": "<water, snapping, groaning>"},
+    {"scene": 4, "time": "11-15s", "framing": "Ends on the end frame: <matches end image exactly>", "camera_motion": "<settles>", "action": "<peak: physical damage or contact, the vehicle reacts with weight, creature turns its eyes to the lens>", "emotion": "<awe, dread>", "sound": "<impact + creature>. No music, no speech."}
+  ],
   "visual_constraints": [
     "One continuous real-time take: no cuts, crossfades, dissolves, fades or transitions; the creature appears only by physical movement into frame.",
     "No morphing: the creature keeps one exact design and one connected body; no new creatures or people.",
@@ -106,7 +104,7 @@ Writing rules (from `shot-sheet.ts`, Keenan's format):
 - **Roar without breath:** nothing in that beat may blast, spray, pour, burst or gush, or the model turns it into breath. Debris and water around it only fall or drift.
 - **Breath:** sideways out of the side of the frame, never at the lens (it pours down the chest).
 - Every beat is a timed range covering the whole duration with no gaps.
-- Keep the compact JSON under ~2,450 characters.
+- **Length:** Seedance is NOT bound by Kling's 2,500-char cap. A ~5,000-char prompt was accepted in a cost check (10-09), so use the full scene-by-scene breakdown with detailed continuity. Add structure, not filler. (The ~2,450 cap only applies when the clip goes to Kling.)
 
 ---
 
