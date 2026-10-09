@@ -488,6 +488,16 @@ export const carouselPostVideoFn = inngest.createFunction(
       `[post-video] ${postId} (${plan.lane}): ${liveIdx.length} animated / ${plan.slides.length} slides${configured ? "" : " — Higgsfield not configured"}`
     );
 
+    // Mythicals renders on Kling 3.0 with its own sound (2026-10-09, see
+    // MYTHICALS_VIDEO_MODEL): each clip is as long as its slide so the sound
+    // plays in real time, and the reel keeps it instead of adding music.
+    const { MYTHICALS_VIDEO_MODEL, MYTHICALS_SOUND_LINE } = await import("@/lib/content-factory/post-video");
+    const brandModel = plan.brand === "mythicals" && MYTHICALS_VIDEO_MODEL ? MYTHICALS_VIDEO_MODEL : null;
+    const soundOn = plan.brand === "mythicals" && (forcedModel || brandModel || "").startsWith("kling-video/v3.0/");
+    const { LIVING_CLIP_SEC } = await import("@/lib/content-factory/living-reel");
+    const clipSec = (i: number) =>
+      soundOn ? Math.min(15, Math.max(3, Math.ceil(plan.slides[i].seconds))) : LIVING_CLIP_SEC;
+
     // ── 2. Base frame (+ rebuilt layer) per animated slide ───────────
     const prepared: Record<number, { baseUrl: string; layerUrl: string; prompt: string }> = {};
     for (const i of liveIdx) {
@@ -541,9 +551,9 @@ export const carouselPostVideoFn = inngest.createFunction(
         let sheet: string | null = null;
         if (sheetsWanted && plan.brand === "mythicals") {
           const { writeShotSheet, SUBTLE_MOTION_RULES } = await import("@/lib/content-factory/shot-sheet");
-          sheet = await writeShotSheet({ mode: "single", seconds: 5, sound: false, imageUrl: baseUrl, brief: prompt, constraints: SUBTLE_MOTION_RULES });
+          sheet = await writeShotSheet({ mode: "single", seconds: clipSec(i), sound: soundOn, imageUrl: baseUrl, brief: prompt, constraints: SUBTLE_MOTION_RULES });
         }
-        return { baseUrl, layerUrl, prompt: sheet ?? prompt };
+        return { baseUrl, layerUrl, prompt: sheet ?? (soundOn ? `${prompt}\n\n${MYTHICALS_SOUND_LINE}` : prompt) };
       });
     }
 
@@ -569,7 +579,10 @@ export const carouselPostVideoFn = inngest.createFunction(
     // Two passes: the (forced or default) model, then the backup. Since
     // 2026-10-05 both are Kling, so the second pass retries undelivered clips
     // on Kling again (Keenan: no Hailuo, "only the kling we use").
-    const attemptModels = [forcedModel || POST_VIDEO_MODEL, POST_VIDEO_FALLBACK_MODEL].filter((m): m is string => !!m);
+    // Mythicals retries on its own Kling 3.0 model, never a silent fallback.
+    const attemptModels = [forcedModel || brandModel || POST_VIDEO_MODEL, brandModel || POST_VIDEO_FALLBACK_MODEL].filter(
+      (m): m is string => !!m
+    );
     // Out of Higgsfield credits (2026-10-02): stop submitting for this post
     // and ship stills on purpose (the health check won't rebuild it).
     let noCredits = false;
@@ -590,8 +603,9 @@ export const carouselPostVideoFn = inngest.createFunction(
                 const id = await submitCoverVideo({
                   startImageUrl: prepared[i].baseUrl,
                   prompt: prepared[i].prompt,
-                  duration: 5,
+                  duration: clipSec(i),
                   model,
+                  sound: soundOn && model.startsWith("kling-video/v3.0/"),
                 });
                 return { i, id: id as string | null, model };
               } catch (err) {
@@ -676,7 +690,7 @@ export const carouselPostVideoFn = inngest.createFunction(
       segments.push(
         await step.run(`segment-${i}`, async () => {
           const { supabase } = await import("@/lib/supabase.server");
-          const { renderSlideSegment, LIVING_CLIP_SEC } = await import("@/lib/content-factory/living-reel");
+          const { renderSlideSegment } = await import("@/lib/content-factory/living-reel");
           const get = async (u: string) => {
             const r = await fetch(u);
             if (!r.ok) throw new Error(`Download failed (${r.status}): ${u}`);
@@ -699,7 +713,7 @@ export const carouselPostVideoFn = inngest.createFunction(
             });
             slide = { kind: "still" as const, image: await get(row!.imageUrl), seconds: s.seconds };
           }
-          const buf = await renderSlideSegment(slide, { first: i === 0, clipSeconds: LIVING_CLIP_SEC });
+          const buf = await renderSlideSegment(slide, { first: i === 0, clipSeconds: clipSec(i), audio: soundOn });
           const p = `living/${postId}/seg-${i}.mp4`;
           const { error } = await supabase.storage
             .from("content-factory")
@@ -732,12 +746,15 @@ export const carouselPostVideoFn = inngest.createFunction(
       // Song must cover the whole reel, no looping (2026-09-30, per Keenan).
       const ctaSec = plan.brand === "mythicals" || (plan.lane?.startsWith("pick-") && process.env.PICK_CTA !== "1") ? 0 : 3;
       const reelSec = segments.reduce((a, sg) => a + sg.seconds, 0) + ctaSec;
-      const music = await pickMusicTrack(plan.lane, undefined, {
-        minSeconds: Math.max(Math.ceil(reelSec), musicOpts?.minSeconds ?? 0),
-        exclude: musicOpts?.exclude,
-      });
-      if (!music) throw new Error(`No music track at least ${Math.ceil(reelSec)}s long for lane ${plan.lane}`);
-      console.log(`[post-video] ${postId}: music ${music.split("/content-factory/")[1] ?? music}`);
+      // Kling 3.0 sound reels carry only the clips' own sound (YouTube's copy adds music below).
+      const music = soundOn
+        ? null
+        : await pickMusicTrack(plan.lane, undefined, {
+            minSeconds: Math.max(Math.ceil(reelSec), musicOpts?.minSeconds ?? 0),
+            exclude: musicOpts?.exclude,
+          });
+      if (!music && !soundOn) throw new Error(`No music track at least ${Math.ceil(reelSec)}s long for lane ${plan.lane}`);
+      console.log(`[post-video] ${postId}: ${music ? `music ${music.split("/content-factory/")[1] ?? music}` : "clip sound only"}`);
       const { buf, seconds } = await joinPostVideo({
         segments: bufs,
         // Legendary Mythicals posts end on their own "which will you
@@ -751,6 +768,7 @@ export const carouselPostVideoFn = inngest.createFunction(
             ? null
             : `https://goripple.io/cta-slide-${plan.brand}.jpg`,
         musicUrl: music,
+        segmentAudio: soundOn,
       });
       console.log(`[post-video] ${postId}: joined in ${Date.now() - t0}ms (${seconds.toFixed(1)}s video)`);
       const path = reelPath(postId);
@@ -778,6 +796,42 @@ export const carouselPostVideoFn = inngest.createFunction(
       return { url, seconds, bytes: buf.length, live, total: segments.length };
     });
 
+    // YouTube copy (2026-10-09, Mythicals on Kling 3.0 sound): the same reel
+    // with music mixed under the clips' own sound. YouTube only; everything
+    // else posts the clip-sound reel. A failure leaves YouTube on the main reel.
+    if (soundOn) {
+      await step.run("join-yt", async () => {
+        try {
+          const { supabase } = await import("@/lib/supabase.server");
+          const { joinPostVideo } = await import("@/lib/content-factory/living-reel");
+          const { pickMusicTrack } = await import("@/lib/content-factory/slideshow-reel");
+          const { ytReelPath } = await import("@/lib/content-factory/post-video");
+          const ytPath = ytReelPath(postId);
+          await supabase.storage.from("content-factory").remove([ytPath]);
+          const reelSec = segments.reduce((a, sg) => a + sg.seconds, 0);
+          const music = await pickMusicTrack(plan.lane, undefined, {
+            minSeconds: Math.max(Math.ceil(reelSec), musicOpts?.minSeconds ?? 0),
+            exclude: musicOpts?.exclude,
+          });
+          if (!music) return { yt: false, reason: `no music track at least ${Math.ceil(reelSec)}s long` };
+          const bufs = await Promise.all(
+            segments.map(async (sg) => {
+              const r = await fetch(sg.url);
+              if (!r.ok) throw new Error(`Segment download failed (${r.status}): ${sg.url}`);
+              return { buf: Buffer.from(await r.arrayBuffer()), seconds: sg.seconds, still: sg.still };
+            })
+          );
+          const { buf } = await joinPostVideo({ segments: bufs, ctaUrl: null, musicUrl: music, segmentAudio: true });
+          const { error } = await supabase.storage.from("content-factory").upload(ytPath, buf, { contentType: "video/mp4", upsert: true });
+          if (error) throw new Error(`YouTube video upload failed: ${error.message}`);
+          console.log(`[post-video] ${postId}: youtube copy with ${music.split("/content-factory/")[1] ?? music}`);
+          return { yt: true, music: music.split("/content-factory/")[1] ?? music };
+        } catch (err) {
+          return { yt: false, error: String(err).slice(0, 300) };
+        }
+      });
+    }
+
     // Instagram copy (2026-10-04, per Keenan): same video, but the music comes
     // from the original-songs library (music-ig/). Facebook keeps the AI-music
     // reel above. Any old -ig file is removed first so a rebuild can never
@@ -795,6 +849,12 @@ export const carouselPostVideoFn = inngest.createFunction(
           });
       };
       await note({ stage: "started" });
+      if (soundOn) {
+        // Kling 3.0 sound reels post with their own sound everywhere but YouTube.
+        await supabase.storage.from("content-factory").remove([`reels/${postId}-ig.mp4`]);
+        await note({ stage: "skipped", reason: "clip sound reel (no music on Instagram)" });
+        return { ig: false, reason: "clip sound reel" };
+      }
       try {
       const { joinPostVideo } = await import("@/lib/content-factory/living-reel");
       const { pickMusicTrack } = await import("@/lib/content-factory/slideshow-reel");

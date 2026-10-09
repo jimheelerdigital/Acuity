@@ -352,8 +352,14 @@ export const socialPublishCronFn = inngest.createFunction(
       // slot is 8pm CT = after midnight UTC, so a UTC day would drop it.
       const centralDay = new Date().toLocaleDateString("en-CA", { timeZone: "America/Chicago" });
       const today = new Date(`${centralDay}T00:00:00Z`); // generatedFor key for the Central day
+      // Backlog rows (1c) are created on the day they post, so they're spared today.
       const stale = await prisma.socialPublish.updateMany({
-        where: { platform: "youtube", status: "PENDING", carouselPost: { generatedFor: { lt: today } } },
+        where: {
+          platform: "youtube",
+          status: "PENDING",
+          carouselPost: { generatedFor: { lt: today } },
+          createdAt: { lt: (await import("@/lib/content-factory/social-publish")).centralWallTimeToUtc(centralDay, 0) },
+        },
         data: { status: "SKIPPED", error: "Not one of its day's top posts for YouTube (only the day's best 3 post, 2026-10-06)" },
       });
       if (new Date().getUTCHours() < 11) return { staleSkipped: stale.count, picked: "waiting for the day's posts" };
@@ -406,6 +412,78 @@ export const socialPublishCronFn = inngest.createFunction(
         console.log(`[social-publish] youtube/${account}: today's top ${open} kept (${how}), ${skip.length} skipped`);
       }
       return out;
+    });
+
+    // ── 1c. YouTube catch-up from the old library (2026-10-09, per Keenan:
+    // "on youtube add the 3 posts per day from the old library to catch up").
+    // On top of the day's own picks, YOUTUBE_BACKLOG_PER_DAY (default 3) older
+    // Mythicals videos that never reached YouTube are queued each Central day,
+    // best Instagram views first, at 12pm / 2pm / 4pm CT (between the regular
+    // slots). "0" turns it off. Their rows are created that day, so the stale
+    // sweep above leaves them alone until the day is over.
+    await step.run("youtube-backlog", async () => {
+      const perDay = Math.max(0, Number(process.env.YOUTUBE_BACKLOG_PER_DAY ?? 3) || 0);
+      if (perDay === 0) return { backlog: "off" };
+      const { prisma } = await import("@/lib/prisma");
+      const { centralWallTimeToUtc, laneBrand: brandFor } = await import("@/lib/content-factory/social-publish");
+      const { youtubeAccount } = await import("@/lib/content-factory/youtube-publish");
+      if (!youtubeAccount("mythicals")) return { backlog: "no mythicals youtube account" };
+      const centralDay = new Date().toLocaleDateString("en-CA", { timeZone: "America/Chicago" });
+      const today = new Date(`${centralDay}T00:00:00Z`);
+      const dayStart = centralWallTimeToUtc(centralDay, 0);
+      const queuedToday = await prisma.socialPublish.count({
+        where: {
+          platform: "youtube",
+          accountKey: "mythicals",
+          createdAt: { gte: dayStart },
+          carouselPost: { generatedFor: { lt: today } },
+        },
+      });
+      const want = perDay - queuedToday;
+      if (want <= 0) return { backlog: `already queued ${queuedToday} today` };
+
+      const old = await prisma.carouselPost.findMany({
+        where: {
+          generatedFor: { lt: today },
+          status: { not: "REJECTED" },
+          lane: { startsWith: "mythic" },
+          socialPublishes: { none: { platform: "youtube", status: { in: ["POSTED", "PENDING"] } } },
+        },
+        select: {
+          id: true,
+          lane: true,
+          headline: true,
+          generatedFor: true,
+          socialPublishes: { where: { platform: "instagram", status: "POSTED" }, select: { views: true } },
+        },
+      });
+      // Best Instagram performers first; never-posted ones after, newest first.
+      const ranked = old
+        .map((p) => ({ ...p, igViews: Math.max(-1, ...p.socialPublishes.map((s) => s.views ?? 0)) }))
+        .sort((a, b) => b.igViews - a.igViews || b.generatedFor.getTime() - a.generatedFor.getTime());
+
+      const { supabase } = await import("@/lib/supabase.server");
+      const hours = [12, 14, 16];
+      const picked: string[] = [];
+      for (const p of ranked) {
+        if (picked.length >= want) break;
+        if ((await brandFor(p.lane)) !== "mythicals") continue;
+        // Only posts whose video was actually built.
+        const url = supabase.storage.from("content-factory").getPublicUrl(`reels/${p.id}.mp4`).data.publicUrl;
+        const head = await fetch(url, { method: "HEAD" }).catch(() => null);
+        if (!head?.ok) continue;
+        const slot = queuedToday + picked.length;
+        const scheduledAt = centralWallTimeToUtc(centralDay, hours[slot % hours.length]);
+        // A row may exist from an earlier SKIPPED day: replace it so its
+        // createdAt marks it as today's backlog.
+        await prisma.socialPublish.deleteMany({ where: { carouselPostId: p.id, platform: "youtube", accountKey: "mythicals" } });
+        await prisma.socialPublish.create({
+          data: { carouselPostId: p.id, platform: "youtube", accountKey: "mythicals", scheduledAt },
+        });
+        picked.push(`${p.headline} (IG ${p.igViews < 0 ? "never posted" : `${p.igViews} views`})`);
+      }
+      console.log(`[social-publish] youtube backlog: queued ${picked.length}: ${picked.join(" | ")}`);
+      return { queued: picked, candidates: ranked.length };
     });
 
     // ── 2. PUBLISH: fire everything that's due ──────────────────────
@@ -503,6 +581,15 @@ export const socialPublishCronFn = inngest.createFunction(
                     .getPublicUrl(`reels/${row.carouselPostId}-ig.mp4`).data.publicUrl;
                   const igHead = await fetch(igUrl, { method: "HEAD" }).catch(() => null);
                   if (igHead?.ok) return igUrl;
+                }
+                // YouTube uses its music copy of a clip-sound reel when the
+                // build made one (2026-10-09, Mythicals on Kling 3.0).
+                if (row.platform === "youtube") {
+                  const ytUrl = supabase.storage
+                    .from("content-factory")
+                    .getPublicUrl(`reels/${row.carouselPostId}-yt.mp4`).data.publicUrl;
+                  const ytHead = await fetch(ytUrl, { method: "HEAD" }).catch(() => null);
+                  if (ytHead?.ok) return ytUrl;
                 }
                 return publicUrl;
               }
@@ -683,7 +770,10 @@ export const socialPublishCronFn = inngest.createFunction(
         // burst; 8 Shorts burned all retries). At most YOUTUBE_DAILY_CAP
         // uploads per channel per rolling 24h (6 by default since 2026-10-06, per Keenan "go up to 6 a day now"; ~9,900 of the 10,000 daily API units); extra rows wait, no attempt used.
         if (row.platform === "youtube") {
-          const cap = Math.max(1, Number(process.env.YOUTUBE_DAILY_CAP) || 5);
+          // The day's picks plus the old-library catch-up (1c).
+          const cap =
+            Math.max(1, Number(process.env.YOUTUBE_DAILY_CAP) || 5) +
+            Math.max(0, Number(process.env.YOUTUBE_BACKLOG_PER_DAY ?? 3) || 0);
           // Per UTC day (2026-10-06): the daily pick works per day, so a
           // rolling window could push one of today's picks past midnight.
           // Central day (matches the daily pick; 8pm CT is after midnight UTC).

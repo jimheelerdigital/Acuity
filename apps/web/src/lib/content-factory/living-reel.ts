@@ -309,6 +309,23 @@ function withTempDir<T>(fn: (dir: string) => Promise<T>): Promise<T> {
 }
 
 const SEGMENT_ENCODE = ["-c:v", "libx264", "-preset", "veryfast", "-crf", "18", "-pix_fmt", "yuv420p", "-r", "30"];
+/** One audio format for every segment, so they concatenate with a stream copy. */
+const SEGMENT_AUDIO = ["-c:a", "aac", "-b:a", "192k", "-ar", "44100", "-ac", "2"];
+const AUDIO_NORM = "aresample=44100,aformat=sample_fmts=fltp:channel_layouts=stereo";
+
+/** Whether a media file has an audio stream (ffmpeg's stream listing). */
+async function hasAudioStream(file: string): Promise<boolean> {
+  const bin = ffmpegPath();
+  if (!bin) return false;
+  const info = await new Promise<string>((resolve) => {
+    const proc = spawn(bin, ["-i", file]);
+    let err = "";
+    proc.stderr.on("data", (c) => (err += c.toString()));
+    proc.on("close", () => resolve(err));
+    proc.on("error", () => resolve(err));
+  });
+  return /Stream #\d+:\d+.*Audio:/.test(info);
+}
 /** Each segment dips to/from black over this long, so segments simply concatenate. */
 const DIP_SEC = 0.3;
 
@@ -330,27 +347,49 @@ function dipFilters(d: number, first: boolean): string {
  * concatenation — the xfade crossfade chain failed on Vercel's ffmpeg
  * build ("inputs needs to be a constant frame rate") even with fps=30.
  */
-export async function renderSlideSegment(slide: PostVideoSlide, opts: { first: boolean; clipSeconds?: number }): Promise<Buffer> {
+export async function renderSlideSegment(
+  slide: PostVideoSlide,
+  opts: {
+    first: boolean;
+    clipSeconds?: number;
+    /**
+     * Keep the clip's own sound (Kling 3.0 sound clips, 2026-10-09). Every
+     * segment then carries a stereo AAC track (silence for stills and silent
+     * clips) so the segments still join by plain concatenation.
+     */
+    audio?: boolean;
+  }
+): Promise<Buffer> {
   const clipSec = opts.clipSeconds ?? LIVING_CLIP_SEC;
   const d = slide.seconds;
   return withTempDir(async (dir) => {
     const out = path.join(dir, "seg.mp4");
+    const audioFade = `${opts.first ? "" : `afade=t=in:st=0:d=${DIP_SEC},`}afade=t=out:st=${(d - DIP_SEC).toFixed(2)}:d=${DIP_SEC}`;
+    const silence = ["-f", "lavfi", "-t", String(d), "-i", "anullsrc=r=44100:cl=stereo"];
     if (slide.kind === "live") {
       const clipPath = path.join(dir, "clip.mp4");
       const layerPath = path.join(dir, "layer.png");
       fs.writeFileSync(clipPath, slide.clip);
       fs.writeFileSync(layerPath, slide.layer);
+      const clipAudio = opts.audio ? await hasAudioStream(clipPath) : false;
       await runFfmpeg([
         "-i", clipPath,
         "-loop", "1", "-t", String(d), "-i", layerPath,
+        ...(opts.audio && !clipAudio ? silence : []),
         "-filter_complex",
         [
           // tpad holds the last frame if the model returned a shorter clip.
           `[0:v]setpts=${(d / clipSec).toFixed(3)}*PTS,scale=${W}:${H}:force_original_aspect_ratio=increase,crop=${W}:${H},fps=30,setsar=1,tpad=stop_mode=clone:stop_duration=${d},trim=0:${d},setpts=PTS-STARTPTS[bg]`,
           `[1:v]format=rgba,fps=30[l]`,
           `[bg][l]overlay=0:0:shortest=1,format=yuv420p,${dipFilters(d, opts.first)}[v]`,
+          // Sound plays in real time (the clip is rendered at the slide's
+          // length when it has sound); silence pads any short tail.
+          ...(opts.audio
+            ? [`[${clipAudio ? "0" : "2"}:a]${AUDIO_NORM},apad,atrim=0:${d},asetpts=PTS-STARTPTS,${audioFade}[a]`]
+            : []),
         ].join(";"),
-        "-map", "[v]", "-t", String(d), ...SEGMENT_ENCODE, out,
+        "-map", "[v]", ...(opts.audio ? ["-map", "[a]", ...SEGMENT_AUDIO] : []),
+        "-t", String(d), ...SEGMENT_ENCODE, out,
       ]);
     } else {
       const stillPath = path.join(dir, "still.jpg");
@@ -360,8 +399,10 @@ export async function renderSlideSegment(slide: PostVideoSlide, opts: { first: b
       const frames = Math.round(d * 30);
       await runFfmpeg([
         "-i", stillPath,
+        ...(opts.audio ? silence : []),
         "-vf",
         `scale=${W * 2}:${H * 2}:force_original_aspect_ratio=increase,crop=${W * 2}:${H * 2},zoompan=z='1+0.06*on/${frames}':x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':d=${frames}:s=${W}x${H}:fps=30,setsar=1,format=yuv420p,${dipFilters(d, opts.first)}`,
+        ...(opts.audio ? ["-map", "0:v", "-map", "1:a", ...SEGMENT_AUDIO] : []),
         "-t", String(d), ...SEGMENT_ENCODE, out,
       ]);
     }
@@ -379,7 +420,13 @@ export async function joinPostVideo(opts: {
   segments: { buf: Buffer; seconds: number; still: boolean }[];
   /** Brand CTA end card; null when the post carries its own closing slide. */
   ctaUrl: string | null;
-  musicUrl: string;
+  /** null = no music (segment sound only). */
+  musicUrl: string | null;
+  /**
+   * Segments carry their own sound (renderSlideSegment audio: true): it is
+   * kept, with the music, when given, mixed underneath it (2026-10-09).
+   */
+  segmentAudio?: boolean;
 }): Promise<{ buf: Buffer; seconds: number }> {
   const segs = opts.segments;
   if (segs.length === 0) throw new Error("joinPostVideo: no segments");
@@ -406,19 +453,49 @@ export async function joinPostVideo(opts: {
     fs.writeFileSync(listPath, list.join("\n"));
     const t = segs.reduce((a, s) => a + s.seconds, 0) + (ctaSeg ? CTA_SEC : 0);
 
+    if (opts.segmentAudio && ctaSeg) {
+      // The CTA card has no sound; give it silence so the concat stays uniform.
+      const ctaAudio = path.join(dir, "cta-a.mp4");
+      await runFfmpeg([
+        "-i", ctaSeg, "-f", "lavfi", "-t", String(CTA_SEC), "-i", "anullsrc=r=44100:cl=stereo",
+        "-map", "0:v", "-map", "1:a", "-c:v", "copy", ...SEGMENT_AUDIO, "-t", String(CTA_SEC), ctaAudio,
+      ]);
+      list[list.length - 1] = `file '${ctaAudio}'`;
+      fs.writeFileSync(listPath, list.join("\n"));
+    }
+
     const silent = path.join(dir, "silent.mp4");
     await runFfmpeg(["-f", "concat", "-safe", "0", "-i", listPath, "-c", "copy", silent]);
+    const out = path.join(dir, "reel.mp4");
+    const fadeOut = `afade=t=out:st=${(t - 1.5).toFixed(2)}:d=1.5`;
+
+    if (opts.segmentAudio && !opts.musicUrl) {
+      // Clip sound only: the joined segments' own track, faded out at the end.
+      await runFfmpeg([
+        "-i", silent,
+        "-filter_complex", `[0:a]${AUDIO_NORM},apad,atrim=0:${t.toFixed(2)},${fadeOut}[aout]`,
+        "-map", "0:v", "-map", "[aout]",
+        "-c:v", "copy", "-c:a", "aac", "-b:a", "192k", "-movflags", "+faststart",
+        "-t", t.toFixed(2), out,
+      ]);
+      return { buf: fs.readFileSync(out), seconds: t };
+    }
+    if (!opts.musicUrl) throw new Error("joinPostVideo: no music and no segment sound");
 
     const music = path.join(dir, "music.audio");
     await download(opts.musicUrl, music);
-    const out = path.join(dir, "reel.mp4");
+    // Music under the clips' own sound (YouTube copy), or music alone.
+    const musicChain = `[1:a]${AUDIO_NORM},apad,atrim=0:${t.toFixed(2)},afade=t=in:st=0:d=0.3,${fadeOut}`;
+    const audioGraph = opts.segmentAudio
+      ? `${musicChain},volume=0.45[m];[0:a]${AUDIO_NORM},apad,atrim=0:${t.toFixed(2)}[s];[s][m]amix=inputs=2:duration=first:normalize=0[aout]`
+      : `${musicChain}[aout]`;
     await runFfmpeg([
       "-i", silent,
       // No looping (2026-09-30, per Keenan: "all songs used must be at LEAST
       // as long as the reel, no looping from now on"). The picker only
       // offers tracks at least this long; apad is a silent safety net.
       "-i", music,
-      "-filter_complex", `[1:a]apad,atrim=0:${t.toFixed(2)},afade=t=in:st=0:d=0.3,afade=t=out:st=${(t - 1.5).toFixed(2)}:d=1.5[aout]`,
+      "-filter_complex", audioGraph,
       "-map", "0:v", "-map", "[aout]",
       "-c:v", "copy", "-c:a", "aac", "-b:a", "192k", "-movflags", "+faststart",
       "-t", t.toFixed(2), out,

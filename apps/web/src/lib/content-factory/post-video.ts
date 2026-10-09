@@ -189,6 +189,27 @@ export function igReelPath(postId: string): string {
   return `reels/${postId}-ig.mp4`;
 }
 
+/** YouTube's copy: the clips' own sound with music mixed over it (2026-10-09, Mythicals). */
+export function ytReelPath(postId: string): string {
+  return `reels/${postId}-yt.mp4`;
+}
+
+/**
+ * Legendary Mythicals daily videos (2026-10-09, per Keenan: "make it so the
+ * new pipeline uses kling 3 for the 3 videos a day. don't add music. ONLY
+ * add the kling 3 audio to the clips that are sent to me. for YOUTUBE ONLY,
+ * add music over the top"). Every clip renders on Kling 3.0 with its own
+ * sound; the main reel (email, Instagram, Facebook) carries only that sound
+ * and YouTube gets a copy with music mixed under it.
+ * MYTHICALS_VIDEO_MODEL overrides the model ("" → the normal post model).
+ */
+export const MYTHICALS_VIDEO_MODEL =
+  process.env.MYTHICALS_VIDEO_MODEL?.trim() ?? "kling-video/v3.0/std/image-to-video";
+
+/** Sound direction appended to Mythicals clip prompts when Kling 3.0 renders sound. */
+export const MYTHICALS_SOUND_LINE =
+  "Sound: the creature's own natural sounds (breathing, growls, wingbeats, footfalls) and the real ambience of its setting. No music, no dialogue, no voices.";
+
 export async function writeVideoMarker(
   postId: string,
   marker: Omit<VideoBuildMarker, "updatedAt">

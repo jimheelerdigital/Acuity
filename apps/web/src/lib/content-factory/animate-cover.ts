@@ -416,6 +416,8 @@ export async function submitCoverVideo(opts: {
    * HIGGSFIELD_VIDEO_MODEL.
    */
   model?: string;
+  /** Kling 3.0 (non-Turbo) only: render the clip with its own generated sound. */
+  sound?: boolean;
 }): Promise<string> {
   const model = opts.model || process.env.HIGGSFIELD_VIDEO_MODEL!;
 
@@ -447,7 +449,16 @@ export async function submitCoverVideo(opts: {
   // motions / enhance_prompt / quality, and fixed durations (Kling 5|10s,
   // Hailuo 6|10s). Snap to the nearest allowed length.
   let payload: Record<string, unknown> = body;
-  if (/^(kling-video|minimax)\//.test(model)) {
+  if (model.startsWith("kling-video/v3.0/")) {
+    // Kling 3.0 Std/Pro (2026-10-09, Mythicals daily videos): any length
+    // 3-15s, optional generated sound; no negative_prompt field.
+    payload = {
+      prompt: opts.prompt,
+      image_url: opts.startImageUrl,
+      duration: Math.min(15, Math.max(3, Math.round(Number(body.duration) || 5))),
+      ...(opts.sound ? { sound: "on" } : {}),
+    };
+  } else if (/^(kling-video|minimax)\//.test(model)) {
     const allowed = model.startsWith("minimax/") ? [6, 10] : [5, 10];
     const want = Number(body.duration) || allowed[0];
     payload = {

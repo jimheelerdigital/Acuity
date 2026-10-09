@@ -7,6 +7,48 @@
 
 ---
 
+## [2026-10-09] — Mythicals videos on Kling 3 with their own sound; YouTube gets music and a daily catch-up
+
+- **Requested by:** Keenan
+- **Committed by:** Claude Code
+- **Commit hash:** (see git log: "feat: Render Mythicals on Kling 3 with sound")
+
+### In plain English (for Keenan)
+Legendary Mythicals videos now render on Kling 3 with sound. The video emailed to you and posted to Instagram and Facebook carries only that sound, with no music. YouTube gets its own copy with music mixed over it. YouTube also posts 3 older Mythicals videos a day that never made it there, best Instagram performers first, on top of each day's own picks.
+
+### Technical changes (for Jimmy)
+- `lib/content-factory/post-video.ts`:
+  - `MYTHICALS_VIDEO_MODEL` (default `kling-video/v3.0/std/image-to-video`; env override, "" = old model)
+  - `MYTHICALS_SOUND_LINE`
+  - `ytReelPath()` → `reels/<id>-yt.mp4`
+- `lib/content-factory/animate-cover.ts`: `submitCoverVideo` gains `sound`. Kling 3.0 Std/Pro gets its own payload: 3-15s duration, `sound: "on"`, no `negative_prompt`.
+- `inngest/functions/carousel-post-video.ts`, for Mythicals:
+  - clips render at the slide's own length (real-time sound), and the retry stays on Kling 3
+  - shot sheets get sound lines
+  - main reel has no music (`joinPostVideo` with `musicUrl: null, segmentAudio: true`)
+  - new `join-yt` step builds the YouTube copy with music under the clip sound (music at 0.45 volume)
+  - the `join-ig` original-song copy is skipped and any stale `-ig.mp4` is removed
+- `lib/content-factory/living-reel.ts`:
+  - `renderSlideSegment({ audio })` keeps clip audio and gives stills and silent clips matching silence (AAC 44.1k stereo), so segments still concat with a stream copy
+  - `joinPostVideo` takes nullable `musicUrl` and `segmentAudio` (clip sound only, or music mixed with amix)
+- `inngest/functions/social-publish-cron.ts`:
+  - YouTube rows upload `-yt.mp4` when it exists
+  - new `youtube-backlog` step: `YOUTUBE_BACKLOG_PER_DAY`, default 3, "0" = off
+    - picks old Mythicals posts with a built reel and no POSTED/PENDING YouTube row, ranked by best IG views
+    - recreates their YouTube row today at 12/2/4pm CT
+  - the stale sweep spares rows created today
+  - the YouTube upload cap is now `YOUTUBE_DAILY_CAP` + backlog (5 + 3 = 8)
+
+### Manual steps needed
+- [ ] Inngest resync after deploy (`curl -X PUT https://goripple.io/api/inngest`), since the step list changed (Keenan/Claude)
+
+### Notes
+- Tested locally with ffmpeg on a real Seedance clip with sound:
+  - clip-sound reel keeps the source loudness (−28.6 dB vs −28.5 dB source), and the still slide is silent
+  - the YouTube copy carries music under it (−33 dB on the still slide)
+- Kling 3 costs more per clip than Kling 2.5 Turbo, and clips now match slide length (5-8s) instead of a stretched 5s.
+- 8 YouTube uploads/day happened without hitting the channel's upload limit on 10-08. If "exceeded the number of videos" shows up again, lower `YOUTUBE_BACKLOG_PER_DAY`.
+
 ## [2026-10-08] — Mythicals: livelier animation, powerful dragon breath, teaser covers, proven-winner references
 
 **Requested by:** Keenan
