@@ -47,7 +47,7 @@ Legendary Mythicals videos now render on Kling 3 with sound. The video emailed t
 - Tested locally with ffmpeg on a real Seedance clip with sound:
   - clip-sound reel keeps the source loudness (−28.6 dB vs −28.5 dB source), and the still slide is silent
   - the YouTube copy carries music under it (−33 dB on the still slide)
-- Kling 3 costs more per clip than Kling 2.5 Turbo. Clips match slide length, CAPPED AT 6s (Keenan: "cap everything at 6 seconds per video on kling 3 max"), and slide screen time is capped at 6s too, so sound stays in sync. That's ~$3.20/video and ~$9.60/day for 3 videos after the 10-11 promo ends.
+- Kling 3 costs more per clip than Kling 2.5 Turbo. Clips match slide length, CAPPED AT 6s (Keenan: "cap everything at 6 seconds per video on kling 3 max"), and slide screen time is capped at 6s too, so sound stays in sync. Pick posts are already 4s + 5×5s = 29s, so the cap mainly trims countdown slides (up to 8s before). That is ~$3.65/video and ~$11/day for 3 videos after the 10-11 promo ends.
 - 8 YouTube uploads/day happened without hitting the channel's upload limit on 10-08. If "exceeded the number of videos" shows up again, lower `YOUTUBE_BACKLOG_PER_DAY`.
 
 ## [2026-10-08] — Mythicals: livelier animation, powerful dragon breath, teaser covers, proven-winner references
