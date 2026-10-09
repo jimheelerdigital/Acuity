@@ -52,7 +52,7 @@ Seedance 2.0 (67.5 credits) was tested once, on the roller coaster, and judged n
 - **Fire or ice breath:** a head-raise beat first, then a powerful sustained jet (about 2s of a 5s clip, 3–4s of 10s+), up into the sky or sideways across the scene, never at a person. Writing it as head up → column of fire → jaws close fixed the downward-fire bug.
 - **Make the whole scene move:** 2–3 secondary motions (water surging, mist drifting, trees swaying, spray, debris), not just the creature (10-08).
 - Every photo and video prompt includes **"hyper-realistic, high detail, 4K"**. It's wording only; it doesn't change the render resolution.
-- Video prompts use **timed beats** (0-4s / 4-8s / 8-12s / 12-15s) so nothing stalls or crams.
+- Video prompts are **shot sheets** (see Templates) with timed beats (0-4s / 4-7s / 7-11s / 11-15s) so nothing stalls or crams.
 - State the physics: heavy, massive, slow realistic motion; real water physics; believable scale; no slow motion; no cuts.
 - List the sound: ambient bed first, then the creature (rumble, hiss, roar), then impact (metal groaning, wave slapping the hull).
 - End with: No people. No text.
@@ -67,8 +67,46 @@ Seedance 2.0 (67.5 credits) was tested once, on the roller coaster, and judged n
 **End photo** (edit with the start photo as reference)
 > Hyper-realistic, high detail, 4K edit of this exact [scene] photo, keeping the camera position, [foreground anchor], [scene], light and phone-camera look identical. [ONE creature, classic anatomy, colors, size relative to the vehicle/trees], [what it is physically doing to the vehicle or scene, with visible consequence]. Realistic [wet skin / scales / moss] texture, believable massive scale against [reference object], [light]. No people, no text.
 
-**Video (Seedance 2.5)**
-> Hyper-realistic, high detail, 4K handheld iPhone footage from [POV], one continuous 15-second shot, slight natural [hand shake / boat sway], the [anchor] staying fixed in frame. 0-4 seconds: [calm normal scene + ambient detail]. 4-7 seconds: [warning signs: water darkens, trees shake, birds flee, a rumble]. 7-11 seconds: [the creature emerges as ONE continuous body, and the first physical contact]. 11-15 seconds: [peak moment: the vehicle reacts with weight, the creature looks at the camera]. Slow, heavy, massive, realistic motion, real [water] physics, believable scale, [light], no slow motion, no cuts. Sound: [ambient], [creature], [impacts]. No people, no text.
+**Video: Keenan's SHOT SHEET format (required; supplied 10-06, used by `lib/content-factory/shot-sheet.ts`)**
+
+Every video prompt is ONE compact JSON shot sheet. Never a prose paragraph: the 10-09 clips were written as paragraphs, and lost the continuity locks that stop morphing (the serpent) and dissolves (the giant). Keys, in order:
+
+```json
+{
+  "style": "Hyper-realistic, high detail, 4K handheld phone footage, true-to-life color, no grading; <subject material>.",
+  "aspect_ratio": "9:16",
+  "duration": "15 seconds",
+  "environment_continuity": "<the place exactly as the START frame shows it: vehicle, fixed foreground anchor, terrain/water/sky, scale cues; what stays identical to the end>",
+  "lighting": "<source, direction, color temp, haze, exactly as the frames; how any breath/glow/splash is lit by it>",
+  "character_continuity": {
+    "<vehicle_or_anchor>": "<what it is, materials, fixed position in frame>. Preserve exactly.",
+    "<creature>": "<from the END frame: species, anatomy WITH COUNTS (exactly two eyes, eight tentacles, two wings, four legs), colors, skin/scale texture, size relative to the vehicle, one single continuous body>. Preserve exactly."
+  },
+  "effect_continuity": "<breath / water / debris behaviour in positive terms. Breath: head turns to one side, long straight jet shoots sideways out of the side of the frame, ~3-4s, then jaws close. Or: No breath, no effects.>",
+  "shots": [{
+    "shot_number": 1,
+    "duration": "15s",
+    "framing": "Start frame: <matches start image>. Ends on the end frame: <matches end image>.",
+    "camera_motion": "<the vehicle's steady drift/glide plus slight natural handheld sway; direction; end state>",
+    "action": "0-4s: <calm, concrete life>. 4-7s: <physical warning signs>. 7-11s: <creature physically enters from water/cloud/frame edge or a hidden terrain shape rises, as one body; first contact>. 11-15s: <peak: physical damage or contact, vehicle reacts with weight; creature turns its eyes to the lens>.",
+    "emotion": "<2-4 words>",
+    "sound": "<2-4 effects in beat order>. No music, no speech."
+  }],
+  "visual_constraints": [
+    "One continuous real-time take: no cuts, crossfades, dissolves, fades or transitions; the creature appears only by physical movement into frame.",
+    "No morphing: the creature keeps one exact design and one connected body; no new creatures or people.",
+    "No text, logos or watermarks."
+  ]
+}
+```
+
+Writing rules (from `shot-sheet.ts`, Keenan's format):
+- **Only positive verbs in `action` and `camera_motion`.** Any unwanted action named there (even "no fire") gets performed. Every must-not lives in `visual_constraints` and nowhere else.
+- **Counts and materials in `character_continuity` are what stop morphing.** Praise words waste space.
+- **Roar without breath:** nothing in that beat may blast, spray, pour, burst or gush, or the model turns it into breath. Debris and water around it only fall or drift.
+- **Breath:** sideways out of the side of the frame, never at the lens (it pours down the chest).
+- Every beat is a timed range covering the whole duration with no gaps.
+- Keep the compact JSON under ~2,450 characters.
 
 ---
 
@@ -115,7 +153,7 @@ Keenan: "looked absolutely terrible", "not cohesive even slightly". Don't pitch 
 - [ ] One creature, one continuous body, classic recognizable anatomy, no famous-character look.
 - [ ] The creature physically affects something, and the vehicle reacts.
 - [ ] Light is plain daylight, overcast or light mist: no low sunset, no heavy fog.
-- [ ] Prompt says hyper-realistic, high detail, 4K; has timed beats, physics and sound.
+- [ ] Video prompt is a SHOT SHEET (JSON, Keenan's format) with counts in character_continuity, timed beats, sound, and the no-dissolve and no-morph constraints; style says hyper-realistic, high detail, 4K.
 - [ ] No "no/never/without" inside the action beats; must-nots only in the closing line.
 - [ ] No human-faced creature; dragons have wings; no weapons on beasts.
 - [ ] End photo reachable from start photo by physical motion (water, clouds, frame edge, or hidden-as-terrain). Otherwise expect a dissolve.
