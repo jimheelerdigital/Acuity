@@ -151,6 +151,18 @@ Keenan: "looked absolutely terrible", "not cohesive even slightly". Don't pitch 
 
 ---
 
+## Image QA (run on EVERY photo before sending it to Keenan)
+
+Zoom in (crop at 2x or more) and check. Keenan caught both of these failures on 10-09 ("it's not even coming out of its mouth properly"; "isn't even blowing fire at the right spot"):
+- [ ] **Breath origin:** the fire or beam starts exactly between the creature's OPEN upper and lower jaws, never from the neck, chest or behind the head. Prompt fix: put the head in clear side or three-quarter profile with the jaws visibly apart.
+- [ ] **Breath target:** the beam's far end lands exactly ON its target (the jet, the ship). Not beside it, not on empty ground.
+- [ ] Anatomy counts match the creature reference (horns, wings, legs, eyes).
+- [ ] No people, no text, start and end photos framed identically.
+
+## Variety
+
+- **A different kind of dragon (or creature) for every post** (Keenan, 10-09). Rotate color, element and build: emerald, crimson-volcanic, frost-white, storm-blue with lightning veins, obsidian-black, golden, bone-white, moss-green forest, etc. Never reuse the previous post's design.
+
 ## Checklist (run before spending video credits)
 
 - [ ] Start photo has NO creature and no people.
