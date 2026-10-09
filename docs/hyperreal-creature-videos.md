@@ -29,6 +29,9 @@ Seedance 2.0 (67.5 credits) was tested once, on the roller coaster, and judged n
 
 ## Rules
 
+### Style: always hyper-realistic
+- **Everything we make is hyper-realistic, photoreal live-action, never cartoon, stylized or 3D-animated** (Keenan, 10-09, after the "Hatchling's First Flame" frames came out as a 3D animated movie: "why did this come out like a cartoon/3d animated? everything we do is hyper realistic"). Words like "film", "cinematic" or "animated film style" mean **a live-action feature film shot on a cinema camera with photoreal creatures**. Never write "3D animated", "animated feature", "stylized" or "cartoon" in a prompt.
+
 ### Setting
 - **Calm, everyday travel shot with relative motion.** The camera is inside something moving, with a fixed foreground anchor (wing, railing, bow, window frame, dashboard) while the world slides past. Proven: plane window, cruise railing, car on a bridge, ferry deck, boat on a forest river.
 - **No people in frame.** No hands, riders or faces. The roller coaster (hands on the lap bar) was "awful".
