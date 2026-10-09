@@ -495,8 +495,13 @@ export const carouselPostVideoFn = inngest.createFunction(
     const brandModel = plan.brand === "mythicals" && MYTHICALS_VIDEO_MODEL ? MYTHICALS_VIDEO_MODEL : null;
     const soundOn = plan.brand === "mythicals" && (forcedModel || brandModel || "").startsWith("kling-video/v3.0/");
     const { LIVING_CLIP_SEC } = await import("@/lib/content-factory/living-reel");
+    // Capped at 6s a clip (2026-10-09, per Keenan: "cap everything at 6
+    // seconds per video on kling 3 max"); the slide's screen time is capped
+    // with it so the sound still lines up with the picture.
+    const KLING3_MAX_SEC = 6;
+    const slideSec = (i: number) => (soundOn ? Math.min(KLING3_MAX_SEC, plan.slides[i].seconds) : plan.slides[i].seconds);
     const clipSec = (i: number) =>
-      soundOn ? Math.min(15, Math.max(3, Math.ceil(plan.slides[i].seconds))) : LIVING_CLIP_SEC;
+      soundOn ? Math.min(KLING3_MAX_SEC, Math.max(3, Math.ceil(slideSec(i)))) : LIVING_CLIP_SEC;
 
     // ── 2. Base frame (+ rebuilt layer) per animated slide ───────────
     const prepared: Record<number, { baseUrl: string; layerUrl: string; prompt: string }> = {};
@@ -701,9 +706,9 @@ export const carouselPostVideoFn = inngest.createFunction(
           let slide;
           if (s.mode === "live" && clipUrl && prepared[i]) {
             const [clip, layer] = await Promise.all([get(clipUrl), get(prepared[i].layerUrl)]);
-            slide = { kind: "live" as const, clip, layer, seconds: s.seconds };
+            slide = { kind: "live" as const, clip, layer, seconds: slideSec(i) };
           } else if (s.mode === "still") {
-            slide = { kind: "still" as const, image: await get(s.imageUrl), seconds: s.seconds };
+            slide = { kind: "still" as const, image: await get(s.imageUrl), seconds: slideSec(i) };
           } else {
             // Animated slide whose clip failed: use its finished JPEG.
             const { prisma } = await import("@/lib/prisma");
@@ -711,7 +716,7 @@ export const carouselPostVideoFn = inngest.createFunction(
               where: { carouselPostId: postId, rawImageUrl: s.rawUrl },
               select: { imageUrl: true },
             });
-            slide = { kind: "still" as const, image: await get(row!.imageUrl), seconds: s.seconds };
+            slide = { kind: "still" as const, image: await get(row!.imageUrl), seconds: slideSec(i) };
           }
           const buf = await renderSlideSegment(slide, { first: i === 0, clipSeconds: clipSec(i), audio: soundOn });
           const p = `living/${postId}/seg-${i}.mp4`;
@@ -721,7 +726,7 @@ export const carouselPostVideoFn = inngest.createFunction(
           if (error) throw new Error(`Segment upload failed (${p}): ${error.message}`);
           return {
             url: supabase.storage.from("content-factory").getPublicUrl(p).data.publicUrl,
-            seconds: s.seconds,
+            seconds: slideSec(i),
             still: slide.kind === "still",
           };
         })
