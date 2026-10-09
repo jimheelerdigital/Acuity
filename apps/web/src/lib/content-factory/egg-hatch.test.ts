@@ -35,7 +35,7 @@ describe("egg hatching", () => {
 
   it("only breathes the concept's element and asks for sound", () => {
     const p = dragonMotionPrompt(concept);
-    expect(p).toContain("ice breath");
+    expect(p).toContain("jet of ice");
     expect(p).not.toContain("burst of fire");
     expect(p).toContain("roar");
   });

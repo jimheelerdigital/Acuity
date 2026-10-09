@@ -57,8 +57,8 @@ export interface ShotSheet {
 const BASE_CONSTRAINTS = [
   "No text, logos or watermarks.",
   "No morphing: every creature, person and object keeps one exact design; no new creatures or people; the whole subject stays in frame.",
-  "Real-time speed, no slow motion; the camera moves slowly and steadily.",
-  "Effects: only dragon breath (fire or ice by type, snout raised to the sky, the column rising out of the top of the frame) and softly pulsing runes on armor or weapons, each matching the frame's light and materials. No auras, ghostfire, crawling lightning, glows or sparkles.",
+  "Real-time speed, no slow motion; the camera makes one smooth, cinematic move.",
+  "Effects: only dragon breath (a powerful, sustained blast of fire or ice by type) and softly pulsing runes on armor or weapons, each matching the frame's light and materials. No auras, ghostfire, crawling lightning, glows or sparkles.",
 ];
 
 /**
@@ -89,7 +89,7 @@ PROCEDURE (plan silently, in this order, then output only the JSON)
 2. Lift the intent from the brief: the moment, the single main action, its direction, the camera character. Drop its wording.
 3. Choose the beats: one main action plus small life around it. Every beat is a concrete physical event at real speed. 5s: 3 beats. 10s: 4-5 beats. 15s multi: 2-3 beats per shot. Beat 1 starts from the start pose; the last beat settles back to or near it.
 4. Time the beats as ranges that cover the whole duration with no gaps ("0-1.5s:", "1.5-3s:"). Put the main action in the middle, with a preparation beat before it and a settle beat after.
-5. Plan the camera: one slow steady move for the whole shot (push-in, drift, crane, tilt) with its direction and end state. Never static, never a whip, never shake.
+5. Plan the camera: one confident, cinematic move for the whole shot (push-in, orbit, crane rise, low tracking move) with its direction and end state. It should feel like a blockbuster shot, not a still photo. Never static, never a whip pan, never shake.
 6. Write continuity from the step-1 inventory: environment, lighting, each character, weapon or effect.
 7. Write constraints: at most one shot-specific rule (or none). The standing rules are appended by code.
 8. Budget and output: count against the limit, trim the longest fields first, then output.
@@ -108,15 +108,12 @@ FIELD SPEC (keys in exactly this order)
 ACTION WRITING
 - The video model executes every verb it reads. Write only what happens. Never name an unwanted action, even to forbid it: "no fire", "does not lunge", "without swinging" produce fire, a lunge, a swing. Prohibitions live only in visual_constraints.
 - Concrete beats, not moods: "chest rises with one slow breath", "wind lifts the mane", "the eyelid lowers and lifts", "snow slides off the shoulder". Never "comes alive", "radiates power".
-- Allowed motion: breathing; a blink; a slight head turn or tilt; wind in mane, feathers, cloak or banners; one slow wingbeat at most; dust, embers, mist, snow, water or sparks already in the frame drifting; a weapon resting; runes pulsing in armor or a weapon; dragon breath per BREATH. Nothing else moves. The subject keeps its stance and position.
+- MAKE IT ALIVE (2026-10-08, per Keenan: the animations "are looking a bit stale"). Every shot has one clear, confident main action at real speed. Good main actions: a creature lifts and turns its head to stare down the lens, spreads its wings wide and settles them, sweeps its tail, shifts its weight forward with a heavy step, bares its teeth with a low growl, or (dragons) unleashes a powerful breath per BREATH; a warrior plants a weapon, raises a shield, turns into the wind, or lets a cloak whip around them. The subject stays in frame and keeps its design.
+- THE WHOLE SCENE MOVES (2026-10-08, per Keenan: "give the prompts the green light to add more animation to videos again. scenes can move, wings can flap, things can move"). Besides the main action, write 2-3 secondary motions that make the world feel alive: wings beat strongly in place (one or several wingbeats that stir dust or snow), the tail and mane move, clouds roll across the sky, fog and smoke drift and curl, water flows, crashes or ripples, trees, grass, banners and cloaks whip in the wind, lightning flickers in the distance, embers, ash, snow or leaves swirl through the air, a torch or fire flickers. The creature or hero may move its whole body: rise to full height, turn, shift position, settle its wings. It stays in frame and on the ground.
 - Real-time speed. Say "slow" and "steady" where it matters; never "slow motion".
+- OPEN JAWS WITHOUT BREATH (2026-10-08: a roaring dragon whose beat said "snow blasts off its wings" came out spewing white spray down its chest). When a creature roars or opens its jaws and is NOT breathing, nothing in that beat may blast, spray, pour, burst, gush or stream; the video model turns it into breath. Snow, rain, dust and embers around it only fall or drift gently.
 
-BREATH (dragons only; fire or ice by the dragon's type)
-Three separate beats, in this order, each in its own time range:
-1. Raise: "head tilts back until the snout points straight up at the top of the frame" (frontal: add "throat and underside of the jaw toward the camera"; profile: "the neck arches up"), then "jaws open". At least 1s.
-2. Burst: "a full burst of fire pours from the open jaws upward as a vertical column, rising past the horns and out of the top edge of the frame", lit like the frame's light. Ice: "a blast of glittering ice crystals and freezing mist rising as a vertical column". 1.5s in a 5s clip, 2-3s in a 10s clip. In this beat use only up, upward, rising, vertical, past the horns, top of the frame. Do not mention the ground, nest, water, camera, lens or any person in this beat at all.
-3. End: "jaws close and the flame ends"; only then, in the next beat, "the head returns to the start pose". Never lower the head in a beat that names fire.
-Repeat the window and the geometry in weapon_continuity. The flame may leave the top of the frame; the dragon never does. Straight out at the horizon is the lowest permitted angle; prefer straight up.
+BREATH (dragons only; fire for fire dragons, ice for ice/frost dragons). 2026-10-08, per Keenan after a test where the fire "looks like dog shit and doesn't even make sense": video models break when fire comes straight at the lens (it pours down the chest or dribbles onto the ground). So: the dragon TURNS ITS HEAD TO ONE SIDE (three-quarter or profile) and unleashes a long, straight, powerful JET of fire (or of ice shards and freezing mist) that shoots horizontally away from its jaws across the scene and out of the SIDE of the frame, widening like a flamethrower, lighting the dragon and the scene. The jet travels away from the mouth in a straight line; it never falls, pours, drips or runs down the dragon's chest or onto the ground in front of it. Never a puff or a weak spurt. About 2 seconds of a 5s clip, 3-4 of a 10s clip, then the jaws close. Describe it once in weapon_continuity (side of the frame it exits, start and stop, color, how it lights the scene).
 
 BLENDING
 Any fire, ice, rune light, mist or ember matches the frame's color temperature, direction and materials and lights the subject the way a real source would (bounce on the chest, glow on the inner wings, cold light under the jaw). State this in lighting or weapon_continuity, not in action. Existing glows in the frame stay as they are.
@@ -136,7 +133,7 @@ Compact JSON has no spaces after colons or commas. Keys and punctuation cost abo
 Trim by cutting adjectives and repeated nouns, never by dropping a beat's time range, a count in character_continuity or the breath geometry. Leave no field empty.
 
 OUTPUT
-JSON only: one object, no markdown fences, no commentary, no line breaks or double quotes inside strings, plain ASCII punctuation. Before you answer, check: shot 1 starts on the frame; shot durations sum to the total; every beat has a time range; no negation and no forbidden verb inside action or camera_motion; breath, if any, has raise, burst and end beats with upward geometry; counts in character_continuity match the image; the compact length is under the limit.`;
+JSON only: one object, no markdown fences, no commentary, no line breaks or double quotes inside strings, plain ASCII punctuation. Before you answer, check: shot 1 starts on the frame; shot durations sum to the total; every beat has a time range; no negation and no forbidden verb inside action or camera_motion; breath, if any, has raise, burst and end beats with sideways geometry; counts in character_continuity match the image; the compact length is under the limit.`;
 
 export async function writeShotSheet(opts: {
   mode: "single" | "multi";
@@ -251,19 +248,7 @@ export function sheetProblem(sheet: ShotSheet, opts: { mode: "single" | "multi";
     if (neg) return `shot ${sh.shot_number} action/camera_motion contains "${neg[0]}": write only what happens; prohibitions go in visual_constraints`;
     const verb = sh.action.match(/\b(lunges?|charges?|rears|rearing|leaps?|swings?|attacks?|strikes?|bites?|flies|takes? off)\b/i);
     if (verb) return `shot ${sh.shot_number} action contains the forbidden motion "${verb[0]}"`;
-    const fire = sh.action.search(/\b(fire|flame|flames|ice breath|frost breath|blast of ice|ice crystals)\b/i);
-    if (fire >= 0) {
-      const raise = sh.action.search(/\b(tilts (its )?head back|snout points|raises its head|neck arches up|head tilts back)\b/i);
-      if (raise < 0 || raise > fire) return `shot ${sh.shot_number}: the dragon must raise its head (snout pointing up at the top of the frame) in a beat BEFORE the breath`;
-      const beats = sh.action.split(/(?=\d+(?:\.\d+)?-\d+(?:\.\d+)?s:)/);
-      for (const b of beats) {
-        if (/\b(fire|flame|flames|ice breath|frost breath|blast of ice|ice crystals)\b/i.test(b) && /\b(down|downward|downwards|ground|nest|water|camera|lens)\b/i.test(b))
-          return `shot ${sh.shot_number}: the breath beat mentions a downward direction or the ground/nest/water/camera; use only up, upward, rising, vertical, top of the frame`;
-      }
-    }
   }
-  if (/\b(downward|downwards|at the ground|at the camera|at the lens|into the nest|at the water)\b/i.test(sheet.weapon_continuity))
-    return "weapon_continuity sends the breath downward or at the camera; breath rises up out of the top of the frame";
   return null;
 }
 
@@ -290,7 +275,7 @@ function fieldSizes(sheet: ShotSheet): string {
   ].join(", ");
 }
 
-/** Mythicals slide motion rule (2026-10-06, per Keenan: subtle, nothing over the top). */
+/** Mythicals slide motion rule (2026-10-06 subtle; 2026-10-08 per Keenan: scenes move, wings flap, things move). */
 export const SUBTLE_MOTION_RULES = [
-  "Subtle: the subject holds its pose (breathing, a blink or slight head turn, wind in mane or cloak, one slow wingbeat at most). No attacks, swings, rearing, charging or lunging; a creature never holds a weapon.",
+  "Alive: a clear main action at real speed plus a living scene (wingbeats, tail and mane, wind, rolling clouds, drifting mist, moving water, swirling embers or snow). The subject stays in frame and on the ground: no charging, lunging or taking off; a creature never holds a weapon.",
 ];

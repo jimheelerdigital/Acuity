@@ -150,9 +150,10 @@ export function eggMotionPrompt(): string {
 
 export function dragonMotionPrompt(c: EggConcept): string {
   // 2026-10-06 (Keenan: "dragons can be normal full fire/ice bursts depending on the dragon type").
-  const breath = c.breath === "ice" ? "a long blast of glittering ice breath" : "a long burst of fire";
+  // 2026-10-08 (Keenan: "dragon breath looks terrible and weak"): full power.
+  const breath = c.breath === "ice" ? "a long, straight, powerful jet of ice shards and freezing mist, head turned to the side, shooting horizontally out of the side of the frame and lighting the scene cold blue" : "a long, straight, powerful jet of fire, head turned to the side, shooting horizontally out of the side of the frame and lighting the scene bright orange";
   const sound = c.breath === "ice" ? "a crackling, rushing blast of freezing wind and ice" : "roaring fire";
-  return `The newly hatched dragon sits still at first, breathing slowly, dust drifting, its eyes locked on the camera. Then it slowly raises its head, opens its jaws, lets out a deep roar and breathes ${breath} up into the sky. Its wings flare open with one strong wingbeat, then it settles and stares back at the camera. Slow push-in camera. Sound: low breathing and crackling shell, then a deep, thunderous dragon roar and ${sound}. No music, no speech.`;
+  return `The newly hatched dragon sits still at first, breathing slowly, dust drifting, its eyes locked on the camera. Then it slowly raises its head, opens its jaws, lets out a deep roar and breathes ${breath}. Its wings flare open with one strong wingbeat, then it settles and stares back at the camera. Slow push-in camera. Sound: low breathing and crackling shell, then a deep, thunderous dragon roar and ${sound}. No music, no speech.`;
 }
 
 /** Stored on slide 0's imagePrompt so the video builder can rebuild without the concept. */

@@ -295,7 +295,7 @@ export const carouselPostVideoFn = inngest.createFunction(
                 sound: true,
                 imageUrl: egg.dragonUrl,
                 brief: egg.dragonMotion,
-                constraints: ["Head raised, fire or ice breath goes UP into the sky; never downward, at the ground, the nest, the camera or a person.", "No magic effects beyond the breath: no auras, sparkles or energy glows."],
+                constraints: ["A powerful, sustained fire or ice breath matching the dragon's type, in any direction.", "No magic effects beyond the breath: no auras, sparkles or energy glows."],
               }),
             ]);
             return { egg: eggSheet, dragon: dragonSheet };

@@ -92,7 +92,10 @@ export const CHOICE_CATEGORIES = [
   "a colossal war beast to command in battle",
   // 2026-09-30, per Keenan: "add 'which superpower would you pick' and
   // 'which weapon would you choose' as options too".
-  "which superpower would you pick (a legendary power: command storms, shapeshift into a beast, walk through shadow, bend fire, speak with dragons, stop time)",
+  // "which superpower" removed 2026-10-08 (Keenan: "FIVE POWERS, ONE TITAN"
+  // came out as five look-alike warriors and "talks about 'five powers' and
+  // then lists off characters"); powers can't be shown without the magic
+  // effects that are now banned.
   "which weapon would you choose (each a legendary weapon with its own power and story)",
   // 2026-10-07, per Keenan (veyra_lore's "ONLY ONE WEAPON WILL OBEY YOU.
   // WHICH ONE WOULD YOU TRUST?"): "you can also do weapons like this where
@@ -115,13 +118,25 @@ YOUR JOB: write one "which would you choose?" post.
   - "name": 2-4 words in Title Case, legendary-sounding and easy to type in a comment ("The Storm Wyvern", "Kitsune of Nine Flames"). No numbers; the renderer adds them.
   - "lore": one line, 6-12 words, giving one vivid, specific reason to pick it: what it does, what it guards, what it costs, what it says about you. Never a pile of adjectives.
   - "scene": one or two sentences describing the image for this option: the creature or fighter as the clear hero, its colors, silhouette, pose, and a setting that matches it. The five scenes must look completely different from each other (different element, color palette, silhouette, environment and time of day), so the choice is visual as well as written.
-  - "motion": one sentence for its five-second clip: the subject stays essentially STILL in its pose with natural movement (slow breathing, a blink or slight head turn, wind in its mane, feathers or cloak, one slow wingbeat at most) (2026-10-06, per Keenan: "dragons can be normal full fire/ice bursts depending on the dragon type, but everything else is toned down. pulsing runes are ok as long as they blend properly. it's more so the magic stuff"). A dragon may breathe a full burst of fire or ice that matches its type, up into the sky or across the landscape, never at a person. Armor and weapons may have runes that pulse softly and blend into the metal or stone. NO MAGIC EFFECTS on anything else: no auras, no ghostfire, no lightning crawling over bodies, no energy glows or sparkles, no flames on blades or armor. No attacks, no swings, no rearing, no charging, no leaping, no lunging. The subject stays in frame.
+  - "motion": one sentence for its five-second clip: ONE clear, confident, cinematic action at real speed, never a near-still photo (2026-10-08, per Keenan: "add better animation... they're looking a bit stale"). VARIETY (2026-10-08, per Keenan: "all the dragons did the same animation... give posts variance and have them be doing different things"): each of the five options does a DIFFERENT main action, and AT MOST TWO of the five breathe. Pick from: turns its head slowly to stare down the lens; throws its head back and roars at the sky; shakes rain, snow or dust off its body; takes one heavy step forward and lowers its head with a low growl; unfurls its wings to full span; sweeps its tail and shifts its weight; exhales smoke or frost from its nostrils; a warrior plants a weapon or turns into the wind with the cloak whipping. A dragon that breathes turns its head to the SIDE and unleashes a long, straight, powerful jet of fire (or ice for an ice dragon) horizontally across the scene and out of the side of the frame, never at the lens, never pouring downward. Armor and weapons may have softly pulsing runes that blend in. No other magic effects (no auras, ghostfire, crawling lightning, energy glows). The scene moves too (2026-10-08, per Keenan: "scenes can move, wings can flap, things can move"): add one or two living-world motions, like strong wingbeats stirring dust, clouds rolling, mist drifting, water crashing, banners and cloaks whipping in the wind, embers or snow swirling. No swings, no charging, no leaping, no lunging, no taking off. The subject stays in frame.
 - The five options must be genuinely different kinds of choice (a loyal one, a wild one, a patient one, a terrifying one, a wise one), so that picking one says something about the person picking. All five should be tempting; none is the obvious joke or throwaway.
-- "coverScene": the cover image: an epic establishing shot that sets up the question without showing all five options (a lone rider on a ridge looking out at a stormy sky full of shapes, an armory hall, a vast lair entrance).
-- "coverMotion": one sentence of SUBTLE, atmospheric movement for the cover's five-second clip: only the environment and light move (mist drifts, embers float, clouds roll slowly, torchlight flickers); any creature or hero stays still apart from breathing or a slow blink. No big reveals, charges or camera swoops (a slow wingbeat is fine) (2026-10-05, per Keenan: the opening animations looked "way too over the top").
+- "coverScene": the cover image is a TEASE, never a reveal (2026-10-08, per Keenan: "let's not do so much of a beast reveal on the cover screen... force them to see at least the first beast on the second slide... build more anticipation"). Show something huge and promising but HIDDEN, so the only way to see it is to keep watching. Two cover styles are both in play (2026-10-08, per Keenan: "use mine but yours was good too so we can keep both styles"). LEAD STYLE, the five hinted: a hero facing five closed or covered versions of the options, e.g. a knight standing before five glowing dragon eggs of five different colors (Keenan's cover for "WHICH ANCIENT DRAGON CHOOSES YOU?"), five sheathed legendary swords on an altar, five armor stands draped in shadow. ALTERNATE STYLE, the hidden giant: a colossal silhouette half-lost in storm clouds, five pairs of glowing eyes in a dark cavern, a vast winged shadow sweeping over a castle, the tip of a wing or a claw emerging from thick mist, a sealed armory door with light spilling through the cracks, a lone warrior facing a wall of fog. Never show any of the five options clearly, and never show a whole creature, weapon or armor in full light.
+- "coverMotion": one sentence of slow, building ANTICIPATION for the cover's five-second clip: a slow push toward the hidden thing as the fog shifts, a glowing eye opens in the dark, a shadow passes overhead, light flickers through the cracks of a door. The thing stays hidden to the last frame: no reveal, no charge, no camera swoop (2026-10-05, per Keenan: the opening animations looked "way too over the top").
 - "endCard": the closing line, 2-6 words, ALL-CAPS ready, asking for their pick. Vary it every post ("WHICH ONE IS YOURS?", "COMMENT YOUR NUMBER.", "CHOOSE WISELY.", "ONE CHANCE. PICK."); never reuse a recent end card.
 - "captionQuestion": one short caption question that gets a pick AND a reason in the comments ("Which one, and what would you name it?").
 - Creatures of legend from any culture are welcome, and so are original inventions. Keep them respectful and not gory. No emojis.
+
+PROVEN WINNERS (2026-10-08, per Keenan: "our best posts with animation have been"... "use those as references to build better videos"). Study their SHAPE, then write new words; never reuse these titles:
+- "WHICH OF THESE 5 DRAGONS WOULD YOU CHOOSE?"
+- "WHICH DRAGON ARE YOU BONDING TO?"
+- "PICK ONE DRAGON TO RIDE INTO BATTLE?"
+- "WHICH WAR HELM CHOOSES YOU?"
+- "YOU GET ONE LEGENDARY ARMOR. WHICH ONE DOES HE TAKE?"
+- "WHICH MYTHICAL CREATURE CHOOSES YOU?"
+- "ONE EGG. FIVE POSSIBLE DRAGONS. WHICH HATCHES TONIGHT?"
+- "IF YOU KNOW HIM, WHICH LEGENDARY WEAPON IS HIS?"
+- "PICK YOUR ARMOR TO SURVIVE A DRAGON'S BREATH"
+What they share: a personal one-of-five choice framed as identity or destiny ("chooses you", "are you bonding to", "is his"); the subjects are DRAGONS (most of them) or LEGENDARY GEAR (armor, war helms, weapons); five clearly different, gorgeous options, one per slide. Lean toward these subjects and this framing.
 
 TITLE STYLE (2026-10-06, per Keenan, after "ONE ARMOR TO SURVIVE A DRAGON'S BREATH. IF YOU KNOW HIM, WHICH?": "this makes no sense and sounds horrible... just ask the reader what they'd pick"):
 - The title is a plain, natural question or instruction TO THE READER, the way a person would actually say it out loud. Read it aloud: if it sounds odd, rewrite it.
@@ -349,7 +364,7 @@ const COUNTDOWN_RULES = `THIS POST IS A "TOP 5" COUNTDOWN: five entries ranked f
   - "name": 2-4 words in Title Case, legendary-sounding, the thing being ranked ("Fenrir's Fang", "The Abyssal Wyrm"). No numbers; the renderer adds them.
   - "lore": one line, 6-12 words, on why it earns its rank.
   - "scene": the ranked thing as the clear hero of the frame (a weapon or armor worn or wielded by one heroic figure, or shown on display; a beast whole and colossal), each in a completely different setting, palette and silhouette.
-- "coverScene": an epic shot that sets up the countdown without showing the five (a legendary armory hall, a battlefield at dusk, a vast lair).
+- "coverScene": a TEASE that sets up the countdown without revealing any of the five (2026-10-08, per Keenan: build anticipation, first reveal on slide 2): a vast shadow in a dark lair, shapes in a storm, a sealed vault with light leaking out.
 - "endCard": 2-6 words inviting debate about the ranking ("AGREE WITH #1?", "WHAT'S YOUR #1?", "WRONG ORDER? COMMENT."); vary it.
 - "captionQuestion": asks what they'd put at #1, or what's missing from the list.
 Everything else in the format above still applies.`;
@@ -445,28 +460,36 @@ async function withBestTitle(topic: ChoiceTopic, mode: NonNullable<ChoiceTopicOp
   }
 }
 
+/**
+ * Problems that make a post wrong rather than weak (2026-10-08, per Keenan:
+ * "it talks about 'five powers' and then lists off characters. this post
+ * shouldn't have gotten through jev's filter"). These never ship: up to three
+ * rewrites, then the run fails (no post that hour) instead of publishing a
+ * mismatch. Twins and throwaways stay soft (best draft ships).
+ */
+const HARD_PROBLEM = /don't say they are what the title promises|pictures don't show|human faces|title doesn't read naturally|realistic or ordinary|copy check flagged/;
+
 async function generateChoiceTopicChecked(opts: ChoiceTopicOpts): Promise<ChoiceTopic> {
-  const first = await generateChoiceTopicOnce(opts);
-  const firstProblems = await choiceTopicProblems(first);
-  if (firstProblems.length === 0) return first;
-  console.warn(`[choice-lane] "${first.title}" rejected: ${firstProblems.join("; ")} — rewriting once`);
-  try {
-    const second = await generateChoiceTopicOnce({
-      ...opts,
-      feedback: `${opts.feedback ?? ""}\n\nREJECTED DRAFT "${first.title}" (${first.options
-        .map((o) => o.name)
-        .join(", ")}): ${firstProblems.join("; ")}. Write a new post that fixes this: ${optionCount(opts)} options that are each tempting and clearly different from each other.`,
-    });
-    const secondProblems = await choiceTopicProblems(second);
-    if (secondProblems.length > firstProblems.length) {
-      console.warn(`[choice-lane] rewrite was worse (${secondProblems.join("; ")}) — shipping the first draft`);
-      return first;
+  let best: { topic: ChoiceTopic; problems: string[] } | null = null;
+  let feedback = opts.feedback ?? "";
+  for (let attempt = 0; attempt < 4; attempt++) {
+    const topic = await generateChoiceTopicOnce({ ...opts, feedback: feedback || null });
+    const problems = await choiceTopicProblems(topic);
+    const hard = problems.filter((p) => HARD_PROBLEM.test(p));
+    if (!best || hard.length < best.problems.filter((p) => HARD_PROBLEM.test(p)).length || (hard.length === 0 && problems.length < best.problems.length)) best = { topic, problems };
+    if (problems.length === 0) return topic;
+    if (hard.length === 0 && attempt >= 1) {
+      console.warn(`[choice-lane] "${topic.title}" ships with soft issues only: ${problems.join("; ")}`);
+      return best.topic;
     }
-    return second;
-  } catch (err) {
-    console.warn("[choice-lane] rewrite failed — shipping the first draft:", err instanceof Error ? err.message : err);
-    return first;
+    console.warn(`[choice-lane] "${topic.title}" rejected (attempt ${attempt + 1}): ${problems.join("; ")} — rewriting`);
+    feedback = `${opts.feedback ?? ""}\n\nREJECTED DRAFT "${topic.title}" (${topic.options
+      .map((o) => o.name)
+      .join(", ")}): ${problems.join("; ")}. Write a new post that fixes this: ${optionCount(opts)} options that are each tempting, clearly different from each other, and exactly the kind of thing the title promises.`;
   }
+  const hardLeft = best!.problems.filter((p) => HARD_PROBLEM.test(p));
+  if (hardLeft.length) throw new Error(`choice topic failed the Jev gate after 4 drafts: ${hardLeft.join("; ")}`);
+  return best!.topic;
 }
 
 const TWIN_THRESHOLD = 0.8;
@@ -796,7 +819,7 @@ export const NO_HUMAN_FACE_LINE =
 export const QUALITY_BAR_LINE =
   "QUALITY BAR: extreme, tactile detail on the subject. Every scale, plate, horn and rune is sharply defined, with cracks, chips and wear; glowing seams, embers or frost add light from within. A restrained palette: deep near-black and charcoal tones with ONE vivid accent color that glows (molten orange, icy blue, emerald or violet). Dramatic low-key lighting with volumetric smoke or fog, rim light on the edges, drifting embers or particles, and glowing eyes that hold the viewer. Bold, simple composition: the subject is big, close and frontal, staring into the lens.";
 const COVER_SCALE_LINE =
-  "SCALE: the creature is so colossal that its head or body fills most of the frame; one tiny cloaked figure stands in the foreground, seen from behind, facing it, to show the scale.";
+  "COVER = TEASE, NEVER A REVEAL (2026-10-08, per Keenan: build anticipation; the first creature or item is revealed on slide 2): whatever is coming is HIDDEN or only hinted at: a colossal silhouette half-lost in storm clouds or fog, glowing eyes in darkness, a vast shadow, the edge of a wing or claw in mist, light spilling from a sealed door. No creature, weapon or armor is shown whole or in clear light. Epic scale and mood, maximum curiosity.";
 
 export function buildMythicImagePrompt(
   scene: string,

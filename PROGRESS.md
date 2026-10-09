@@ -7,6 +7,31 @@
 
 ---
 
+## [2026-10-08] — Mythicals: livelier animation, powerful dragon breath, teaser covers, proven-winner references
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** see git log (feat: Livelier Mythicals animation and full-power dragon breath)
+
+### In plain English (for Keenan)
+Mythicals videos were looking stale (subjects barely moving) and dragon breath looked weak. Every clip now gets one clear, confident action (a head turn, wings spreading, a heavy step) and a smooth cinematic camera move. Each of the five options in a post does a different action, and at most two breathe. Dragon breath is a long, straight jet of fire (or ice) shot sideways across the scene and out of the frame. Fire aimed at the lens poured down the dragon's chest in testing. All clips stay on Kling 2.5 Turbo (Keenan: examples must match the automated pipeline). Covers no longer reveal the beast; the first creature appears on slide 2. There are two cover styles: Keenan's lead style hints at the five without showing them (e.g. a knight before five different-colored dragon eggs), and the alternate is a hidden giant (a silhouette in storm clouds, glowing eyes). The writer studies Keenan's 9 best-performing posts as references (dragon and legendary-gear picks framed as 'which one chooses you'). The How Big series stays: Keenan reversed its removal because it does well on YouTube. Pushed at 11pm CT on 10-08 so it starts with 10-09's posts and today's posts were untouched, per Keenan.
+Later on 10-08 Keenan also gave the green light for whole-scene movement: wings beat, clouds roll, mist drifts, water crashes, cloaks and banners whip in the wind, embers and snow swirl. Opus still writes each scene out in full every day.
+
+### Technical changes (for Jimmy)
+- `apps/web/src/lib/content-factory/shot-sheet.ts`: SYSTEM camera step (cinematic move); "MAKE IT ALIVE" replaces the near-still allowed-motion rule; BREATH rewritten: a powerful sustained blast of fire or ice in any direction, about 2s of 5s or 3-4s of 10s; the 10-06 breath-geometry checks (head-up first, no down/camera words) were removed from sheetProblem; `SUBTLE_MOTION_RULES` and the base speed/camera rule updated.
+- shot-sheet.ts: new "THE WHOLE SCENE MOVES" rule (2-3 secondary motions per shot); SUBTLE_MOTION_RULES now asks for a living scene but keeps the subject in frame and on the ground (no charging, lunging or taking off). Same scene-motion line added to choice-lane.ts motion spec and living-reel.ts; the SYSTEM self-check now says sideways breath geometry. egg-hatch.test.ts updated for the jet-of-ice wording.
+- `apps/web/src/lib/content-factory/living-reel.ts`: the Mythicals action-mode brief is lively instead of "keep it subtle".
+- `apps/web/src/lib/content-factory/choice-lane.ts`: the option "motion" is one confident cinematic action; new PROVEN WINNERS block (Keenan's 9 best titles, shape only); `coverScene`/`coverMotion` and `COVER_SCALE_LINE` are a tease, not a reveal; the countdown cover is a tease too.
+- `apps/web/src/lib/content-factory/egg-hatch.ts`: the hatchling breath is a sideways jet.
+- `choice-lane.ts` motion rule: VARIETY, a different main action per option from a menu, max 2 breathers per post.
+- `choice-lane.ts` `generateChoiceTopicChecked`: hard Jev gate. Up to 4 drafts; HARD problems (names don't match the title's promise, pictures off-topic, human faces, unclear title, non-epic, copy flag) never ship, and the run throws instead. Soft problems (twins, throwaways) ship the best draft. Removed the "which superpower" category ("FIVE POWERS, ONE TITAN" listed five characters, per Keenan).
+
+### Manual steps needed
+None
+
+### Notes
+- Still bounded: no swings, rearing or charging; no magic auras. Breath direction is free per Keenan (10-08). Keenan's 10-05 "too much movement" feedback is still the ceiling. Watch 10-09's posts and tone down if it tips over.
+
 ## [2026-10-08] — Automatic Instagram and Facebook posting back on; no YouTube backlog
 **Requested by:** Keenan
 **Committed by:** Claude Code
