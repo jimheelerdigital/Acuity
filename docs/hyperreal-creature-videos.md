@@ -37,6 +37,7 @@ Seedance 2.0 (67.5 credits) was tested once, on the roller coaster, and judged n
 
 ### Creature
 - **Never in the start photo.** It enters from off-screen, or rises out of water, clouds or forest. The empty first seconds are the hook.
+- **The end photo must be reachable by PHYSICAL motion from the start photo.** If the gap can't be explained by movement, Seedance cheats with a crossfade/dissolve (the forest giant, 10-09: "a fucking fade... didn't look realistic whatsoever"). Safe entries: rises out of water or clouds, flies or walks in from beyond the frame edge. If the creature must emerge from land (forest, hillside), it has to be **hidden in the start photo as terrain** (a mossy mound that stands up), or drop the end photo and use start-only with a step-by-step break-out prompt.
 - **Instantly recognizable, classic anatomy.** Fans love dragons, krakens, serpents and giants. A kraken is a traditional two-eyed octopus/squid with a beak, never a cyclops.
 - **One creature, one continuous body.** A serpent surfaces head-first and its body follows as ONE connected back. Never write "coils on both sides" (that produced disconnected rubber rings).
 - **It physically interacts, with weight.** It grabs, crushes, bends or tilts something, and the vehicle reacts (rolls, lurches, wave hits). The cruise kraken crushing a lifeboat was "excellent".
@@ -117,7 +118,8 @@ Keenan: "looked absolutely terrible", "not cohesive even slightly". Don't pitch 
 - [ ] Prompt says hyper-realistic, high detail, 4K; has timed beats, physics and sound.
 - [ ] No "no/never/without" inside the action beats; must-nots only in the closing line.
 - [ ] No human-faced creature; dragons have wings; no weapons on beasts.
-- [ ] After render: review 8+ frames, then add a Log row.
+- [ ] End photo reachable from start photo by physical motion (water, clouds, frame edge, or hidden-as-terrain). Otherwise expect a dissolve.
+- [ ] After render: review 8+ frames AND run the dissolve check (compare consecutive frames in the reveal window for ghosting or double images; a transparent creature = a fade), then add a Log row.
 - [ ] Model is Seedance 2.5, 720p, 15s, sound on.
 
 ---
@@ -142,4 +144,4 @@ Keenan: "looked absolutely terrible", "not cohesive even slightly". Don't pitch 
 | 10-09 | Roller coaster dragon | Seedance 2.5 + 2.0 | "Awful" | Riders' hands in frame, theme-park chaos | No people or hands; calm travel settings |
 | 10-09 | Kraken attacks the cruise ship (remake) | Seedance 2.5 | **"Excellent"** | Classic two-eyed kraken, crushes lifeboat, bends railing, real weight | Physical damage with weight = the formula |
 | 10-09 | Sea serpent attacks the ferry in fog | Seedance 2.5 | **Poor** | Coils = disconnected rubber rings; no weight (nothing bends, ferry barely moves); head appears late and floats; heavy fog flattened texture | One continuous body, head first; vehicle must react; light mist max; one action |
-| 10-09 | Forest giant, river boat | Seedance 2.5 | Awaiting Keenan | Good: ~7s calm drift + birds scatter, one continuous body, big splash, wave toward bow, ends close on glowing eyes. Weak: giant seems to fade in from mist instead of visibly tearing out of the hillside | For emergences, describe the physical break-out in steps (trunks snap and fall, soil slides, body pushes up), not just "tears free" |
+| 10-09 | Forest giant, river boat | Seedance 2.5 | **Terrible** | The giant CROSSFADED in (a dissolve between the start and end photos), not a physical emergence; I missed it reviewing stills | End photo must be physically reachable; hide land creatures as terrain; run the dissolve check |
