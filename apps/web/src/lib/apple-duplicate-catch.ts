@@ -31,6 +31,13 @@
  * Everything else (name match >2h later, timing-only POSSIBLE) still waits
  * for the button in the founder email, because a wrong
  * guess there would put a stranger into someone's paid account.
+ * 2026-10-09 (Jimmy): auto-link now needs the Apple FIRST AND LAST name to
+ * both match one name on the paid side (account name or the name on the
+ * Stripe payment). One shared token isn't enough: a husband with his wife's
+ * surname would otherwise be auto-linked into her journal. Names now also
+ * come from the Stripe cardholder, so "Michael Hester" vs a payment by
+ * "Lindsey Blankenbaker" counts as different people (it was flagged POSSIBLE
+ * on 2026-10-01 because the account itself had no name).
  */
 import "server-only";
 
@@ -46,13 +53,19 @@ export interface DupeAccount {
   email: string;
   name: string | null;
   createdAt: Date;
+  appVersion?: string | null;
 }
 export interface PaidAccount {
   id: string;
   email: string;
   name: string | null;
   paidAt: Date;
+  /** Name on the Stripe customer (the cardholder), when Stripe has one. */
+  cardName?: string | null;
+  /** Stripe subscription status, e.g. "trialing" (card on file, not charged) or "active". */
+  stripeStatus?: string | null;
 }
+type PaidNames = { name: string | null; email: string; cardName?: string | null };
 export interface DupeMatch {
   dupe: DupeAccount;
   paid: PaidAccount;
@@ -68,11 +81,13 @@ function tokens(s: string | null | undefined): string[] {
 }
 
 /** Does a name from Apple point at this paid account? Pure, for tests. */
-export function nameMatches(dupeName: string | null, paid: { name: string | null; email: string }): string | null {
+export function nameMatches(dupeName: string | null, paid: PaidNames): string | null {
   const local = paid.email.toLowerCase().split("@")[0].replace(/[^a-z]/g, "");
-  const paidNames = tokens(paid.name);
+  const accountNames = tokens(paid.name);
+  const cardNames = tokens(paid.cardName);
   for (const t of tokens(dupeName)) {
-    if (paidNames.includes(t)) return `name "${t}" matches`;
+    if (accountNames.includes(t)) return `name "${t}" matches`;
+    if (cardNames.includes(t)) return `name "${t}" matches the name on the payment`;
     if (t.length >= 4 && local.includes(t)) return `"${t}" is in ${paid.email}`;
   }
   return null;
@@ -84,11 +99,23 @@ export function nameMatches(dupeName: string | null, paid: { name: string | null
  * both sides have a usable name and no token overlaps, so a missing name
  * never counts as a conflict. Pure, for tests.
  */
-export function namesConflict(dupeName: string | null, paid: { name: string | null; email: string }): boolean {
-  const a = tokens(dupeName);
-  const b = tokens(paid.name);
-  if (!a.length || !b.length) return false;
+export function namesConflict(dupeName: string | null, paid: PaidNames): boolean {
+  if (!tokens(dupeName).length) return false;
+  if (!tokens(paid.name).length && !tokens(paid.cardName).length) return false;
   return !nameMatches(dupeName, paid);
+}
+
+/**
+ * The Apple name's first AND last name both appear in ONE name on the paid
+ * side (the account name or the name on the payment). The bar for linking
+ * without a founder. Pure, for tests.
+ */
+export function fullNameMatches(dupeName: string | null, paid: PaidNames): boolean {
+  const t = tokens(dupeName);
+  if (t.length < 2) return false;
+  const first = t[0];
+  const last = t[t.length - 1];
+  return [tokens(paid.name), tokens(paid.cardName)].some((names) => names.includes(first) && names.includes(last));
 }
 
 /** Pick at most one paid account per dupe. Pure, for tests. */
@@ -158,7 +185,12 @@ const AUTO_LINK_GAP_MS = 2 * 3600_000;
  */
 export function isVeryStrong(m: DupeMatch): boolean {
   const gap = m.dupe.createdAt.getTime() - m.paid.paidAt.getTime();
-  return m.confidence === "strong" && gap >= 0 && gap <= AUTO_LINK_GAP_MS;
+  return (
+    m.confidence === "strong" &&
+    gap >= 0 &&
+    gap <= AUTO_LINK_GAP_MS &&
+    fullNameMatches(m.dupe.name, m.paid)
+  );
 }
 
 export type LinkResult =
@@ -192,6 +224,39 @@ export async function linkAppleAccounts(fromUserId: string, toUserId: string, ho
   return { ok: true, paidEmail: paid.email };
 }
 
+// ── Stripe facts: cardholder name + whether anything has been charged ─────
+/**
+ * Best effort. A Stripe failure returns nulls: no cardholder name means no
+ * conflict can be detected from it, and no auto-link can be earned from it.
+ */
+async function loadStripeFacts(
+  customerId: string | null,
+  subscriptionId: string | null
+): Promise<{ cardName: string | null; stripeStatus: string | null }> {
+  let cardName: string | null = null;
+  let stripeStatus: string | null = null;
+  try {
+    const { stripe } = await import("@/lib/stripe");
+    if (customerId) {
+      const c = await stripe.customers.retrieve(customerId);
+      if (!("deleted" in c && c.deleted)) cardName = (c as { name?: string | null }).name ?? null;
+    }
+    if (subscriptionId) {
+      stripeStatus = (await stripe.subscriptions.retrieve(subscriptionId)).status;
+    }
+  } catch (err) {
+    console.error("[apple-dupe] stripe lookup failed:", err instanceof Error ? err.message : err);
+  }
+  return { cardName, stripeStatus };
+}
+
+/** How the alert describes the web purchase. Pure, for tests. */
+export function purchaseLabel(stripeStatus: string | null | undefined): { verb: string; subjectNoun: string } {
+  if (stripeStatus === "trialing") return { verb: "started web trial (card on file, not charged yet)", subjectNoun: "web trial" };
+  if (stripeStatus === "active") return { verb: "paid", subjectNoun: "paid customer" };
+  return { verb: "checked out on the web", subjectNoun: "web subscriber" };
+}
+
 // ── The sweep ─────────────────────────────────────────────────────────────
 export async function runAppleDuplicateCatch(opts: { dryRun?: boolean } = {}): Promise<DupeMatch[]> {
   const { prisma } = await import("@/lib/prisma");
@@ -207,7 +272,7 @@ export async function runAppleDuplicateCatch(opts: { dryRun?: boolean } = {}): P
         stripeCustomerId: null,
         isAdmin: false,
       },
-      select: { id: true, email: true, name: true, createdAt: true },
+      select: { id: true, email: true, name: true, createdAt: true, appVersion: true },
       orderBy: { createdAt: "asc" },
     })
   ).filter((u) => !isInternalEmail(u.email));
@@ -222,7 +287,7 @@ export async function runAppleDuplicateCatch(opts: { dryRun?: boolean } = {}): P
         isAdmin: false,
         createdAt: { gte: new Date(now - DUPE_WINDOW_MS - STRONG_GAP_MS) },
       },
-      select: { id: true, email: true, name: true, createdAt: true },
+      select: { id: true, email: true, name: true, createdAt: true, stripeCustomerId: true, stripeSubscriptionId: true },
     })
   ).filter((u) => !isInternalEmail(u.email));
   if (!paidRows.length) return [];
@@ -239,9 +304,16 @@ export async function runAppleDuplicateCatch(opts: { dryRun?: boolean } = {}): P
   for (const e of events) {
     if ((e.event === "funnel_payment_completed" || e.event === "meta_capi_purchase_ok") && e.userId && !paidAt.has(e.userId)) paidAt.set(e.userId, e.createdAt);
   }
-  const paid: PaidAccount[] = paidRows
-    .filter((p) => !inApp.has(p.id) && !flagged.has(p.id))
-    .map((p) => ({ id: p.id, email: p.email, name: p.name, paidAt: paidAt.get(p.id) ?? p.createdAt }));
+  const candidates = paidRows.filter((p) => !inApp.has(p.id) && !flagged.has(p.id));
+  const paid: PaidAccount[] = await Promise.all(
+    candidates.map(async (p) => ({
+      id: p.id,
+      email: p.email,
+      name: p.name,
+      paidAt: paidAt.get(p.id) ?? p.createdAt,
+      ...(await loadStripeFacts(p.stripeCustomerId, p.stripeSubscriptionId)),
+    }))
+  );
 
   const matches = matchDuplicates(dupes, paid);
   if (opts.dryRun) return matches;
@@ -270,28 +342,32 @@ async function alertFounders(m: DupeMatch, rescue: string, link: LinkResult | nu
     const linkUrl = `${origin}/api/admin/link-apple?t=${encodeURIComponent(signLinkApple(m.dupe.id, m.paid.id))}`;
     const linked = !!link?.ok;
     const t = (d: Date) => d.toLocaleString("en-US", { timeZone: "America/Chicago", dateStyle: "medium", timeStyle: "short" });
+    const label = purchaseLabel(m.paid.stripeStatus);
+    const esc = (v: string) => v.replace(/[&<>"]/g, (ch) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[ch] as string);
+    const cardRow = `<tr><td style="padding:6px 0;color:#666;">Name on payment</td><td style="padding:6px 0;${m.paid.cardName ? "font-weight:600;" : ""}">${m.paid.cardName ? esc(m.paid.cardName) : "none in Stripe"}</td></tr>`;
     const { error } = await getResendClient().emails.send({
       from: "hello@goripple.io",
       to: ["keenan@heelerdigital.com", "jim@heelerdigital.com"],
       replyTo: "keenan@heelerdigital.com",
       subject: linked
         ? `Fixed automatically: duplicate Apple account linked to ${m.paid.email}`
-        : `🚨 URGENT: paid customer stuck in a duplicate Apple account — ${m.paid.email} (${m.confidence})`,
+        : `🚨 URGENT: ${label.subjectNoun} stuck in a duplicate Apple account — ${m.paid.email} (${m.confidence})`,
       html: `
         <div style="font-family:-apple-system,BlinkMacSystemFont,sans-serif;max-width:520px;margin:0 auto;padding:24px;">
-          <h2 style="color:#C4451C;margin:0 0 12px;">Paid on the web, then Sign in with Apple made a second account</h2>
+          <h2 style="color:#C4451C;margin:0 0 12px;">Subscribed on the web, then Sign in with Apple made a second account</h2>
           <p style="margin:0 0 16px;color:#374151;line-height:1.6;">Their membership won't show in the app until they use the paid account.</p>
           <table style="width:100%;border-collapse:collapse;font-size:14px;">
-            <tr><td style="padding:6px 0;color:#666;">Paid account</td><td style="padding:6px 0;font-weight:600;">${m.paid.email}${m.paid.name ? ` (${m.paid.name})` : ""} · paid ${t(m.paid.paidAt)}</td></tr>
-            <tr><td style="padding:6px 0;color:#666;">Apple account</td><td style="padding:6px 0;font-weight:600;">${m.dupe.email}${m.dupe.name ? ` (${m.dupe.name})` : ""} · created ${t(m.dupe.createdAt)}</td></tr>
+            <tr><td style="padding:6px 0;color:#666;">Web account</td><td style="padding:6px 0;font-weight:600;">${m.paid.email}${m.paid.name ? ` (${esc(m.paid.name)})` : ""} · ${label.verb} ${t(m.paid.paidAt)}</td></tr>
+            ${cardRow}
+            <tr><td style="padding:6px 0;color:#666;">Apple account</td><td style="padding:6px 0;font-weight:600;">${m.dupe.email}${m.dupe.name ? ` (${esc(m.dupe.name)})` : ""} · created ${t(m.dupe.createdAt)}${m.dupe.appVersion ? ` · app ${esc(m.dupe.appVersion)}` : ""}</td></tr>
             <tr><td style="padding:6px 0;color:#666;">Match</td><td style="padding:6px 0;">${m.confidence.toUpperCase()}: ${m.why}</td></tr>
             <tr><td style="padding:6px 0;color:#666;">Rescue email</td><td style="padding:6px 0;">${rescue} (one-tap sign-in link to the paid address)</td></tr>
           </table>
           ${linked
-            ? `<p style="margin:20px 0 8px;color:#15803d;font-weight:700;line-height:1.6;">Linked automatically ✓ (name match, Apple account within 2h of paying)</p>
+            ? `<p style="margin:20px 0 8px;color:#15803d;font-weight:700;line-height:1.6;">Linked automatically ✓ (first and last name match, Apple account within 2h of paying)</p>
           <p style="margin:0;color:#374151;line-height:1.6;">Sign in with Apple now opens the paid account. Next time they sign in with Apple (or tap the rescue link) they'll see their membership. Wrong person? Tell Claude to move the Apple sign-in back to ${m.dupe.email}.</p>`
             : `${link && !link.ok ? `<p style="margin:20px 0 8px;color:#b45309;line-height:1.6;">Tried to link automatically, but didn't: ${link.detail}</p>` : ""}
-          <p style="margin:20px 0 8px;color:#374151;line-height:1.6;">If this is the same person, link the accounts so Sign in with Apple opens the paid one from now on:</p>
+          <p style="margin:20px 0 8px;color:#374151;line-height:1.6;">Check the names above first. Only if this is the same person, link the accounts so Sign in with Apple opens the paid one from now on:</p>
           <p style="margin:0 0 16px;"><a href="${linkUrl}" style="display:inline-block;background:#C4451C;color:#fff;padding:12px 20px;border-radius:999px;text-decoration:none;font-weight:700;">Link these accounts</a></p>
           <p style="margin:0;color:#6b7280;font-size:13px;line-height:1.6;">Only moves the Apple sign-in, only if the Apple account has no debriefs. Link works for 14 days. Not the same person? Ignore this; the rescue email is harmless.</p>`}
         </div>`,
