@@ -69,6 +69,8 @@ Seedance 2.0 (67.5 credits) was tested once, on the roller coaster, and judged n
 
 **Video: Keenan's SHOT SHEET format (required; supplied 10-06, used by `lib/content-factory/shot-sheet.ts`)**
 
+> **Which version, per model (Keenan, 10-09):** the short, compact shot sheet (`shot-sheet.ts`, ~2,450 chars) is fine **for Kling only**. It is **NOT OK for Seedance.** Seedance always gets the full, long, scene-by-scene script below, with detailed continuity and a full block per scene.
+
 Every video prompt is ONE JSON shot sheet broken down SCENE BY SCENE (Keenan, 10-09: "the script breakdown that we talked about using for all future videos where it breaks it down into scenes"). Never a prose paragraph: the 10-09 clips were written as paragraphs, and lost the continuity locks that stop morphing (the serpent) and dissolves (the giant). Keys, in order:
 
 ```json
