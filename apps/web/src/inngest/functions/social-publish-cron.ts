@@ -345,9 +345,12 @@ export const socialPublishCronFn = inngest.createFunction(
     // skipped. Once the day's posts all exist (from 11:00 UTC; they generate
     // 05:00–10:00), Jev picks the best of today's still-pending rows to fill
     // the day's 5 slots (YOUTUBE_DAILY_CAP; 5 since 2026-10-06, Mythicals cut to 5 posts a day) and the rest are skipped.
+    // 2026-10-09 (Keenan: "the total should be 6 for youtube"): the day's
+    // best 3 new posts (YOUTUBE_DAILY_CAP, default 3) + 3 from the old
+    // library (1c, YOUTUBE_BACKLOG_PER_DAY) = 6 Shorts a day.
     await step.run("youtube-daily-pick", async () => {
       const { prisma } = await import("@/lib/prisma");
-      const cap = Math.max(1, Number(process.env.YOUTUBE_DAILY_CAP) || 5);
+      const cap = Math.max(1, Number(process.env.YOUTUBE_DAILY_CAP) || 3);
       // The Mythicals day runs on Central time (2026-10-06): its last YouTube
       // slot is 8pm CT = after midnight UTC, so a UTC day would drop it.
       const centralDay = new Date().toLocaleDateString("en-CA", { timeZone: "America/Chicago" });
@@ -772,7 +775,7 @@ export const socialPublishCronFn = inngest.createFunction(
         if (row.platform === "youtube") {
           // The day's picks plus the old-library catch-up (1c).
           const cap =
-            Math.max(1, Number(process.env.YOUTUBE_DAILY_CAP) || 5) +
+            Math.max(1, Number(process.env.YOUTUBE_DAILY_CAP) || 3) +
             Math.max(0, Number(process.env.YOUTUBE_BACKLOG_PER_DAY ?? 3) || 0);
           // Per UTC day (2026-10-06): the daily pick works per day, so a
           // rolling window could push one of today's picks past midnight.

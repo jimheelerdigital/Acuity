@@ -37,7 +37,8 @@ Legendary Mythicals videos now render on Kling 3 with sound. The video emailed t
     - picks old Mythicals posts with a built reel and no POSTED/PENDING YouTube row, ranked by best IG views
     - recreates their YouTube row today at 12/2/4pm CT
   - the stale sweep spares rows created today
-  - the YouTube upload cap is now `YOUTUBE_DAILY_CAP` + backlog (5 + 3 = 8)
+  - the YouTube upload cap is now `YOUTUBE_DAILY_CAP` + backlog
+  - `YOUTUBE_DAILY_CAP` default 5 → 3, so YouTube posts the day's best 3 new videos plus 3 old ones = 6 a day (Keenan: "the total should be 6")
 
 ### Manual steps needed
 - [ ] Inngest resync after deploy (`curl -X PUT https://goripple.io/api/inngest`), since the step list changed (Keenan/Claude)
