@@ -43,7 +43,13 @@ Seedance 2.0 (67.5 credits) was tested once, on the roller coaster, and judged n
 - **No famous-character lookalikes.** Seedance blocks a Godzilla-style kaiju every time (4 blocks, status `nsfw`, not charged). Keep away from upright dinosaur bodies with rows of back plates.
 - **No people hurt, no gore.** Destroying objects is fine.
 
+- **Creature design standing rules (10-04/05):** no human faces on creatures (no lamassu, sphinx, manticore, centaur, harpy, naga, siren); every dragon has wings; beasts never hold or use weapons.
+
 ### Prompt wording
+- **Never put a prohibition inside the action beats.** Video models execute every verb they read: a 10-07 shot sheet with "no fire" inside its action text rendered fire downward. Keep the beats purely positive ("breathes a jet of fire up into the sky"). Put the few must-nots in ONE short closing line ("No people, no text.") and nowhere else.
+- **Give a clear, confident action in every beat.** Ambient "stay still" prompts made clips that were "basically just zooming in" (09-29). Action prompts produced 2–3× more motion and "looks way better".
+- **Fire or ice breath:** a head-raise beat first, then a powerful sustained jet (about 2s of a 5s clip, 3–4s of 10s+), up into the sky or sideways across the scene, never at a person. Writing it as head up → column of fire → jaws close fixed the downward-fire bug.
+- **Make the whole scene move:** 2–3 secondary motions (water surging, mist drifting, trees swaying, spray, debris), not just the creature (10-08).
 - Every photo and video prompt includes **"hyper-realistic, high detail, 4K"**. It's wording only; it doesn't change the render resolution.
 - Video prompts use **timed beats** (0-4s / 4-8s / 8-12s / 12-15s) so nothing stalls or crams.
 - State the physics: heavy, massive, slow realistic motion; real water physics; believable scale; no slow motion; no cuts.
@@ -65,6 +71,42 @@ Seedance 2.0 (67.5 credits) was tested once, on the roller coaster, and judged n
 
 ---
 
+## History: lessons from earlier work (pre-10-09)
+
+**One shot only, never stitched scenes.** Multi-shot storyboard videos failed three times:
+- the August illustrated story
+- the calm voiced video
+- the 10-01 storyboard scenes, which had redrawn shots, stray animals, a dragon that froze in the sky and jump-cut
+
+Keenan: "looked absolutely terrible", "not cohesive even slightly". Don't pitch stitched or multi-scene formats again unless a model genuinely does continuous long takes.
+
+**Never judge a clip from a few stills.** Calling the storyboard test good from 5 frames was a mistake. Pull 8+ frames across the clip (watch for disconnected body parts, morphing, things that don't react), and treat Keenan's viewing as the real verdict.
+
+**Same recipe, already automated once:** the Colossal Encounters lane (`lib/content-factory/cinematic-shot.ts`, 10-04) did hidden start frame → reveal end frame on Kling 3.0 4K through the dev API (`image_url` + `last_image_url`). On 10-05 it was cut to Kling 3.0 Turbo, which has no end frame, and the reveal was lost. The lane was retired 10-06. Its pipeline (writer → Jev pick → photos → submit → poll → `finishCinematicVideo`) is the starting point if these clips get automated.
+
+**Movement ceiling is per format.** The 10-05 "too much movement / openings way too over the top" rules (subjects mostly still, subtle effects) apply to the Mythicals pick-post slides. These hyper-real clips are the opposite: big physical action with weight is what Keenan loved (the kraken remake). Keep the CALM in the opening seconds only.
+
+**Finishing (`living-reel.ts` `finishCinematicVideo`):**
+- 1s fade up from black, 1.5s fade to black, on picture and sound
+- loudness normalized to -14 LUFS
+- native model sound preferred
+- music only from our owned AI tracks; never downloaded songs (Facebook muted those, 10-03)
+
+**Models and billing:**
+- **Higgsfield app account** (the MCP in chat): has Seedance 2.5 and Kling 3.0. These clips run here.
+- **Developer API** (Vercel `HIGGSFIELD_API_KEY`): separate credits, used by the pipeline.
+- **The `hf-probe` trigger** submits to BOTH and bills twice. Don't use it for volume.
+- **Kling 2.5 Turbo:** 5 or 10s only.
+- **Kling 3.0 Turbo:** 3–15s, but no end frame and no sound.
+- **Kling prompts** cap at about 2,500 characters.
+- **Hailuo** removed per Keenan (10-05); **DoP Lite** is dead on the dev API.
+
+**Platforms:**
+- Instagram reels can't be deleted through the API, so only post clips that are good to keep.
+- Every platform carries the AI-content label (10-07), and TikTok's toggle is set by hand.
+
+---
+
 ## Checklist (run before spending video credits)
 
 - [ ] Start photo has NO creature and no people.
@@ -73,6 +115,9 @@ Seedance 2.0 (67.5 credits) was tested once, on the roller coaster, and judged n
 - [ ] The creature physically affects something, and the vehicle reacts.
 - [ ] Light is plain daylight, overcast or light mist: no low sunset, no heavy fog.
 - [ ] Prompt says hyper-realistic, high detail, 4K; has timed beats, physics and sound.
+- [ ] No "no/never/without" inside the action beats; must-nots only in the closing line.
+- [ ] No human-faced creature; dragons have wings; no weapons on beasts.
+- [ ] After render: review 8+ frames, then add a Log row.
 - [ ] Model is Seedance 2.5, 720p, 15s, sound on.
 
 ---
@@ -81,6 +126,11 @@ Seedance 2.0 (67.5 credits) was tested once, on the roller coaster, and judged n
 
 | Date | Clip | Model | Result | What worked / failed | Lesson |
 |---|---|---|---|---|---|
+| 09-29 | Mythicals option clips (ambient prompts) | Kling | "Basically just zooming in" | Stillness wording | Every beat needs a real action |
+| 10-01 | Storyboard scenes (kirin, valley dragon) | Kling Std | Scrapped | Stitched shots incoherent; dragon froze, then jump-cut | One continuous shot only |
+| 10-04 | Colossal Encounters tests (Leviathan, Above the Clouds, Shibuya, Summit Watcher) | Kling 3.0 4K | Posted to IG | Hidden start → reveal end worked | Same recipe as now |
+| 10-05 | Mythicals powers as big actions | Kling | "Too much movement" | Rearing, swings, torrents | (For pick slides) subtle; hyper-real clips differ |
+| 10-07 | Dragon egg hatch | Kling | Fire went downward | "no fire" inside the action text | No prohibitions inside beats |
 | 10-09 | Dragon rises beside the plane window | Kling 3.0 Pro | Good | Wing fixed in frame; dragon rises from clouds to the window | Plane window = great anchor |
 | 10-09 | Kraken rises beside the cruise ship (v1) | Seedance 2.5 | Loved, but cyclops eye | Railing anchor, water physics strong | Kraken must have two eyes |
 | 10-09 | Dragon lands on the tower across the street | Seedance + Kling | Good | Night city, fire upward | Both models handled it |
