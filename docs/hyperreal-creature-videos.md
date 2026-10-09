@@ -106,7 +106,7 @@ Writing rules (from `shot-sheet.ts`, Keenan's format):
 - **Roar without breath:** nothing in that beat may blast, spray, pour, burst or gush, or the model turns it into breath. Debris and water around it only fall or drift.
 - **Breath:** sideways out of the side of the frame, never at the lens (it pours down the chest).
 - Every beat is a timed range covering the whole duration with no gaps.
-- **Length:** Seedance is NOT bound by Kling's 2,500-char cap. A ~5,000-char prompt was accepted in a cost check (10-09), so use the full scene-by-scene breakdown with detailed continuity. Add structure, not filler. (The ~2,450 cap only applies when the clip goes to Kling.)
+- **Length:** Seedance takes HIGHLY detailed scripts; that detail is what we pay its higher price for (Keenan, 10-09). Target **~6,000–8,000 characters**. A ~8,000-char prompt was accepted in a Higgsfield cost check on 10-09 (no error, normal 105 credits). Spend it on detail: per-scene framing, camera, beat-by-beat physical action, secondary motion, light, sound, and full continuity (anatomy counts, textures, scale cues, what stays fixed). Never pad with repetition. The first real 8k render is the final proof that nothing gets truncated; log it. (The ~2,450 cap only applies to Kling.)
 
 ---
 
