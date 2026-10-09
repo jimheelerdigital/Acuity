@@ -7,6 +7,26 @@
 
 ---
 
+## [2026-10-08] — Server route for one-off viral Instagram research
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** see "feat: Add a read-only route for viral Instagram hashtag research"
+
+### In plain English (for Keenan)
+Claude can now pull the most-viewed Instagram videos for any set of hashtags through our Apify account on demand. First use: the top 10 viral videos about the mental load moms carry, emailed to Keenan.
+
+### Technical changes (for Jimmy)
+- New `apps/web/src/app/api/admin/research/ig-viral/route.ts` (POST `{hashtags, limitPerTag}`; admin or CRON_SECRET bearer). It runs `scrapeHashtagPosts` (apify~instagram-hashtag-scraper) and returns the video posts sorted by views. Nothing is stored. maxDuration 300.
+
+### Manual steps needed
+- None.
+
+### Notes
+- APIFY_TOKEN is Vercel-sensitive, so Apify calls have to run on the server.
+- Cost is about $2–3 per 1,000 scraped posts on the Apify plan.
+
+---
+
 ## [2026-10-08] — All automatic Instagram/Facebook posting off
 **Requested by:** Keenan
 **Committed by:** Claude Code
