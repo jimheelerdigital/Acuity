@@ -1,5 +1,7 @@
 # Hyper-real creature videos: playbook
 
+> **RETIRED 2026-10-09 (Keenan: "we're going to get rid of the seedance posts. they're not doing well").** Don't make these clips or pitch them again unless Keenan brings them back. Kept as a reference: the rules on direction continuity, physical entries, fire and shot sheets still apply to any creature video.
+
 Living playbook for the Legendary Mythicals "it's real footage" creature clips: a calm, ordinary travel shot where a colossal creature shows up and does something physical. Keenan's direction, 2026-10-08 → 10-09.
 
 **Every session that makes one of these clips:**
