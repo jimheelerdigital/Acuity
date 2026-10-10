@@ -3372,3 +3372,226 @@ model McpAccessToken {
   // user. Composite covers both.
   @@index([userId, revokedAt])
 }
+
+// ─── UGC creator outreach (2026-10-06, per Keenan) ──────────────────────────
+// Find UGC creators who can film ad videos for Ripple (we buy the videos and
+// run them from Ripple's own ad accounts), score them, draft a personal offer,
+// and put the best in front of Keenan weekly. Nothing is sent without his
+// Approve. Settings live in apps/web/src/lib/ugc/config.ts; pipeline in
+// apps/web/src/inngest/functions/ugc-*.ts. All money fields are cents.
+
+enum UgcStatus {
+  found
+  scored
+  queued
+  approved
+  contacted
+  replied
+  negotiating
+  deal
+  briefed
+  delivered
+  paid
+  rejected
+  skipped
+  do_not_contact
+}
+
+enum UgcCreatorType {
+  credentialed
+  lookalike
+  productivity
+}
+
+model UgcCreator {
+  id           String          @id @default(cuid())
+  /// "instagram" | "tiktok"
+  platform     String
+  /// Lowercase, no "@".
+  handle       String
+  /// "apify-hashtag" | "manual" | "meta-marketplace"
+  source       String
+  /// Unique per creator; their tracking link is goripple.io/u/<trackingCode>.
+  trackingCode String          @unique
+  status       UgcStatus       @default(found)
+  /// "midlife" | "ambitious" (lib/content-factory/brand.ts Persona)
+  persona      String?
+  creatorType  UgcCreatorType?
+  score        Int?
+  scoreReason  String?
+  /// Sub-scores and the scorer's notes (Json: fit, camera, proof, active).
+  scoreDetail  Json?
+
+  // Cheap-stage enrichment
+  displayName  String?
+  profileUrl   String?
+  bio          String?
+  followers    Int?
+  lastPostAt   DateTime?
+  email        String?
+  portfolioUrl String?
+  linkInBio    String?
+  mentionsUgc  Boolean   @default(false)
+  listsRates   Boolean   @default(false)
+  credentials  String?
+  // Expensive-stage enrichment
+  avgViews     Int?
+  /// Last 5 videos: [{ url, caption, transcript, views, postedAt }]
+  recentVideos Json?
+
+  // Manual add
+  notes             String?
+  quotedRateCents   Int?
+  /// Quoted rate per video (the quote divided by the videos it covers).
+  costPerVideoCents Int?
+  underFeeCap       Boolean?
+
+  // Drafts (written after scoring, claims-checked by Jev + code checks)
+  emailSubject String?
+  emailDraft   String?
+  dmDraft      String?
+  /// "passed" | "flagged" | "unchecked" — only "passed" can be approved.
+  claimsStatus String?
+  claimsNotes  String?
+
+  // Money owed / paid (the system never pays anyone; it only tracks).
+  agreedFeeCents Int?
+  feePaidCents   Int  @default(0)
+
+  queuedAt    DateTime?
+  approvedAt  DateTime?
+  contactedAt DateTime?
+  repliedAt   DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  runId    String?
+  events   UgcStatusEvent[]
+  outreach UgcOutreach[]
+  briefs   UgcBrief[]
+  videos   UgcVideo[]
+
+  @@unique([platform, handle])
+  @@index([status, queuedAt])
+  @@index([persona, creatorType])
+}
+
+model UgcStatusEvent {
+  id        String     @id @default(cuid())
+  creatorId String
+  creator   UgcCreator @relation(fields: [creatorId], references: [id], onDelete: Cascade)
+  from      UgcStatus?
+  to        UgcStatus
+  /// "system" | "keenan" | job name
+  by        String
+  note      String?
+  at        DateTime   @default(now())
+
+  @@index([creatorId, at])
+}
+
+model UgcOutreach {
+  id             String     @id @default(cuid())
+  creatorId      String
+  creator        UgcCreator @relation(fields: [creatorId], references: [id], onDelete: Cascade)
+  /// "offer" | "followup" | "brief"
+  kind           String
+  /// "gmail" | "manual" (Keenan sent it himself and marked it sent)
+  channel        String
+  toEmail        String?
+  subject        String?
+  body           String
+  gmailMessageId String?
+  gmailThreadId  String?
+  sentAt         DateTime   @default(now())
+  repliedAt      DateTime?
+
+  @@index([creatorId, sentAt])
+  @@index([sentAt])
+}
+
+model UgcBrief {
+  id           String     @id @default(cuid())
+  creatorId    String
+  creator      UgcCreator @relation(fields: [creatorId], references: [id], onDelete: Cascade)
+  body         String
+  /// [{ n, painBranch, hooks: [a, b] }]
+  videos       Json
+  claimsStatus String
+  claimsNotes  String?
+  approvedAt   DateTime?
+  sentAt       DateTime?
+  createdAt    DateTime   @default(now())
+
+  @@index([creatorId, createdAt])
+}
+
+/// One row per delivered ad cut (video number × hook version).
+model UgcVideo {
+  id                 String          @id @default(cuid())
+  creatorId          String
+  creator            UgcCreator      @relation(fields: [creatorId], references: [id], onDelete: Cascade)
+  videoNumber        Int
+  /// "A" | "B"
+  hookVersion        String
+  persona            String?
+  creatorType        UgcCreatorType?
+  painBranch         String?
+  feePaidCents       Int             @default(0)
+  deliveredAt        DateTime?
+  rightsEndAt        DateTime?
+  winner             Boolean         @default(false)
+  bonusOwedCents     Int             @default(0)
+  bonusPaidCents     Int             @default(0)
+  extensionOwedCents Int             @default(0)
+  extensionPaidCents Int             @default(0)
+  // Filled by hand for now.
+  adSpendCents       Int?
+  trials             Int?
+  paidConversions    Int?
+  createdAt          DateTime        @default(now())
+  updatedAt          DateTime        @updatedAt
+
+  @@unique([creatorId, videoNumber, hookVersion])
+}
+
+/// One pipeline run (weekly, manual-add or dry-run). The working set lives
+/// in `candidates` until the final step writes creators (never on a dry run).
+model UgcRun {
+  id            String    @id @default(cuid())
+  /// "weekly" | "manual" | "dry-run"
+  kind          String
+  dryRun        Boolean   @default(false)
+  /// "running" | "done" | "failed"
+  status        String    @default("running")
+  stage         String    @default("discover")
+  candidates    Json?
+  profilesFound Int       @default(0)
+  queued        Int       @default(0)
+  apifyCostUsd  Float     @default(0)
+  modelCostUsd  Float     @default(0)
+  /// [{ stage, message, at }] — every failure, shown in the digest.
+  errors        Json?
+  report        Json?
+  startedAt     DateTime  @default(now())
+  finishedAt    DateTime?
+
+  @@index([startedAt])
+}
+
+model UgcDoNotContact {
+  id        String   @id @default(cuid())
+  /// "platform:handle" or "email:<address>"
+  key       String   @unique
+  reason    String
+  createdAt DateTime @default(now())
+}
+
+/// Keenan's connected Gmail mailbox for outreach (refresh token encrypted
+/// with lib/calendar/encryption.ts).
+model UgcMailbox {
+  email           String   @id
+  refreshTokenEnc String
+  scopes          String
+  connectedAt     DateTime @default(now())
+}
