@@ -21,6 +21,7 @@ const K = {
   lastShown: "review.lastShownAt",
   rated: "review.rated",
   off: "review.dismissedForever",
+  autoNative: "review.autoNativeShown",
 };
 
 // Gating knobs.
@@ -43,6 +44,30 @@ async function flag(key: string): Promise<boolean> {
 export async function bumpDebriefSignal(): Promise<void> {
   try {
     await AsyncStorage.setItem(K.signal, String((await num(K.signal)) + 1));
+  } catch {
+    // best-effort
+  }
+}
+
+/**
+ * Apple's / Google's own rating pop-up, straight after the 2nd completed
+ * debrief (Ripple App Planner, onboarding notes: "AFTER 2ND RECORDING — use
+ * Apple's built-in rating pop-up"). Replaces the custom "Enjoying Ripple?"
+ * pre-prompt as the automatic ask (decided 2026-10-10).
+ *
+ * Once per install. Only the OS-native prompt — never a fallback to the
+ * store page, which must only ever open from an explicit tap. The OS still
+ * decides whether to actually show it (Apple caps it at 3 times a year).
+ */
+export async function maybeNativePromptAfterDebrief(): Promise<void> {
+  try {
+    if (await flag(K.off)) return;
+    if (await flag(K.rated)) return;
+    if (await flag(K.autoNative)) return;
+    if ((await num(K.signal)) < MIN_SIGNAL) return;
+    if (!(await StoreReview.isAvailableAsync()) || !(await StoreReview.hasAction())) return;
+    await AsyncStorage.setItem(K.autoNative, "1");
+    await StoreReview.requestReview();
   } catch {
     // best-effort
   }

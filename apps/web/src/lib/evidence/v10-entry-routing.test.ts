@@ -103,8 +103,13 @@ describe("signed in", () => {
   });
 
   it("keeps the PRO bypass ahead of everything", () => {
+    // Already on Home: left alone (was a redundant replace to /(tabs)).
     expect(
       at({ signedIn: true, onboardingCompleted: false, subscriptionStatus: "PRO" })
+    ).toBe("stay");
+    // From sign-in: sent home, never into legacy onboarding.
+    expect(
+      at({ signedIn: true, onboardingCompleted: false, subscriptionStatus: "PRO", segment: "(auth)" })
     ).toBe("home");
   });
 
@@ -184,5 +189,63 @@ describe("returning signed-out subscriber — the churn case", () => {
     // Tapping "Sign in" on Screen 1 sets dismissed. If that were not
     // sticky, the next cold launch would drop them back into the funnel.
     expect(decideColdStartRoute({ ...base, v10Dismissed: true })).toBe("signin");
+  });
+});
+describe("web subscriber (PRO) with onboarding unfinished", () => {
+  const pro = { signedIn: true, subscriptionStatus: "PRO", onboardingCompleted: false };
+
+  it("never yanks them off an in-app screen like the recorder (2026-10-10 bug)", () => {
+    expect(at({ ...pro, segment: "record" })).toBe("stay");
+    expect(at({ ...pro, segment: "entry" })).toBe("stay");
+    expect(at({ ...pro, segment: "goal" })).toBe("stay");
+  });
+
+  it("still sends them home from sign-in and the bare root", () => {
+    expect(at({ ...pro, segment: "(auth)" })).toBe("home");
+    expect(at({ ...pro, segment: "" })).toBe("home");
+  });
+
+  it("leaves a v10 buyer finishing account + reminders alone", () => {
+    expect(at({ ...pro, segment: "onboarding-new" })).toBe("stay");
+  });
+
+  it("never routes them into legacy onboarding", () => {
+    expect(at({ ...pro, segment: "(tabs)", v10Offered: false })).toBe("stay");
+  });
+
+  describe("welcome flow", () => {
+    const on = { ...pro, funnelWelcomeEnabled: true, totalRecordings: 0 };
+
+    it("routes a first-run subscriber into it from an entry point", () => {
+      expect(at({ ...on, segment: "(tabs)" })).toBe("welcome");
+      expect(at({ ...on, segment: "(auth)" })).toBe("welcome");
+      expect(at({ ...on, segment: "" })).toBe("welcome");
+    });
+
+    it("never redirects out of it, or out of the recorder it opens", () => {
+      expect(at({ ...on, segment: "welcome" })).toBe("stay");
+      expect(at({ ...on, segment: "record" })).toBe("stay");
+    });
+
+    it("skips anyone who has already recorded", () => {
+      expect(at({ ...on, totalRecordings: 1, segment: "(tabs)" })).toBe("stay");
+    });
+
+    it("treats an unknown recording count as 'not first run'", () => {
+      expect(at({ ...on, totalRecordings: undefined, segment: "(tabs)" })).toBe("stay");
+    });
+
+    it("is inert when the flag is off", () => {
+      expect(at({ ...on, funnelWelcomeEnabled: false, segment: "(tabs)" })).toBe("stay");
+    });
+
+    it("is never shown once onboarding is complete", () => {
+      expect(at({ ...on, onboardingCompleted: true, segment: "(tabs)" })).toBe("stay");
+    });
+
+    it("is not for non-subscribers", () => {
+      expect(at({ ...on, subscriptionStatus: "FREE", segment: "(tabs)" })).not.toBe("welcome");
+      expect(at({ ...on, subscriptionStatus: "TRIAL", segment: "(tabs)" })).not.toBe("welcome");
+    });
   });
 });

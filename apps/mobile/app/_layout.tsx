@@ -5,6 +5,7 @@ import * as SplashScreen from "expo-splash-screen";
 
 import { SaveWallProvider } from "@/components/onboarding/v10-save-wall";
 import { decideColdStartRoute } from "@/lib/onboarding-v10/entry-routing";
+import { isFunnelWelcomeEnabled } from "@/lib/feature-flags";
 import { markV10Offered } from "@/lib/onboarding-v10/state";
 import { useColdStartFacts } from "@/lib/onboarding-v10/use-cold-start-facts";
 import { StatusBar } from "expo-status-bar";
@@ -215,6 +216,8 @@ function AuthGate() {
       v10Dismissed: facts.v10Dismissed,
       hasAppHistory: facts.hasAppHistory,
       segment,
+      funnelWelcomeEnabled: isFunnelWelcomeEnabled(),
+      totalRecordings: user?.totalRecordings,
     });
 
     switch (route) {
@@ -244,6 +247,11 @@ function AuthGate() {
         // funnel instead of being read as a brand-new install forever.
         void markV10Offered();
         router.replace("/onboarding-new/pain");
+        return;
+
+      case "welcome":
+        // A web subscriber's first run (app/welcome.tsx). No paywall in it.
+        router.replace("/welcome" as never);
         return;
 
       case "legacy-onboarding": {
@@ -346,6 +354,7 @@ function ThemedApp() {
         <Stack.Screen name="(tabs)" />
         <Stack.Screen name="(auth)" />
         <Stack.Screen name="onboarding" options={{ headerShown: false }} />
+        <Stack.Screen name="welcome" options={{ headerShown: false, gestureEnabled: false }} />
         <Stack.Screen name="auth-callback" options={{ headerShown: false }} />
         <Stack.Screen
           name="entry/[id]"

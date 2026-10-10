@@ -14,7 +14,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { useTheme } from "@/contexts/theme-context";
 import { getToken } from "@/lib/auth";
-import { bumpDebriefSignal } from "@/lib/review";
+import { bumpDebriefSignal, maybeNativePromptAfterDebrief } from "@/lib/review";
 
 /**
  * App-wide "your brief is ready" notifier.
@@ -33,7 +33,12 @@ import { bumpDebriefSignal } from "@/lib/review";
  */
 
 type Ctx = {
-  trackEntry: (entryId: string) => void;
+  /**
+   * `silent`: still count the debrief (review signal) but show no "brief
+   * ready" toast — for screens that present the result themselves, like
+   * the welcome flow, where a toast would pull the user out mid-setup.
+   */
+  trackEntry: (entryId: string, opts?: { silent?: boolean }) => void;
   resolveEntry: (entryId: string) => void;
 };
 
@@ -71,10 +76,12 @@ export function ProcessingNotifierProvider({
   // entryId → epoch ms when tracking started (for the max-age cap).
   const trackedRef = useRef<Map<string, number>>(new Map());
   const pollingRef = useRef(false);
+  const silentRef = useRef<Set<string>>(new Set());
   const [toastEntryId, setToastEntryId] = useState<string | null>(null);
 
-  const trackEntry = useCallback((entryId: string) => {
+  const trackEntry = useCallback((entryId: string, opts?: { silent?: boolean }) => {
     if (!entryId) return;
+    if (opts?.silent) silentRef.current.add(entryId);
     if (!trackedRef.current.has(entryId)) {
       trackedRef.current.set(entryId, Date.now());
     }
@@ -112,12 +119,13 @@ export function ProcessingNotifierProvider({
             const status = body.entry?.status ?? "";
             if (isTerminal(status)) {
               trackedRef.current.delete(id);
+              const silent = silentRef.current.delete(id);
               // Only celebrate real briefs; a failed one gets no banner.
               if (status !== "FAILED" && !cancelled) {
-                setToastEntryId(id);
+                if (!silent) setToastEntryId(id);
                 // A completed debrief is the positive signal that arms the
                 // "Enjoying Ripple?" review nudge (frequency-capped).
-                void bumpDebriefSignal();
+                void bumpDebriefSignal().then(maybeNativePromptAfterDebrief);
               }
             }
           } catch {

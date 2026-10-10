@@ -13,7 +13,6 @@ import { AttachStep } from "react-native-spotlight-tour";
 import { TOUR_STEP_INDEX } from "@/components/tour/steps";
 import { TourTarget } from "@/components/tour/TourTarget";
 import { PastDueBanner } from "@/components/past-due-banner";
-import { ReviewNudge } from "@/components/review-nudge";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 
@@ -97,7 +96,10 @@ export default function TabsLayout() {
       </View>
       {/* Compliant "Enjoying Ripple?" review nudge — self-gates (arms only
           after completed debriefs, frequency-capped, dismissible). */}
-      <ReviewNudge />
+      {/* The custom "Enjoying Ripple?" nudge is retired: the automatic ask is
+          now Apple's native prompt after the 2nd debrief
+          (lib/review.ts maybeNativePromptAfterDebrief). Settings keeps an
+          explicit "Rate Ripple". Component left in-tree. */}
     </View>
   );
 }
