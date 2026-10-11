@@ -87,6 +87,15 @@ export type User = {
   // states route the user into the onboarding flow. `true` lets the
   // AuthGate land the user on /(tabs) directly.
   onboardingCompleted?: boolean;
+  // Funnel welcome flow (1.9+, apps/web/src/lib/welcome-eligibility.ts).
+  // Needed because the server reports PRO / Stripe-trial users as
+  // onboardingCompleted even when they never were (2026-10-04 hotfix).
+  welcomeEligible?: boolean;
+  // Their web first-debrief entry: the welcome flow skips its record step
+  // and shows this one's results.
+  webDebriefEntryId?: string | null;
+  // Latest Art. 9 (special_category_processing) ledger row is a grant.
+  hasAiConsent?: boolean;
   // 1..10. When the user relaunches mid-flow we resume at this step.
   onboardingStep?: number;
   notificationTime?: string;

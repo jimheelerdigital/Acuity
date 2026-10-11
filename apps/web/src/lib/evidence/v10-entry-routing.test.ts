@@ -214,12 +214,25 @@ describe("web subscriber (PRO) with onboarding unfinished", () => {
   });
 
   describe("welcome flow", () => {
-    const on = { ...pro, funnelWelcomeEnabled: true, totalRecordings: 0 };
+    // welcomeEligible comes from the server (apps/web/src/lib/
+    // welcome-eligibility.ts). The server reports these users as
+    // onboardingCompleted: true (2026-10-04 hotfix), so routing must not
+    // depend on that flag.
+    const on = { ...pro, onboardingCompleted: true, funnelWelcomeEnabled: true, welcomeEligible: true };
 
-    it("routes a first-run subscriber into it from an entry point", () => {
+    it("routes an eligible subscriber into it from an entry point", () => {
       expect(at({ ...on, segment: "(tabs)" })).toBe("welcome");
       expect(at({ ...on, segment: "(auth)" })).toBe("welcome");
       expect(at({ ...on, segment: "" })).toBe("welcome");
+    });
+
+    it("works whatever onboardingCompleted says (hotfixed server flag)", () => {
+      expect(at({ ...on, onboardingCompleted: false, segment: "(tabs)" })).toBe("welcome");
+      expect(at({ ...on, onboardingCompleted: true, segment: "(tabs)" })).toBe("welcome");
+    });
+
+    it("covers web trial users too (eligibility is the server's call)", () => {
+      expect(at({ ...on, subscriptionStatus: "TRIAL", segment: "(tabs)" })).toBe("welcome");
     });
 
     it("never redirects out of it, or out of the recorder it opens", () => {
@@ -227,25 +240,22 @@ describe("web subscriber (PRO) with onboarding unfinished", () => {
       expect(at({ ...on, segment: "record" })).toBe("stay");
     });
 
-    it("skips anyone who has already recorded", () => {
-      expect(at({ ...on, totalRecordings: 1, segment: "(tabs)" })).toBe("stay");
+    it("never interrupts the auth callback", () => {
+      expect(at({ ...on, segment: "auth-callback" })).not.toBe("welcome");
     });
 
-    it("treats an unknown recording count as 'not first run'", () => {
-      expect(at({ ...on, totalRecordings: undefined, segment: "(tabs)" })).toBe("stay");
+    it("needs an explicit true: false or missing (older server) means no", () => {
+      expect(at({ ...on, welcomeEligible: false, segment: "(tabs)" })).toBe("stay");
+      expect(at({ ...on, welcomeEligible: undefined, segment: "(tabs)" })).toBe("stay");
     });
 
     it("is inert when the flag is off", () => {
       expect(at({ ...on, funnelWelcomeEnabled: false, segment: "(tabs)" })).toBe("stay");
     });
 
-    it("is never shown once onboarding is complete", () => {
-      expect(at({ ...on, onboardingCompleted: true, segment: "(tabs)" })).toBe("stay");
-    });
-
-    it("is not for non-subscribers", () => {
-      expect(at({ ...on, subscriptionStatus: "FREE", segment: "(tabs)" })).not.toBe("welcome");
-      expect(at({ ...on, subscriptionStatus: "TRIAL", segment: "(tabs)" })).not.toBe("welcome");
+    it("an ineligible incomplete PRO user still gets the old bypass", () => {
+      expect(at({ ...pro, funnelWelcomeEnabled: true, welcomeEligible: false, segment: "(auth)" })).toBe("home");
+      expect(at({ ...pro, funnelWelcomeEnabled: true, welcomeEligible: false, segment: "(tabs)" })).toBe("stay");
     });
   });
 });

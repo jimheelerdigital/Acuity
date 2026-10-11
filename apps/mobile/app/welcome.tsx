@@ -50,6 +50,7 @@ import {
   progressFor,
   resumePhase,
   saveWelcome,
+  type WelcomeOpts,
   type WelcomePhase,
 } from "@/lib/welcome/flow";
 
@@ -73,8 +74,16 @@ export default function WelcomeScreen() {
   const { palette } = useTheme();
   const tokens = useMemo(() => makeAcuityTokens({ dark: false, accent: palette }), [palette]);
   const { user, refresh, setAuthenticatedUser } = useAuth();
-  const habitsEnabled = isHabitsEnabled();
-  const opts = useMemo(() => ({ habitsEnabled }), [habitsEnabled]);
+  // Frozen for the whole visit: the server flags can flip mid-flow (e.g.
+  // hasAiConsent after they agree here), and a step list that changes
+  // under the user would break nextPhase / progress.
+  const [opts] = useState<WelcomeOpts>(() => ({
+    habitsEnabled: isHabitsEnabled(),
+    skipConsent: user?.hasAiConsent === true,
+    skipRecord: Boolean(user?.webDebriefEntryId),
+  }));
+  // Their web first debrief, when they did one (shown on the results step).
+  const [webEntryId] = useState<string | null>(() => user?.webDebriefEntryId ?? null);
 
   const [phase, setPhase] = useState<WelcomePhase | null>(null);
   const [entryId, setEntryId] = useState<string | null>(null);
@@ -86,13 +95,14 @@ export default function WelcomeScreen() {
       let cancelled = false;
       void loadWelcome().then((s) => {
         if (cancelled) return;
-        setEntryId(s.entryId);
-        setPhase(resumePhase(s.phase, s.entryId));
+        const id = s.entryId ?? webEntryId;
+        setEntryId(id);
+        setPhase(resumePhase(s.phase, id, opts));
       });
       return () => {
         cancelled = true;
       };
-    }, [])
+    }, [opts, webEntryId])
   );
 
   useEffect(() => {
@@ -130,6 +140,9 @@ export default function WelcomeScreen() {
         setAuthenticatedUser({
           ...user,
           onboardingCompleted: true,
+          // Cleared locally too, or AuthGate sends them straight back here
+          // before /api/onboarding/complete + refresh land.
+          welcomeEligible: false,
           totalRecordings: Math.max(user.totalRecordings ?? 0, entryId ? 1 : 0),
         });
       }
@@ -179,6 +192,7 @@ export default function WelcomeScreen() {
             <HelloStep
               tokens={tokens}
               name={user?.name ?? null}
+              webDebriefDone={opts.skipRecord === true}
               onDone={(name) => {
                 if (name && user) {
                   setAuthenticatedUser({ ...user, name });
@@ -188,12 +202,20 @@ export default function WelcomeScreen() {
               }}
             />
           )}
-          {phase === "value" && <ValueStep tokens={tokens} onNext={advance} />}
+          {phase === "value" && (
+            <ValueStep tokens={tokens} webDebriefDone={opts.skipRecord === true} onNext={advance} />
+          )}
           {(phase === "consent" || phase === "record") && (
             <ConsentStep
               tokens={tokens}
               alreadyAgreed={phase === "record"}
+              webDebriefDone={opts.skipRecord === true}
               onAgreed={() => {
+                if (opts.skipRecord) {
+                  // Debrief already done on the web: on to setup.
+                  advance();
+                  return;
+                }
                 go("record");
                 router.push("/record?from=welcome" as never);
               }}
@@ -309,10 +331,12 @@ function ResultsReadyBanner({ tokens, onPress }: { tokens: Tokens; onPress: () =
 function HelloStep({
   tokens,
   name,
+  webDebriefDone,
   onDone,
 }: {
   tokens: Tokens;
   name: string | null;
+  webDebriefDone: boolean;
   onDone: (enteredName: string | null) => void;
 }) {
   const t = coralType(tokens);
@@ -325,7 +349,9 @@ function HelloStep({
       <StepBody footer={<FunnelCta label="Let's go" onPress={() => onDone(null)} tokens={tokens} onCoral />}>
         <Text style={[t.h1, { marginBottom: 14 }]}>Welcome back, {first}.</Text>
         <Text style={t.lead}>
-          Your membership is active. Let's get your first debrief in. It takes about a minute.
+          {webDebriefDone
+            ? "Your membership is active and your first debrief is saved. Let's finish setting you up. It takes about a minute."
+            : "Your membership is active. Let's get your first debrief in. It takes about a minute."}
         </Text>
       </StepBody>
     );
@@ -345,7 +371,9 @@ function HelloStep({
     >
       <Text style={[t.h1, { marginBottom: 14 }]}>Welcome to Ripple.</Text>
       <Text style={[t.lead, { marginBottom: 22 }]}>
-        Your membership is active. What should we call you?
+        {webDebriefDone
+          ? "Your membership is active and your first debrief is saved. What should we call you?"
+          : "Your membership is active. What should we call you?"}
       </Text>
       <TextInput
         value={draft}
@@ -391,10 +419,27 @@ const VALUE_POINTS: { icon: keyof typeof Ionicons.glyphMap; title: string; body:
   },
 ];
 
-function ValueStep({ tokens, onNext }: { tokens: Tokens; onNext: () => void }) {
+function ValueStep({
+  tokens,
+  webDebriefDone,
+  onNext,
+}: {
+  tokens: Tokens;
+  webDebriefDone: boolean;
+  onNext: () => void;
+}) {
   const t = coralType(tokens);
   return (
-    <StepBody footer={<FunnelCta label="Start my first debrief" onPress={onNext} tokens={tokens} onCoral />}>
+    <StepBody
+      footer={
+        <FunnelCta
+          label={webDebriefDone ? "Continue" : "Start my first debrief"}
+          onPress={onNext}
+          tokens={tokens}
+          onCoral
+        />
+      }
+    >
       <Text style={[t.h1, { marginBottom: 22 }]}>Here's how Ripple helps.</Text>
       <View style={{ gap: 12 }}>
         {VALUE_POINTS.map((p) => (
@@ -416,11 +461,14 @@ function ValueStep({ tokens, onNext }: { tokens: Tokens; onNext: () => void }) {
 function ConsentStep({
   tokens,
   alreadyAgreed,
+  webDebriefDone,
   onAgreed,
   onSkip,
 }: {
   tokens: Tokens;
   alreadyAgreed: boolean;
+  /** First debrief already done on the web: no recorder follows. */
+  webDebriefDone: boolean;
   onAgreed: () => void;
   onSkip: () => void;
 }) {
@@ -465,7 +513,7 @@ function ConsentStep({
       footer={
         <>
           <FunnelCta
-            label="Start my first debrief"
+            label={webDebriefDone ? "Continue" : "Start my first debrief"}
             onPress={onContinue}
             tokens={tokens}
             disabled={!accepted}
@@ -478,7 +526,9 @@ function ConsentStep({
         </>
       }
     >
-      <Text style={[t.h1, { marginBottom: 14 }]}>Before you record</Text>
+      <Text style={[t.h1, { marginBottom: 14 }]}>
+        {webDebriefDone ? "How Ripple uses AI" : "Before you record"}
+      </Text>
       <Text style={[t.lead, { marginBottom: 14 }]}>
         Ripple uses AI to turn your recording into tasks and themes: OpenAI (Whisper) transcribes
         it and Anthropic (Claude) analyzes it. Never sold, never used to train AI.

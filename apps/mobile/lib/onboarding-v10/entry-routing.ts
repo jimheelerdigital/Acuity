@@ -77,12 +77,15 @@ export interface ColdStartFacts {
    */
   funnelWelcomeEnabled?: boolean;
   /**
-   * Server count of the user's recordings. Only a user with ZERO gets the
-   * welcome flow: someone who has already recorded is past "first run",
-   * whatever their onboarding row says. Unknown (undefined) is treated as
-   * "not zero" so a missing field can never trap an active user in it.
+   * Server `welcomeEligible` (apps/web/src/lib/welcome-eligibility.ts): a
+   * web subscriber whose onboarding was never actually completed, with no
+   * entries or only their web first debrief. Its own flag because the
+   * server reports every PRO / Stripe-trial user as onboardingCompleted
+   * (2026-10-04 hotfix), so onboardingCompleted can't spot them. Only an
+   * explicit `true` counts: a missing field (older server) never traps an
+   * active user in the flow.
    */
-  totalRecordings?: number;
+  welcomeEligible?: boolean;
 }
 
 /**
@@ -144,21 +147,24 @@ export function decideColdStartRoute(f: ColdStartFacts): ColdStartRoute {
   // The welcome flow owns its own route; never redirect out of it.
   if (inWelcome) return "stay";
 
+  // First run for a web subscriber: the welcome flow (no paywall, so
+  // Apple Guideline 3.1.3(b) is respected — they are never asked to pay
+  // again). Only from an entry point, so the recorder it opens isn't
+  // yanked away. Deliberately NOT gated on onboardingCompleted (see the
+  // welcomeEligible doc above).
+  if (
+    f.funnelWelcomeEnabled &&
+    f.welcomeEligible === true &&
+    !inAuthCallback &&
+    ENTRY_POINT_SEGMENTS.has(f.segment)
+  ) {
+    return "welcome";
+  }
+
   // Already paid (typically web/Stripe). Checked BEFORE the generic
   // onboarding branch so the in-onboarding exemptions below can't route a
   // subscriber into the legacy flow.
   if (!f.onboardingCompleted && f.subscriptionStatus === "PRO" && !inAuthCallback) {
-    // First run for a web subscriber: the welcome flow (no paywall, so
-    // Apple Guideline 3.1.3(b) is respected — they are never asked to pay
-    // again). Only from an entry point, and only before their first
-    // recording.
-    if (
-      f.funnelWelcomeEnabled &&
-      f.totalRecordings === 0 &&
-      ENTRY_POINT_SEGMENTS.has(f.segment)
-    ) {
-      return "welcome";
-    }
     // Pro-bypass: never routed through mobile onboarding. Send them home
     // only from sign-in or the bare root. Everywhere else, leave them be —
     // including onboarding-new, where a v10 user who just bought on the

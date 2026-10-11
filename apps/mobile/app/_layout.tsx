@@ -217,7 +217,7 @@ function AuthGate() {
       hasAppHistory: facts.hasAppHistory,
       segment,
       funnelWelcomeEnabled: isFunnelWelcomeEnabled(),
-      totalRecordings: user?.totalRecordings,
+      welcomeEligible: user?.welcomeEligible,
     });
 
     switch (route) {

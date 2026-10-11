@@ -82,6 +82,51 @@ describe("resume", () => {
     expect(resumePhase("results", null)).toBe("consent");
   });
 
+  it("web first debrief: drops the record step, keeps consent and setup", () => {
+    expect(phasesFor({ habitsEnabled: true, skipRecord: true })).toEqual([
+      "hello",
+      "value",
+      "consent",
+      "notify",
+      "habit",
+      "results",
+    ]);
+    expect(nextPhase("consent", { habitsEnabled: true, skipRecord: true })).toBe("notify");
+  });
+
+  it("consent already on file: drops the consent step", () => {
+    expect(phasesFor({ habitsEnabled: true, skipConsent: true })).not.toContain("consent");
+    expect(phasesFor({ habitsEnabled: false, skipConsent: true, skipRecord: true })).toEqual([
+      "hello",
+      "value",
+      "notify",
+      "results",
+    ]);
+  });
+
+  it("web-debrief users resume where they were, or at the start", () => {
+    const o = { habitsEnabled: true, skipRecord: true };
+    expect(resumePhase(null, "web1", o)).toBe("hello");
+    expect(resumePhase("value", "web1", o)).toBe("value");
+    expect(resumePhase("consent", "web1", o)).toBe("consent");
+    expect(resumePhase("habit", "web1", o)).toBe("habit");
+    expect(resumePhase("record", "web1", o)).toBe("hello");
+  });
+
+  it("a resume target outside the user's list moves to the next one that is", () => {
+    // No debrief yet, consent on file: 'consent' isn't in the list -> record.
+    expect(resumePhase("notify", null, { habitsEnabled: true, skipConsent: true })).toBe("record");
+    expect(resumePhase("consent", null, { habitsEnabled: true, skipConsent: true })).toBe("record");
+    // Habits off: a stored 'habit' with a debrief lands on results.
+    expect(resumePhase("habit", "e1", { habitsEnabled: false })).toBe("results");
+  });
+
+  it("progress still ends at exactly 1 on shorter lists", () => {
+    const o = { habitsEnabled: false, skipConsent: true, skipRecord: true };
+    expect(progressFor("results", o)).toBe(1);
+    expect(progressFor("hello", o)).toBeGreaterThan(0);
+  });
+
   it("rejects junk phases from storage", () => {
     expect(isWelcomePhase("paywall")).toBe(false);
     expect(isWelcomePhase(3)).toBe(false);
