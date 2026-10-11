@@ -7,6 +7,30 @@
 
 ---
 
+## [2026-10-11] — Mythicals cut to 3 posts a day, all on Kling 3
+
+- **Requested by:** Keenan
+- **Committed by:** Claude Code
+- **Commit hash:** (docs only; see git log: "docs: Record Mythicals at 3 posts a day")
+
+### In plain English (for Keenan)
+Legendary Mythicals now makes exactly 3 posts a day. All 3 are "which would you choose?" pick posts, animated on Kling 3 with their own sound. The Top 5 countdown post is paused.
+
+### Technical changes (for Jimmy)
+- DB only, no deploy:
+  - `ContentLane` `mythic-picks.hoursUtc` set from [5,6,8,9] to [5,6,8]
+  - `mythic-countdown.status` set from ACTIVE to RETIRED
+- Kling 3 for Mythicals was already the default (`MYTHICALS_VIDEO_MODEL`, 10-09).
+
+### Manual steps needed
+None
+
+### Notes
+- Why picks over countdown: IG views since 10-03 show choice posts at n=23, median ~1,965. Countdown had a single post (1,884), too little data to keep a slot.
+- To bring the countdown back, set `mythic-countdown` to ACTIVE (hour 7) and drop one picks hour.
+- YouTube stays at 6/day: the 3 new posts plus 3 old-library catch-up.
+- Posting slots: the publisher gives the Nth post the Nth free slot in MYTHICALS_SLOTS_CT [10,11,13,15,17,18], so the 3 posts land at 10am, 11am and 1pm CT.
+
 ## [2026-10-11] — Mythicals: no more dragon-egg hatching or "How big would they really be?" posts
 
 - **Requested by:** Keenan
