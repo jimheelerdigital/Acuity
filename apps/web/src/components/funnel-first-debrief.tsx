@@ -20,9 +20,17 @@
  *
  * Saving: voice → direct upload + POST /api/record; typed →
  * POST /api/onboarding/first-debrief-text. Both run the normal pipeline.
+ *
+ * Consent (2026-10-11): the debrief is transcribed and analysed by AI and
+ * can contain special-category data, so the Art. 9 checkbox (same wording
+ * and version as the app, lib/consent.ts) must be ticked and recorded in
+ * the ConsentRecord ledger before anything is recorded or saved. If the
+ * consent write fails, nothing is sent.
  */
 import { Keyboard, Mic } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
+
+import { ART9_CONSENT_TEXT, ART9_WORDING_VERSION } from "@/lib/consent";
 
 const DONE_KEY = "acuity_first_debrief_done";
 
@@ -73,6 +81,10 @@ export function FunnelFirstDebrief({
   const chunksRef = useRef<Blob[]>([]);
   const startRef = useRef(0);
   const timerRef = useRef<number | null>(null);
+  const [consent, setConsent] = useState(false);
+  // The in-flight (or finished) consent write. Started when the box is
+  // ticked, so it's normally done by the time they tap record or save.
+  const consentRef = useRef<Promise<boolean> | null>(null);
   const prompt = brand === "bwk" ? "What's on your plate this week?" : "What's on your mind this week?";
   const placeholder =
     brand === "bwk"
@@ -97,6 +109,46 @@ export function FunnelFirstDebrief({
     track("funnel_first_debrief_submitted", how);
   };
 
+  const recordConsent = (): Promise<boolean> =>
+    fetch("/api/consent/record", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        consentType: "special_category_processing",
+        granted: true,
+        consentText: ART9_CONSENT_TEXT,
+        wordingVersion: ART9_WORDING_VERSION,
+        platform: "web",
+      }),
+    })
+      .then((r) => r.ok)
+      .catch(() => false);
+
+  const toggleConsent = () => {
+    if (consent) return; // once recorded, it stays ticked here
+    setError(null);
+    setConsent(true);
+    track("funnel_first_debrief_consent_checked");
+    consentRef.current = recordConsent();
+  };
+
+  /** True once the grant is in the ledger. On failure, unticks and says so. */
+  const ensureConsent = async (): Promise<boolean> => {
+    if (!consent || !consentRef.current) return false;
+    let ok = await consentRef.current;
+    if (!ok) {
+      consentRef.current = recordConsent(); // one retry
+      ok = await consentRef.current;
+    }
+    if (!ok) {
+      consentRef.current = null;
+      setConsent(false);
+      track("funnel_first_debrief_failed", "consent");
+      setError("We couldn't save your consent. Check your connection and tick the box again.");
+    }
+    return ok;
+  };
+
   const submitVoice = async (blob: Blob, seconds: number) => {
     setMode("sending");
     try {
@@ -119,6 +171,7 @@ export function FunnelFirstDebrief({
 
   const start = async () => {
     setError(null);
+    if (!(await ensureConsent())) return;
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       const { bestMimeType } = await import("@/components/debrief-shared");
@@ -160,6 +213,10 @@ export function FunnelFirstDebrief({
   const submitText = async () => {
     setSavingText(true);
     setError(null);
+    if (!(await ensureConsent())) {
+      setSavingText(false);
+      return;
+    }
     try {
       const res = await fetch("/api/onboarding/first-debrief-text", {
         method: "POST",
@@ -217,18 +274,41 @@ export function FunnelFirstDebrief({
         {prompt} {mode === "typing" ? "Write it however it comes out." : "Say it however it comes out."} Ripple sorts it into your list.
       </p>
 
+      {(mode === "idle" || mode === "typing") && (
+        <div className="mt-6 rounded-2xl border border-acuity-line-strong bg-acuity-bg-inset p-4">
+          <label className="flex cursor-pointer gap-3 text-left">
+            <input
+              type="checkbox"
+              checked={consent}
+              onChange={toggleConsent}
+              disabled={consent}
+              className="mt-0.5 h-5 w-5 shrink-0 accent-acuity-primary"
+            />
+            <span className="text-[13px] leading-snug text-acuity-text-sec">{ART9_CONSENT_TEXT}</span>
+          </label>
+          <details className="mt-3 text-[13px] text-acuity-text-sec">
+            <summary className="cursor-pointer font-semibold text-acuity-primary">What we collect, and what we don&rsquo;t</summary>
+            <p className="mt-2 leading-snug">
+              We collect your recording or text and what Ripple pulls from it: tasks, themes and mood. We don&rsquo;t sell
+              your data or let AI providers train their models on it, and it&rsquo;s encrypted in transit. You can delete
+              any entry, or your whole account, at any time.
+            </p>
+          </details>
+        </div>
+      )}
+
       {mode !== "typing" ? (
         <div className="mt-7 text-center">
           <button
             onClick={mode === "recording" ? stop : start}
-            disabled={mode === "sending"}
+            disabled={mode === "sending" || (mode === "idle" && !consent)}
             aria-label={mode === "recording" ? "Stop recording" : "Start recording"}
             className={`mx-auto flex h-28 w-28 items-center justify-center rounded-full bg-acuity-primary text-white shadow-lg transition active:scale-95 disabled:opacity-60 ${mode === "recording" ? "animate-pulse" : ""}`}
           >
             {mode === "recording" ? <span className="h-8 w-8 rounded-md bg-white" /> : <Mic className="h-11 w-11" />}
           </button>
           <p className="mt-5 text-[15px] font-semibold">
-            {mode === "idle" && "Tap and start talking"}
+            {mode === "idle" && (consent ? "Tap and start talking" : "Tick the box above to start")}
             {mode === "recording" && (elapsed < MIN_S ? "Keep going…" : "Tap to finish")}
             {mode === "sending" && "Saving to your Ripple…"}
           </p>
@@ -249,7 +329,7 @@ export function FunnelFirstDebrief({
           />
           <button
             onClick={submitText}
-            disabled={text.trim().length < 10 || savingText}
+            disabled={!consent || text.trim().length < 10 || savingText}
             className="mt-4 w-full rounded-full bg-acuity-primary py-4 text-[17px] font-semibold text-white transition active:scale-[0.98] disabled:opacity-50"
           >
             {savingText ? "Saving…" : "Save my first debrief"}

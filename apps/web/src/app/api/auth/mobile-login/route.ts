@@ -79,6 +79,6 @@ export async function POST(req: NextRequest) {
 
   const { sessionToken, expiresAt } = await issueMobileSessionToken(user);
   return NextResponse.json(
-    mobileSessionResponse({ sessionToken, expiresAt, user })
+    await mobileSessionResponse({ sessionToken, expiresAt, user })
   );
 }

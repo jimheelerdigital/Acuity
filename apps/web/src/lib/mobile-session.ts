@@ -2,6 +2,7 @@ import "server-only";
 
 import { encode } from "next-auth/jwt";
 import { appOnboardingCompleted } from "@/lib/app-onboarding";
+import { loadWelcomeFields } from "@/lib/welcome-eligibility";
 
 /**
  * Shared NextAuth-JWT minter for mobile-side sign-in endpoints
@@ -93,12 +94,17 @@ export async function issueMobileSessionToken(
  * across Google OAuth (mobile-callback), password (mobile-login), and
  * magic-link (mobile-complete). Keeps the client's `User` type stable.
  */
-export function mobileSessionResponse(params: {
+export async function mobileSessionResponse(params: {
   sessionToken: string;
   expiresAt: string;
   user: MobileSessionUser;
 }) {
   const { sessionToken, expiresAt, user } = params;
+  // Funnel welcome flow (app 1.9+): sent at sign-in too, because nothing
+  // calls /api/user/me right after a sign-in, and a fresh install is
+  // exactly when a web buyer needs the welcome flow. Reads its own facts
+  // (the callers' selects don't all include subscriptionSource).
+  const welcome = await loadWelcomeFields(user.id);
   return {
     sessionToken,
     expiresAt,
@@ -125,6 +131,9 @@ export function mobileSessionResponse(params: {
           : user.tourCompletedAt
             ? user.tourCompletedAt.toISOString()
             : null,
+      welcomeEligible: welcome.welcomeEligible,
+      webDebriefEntryId: welcome.webDebriefEntryId,
+      hasAiConsent: welcome.hasAiConsent,
     },
   };
 }
