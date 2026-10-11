@@ -421,7 +421,7 @@ export const socialPublishCronFn = inngest.createFunction(
     // "on youtube add the 3 posts per day from the old library to catch up").
     // On top of the day's own picks, YOUTUBE_BACKLOG_PER_DAY (default 3) older
     // Mythicals videos that never reached YouTube are queued each Central day,
-    // best Instagram views first, at 12pm / 2pm / 4pm CT (between the regular
+    // best Instagram views first, at 1pm / 4pm / 6pm CT (between the regular
     // slots). "0" turns it off. Their rows are created that day, so the stale
     // sweep above leaves them alone until the day is over.
     await step.run("youtube-backlog", async () => {
@@ -450,6 +450,13 @@ export const socialPublishCronFn = inngest.createFunction(
           generatedFor: { lt: today },
           status: { not: "REJECTED" },
           lane: { startsWith: "mythic" },
+          // Egg and "how big" posts were eliminated 2026-10-11 (Keenan): never catch them up.
+          NOT: [
+            { topicSlug: { startsWith: "mythic-size" } },
+            { topicSlug: { startsWith: "mythic-egg" } },
+            { headline: { startsWith: "HOW BIG WOULD THEY REALLY BE" } },
+            { headline: { contains: "HATCHES FROM THIS EGG" } },
+          ],
           socialPublishes: { none: { platform: "youtube", status: { in: ["POSTED", "PENDING"] } } },
         },
         select: {
@@ -466,7 +473,8 @@ export const socialPublishCronFn = inngest.createFunction(
         .sort((a, b) => b.igViews - a.igViews || b.generatedFor.getTime() - a.generatedFor.getTime());
 
       const { supabase } = await import("@/lib/supabase.server");
-      const hours = [12, 14, 16];
+      // Between the 12 / 3 / 5pm CT post slots (2026-10-11).
+      const hours = [13, 16, 18];
       const picked: string[] = [];
       for (const p of ranked) {
         if (picked.length >= want) break;

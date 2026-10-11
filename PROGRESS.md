@@ -29,7 +29,9 @@ None
 - Why picks over countdown: IG views since 10-03 show choice posts at n=23, median ~1,965. Countdown had a single post (1,884), too little data to keep a slot.
 - To bring the countdown back, set `mythic-countdown` to ACTIVE (hour 7) and drop one picks hour.
 - YouTube stays at 6/day: the 3 new posts plus 3 old-library catch-up.
-- Posting slots: the publisher gives the Nth post the Nth free slot in MYTHICALS_SLOTS_CT [10,11,13,15,17,18], so the 3 posts land at 10am, 11am and 1pm CT.
+- Posting slots moved to **12pm, 3pm and 5pm CT** (Keenan): `MYTHICALS_SLOTS_CT` changed from [10,11,13,15,17,18] to [12,15,17] in `lib/content-factory/social-publish.ts`.
+- YouTube catch-up moved to 1pm, 4pm and 6pm CT so it lands between those slots. It now also skips egg and "how big" posts (`social-publish-cron.ts` youtube-backlog NOT filter).
+- Pulled from today's queue before they went out: the 10-11 egg post (IG/FB/YouTube, due 10am CT) and the YouTube catch-up of "How big… Part 5". All 4 rows were set to SKIPPED.
 
 ## [2026-10-11] — Mythicals: no more dragon-egg hatching or "How big would they really be?" posts
 
