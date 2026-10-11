@@ -322,6 +322,6 @@ export async function POST(req: NextRequest) {
   });
 
   return NextResponse.json(
-    mobileSessionResponse({ sessionToken, expiresAt, user })
+    await mobileSessionResponse({ sessionToken, expiresAt, user })
   );
 }

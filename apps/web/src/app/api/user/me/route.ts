@@ -19,6 +19,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { getAnySessionUserId } from "@/lib/mobile-auth";
 import { appOnboardingCompleted } from "@/lib/app-onboarding";
+import { loadWelcomeFields } from "@/lib/welcome-eligibility";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -193,6 +194,15 @@ export async function GET(req: NextRequest) {
     failureAnchor != null &&
     Date.now() - failureAnchor.getTime() <= FAILED_BANNER_WINDOW_MS;
 
+  // Funnel welcome flow (Ripple 1.9, lib/welcome-eligibility.ts). The
+  // extra queries only run for web subscribers who never finished
+  // onboarding, so the common path costs nothing.
+  const welcome = await loadWelcomeFields(userId, {
+    subscriptionStatus: user.subscriptionStatus,
+    subscriptionSource: user.subscriptionSource,
+    onboardingCompletedAt: effectiveCompletedAt,
+  });
+
   const {
     onboarding,
     createdAt,
@@ -218,6 +228,10 @@ export async function GET(req: NextRequest) {
     // True when the user is FREE due to a recent failed payment → drives the
     // source-aware recovery banner (web + mobile).
     paymentFailed,
+    // Funnel welcome flow (app 1.9+). Older apps ignore these.
+    welcomeEligible: welcome.welcomeEligible,
+    webDebriefEntryId: welcome.webDebriefEntryId,
+    hasAiConsent: welcome.hasAiConsent,
   };
 
   return NextResponse.json(
