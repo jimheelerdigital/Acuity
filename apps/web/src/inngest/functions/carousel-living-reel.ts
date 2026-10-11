@@ -343,7 +343,8 @@ export const livingReelQueueFn = inngest.createFunction(
           bucket,
           dryRun,
           // Tag = a Mythicals post type (2026-10-01: any of them, incl. size/versus).
-          mode: ["duo", "place", "know", "scenario", "size", "versus", "egg", "choice"].find((m) => tag.startsWith(m)),
+          // "size" and "egg" eliminated 2026-10-11 (Keenan).
+          mode: ["duo", "place", "know", "scenario", "versus", "choice"].find((m) => tag.startsWith(m)),
           ...(topic ? { topic } : {}),
           ...(category ? { category } : {}),
           ...(optionCount ? { optionCount } : {}),

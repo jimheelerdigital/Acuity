@@ -7,6 +7,30 @@
 
 ---
 
+## [2026-10-11] — Mythicals: no more dragon-egg hatching or "How big would they really be?" posts
+
+- **Requested by:** Keenan
+- **Committed by:** Claude Code
+- **Commit hash:** (see git log: "feat: Eliminate the egg and size Mythicals post types")
+
+### In plain English (for Keenan)
+Legendary Mythicals no longer makes dragon-egg hatching posts or "How big would they really be?" posts, on any schedule or by request. Every run now makes one of the normal pick posts instead.
+
+### Technical changes (for Jimmy)
+- `apps/web/src/inngest/functions/carousel-daily.ts`:
+  - removed the "size" daily-series rule (forced on the 3rd run) and the "egg" rule (4th run)
+  - "size" and "egg" taken out of `MYTH_MODES`, so a forced mode can't select them
+  - the egg/size code paths stay in the file but can no longer be reached
+- `apps/web/src/inngest/functions/carousel-living-reel.ts`: `lane-requests/<lane>--size|egg.json` tags no longer map to a mode (they fall back to a normal run).
+
+### Manual steps needed
+None
+
+### Notes
+- The post-type bandit (`chooseMythicPostType`) never drew size or egg; only the two forced rules made them.
+- This includes the never-committed local change from another session that had already swapped the egg slot for a list-of-5 pick.
+- The 10-09 size-gate fix (`SIZE_HARD_PROBLEM`) is now dead code. Left in place, harmless.
+
 ## [2026-10-09] — Fix: the daily "How big would they really be?" post was failing every day
 
 - **Requested by:** Keenan

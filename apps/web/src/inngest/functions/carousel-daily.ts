@@ -907,9 +907,11 @@ export const carouselDailyCronFn = inngest.createFunction(
       // really be?' with super cool perspective shots of 5 different mythical
       // creatures... godzilla standing in a city, dragon on a football
       // stadium, kraken over an aircraft carrier").
-      // "egg" (dragon egg hatching) is a daily series since 2026-10-06.
+      // "egg" (dragon egg hatching) was a daily series 2026-10-06 → 10-08.
+      // Both "size" and "egg" were eliminated 2026-10-11 (Keenan).
       type MythMode = "choice" | "duo" | "place" | "know" | "scenario" | "size" | "versus" | "egg" | "countdown";
-      const MYTH_MODES: MythMode[] = ["choice", "duo", "place", "know", "scenario", "size", "versus", "egg", "countdown"];
+      // "size" and "egg" can't be requested either (eliminated 2026-10-11).
+      const MYTH_MODES: MythMode[] = ["choice", "duo", "place", "know", "scenario", "versus", "countdown"];
       const choiceMode: MythMode =
         forcedMode && (MYTH_MODES as string[]).includes(forcedMode)
           ? (forcedMode as MythMode)
@@ -935,21 +937,10 @@ export const carouselDailyCronFn = inngest.createFunction(
                   select: { topicSlug: true },
                 });
                 const used = new Set(posted.map((p) => mythicModeFromSlug(p.topicSlug)));
-                // "How big would they really be?" is a daily series (2026-10-01,
-                // per Keenan: "consistently posts daily"; back 2026-10-05): the
-                // third run of the day makes it, or any later run if it still
-                // hasn't happened.
-                if (!used.has("size") && posted.length >= 2) {
-                  console.log("[carousel-cron] post type: size (daily series)");
-                  return "size" as MythMode;
-                }
-                // Dragon egg hatching (2026-10-06, per Keenan: "add that as one
-                // of the posts. just one of the 6"): the fourth run of the day,
-                // or any later run if it still hasn't happened.
-                if (!used.has("egg") && posted.length >= 3) {
-                  console.log("[carousel-cron] post type: egg (daily series)");
-                  return "egg" as MythMode;
-                }
+                // "How big would they really be?" (size) and dragon egg hatching
+                // (egg) are gone for good (2026-10-11, per Keenan: "no more
+                // dragon hatch or 'how big are they really' posts... eliminate
+                // the lane"). Every run draws from the normal post types.
                 const board = await readScoreboard("mythicals");
                 const choice = chooseMythicPostType(board, used);
                 console.log(`[carousel-cron] post type: ${choice.arm} (${choice.reason}) ${choice.samples ? JSON.stringify(choice.samples) : ""}`);
