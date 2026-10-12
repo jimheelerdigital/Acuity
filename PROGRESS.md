@@ -7,6 +7,31 @@
 
 ---
 
+## [2026-10-12] — Mythicals animation: full range of motion
+
+- **Requested by:** Keenan
+- **Committed by:** Claude Code
+- **Commit hash:** (see git log: "feat: Give Mythicals animation full range of motion")
+
+### In plain English (for Keenan)
+Now that Mythicals videos render on Kling 3, the scripts are no longer held back. Dragons can take off, dive, rear up and charge, beasts can leap and lunge, and warriors can swing their weapons, with the camera following the action. The cover still teases without revealing the five options.
+
+### Technical changes (for Jimmy)
+- `lib/content-factory/choice-lane.ts`:
+  - option `motion` rule rewritten for full motion (keeps: variety, at most 2 breathers, breath from the jaws, no magic effects)
+  - `coverMotion` allows dramatic swoops and shadows (still no reveal)
+  - heroes may swing/strike
+  - duo and versus motion no longer "measured"
+- `lib/content-factory/shot-sheet.ts`: `SUBTLE_MOTION_RULES` now a full-motion rule (camera keeps the subject in shot; a creature never holds a weapon).
+- `lib/content-factory/living-reel.ts`: the action-mode prompt drops "no swings/rearing/charging/lunging", and the camera moves boldly with the action.
+
+### Manual steps needed
+None
+
+### Notes
+- Kept from earlier rules on purpose, since they're about looks, not movement: no human-faced creatures, beasts never use weapons, no glowing magic effects, every dragon has wings.
+- The 6s Kling 3 clip cap still applies.
+
 ## [2026-10-12] — YouTube back to 3 new Shorts a day (old-video catch-up off)
 
 - **Requested by:** Keenan
