@@ -31,6 +31,9 @@ None
 ### Notes
 - Kept from earlier rules on purpose, since they're about looks, not movement: no human-faced creatures, beasts never use weapons, no glowing magic effects, every dragon has wings.
 - The 6s Kling 3 clip cap still applies.
+- **Independent movement per scene** (Keenan: "each scene should have independent movements", "variety is crucial"):
+  - `MYTHIC_CAMERA_MOVES` (8 moves, in `living-reel.ts`): each slide gets its own camera move by position, shifted per post (postId hash), so no two shots in a post share a move and posts don't open the same way. Appended in `carousel-post-video.ts` prepare.
+  - The writer must give the cover and every option a different action, and vary setting, time of day, weather and energy.
 
 ## [2026-10-12] — YouTube back to 3 new Shorts a day (old-video catch-up off)
 

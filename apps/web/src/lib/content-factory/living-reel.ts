@@ -23,6 +23,23 @@ const W = 1080;
 const H = 1920;
 /** Higgsfield clip length requested per slide. */
 export const LIVING_CLIP_SEC = 5;
+
+/**
+ * One camera move per Mythicals slide, by slide position (2026-10-12, per
+ * Keenan: "each scene should have independent movements"). Eight distinct
+ * moves (more than the 6 shots in a post), shifted per post, so no two shots
+ * in a post share one and posts don't open the same way.
+ */
+export const MYTHIC_CAMERA_MOVES = [
+  "a slow, heavy push-in toward the hidden subject",
+  "a fast tracking move alongside the subject as it moves",
+  "a low-angle crane rise that looks up at the subject's full size",
+  "a sweeping half-orbit around the subject",
+  "a pull-back that widens to reveal the whole scene around it",
+  "a handheld follow that chases the action, close and urgent",
+  "a slow dolly sideways past foreground rocks or debris, revealing the subject behind them",
+  "a top-down aerial that drops toward the subject",
+] as const;
 const COVER_SEC = 3.5;
 const CTA_SEC = 3;
 
