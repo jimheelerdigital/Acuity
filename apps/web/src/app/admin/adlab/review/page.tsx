@@ -302,7 +302,7 @@ function GroupSection({ group, onLaunched }: { group: Group; onLaunched: () => v
     if (
       !confirm(
         evergreen
-          ? `Add ${approvedCount} ad(s) LIVE to the always-on ${group.projectName} campaign?\n\nShared daily budget: $${(budgetCents / 100).toFixed(2)} (fixed — this does not add spend)\nOptimizing for: signups\nDestination: ${destLabel}\n\nRunning ads are audited: winners stay on, ads clearly not working are paused. New ads start spending immediately.`
+          ? `Launch ${approvedCount} ad(s) LIVE for ${group.projectName}?\n\nEach ad gets its OWN ad set at $15.00/day (adds $${(approvedCount * 15).toFixed(2)}/day in total)\nOptimizing for: paid trials (purchase)\nDestination: ${destLabel}\n\nDaily rules pause an ad that spends $40 with no paid trial or costs over $30 per trial. New ads start spending once Meta approves them.`
           : `Launch ${approvedCount} ad(s) LIVE for ${group.projectName}?\n\nDaily budget: $${(budgetCents / 100).toFixed(2)}\nDestination: ${destLabel}\n\nThis creates the Meta campaign and activates it immediately — it will start spending.`
       )
     ) {
@@ -583,8 +583,8 @@ function GroupSection({ group, onLaunched }: { group: Group; onLaunched: () => v
             <label className="block text-[11px] text-acuity-text-ter mb-1">Daily budget ($/day)</label>
             {evergreen ? (
               <p className="py-2 text-sm text-white">
-                ${(group.evergreenBudgetCents! / 100).toFixed(0)}/day{" "}
-                <span className="text-acuity-text-ter">shared, always-on · optimizes for signups</span>
+                $15/day{" "}
+                <span className="text-acuity-text-ter">per ad, own ad set · optimizes for paid trials</span>
               </p>
             ) : (
             <input

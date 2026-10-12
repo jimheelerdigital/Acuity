@@ -21,6 +21,32 @@ export async function GET(req: NextRequest) {
     const guard = await requireAdmin();
     if (!guard.ok) return guard.response;
   }
+  // Read-only ad set settings (2026-10-12): ?adsets=<id>,<id> or
+  // ?campaigns=<id> (every ad set in the campaign) — targeting,
+  // optimization, bid strategy, attribution, budget, status, created time.
+  const adsetIds = (req.nextUrl.searchParams.get("adsets") ?? "").split(",").map((s) => s.trim()).filter((s) => /^\d{6,25}$/.test(s)).slice(0, 30);
+  const campaignIds = (req.nextUrl.searchParams.get("campaigns") ?? "").split(",").map((s) => s.trim()).filter((s) => /^\d{6,25}$/.test(s)).slice(0, 5);
+  if (adsetIds.length || campaignIds.length) {
+    const meta = await import("@/lib/adlab/meta");
+    const fields = "name,created_time,effective_status,configured_status,daily_budget,optimization_goal,billing_event,bid_strategy,promoted_object,attribution_spec,destination_type,targeting";
+    const out: Record<string, unknown> = {};
+    for (const c of campaignIds) {
+      try {
+        const list = await meta.metaGraph(`${c}/adsets`, "GET", { fields, limit: "100" });
+        out[`campaign:${c}`] = list.data;
+      } catch (err) {
+        out[`campaign:${c}`] = { error: meta.redactAccessToken(String(err)).slice(0, 300) };
+      }
+    }
+    for (const a of adsetIds) {
+      try {
+        out[a] = await meta.metaGraph(a, "GET", { fields });
+      } catch (err) {
+        out[a] = { error: meta.redactAccessToken(String(err)).slice(0, 300) };
+      }
+    }
+    return NextResponse.json(out);
+  }
   const ids = (req.nextUrl.searchParams.get("ids") ?? "").split(",").map((s) => s.trim()).filter((s) => /^\d{6,25}$/.test(s)).slice(0, 20);
   const meta = await import("@/lib/adlab/meta");
   const out: Record<string, unknown> = {};
