@@ -130,7 +130,10 @@ export const socialPublishCronFn = inngest.createFunction(
           // every quality check, so it may not match its option.
           slides: {
             none: {
-              OR: [{ imagePrompt: { contains: "TEXT-UNVERIFIED" } }, { imagePrompt: { contains: "IMAGE-UNVERIFIED" } }],
+              // IMAGE-UNVERIFIED no longer blocks (2026-10-12): it flagged 12 of
+              // 13 Mythicals posts from 10-10 to 10-12, so nothing auto-posted
+              // anywhere. Keenan (10-08): "post all of the posts".
+              imagePrompt: { contains: "TEXT-UNVERIFIED" },
             },
           },
         },
@@ -425,7 +428,9 @@ export const socialPublishCronFn = inngest.createFunction(
     // slots). "0" turns it off. Their rows are created that day, so the stale
     // sweep above leaves them alone until the day is over.
     await step.run("youtube-backlog", async () => {
-      const perDay = Math.max(0, Number(process.env.YOUTUBE_BACKLOG_PER_DAY ?? 3) || 0);
+      // Off by default (2026-10-12): Keenan 10-08, "don't post all of the old
+      // clips on youtube shorts. only the new ones from here on out".
+      const perDay = Math.max(0, Number(process.env.YOUTUBE_BACKLOG_PER_DAY ?? 0) || 0);
       if (perDay === 0) return { backlog: "off" };
       const { prisma } = await import("@/lib/prisma");
       const { centralWallTimeToUtc, laneBrand: brandFor } = await import("@/lib/content-factory/social-publish");

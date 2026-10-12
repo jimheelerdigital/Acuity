@@ -7,6 +7,29 @@
 
 ---
 
+## [2026-10-12] — Fixed: new Mythicals posts weren't auto-posting anywhere; old-video YouTube catch-up off
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** see "fix: Stop the image check from blocking Mythicals auto-posts"
+
+### In plain English (for Keenan)
+From 10-10 to 10-12, 12 of 13 new Mythicals posts never posted automatically, to Instagram, Facebook or YouTube. One option picture in each failed the automatic picture check, and that check blocked the whole post. Only what Keenan posted by hand went up. Meanwhile YouTube was uploading old videos instead. The check no longer blocks posting, and the old-video catch-up on YouTube is off.
+
+### Technical changes (for Jimmy)
+- `apps/web/src/inngest/functions/social-publish-cron.ts`:
+  - the queue filter only excludes `TEXT-UNVERIFIED` slides now, no longer `IMAGE-UNVERIFIED`
+  - `YOUTUBE_BACKLOG_PER_DAY` defaults to 0 (the 10-09 commit ad7d0903 had turned it on at 3, against Keenan's 10-08 instruction)
+- Data: 14 held Mythicals posts from 10-09 to 10-11 got a SKIPPED instagram row, so they never auto-post (some were posted by hand). 3 pending old-video YouTube rows were set to SKIPPED.
+
+### Manual steps needed
+- None.
+
+### Notes
+- The check still runs in carousel-daily (it retries a picture that doesn't match its option). It just doesn't block posting anymore.
+- Prod Postgres hit EMAXCONN (200 connections) repeatedly on 10-12 morning (Jimmy).
+
+---
+
 ## [2026-10-12] — New ads run one per ad set at $15/day each; all older ads paused
 **Requested by:** Keenan
 **Committed by:** Claude Code
