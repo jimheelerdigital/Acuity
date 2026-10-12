@@ -7,6 +7,27 @@
 
 ---
 
+## [2026-10-12] — Ripple posts again: one selfie post a day on Instagram and Facebook
+
+- **Requested by:** Keenan
+- **Committed by:** Claude Code
+- **Commit hash:** (see git log: "feat: Bring back one Ripple post a day on Instagram and Facebook")
+
+### In plain English (for Keenan)
+Ripple has a daily post again: one selfie carousel a day, auto-posted to both Instagram and Facebook. Automatic Instagram/Facebook uploads are off ONLY for Legendary Mythicals (it still auto-posts to YouTube). Ripple and BWK auto-post again. BWK has no active lanes right now, so in practice nothing posts for it.
+
+### Technical changes (for Jimmy)
+- DB: `ContentLane` `selfie` set from RETIRED to ACTIVE, hoursUtc [5] (one run a day).
+- `apps/web/src/inngest/functions/social-publish-cron.ts`: `IG_MANUAL_BRANDS` / `FB_VIA_IG_BRANDS` defaults changed from "mythicals,ripple,bwk" to "mythicals", so only Mythicals is manual.
+
+### Manual steps needed
+None
+
+### Notes
+- Why selfie: Ripple IG since 09-15 had a median of 49 views across 22 posts for selfie, against 17 for pick-ripple and ~10 for the other lanes. That's 3-5x the rest.
+- Selfie is a CAROUSEL_LANE (photo carousel, no video), so the 10-12 no-sound problem that turned off Mythicals IG/FB posting doesn't apply.
+- No Ripple drafts were waiting, so nothing old floods out. The first post generates at 05:00 UTC tomorrow.
+
 ## [2026-10-12] — YouTube Mythicals: Higgsfield clip sound at 50%
 **Requested by:** Keenan
 **Committed by:** Claude Code
