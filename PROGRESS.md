@@ -7,6 +7,27 @@
 
 ---
 
+## [2026-10-12] — YouTube back to 3 new Shorts a day (old-video catch-up off)
+
+- **Requested by:** Keenan
+- **Committed by:** Claude Code
+- **Commit hash:** (see git log: "feat: Turn off the YouTube old-video catch-up")
+
+### In plain English (for Keenan)
+YouTube now gets only the 3 newest Mythicals videos each day. The catch-up of 3 older videos a day is off, and the old videos already waiting to upload were cancelled.
+
+### Technical changes (for Jimmy)
+- `apps/web/src/inngest/functions/social-publish-cron.ts`: `YOUTUBE_BACKLOG_PER_DAY` default changed from 3 to 0 (both the youtube-backlog step and the upload cap). Setting the env var turns it back on.
+- DB: 9 PENDING YouTube rows for older posts set to SKIPPED.
+
+### Manual steps needed
+None
+
+### Notes
+- Why: Shorts views dropped from 84-359 per video (10-09/10) to 0-1 from 10-11 on, after the channel went to 6 near-identical Shorts a day.
+- Checked in Studio and ruled out: no copyright claims, Public, not made for kids, no notices, and all channel feature tiers Enabled. Not a penalty; most likely less distribution per video at the higher volume.
+- Watch views over the next 2-3 days to confirm.
+
 ## [2026-10-12] — Ripple selfie posts: rotating characters and caption styles, now animated with music
 
 - **Requested by:** Keenan

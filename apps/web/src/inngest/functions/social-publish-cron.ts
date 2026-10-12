@@ -433,7 +433,11 @@ export const socialPublishCronFn = inngest.createFunction(
       return out;
     });
 
-    // ── 1c. YouTube catch-up from the old library (2026-10-09, per Keenan:
+    // ── 1c. OFF since 2026-10-12 (Keenan: "go to only the 3 newest posts per
+    // day. don't backfill"): views fell to ~0 after the channel doubled to
+    // 6 near-identical Shorts a day. Default 0; YOUTUBE_BACKLOG_PER_DAY=N
+    // turns it back on.
+    // YouTube catch-up from the old library (2026-10-09, per Keenan:
     // "on youtube add the 3 posts per day from the old library to catch up").
     // On top of the day's own picks, YOUTUBE_BACKLOG_PER_DAY (default 3) older
     // Mythicals videos that never reached YouTube are queued each Central day,
@@ -802,7 +806,7 @@ export const socialPublishCronFn = inngest.createFunction(
           // The day's picks plus the old-library catch-up (1c).
           const cap =
             Math.max(1, Number(process.env.YOUTUBE_DAILY_CAP) || 3) +
-            Math.max(0, Number(process.env.YOUTUBE_BACKLOG_PER_DAY ?? 3) || 0);
+            Math.max(0, Number(process.env.YOUTUBE_BACKLOG_PER_DAY ?? 0) || 0);
           // Per UTC day (2026-10-06): the daily pick works per day, so a
           // rolling window could push one of today's picks past midnight.
           // Central day (matches the daily pick; 8pm CT is after midnight UTC).
