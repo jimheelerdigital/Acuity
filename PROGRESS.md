@@ -7,6 +7,25 @@
 
 ---
 
+## [2026-10-12] — Weekly ad batches stop making video ads
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** see "feat: Stop generating video ads in the weekly ad batch"
+
+### In plain English (for Keenan)
+The weekly ad batch makes only image ads now. The animated video ads weren't converting well, and video ads will come from real UGC creators instead.
+
+### Technical changes (for Jimmy)
+- `apps/web/src/lib/adlab/weekly-batch.ts`: `videoTemplates` is empty unless `ADLAB_VIDEO_ADS=1`, and the video script call is skipped when there are no templates. No video creatives or Higgsfield openers get made.
+
+### Manual steps needed
+- None.
+
+### Notes
+- Made on a Monday, per Keenan's Monday-only change rule.
+
+---
+
 ## [2026-10-12] — Card-trial recovery emails back on, no-card free week off
 **Requested by:** Keenan
 **Committed by:** Claude Code

@@ -1212,7 +1212,10 @@ Call the submit_ads tool IMMEDIATELY. Do not write any analysis, plan, draft or 
       take: 20,
     })
   ).map((c) => c.headline);
-  const videoTemplates = videoTemplatesForWeek();
+  // Video ads OFF by default (2026-10-12, per Keenan: "eliminate the videos
+  // for now from the ad generation... they don't work too well. we're going
+  // to get UGC content"). ADLAB_VIDEO_ADS=1 brings them back.
+  const videoTemplates = process.env.ADLAB_VIDEO_ADS === "1" ? videoTemplatesForWeek() : [];
   const hookStyles = hookStylesForWeek();
   const videoPrompt = `Write ${videoTemplates.length * VIDEO_VARIANTS} ANIMATED VIDEO ad scripts for this lane: ${VIDEO_VARIANTS} genuinely different scripts per template (different moment, hook and footage each), templates in this order: ${videoTemplates.join(", ")}. The scripts are scored and only the strongest per template is made.
 Each video is a ~12–15s silent-readable animation (music underneath, no voiceover) that shows the viewer THEIR OWN WORDS turning into a to-do list, a tracked habit, a pattern or a weekly report. Nothing else is on screen, so the specifics carry the ad: everyday specifics MOST of this audience lives every week (${g.commonSpecifics})${g.laneRule ? ". " + g.laneRule : ""} — never an unusual one-off, a medical detail or a major life decision. Every number is one person's believable week, never a claim about users.
@@ -1259,7 +1262,7 @@ Call the submit_video_ads tool IMMEDIATELY with no text before or after it.`;
     }
     return drafts;
   };
-  const [videoOut, ...halvesOut] = await Promise.allSettled([generateVideos(), ...halves.map((_, i) => generateHalf(i))]);
+  const [videoOut, ...halvesOut] = await Promise.allSettled([videoTemplates.length ? generateVideos() : Promise.resolve([] as Awaited<ReturnType<typeof generateVideos>>), ...halves.map((_, i) => generateHalf(i))]);
   const videoCandidates = videoOut.status === "fulfilled" ? videoOut.value : [];
   if (videoOut.status === "rejected") console.warn(`[adlab-weekly] ${groupKey} videos failed: ${videoOut.reason instanceof Error ? videoOut.reason.message : videoOut.reason}`);
   const drafts: z.infer<typeof BatchAdSchema>[] = halvesOut.flatMap((r) => (r.status === "fulfilled" ? r.value : []));
