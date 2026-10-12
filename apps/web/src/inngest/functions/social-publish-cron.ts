@@ -307,10 +307,14 @@ export const socialPublishCronFn = inngest.createFunction(
           // Off for every brand 2026-10-08 afternoon, back ON that evening (Keenan:
           // "just auto post everywhere from now on - facebook and meta
           // individually as normal"). Defaults "" = auto-post every brand.
-          if (!list(process.env.IG_MANUAL_BRANDS, "").includes(brand)) platforms.push("instagram");
+          // OFF for every brand again 2026-10-12 (Keenan: "the auto poster is now
+          // posting to facebook and instagram but without sound... do not auto
+          // post to facebook/instagram. only youtube. keep sending me the 3
+          // videos via email").
+          if (!list(process.env.IG_MANUAL_BRANDS, "mythicals,ripple,bwk").includes(brand)) platforms.push("instagram");
           // FB via Instagram's share (2026-10-08: Mythicals FB averaged 0–5
           // views per direct upload).
-          if (!list(process.env.FB_VIA_IG_BRANDS, "").includes(brand)) platforms.push("facebook");
+          if (!list(process.env.FB_VIA_IG_BRANDS, "mythicals,ripple,bwk").includes(brand)) platforms.push("facebook");
         }
         // Threads + YouTube have their own per-brand creds (2026-09-23)
         // and only get rows when those exist — no SKIPPED noise.

@@ -7,6 +7,26 @@
 
 ---
 
+## [2026-10-12] — Instagram and Facebook auto-posting off again; YouTube only
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** see "fix: Stop auto-posting to Instagram and Facebook; YouTube only"
+
+### In plain English (for Keenan)
+Mythicals videos auto-posted to Instagram and Facebook without sound today. Nothing auto-posts there anymore. YouTube keeps auto-posting, and Keenan keeps getting the day's videos by email to post by hand.
+
+### Technical changes (for Jimmy)
+- `apps/web/src/inngest/functions/social-publish-cron.ts`: `IG_MANUAL_BRANDS` / `FB_VIA_IG_BRANDS` default to `"mythicals,ripple,bwk"` (no instagram/facebook rows).
+- Data: 18 pending instagram/facebook rows set to SKIPPED, including the held-repost rows. YouTube rows are untouched.
+
+### Manual steps needed
+- None.
+
+### Notes
+- The silent posts happened because, since 10-09 (ad7d0903), the main Mythicals reel carries only the Kling clip sound with no music. Only the YouTube copy (`-yt.mp4`) gets music mixed in. Auto-posting to IG/FB had been back on since 10-08 night, but the image-check block stopped every post until this morning's fix, so today was the first day it actually posted.
+
+---
+
 ## [2026-10-12] — Weekly ad batches stop making video ads
 **Requested by:** Keenan
 **Committed by:** Claude Code
