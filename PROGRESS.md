@@ -7,6 +7,26 @@
 
 ---
 
+## [2026-10-12] — Every new ad now launches in its own $15/day ad set
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** see "feat: Launch every batch ad in its own $15/day ad set"
+
+### In plain English (for Keenan)
+From now on, every ad launched from the review page gets its own ad set with its own $15 a day, the same setup as today's 5. No ad can take another's budget. Ads still only go live when Keenan clicks Launch (and activates).
+
+### Technical changes (for Jimmy)
+- `apps/web/src/app/api/admin/adlab/ads/launch/route.ts`: for evergreen (weekly-batch) launches, each creative gets `ensureDedicatedAdSet(group, headline, ADLAB_SOLO_ADSET_CENTS)` (default 1500) instead of the shared TEST ad set. The AdLabAd row records that ad set and budget. `ADLAB_SOLO_ADSET_CENTS=0` restores the shared TEST ad set.
+
+### Manual steps needed
+- None.
+
+### Notes
+- Older ads are NOT auto-paused on each launch. Today's "pause everything else" was a one-off (route /api/admin/adlab/ads/solo-adsets with pauseOthers).
+- The TEST-week graduation no longer applies to new ads (they're never in TEST). The daily verdict rules ($20/trial) still pause losers, and a paused ad's own ad set then spends nothing.
+
+---
+
 ## [2026-10-12] — Fixed: new Mythicals posts weren't auto-posting anywhere; old-video YouTube catch-up off
 **Requested by:** Keenan
 **Committed by:** Claude Code

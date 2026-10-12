@@ -218,6 +218,7 @@ export async function POST(req: NextRequest) {
 
   const errors: { creativeId: string; error: string }[] = [];
   const created: { creativeId: string; adId: string; adsetId: string }[] = [];
+  const soloAdsetCents = Math.max(0, Number(process.env.ADLAB_SOLO_ADSET_CENTS ?? 1500) || 0);
 
   try {
     const topicSlug = slug(experiment.topicBrief, 50);
@@ -262,6 +263,12 @@ export async function POST(req: NextRequest) {
     const { TEST_DAILY_BUDGET_CENTS } = await import("@/lib/adlab/evergreen");
     const ownAdsetBudget = (experiment as Record<string, unknown>).adSetDailyBudgetCents as number | null;
     adsetBudget = experiment.campaignTags?.includes("own-adset") && ownAdsetBudget ? ownAdsetBudget : TEST_DAILY_BUDGET_CENTS[evergreenGroup];
+    // One ad per ad set (2026-10-12, per Keenan: "run them all as separate ad
+    // groups with independent $15 daily budgets ... do the same exact thing
+    // for all from now on"): every weekly-batch ad gets its own ad set at
+    // ADLAB_SOLO_ADSET_CENTS (default 1500 = $15/day). "0" restores the
+    // shared TEST ad set.
+    if (soloAdsetCents > 0) adsetBudget = soloAdsetCents;
     campaignName = experiment.campaignName ?? `${project.name} | evergreen`;
     await prisma.adLabExperiment.update({
       where: { id: experimentId },
@@ -514,12 +521,26 @@ export async function POST(req: NextRequest) {
 
         await delay(1000);
 
-        // Create the ad inside the single ad set
+        // Its own ad set when solo ad sets are on (see soloAdsetCents).
+        let adAdset = adsetId;
+        if (evergreenGroup && soloAdsetCents > 0) {
+          try {
+            const { ensureDedicatedAdSet } = await import("@/lib/adlab/evergreen");
+            const label = creative.headline.replace(/[^a-zA-Z0-9 ']+/g, "").trim().slice(0, 50);
+            adAdset = (await ensureDedicatedAdSet(evergreenGroup, label, soloAdsetCents)).adsetId;
+          } catch (err) {
+            logMetaError(`Solo ad set ${creativeLabel}`, err);
+            errors.push({ creativeId: creative.id, error: `Own ad set failed: ${extractErrorDetail(err)}` });
+            continue;
+          }
+        }
+
+        // Create the ad inside its ad set
         const adName = `${project.name} | ${angleTag} | Creative ${idx + 1}`;
         let metaAdId: string;
         try {
           metaAdId = await withRetry(
-            () => meta.createAd({ name: adName, adsetId, creativeId: metaCreativeId! }),
+            () => meta.createAd({ name: adName, adsetId: adAdset, creativeId: metaCreativeId! }),
             { label: `Ad ${creativeLabel}` }
           );
         } catch (err) {
@@ -545,7 +566,7 @@ export async function POST(req: NextRequest) {
                 { label: `Feed-only creative ${creativeLabel}` }
               );
               metaAdId = await withRetry(
-                () => meta.createAd({ name: adName, adsetId, creativeId: feedOnlyId }),
+                () => meta.createAd({ name: adName, adsetId: adAdset, creativeId: feedOnlyId }),
                 { label: `Ad (feed-only) ${creativeLabel}` }
               );
               console.warn(`[adlab-launch] ${creativeLabel}: placement ad rejected (${extractErrorDetail(err)}); launched feed-only`);
@@ -568,14 +589,14 @@ export async function POST(req: NextRequest) {
           data: {
             creativeId: creative.id,
             metaCampaignId: campaignId,
-            metaAdsetId: adsetId,
+            metaAdsetId: adAdset,
             metaAdId,
             status: "paused",
             dailyBudgetCents: adsetBudget,
           },
         });
 
-        created.push({ creativeId: creative.id, adId: metaAdId, adsetId });
+        created.push({ creativeId: creative.id, adId: metaAdId, adsetId: adAdset });
         console.log(`[adlab-launch] Ad ${idx + 1}/${launchableCreatives.length} created: ${metaAdId}`);
 
         // Rate limit between ads (skip after last)
