@@ -8,7 +8,7 @@
  * - otherwise: PAUSE the ad in Meta, mark it killed and log a manual decision
  *   (the daily cron then leaves it alone).
  *
- * Auth: admin session.
+ * Auth: admin session OR `Authorization: Bearer ${CRON_SECRET}`.
  */
 
 import { NextRequest, NextResponse } from "next/server";
@@ -20,8 +20,13 @@ export const dynamic = "force-dynamic";
 export const maxDuration = 60;
 
 export async function POST(req: NextRequest) {
-  const guard = await requireAdmin();
-  if (!guard.ok) return guard.response;
+  // Admin session OR the CRON_SECRET bearer (2026-10-12), like launch/solo-adsets.
+  const bearer = req.headers.get("authorization");
+  const cronSecret = process.env.CRON_SECRET;
+  if (!(cronSecret && bearer === `Bearer ${cronSecret}`)) {
+    const guard = await requireAdmin();
+    if (!guard.ok) return guard.response;
+  }
 
   const body = (await req.json().catch(() => ({}))) as { adIds?: string[]; reason?: string; inspect?: boolean };
   const adIds = (body.adIds ?? []).filter((x) => typeof x === "string").slice(0, 20);
