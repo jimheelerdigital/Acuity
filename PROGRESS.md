@@ -7,6 +7,25 @@
 
 ---
 
+## [2026-10-12] — YouTube Mythicals: Higgsfield clip sound at 50%
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** see "fix: Halve the Higgsfield clip sound on YouTube copies"
+
+### In plain English (for Keenan)
+On YouTube Mythicals videos, the creature and effect sounds from Higgsfield now play at half volume under our music. The emailed videos for Instagram and Facebook are unchanged (clip sound only, Keenan adds music by hand).
+
+### Technical changes (for Jimmy)
+- `apps/web/src/lib/content-factory/living-reel.ts` `joinPostVideo`: in the segment-sound + music mix (only used for the `-yt.mp4` YouTube copy), the clip track gets `volume=0.5` (`YT_CLIP_SOUND_VOLUME`). Music stays at 0.45. The clip-sound-only path for the main reel is untouched.
+
+### Manual steps needed
+- None. It applies to YouTube copies built from now on.
+
+### Notes
+- Videos already rendered keep their old mix.
+
+---
+
 ## [2026-10-12] — Instagram and Facebook auto-posting off again; YouTube only
 **Requested by:** Keenan
 **Committed by:** Claude Code

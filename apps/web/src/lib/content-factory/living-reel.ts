@@ -484,10 +484,14 @@ export async function joinPostVideo(opts: {
 
     const music = path.join(dir, "music.audio");
     await download(opts.musicUrl, music);
-    // Music under the clips' own sound (YouTube copy), or music alone.
+    // Music under the clips' own sound (YouTube copy), or music alone. The
+    // Higgsfield clip sound sits at 50% in that mix (2026-10-12, per Keenan:
+    // "reduce volume on higgsfield output soundwise to about 50% volume on
+    // youtube posts").
+    const YT_CLIP_SOUND_VOLUME = 0.5;
     const musicChain = `[1:a]${AUDIO_NORM},apad,atrim=0:${t.toFixed(2)},afade=t=in:st=0:d=0.3,${fadeOut}`;
     const audioGraph = opts.segmentAudio
-      ? `${musicChain},volume=0.45[m];[0:a]${AUDIO_NORM},apad,atrim=0:${t.toFixed(2)}[s];[s][m]amix=inputs=2:duration=first:normalize=0[aout]`
+      ? `${musicChain},volume=0.45[m];[0:a]${AUDIO_NORM},apad,atrim=0:${t.toFixed(2)},volume=${YT_CLIP_SOUND_VOLUME}[s];[s][m]amix=inputs=2:duration=first:normalize=0[aout]`
       : `${musicChain}[aout]`;
     await runFfmpeg([
       "-i", silent,
