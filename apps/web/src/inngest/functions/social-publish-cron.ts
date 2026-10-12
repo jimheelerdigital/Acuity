@@ -365,6 +365,9 @@ export const socialPublishCronFn = inngest.createFunction(
           status: "PENDING",
           carouselPost: { generatedFor: { lt: today } },
           createdAt: { lt: (await import("@/lib/content-factory/social-publish")).centralWallTimeToUtc(centralDay, 0) },
+          // Rows queued by hand to repost held posts (2026-10-12, Keenan: post
+          // the posts the image check held back) keep their scheduled day.
+          NOT: { error: { startsWith: "[held-repost]" } },
         },
         data: { status: "SKIPPED", error: "Not one of its day's top posts for YouTube (only the day's best 3 post, 2026-10-06)" },
       });
