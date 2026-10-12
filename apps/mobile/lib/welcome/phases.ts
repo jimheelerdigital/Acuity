@@ -91,7 +91,7 @@ const STEP_LABELS: Record<WelcomePhase | "tour", string> = {
   record: "Record your first debrief",
   results: "See what Ripple heard",
   notify: "Pick a daily check-in",
-  habit: "Pick a first habit",
+  habit: "Pick your first habits",
   tour: "A quick look around",
 };
 

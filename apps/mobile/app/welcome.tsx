@@ -19,13 +19,16 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 import { CoralScreen, FunnelCta } from "@/app/onboarding-new/_v10/_ui";
 import { WELCOME_TOUR_KEY, type WelcomeTourRequest } from "@/components/tour/welcome-tour";
+import { MOOD_LABELS, type Mood } from "@acuity/shared";
+
+import { MoodIcon } from "@/components/mood-icon";
 import { useAuth } from "@/contexts/auth-context";
 import { useTheme } from "@/contexts/theme-context";
 import { useEntryPolling } from "@/hooks/use-entry-polling";
 import { api } from "@/lib/api";
 import { ART9_CONSENT_TEXT, ART9_WORDING_VERSION, recordConsent } from "@/lib/consent";
 import { isHabitsEnabled } from "@/lib/feature-flags";
-import { addReflectionHabit, createHabit } from "@/lib/habits-api";
+import { REFLECTION_HABIT_NAME, addReflectionHabit, createHabit } from "@/lib/habits-api";
 import { trackOnboardingEvent } from "@/lib/onboarding-events";
 import {
   REMINDER_SLOTS,
@@ -397,14 +400,6 @@ function Card({ children, style }: { children: React.ReactNode; style?: object }
       ]}
     >
       {children}
-    </View>
-  );
-}
-
-function Chip({ label, tokens }: { label: string; tokens: Tokens }) {
-  return (
-    <View style={{ backgroundColor: C.chipBg, borderRadius: 999, paddingVertical: 6, paddingHorizontal: 12 }}>
-      <Text style={{ fontFamily: tokens.fontSans, fontSize: 13, fontWeight: "600", color: C.chipInk }}>{label}</Text>
     </View>
   );
 }
@@ -817,6 +812,11 @@ function ConsentStep({
 }
 
 // ── Results ──────────────────────────────────────────────────────────────
+//
+// Fits on one screen (Jimmy, build 159). The entry card mirrors the row in
+// the Entries tab (app/(tabs)/entries.tsx EntryRow): "label · mood icon +
+// label" header, summary, grey theme pills — so the first thing they see in
+// Entries during the tour is the same card.
 
 function tasksFrom(raw: unknown): string[] {
   const tasks = (raw as { tasks?: unknown } | null)?.tasks;
@@ -824,16 +824,11 @@ function tasksFrom(raw: unknown): string[] {
   return tasks
     .map((x) => (x && typeof (x as { title?: unknown }).title === "string" ? (x as { title: string }).title : null))
     .filter((x): x is string => !!x)
-    .slice(0, 4);
+    .slice(0, 3);
 }
 
 /** Shown, faded and tagged "Example", when a first debrief had no to-dos. */
-const EXAMPLE_TASKS = ["Call the dentist", "Send the permission slip by Friday", "Book the car service"];
-
-function sentenceCase(s: string): string {
-  const t = s.trim().replace(/_/g, " ");
-  return t ? t.charAt(0).toUpperCase() + t.slice(1).toLowerCase() : t;
-}
+const EXAMPLE_TASKS = ["Call the dentist", "Send the permission slip by Friday"];
 
 function ResultsStep({
   tokens,
@@ -855,8 +850,9 @@ function ResultsStep({
   const slow = poll.status === "timeout";
   const entry = poll.entry;
   const tasks = done ? tasksFrom(entry?.rawAnalysis) : [];
-  const themes = done ? (entry?.themes ?? []).slice(0, 4) : [];
-  const mood = done && entry?.mood ? sentenceCase(entry.mood) : null;
+  const themes = done ? (entry?.themes ?? []).slice(0, 3) : [];
+  const moodKey = done && entry?.mood ? (entry.mood as Mood) : null;
+  const moodLabel = moodKey ? MOOD_LABELS[moodKey] ?? null : null;
 
   return (
     <StepBody footer={<PrimaryButton label={isLastSetupStep ? "Show me around" : "Continue"} tokens={tokens} onPress={onNext} />}>
@@ -864,14 +860,14 @@ function ResultsStep({
       <Title>{done ? "Here's what Ripple heard." : failed ? "That one didn't finish." : slow ? "Still working on it." : "Finishing your debrief…"}</Title>
 
       {!done && !failed && !slow ? (
-        <Card style={{ marginTop: 20, alignItems: "center", gap: 12, paddingVertical: 28 }}>
+        <Card style={{ marginTop: 18, alignItems: "center", gap: 12, paddingVertical: 28 }}>
           <ActivityIndicator color={C.ink} />
           <Text style={{ fontFamily: tokens.fontSans, fontSize: 15, color: tokens.textSec }}>Pulling out your tasks and themes</Text>
         </Card>
       ) : null}
 
       {failed || slow ? (
-        <Card style={{ marginTop: 20 }}>
+        <Card style={{ marginTop: 18 }}>
           <Text style={{ fontFamily: tokens.fontSans, fontSize: 16, lineHeight: 23, color: tokens.text }}>
             {failed
               ? "Your recording is saved. You'll find it in Entries, where you can try it again."
@@ -882,70 +878,61 @@ function ResultsStep({
 
       {done ? (
         <>
-          <Card style={{ marginTop: 20 }}>
-            <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
-              <Text style={{ fontFamily: tokens.fontSans, fontSize: 13, fontWeight: "600", color: tokens.textTer }}>
-                {webDebriefDone ? "From the web" : "Just now"}
+          <Card style={{ marginTop: 18, paddingVertical: 16 }}>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
+              <Text style={{ fontFamily: tokens.fontSans, fontSize: 13, color: tokens.textSec }}>
+                {webDebriefDone ? "Today · from the web" : "Today"}
               </Text>
-              {mood ? (
-                <View style={{ backgroundColor: `${tokens.secondary}1f`, borderRadius: 999, paddingVertical: 4, paddingHorizontal: 10 }}>
-                  <Text style={{ fontFamily: tokens.fontSans, fontSize: 12, fontWeight: "700", color: tokens.secondaryLo }}>{mood}</Text>
+              {moodKey ? (
+                <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
+                  <Text style={{ fontSize: 13, color: tokens.textTer }}>·</Text>
+                  <MoodIcon mood={moodKey} size={13} color={tokens.textTer} />
+                  {moodLabel ? <Text style={{ fontFamily: tokens.fontSans, fontSize: 13, color: tokens.textSec }}>{moodLabel}</Text> : null}
                 </View>
               ) : null}
             </View>
             {entry?.summary ? (
-              <Text style={{ marginTop: 12, fontFamily: tokens.fontSans, fontSize: 16, lineHeight: 24, color: tokens.text }}>{entry.summary}</Text>
+              <Text numberOfLines={5} style={{ marginTop: 8, fontFamily: tokens.fontSans, fontSize: 16, lineHeight: 23, color: tokens.text }}>
+                {entry.summary}
+              </Text>
             ) : null}
             {themes.length ? (
-              <View style={{ marginTop: 14, flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+              <View style={{ marginTop: 12, flexDirection: "row", flexWrap: "wrap", gap: 6 }}>
                 {themes.map((th) => (
-                  <Chip key={th} label={th} tokens={tokens} />
+                  <View key={th} style={{ backgroundColor: tokens.bgInset, borderRadius: 999, paddingVertical: 4, paddingHorizontal: 10 }}>
+                    <Text style={{ fontFamily: tokens.fontSans, fontSize: 12, color: tokens.textSec }}>{th}</Text>
+                  </View>
                 ))}
               </View>
             ) : null}
           </Card>
-          <View style={{ marginTop: 12 }}>
-            <Tiles
-              tokens={tokens}
-              items={[
-                { icon: "happy-outline", value: mood ?? "—", label: "Mood" },
-                { icon: "pricetags-outline", value: String(themes.length), label: themes.length === 1 ? "Theme" : "Themes" },
-                { icon: "checkbox-outline", value: String(tasks.length), label: tasks.length === 1 ? "Task" : "Tasks" },
-              ]}
-            />
-          </View>
 
           <Card style={{ marginTop: 12, paddingVertical: 16 }}>
             <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
-              <CardLabel text="Tasks Ripple pulled out" tokens={tokens} />
+              <CardLabel text={tasks.length ? "Tasks Ripple pulled out" : "Tasks"} tokens={tokens} />
               {tasks.length ? null : <ExampleTag tokens={tokens} />}
             </View>
             {tasks.length ? null : (
-              <Text style={{ marginTop: 8, fontFamily: tokens.fontSans, fontSize: 14, lineHeight: 20, color: tokens.textSec }}>
-                No to-dos in this one. Here's what it looks like when you mention some:
+              <Text style={{ marginTop: 6, fontFamily: tokens.fontSans, fontSize: 14, lineHeight: 20, color: tokens.textSec }}>
+                None in this one. When you mention a to-do, it lands like this:
               </Text>
             )}
-            <View style={{ marginTop: 10, gap: 10 }}>
+            <View style={{ marginTop: 10, gap: 9 }}>
               {(tasks.length ? tasks : EXAMPLE_TASKS).map((task) => (
                 <View key={task} style={{ flexDirection: "row", gap: 10, alignItems: "center", opacity: tasks.length ? 1 : 0.55 }}>
-                  <View style={{ width: 20, height: 20, borderRadius: 6, borderWidth: 2, borderColor: tokens.bgInsetStrong }} />
-                  <Text style={{ flex: 1, fontFamily: tokens.fontSans, fontSize: 15, fontWeight: "600", color: tokens.text }}>{task}</Text>
+                  <View style={{ width: 20, height: 20, borderRadius: 10, borderWidth: 2, borderColor: tokens.bgInsetStrong }} />
+                  <Text numberOfLines={1} style={{ flex: 1, fontFamily: tokens.fontSans, fontSize: 15, fontWeight: "600", color: tokens.text }}>{task}</Text>
                 </View>
               ))}
             </View>
           </Card>
 
-          <Card style={{ marginTop: 12, paddingVertical: 16, flexDirection: "row", gap: 12, alignItems: "flex-start" }}>
-            <View style={{ width: 36, height: 36, borderRadius: 12, backgroundColor: C.chipBg, alignItems: "center", justifyContent: "center" }}>
-              <Ionicons name="git-compare-outline" size={19} color={C.chipInk} />
-            </View>
-            <View style={{ flex: 1 }}>
-              <Text style={{ fontFamily: tokens.fontSans, fontSize: 15, fontWeight: "700", color: tokens.text }}>Next: Ripple starts comparing</Text>
-              <Text style={{ marginTop: 3, fontFamily: tokens.fontSans, fontSize: 14, lineHeight: 20, color: tokens.textSec }}>
-                One debrief gives you a snapshot. Your next one lets Ripple compare, and patterns build from there.
-              </Text>
-            </View>
-          </Card>
+          <View style={{ marginTop: 14, flexDirection: "row", gap: 10, alignItems: "flex-start", paddingHorizontal: 4 }}>
+            <Ionicons name="git-compare-outline" size={18} color="#ffffff" style={{ marginTop: 1 }} />
+            <Text style={{ flex: 1, fontFamily: tokens.fontSans, fontSize: 14, lineHeight: 20, color: "#ffffff" }}>
+              One debrief gives you a snapshot. Your next one lets Ripple compare.
+            </Text>
+          </View>
         </>
       ) : null}
     </StepBody>
@@ -1077,9 +1064,10 @@ function NotifyStep({
   );
 }
 
-// ── First habit (only when habits are enabled) ───────────────────────────
-
-const REFLECTION_CHIP = "Daily reflection with Ripple";
+// ── First habits (only when habits are enabled) ─────────────────────────
+//
+// Multi-select (Jimmy, build 159): the Ripple reflection habit first and on
+// by default, the suggestions, and any number of their own.
 
 function HabitStep({
   tokens,
@@ -1092,89 +1080,124 @@ function HabitStep({
   analyzing: boolean;
   onNext: () => void;
 }) {
-  const [picked, setPicked] = useState<string | null>(REFLECTION_CHIP);
-  const [custom, setCustom] = useState("");
+  const [own, setOwn] = useState<string[]>([]);
+  const [selected, setSelected] = useState<string[]>([REFLECTION_HABIT_NAME]);
+  const [draft, setDraft] = useState("");
   const [busy, setBusy] = useState(false);
-  const habitName = (custom.trim() || picked || "").slice(0, 80);
+
+  const options = [REFLECTION_HABIT_NAME, ...WELCOME_HABIT_SUGGESTIONS, ...own];
+  const toggle = (name: string) =>
+    setSelected((cur) => (cur.includes(name) ? cur.filter((x) => x !== name) : [...cur, name]));
+
+  const addOwn = () => {
+    const name = draft.trim().slice(0, 80);
+    if (!name) return;
+    const exists = options.some((o) => o.toLowerCase() === name.toLowerCase());
+    if (!exists) setOwn((cur) => [...cur, name]);
+    setSelected((cur) => (cur.some((x) => x.toLowerCase() === name.toLowerCase()) ? cur : [...cur, name]));
+    setDraft("");
+  };
 
   const onAdd = async () => {
-    if (!habitName || busy) return;
+    if (!selected.length || busy) return;
     setBusy(true);
     try {
-      if (!custom.trim() && picked === REFLECTION_CHIP) {
-        await addReflectionHabit().catch(() => null);
-      } else {
-        await createHabit(habitName).catch(() => null);
+      // In list order, one at a time, so they appear in the order shown.
+      for (const name of options.filter((o) => selected.includes(o))) {
+        if (name === REFLECTION_HABIT_NAME) await addReflectionHabit().catch(() => null);
+        else await createHabit(name).catch(() => null);
       }
-      void trackOnboardingEvent("v10_welcome_habit_added", { value: habitName });
+      void trackOnboardingEvent("v10_welcome_habit_added", { value: selected.join(" | ").slice(0, 200) });
       onNext();
     } finally {
       setBusy(false);
     }
   };
 
-  const chips = [REFLECTION_CHIP, ...WELCOME_HABIT_SUGGESTIONS];
+  const n = selected.length;
 
   return (
     <StepBody
       footer={
         <>
-          <PrimaryButton label="Add this habit" tokens={tokens} onPress={onAdd} disabled={!habitName} busy={busy} />
+          <PrimaryButton
+            label={n ? `Add ${n} habit${n === 1 ? "" : "s"}` : "Pick at least one"}
+            tokens={tokens}
+            onPress={onAdd}
+            disabled={!n}
+            busy={busy}
+          />
           <TextLink label="Skip for now" tokens={tokens} onPress={onNext} />
         </>
       }
     >
       {analyzing ? <AnalyzingPill tokens={tokens} /> : null}
       <Eyebrow text={stepLabel(step)} tokens={tokens} />
-      <Title>Pick a first habit</Title>
-      <Lead tokens={tokens}>Mention it in a debrief and Ripple checks it off for you.</Lead>
-      <Card style={{ marginTop: 20, paddingVertical: 6 }}>
-        {chips.map((c, i) => {
-          const on = picked === c && !custom.trim();
+      <Title>Pick your first habits</Title>
+      <Lead tokens={tokens}>Pick as many as you like. Mention one in a debrief and Ripple checks it off for you.</Lead>
+      <Card style={{ marginTop: 18, paddingVertical: 4 }}>
+        {options.map((c) => {
+          const on = selected.includes(c);
           return (
             <Pressable
               key={c}
-              onPress={() => {
-                setPicked(c);
-                setCustom("");
-              }}
-              accessibilityRole="radio"
-              accessibilityState={{ selected: on }}
+              onPress={() => toggle(c)}
+              accessibilityRole="checkbox"
+              accessibilityState={{ checked: on }}
               style={{
                 flexDirection: "row",
                 alignItems: "center",
                 gap: 12,
-                paddingVertical: 13,
-                borderBottomWidth: i === chips.length - 1 ? 0 : StyleSheet.hairlineWidth,
+                paddingVertical: 12,
+                borderBottomWidth: StyleSheet.hairlineWidth,
                 borderBottomColor: tokens.lineStrong,
               }}
             >
               <View
                 style={{
-                  width: 22,
-                  height: 22,
-                  borderRadius: 11,
+                  width: 24,
+                  height: 24,
+                  borderRadius: 7,
                   borderWidth: 2,
                   borderColor: on ? C.ink : tokens.bgInsetStrong,
+                  backgroundColor: on ? C.ink : "transparent",
                   alignItems: "center",
                   justifyContent: "center",
                 }}
               >
-                {on ? <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: C.ink }} /> : null}
+                {on ? <Ionicons name="checkmark" size={16} color="#ffffff" /> : null}
               </View>
               <Text style={{ flex: 1, fontFamily: tokens.fontSans, fontSize: 16, fontWeight: on ? "700" : "500", color: tokens.text }}>{c}</Text>
             </Pressable>
           );
         })}
-        <TextInput
-          value={custom}
-          onChangeText={setCustom}
-          placeholder="Or type your own"
-          placeholderTextColor={tokens.textQuiet}
-          maxLength={80}
-          returnKeyType="done"
-          style={{ marginTop: 4, marginBottom: 8, fontFamily: tokens.fontSans, fontSize: 16, color: tokens.text, paddingVertical: 8 }}
-        />
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 10, paddingVertical: 8 }}>
+          <TextInput
+            value={draft}
+            onChangeText={setDraft}
+            placeholder="Add your own"
+            placeholderTextColor={tokens.textQuiet}
+            maxLength={80}
+            returnKeyType="done"
+            onSubmitEditing={addOwn}
+            style={{ flex: 1, fontFamily: tokens.fontSans, fontSize: 16, color: tokens.text, paddingVertical: 8 }}
+          />
+          <Pressable
+            onPress={addOwn}
+            accessibilityRole="button"
+            accessibilityLabel="Add habit"
+            style={{
+              height: 36,
+              paddingHorizontal: 14,
+              borderRadius: 18,
+              backgroundColor: draft.trim() ? C.ink : tokens.bgInset,
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+          >
+            <Text style={{ fontFamily: tokens.fontSans, fontSize: 14, fontWeight: "700", color: draft.trim() ? "#ffffff" : tokens.textTer }}>Add</Text>
+          </Pressable>
+        </View>
       </Card>
 
       <Card style={{ marginTop: 12, paddingVertical: 16 }}>

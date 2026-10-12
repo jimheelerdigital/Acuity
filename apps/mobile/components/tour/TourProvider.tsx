@@ -122,6 +122,9 @@ export function TourProvider({ children }: { children: ReactNode }) {
           i === TOUR_STEP_INDEX.dashboard || i === TOUR_STEP_INDEX.settings
             ? "bottom"
             : "top",
+        // Keep the card off the screen edges (it sat flush against the
+        // right edge on the Entries stop in build 159).
+        shift: { padding: 16 },
         // Navigate to this step's screen before it renders, so the spotlight
         // measures a visible target. Awaited by spotlight, so the step waits
         // for the tab to settle. Same-screen transitions skip the delay.
