@@ -1,135 +1,133 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  WELCOME_TOUR_CARDS,
   isWelcomePhase,
   nextPhase,
   phasesFor,
   progressFor,
   resumePhase,
+  setupSteps,
+  stepOf,
+  tourProgress,
 } from "../../../../../apps/mobile/lib/welcome/phases";
+import {
+  parseWelcomeTourRequest,
+  welcomeTourCards,
+} from "../../../../../apps/mobile/components/tour/welcome-tour";
 
-const withHabits = { habitsEnabled: true };
-const noHabits = { habitsEnabled: false };
+const rec = { habitsEnabled: true };
+const recNoHabits = { habitsEnabled: false };
+const web = { habitsEnabled: true, skipRecord: true };
+const webNoHabits = { habitsEnabled: false, skipRecord: true };
 
-describe("funnel welcome flow — order", () => {
-  it("follows the Miro existing-user steps, consent moved before the recorder", () => {
-    expect(phasesFor(withHabits)).toEqual([
-      "hello",
-      "value",
-      "consent",
-      "record",
-      "notify",
-      "habit",
-      "results",
-    ]);
+describe("welcome flow — order (approved redesign, 2026-10-12)", () => {
+  it("recorded here: consent before the recorder, results after setup", () => {
+    expect(phasesFor(rec)).toEqual(["hello", "consent", "record", "notify", "habit", "results"]);
   });
 
-  it("drops the habit step when habits are off", () => {
-    expect(phasesFor(noHabits)).not.toContain("habit");
-    expect(nextPhase("notify", noHabits)).toBe("results");
+  it("web debrief: no recorder, results right after consent", () => {
+    expect(phasesFor(web)).toEqual(["hello", "consent", "results", "notify", "habit"]);
   });
 
-  it("never puts a paywall in it (users already paid — Guideline 3.1.3(b))", () => {
-    expect(phasesFor(withHabits).some((p) => String(p).includes("pay"))).toBe(false);
+  it("habits off and consent on file drop those steps", () => {
+    expect(phasesFor(recNoHabits)).not.toContain("habit");
+    expect(phasesFor({ ...webNoHabits, skipConsent: true })).toEqual(["hello", "results", "notify"]);
   });
 
-  it("consent always comes before audio leaves the device", () => {
-    const list = phasesFor(withHabits);
-    expect(list.indexOf("consent")).toBeLessThan(list.indexOf("record"));
+  it("never contains a paywall", () => {
+    expect(phasesFor(rec).some((p) => String(p).includes("pay"))).toBe(false);
   });
 
-  it("has no step after results", () => {
-    expect(nextPhase("results", withHabits)).toBeNull();
-  });
-});
-
-describe("progress bar", () => {
-  it("is never empty on the first screen and full on the last", () => {
-    expect(progressFor("hello", withHabits)).toBeGreaterThan(0);
-    expect(progressFor("results", withHabits)).toBe(1);
-    expect(progressFor("results", noHabits)).toBe(1);
-  });
-
-  it("only ever moves forward", () => {
-    const list = phasesFor(withHabits);
-    const values = list.map((p) => progressFor(p, withHabits));
-    expect([...values].sort((a, b) => a - b)).toEqual(values);
+  it("nextPhase returns null at the end, where the tour takes over", () => {
+    expect(nextPhase("consent", web)).toBe("results");
+    expect(nextPhase("habit", web)).toBeNull();
+    expect(nextPhase("results", rec)).toBeNull();
   });
 });
 
-describe("resume", () => {
-  it("starts a fresh install at hello", () => {
-    expect(resumePhase(null, null)).toBe("hello");
+describe("welcome flow — one progress bar across setup and tour", () => {
+  it("never 0 on the first screen and keeps rising into the tour", () => {
+    const list = phasesFor(web);
+    const setup = list.map((p) => progressFor(p, web));
+    expect(setup[0]).toBeGreaterThan(0);
+    for (let i = 1; i < setup.length; i++) expect(setup[i]).toBeGreaterThan(setup[i - 1]);
+    const tour = Array.from({ length: WELCOME_TOUR_CARDS }, (_, i) => tourProgress(list.length, i));
+    expect(tour[0]).toBeGreaterThan(setup[setup.length - 1]);
+    expect(tour[tour.length - 1]).toBe(1);
+  });
+});
+
+describe("welcome flow — setup checklist", () => {
+  it("lists every step after hello, then the tour", () => {
+    expect(setupSteps(web).map((s) => s.key)).toEqual(["consent", "results", "notify", "habit", "tour"]);
+    expect(stepOf("consent", web)).toEqual({ n: 1, of: 5 });
+    expect(stepOf("tour", webNoHabits)).toEqual({ n: 4, of: 4 });
+    expect(stepOf("hello", web)).toBeNull();
+  });
+});
+
+describe("welcome flow — resume", () => {
+  it("starts at hello", () => {
+    expect(resumePhase(null, null, rec)).toBe("hello");
   });
 
-  it("goes to setup once a debrief was sent, whatever was stored", () => {
-    expect(resumePhase("consent", "e1")).toBe("notify");
-    expect(resumePhase("record", "e1")).toBe("notify");
-    expect(resumePhase(null, "e1")).toBe("notify");
+  it("recorded here: a sent debrief jumps to setup unless they were further on", () => {
+    expect(resumePhase("consent", "e1", rec)).toBe("notify");
+    expect(resumePhase("record", "e1", rec)).toBe("notify");
+    expect(resumePhase("habit", "e1", rec)).toBe("habit");
+    expect(resumePhase("results", "e1", rec)).toBe("results");
   });
 
-  it("keeps later setup/results positions after a debrief", () => {
-    expect(resumePhase("habit", "e1")).toBe("habit");
-    expect(resumePhase("results", "e1")).toBe("results");
+  it("recorded here: setup without a debrief goes back to consent (or the recorder)", () => {
+    expect(resumePhase("record", null, rec)).toBe("record");
+    expect(resumePhase("notify", null, rec)).toBe("consent");
+    expect(resumePhase("notify", null, { ...rec, skipConsent: true })).toBe("record");
+    expect(resumePhase("consent", null, { ...rec, skipConsent: true })).toBe("record");
   });
 
-  it("returns to the pre-agreed consent screen if they backed out of the recorder", () => {
-    expect(resumePhase("record", null)).toBe("record");
+  it("habits off: a stored habit with a debrief lands on results", () => {
+    expect(resumePhase("habit", "e1", recNoHabits)).toBe("results");
   });
 
-  it("never shows setup or results without a debrief", () => {
-    expect(resumePhase("notify", null)).toBe("consent");
-    expect(resumePhase("results", null)).toBe("consent");
+  it("web debrief: resume where they were, or at the start", () => {
+    expect(resumePhase(null, "w1", web)).toBe("hello");
+    expect(resumePhase("results", "w1", web)).toBe("results");
+    expect(resumePhase("notify", "w1", web)).toBe("notify");
+    expect(resumePhase("record", "w1", web)).toBe("hello");
   });
 
-  it("web first debrief: drops the record step, keeps consent and setup", () => {
-    expect(phasesFor({ habitsEnabled: true, skipRecord: true })).toEqual([
-      "hello",
-      "value",
-      "consent",
-      "notify",
-      "habit",
-      "results",
-    ]);
-    expect(nextPhase("consent", { habitsEnabled: true, skipRecord: true })).toBe("notify");
-  });
-
-  it("consent already on file: drops the consent step", () => {
-    expect(phasesFor({ habitsEnabled: true, skipConsent: true })).not.toContain("consent");
-    expect(phasesFor({ habitsEnabled: false, skipConsent: true, skipRecord: true })).toEqual([
-      "hello",
-      "value",
-      "notify",
-      "results",
-    ]);
-  });
-
-  it("web-debrief users resume where they were, or at the start", () => {
-    const o = { habitsEnabled: true, skipRecord: true };
-    expect(resumePhase(null, "web1", o)).toBe("hello");
-    expect(resumePhase("value", "web1", o)).toBe("value");
-    expect(resumePhase("consent", "web1", o)).toBe("consent");
-    expect(resumePhase("habit", "web1", o)).toBe("habit");
-    expect(resumePhase("record", "web1", o)).toBe("hello");
-  });
-
-  it("a resume target outside the user's list moves to the next one that is", () => {
-    // No debrief yet, consent on file: 'consent' isn't in the list -> record.
-    expect(resumePhase("notify", null, { habitsEnabled: true, skipConsent: true })).toBe("record");
-    expect(resumePhase("consent", null, { habitsEnabled: true, skipConsent: true })).toBe("record");
-    // Habits off: a stored 'habit' with a debrief lands on results.
-    expect(resumePhase("habit", "e1", { habitsEnabled: false })).toBe("results");
-  });
-
-  it("progress still ends at exactly 1 on shorter lists", () => {
-    const o = { habitsEnabled: false, skipConsent: true, skipRecord: true };
-    expect(progressFor("results", o)).toBe(1);
-    expect(progressFor("hello", o)).toBeGreaterThan(0);
-  });
-
-  it("rejects junk phases from storage", () => {
+  it("rejects junk and retired phases from storage", () => {
     expect(isWelcomePhase("paywall")).toBe(false);
+    expect(isWelcomePhase("value")).toBe(false);
     expect(isWelcomePhase(3)).toBe(false);
     expect(isWelcomePhase("notify")).toBe(true);
+  });
+});
+
+describe("welcome tour (last setup step, on the real tabs)", () => {
+  const req = { setupScreens: 5, stepOf: 5, firstName: "Jimmy", checkInTime: "9:00 PM" };
+
+  it("walks Home, Tasks, Entries, Insights, then a done card on Home", () => {
+    const cards = welcomeTourCards(req);
+    expect(cards).toHaveLength(WELCOME_TOUR_CARDS);
+    // AttachStep targets in components/tour/steps.ts: mic 0, entries 2, tasks 3, insights 4.
+    expect(cards.map((c) => c.target)).toEqual([0, 3, 2, 4, 0]);
+    expect(cards[0].label).toBe("Step 5 of 5 · A quick look around");
+    expect(cards[4].title).toBe("Talk to you soon, Jimmy");
+    expect(cards[4].body).toContain("9:00 PM");
+  });
+
+  it("no check-in time: no promise of one", () => {
+    const last = welcomeTourCards({ ...req, checkInTime: null })[4];
+    expect(last.title).toBe("You're all set, Jimmy");
+    expect(last.body).not.toMatch(/check in/);
+  });
+
+  it("parses the stored request defensively", () => {
+    expect(parseWelcomeTourRequest(null)).toBeNull();
+    expect(parseWelcomeTourRequest("not json")).toBeNull();
+    expect(parseWelcomeTourRequest(JSON.stringify(req))).toEqual(req);
+    expect(parseWelcomeTourRequest("{}")).toEqual({ setupScreens: 4, stepOf: 4, firstName: null, checkInTime: null });
   });
 });

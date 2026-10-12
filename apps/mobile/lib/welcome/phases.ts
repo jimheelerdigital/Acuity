@@ -1,51 +1,44 @@
 /**
- * Funnel welcome flow — order, progress and resume state.
+ * Funnel welcome flow: order, progress, setup checklist and resume state.
  *
  * Who sees it: a signed-in web-funnel subscriber the server marks
  * `welcomeEligible` (apps/web/src/lib/welcome-eligibility.ts): Stripe PRO or
  * TRIAL, onboarding never actually completed, and either no entries or only
  * the one from the web funnel's first debrief.
  *
- * Web first debrief (2026-10-11, Jimmy: "Welcome, skip debrief"): those
- * users get every step EXCEPT "record"; the results step shows the web
- * entry. Anyone whose Art. 9 consent is already in the ledger skips
- * "consent" (the web debrief records it since 2026-10-11).
- * Source of the step list: the "EXISTING USER (CAME IN THRU FUNNEL)" column
- * on the Ripple App Planner Miro board, with ONE deliberate reorder:
+ * Design (approved by Jimmy 2026-10-12, "Ripple Welcome Flow Redesign"
+ * canvas): one flow, one look. Setup screens, then the app tour runs on the
+ * real tabs as the LAST setup step, with the same coral cards and the same
+ * progress bar (components/tour/welcome-tour.ts). No separate tour after.
  *
- *   Miro puts the AI-consent checkbox AFTER the first debrief. It has to
- *   come BEFORE: Apple rejected build 40 for sending audio to an AI
- *   provider before the user was told and agreed (Guidelines 5.1.1(i) /
- *   5.1.2(i)), and only 10 of 27 recent web subscribers had given the
- *   Art. 9 consent on the web. So consent sits right before the recorder.
+ *   Debrief done on the web:  hello → consent → results → notify → habit → tour
+ *   Debrief recorded here:    hello → consent → record → notify → habit → results → tour
  *
- * No paywall anywhere: these users already paid (Guideline 3.1.3(b)).
+ * Consent always comes BEFORE the recorder: Apple rejected build 40 for
+ * sending audio to an AI provider before the user agreed (5.1.1(i) /
+ * 5.1.2(i)). It is skipped when the Art. 9 grant is already in the ledger.
+ * "habit" only when habits are enabled. No paywall anywhere (3.1.3(b)).
  *
- * Pure (no React Native imports) so it can be unit-tested from the web
- * vitest suite; storage lives in ./flow.ts.
+ * Pure (no React Native imports) so the web vitest suite can test it;
+ * storage lives in ./flow.ts.
  */
 
 export type WelcomePhase =
-  | "hello" // Welcome back, {name} — asks for a first name if we have none
-  | "value" // What Ripple does and how it helps
-  | "consent" // AI processing consent (before any audio leaves the device)
+  | "hello" // Welcome back + the setup checklist (asks for a name if missing)
+  | "consent" // AI processing consent
   | "record" // Hand-off to the real recorder (/record?from=welcome)
-  | "notify" // While we analyze: check-in time + notification permission
-  | "habit" // While we analyze: first habit (only when habits are enabled)
-  | "results"; // Their first debrief's results, then the app tour
+  | "notify" // Daily check-in time + notification permission
+  | "habit" // First habit (only when habits are enabled)
+  | "results"; // What Ripple heard in their first debrief
 
-const ORDER: WelcomePhase[] = [
-  "hello",
-  "value",
-  "consent",
-  "record",
-  "notify",
-  "habit",
-  "results",
-];
+/** Every phase a stored state may hold (older builds also stored "value"). */
+const ALL: WelcomePhase[] = ["hello", "consent", "record", "notify", "habit", "results"];
+
+/** Tour cards after the setup screens: Home, Tasks, Entries, Insights, done. */
+export const WELCOME_TOUR_CARDS = 5;
 
 export function isWelcomePhase(v: unknown): v is WelcomePhase {
-  return typeof v === "string" && (ORDER as string[]).includes(v);
+  return typeof v === "string" && (ALL as string[]).includes(v);
 }
 
 export type WelcomeOpts = {
@@ -57,19 +50,16 @@ export type WelcomeOpts = {
 };
 
 export function phasesFor(opts: WelcomeOpts): WelcomePhase[] {
-  return ORDER.filter(
-    (p) =>
-      !(p === "habit" && !opts.habitsEnabled) &&
-      !(p === "consent" && opts.skipConsent) &&
-      !(p === "record" && opts.skipRecord)
+  const order: WelcomePhase[] = opts.skipRecord
+    ? ["hello", "consent", "results", "notify", "habit"]
+    : ["hello", "consent", "record", "notify", "habit", "results"];
+  return order.filter(
+    (p) => !(p === "habit" && !opts.habitsEnabled) && !(p === "consent" && opts.skipConsent)
   );
 }
 
-/** The phase after `phase`, or null when it is the last one. */
-export function nextPhase(
-  phase: WelcomePhase,
-  opts: WelcomeOpts
-): WelcomePhase | null {
+/** The phase after `phase`, or null when the tour comes next. */
+export function nextPhase(phase: WelcomePhase, opts: WelcomeOpts): WelcomePhase | null {
   const list = phasesFor(opts);
   const i = list.indexOf(phase);
   if (i < 0 || i >= list.length - 1) return null;
@@ -77,25 +67,58 @@ export function nextPhase(
 }
 
 /**
- * Fraction for the continuous progress bar (Miro: "a progress bar, not
- * steps"). Never 0 — an empty bar on the first screen reads as broken — and
- * exactly 1 on the last.
+ * One continuous bar across setup AND tour (Miro: "a progress bar, not
+ * steps"). Never 0 on the first screen; exactly 1 on the last tour card.
  */
-export function progressFor(
-  phase: WelcomePhase,
-  opts: WelcomeOpts
-): number {
+export function progressFor(phase: WelcomePhase, opts: WelcomeOpts): number {
   const list = phasesFor(opts);
   const i = list.indexOf(phase);
   if (i < 0) return 0;
-  return (i + 1) / list.length;
+  return (i + 1) / (list.length + WELCOME_TOUR_CARDS);
+}
+
+/** The bar on tour card `card` (0-based), given how many setup screens ran. */
+export function tourProgress(setupScreens: number, card: number): number {
+  const total = setupScreens + WELCOME_TOUR_CARDS;
+  return Math.min(1, (setupScreens + card + 1) / total);
+}
+
+export type SetupStep = { key: WelcomePhase | "tour"; label: string };
+
+const STEP_LABELS: Record<WelcomePhase | "tour", string> = {
+  hello: "",
+  consent: "How Ripple uses AI",
+  record: "Record your first debrief",
+  results: "See what Ripple heard",
+  notify: "Pick a daily check-in",
+  habit: "Pick a first habit",
+  tour: "A quick look around",
+};
+
+/** The numbered checklist on the hello screen: every step after it, then the tour. */
+export function setupSteps(opts: WelcomeOpts): SetupStep[] {
+  return [
+    ...phasesFor(opts)
+      .filter((p) => p !== "hello")
+      .map((p) => ({ key: p, label: STEP_LABELS[p] })),
+    { key: "tour", label: STEP_LABELS.tour },
+  ];
+}
+
+/** "Step N of M" for a phase (or the tour); null for hello. */
+export function stepOf(key: WelcomePhase | "tour", opts: WelcomeOpts): { n: number; of: number } | null {
+  const steps = setupSteps(opts);
+  const i = steps.findIndex((s) => s.key === key);
+  return i < 0 ? null : { n: i + 1, of: steps.length };
 }
 
 /**
- * Where to land on (re)entry. A debrief already sent means the "while we
- * analyze" setup is next, whatever was stored; otherwise resume the stored
- * phase. "record" (consent given, recorder opened, nothing sent — e.g. they
- * backed out) renders the consent screen pre-agreed, one tap from the mic.
+ * Where to land on (re)entry.
+ *   - Web debrief: walk the list from wherever they were.
+ *   - Recorded here: a debrief already sent means setup is next ("notify"),
+ *     unless they were further on; no debrief yet means back to consent
+ *     (or the recorder hand-off when consent is on file).
+ * Anything not in this user's list falls back to the start.
  */
 export function resumePhase(
   stored: WelcomePhase | null,
@@ -105,8 +128,6 @@ export function resumePhase(
   const list = phasesFor(opts);
   const has = (p: WelcomePhase | null): p is WelcomePhase => p != null && list.includes(p);
 
-  // Debrief came from the web: no recorder hand-off, just walk the list
-  // from wherever they were.
   if (opts.skipRecord) return has(stored) ? stored : list[0];
 
   let to: WelcomePhase;
@@ -116,16 +137,15 @@ export function resumePhase(
     to = "hello";
   } else if (stored === "notify" || stored === "habit" || stored === "results") {
     // Setup/results without a debrief can't render anything useful.
-    to = "consent";
+    to = opts.skipConsent ? "record" : "consent";
   } else {
     // "record" = consent given and the recorder opened, nothing sent.
     to = stored;
   }
   if (has(to)) return to;
-  // Not in this user's list (habits off, consent already on file): the
-  // next phase that is, in canonical order.
-  const after = ORDER.slice(ORDER.indexOf(to)).find((p) => list.includes(p));
-  return after ?? list[0];
+  // habit off: the next phase that is in the list.
+  const i = ALL.indexOf(to);
+  return list.find((p) => ALL.indexOf(p) > i) ?? list[0];
 }
 
 /** Habit ideas offered on the habit step (Miro: pre-fill 2–3 suggestions). */
