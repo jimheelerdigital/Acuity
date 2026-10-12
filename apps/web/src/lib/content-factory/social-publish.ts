@@ -94,7 +94,9 @@ export const REEL_LANES = ["memento", "selfie"] as const;
  * (Was empty 2026-09-25 → 09-28, when every lane was a reel.)
  */
 export const CAROUSEL_LANES: readonly string[] = [
-  "selfie",
+  // "selfie" left 2026-10-12 (Keenan: "make sure to have music behind it,
+  // and animate it with higgsfield as well and let's see if that does
+  // better"): it now posts as an animated reel with music.
   "reset-guide",
   "phone-quote",
   "texts-younger",

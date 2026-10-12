@@ -7,6 +7,42 @@
 
 ---
 
+## [2026-10-12] — Ripple selfie posts: rotating characters and caption styles, now animated with music
+
+- **Requested by:** Keenan
+- **Committed by:** Claude Code
+- **Commit hash:** (see git log: "feat: Test selfie characters and caption styles as animated reels")
+
+### In plain English (for Keenan)
+Each daily Ripple selfie post now uses a different woman (6 characters, all ~40-50) and a different caption style (4 looks). Every slide is animated with Higgsfield, and the post goes out as a video with music instead of still photos. Each post records which character and caption style it used, and the weekly performance loop scores them. It keeps testing new combinations and leans toward winners once they show up. The original look (brunette, pink sticker text) is the baseline to beat.
+
+### Technical changes (for Jimmy)
+- `lib/content-factory/brand.ts`: `SELFIE_PERSONAS` (brunette-greying, silver-bob, natural-curls, blonde-ponytail, auburn-waves, black-straight) + `selfiePersonaText()`.
+- `lib/content-factory/compose.ts`:
+  - `SELFIE_TEXT_STYLES` (sticker, classic, highlight, minimal)
+  - `renderSelfieCaptionOverlay({ textStyle })`: highlight draws a white box (no SVG), minimal is lowercase/smaller/shadow-only
+- `lib/content-factory/carousel-generate.ts`: `buildSelfieImagePrompt({ persona })` overrides SELFIE_PERSONA.
+- `lib/content-factory/performance-loop.ts`:
+  - `selfie` added to LOOP_LANES (brand ripple)
+  - `chooseSelfieVariant()` runs a Thompson bandit per dimension and skips the previous post's arm until it has 3 scored posts
+  - recipe backfill tags pre-test selfie posts as text-sticker / persona-brunette-greying
+- `inngest/functions/carousel-daily.ts`, selfie branch:
+  - new `pick-selfie-variant` step
+  - the cross-post identity anchor is now the latest cover of the SAME character, not just the latest selfie
+  - persona and textStyle passed to every prompt and overlay
+  - `writeRecipe` with postType `text-<style>` and category `persona-<id>`
+- `lib/content-factory/social-publish.ts`: `selfie` removed from CAROUSEL_LANES, so it posts as a reel and the video build runs.
+- `lib/content-factory/post-video.ts`: `maxAnimatedSlides` returns 7 for selfie, so every slide is animated.
+  - Model: POST_VIDEO_MODEL (Kling 2.5 Turbo Std), music from the Ripple library; the IG copy gets an original song.
+  - The existing person mode keeps her pose (phone over face).
+
+### Manual steps needed
+None
+
+### Notes
+- Cost: about 6-7 Kling 2.5 clips a post, ~$0.70 now and ~$1.40 after the 10-11 promo, plus images (unchanged).
+- Scoring needs 48h per post, and per-arm confidence takes a few weeks at 1 post a day (6 characters × 4 styles). Read the Monday report: persona stats are aggregated from the `<postType>::persona-<id>` category rows.
+
 ## [2026-10-12] — Ripple posts again: one selfie post a day on Instagram and Facebook
 
 - **Requested by:** Keenan

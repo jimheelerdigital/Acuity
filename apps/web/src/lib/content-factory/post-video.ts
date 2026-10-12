@@ -157,6 +157,9 @@ export function maxAnimatedSlides(brand: string, lane?: string | null): number {
   // Every slide (cover + 5 picks) since 2026-09-30 per Keenan: "it also
   // didn't animate every slide which it needs to". ~6 clips/post.
   if (lane?.startsWith("pick-")) return 6;
+  // Selfie animates every slide (2026-10-12, per Keenan: "animate it with
+  // higgsfield as well"): cover + up to 6 steps.
+  if (lane === "selfie") return 7;
   const perBrand = process.env[`POST_VIDEO_MAX_LIVE_${brand.toUpperCase()}`];
   if (perBrand !== undefined && perBrand.trim() !== "") {
     const b = Number(perBrand);

@@ -425,6 +425,16 @@ export const SELFIE_TEXT_COLORS = [
   "#5EC8F2", // sky blue
 ] as const;
 
+/**
+ * Selfie caption looks, rotated per post until one wins (2026-10-12):
+ * - sticker: pastel fill + thick white outline (the original, 08-25)
+ * - classic: white type + black outline (TikTok's default caption)
+ * - highlight: dark type on a white box (TikTok's "background" text)
+ * - minimal: small lowercase white type with a soft shadow, like a quiet note
+ */
+export const SELFIE_TEXT_STYLES = ["sticker", "classic", "highlight", "minimal"] as const;
+export type SelfieTextStyle = (typeof SELFIE_TEXT_STYLES)[number];
+
 /** Strip emoji/symbols the Lambda Pango stack can't render (they'd
  * come out as tofu boxes on the burned caption). */
 function stripUnrenderable(s: string): string {
@@ -461,11 +471,24 @@ export async function renderSelfieCaptionOverlay(
      * the face); "upper" = upper-middle for person-free aesthetic
      * shots. Defaults to "lower" — face-safe is the safe default. */
     placement?: "upper" | "lower";
+    /**
+     * Caption look (2026-10-12, per Keenan: "change up the selfie
+     * character and text styles for each post until we find a way that
+     * works best"). See SELFIE_TEXT_STYLES. Defaults to the original
+     * pastel sticker.
+     */
+    textStyle?: SelfieTextStyle;
   }
 ): Promise<Buffer> {
   const kind = opts?.kind ?? "REASON";
   const fontPath = await ensureFontFile("Bold");
-  const color = opts?.color ?? SELFIE_TEXT_COLORS[0];
+  const textStyle: SelfieTextStyle = opts?.textStyle ?? "sticker";
+  const color =
+    textStyle === "classic" || textStyle === "minimal"
+      ? "#FFFFFF"
+      : textStyle === "highlight"
+        ? "#141414"
+        : opts?.color ?? SELFIE_TEXT_COLORS[0];
   const placement = opts?.placement ?? "lower";
 
   // TikTok-sticker treatment: colored fill with a thick white outline.
@@ -475,12 +498,14 @@ export async function renderSelfieCaptionOverlay(
   // Phase 1: render each block and measure it; positions come later so
   // the whole stack can be anchored as one unit.
   type StickerBlock = {
-    shadow: Buffer;
-    outline: Buffer;
+    shadow: Buffer | null;
+    outline: Buffer | null;
     main: Buffer;
     width: number;
     height: number;
     strokeW: number;
+    /** "highlight": solid white box behind the text. */
+    box: Buffer | null;
   };
   const renderStickerBlock = async (
     lines: string[],
@@ -494,12 +519,25 @@ export async function renderSelfieCaptionOverlay(
     const maxTextW = OUTPUT_W - PADDING_X * 2;
     const outlineMarkup = `<span font_desc="Poppins Bold ${fontSize}" foreground="${outlineColor}">${body}</span>`;
     const fillMarkup = `<span font_desc="Poppins Bold ${fontSize}" foreground="${fill}">${body}</span>`;
-    const outline = await renderMarkup(outlineMarkup, fontPath, maxTextW, 10, pad);
     const main = await renderMarkup(fillMarkup, fontPath, maxTextW, 10, pad);
-    // Soft drop shadow so the sticker reads on bright mirrors too.
-    const shadowMarkup = `<span font_desc="Poppins Bold ${fontSize}" foreground="#333333">${body}</span>`;
+    if (textStyle === "highlight") {
+      // TikTok "background" text: dark type on a white box, no outline.
+      const box = await sharp({
+        create: { width: main.width + 28, height: main.height + 12, channels: 4, background: { r: 255, g: 255, b: 255, alpha: 0.94 } },
+      })
+        .png()
+        .toBuffer();
+      return { shadow: null, outline: null, main: main.buffer, width: main.width, height: main.height, strokeW: 0, box };
+    }
+    // Soft drop shadow so the text reads on bright mirrors too ("minimal"
+    // leans on a heavier one instead of an outline).
+    const shadowMarkup = `<span font_desc="Poppins Bold ${fontSize}" foreground="${textStyle === "minimal" ? "#000000" : "#333333"}">${body}</span>`;
     const shadow = await renderMarkup(shadowMarkup, fontPath, maxTextW, 10, pad);
-    const blurredShadow = await sharp(shadow.buffer).blur(7).png().toBuffer();
+    const blurredShadow = await sharp(shadow.buffer).blur(textStyle === "minimal" ? 10 : 7).png().toBuffer();
+    if (textStyle === "minimal") {
+      return { shadow: blurredShadow, outline: null, main: main.buffer, width: main.width, height: main.height, strokeW: 0, box: null };
+    }
+    const outline = await renderMarkup(outlineMarkup, fontPath, maxTextW, 10, pad);
     return {
       shadow: blurredShadow,
       outline: outline.buffer,
@@ -507,14 +545,22 @@ export async function renderSelfieCaptionOverlay(
       width: main.width,
       height: main.height,
       strokeW,
+      box: null,
     };
   };
 
   const blocks: StickerBlock[] = [];
-  const mainText = stripUnrenderable(text);
-  const mainSize = kind === "COVER" ? 58 : 48;
+  // "minimal" types like a quiet personal note: lowercase and smaller.
+  const mainText = textStyle === "minimal" ? stripUnrenderable(text).toLowerCase() : stripUnrenderable(text);
+  const mainSize = textStyle === "minimal" ? (kind === "COVER" ? 46 : 38) : kind === "COVER" ? 58 : 48;
   blocks.push(
-    await renderStickerBlock(wordWrap(mainText, kind === "COVER" ? 18 : 22), mainSize, color)
+    await renderStickerBlock(
+      wordWrap(mainText, kind === "COVER" ? (textStyle === "minimal" ? 24 : 18) : textStyle === "minimal" ? 28 : 22),
+      mainSize,
+      color,
+      // "classic" = white type with a black outline (TikTok's default caption).
+      textStyle === "classic" ? "#111111" : "#FFFFFF"
+    )
   );
 
   const detail = opts?.detail ? stripUnrenderable(opts.detail) : "";
@@ -522,7 +568,14 @@ export async function renderSelfieCaptionOverlay(
     // White fill needs a DARK outline — a white-on-white outline smears
     // the small type into an illegible blob (seen on the 2026-08-25
     // example run). Dark outline keeps it crisp at this size.
-    blocks.push(await renderStickerBlock(wordWrap(detail, 28), 34, "#FFFFFF", "#2A2A2A"));
+    blocks.push(
+      await renderStickerBlock(
+        wordWrap(textStyle === "minimal" ? detail.toLowerCase() : detail, 28),
+        textStyle === "minimal" ? 30 : 34,
+        textStyle === "highlight" ? "#141414" : "#FFFFFF",
+        "#2A2A2A"
+      )
+    );
   }
 
   // Phase 2: anchor the whole stack. "upper" sits below the top 15%
@@ -544,12 +597,15 @@ export async function renderSelfieCaptionOverlay(
   const composites: import("sharp").OverlayOptions[] = [];
   for (const b of blocks) {
     const left = Math.round((OUTPUT_W - b.width) / 2);
-    composites.push({ input: b.shadow, top: cursorY + 6, left: left + 4 });
-    for (const [dx, dy] of [
-      [-b.strokeW, 0], [b.strokeW, 0], [0, -b.strokeW], [0, b.strokeW],
-      [-b.strokeW, -b.strokeW], [b.strokeW, -b.strokeW], [-b.strokeW, b.strokeW], [b.strokeW, b.strokeW],
-    ]) {
-      composites.push({ input: b.outline, top: cursorY + dy, left: left + dx });
+    if (b.box) composites.push({ input: b.box, top: Math.max(0, cursorY - 6), left: Math.max(0, left - 14) });
+    if (b.shadow) composites.push({ input: b.shadow, top: cursorY + 6, left: left + 4 });
+    if (b.outline) {
+      for (const [dx, dy] of [
+        [-b.strokeW, 0], [b.strokeW, 0], [0, -b.strokeW], [0, b.strokeW],
+        [-b.strokeW, -b.strokeW], [b.strokeW, -b.strokeW], [-b.strokeW, b.strokeW], [b.strokeW, b.strokeW],
+      ]) {
+        composites.push({ input: b.outline, top: cursorY + dy, left: left + dx });
+      }
     }
     composites.push({ input: b.main, top: cursorY, left });
     cursorY += b.height + GAP;

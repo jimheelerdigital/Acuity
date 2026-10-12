@@ -68,6 +68,30 @@ export const SELFIE_PERSONA =
   "The SAME woman appears in every photo of this series: mid-40s, shoulder-length brown hair with natural greying strands, average realistic body. Her face is NEVER visible — her raised phone completely covers it in every photo, so her identity reads through her hair, build, and everyday clothes (soft sweatshirts, tees, leggings, jeans — nothing styled or aspirational). ONLY her identity repeats across the series — her pose, outfit, framing, room, and lighting are DIFFERENT in every photo, like a real camera roll.";
 
 /**
+ * Selfie characters, rotated per post until one wins (2026-10-12, per
+ * Keenan: "change up the selfie character and text styles for each post
+ * until we find a way that works best"). All women ~40-50 (Ripple's
+ * audience); the face stays hidden behind the phone, so each one reads
+ * through hair, skin, build and wardrobe. Each replaces SELFIE_PERSONA's
+ * description in the prompt; identity carries within a post (cover raw →
+ * mirror slides) and across posts of the SAME character.
+ */
+export const SELFIE_PERSONAS = [
+  { id: "brunette-greying", look: "mid-40s, shoulder-length brown hair with natural greying strands, light skin, average realistic body; soft sweatshirts, tees, leggings, jeans" },
+  { id: "silver-bob", look: "late-40s, sleek chin-length silver-grey bob, fair skin, slim build; crisp linen shirts, cardigans, tailored trousers" },
+  { id: "natural-curls", look: "mid-40s Black woman, natural curly hair worn loose or in a puff, deep brown skin, curvy realistic build; cozy cardigans, wrap tops, wide-leg pants" },
+  { id: "blonde-ponytail", look: "early-40s, dirty-blonde hair in a messy ponytail, light skin, fit everyday build; athleisure: zip-up hoodies, leggings, sneakers" },
+  { id: "auburn-waves", look: "mid-40s, long auburn wavy hair, freckled fair skin, average build; oversized knit sweaters, flannel shirts, jeans" },
+  { id: "black-straight", look: "late-40s Latina woman, long straight black hair, warm medium-tan skin, average build; simple fitted tees, denim jackets, jeans" },
+] as const;
+export type SelfiePersonaId = (typeof SELFIE_PERSONAS)[number]["id"];
+
+/** SELFIE_PERSONA with a specific character's look swapped in. */
+export function selfiePersonaText(look: string): string {
+  return `The SAME woman appears in every photo of this series: ${look}. Her face is NEVER visible — her raised phone completely covers it in every photo, so her identity reads through her hair, skin, build, and everyday clothes (nothing styled or aspirational). ONLY her identity repeats across the series — her pose, outfit, framing, room, and lighting are DIFFERENT in every photo, like a real camera roll.`;
+}
+
+/**
  * Pose/framing directives rotated across selfie covers (2026-08-28, per
  * Keenan: the phone must COVER her face in every selfie, only ONE
  * selfie per slideshow). Every entry is a mirror selfie with the raised

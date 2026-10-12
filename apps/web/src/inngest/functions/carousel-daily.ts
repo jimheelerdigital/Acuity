@@ -1471,6 +1471,42 @@ export const carouselDailyCronFn = inngest.createFunction(
       );
       if (dryRun) return saveDryRun(bucket, selfie);
 
+      // Character + caption style for this post (2026-10-12, per Keenan:
+      // "change up the selfie character and text styles for each post until
+      // we find a way that works best"). Identity carries across posts of the
+      // SAME character only: its latest cover raw is this post's anchor.
+      const variant = await step.run("pick-selfie-variant", async () => {
+        const { prisma } = await import("@/lib/prisma");
+        const { readScoreboard, readRecipe, chooseSelfieVariant } = await import(
+          "@/lib/content-factory/performance-loop"
+        );
+        const { SELFIE_PERSONAS } = await import("@/lib/content-factory/brand");
+        const { SELFIE_TEXT_STYLES } = await import("@/lib/content-factory/compose");
+        const recent = await prisma.carouselPost.findMany({
+          where: { lane: "selfie" },
+          orderBy: { createdAt: "desc" },
+          take: 20,
+          select: { id: true, slides: { where: { order: 0 }, select: { rawImageUrl: true } } },
+        });
+        const recipes = await Promise.all(recent.map((p) => readRecipe(p.id)));
+        const prevRecipe = recipes[0];
+        const previous = prevRecipe
+          ? { persona: prevRecipe.category.replace(/^persona-/, ""), textStyle: prevRecipe.postType.replace(/^text-/, "") }
+          : null;
+        const choice = chooseSelfieVariant(
+          await readScoreboard("ripple"),
+          SELFIE_PERSONAS.map((p) => p.id),
+          SELFIE_TEXT_STYLES,
+          previous
+        );
+        const same = recent.findIndex((_, i) => recipes[i]?.category === `persona-${choice.persona}`);
+        const anchorUrl = same >= 0 ? recent[same].slides[0]?.rawImageUrl ?? null : null;
+        const persona = SELFIE_PERSONAS.find((p) => p.id === choice.persona)!;
+        console.log(`[carousel-cron] selfie variant: ${choice.persona} / ${choice.textStyle} (${choice.reason})${anchorUrl ? " — anchored" : ""}`);
+        return { personaId: persona.id, personaLook: persona.look, textStyle: choice.textStyle, anchorUrl };
+      });
+      const textStyle = variant.textStyle as import("@/lib/content-factory/compose").SelfieTextStyle;
+
       await step.run("ensure-bucket", async () => {
         const { ensureBucket } = await import(
           "@/lib/content-factory/carousel-generate"
@@ -1509,6 +1545,7 @@ export const carouselDailyCronFn = inngest.createFunction(
           SELFIE_POSE_VARIANTS,
           SELFIE_COVER_POSE_COUNT,
           SELFIE_STYLE_VARIANTS,
+          selfiePersonaText,
         } = await import("@/lib/content-factory/brand");
         let poseHash = 0;
         for (const c of slug) poseHash = ((poseHash << 5) - poseHash + c.charCodeAt(0)) | 0;
@@ -1520,7 +1557,8 @@ export const carouselDailyCronFn = inngest.createFunction(
           scene: selfie.coverScene,
           slideText: selfie.headline,
           headline: selfie.headline,
-          hasReference: !!selfie.anchorUrl,
+          hasReference: !!variant.anchorUrl,
+          persona: selfiePersonaText(variant.personaLook),
           pose: SELFIE_POSE_VARIANTS[poseBase],
           // Photography style: per-POST (slug-deterministic like the
           // sticker color) so the day's two selfie posts read as
@@ -1533,8 +1571,8 @@ export const carouselDailyCronFn = inngest.createFunction(
         });
 
         let anchor: Buffer | null = null;
-        if (selfie.anchorUrl) {
-          const res = await fetch(selfie.anchorUrl);
+        if (variant.anchorUrl) {
+          const res = await fetch(variant.anchorUrl);
           if (!res.ok) throw new Error(`Anchor fetch failed: HTTP ${res.status}`);
           anchor = Buffer.from(await res.arrayBuffer());
         }
@@ -1558,6 +1596,7 @@ export const carouselDailyCronFn = inngest.createFunction(
         const overlay = await renderSelfieCaptionOverlay(selfie.headline, {
           kind: "COVER",
           color: stickerColor,
+          textStyle,
           placement: "lower", // cover is always a mirror selfie — keep off the face
         });
         const composed = await composeSlideWithOverlay(rawBuffer, overlay);
@@ -1603,6 +1642,7 @@ export const carouselDailyCronFn = inngest.createFunction(
             SELFIE_POSE_VARIANTS,
             SELFIE_COVER_POSE_COUNT,
             SELFIE_STYLE_VARIANTS,
+            selfiePersonaText,
           } = await import("@/lib/content-factory/brand");
           let poseHash = 0;
           for (const c of slug) poseHash = ((poseHash << 5) - poseHash + c.charCodeAt(0)) | 0;
@@ -1616,6 +1656,7 @@ export const carouselDailyCronFn = inngest.createFunction(
             slideText: selfie.steps[i],
             headline: selfie.headline,
             hasReference: shot.type === "mirror",
+            persona: selfiePersonaText(variant.personaLook),
             // Offset by slide index so no two selfies in a post (cover
             // included) share a pose; slug offset varies it across days.
             pose: SELFIE_POSE_VARIANTS[
@@ -1656,6 +1697,7 @@ export const carouselDailyCronFn = inngest.createFunction(
             kind: "REASON",
             detail: selfie.details[i] || undefined,
             color: stickerColor,
+            textStyle,
             // Mirror = her in frame → torso-level text, off the face.
             // Aesthetic = no people → upper-middle keeps the subject clear.
             placement: shot.type === "mirror" ? "lower" : "upper",
@@ -1734,6 +1776,25 @@ export const carouselDailyCronFn = inngest.createFunction(
             },
           },
         });
+
+        // Variant recipe for the performance loop (2026-10-12).
+        try {
+          const { writeRecipe } = await import("@/lib/content-factory/performance-loop");
+          await writeRecipe({
+            postId: post.id,
+            brand: "ripple",
+            lane: "selfie",
+            postType: `text-${variant.textStyle}`,
+            category: `persona-${variant.personaId}`,
+            title: selfie.headline,
+            options: selfie.steps,
+            coverScene: selfie.coverScene,
+            generatedFor: today.toISOString().slice(0, 10),
+            slotHourUtc: new Date().getUTCHours(),
+          });
+        } catch (err) {
+          console.warn("[carousel-cron] selfie recipe write failed:", err instanceof Error ? err.message : err);
+        }
 
         // Higgsfield video next; the brand's daily digest email (one
         // download packet) replaces the per-post email (2026-09-26).

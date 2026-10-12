@@ -367,6 +367,8 @@ export function buildSelfieImagePrompt(opts: {
    * (2026-09-03, per Keenan: "more variance and different picture
    * styles"). */
   style?: string;
+  /** Full character description (selfiePersonaText); defaults to SELFIE_PERSONA. */
+  persona?: string;
 }): string {
   const context = `Context (convey through the photo only — subtly, shown not told): this photo belongs to a personal slideshow titled "${opts.headline}"; this slide's moment is "${opts.slideText}".`;
 
@@ -385,7 +387,7 @@ export function buildSelfieImagePrompt(opts: {
     opts.hasReference
       ? "From the reference image take ONLY the woman's identity: the EXACT same person — identical hair, skin tone, and build (her face is hidden behind her raised phone in every photo of this series, and stays hidden here). Take NOTHING else from the reference: do NOT copy or reuse its pose, arm position, framing, camera distance, outfit, room, furniture, or lighting. This is a COMPLETELY DIFFERENT photo of the same woman, taken on a different day."
       : "",
-    SELFIE_PERSONA,
+    opts.persona ?? SELFIE_PERSONA,
     `Scene (follow exactly): ${opts.scene}`,
     opts.pose
       ? `Pose and framing (follow exactly — this OVERRIDES any camera or mirror setup implied by the scene): ${opts.pose}`

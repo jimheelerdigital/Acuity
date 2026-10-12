@@ -36,7 +36,47 @@ export const LOOP_LANES: Record<string, LoopBrand> = {
   "mythic-countdown": "mythicals",
   "pick-ripple": "ripple",
   "pick-bwk": "bwk",
+  // Selfie variant test (2026-10-12): postType = caption style
+  // ("text-<style>"), category = character ("persona-<id>").
+  selfie: "ripple",
 };
+
+/**
+ * Pick the selfie character + caption style for the next post (2026-10-12,
+ * per Keenan: "change up the selfie character and text styles for each post
+ * until we find a way that works best"). A bandit per dimension on the Ripple
+ * scoreboard; while an arm has fewer than 3 scored posts, the previous post's
+ * choice is skipped so consecutive posts always differ.
+ */
+export function chooseSelfieVariant(
+  board: Scoreboard | null,
+  personas: readonly string[],
+  textStyles: readonly string[],
+  previous: { persona?: string; textStyle?: string } | null,
+  rng: () => number = Math.random
+): { persona: string; textStyle: string; reason: string } {
+  const textStats: Record<string, { n: number; mean: number }> = {};
+  for (const t of textStyles) {
+    const st = board?.postTypes[`text-${t}`];
+    if (st) textStats[t] = { n: st.n, mean: st.mean };
+  }
+  // Character stats are spread across "<postType>::persona-<id>" combos.
+  const personaStats: Record<string, { n: number; mean: number }> = {};
+  for (const [key, st] of Object.entries(board?.categories ?? {})) {
+    const id = key.split("::persona-")[1];
+    if (!id || !personas.includes(id)) continue;
+    const cur = personaStats[id] ?? { n: 0, mean: 0 };
+    const n = cur.n + st.n;
+    personaStats[id] = { n, mean: n ? (cur.mean * cur.n + st.mean * st.n) / n : 0 };
+  }
+  const pool = (arms: readonly string[], stats: Record<string, { n: number }>, prev?: string) => {
+    const kept = arms.filter((a) => !(a === prev && (stats[a]?.n ?? 0) < 3));
+    return kept.length ? kept : [...arms];
+  };
+  const p = chooseArm(pool(personas, personaStats, previous?.persona), personaStats, { rng });
+  const t = chooseArm(pool(textStyles, textStats, previous?.textStyle), textStats, { rng });
+  return { persona: p.arm, textStyle: t.arm, reason: `persona ${p.reason}, text ${t.reason}` };
+}
 
 const BUCKET = "content-factory";
 
@@ -128,9 +168,14 @@ export async function backfillRecipes(opts: { days?: number } = {}): Promise<num
       .filter((s) => s.kind === "REASON" && /^\d+\./.test(s.overlayText))
       .sort((a, b) => a.order - b.order)
       .map((s) => s.overlayText.split("\n")[0].replace(/^\d+\.\s*/, ""));
-    const postType = brand === "mythicals" ? mythicModeFromSlug(p.topicSlug) : "pick";
-    const catalog = await categoryCatalog(brand, postType);
-    const category = await classifyCategory(p.headline, options, catalog);
+    // Selfie posts made before the variant test (2026-10-12) were all one
+    // look: the brunette character with pastel sticker captions. Recorded
+    // as that arm, they're the baseline the new variants must beat.
+    const isSelfie = p.lane === "selfie";
+    const postType = isSelfie ? "text-sticker" : brand === "mythicals" ? mythicModeFromSlug(p.topicSlug) : "pick";
+    const category = isSelfie
+      ? "persona-brunette-greying"
+      : await classifyCategory(p.headline, options, await categoryCatalog(brand, postType));
     try {
       await writeRecipe({
         postId: p.id,
