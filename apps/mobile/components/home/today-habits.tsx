@@ -115,7 +115,7 @@ export function TodayHabits() {
               accessibilityRole="checkbox"
               accessibilityState={{ checked: done }}
               accessibilityLabel={habit.name}
-              style={({ pressed }) => ({
+              style={({
                 flexDirection: "row",
                 alignItems: "center",
                 gap: 12,
@@ -124,7 +124,7 @@ export function TodayHabits() {
                 borderRadius: 12,
                 paddingVertical: 14,
                 paddingHorizontal: 14,
-                backgroundColor: pressed ? tokens.bgInset : "transparent",
+                backgroundColor: "transparent",
               })}
             >
               <View

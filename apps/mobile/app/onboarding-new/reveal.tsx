@@ -512,12 +512,12 @@ function RevealScreen() {
                 }
                 accessibilityRole="button"
                 accessibilityLabel="Continue"
-                style={({ pressed }) => ({
+                style={({
                   backgroundColor: PURPLE,
                   borderRadius: tokens.radius.pill,
                   paddingVertical: 14,
                   alignItems: "center",
-                  opacity: pressed ? 0.85 : 1,
+                  opacity: 1,
                 })}
               >
                 <Text
@@ -687,12 +687,12 @@ function MissingExtractionView({
           </Text>
           <Pressable
             onPress={onRetry}
-            style={({ pressed }) => ({
+            style={({
               backgroundColor: PURPLE,
               borderRadius: tokens.radius.pill,
               paddingHorizontal: 24,
               paddingVertical: 14,
-              opacity: pressed ? 0.85 : 1,
+              opacity: 1,
             })}
           >
             <Text

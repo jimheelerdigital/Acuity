@@ -520,13 +520,13 @@ function AccountScreen() {
                   disabled={pendingMethod !== null}
                   accessibilityRole="button"
                   accessibilityLabel="Continue"
-                  style={({ pressed }) => ({
+                  style={({
                     backgroundColor: PURPLE,
                     borderRadius: tokens.radius.pill,
                     paddingVertical: 14,
                     alignItems: "center",
                     opacity:
-                      pressed || pendingMethod === "email" ? 0.85 : 1,
+                      false || pendingMethod === "email" ? 0.85 : 1,
                   })}
                 >
                   {pendingMethod === "email" ? (
@@ -622,14 +622,14 @@ function OAuthButton({
       disabled={disabled || busy}
       accessibilityRole="button"
       accessibilityLabel={label}
-      style={({ pressed }) => ({
+      style={({
         backgroundColor: isDark ? tokens.text : tokens.cardBg,
         borderRadius: tokens.radius.pill,
         paddingVertical: 14,
         alignItems: "center",
         borderWidth: isDark ? 0 : 0.5,
         borderColor: tokens.cardBorder,
-        opacity: pressed || busy ? 0.85 : 1,
+        opacity: false || busy ? 0.85 : 1,
       })}
     >
       {busy ? (
