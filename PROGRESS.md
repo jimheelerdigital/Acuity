@@ -7,6 +7,30 @@
 
 ---
 
+## [2026-10-11] — Every Mythicals cover is now "someone facing five glowing choices"
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** see "feat: Use the five-glowing-choices cover on every Mythicals post"
+
+### In plain English (for Keenan)
+Our three most-viewed Mythicals posts (23.5K, 20.2K and 6.7K views) all have the same cover: a figure seen from behind, facing five options that each glow a different color. Covers that showed one creature, a city or a silhouette in fog got 120–2,800 views. Every Mythicals cover, including the Top 5 countdowns, now uses the winning style, and the cover animation slowly pushes toward the five glows as they pulse.
+
+### Technical changes (for Jimmy)
+- `apps/web/src/lib/content-factory/choice-lane.ts`:
+  - the `coverScene` spec is now one style only: a figure from behind before five distinct-color glowing options, or two figures for "pair" questions, with the options not fully revealed
+  - the countdown `coverScene` matches it
+  - `COVER_SCALE_LINE` was rewritten to match
+  - `coverMotion` now pushes over the figure's shoulder while the glows pulse
+  - the "hidden giant" alternate style is removed
+
+### Manual steps needed
+- None. It applies to the next generated posts.
+
+### Notes
+- Evidence is the Mythicals IG grid on 10-11: the 3 top posts by views all share this cover.
+
+---
+
 ## [2026-10-11] — Mythicals cut to 3 posts a day, all on Kling 3
 
 - **Requested by:** Keenan
