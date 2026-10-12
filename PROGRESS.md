@@ -151,6 +151,25 @@ The 5 ads Keenan approved from the 10-08 batch now run on their own, each with i
 
 ---
 
+## [2026-10-12] — Restored a customer's 103-day streak
+
+- **Requested by:** Keenan
+- **Committed by:** Claude Code
+- **Commit hash:** (docs only; see git log: "docs: Log the streak restore")
+
+### In plain English (for Keenan)
+Vince Haines (vince@digio.co.uk) missed one day (10-10) and lost a 103-day streak. It's restored: he now shows 104 days, counting his 10-11 recording, and recording today makes it 105.
+
+### Technical changes (for Jimmy)
+- DB only: `User` cmquyuufs001ewt6w98lx5vhi set `currentStreak` from 1 to 104 and `longestStreak` from 103 to 104. `lastSessionDate` left at 2026-10-11, so the normal next-day rule continues the streak.
+
+### Manual steps needed
+- [ ] Reply to Vince that his streak is back (Keenan)
+
+### Notes
+- His entries: daily through 10-09, none on 10-10 (Europe/London), then 10-11. `computeStreakUpdate` reset him to 1 on 10-11.
+- He asked for **streak freezes** (LinkedIn-style: earn one per ~5-day run, hold up to 2, used automatically when you miss a day). Not built. It would need a `User.streakFreezes` column plus a one-day-gap branch in `lib/streak.ts`.
+
 ## [2026-10-11] — Every Mythicals cover is now "someone facing five glowing choices"
 **Requested by:** Keenan
 **Committed by:** Claude Code
