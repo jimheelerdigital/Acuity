@@ -105,14 +105,17 @@ export const EMAIL_ENABLED: Record<string, boolean> = {
   // ── ON since 2026-09-24 — rewritten for the card-trial funnel ───
   // Funnel signups land on FREE; these two are the only follow-up that
   // offers the 7-day card trial again. Both link to /pro-trial.
-  // OFF 2026-10-06: replaced by the no-card free week below, which reaches
-  // the same people first (20 min) with a better offer.
-  recovery_checkout_abandoned: false, // hit Stripe checkout, didn't finish (30m–2h)
-  recovery_signup_no_checkout: false, // funnel account, never went to checkout (1–4h)
+  // Back ON 2026-10-12 (Keenan: "reinstate the changes to the recovery
+  // emails to what they were prior"). They were off 10-06 → 10-12 for the
+  // no-card free week; paid trials from people coming back later fell to 0.
+  recovery_checkout_abandoned: true, // hit Stripe checkout, didn't finish (30m–2h)
+  recovery_signup_no_checkout: true, // funnel account, never went to checkout (1–4h)
 
-  // ── ON since 2026-10-06 — no-card free week (lib/free-week.ts) ───
-  free_week_offer: true, // funnel signup left without paying, ~20 min after (+ backlog since 09-24)
-  free_week_followup: true, // 2 days after free_week_offer, week still unclaimed
+  // ── OFF 2026-10-12 — no-card free week (lib/free-week.ts) ───
+  // Gave Pro away free instead of starting card trials. Links already sent
+  // still work (/free-week), no new offers go out.
+  free_week_offer: false, // funnel signup left without paying, ~20 min after (+ backlog since 09-24)
+  free_week_followup: false, // 2 days after free_week_offer, week still unclaimed
 
   // ── PAUSED — registry recovery emails (not kept) ────────────────
   recovery_day6_nudge: false,

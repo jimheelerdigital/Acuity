@@ -7,6 +7,28 @@
 
 ---
 
+## [2026-10-12] — Card-trial recovery emails back on, no-card free week off
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** see "fix: Bring back the card-trial recovery emails and stop the free week"
+
+### In plain English (for Keenan)
+The two "start your free trial" emails go out again to people who signed up but didn't pay: one 30 minutes to 2 hours after a checkout they didn't finish, and one 1–4 hours after a signup that never reached checkout. They were switched off on 10-06 for a no-card free week offer. Since then, zero paid trials have come from people coming back later (5 of 33 did before). The free-week email stops, but links already sent still work.
+
+From now on, changes to ads (except adding new ones), budgets, funnel and emails happen on Mondays only (Keenan's rule).
+
+### Technical changes (for Jimmy)
+- `apps/web/src/lib/email-enabled.ts`: `recovery_checkout_abandoned` and `recovery_signup_no_checkout` set back to true. `free_week_offer` and `free_week_followup` set to false. Orchestrator section 2b stays in code but sends nothing (trial-emails checks isEmailEnabled).
+
+### Manual steps needed
+- None.
+
+### Notes
+- The six failing tests in src/lib/evidence (rc-observer-build, v10-paywall-copy) were already failing and aren't touched by this.
+- Root-cause write-up for the 10-08 to 10-11 drop: proven ads were removed (manual offs on 10-05 and 10-07, $20 rule kills on 10-08), three budget edits on 10-07 reset learning, and the recovery emails were off from 10-06.
+
+---
+
 ## [2026-10-12] — Every new ad now launches in its own $15/day ad set
 **Requested by:** Keenan
 **Committed by:** Claude Code
