@@ -7,6 +7,27 @@
 
 ---
 
+## [2026-10-12] — New ads run one per ad set at $15/day each; all older ads paused
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** see "feat: Run chosen ads in their own $15/day ad sets"
+
+### In plain English (for Keenan)
+The 5 ads Keenan approved from the 10-08 batch now run on their own, each with its own $15 a day ($75/day total), so Meta can't starve any of them. Every older ad is paused.
+
+### Technical changes (for Jimmy)
+- New `apps/web/src/app/api/admin/adlab/ads/solo-adsets/route.ts` (POST `{adIds, budgetCents, pauseOthers, dryRun}`; admin or CRON_SECRET). For each AdLabAd it calls `ensureDedicatedAdSet` (same targeting and PURCHASE optimization as MAIN), creates an ACTIVE ad on the same Meta creative, and retires the source copy. Every other live ad is paused on Meta and marked paused, with a manual decision logged.
+- The two 10-08 experiments were launched through `/api/admin/adlab/ads/launch` first (paused ads in TEST), then moved.
+
+### Manual steps needed
+- None.
+
+### Notes
+- The daily graduate/trim cron ignores dedicated ad sets. The daily verdict rules ($20 per trial) still judge each ad.
+- MAIN and TEST ad sets have no active ads now, so they spend nothing.
+
+---
+
 ## [2026-10-11] — Every Mythicals cover is now "someone facing five glowing choices"
 **Requested by:** Keenan
 **Committed by:** Claude Code
