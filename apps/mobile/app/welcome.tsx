@@ -2,7 +2,7 @@ import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { LinearGradient } from "expo-linear-gradient";
 import { router, useFocusEffect } from "expo-router";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -17,6 +17,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
+import { CoralScreen, FunnelCta } from "@/app/onboarding-new/_v10/_ui";
 import { WELCOME_TOUR_KEY, type WelcomeTourRequest } from "@/components/tour/welcome-tour";
 import { useAuth } from "@/contexts/auth-context";
 import { useTheme } from "@/contexts/theme-context";
@@ -55,8 +56,10 @@ import { WELCOME_CORAL as C } from "@/lib/welcome/look";
  * Funnel welcome flow — first run for someone who already paid on the web.
  *
  * Design approved by Jimmy 2026-10-12 ("Ripple Welcome Flow Redesign"
- * canvas): a deeper coral so white type reads, real content in white cards
- * instead of text on an empty screen, a setup checklist up front, and the
+ * canvas), revised after build 158: the BRAND coral (CoralScreen, not the
+ * deeper prototype shade), real content in white cards so no screen is a
+ * headline over empty orange, example content (clearly labelled) where a
+ * first debrief has nothing to show, a setup checklist up front, and the
  * app tour as the LAST setup step on the real tabs (welcome mode in
  * components/tour/TourProvider.tsx) with the same progress bar. Step order
  * and rules: lib/welcome/phases.ts. Routing: lib/onboarding-v10/
@@ -130,8 +133,13 @@ export default function WelcomeScreen() {
    * shell: flip local state first so AuthGate can't bounce them back here,
    * hand the tour its request, navigate, then write to the server.
    */
+  // One finish per visit: a double tap (e.g. Skip while Add is still
+  // saving) must not write the tour request and POST /complete twice.
+  const finishingRef = useRef(false);
   const finish = useCallback(
     async ({ skipped }: { skipped: boolean }) => {
+      if (finishingRef.current) return;
+      finishingRef.current = true;
       void trackOnboardingEvent(skipped ? "v10_welcome_skipped" : "v10_welcome_completed", {
         value: phase ?? undefined,
       });
@@ -180,11 +188,11 @@ export default function WelcomeScreen() {
 
   if (!phase) {
     return (
-      <WelcomeBackground>
+      <CoralScreen tokens={tokens}>
         <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
           <ActivityIndicator color="#ffffff" />
         </View>
-      </WelcomeBackground>
+      </CoralScreen>
     );
   }
 
@@ -196,7 +204,7 @@ export default function WelcomeScreen() {
     ) : null;
 
   return (
-    <WelcomeBackground>
+    <CoralScreen tokens={tokens}>
       <SafeAreaView style={{ flex: 1 }}>
         <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === "ios" ? "padding" : undefined}>
           <ProgressBar fraction={progress} />
@@ -260,7 +268,7 @@ export default function WelcomeScreen() {
           )}
         </KeyboardAvoidingView>
       </SafeAreaView>
-    </WelcomeBackground>
+    </CoralScreen>
   );
 }
 
@@ -275,22 +283,6 @@ function formatTime(hhmm: string): string {
   return `${h12}:${String(m).padStart(2, "0")} ${ampm}`;
 }
 
-function WelcomeBackground({ children }: { children: React.ReactNode }) {
-  return (
-    <View style={{ flex: 1, backgroundColor: C.mid }}>
-      <LinearGradient
-        colors={[C.top, C.mid, C.bottom]}
-        locations={[0, 0.48, 1]}
-        start={{ x: 0.4, y: 0 }}
-        end={{ x: 0.6, y: 1 }}
-        // Decorative only: must never intercept touches.
-        style={[StyleSheet.absoluteFill, { pointerEvents: "none" }]}
-      />
-      {children}
-    </View>
-  );
-}
-
 /** One continuous bar across setup and tour (Miro: "a progress bar, not steps"). */
 function ProgressBar({ fraction }: { fraction: number }) {
   const pct = Math.max(0, Math.min(1, fraction)) * 100;
@@ -303,7 +295,7 @@ function ProgressBar({ fraction }: { fraction: number }) {
         marginHorizontal: 20,
         marginTop: 12,
         borderRadius: 3,
-        backgroundColor: "rgba(255,255,255,0.28)",
+        backgroundColor: "rgba(255,255,255,0.35)",
         overflow: "hidden",
       }}
     >
@@ -326,7 +318,11 @@ function StepBody({ children, footer }: { children: React.ReactNode; footer?: Re
   );
 }
 
-/** White pill CTA with coral text — the one primary action on every screen. */
+/**
+ * The white pill CTA on coral — FunnelCta onCoral, the funnel's own button.
+ * (Build 158 used a Pressable function-style here, which this RN version
+ * silently ignores: every primary button rendered invisible.)
+ */
 function PrimaryButton({
   label,
   onPress,
@@ -340,31 +336,7 @@ function PrimaryButton({
   disabled?: boolean;
   busy?: boolean;
 }) {
-  return (
-    <Pressable
-      onPress={disabled || busy ? undefined : onPress}
-      accessibilityRole="button"
-      accessibilityState={{ disabled: disabled || busy, busy }}
-      style={({ pressed }) => ({
-        height: 58,
-        borderRadius: 999,
-        backgroundColor: "#ffffff",
-        alignItems: "center",
-        justifyContent: "center",
-        opacity: disabled ? 0.5 : pressed ? 0.88 : 1,
-        shadowColor: "#501405",
-        shadowOpacity: 0.2,
-        shadowRadius: 12,
-        shadowOffset: { width: 0, height: 10 },
-      })}
-    >
-      {busy ? (
-        <ActivityIndicator color={C.ink} />
-      ) : (
-        <Text style={{ fontFamily: tokens.fontSans, fontSize: 18, fontWeight: "700", color: C.ink }}>{label}</Text>
-      )}
-    </Pressable>
-  );
+  return <FunnelCta label={label} onPress={onPress} tokens={tokens} disabled={disabled} busy={busy} onCoral />;
 }
 
 function TextLink({ label, onPress, tokens }: { label: string; onPress: () => void; tokens: Tokens }) {
@@ -384,7 +356,7 @@ function Eyebrow({ text, tokens }: { text: string; tokens: Tokens }) {
         fontWeight: "700",
         letterSpacing: 1.3,
         textTransform: "uppercase",
-        color: "rgba(255,255,255,0.9)",
+        color: "#ffffff",
       }}
     >
       {text}
@@ -433,6 +405,65 @@ function Chip({ label, tokens }: { label: string; tokens: Tokens }) {
   return (
     <View style={{ backgroundColor: C.chipBg, borderRadius: 999, paddingVertical: 6, paddingHorizontal: 12 }}>
       <Text style={{ fontFamily: tokens.fontSans, fontSize: 13, fontWeight: "600", color: C.chipInk }}>{label}</Text>
+    </View>
+  );
+}
+
+/** Small grey "Example" tag: filler content is always labelled as such. */
+function ExampleTag({ tokens }: { tokens: Tokens }) {
+  return (
+    <View style={{ alignSelf: "flex-start", backgroundColor: tokens.bgInset, borderRadius: 999, paddingVertical: 3, paddingHorizontal: 9 }}>
+      <Text style={{ fontFamily: tokens.fontSans, fontSize: 11, fontWeight: "700", letterSpacing: 0.6, textTransform: "uppercase", color: tokens.textSec }}>
+        Example
+      </Text>
+    </View>
+  );
+}
+
+function CardLabel({ text, tokens }: { text: string; tokens: Tokens }) {
+  return (
+    <Text style={{ fontFamily: tokens.fontSans, fontSize: 13, fontWeight: "700", letterSpacing: 0.8, textTransform: "uppercase", color: tokens.textTer }}>
+      {text}
+    </Text>
+  );
+}
+
+/** A row of small white stat/feature tiles. */
+function Tiles({
+  tokens,
+  items,
+}: {
+  tokens: Tokens;
+  items: { icon: keyof typeof Ionicons.glyphMap; value: string; label: string }[];
+}) {
+  return (
+    <View style={{ flexDirection: "row", gap: 10 }}>
+      {items.map((it) => (
+        <View
+          key={it.label}
+          style={{
+            flex: 1,
+            backgroundColor: "#ffffff",
+            borderRadius: 18,
+            paddingVertical: 14,
+            paddingHorizontal: 12,
+            shadowColor: "#501405",
+            shadowOpacity: 0.12,
+            shadowRadius: 14,
+            shadowOffset: { width: 0, height: 8 },
+          }}
+        >
+          <View style={{ width: 32, height: 32, borderRadius: 10, backgroundColor: C.chipBg, alignItems: "center", justifyContent: "center" }}>
+            <Ionicons name={it.icon} size={17} color={C.chipInk} />
+          </View>
+          <Text numberOfLines={1} style={{ marginTop: 10, fontFamily: HEADING, fontSize: 17, color: tokens.text }}>
+            {it.value}
+          </Text>
+          <Text numberOfLines={2} style={{ marginTop: 2, fontFamily: tokens.fontSans, fontSize: 12, lineHeight: 16, color: tokens.textSec }}>
+            {it.label}
+          </Text>
+        </View>
+      ))}
     </View>
   );
 }
@@ -636,6 +667,18 @@ function HelloStep({
           />
         ))}
       </Card>
+
+      <Text style={{ marginTop: 22, marginBottom: 10, fontFamily: tokens.fontSans, fontSize: 13, fontWeight: "700", letterSpacing: 1.2, textTransform: "uppercase", color: "#ffffff" }}>
+        What every debrief gives you
+      </Text>
+      <Tiles
+        tokens={tokens}
+        items={[
+          { icon: "checkbox-outline", value: "Tasks", label: "Written for you from what you say" },
+          { icon: "pricetags-outline", value: "Themes", label: "What's on your mind, named" },
+          { icon: "trending-up-outline", value: "Patterns", label: "What keeps coming up, over time" },
+        ]}
+      />
     </StepBody>
   );
 }
@@ -784,6 +827,9 @@ function tasksFrom(raw: unknown): string[] {
     .slice(0, 4);
 }
 
+/** Shown, faded and tagged "Example", when a first debrief had no to-dos. */
+const EXAMPLE_TASKS = ["Call the dentist", "Send the permission slip by Friday", "Book the car service"];
+
 function sentenceCase(s: string): string {
   const t = s.trim().replace(/_/g, " ");
   return t ? t.charAt(0).toUpperCase() + t.slice(1).toLowerCase() : t;
@@ -858,24 +904,47 @@ function ResultsStep({
               </View>
             ) : null}
           </Card>
+          <View style={{ marginTop: 12 }}>
+            <Tiles
+              tokens={tokens}
+              items={[
+                { icon: "happy-outline", value: mood ?? "—", label: "Mood" },
+                { icon: "pricetags-outline", value: String(themes.length), label: themes.length === 1 ? "Theme" : "Themes" },
+                { icon: "checkbox-outline", value: String(tasks.length), label: tasks.length === 1 ? "Task" : "Tasks" },
+              ]}
+            />
+          </View>
+
           <Card style={{ marginTop: 12, paddingVertical: 16 }}>
-            <Text style={{ fontFamily: tokens.fontSans, fontSize: 13, fontWeight: "700", letterSpacing: 0.8, textTransform: "uppercase", color: tokens.textTer }}>
-              Tasks Ripple pulled out
-            </Text>
-            {tasks.length ? (
-              <View style={{ marginTop: 10, gap: 10 }}>
-                {tasks.map((task) => (
-                  <View key={task} style={{ flexDirection: "row", gap: 10, alignItems: "center" }}>
-                    <View style={{ width: 20, height: 20, borderRadius: 6, borderWidth: 2, borderColor: tokens.bgInsetStrong }} />
-                    <Text style={{ flex: 1, fontFamily: tokens.fontSans, fontSize: 15, fontWeight: "600", color: tokens.text }}>{task}</Text>
-                  </View>
-                ))}
-              </View>
-            ) : (
-              <Text style={{ marginTop: 8, fontFamily: tokens.fontSans, fontSize: 15, lineHeight: 21, color: tokens.textSec }}>
-                None in this one. Mention a to-do next time and it lands on your list.
+            <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
+              <CardLabel text="Tasks Ripple pulled out" tokens={tokens} />
+              {tasks.length ? null : <ExampleTag tokens={tokens} />}
+            </View>
+            {tasks.length ? null : (
+              <Text style={{ marginTop: 8, fontFamily: tokens.fontSans, fontSize: 14, lineHeight: 20, color: tokens.textSec }}>
+                No to-dos in this one. Here's what it looks like when you mention some:
               </Text>
             )}
+            <View style={{ marginTop: 10, gap: 10 }}>
+              {(tasks.length ? tasks : EXAMPLE_TASKS).map((task) => (
+                <View key={task} style={{ flexDirection: "row", gap: 10, alignItems: "center", opacity: tasks.length ? 1 : 0.55 }}>
+                  <View style={{ width: 20, height: 20, borderRadius: 6, borderWidth: 2, borderColor: tokens.bgInsetStrong }} />
+                  <Text style={{ flex: 1, fontFamily: tokens.fontSans, fontSize: 15, fontWeight: "600", color: tokens.text }}>{task}</Text>
+                </View>
+              ))}
+            </View>
+          </Card>
+
+          <Card style={{ marginTop: 12, paddingVertical: 16, flexDirection: "row", gap: 12, alignItems: "flex-start" }}>
+            <View style={{ width: 36, height: 36, borderRadius: 12, backgroundColor: C.chipBg, alignItems: "center", justifyContent: "center" }}>
+              <Ionicons name="git-compare-outline" size={19} color={C.chipInk} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={{ fontFamily: tokens.fontSans, fontSize: 15, fontWeight: "700", color: tokens.text }}>Next: Ripple starts comparing</Text>
+              <Text style={{ marginTop: 3, fontFamily: tokens.fontSans, fontSize: 14, lineHeight: 20, color: tokens.textSec }}>
+                One debrief gives you a snapshot. Your next one lets Ripple compare, and patterns build from there.
+              </Text>
+            </View>
           </Card>
         </>
       ) : null}
@@ -990,7 +1059,7 @@ function NotifyStep({
           alignItems: "flex-start",
         }}
       >
-        <LinearGradient colors={["#ffa47e", "#e06b46"]} style={{ width: 38, height: 38, borderRadius: 10, alignItems: "center", justifyContent: "center" }}>
+        <LinearGradient colors={[C.top, C.bottom]} style={{ width: 38, height: 38, borderRadius: 10, alignItems: "center", justifyContent: "center" }}>
           <Ionicons name="pulse" size={20} color="#ffffff" />
         </LinearGradient>
         <View style={{ flex: 1 }}>
@@ -1001,6 +1070,9 @@ function NotifyStep({
           <Text style={{ marginTop: 2, fontFamily: tokens.fontSans, fontSize: 14, lineHeight: 19, color: tokens.textSec }}>{preview.body}</Text>
         </View>
       </View>
+      <Text style={{ marginTop: 12, fontFamily: tokens.fontSans, fontSize: 13, lineHeight: 18, color: "#ffffff" }}>
+        Change the time, add more, or turn them off anytime in Settings.
+      </Text>
     </StepBody>
   );
 }
@@ -1103,6 +1175,27 @@ function HabitStep({
           returnKeyType="done"
           style={{ marginTop: 4, marginBottom: 8, fontFamily: tokens.fontSans, fontSize: 16, color: tokens.text, paddingVertical: 8 }}
         />
+      </Card>
+
+      <Card style={{ marginTop: 12, paddingVertical: 16 }}>
+        <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
+          <CardLabel text="How it works" tokens={tokens} />
+          <ExampleTag tokens={tokens} />
+        </View>
+        <View style={{ marginTop: 12, backgroundColor: tokens.bg, borderRadius: 14, padding: 12 }}>
+          <Text style={{ fontFamily: tokens.fontSans, fontSize: 12, fontWeight: "700", color: tokens.textTer }}>YOU SAY</Text>
+          <Text style={{ marginTop: 4, fontFamily: tokens.fontSans, fontSize: 15, lineHeight: 21, fontStyle: "italic", color: tokens.text }}>
+            "Long day, but I read a few chapters before bed."
+          </Text>
+        </View>
+        <View style={{ marginTop: 10, flexDirection: "row", alignItems: "center", gap: 10 }}>
+          <View style={{ width: 24, height: 24, borderRadius: 12, backgroundColor: C.good, alignItems: "center", justifyContent: "center" }}>
+            <Ionicons name="checkmark" size={15} color="#ffffff" />
+          </View>
+          <Text style={{ flex: 1, fontFamily: tokens.fontSans, fontSize: 15, fontWeight: "600", color: tokens.text }}>
+            Ripple checks off "Read before bed"
+          </Text>
+        </View>
       </Card>
     </StepBody>
   );

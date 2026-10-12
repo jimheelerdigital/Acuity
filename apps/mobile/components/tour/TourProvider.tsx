@@ -164,6 +164,7 @@ export function TourProvider({ children }: { children: ReactNode }) {
                 body={card.body}
                 cta={card.cta}
                 progress={tourProgress(req.setupScreens, at)}
+                isFirst={at === 0}
                 isLast={isLast}
                 onNext={() => {
                   if (isLast) {
@@ -172,6 +173,11 @@ export function TourProvider({ children }: { children: ReactNode }) {
                   }
                   welcomeCardRef.current = at + 1;
                   props.goTo(cards[at + 1].target);
+                }}
+                onBack={() => {
+                  if (at === 0) return;
+                  welcomeCardRef.current = at - 1;
+                  props.goTo(cards[at - 1].target);
                 }}
                 onSkip={() => props.stop()}
               />
@@ -239,8 +245,9 @@ export function TourProvider({ children }: { children: ReactNode }) {
     <SpotlightTourProvider
       steps={steps}
       overlayColor="rgb(8, 8, 16)"
-      // Welcome mode dims less, so the real screen behind each stop reads.
-      overlayOpacity={welcomeActive ? 0.45 : 0.78}
+      // Welcome mode barely dims: the point of each stop is to SHOW that
+      // page (Jimmy, 2026-10-12), so it must read clearly behind the card.
+      overlayOpacity={welcomeActive ? 0.12 : 0.78}
       motion="fade"
       // Tapping the overlay (incl. the highlighted target area) advances
       // to the next step rather than doing nothing — so a tap on the
@@ -249,7 +256,7 @@ export function TourProvider({ children }: { children: ReactNode }) {
       // Welcome mode walks a custom sequence (goTo), so a backdrop tap must
       // not advance spotlight's own index.
       onBackdropPress={welcomeActive ? undefined : "continue"}
-      arrow={{ color: welcomeActive ? WELCOME_CORAL.card : tokens.cardBg }}
+      arrow={{ color: welcomeActive ? WELCOME_CORAL.bottom : tokens.cardBg }}
       shape={{ type: "rectangle", padding: 8 }}
       onStop={handleStop}
     >

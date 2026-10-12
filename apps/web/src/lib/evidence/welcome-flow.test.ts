@@ -108,18 +108,19 @@ describe("welcome flow — resume", () => {
 describe("welcome tour (last setup step, on the real tabs)", () => {
   const req = { setupScreens: 5, stepOf: 5, firstName: "Jimmy", checkInTime: "9:00 PM" };
 
-  it("walks Home, Tasks, Entries, Insights, then a done card on Home", () => {
+  it("walks Home, Entries, Tasks, Growth, Insights, then a done card on Home", () => {
     const cards = welcomeTourCards(req);
     expect(cards).toHaveLength(WELCOME_TOUR_CARDS);
-    // AttachStep targets in components/tour/steps.ts: mic 0, entries 2, tasks 3, insights 4.
-    expect(cards.map((c) => c.target)).toEqual([0, 3, 2, 4, 0]);
-    expect(cards[0].label).toBe("Step 5 of 5 · A quick look around");
-    expect(cards[4].title).toBe("Talk to you soon, Jimmy");
-    expect(cards[4].body).toContain("9:00 PM");
+    // AttachStep targets in components/tour/steps.ts: mic 0, entries 2, tasks 3, insights 4, goals 5.
+    expect(cards.map((c) => c.target)).toEqual([0, 2, 3, 5, 4, 0]);
+    // Its own count, not the setup step number (build 158 said "4 of 4" on every stop).
+    expect(cards.slice(0, 5).map((c) => c.label)).toEqual([1, 2, 3, 4, 5].map((n) => `A quick look around · ${n} of 5`));
+    expect(cards[5].title).toBe("Talk to you soon, Jimmy");
+    expect(cards[5].body).toContain("9:00 PM");
   });
 
   it("no check-in time: no promise of one", () => {
-    const last = welcomeTourCards({ ...req, checkInTime: null })[4];
+    const last = welcomeTourCards({ ...req, checkInTime: null })[5];
     expect(last.title).toBe("You're all set, Jimmy");
     expect(last.body).not.toMatch(/check in/);
   });

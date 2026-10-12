@@ -34,8 +34,8 @@ export type WelcomePhase =
 /** Every phase a stored state may hold (older builds also stored "value"). */
 const ALL: WelcomePhase[] = ["hello", "consent", "record", "notify", "habit", "results"];
 
-/** Tour cards after the setup screens: Home, Tasks, Entries, Insights, done. */
-export const WELCOME_TOUR_CARDS = 5;
+/** Tour cards after the setup screens: Home, Entries, Tasks, Growth, Insights, done. */
+export const WELCOME_TOUR_CARDS = 6;
 
 export function isWelcomePhase(v: unknown): v is WelcomePhase {
   return typeof v === "string" && (ALL as string[]).includes(v);

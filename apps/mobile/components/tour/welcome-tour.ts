@@ -48,39 +48,43 @@ export interface WelcomeTourCard {
   cta: string;
 }
 
-/** Home → Tasks → Entries → Insights → done (back on Home). */
+/**
+ * Home → Entries → Tasks → Growth → Insights → done (back on Home).
+ * Order per Jimmy, 2026-10-12. Each stop opens that tab (TourProvider's
+ * per-step `before` navigates), and the dim is light so the page reads.
+ */
 export function welcomeTourCards(req: WelcomeTourRequest): WelcomeTourCard[] {
-  const step = `Step ${req.stepOf} of ${req.stepOf}`;
   const who = req.firstName ? `, ${req.firstName}` : "";
-  return [
+  const stops: Omit<WelcomeTourCard, "label" | "cta">[] = [
     {
       target: TOUR_STEP_INDEX.mic,
-      label: `${step} · A quick look around`,
       title: "This is Home",
       body: "Tap here to come back anytime. Hold it to start a debrief right away. A minute is enough.",
-      cta: "Next",
-    },
-    {
-      target: TOUR_STEP_INDEX.tasks,
-      label: `${step} · Tasks`,
-      title: "Your to-dos land here",
-      body: "Anything you say you need to do shows up on this list, already written for you.",
-      cta: "Next",
     },
     {
       target: TOUR_STEP_INDEX.entries,
-      label: `${step} · Entries`,
       title: "Every debrief, kept",
-      body: "Your first one is already here, with its summary, mood and themes.",
-      cta: "Next",
+      body: "Your debriefs live here, each with its summary, mood and themes. Your first one is already in.",
+    },
+    {
+      target: TOUR_STEP_INDEX.tasks,
+      title: "Your to-dos land here",
+      body: "Anything you say you need to do shows up on this list, already written for you.",
+    },
+    {
+      target: TOUR_STEP_INDEX.goals,
+      title: "Goals and habits",
+      body: "Set what you're working toward. Mention a habit in a debrief and Ripple checks it off for you.",
     },
     {
       target: TOUR_STEP_INDEX.insights,
-      label: `${step} · Insights`,
       title: "Patterns over time",
-      body: "After a few debriefs Ripple shows what keeps coming up, and your weekly report starts.",
-      cta: "Next",
+      body: "The more you debrief, the more Ripple shows you what keeps coming up, and how your weeks are going.",
     },
+  ];
+  const n = stops.length;
+  return [
+    ...stops.map((s, i) => ({ ...s, label: `A quick look around · ${i + 1} of ${n}`, cta: "Next" })),
     {
       target: TOUR_STEP_INDEX.mic,
       label: "You're all set",
