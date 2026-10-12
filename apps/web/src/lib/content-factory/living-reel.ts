@@ -24,22 +24,6 @@ const H = 1920;
 /** Higgsfield clip length requested per slide. */
 export const LIVING_CLIP_SEC = 5;
 
-/**
- * One camera move per Mythicals slide, by slide position (2026-10-12, per
- * Keenan: "each scene should have independent movements"). Eight distinct
- * moves (more than the 6 shots in a post), shifted per post, so no two shots
- * in a post share one and posts don't open the same way.
- */
-export const MYTHIC_CAMERA_MOVES = [
-  "a slow, heavy push-in toward the hidden subject",
-  "a fast tracking move alongside the subject as it moves",
-  "a low-angle crane rise that looks up at the subject's full size",
-  "a sweeping half-orbit around the subject",
-  "a pull-back that widens to reveal the whole scene around it",
-  "a handheld follow that chases the action, close and urgent",
-  "a slow dolly sideways past foreground rocks or debris, revealing the subject behind them",
-  "a top-down aerial that drops toward the subject",
-] as const;
 const COVER_SEC = 3.5;
 const CTA_SEC = 3;
 
@@ -99,7 +83,7 @@ export function livingMotionPrompt(
         : // 2026-10-08 (per Keenan: "add better animation to the prompts as
           // they're looking a bit stale... dragon breath looks terrible and
           // weak. it should be full dragon breath or ice breath").
-          "Make it ALIVE and cinematic, never a still photo: one big, confident action at real speed (the creature takes off, dives, charges, rears up and roars, or lunges toward the camera side; a warrior swings or strikes with the weapon, or turns into the wind with the cloak whipping). A dragon may unleash a powerful breath matching its type: it turns its head to the side and fires a long, straight jet of fire (or ice and freezing mist for an ice dragon) horizontally across the scene and out of the side of the frame, lighting the scene; never toward the lens, never pouring down its chest, never a weak puff. Armor and weapons may have softly pulsing runes. Everything blends perfectly into the scene's light, color and materials, never pasted on. No auras, ghostfire, crawling lightning, energy glows or sparkles. Full range of motion is allowed (2026-10-12, Kling 3): taking off, diving, charging, rearing, lunging and a warrior's strike are all fine. No morphing. A creature never holds or uses a weapon. The whole scene moves too (2026-10-08, per Keenan): wings beat strongly, the tail and mane move, clouds roll, mist drifts, water flows, banners and cloaks whip in the wind, embers or snow swirl. The camera moves boldly with the action (tracking, orbit, crane, pull-back) so the subject stays in shot.",
+          "Bring the subject to life with NATURAL movement at real speed while the CAMERA STAYS STILL (2026-10-12, per Keenan: camera still, natural movement of the subject): a warrior shifts weight, adjusts the grip and works the blade, the cloak moving; a dragon breathes, turns its head, flexes its wings or breathes fire; a beast walks or runs naturally through the scene. A dragon may unleash a powerful breath matching its type: it turns its head to the side and fires a long, straight jet of fire (or ice and freezing mist for an ice dragon) horizontally across the scene and out of the side of the frame, lighting the scene; never toward the lens, never pouring down its chest, never a weak puff. Armor and weapons may have softly pulsing runes. Everything blends perfectly into the scene's light, color and materials, never pasted on. No auras, ghostfire, crawling lightning, energy glows or sparkles. No morphing. A creature never holds or uses a weapon. The whole scene moves too (2026-10-08, per Keenan): wings beat strongly, the tail and mane move, clouds roll, mist drifts, water flows, banners and cloaks whip in the wind, embers or snow swirl. The camera is locked off and does not move, pan, zoom or orbit; the subject stays in frame.",
       "Keep the subject's design, colors, armor and setting exactly as in the image. The subject stays in frame. No text, no new creatures or people, no scene cuts.",
     ]
       .filter(Boolean)

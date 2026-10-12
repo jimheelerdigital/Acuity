@@ -277,7 +277,6 @@ function fieldSizes(sheet: ShotSheet): string {
 
 /** Mythicals slide motion rule (2026-10-06 subtle; 2026-10-08 per Keenan: scenes move, wings flap, things move). */
 export const SUBTLE_MOTION_RULES = [
-  // Full range of motion since 2026-10-12 (Keenan: "now that we're using kling 3,
-  // animation looks much better... give full range of motion back").
-  "Full motion: one big, confident main action at real speed (taking off, diving, charging, leaping, rearing, striking are all allowed) plus a living scene (wingbeats, tail and mane, wind, tearing clouds, moving water, swirling embers or snow). The camera moves with the action so the subject stays in shot; a creature never holds a weapon.",
+  // 2026-10-12 (Keenan): natural subject movement, camera still.
+  "Natural movement, camera still: the subject moves naturally at real speed (a warrior shifts and works the blade, a dragon breathes or breathes fire, a beast walks or runs) plus a living scene (wingbeats, tail and mane, wind, rolling clouds, moving water, swirling embers or snow). The camera is locked off: no pan, zoom, orbit or tracking. The subject stays in frame; a creature never holds a weapon.",
 ];

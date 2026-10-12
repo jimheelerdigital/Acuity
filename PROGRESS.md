@@ -7,6 +7,29 @@
 
 ---
 
+## [2026-10-12] — Mythicals animation: camera stays still, subjects move naturally
+
+- **Requested by:** Keenan
+- **Committed by:** Claude Code
+- **Commit hash:** (see git log: "feat: Keep the camera still in Mythicals animation")
+
+### In plain English (for Keenan)
+The camera no longer moves in Mythicals videos. Only the subject moves, naturally: warriors shift and work their blades, dragons breathe and breathe fire, beasts walk or run. Each option still does a different movement.
+
+### Technical changes (for Jimmy)
+- Reverted the per-slide camera moves: `MYTHIC_CAMERA_MOVES` and its use in `carousel-post-video.ts` are removed.
+- `living-reel.ts` action prompt: natural subject movement, camera locked off (no pan/zoom/orbit). Also replaces the earlier "full range of motion / bold camera" wording.
+- `shot-sheet.ts` `SUBTLE_MOTION_RULES`: natural movement, camera still.
+- `choice-lane.ts`:
+  - `motion` and `coverMotion` rules rewritten for natural subject movement with a still camera
+  - kept: a different movement per option, at most 2 breathers, varied setting/time/weather, no magic effects
+
+### Manual steps needed
+None
+
+### Notes
+- Supersedes the same-day "full range of motion" and "independent camera moves" entries. Keenan wants motion in the subject, not the camera.
+
 ## [2026-10-12] — Mythicals animation: full range of motion
 
 - **Requested by:** Keenan

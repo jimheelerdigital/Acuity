@@ -551,18 +551,9 @@ export const carouselPostVideoFn = inngest.createFunction(
           realistic: !!plan.lane?.startsWith("pick-"),
           calm: plan.lane === "pick-bwk",
         });
-        // Every Mythicals slide moves on its own (2026-10-12, per Keenan: "each
-        // scene should have independent movements"): its own camera move by
-        // slide position, so no two slides in a post share one; the starting
-        // move shifts per post so posts don't repeat each other either
-        // ("variety is crucial").
-        const { MYTHIC_CAMERA_MOVES } = await import("@/lib/content-factory/living-reel");
-        let postShift = 0;
-        for (const c of postId) postShift = (postShift * 31 + c.charCodeAt(0)) % 997;
-        const prompt =
-          plan.brand === "mythicals"
-            ? `${basePrompt} Camera for THIS shot (its own move, different from the other shots in the post): ${MYTHIC_CAMERA_MOVES[(i + postShift) % MYTHIC_CAMERA_MOVES.length]}.`
-            : basePrompt;
+        // Camera stays still (2026-10-12, per Keenan: "I don't want the camera
+        // moving"): only the subject moves. The per-slide camera moves were removed.
+        const prompt = basePrompt;
         // Shot sheet (2026-10-06): one continuous shot in Keenan's JSON
         // format; the old prompt is its brief and its fallback.
         let sheet: string | null = null;
