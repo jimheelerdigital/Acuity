@@ -6,9 +6,14 @@ import { useTheme } from "@/contexts/theme-context";
 import { WELCOME_CORAL } from "@/lib/welcome/look";
 
 /**
- * The welcome-flow tour card: the same brand coral, white type and
- * continuous progress bar as the welcome screens, so the tour reads as the
- * last step of one flow. Rendered by TourProvider in welcome mode.
+ * The welcome-flow tour card: same brand coral and white type as the
+ * welcome screens, so the tour reads as the last step of one flow.
+ * Rendered by TourProvider in welcome mode.
+ *
+ * Layout (build 161, per Jimmy): its own segmented progress (one segment
+ * per stop, so it starts at 1 of 5 rather than half full), "Skip tour" as a
+ * quiet link top-right, and the bottom row is the pair you'd expect —
+ * Back on the left, Next on the right.
  *
  * ⚠️ Every Pressable uses an OBJECT style. On RN 0.81.5 in this app a
  * `({pressed}) => ({...})` style silently doesn't apply (see FunnelCta in
@@ -20,7 +25,8 @@ export function WelcomeTourCard({
   title,
   body,
   cta,
-  progress,
+  stop,
+  stops,
   isFirst,
   isLast,
   onNext,
@@ -31,7 +37,10 @@ export function WelcomeTourCard({
   title: string;
   body: string;
   cta: string;
-  progress: number;
+  /** 0-based index of this card. */
+  stop: number;
+  /** Number of tour stops (the final "all set" card fills every segment). */
+  stops: number;
   isFirst: boolean;
   isLast: boolean;
   onNext: () => void;
@@ -39,7 +48,7 @@ export function WelcomeTourCard({
   onSkip: () => void;
 }) {
   const { tokens } = useTheme();
-  const pct = Math.max(0, Math.min(1, progress)) * 100;
+  const filled = isLast ? stops : stop + 1;
   return (
     <View
       style={{
@@ -61,59 +70,72 @@ export function WelcomeTourCard({
       >
         <View
           accessibilityRole="progressbar"
-          accessibilityValue={{ min: 0, max: 100, now: Math.round(pct) }}
-          style={{ height: 4, borderRadius: 3, backgroundColor: "rgba(255,255,255,0.35)", overflow: "hidden" }}
+          accessibilityValue={{ min: 0, max: stops, now: filled }}
+          style={{ flexDirection: "row", gap: 6 }}
         >
-          <View style={{ width: `${pct}%`, height: "100%", backgroundColor: "#ffffff" }} />
+          {Array.from({ length: stops }, (_, i) => (
+            <View
+              key={i}
+              style={{
+                flex: 1,
+                height: 4,
+                borderRadius: 2,
+                backgroundColor: i < filled ? "#ffffff" : "rgba(255,255,255,0.35)",
+              }}
+            />
+          ))}
         </View>
-        <Text
-          style={{
-            marginTop: 14,
-            fontFamily: tokens.fontSans,
-            fontSize: 12,
-            fontWeight: "700",
-            letterSpacing: 1.2,
-            textTransform: "uppercase",
-            color: "#ffffff",
-          }}
-        >
-          {label}
-        </Text>
-        <Text style={{ marginTop: 4, fontFamily: "Manrope_800ExtraBold", fontSize: 22, lineHeight: 26, color: "#ffffff" }}>
+
+        <View style={{ marginTop: 14, flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
+          <Text
+            style={{
+              flex: 1,
+              fontFamily: tokens.fontSans,
+              fontSize: 12,
+              fontWeight: "700",
+              letterSpacing: 1.2,
+              textTransform: "uppercase",
+              color: "#ffffff",
+            }}
+          >
+            {label}
+          </Text>
+          {!isLast ? (
+            <Pressable onPress={onSkip} accessibilityRole="button" accessibilityLabel="Skip tour" hitSlop={10}>
+              <Text style={{ fontFamily: tokens.fontSans, fontSize: 13, fontWeight: "600", color: "#ffffff", textDecorationLine: "underline" }}>
+                Skip tour
+              </Text>
+            </Pressable>
+          ) : null}
+        </View>
+
+        <Text style={{ marginTop: 6, fontFamily: "Manrope_800ExtraBold", fontSize: 22, lineHeight: 26, color: "#ffffff" }}>
           {title}
         </Text>
         <Text style={{ marginTop: 6, fontFamily: tokens.fontSans, fontSize: 15, lineHeight: 21, color: "#ffffff" }}>
           {body}
         </Text>
-        <View style={{ marginTop: 14, flexDirection: "row", alignItems: "center", gap: 10 }}>
+
+        <View style={{ marginTop: 16, flexDirection: "row", alignItems: "center", gap: 10 }}>
           {!isFirst ? (
             <Pressable
               onPress={onBack}
               accessibilityRole="button"
               accessibilityLabel="Back"
-              hitSlop={8}
               style={{
-                width: 46,
-                height: 46,
-                borderRadius: 23,
+                minHeight: 46,
+                paddingHorizontal: 16,
+                borderRadius: 999,
                 borderWidth: 1.5,
-                borderColor: "rgba(255,255,255,0.7)",
+                borderColor: "rgba(255,255,255,0.8)",
+                flexDirection: "row",
                 alignItems: "center",
                 justifyContent: "center",
+                gap: 4,
               }}
             >
-              <Ionicons name="chevron-back" size={20} color="#ffffff" />
-            </Pressable>
-          ) : null}
-          {!isLast ? (
-            <Pressable
-              onPress={onSkip}
-              accessibilityRole="button"
-              accessibilityLabel="Skip tour"
-              hitSlop={8}
-              style={{ minHeight: 46, justifyContent: "center", paddingHorizontal: 6 }}
-            >
-              <Text style={{ fontFamily: tokens.fontSans, fontSize: 14, fontWeight: "600", color: "#ffffff" }}>Skip</Text>
+              <Ionicons name="chevron-back" size={16} color="#ffffff" />
+              <Text style={{ fontFamily: tokens.fontDisplay, fontSize: 16, color: "#ffffff" }}>Back</Text>
             </Pressable>
           ) : null}
           <View style={{ flex: 1 }} />
@@ -126,11 +148,14 @@ export function WelcomeTourCard({
               paddingHorizontal: 22,
               borderRadius: 999,
               backgroundColor: "#ffffff",
+              flexDirection: "row",
               alignItems: "center",
               justifyContent: "center",
+              gap: 4,
             }}
           >
             <Text style={{ fontFamily: tokens.fontDisplay, fontSize: 16, color: WELCOME_CORAL.ink }}>{cta}</Text>
+            {!isLast ? <Ionicons name="chevron-forward" size={16} color={WELCOME_CORAL.ink} /> : null}
           </Pressable>
         </View>
       </LinearGradient>

@@ -6,8 +6,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
-  KeyboardAvoidingView,
-  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -28,7 +26,7 @@ import { useEntryPolling } from "@/hooks/use-entry-polling";
 import { api } from "@/lib/api";
 import { ART9_CONSENT_TEXT, ART9_WORDING_VERSION, recordConsent } from "@/lib/consent";
 import { isHabitsEnabled } from "@/lib/feature-flags";
-import { REFLECTION_HABIT_NAME, addReflectionHabit, createHabit } from "@/lib/habits-api";
+import { REFLECTION_HABIT_NAME, addReflectionHabit, createHabit, fetchHabits, isReflectionHabit } from "@/lib/habits-api";
 import { trackOnboardingEvent } from "@/lib/onboarding-events";
 import {
   REMINDER_SLOTS,
@@ -209,7 +207,10 @@ export default function WelcomeScreen() {
   return (
     <CoralScreen tokens={tokens}>
       <SafeAreaView style={{ flex: 1 }}>
-        <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === "ios" ? "padding" : undefined}>
+        {/* No KeyboardAvoidingView: it shoved the footer up over the cards
+            when typing (build 160). The ScrollView insets itself for the
+            keyboard instead, and the footer simply sits behind it. */}
+        <View style={{ flex: 1 }}>
           <ProgressBar fraction={progress} />
           {banner}
           {phase === "hello" && (
@@ -269,7 +270,7 @@ export default function WelcomeScreen() {
           {phase === "habit" && (
             <HabitStep tokens={tokens} step={step} analyzing={!webDebriefDone && !resultsReady} onNext={advance} />
           )}
-        </KeyboardAvoidingView>
+        </View>
       </SafeAreaView>
     </CoralScreen>
   );
@@ -313,6 +314,8 @@ function StepBody({ children, footer }: { children: React.ReactNode; footer?: Re
       <ScrollView
         contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 26, paddingBottom: 24 }}
         keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="interactive"
+        automaticallyAdjustKeyboardInsets
       >
         {children}
       </ScrollView>
@@ -1102,10 +1105,18 @@ function HabitStep({
     if (!selected.length || busy) return;
     setBusy(true);
     try {
+      // Skip any they already have (a resumed or repeated visit created
+      // "Drink more water" twice in build 160 testing).
+      const existing = await fetchHabits().catch(() => ({ habits: [], checks: [] }));
+      const have = new Set(existing.habits.map((h) => h.name.trim().toLowerCase()));
+      const hasReflection = existing.habits.some((h) => isReflectionHabit(h));
       // In list order, one at a time, so they appear in the order shown.
       for (const name of options.filter((o) => selected.includes(o))) {
-        if (name === REFLECTION_HABIT_NAME) await addReflectionHabit().catch(() => null);
-        else await createHabit(name).catch(() => null);
+        if (name === REFLECTION_HABIT_NAME) {
+          if (!hasReflection) await addReflectionHabit().catch(() => null);
+        } else if (!have.has(name.trim().toLowerCase())) {
+          await createHabit(name).catch(() => null);
+        }
       }
       void trackOnboardingEvent("v10_welcome_habit_added", { value: selected.join(" | ").slice(0, 200) });
       onNext();

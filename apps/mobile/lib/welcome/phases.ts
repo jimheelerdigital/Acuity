@@ -67,20 +67,17 @@ export function nextPhase(phase: WelcomePhase, opts: WelcomeOpts): WelcomePhase 
 }
 
 /**
- * One continuous bar across setup AND tour (Miro: "a progress bar, not
- * steps"). Never 0 on the first screen; exactly 1 on the last tour card.
+ * The setup screens' bar. The tour counts as ONE more step (the checklist's
+ * last item), so the bar is full only when the tour begins; the tour then
+ * shows its own "1 of 5" segments (WelcomeTourCard). Build 160 carried this
+ * bar into the tour, so the tour's bar started half full — confusing.
+ * Never 0 on the first screen.
  */
 export function progressFor(phase: WelcomePhase, opts: WelcomeOpts): number {
   const list = phasesFor(opts);
   const i = list.indexOf(phase);
   if (i < 0) return 0;
-  return (i + 1) / (list.length + WELCOME_TOUR_CARDS);
-}
-
-/** The bar on tour card `card` (0-based), given how many setup screens ran. */
-export function tourProgress(setupScreens: number, card: number): number {
-  const total = setupScreens + WELCOME_TOUR_CARDS;
-  return Math.min(1, (setupScreens + card + 1) / total);
+  return (i + 1) / (list.length + 1);
 }
 
 export type SetupStep = { key: WelcomePhase | "tour"; label: string };

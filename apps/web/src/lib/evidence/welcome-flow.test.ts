@@ -9,7 +9,6 @@ import {
   resumePhase,
   setupSteps,
   stepOf,
-  tourProgress,
 } from "../../../../../apps/mobile/lib/welcome/phases";
 import {
   parseWelcomeTourRequest,
@@ -46,15 +45,14 @@ describe("welcome flow — order (approved redesign, 2026-10-12)", () => {
   });
 });
 
-describe("welcome flow — one progress bar across setup and tour", () => {
-  it("never 0 on the first screen and keeps rising into the tour", () => {
+describe("welcome flow — setup progress bar", () => {
+  it("never 0 on the first screen, rises, and leaves one step for the tour", () => {
     const list = phasesFor(web);
     const setup = list.map((p) => progressFor(p, web));
     expect(setup[0]).toBeGreaterThan(0);
     for (let i = 1; i < setup.length; i++) expect(setup[i]).toBeGreaterThan(setup[i - 1]);
-    const tour = Array.from({ length: WELCOME_TOUR_CARDS }, (_, i) => tourProgress(list.length, i));
-    expect(tour[0]).toBeGreaterThan(setup[setup.length - 1]);
-    expect(tour[tour.length - 1]).toBe(1);
+    // The tour is the last checklist step, so setup ends one step short of full.
+    expect(setup[setup.length - 1]).toBeCloseTo(list.length / (list.length + 1));
   });
 });
 
@@ -114,7 +112,7 @@ describe("welcome tour (last setup step, on the real tabs)", () => {
     // AttachStep targets in components/tour/steps.ts: mic 0, entries 2, tasks 3, insights 4, goals 5.
     expect(cards.map((c) => c.target)).toEqual([0, 2, 3, 5, 4, 0]);
     // Its own count, not the setup step number (build 158 said "4 of 4" on every stop).
-    expect(cards.slice(0, 5).map((c) => c.label)).toEqual([1, 2, 3, 4, 5].map((n) => `A quick look around · ${n} of 5`));
+    expect(cards.slice(0, 5).map((c) => c.label)).toEqual([1, 2, 3, 4, 5].map((n) => `Quick look · ${n} of 5`));
     expect(cards[5].title).toBe("Talk to you soon, Jimmy");
     expect(cards[5].body).toContain("9:00 PM");
   });

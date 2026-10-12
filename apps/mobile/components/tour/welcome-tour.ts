@@ -84,7 +84,7 @@ export function welcomeTourCards(req: WelcomeTourRequest): WelcomeTourCard[] {
   ];
   const n = stops.length;
   return [
-    ...stops.map((s, i) => ({ ...s, label: `A quick look around · ${i + 1} of ${n}`, cta: "Next" })),
+    ...stops.map((s, i) => ({ ...s, label: `Quick look · ${i + 1} of ${n}`, cta: "Next" })),
     {
       target: TOUR_STEP_INDEX.mic,
       label: "You're all set",

@@ -16,7 +16,6 @@ import { TourTooltip } from "./TourTooltip";
 import { WelcomeTourCard } from "./WelcomeTourCard";
 import { welcomeTourCards, type WelcomeTourRequest } from "./welcome-tour";
 import { WELCOME_CORAL } from "@/lib/welcome/look";
-import { tourProgress } from "@/lib/welcome/phases";
 import {
   TOUR_STEP_CONTENT,
   TOUR_STEP_INDEX,
@@ -166,7 +165,8 @@ export function TourProvider({ children }: { children: ReactNode }) {
                 title={card.title}
                 body={card.body}
                 cta={card.cta}
-                progress={tourProgress(req.setupScreens, at)}
+                stop={at}
+                stops={cards.length - 1}
                 isFirst={at === 0}
                 isLast={isLast}
                 onNext={() => {
