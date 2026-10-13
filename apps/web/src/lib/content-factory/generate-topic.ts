@@ -233,6 +233,8 @@ THE SHOTS (the cover plus one per step):
 - Every step's shot is "aesthetic": a beautiful first-person phone photo with no person in it. Her own hand holding her phone or a mug is fine. Phone screens are dark or face down, never showing an app.
 - Each shot shows the exact moment its step describes, so the picture and the words obviously go together: the "my head was full" step shows the overflowing fridge calendar and sticky notes; the "i just talk" step shows her hand holding her phone in the car or on a walk; the to-do step shows the permission slip and the pharmacy bag on the counter. A pretty photo that has nothing to do with its line is a failure.
 - Every scene is distinct: different place, light and angle, no object or surface repeated. Under 30 words each, concrete nouns only. Vary the world from post to post (the car, a walk, the kitchen counter, the porch, the school pickup line, a park bench).
+- NEVER a phone in hand behind a steering wheel or anything that reads as using a phone while driving (2026-10-13, per Keenan). If a shot is in a car, the car is clearly parked and the phone rests on the seat or in a dash mount.
+- The moment she talks to Ripple happens somewhere different every post, NOT defaulting to the car: on a walk, folding laundry, on the porch steps, waiting at pickup, in the garden, at the kitchen counter. Recent posts used the car twice, so prefer anywhere else.
 
 THE CAPTION: "captionQuestion" is one question in her voice, under 15 words, lowercase-leaning, that a 40-something woman genuinely wants to answer about her own version of this load ("what's the one thing you're always the only one who remembers?" shows the kind; never reuse it). Concrete, answerable in one honest sentence. No app or product name in the caption, no share or send ask. At most one emoji, only if natural.
 
@@ -453,11 +455,14 @@ async function generateSelfieTopicOnce(
       );
     }
 
+    // Sticker text is lowercase-leaning: "Ripple" mid-sentence read as an
+    // ad (2026-10-13, per Keenan).
+    const lowerRipple = (t: string) => t.replace(/\bRipple\b/g, "ripple");
     return {
       slug,
       headline: gatedHeadline,
-      steps: gatedSteps,
-      details: gatedDetails,
+      steps: gatedSteps.map(lowerRipple),
+      details: gatedDetails.map(lowerRipple),
       mood: isMood(parsed.mood) ? parsed.mood : undefined,
       coverScene:
         typeof parsed.cover?.scene === "string" && parsed.cover.scene.trim()
