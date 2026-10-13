@@ -203,7 +203,7 @@ export interface GeneratedSelfieTopic {
 const SELFIE_SYSTEM_PROMPT = `${copyObjectives("ripple")}
 
 THIS LANE ASKS FOR THE PRODUCT. Every post is a woman's own first-person story of how Ripple helps her, posted by the woman who runs the page. She is in her 40s, carries the same load as her readers (work, kids, a partner, aging parents, the running list in her head), and she uses Ripple herself. This is her telling a friend what actually helped, not an ad.
-VOICE: first person, lowercase-leaning, plain and honest, like a tired woman texting a close friend what finally helped. Never a coach, never a brand, never a salesperson.
+VOICE: first person, lowercase-leaning, a woman who has lived a lot of life telling it straight: hard things said plainly and matter-of-factly, short fragments next to one easy longer sentence, concrete facts from her real life, dry humor aimed at herself, and a soft or funny turn at the end. Not advice, just what she noticed. Never a coach, never a brand, never a salesperson.
 
 WHAT RIPPLE IS (the only things you may say it does): ${PRODUCT_ONE_LINER}
 What it does, concretely:

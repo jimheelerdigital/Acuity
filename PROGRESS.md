@@ -14,12 +14,13 @@
 - **Commit hash:** (see git log: "feat: Make Ripple selfie posts about how Ripple helps her")
 
 ### In plain English (for Keenan)
-The daily Ripple selfie post is now a first-person story of how Ripple helps the woman in the photo: what she was carrying, that she started talking it out to Ripple, what Ripple actually did with it (her to-do list, habits, mood, patterns, weekly report), and what she has back now. Each slide has to follow from the one before, and each photo has to show what its slide says. Today's "wet towel" post, where the cover and the slides didn't connect, is what prompted this. There is also a new "sample" switch that builds a post through the real pipeline and emails it without ever posting it.
+Ripple's posts now sound like a real woman who has lived a lot telling it straight (modeled on the about page Keenan sent): plain, a little funny, never advice. The daily Ripple selfie post is now a first-person story of how Ripple helps the woman in the photo: what she was carrying, that she started talking it out to Ripple, what Ripple actually did with it (her to-do list, habits, mood, patterns, weekly report), and what she has back now. Each slide has to follow from the one before, and each photo has to show what its slide says. Today's "wet towel" post, where the cover and the slides didn't connect, is what prompted this. There is also a new "sample" switch that builds a post through the real pipeline and emails it without ever posting it.
 
 ### Technical changes (for Jimmy)
 - `apps/web/src/lib/content-factory/generate-topic.ts`: `SELFIE_SYSTEM_PROMPT` rewritten as a Ripple product story: before → talking to Ripple → 1-3 real features (from `PRODUCT_WHAT_IT_DOES`) → payoff. Rules: the cover has to make sense on its own, slides can't be fragments, and each shot has to match its line. Imports `CLAIMS_RULE`, `PRODUCT_ONE_LINER`, `PRODUCT_WHAT_IT_DOES`, `TIME_OF_DAY_RULE` from `lib/positioning.ts`. The Jev best-of-5 `bestCover.rules` for the selfie lane were updated to match.
 - `apps/web/src/inngest/functions/carousel-daily.ts`: new `sample` event flag. The post is saved `APPROVED` instead of `DRAFT`, so the social cron and the publish gate skip it. It writes no performance-loop recipe. Video and email run as normal.
 - `apps/web/src/app/api/admin/carousels/route.ts`: `generate-daily` passes `sample` through.
+- `apps/web/src/lib/content-factory/copy-objectives.ts`: Ripple voice paragraph rewritten from a reference about page Keenan picked (stefaniemullen.com/about). It's a lived-a-lot, matter-of-fact first-person voice: short fragments next to one easy sentence, concrete life facts, dry self-aimed humor, never advice. The prompt says to copy the style, never the words. The selfie `VOICE:` line matches. Content factory only. Ads use `lib/positioning.ts` and are unchanged.
 
 ### Manual steps needed
 None
