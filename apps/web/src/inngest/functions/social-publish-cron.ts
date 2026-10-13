@@ -645,7 +645,8 @@ export const socialPublishCronFn = inngest.createFunction(
                 [
                   ...reelSlides.map((s) => s.imageUrl),
                   // Legendary Mythicals posts carry their own closing slide.
-                  ...(brand === "mythicals" ? [] : [ctaSlideUrl]),
+                  // No Ripple end card on selfie posts (2026-10-13, per Keenan: "more organic").
+                  ...(brand === "mythicals" || post.lane === "selfie" ? [] : [ctaSlideUrl]),
                 ],
                 music,
                 // Paper reset guides are ~40 words a slide (2026-09-25).

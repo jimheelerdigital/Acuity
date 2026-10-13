@@ -1437,6 +1437,20 @@ export const carouselDailyCronFn = inngest.createFunction(
     // aesthetic POV step slides. Captions burned onto every image in
     // TikTok sticker style. Emails immediately (no animation).
     if (bucket === "selfie") {
+      // Photo or 3D cartoon (2026-10-13, per Keenan: "1 regular one, one
+      // cartoonistic/animated one"): the day's first selfie post is photo,
+      // the second is cartoon. Samples don't count; selfieStyle overrides.
+      const selfieStyle = await step.run("pick-selfie-style", async () => {
+        const forced = (event.data as { selfieStyle?: string } | undefined)?.selfieStyle;
+        if (forced === "photo" || forced === "toon") return forced;
+        const { prisma } = await import("@/lib/prisma");
+        const already = await prisma.carouselPost.count({
+          where: { lane: "selfie", generatedFor: today, status: { not: "APPROVED" } },
+        });
+        return already >= 1 ? "toon" : "photo";
+      });
+      const toon = selfieStyle === "toon";
+
       // Step 1: topic + persona anchor (previous selfie post's raw cover).
       const selfie = await step.run("generate-selfie-topic", async () => {
         const { prisma } = await import("@/lib/prisma");
@@ -1457,7 +1471,8 @@ export const carouselDailyCronFn = inngest.createFunction(
         const topic = await generateSelfieTopic(
           recent.map((p) => p.headline),
           feedback,
-          coverStyle === "statement" || coverStyle === "question" ? coverStyle : undefined
+          coverStyle === "statement" || coverStyle === "question" ? coverStyle : undefined,
+          toon
         );
 
         // Same avatar across posts: the newest selfie post's text-free
@@ -1512,6 +1527,8 @@ export const carouselDailyCronFn = inngest.createFunction(
         const anchorUrl = same >= 0 ? recent[same].slides[0]?.rawImageUrl ?? null : null;
         const persona = SELFIE_PERSONAS.find((p) => p.id === choice.persona)!;
         console.log(`[carousel-cron] selfie variant: ${choice.persona} / ${choice.textStyle} (${choice.reason})${anchorUrl ? " — anchored" : ""}`);
+        // Cartoon posts use the Toon 3D heroine, never a photo anchor.
+        if (toon) return { personaId: "toon", personaLook: "", textStyle: choice.textStyle, anchorUrl: null };
         return { personaId: persona.id, personaLook: persona.look, textStyle: choice.textStyle, anchorUrl };
       });
       const textStyle = variant.textStyle as import("@/lib/content-factory/compose").SelfieTextStyle;
@@ -1585,12 +1602,21 @@ export const carouselDailyCronFn = inngest.createFunction(
           if (!res.ok) throw new Error(`Anchor fetch failed: HTTP ${res.status}`);
           anchor = Buffer.from(await res.arrayBuffer());
         }
+        // Cartoon cover: the Toon 3D heroine living the cover's pain.
+        const { carouselAvatarDna } = await import("@/lib/content-factory/brand");
+        const coverPrompt = toon
+          ? [
+              `Scene (follow exactly): ${selfie.coverScene}`,
+              `Context (shown, not told): this is the cover of a story titled "${selfie.headline}".`,
+              carouselAvatarDna("midlife"),
+            ].join("\n")
+          : prompt;
         const { buffer: rawBuffer, qc } = await generateCheckedImage(
           () =>
-            anchor
-              ? generateImageWithReference(prompt, anchor, "cover")
-              : generateImage(prompt),
-          { scene: selfie.coverScene, slot: "cover", personAllowed: true }
+            anchor && !toon
+              ? generateImageWithReference(coverPrompt, anchor, "cover")
+              : generateImage(coverPrompt),
+          { scene: selfie.coverScene, slot: "cover", personAllowed: true, cartoon: toon }
         );
         logger.info(`[carousel-cron] selfie cover quality: ${qc}`);
 
@@ -1621,7 +1647,8 @@ export const carouselDailyCronFn = inngest.createFunction(
           imageUrl,
           rawImageUrl,
           overlayText: selfie.headline,
-          imagePrompt: prompt,
+          // MOTION line feeds the animator (living-reel selfie mode).
+          imagePrompt: `${coverPrompt}${selfie.coverMotion ? `\nMOTION: ${selfie.coverMotion}` : ""}`,
         };
       });
 
@@ -1678,8 +1705,19 @@ export const carouselDailyCronFn = inngest.createFunction(
               ],
           });
 
+          // Cartoon steps: the same heroine (cover raw as reference) acting
+          // out each line.
+          const { carouselAvatarDna } = await import("@/lib/content-factory/brand");
+          const stepPrompt = toon
+            ? [
+                `Scene (follow exactly): ${shot.scene}`,
+                `Context (shown, not told): a story titled "${selfie.headline}"; this moment is "${selfie.steps[i]}".`,
+                "From the reference image keep the EXACT same animated character: same face, hair, build and outfit. New place, pose and moment.",
+                carouselAvatarDna("midlife"),
+              ].join("\n")
+            : prompt;
           let reference: Buffer | null = null;
-          if (shot.type === "mirror") {
+          if (shot.type === "mirror" || toon) {
             const res = await fetch(cover.rawImageUrl);
             if (!res.ok)
               throw new Error(`Cover reference fetch failed: HTTP ${res.status}`);
@@ -1688,9 +1726,9 @@ export const carouselDailyCronFn = inngest.createFunction(
           const { buffer: rawBuffer } = await generateCheckedImage(
             () =>
               reference
-                ? generateImageWithReference(prompt, reference, "item")
-                : generateImage(prompt, "item"),
-            { scene: shot.scene, slot: "item", personAllowed: shot.type === "mirror" }
+                ? generateImageWithReference(stepPrompt, reference, "item")
+                : generateImage(stepPrompt, "item"),
+            { scene: shot.scene, slot: "item", personAllowed: shot.type === "mirror" || toon, cartoon: toon }
           );
 
           // Keep the text-free raw so captions can be re-rendered later
@@ -1724,7 +1762,7 @@ export const carouselDailyCronFn = inngest.createFunction(
             imageUrl,
             rawImageUrl,
             overlayText: selfie.steps[i],
-            imagePrompt: prompt,
+            imagePrompt: `${stepPrompt}${shot.motion ? `\nMOTION: ${shot.motion}` : ""}`,
           };
         });
         stepSlides.push(slide);
@@ -1787,7 +1825,9 @@ export const carouselDailyCronFn = inngest.createFunction(
         });
 
         // Variant recipe for the performance loop (2026-10-12).
-        if (!sample) try {
+        // Cartoon posts skip the recipe too: the photo-persona bandit
+        // shouldn't learn from them.
+        if (!sample && !toon) try {
           const { writeRecipe } = await import("@/lib/content-factory/performance-loop");
           await writeRecipe({
             postId: post.id,

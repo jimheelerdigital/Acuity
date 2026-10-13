@@ -45,8 +45,40 @@ function ffmpegPath(): string | null {
  */
 export function livingMotionPrompt(
   imagePrompt: string,
-  opts: { person?: boolean; action?: boolean; realistic?: boolean; calm?: boolean } = {}
+  opts: { person?: boolean; action?: boolean; realistic?: boolean; calm?: boolean; selfie?: "photo" | "toon" } = {}
 ): string {
+  // SELFIE story reels (2026-10-13, per Keenan: "the animations also look
+  // pretty bad... there's not much going on in them"). The writer scripts
+  // one movement per slide (a "MOTION:" line on the stored prompt) that
+  // acts out the slide's line; the ambient template below kept everything
+  // "perfectly still". Camera barely moves; the subject does the work.
+  if (opts.selfie) {
+    const motion = imagePrompt.match(/^MOTION:\s*(.+)$/m)?.[1]?.trim();
+    const scene = (imagePrompt.match(/^Scene[^:]*:\s*(.+)$/m)?.[1] ?? "").trim().slice(0, 300);
+    if (opts.selfie === "toon") {
+      return [
+        "A shot from a modern 3D animated film (Pixar/DreamWorks style), keeping the image's exact animated style.",
+        scene ? `Scene: ${scene}` : "",
+        `Action: ${motion ?? "the animated woman reacts to the moment with clear, expressive body language"}. She acts it out expressively, like an animated film character: clear body language, facial expression and hand movement at lively animated-film pace, and the scene moves around her (steam, fabric, hair, light, small props).`,
+        "Camera: a slow, smooth push-in, nothing fast.",
+        "Same character design, face, hair, outfit and colors for the whole clip. No text, no new characters, no morphing, phone screens stay dark.",
+      ]
+        .filter(Boolean)
+        .join(" ");
+    }
+    return [
+      "Realistic phone-camera footage: the photo comes to life.",
+      scene ? `Scene: ${scene}` : "",
+      `Action: ${motion ?? "the moment in the photo plays out naturally"}. The movement is clearly visible and happens at natural, real-world speed through the whole clip, along with the scene's own ambient movement (steam, light, leaves, fabric, hair).`,
+      opts.person
+        ? "The woman keeps her phone raised in front of her face for the ENTIRE clip; her face is never revealed. She moves naturally: shifts her weight, her free hand gestures, her hair and clothes move."
+        : "No person appears; at most her own hand from her point of view if the action calls for it.",
+      "Camera: steady, like a phone held by a real person, with only a very slow push-in.",
+      "Keep composition, lighting, color and every object exactly as in the photo. No text, no new people, no phone screen lighting up, no morphing or warping.",
+    ]
+      .filter(Boolean)
+      .join(" ");
+  }
   // ACTION mode (2026-09-29, Legendary Mythicals — per Keenan: "the
   // animations for the mythical beasts are pretty weak... it's basically
   // just zooming in"). The ambient template below asks for near-stillness;

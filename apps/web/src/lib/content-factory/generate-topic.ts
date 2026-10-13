@@ -142,6 +142,8 @@ VISUAL DIRECTION: these are static image carousels, and you direct each still. T
 
 ${SCENE_DIRECTION[visualStyle]}
 
+THE MOTION (every slide becomes a 5-second animated clip, 2026-10-13, per Keenan: "there's not much going on in them"): give the cover and every shot a "motion", one clear, visible movement at real speed that acts out that slide's line, plus the natural ambient movement of the scene. Under 30 words, physical and concrete, things a camera can see. Examples of the kind: her hand sets the phone face-down and slides the coffee closer; steam curls up as coffee is poured; the junk drawer is yanked open and things rattle; sticky notes flutter off the fridge in a draft; a pen ticks items off a paper list; pages turn in the breeze. On the mirror-selfie cover she moves naturally (shifts her weight, tucks her hair, sighs, her free hand gestures) while the phone stays covering her face the whole time. Never a person appearing who isn't in the shot, never text appearing, never a phone screen lighting up. Every slide's motion is different.
+
 THE CAPTION: "captionQuestion" is one question in the voice of the real woman who runs the page, under 15 words, lowercase-leaning, text-message tone with contractions. It should be something she genuinely wants to answer about her own life, and easy to answer honestly in one real sentence ("when did being tired become your baseline?" shows the register). It never restates the headline or summarizes the slides, never asks her to share or send, never asks "which one are you doing first", never mentions an app or product. At most one emoji, only if natural. This question plus a few hashtags is the entire caption.
 
 Write 5-10 items and vary the count from post to post. "details" and "reasonEmotions" each have exactly one entry per item, in the same order as "reasons".
@@ -182,7 +184,11 @@ export interface GeneratedSelfieTopic {
    * (no people) — "mirror" stays in the type for the pipeline's shape
    * but never occurs at runtime.
    */
-  stepShots: { type: "mirror" | "aesthetic"; scene: string }[];
+  stepShots: { type: "mirror" | "aesthetic"; scene: string; motion?: string }[];
+  /** One scripted movement for the cover's animation (2026-10-13). */
+  coverMotion?: string;
+  /** 3D cartoon version of the post (2026-10-13): she is in every shot. */
+  toon?: boolean;
   /** ONE thought-provoking question — the entire caption above hashtags. */
   captionQuestion?: string;
 }
@@ -248,8 +254,8 @@ Before answering, read the cover and then each slide in order as a stranger woul
   "details": ["one sentence", ...],
   "stepCount": 4,
   "mood": "heavy" | "tender" | "wry" | "frustrated" | "hopeful",
-  "cover": { "scene": "mirror selfie scene, phone covering her face, slightly dirty mirror" },
-  "stepShots": [{ "type": "aesthetic", "scene": "..." }, ...],
+  "cover": { "scene": "mirror selfie scene, phone covering her face, slightly dirty mirror", "motion": "the one movement in the cover's animation" },
+  "stepShots": [{ "type": "aesthetic", "scene": "...", "motion": "the one movement in this shot's animation" }, ...],
   "captionQuestion": "one question in her voice"
 }`;
 
@@ -265,11 +271,13 @@ export async function generateSelfieTopic(
   recentHeadlines: string[],
   feedback?: string | null,
   /** Force a cover style (samples); omitted = 50/50. */
-  forceCoverStyle?: "statement" | "question"
+  forceCoverStyle?: "statement" | "question",
+  /** 3D cartoon version (2026-10-13): she acts out every slide. */
+  toon = false
 ): Promise<GeneratedSelfieTopic> {
   return withHeadlineRetry({
     label: "selfie-topic",
-    generate: (extra) => generateSelfieTopicOnce(recentHeadlines, feedback, extra, forceCoverStyle),
+    generate: (extra) => generateSelfieTopicOnce(recentHeadlines, feedback, extra, forceCoverStyle, toon),
     headlineOf: (t) => t.headline,
     reject: (t) =>
       /^\s*this is how i\b/i.test(t.headline)
@@ -298,7 +306,8 @@ async function generateSelfieTopicOnce(
   recentHeadlines: string[],
   feedback: string | null | undefined,
   extra: string,
-  forceCoverStyle?: "statement" | "question"
+  forceCoverStyle?: "statement" | "question",
+  toon = false
 ): Promise<GeneratedSelfieTopic> {
   const { prisma } = await import("@/lib/prisma");
 
@@ -315,7 +324,13 @@ async function generateSelfieTopicOnce(
     (forceCoverStyle ? forceCoverStyle === "statement" : Math.random() < 0.5)
       ? "STATEMENT (style A): her pain as a first-person confession, under 55 characters."
       : 'QUESTION (style B): "have you ever felt like...?" asked to the reader, under 80 characters, ending in a question mark.';
-  const userPrompt = `Write one new first-person selfie slideshow post.\n\nTHIS POST'S COVER STYLE: ${coverStyle}${avoidList}${feedback ?? ""}${extra}\n\nReturn ONLY valid JSON, no other text.`;
+  // Cartoon version (2026-10-13, per Keenan: "do a completely cartoonistic
+  // one with the same kind of scripting"): same story, but she is the
+  // animated lead in every shot, so the clips have someone to move.
+  const toonBlock = toon
+    ? `\n\nTHIS POST IS A 3D ANIMATED CARTOON (Pixar-style film look), NOT photos. It OVERRIDES THE SHOTS rules: there is no mirror selfie and her face is visible and expressive. "cover.scene" shows her, the animated heroine, in a real everyday place physically living the cover's pain (buried in requests at the kitchen island, three kids and a partner calling her name). Every "stepShots" scene ALSO shows her, acting out that slide's line with her body, face and hands, in a different place each time. Set every "type" to "aesthetic" anyway. "motion" is what SHE does in the clip (she slumps, she laughs, she sets the phone down and exhales, she sips coffee with her eyes closed), expressive like an animated film. Phone screens stay dark. Still no text anywhere.`
+    : "";
+  const userPrompt = `Write one new first-person selfie slideshow post.\n\nTHIS POST'S COVER STYLE: ${coverStyle}${toonBlock}${avoidList}${feedback ?? ""}${extra}\n\nReturn ONLY valid JSON, no other text.`;
 
   // Reddit audience pulse (2026-09-17) — soft, angle inspiration only.
   let pulse = "";
@@ -386,15 +401,21 @@ async function generateSelfieTopicOnce(
     // whatever the model returned.
     const rawShotsAll = Array.isArray(parsed.stepShots) ? parsed.stepShots : [];
     const rawShots = idx.map((i) => rawShotsAll[i]);
+    const motionOf = (m: unknown) =>
+      typeof m === "string" && m.trim() ? m.trim().slice(0, 300) : undefined;
     const stepShots = steps.map((_, i) => {
-      const s = (rawShots[i] ?? {}) as { type?: unknown; scene?: unknown };
-      const modelSaidMirror = s.type === "mirror";
+      const s = (rawShots[i] ?? {}) as { type?: unknown; scene?: unknown; motion?: unknown };
+      // Toon shots show her by design; photo shots never show a person.
+      const modelSaidMirror = !toon && s.type === "mirror";
       return {
         type: "aesthetic" as const,
         scene:
           typeof s.scene === "string" && s.scene.trim() && !modelSaidMirror
             ? s.scene.trim()
-            : AESTHETIC_FALLBACK_SCENE,
+            : toon
+              ? "the animated heroine in her warm kitchen, acting out this moment"
+              : AESTHETIC_FALLBACK_SCENE,
+        motion: motionOf(s.motion),
       };
     });
 
@@ -467,7 +488,11 @@ async function generateSelfieTopicOnce(
       coverScene:
         typeof parsed.cover?.scene === "string" && parsed.cover.scene.trim()
           ? parsed.cover.scene.trim()
-          : "full-length bedroom mirror selfie, casual sweatshirt, warm lamp light, phone raised covering her whole face, mirror lightly smudged",
+          : toon
+            ? "the animated heroine at her kitchen island, surrounded by everyone's requests"
+            : "full-length bedroom mirror selfie, casual sweatshirt, warm lamp light, phone raised covering her whole face, mirror lightly smudged",
+      coverMotion: motionOf(parsed.cover?.motion),
+      toon,
       stepShots,
       captionQuestion: gatedCaptionQuestion?.trim() || undefined,
     };

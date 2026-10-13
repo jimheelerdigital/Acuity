@@ -285,5 +285,9 @@ export function postVideoSlideSeconds(
 ): number {
   // Paper reset guides carry ~40 words a slide (2026-09-25).
   if (lane?.startsWith("reset-guide")) return slideKind === "COVER" ? 4 : 7;
+  // Selfie slides carry a line AND a detail sentence (the detail isn't in
+  // overlayText), so word-count timing cut them short (2026-10-13, per
+  // Keenan: "it's hard to read all of the text on them").
+  if (lane === "selfie") return slideKind === "COVER" ? 4.5 : 8;
   return livingSlideSeconds(slideKind, overlayText);
 }

@@ -271,6 +271,8 @@ export async function POST(req: NextRequest) {
           sample: (body as { sample?: boolean }).sample === true,
           // Selfie cover style override: "statement" | "question".
           coverStyle: (body as { coverStyle?: string }).coverStyle,
+          // Selfie look override: "photo" | "toon".
+          selfieStyle: (body as { selfieStyle?: string }).selfieStyle,
         },
       });
       return NextResponse.json({ ok: true, queued: true });

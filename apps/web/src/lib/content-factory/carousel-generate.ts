@@ -621,7 +621,7 @@ export async function generateCheckedMoodyImage(
  */
 export async function generateCheckedImage(
   make: () => Promise<Buffer>,
-  opts: { scene: string; slot: ImageSlot; personAllowed: boolean; bakedText?: boolean; fantasy?: boolean; subject?: string }
+  opts: { scene: string; slot: ImageSlot; personAllowed: boolean; bakedText?: boolean; fantasy?: boolean; subject?: string; cartoon?: boolean }
 ): Promise<{ buffer: Buffer; qc: string }> {
   const started = Date.now();
   const first = await make();
@@ -632,6 +632,7 @@ export async function generateCheckedImage(
       bakedText: opts.bakedText,
       fantasy: opts.fantasy,
       subject: opts.subject,
+      cartoon: opts.cartoon,
     });
   const verdict = await check(first);
   if (verdict.ok) return { buffer: first, qc: verdict.reason };
