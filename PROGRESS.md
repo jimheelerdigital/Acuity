@@ -31,7 +31,7 @@ Every Ripple and Legendary Mythicals post is now picked from five complete optio
 - **Pickers off:** `cover-picker.ts` `pickBestCover` is off everywhere (`COVER_PICKER=1` restores it). The Mythicals `chooseMythicCover` pre-pick is off (`MYTHIC_COVER_PICK=1` restores it).
 
 ### Manual steps needed
-- [ ] If YouTube stats fail with 403 (upload-only OAuth scope), add a `YOUTUBE_API_KEY` env var in Vercel (Jimmy) and redeploy. The nightly refresh will email an alert if it fails.
+- [ ] **CONFIRMED NEEDED:** YouTube stats return 403 "insufficient authentication scopes" (the OAuth token is upload-only). Create a Google Cloud API key with YouTube Data API v3 enabled (same project as the YouTube OAuth client, owned by keenanassaraf@gmail.com), add it as `YOUTUBE_API_KEY` in Vercel production, and redeploy (Keenan / Jimmy). Until then the Mythicals score uses Instagram + Facebook only.
 
 ### Notes
 - Opus 5.5 is $4/$20 per MTok (Sonnet 5.5 $2/$10). Estimate: about $0.65 per post (5 drafts + 5 sense checks), about $3/day for 5 posts.
