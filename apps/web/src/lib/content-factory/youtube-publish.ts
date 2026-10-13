@@ -312,3 +312,15 @@ export async function fetchYoutubeStats(
   }
   return out;
 }
+
+/**
+ * Shorts per channel per day. 1/day for five weeks (2026-10-13 → 2026-11-17,
+ * per Keenan: "only post 1 time per day on youtube for the next 5 weeks"),
+ * then back to 3. YOUTUBE_DAILY_CAP overrides either way.
+ */
+export const YOUTUBE_ONE_A_DAY_UNTIL = new Date("2026-11-17T06:00:00Z");
+export function youtubeDailyCap(now: Date = new Date()): number {
+  const env = Number(process.env.YOUTUBE_DAILY_CAP);
+  if (Number.isFinite(env) && env >= 1) return Math.floor(env);
+  return now < YOUTUBE_ONE_A_DAY_UNTIL ? 1 : 3;
+}

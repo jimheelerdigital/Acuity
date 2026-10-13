@@ -7,6 +7,26 @@
 
 ---
 
+## [2026-10-13] — YouTube: 1 Short a day for five weeks
+
+- **Requested by:** Keenan
+- **Committed by:** Claude Code
+- **Commit hash:** (see git log: "feat: Post one YouTube Short a day for five weeks")
+
+### In plain English (for Keenan)
+The Legendary Mythicals YouTube channel now posts one Short a day, the day's best post, instead of three. This runs until November 17, then goes back to three a day on its own. Instagram and Facebook are unchanged.
+
+### Technical changes (for Jimmy)
+- `lib/content-factory/youtube-publish.ts`: new `youtubeDailyCap()` returns 1 until `YOUTUBE_ONE_A_DAY_UNTIL` (2026-11-17 06:00 UTC), then 3. The `YOUTUBE_DAILY_CAP` env var still overrides.
+- `inngest/functions/social-publish-cron.ts`: the `youtube-daily-pick` keep count and the per-day upload cap both use it. Jev still picks the day's best one.
+
+### Manual steps needed
+None
+
+### Notes
+- Deployed mid-day 10-13 after one Short had already posted, so that day's two remaining queued Shorts wait on the cap and are then skipped by the next day's stale sweep.
+- No reminder is needed on 11-17: the cap flips back to 3 automatically.
+
 ## [2026-10-13] — Opus writes 5 options per post, nonsense is cut, Jev ranks on real results, weekly brief
 
 - **Requested by:** Keenan

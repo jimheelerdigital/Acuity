@@ -363,7 +363,8 @@ export const socialPublishCronFn = inngest.createFunction(
     // library (1c, YOUTUBE_BACKLOG_PER_DAY) = 6 Shorts a day.
     await step.run("youtube-daily-pick", async () => {
       const { prisma } = await import("@/lib/prisma");
-      const cap = Math.max(1, Number(process.env.YOUTUBE_DAILY_CAP) || 3);
+      // 1/day until 2026-11-17, then 3 (youtubeDailyCap).
+      const cap = (await import("@/lib/content-factory/youtube-publish")).youtubeDailyCap();
       // The Mythicals day runs on Central time (2026-10-06): its last YouTube
       // slot is 8pm CT = after midnight UTC, so a UTC day would drop it.
       const centralDay = new Date().toLocaleDateString("en-CA", { timeZone: "America/Chicago" });
@@ -379,7 +380,7 @@ export const socialPublishCronFn = inngest.createFunction(
           // the posts the image check held back) keep their scheduled day.
           NOT: { error: { startsWith: "[held-repost]" } },
         },
-        data: { status: "SKIPPED", error: "Not one of its day's top posts for YouTube (only the day's best 3 post, 2026-10-06)" },
+        data: { status: "SKIPPED", error: "Not one of its day's top posts for YouTube (only the day's best post(s) go up)" },
       });
       if (new Date().getUTCHours() < 11) return { staleSkipped: stale.count, picked: "waiting for the day's posts" };
       const rows = await prisma.socialPublish.findMany({
@@ -806,7 +807,7 @@ export const socialPublishCronFn = inngest.createFunction(
         if (row.platform === "youtube") {
           // The day's picks plus the old-library catch-up (1c).
           const cap =
-            Math.max(1, Number(process.env.YOUTUBE_DAILY_CAP) || 3) +
+            (await import("@/lib/content-factory/youtube-publish")).youtubeDailyCap() +
             Math.max(0, Number(process.env.YOUTUBE_BACKLOG_PER_DAY ?? 0) || 0);
           // Per UTC day (2026-10-06): the daily pick works per day, so a
           // rolling window could push one of today's picks past midnight.
