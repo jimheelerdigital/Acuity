@@ -31,7 +31,7 @@ Every Ripple and Legendary Mythicals post is now picked from five complete optio
 - **Pickers off:** `cover-picker.ts` `pickBestCover` is off everywhere (`COVER_PICKER=1` restores it). The Mythicals `chooseMythicCover` pre-pick is off (`MYTHIC_COVER_PICK=1` restores it).
 
 ### Manual steps needed
-- [ ] **CONFIRMED NEEDED:** YouTube stats return 403 "insufficient authentication scopes" (the OAuth token is upload-only). Create a Google Cloud API key with YouTube Data API v3 enabled (same project as the YouTube OAuth client, owned by keenanassaraf@gmail.com), add it as `YOUTUBE_API_KEY` in Vercel production, and redeploy (Keenan / Jimmy). Until then the Mythicals score uses Instagram + Facebook only.
+- [ ] (Optional, Keenan chose Instagram + Facebook only for now) YouTube stats return 403 "insufficient authentication scopes" because the OAuth token is upload-only. The `fetch-youtube` step is skipped until a `YOUTUBE_API_KEY` (YouTube Data API v3) is added in Vercel.
 
 ### Notes
 - Opus 5.5 is $4/$20 per MTok (Sonnet 5.5 $2/$10). Estimate: about $0.65 per post (5 drafts + 5 sense checks), about $3/day for 5 posts.
@@ -42,6 +42,7 @@ Every Ripple and Legendary Mythicals post is now picked from five complete optio
   - **Ripple:** all 5 cut. The writer named Ripple without saying it's an app, and the editor treated any product mention as an ad. Fix: the writer must introduce "an app called ripple" and name people before using he/his, and the editor accepts one plain app mention.
   - **Mythicals sample from a saved draft:** `generate-daily` takes `topicPath` (a dry-run JSON in `prompt-test-results/`) and builds that exact topic. `sample: true` on the choice lane saves the post `APPROVED` (never auto-posted to YouTube/IG/FB) and skips the recipe. Used for Keenan's "WHICH WEAPON WOULD NEVER FAIL YOU?".
   - **Instagram step batched too:** it finished all ~270 rows but hit 300s before returning, so it retried forever and Facebook/YouTube were never reached. Now `list-instagram`, `fetch-instagram-N` (40 rows each) and `fetch-instagram-legacy`.
+  - **Stats scope + hashtags (Keenan):** YouTube stats are skipped without `YOUTUBE_API_KEY` (Instagram + Facebook only). Health-sounding hashtags are blocked: `HEALTH_TAG_RE` / `isHealthTag` in `caption.ts` (filters every caption-writer tag), the health tags are removed from the `pickHashtags` pools and the caption-writer Ripple tag list, and the caption prompt names the ban.
   - **Metrics refresh had been timing out nightly since ~10-04:** the single Facebook step looped ~270 rows past 300s. FB metrics were frozen at 10-04, and the new YouTube step never ran. Fix: YouTube moved before Facebook, and Facebook is limited to 45 days in 40-row steps (`list-facebook` + `fetch-facebook-N`).
 - The sense check fails closed. If Opus is down, Ripple posts are held from auto-posting (still emailed), and a Mythicals run with no survivor throws (no post that hour).
 

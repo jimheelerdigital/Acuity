@@ -158,6 +158,10 @@ export const carouselMetricsRefreshFn = inngest.createFunction(
       const { prisma } = await import("@/lib/prisma");
       const { youtubeAccount, fetchYoutubeStats } = await import("@/lib/content-factory/youtube-publish");
       const out = { candidates: 0, refreshed: 0, errors: [] as string[] };
+      // Instagram + Facebook only for now (2026-10-13, per Keenan): the stored
+      // YouTube OAuth token is upload-only (403 on stats). Runs once a
+      // YOUTUBE_API_KEY is set; until then no rows and no alert.
+      if (!process.env.YOUTUBE_API_KEY?.trim()) return out;
       const rows = await prisma.socialPublish.findMany({
         where: {
           platform: "youtube",

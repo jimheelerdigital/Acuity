@@ -35,6 +35,7 @@ import {
 
 import { prisma } from "@/lib/prisma";
 import { copyObjectives } from "./copy-objectives";
+import { isHealthTag } from "./caption";
 
 const LIFE_QUESTION = `one short question (12 words at most) about the reader's own life that is easy to answer in a few words, the way a friend would ask it ("Where are you going?", "What's been on your list since March?"). One thing to answer, never two questions joined with "and".`;
 
@@ -64,7 +65,7 @@ const BRAND = {
       "warm and on her side — name what she is carrying, point at the next small step, never lecture. Short sentences, her own words, specifics over abstractions.",
     keywords:
       "mental load, invisible labor, women over 40, midlife, overthinking, burnout, emotional exhaustion, self care for moms, feeling unseen, journaling",
-    tags: "#mentalload #womenover40 #midlife #overthinking #burnout #momlife #selfcare #emotionalhealth #invisiblelabor #journaling",
+    tags: "#mentalload #womenover40 #midlife #overthinking #momlife #selfcare #invisiblelabor #journaling #momsofinstagram #realmomlife",
     question: LIFE_QUESTION,
     // 2026-10-02: every Ripple caption that day leaned on "mental load".
     extra:
@@ -159,7 +160,7 @@ function assemble(
         .toLowerCase()
         .replace(/[^#a-z0-9_]/g, "")
     )
-    .filter((t) => t.length > 1 && !BANNED_TAGS.has(t))
+    .filter((t) => t.length > 1 && !BANNED_TAGS.has(t) && !isHealthTag(t))
     .slice(0, 4);
   return [
     c.caption.trim(),
@@ -200,7 +201,7 @@ THE CAPTION: quick, relatable, and it finishes with a question.
 - Captions Keenan picked as the bar (match the feel, never reuse the words):
 ${CAPTION_EXAMPLES[opts.brand].map((e) => `  ${e}`).join("\n")}
 - What he rejected: mini-essays, a line of setup then a line of commentary then a separate question, two-part questions ("which one, and what would you..."), hot takes like "fight me" or "change my mind", and emojis.
-- "hashtags": exactly 4, one broad and three niche, chosen for this post (prefer from: ${b.tags}). Never #fyp, #foryou or #viral, which add noise and no reach.
+- "hashtags": exactly 4, one broad and three niche, chosen for this post (prefer from: ${b.tags}). Never #fyp, #foryou or #viral, which add noise and no reach. Never a health-sounding tag (#mentalhealth, #anxiety, #anxietyrelief, #healing, #burnout, #emotionalhealth, #therapy or similar): they read as a health claim.
 
 LIMITS, and why: no app name, product mention, "link in bio", "follow for more", "save this" or "send this to", because asking reads as marketing and the post has to earn it. Never a recording duration ("60 seconds", "one minute"), never a fixed time of day ("nightly", "before bed", "at 9pm"). No mental-health claims about the reader ("your anxiety"), and never claim anything treats, diagnoses, cures or replaces therapy. No emojis. Avoid AI tells like "in a world where", "it's not just X, it's Y", "let's dive in", "journey", "unlock", "transform", "game-changer" and chains of em-dashes.
 

@@ -43,12 +43,22 @@ function pickBySlug(slug: string, pool: string[], offset = 0): string {
 // deterministically by slug so posts vary but each post is stable.
 // Zero-search-volume brand tags (#rippleapp, #voicejournal) are GONE —
 // they drove no discovery.
+/**
+ * Health-sounding hashtags are never used (2026-10-13, per Keenan: "yes,
+ * block the health sounding hashtags"): they read as a mental-health claim,
+ * which docs/acuity-positioning.md rules out. Applied to every caption's tags.
+ */
+export const HEALTH_TAG_RE =
+  /^#?(mental ?health\w*|.*anxiety.*|.*depress.*|.*therap.*|.*trauma.*|.*ptsd.*|.*adhd.*|.*ocd.*|.*panic.*|.*heal(ing|th)?\w*|.*emotionalhealth.*|.*wellbeing.*|.*psych.*|burnout\w*|.*selfharm.*|.*suicid.*|.*recovery.*|.*diagnos.*|.*disorder.*)$/i;
+
+export function isHealthTag(tag: string): boolean {
+  return HEALTH_TAG_RE.test(tag.trim().replace(/^#/, ""));
+}
+
 const MEGA_HASHTAGS = [
   "#selfcare",
   "#selflove",
-  "#mentalhealth",
   "#mindfulness",
-  "#healing",
   "#motivation",
   "#personalgrowth",
   "#wellness",
@@ -59,12 +69,8 @@ const NICHE_HASHTAGS = [
   "#womenover40",
   "#midlife",
   "#innerpeace",
-  "#burnout",
   "#dailyreminder",
-  "#emotionalhealth",
   "#overthinking",
-  "#anxietyrelief",
-  "#mentalhealthawareness",
   "#selfcarereminder",
 ];
 
