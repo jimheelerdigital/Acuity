@@ -103,13 +103,19 @@ export const APP_VERSION_CONFIG: Record<AppPlatform, AppVersionConfig> = {
   // shape is forward-compatible without an immediate schema change.
   android: {
     minimumVersion: "1.0.0",
-    recommendedVersion: "1.0.0",
-    headline: "A new version of Ripple is ready.",
-    body: "We've shipped improvements to the Life Matrix, Theme Map, and the way your insights surface. Update in the Play Store to get them.",
+    recommendedVersion: "1.9.0",
+    headline: "Ripple 1.9 is here.",
+    body: "Habits, Ask Your Past Self built into the app, a home screen widget, and more. Update in the Play Store to get it.",
     ctaText: "Update",
     dismissible: true,
     appStoreUrl: "https://play.google.com/store/apps/details?id=com.heelerdigital.acuity",
-    releaseNotes: [],
+    releaseNotes: [
+      "Habits — build daily habits and check them off from Home",
+      "Ask Your Past Self — now built into the app",
+      "Connect your own AI to your journal (Pro)",
+      "A home screen widget with your streak and today's habits",
+      "See your current plan and upgrade anytime",
+    ],
   },
 };
 
