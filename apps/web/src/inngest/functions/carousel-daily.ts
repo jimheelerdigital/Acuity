@@ -1791,7 +1791,9 @@ export const carouselDailyCronFn = inngest.createFunction(
           data: {
             topicSlug: slug,
             headline: selfie.headline,
-            status: sample ? "APPROVED" : "DRAFT",
+            // Held when it failed the plain-sense check twice (2026-10-13):
+            // emailed, never auto-posted (APPROVED skips the social queue).
+            status: sample || selfie.held ? "APPROVED" : "DRAFT",
             // PHOTO format (it IS a static picture slideshow); the
             // "selfie" lane marks the sub-format — no schema change, so
             // this ships without waiting on the pending db push.

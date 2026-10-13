@@ -12,6 +12,8 @@ import {
   CONTENT_INPUT_COST_PER_TOKEN,
   CONTENT_OUTPUT_COST_PER_TOKEN,
   lastJsonText,
+  messageText,
+  VISION_MODEL,
 } from "./claude-client";
 import {
   CAROUSEL_PERSONA,
@@ -274,8 +276,12 @@ export async function generateSelfieTopic(
   forceCoverStyle?: "statement" | "question",
   /** 3D cartoon version (2026-10-13): she acts out every slide. */
   toon = false
-): Promise<GeneratedSelfieTopic> {
-  return withHeadlineRetry({
+): Promise<GeneratedSelfieTopic & { held?: string }> {
+  // No Jev best-of-5 cover pick on this lane (2026-10-13, per Keenan): its
+  // shorter rewrites swapped in "i missed my sister's birthday buying his
+  // mom's gift" (Jev rated it sense 0.81) and, earlier, a Ripple cover.
+  // The writer's own cover stands; the plain-sense check below judges it.
+  const first = await withHeadlineRetry({
     label: "selfie-topic",
     generate: (extra) => generateSelfieTopicOnce(recentHeadlines, feedback, extra, forceCoverStyle, toon),
     headlineOf: (t) => t.headline,
@@ -285,21 +291,81 @@ export async function generateSelfieTopic(
         : /\bripple\b/i.test(t.headline)
           ? `\n\nREJECTED: your headline "${t.headline}" names Ripple. The cover NEVER names Ripple (Keenan, 2026-10-13); it names her everyday pain. Ripple belongs on step 2.`
           : null,
-    // Jev best-of-5 cover pick (2026-09-30).
-    bestCover: {
-      brand: "ripple",
-      lane: "selfie",
-      rules:
-        "Lowercase-leaning, no emojis. Either a first-person statement under 55 characters or a \"have you ever felt like...?\" question to the reader under 80 characters; keep whichever form the current cover uses. The cover names a relatable pain women feel every single day, in plain words a stranger understands on its own; the slides then show what it caused, how Ripple helped her see it, the result and where she is now. NEVER name Ripple or any app on the cover. Never a duration, a time of day or a therapy claim. Never opens with \"this is how i\".",
-      contextOf: (t) =>
-        t.steps.map((s, i) => `${s}${t.details[i] ? `: ${t.details[i]}` : ""}`).join("\n"),
-      setHeadline: (t, headline) =>
-        // Ripple is NEVER on the cover (Keenan, 2026-10-13).
-        headline.length > (t.headline.trim().endsWith("?") ? 85 : 60) || /^\s*this is how i\b/i.test(headline) || /\bripple\b/i.test(headline)
-          ? t
-          : { ...t, headline, slug: slugify(headline) },
-    },
   });
+  const problem1 = await plainSenseProblem(first);
+  if (!problem1) return first;
+  console.warn(`[selfie-sense] rejected "${first.headline}": ${problem1} — rewriting once`);
+  const second = await generateSelfieTopicOnce(
+    recentHeadlines,
+    feedback,
+    `\n\nREJECTED by the editor: ${problem1} Write a NEW post where the cover and every slide make plain sense on one read.`,
+    forceCoverStyle,
+    toon
+  ).catch(() => null);
+  if (!second) return { ...first, held: problem1 };
+  const problem2 =
+    (/\bripple\b/i.test(second.headline) ? "the cover names Ripple" : null) ??
+    (await plainSenseProblem(second));
+  if (!problem2) return second;
+  // Still unclear: never auto-post it (carousel-daily saves it held).
+  console.warn(`[selfie-sense] rewrite also rejected "${second.headline}": ${problem2} — holding from auto-post`);
+  return { ...second, held: problem2 };
+}
+
+/**
+ * Plain-sense editor (2026-10-13, per Keenan, after the cover "i missed my
+ * sister's birthday buying his mom's gift": "how are you not able to tell
+ * that that doesn't make sense"). Opus reads the cover ALONE, then every
+ * slide in order, as the reader would. Returns the problem, or null when
+ * it reads clean. Fails open (null) on error.
+ */
+async function plainSenseProblem(t: GeneratedSelfieTopic): Promise<string | null> {
+  const { prisma } = await import("@/lib/prisma");
+  const start = Date.now();
+  try {
+    const res = await anthropic.messages.create({
+      model: VISION_MODEL,
+      max_tokens: 400,
+      effort: "medium",
+      system: `You are a blunt, strict copy editor. The reader is a tired 45-year-old woman scrolling Instagram, reading fast. You decide whether a post makes plain sense to her on ONE read. Be harsh: when in doubt, fail it.
+
+FAIL the post if ANY of these is true:
+- The cover, read ALONE with nothing else, doesn't say one clear thing she instantly understands. Compressed lines that squash two events together fail ("i missed my sister's birthday buying his mom's gift": missed it how? buying where? whose mom?). So does any line where you have to guess what caused what.
+- A pronoun ("his", "he", "they") has no clear person.
+- Any slide line doesn't make sense on its own, or doesn't follow from the slide before it, so the story jumps.
+- Wordplay, clever phrasing or a riddle replaces saying it plainly.
+- It reads like an ad or a robot.
+
+Return only JSON: {"ok": true} or {"ok": false, "problem": "which line fails and why, one sentence"}`,
+      messages: [
+        {
+          role: "user",
+          content: `COVER: ${t.headline}\n\nSLIDES, in order:\n${t.steps
+            .map((st, i) => `${i + 1}. ${st}${t.details[i] ? `\n   (small line under it: ${t.details[i]})` : ""}`)
+            .join("\n")}`,
+        },
+      ],
+    });
+    void prisma.claudeCallLog
+      .create({
+        data: {
+          purpose: "selfie-sense-check",
+          model: VISION_MODEL,
+          tokensIn: res.usage.input_tokens,
+          tokensOut: res.usage.output_tokens,
+          costCents: Math.ceil((res.usage.input_tokens * 5 + res.usage.output_tokens * 25) / 10_000),
+          durationMs: Date.now() - start,
+          success: true,
+        },
+      })
+      .catch(() => {});
+    const parsed = JSON.parse(lastJsonText(messageText(res))) as { ok?: boolean; problem?: string };
+    console.log(`[selfie-sense] "${t.headline}": ${parsed.ok ? "ok" : `FAIL ${parsed.problem}`}`);
+    return parsed.ok === false ? (parsed.problem ?? "a line doesn't make plain sense") : null;
+  } catch (err) {
+    console.warn(`[selfie-sense] check failed open:`, err instanceof Error ? err.message : err);
+    return null;
+  }
 }
 
 async function generateSelfieTopicOnce(
