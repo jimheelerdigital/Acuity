@@ -1453,9 +1453,11 @@ export const carouselDailyCronFn = inngest.createFunction(
           "@/lib/content-factory/performance"
         );
         const feedback = await getLaneFeedback("selfie");
+        const coverStyle = (event.data as { coverStyle?: string } | undefined)?.coverStyle;
         const topic = await generateSelfieTopic(
           recent.map((p) => p.headline),
-          feedback
+          feedback,
+          coverStyle === "statement" || coverStyle === "question" ? coverStyle : undefined
         );
 
         // Same avatar across posts: the newest selfie post's text-free

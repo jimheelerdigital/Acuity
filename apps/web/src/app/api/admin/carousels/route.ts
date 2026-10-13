@@ -269,6 +269,8 @@ export async function POST(req: NextRequest) {
           dryRun: (body as { dryRun?: boolean }).dryRun === true,
           // Selfie sample (2026-10-13): full build + email, never auto-posted.
           sample: (body as { sample?: boolean }).sample === true,
+          // Selfie cover style override: "statement" | "question".
+          coverStyle: (body as { coverStyle?: string }).coverStyle,
         },
       });
       return NextResponse.json({ ok: true, queued: true });

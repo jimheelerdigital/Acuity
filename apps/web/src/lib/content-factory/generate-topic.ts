@@ -221,7 +221,10 @@ THE STORY (2026-10-13, per Keenan): exactly FIVE slides, the cover plus exactly 
 4. STEP 3, the end result: what changed once she could see it (the list out of her head, the one thing she finally dropped or asked for help with).
 5. STEP 4, where she is now: her life today, in one specific, lived-in picture. Not a sales line.
 
-THE HEADLINE (cover text): first person, lowercase-leaning, under 55 characters, no emojis. It names the pain in plain words a stranger understands with nothing else to go on. Don't open with "this is how i". No clever wordplay, no setup that needs the slides to make sense.
+THE HEADLINE (cover text): lowercase-leaning, no emojis. It names the pain in plain words a stranger understands with nothing else to go on. Don't open with "this is how i". No clever wordplay, no setup that needs the slides to make sense. The user message tells you which of these two cover styles this post uses:
+  A. STATEMENT: first person, under 55 characters, the pain said as her own plain confession ("i'm tired from remembering everything, not from doing it").
+  B. QUESTION: "have you ever felt like..." asked straight to the reader, under 80 characters, ending in a question mark ("have you ever felt like you're working nonstop but never getting ahead?" shows the shape; never reuse it). The slides after it are still her own first-person story.
+Either way, she is honest about how hard it got, in her own words ("it was wearing me down"), but never claims a diagnosis or that Ripple fixed her mental health. The payoff is how her life feels now, not a promise to the reader.
 
 THE STEP LINES: each step is one plain first-person sentence, 4-12 words, that makes sense on its own without the detail line under it. No fragments that only make sense with the detail ("i laughed at dinner and noticed" fails). Each step gets one "detail" sentence under 90 characters in her voice: the concrete, lived-in specific (the dentist on thursday, her mom's refill, the form due friday). Honest, small and specific beats big claims.
 
@@ -258,11 +261,13 @@ Before answering, read the cover and then each slide in order as a stranger woul
  */
 export async function generateSelfieTopic(
   recentHeadlines: string[],
-  feedback?: string | null
+  feedback?: string | null,
+  /** Force a cover style (samples); omitted = 50/50. */
+  forceCoverStyle?: "statement" | "question"
 ): Promise<GeneratedSelfieTopic> {
   return withHeadlineRetry({
     label: "selfie-topic",
-    generate: (extra) => generateSelfieTopicOnce(recentHeadlines, feedback, extra),
+    generate: (extra) => generateSelfieTopicOnce(recentHeadlines, feedback, extra, forceCoverStyle),
     headlineOf: (t) => t.headline,
     reject: (t) =>
       /^\s*this is how i\b/i.test(t.headline)
@@ -275,12 +280,12 @@ export async function generateSelfieTopic(
       brand: "ripple",
       lane: "selfie",
       rules:
-        "First person, lowercase-leaning, under 55 characters, no emojis. The cover names a relatable pain women feel every single day, in plain words a stranger understands on its own; the slides then show what it caused, how Ripple helped her see it, the result and where she is now. NEVER name Ripple or any app on the cover. Never a duration, a time of day or a therapy claim. Never opens with \"this is how i\".",
+        "Lowercase-leaning, no emojis. Either a first-person statement under 55 characters or a \"have you ever felt like...?\" question to the reader under 80 characters; keep whichever form the current cover uses. The cover names a relatable pain women feel every single day, in plain words a stranger understands on its own; the slides then show what it caused, how Ripple helped her see it, the result and where she is now. NEVER name Ripple or any app on the cover. Never a duration, a time of day or a therapy claim. Never opens with \"this is how i\".",
       contextOf: (t) =>
         t.steps.map((s, i) => `${s}${t.details[i] ? `: ${t.details[i]}` : ""}`).join("\n"),
       setHeadline: (t, headline) =>
         // Ripple is NEVER on the cover (Keenan, 2026-10-13).
-        headline.length > 60 || /^\s*this is how i\b/i.test(headline) || /\bripple\b/i.test(headline)
+        headline.length > (t.headline.trim().endsWith("?") ? 85 : 60) || /^\s*this is how i\b/i.test(headline) || /\bripple\b/i.test(headline)
           ? t
           : { ...t, headline, slug: slugify(headline) },
     },
@@ -290,7 +295,8 @@ export async function generateSelfieTopic(
 async function generateSelfieTopicOnce(
   recentHeadlines: string[],
   feedback: string | null | undefined,
-  extra: string
+  extra: string,
+  forceCoverStyle?: "statement" | "question"
 ): Promise<GeneratedSelfieTopic> {
   const { prisma } = await import("@/lib/prisma");
 
@@ -301,7 +307,13 @@ async function generateSelfieTopicOnce(
 
   // Learning loop (2026-09-14): real engagement numbers from
   // performance.ts, so topics lean into what the audience rewards.
-  const userPrompt = `Write one new first-person selfie slideshow post.${avoidList}${feedback ?? ""}${extra}\n\nReturn ONLY valid JSON, no other text.`;
+  // Cover style rotates 50/50 (2026-10-13, per Keenan's "have you ever felt
+  // x?" format): A = first-person statement, B = "have you ever felt like...?"
+  const coverStyle =
+    (forceCoverStyle ? forceCoverStyle === "statement" : Math.random() < 0.5)
+      ? "STATEMENT (style A): her pain as a first-person confession, under 55 characters."
+      : 'QUESTION (style B): "have you ever felt like...?" asked to the reader, under 80 characters, ending in a question mark.';
+  const userPrompt = `Write one new first-person selfie slideshow post.\n\nTHIS POST'S COVER STYLE: ${coverStyle}${avoidList}${feedback ?? ""}${extra}\n\nReturn ONLY valid JSON, no other text.`;
 
   // Reddit audience pulse (2026-09-17) — soft, angle inspiration only.
   let pulse = "";
