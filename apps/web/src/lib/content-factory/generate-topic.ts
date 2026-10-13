@@ -225,7 +225,7 @@ THE FORMAT: slide 1 (the cover) is a mirror selfie of her with her raised phone 
 THE STORY (2026-10-13, per Keenan): exactly FIVE slides, the cover plus exactly FOUR steps, always in this order:
 1. COVER (the headline): a relatable pain that women feel every single day, said so plainly that she nods before she's finished reading ("i'm tired from remembering everything, not from doing it"). Her pain, not Ripple's pitch: Ripple is NEVER named on the cover, and no other app either.
 2. STEP 1, what that pain was causing: the concrete cost in her life (snapping at the kids over nothing, forgetting her own appointments, lying to her friends that she's fine).
-3. STEP 2, how she finally started recognizing what the pain really was: she started talking it out to Ripple, and Ripple showed her what was going on (what kept coming up, her mood over time, the list she was carrying in her head). Ripple is named here, plainly, and what it did is one real thing from the list above.
+3. STEP 2, how she finally started recognizing what the pain really was: she started talking it out to Ripple, and Ripple showed her what was going on. The first time Ripple appears, say plainly that it's an app ("an app called ripple", "the ripple app"): a stranger has never heard of it, and "i talked to ripple" alone reads like a person or a riddle (what kept coming up, her mood over time, the list she was carrying in her head). Ripple is named here, plainly, and what it did is one real thing from the list above.
 4. STEP 3, the end result: what changed once she could see it (the list out of her head, the one thing she finally dropped or asked for help with).
 5. STEP 4, where she is now: her life today, in one specific, lived-in picture. Not a sales line.
 
@@ -233,6 +233,8 @@ THE HEADLINE (cover text): lowercase-leaning, no emojis. It names the pain in pl
   A. STATEMENT: first person, under 55 characters, the pain said as her own plain confession ("i'm tired from remembering everything, not from doing it").
   B. QUESTION: "have you ever felt like..." asked straight to the reader, under 80 characters, ending in a question mark ("have you ever felt like you're working nonstop but never getting ahead?" shows the shape; never reuse it). The slides after it are still her own first-person story.
 Either way, she is honest about how hard it got, in her own words ("it was wearing me down"), but never claims a diagnosis or that Ripple fixed her mental health. The payoff is how her life feels now, not a promise to the reader.
+
+PEOPLE: never use "he", "his", "she" or "they" for someone the post hasn't named. Say who it is first ("my husband", "my mom", "my teenager").
 
 THE STEP LINES: each step is one plain first-person sentence, 4-12 words, that makes sense on its own without the detail line under it. No fragments that only make sense with the detail ("i laughed at dinner and noticed" fails). Each step gets one "detail" sentence under 90 characters in her voice: the concrete, lived-in specific (the dentist on thursday, her mom's refill, the form due friday). Honest, small and specific beats big claims.
 
@@ -369,7 +371,9 @@ FAIL the post if ANY of these is true:
 - A pronoun ("his", "he", "they") has no clear person.
 - Any slide line doesn't make sense on its own, or doesn't follow from the slide before it, so the story jumps.
 - Wordplay, clever phrasing or a riddle replaces saying it plainly.
-- It reads like an ad or a robot.
+- It reads like a robot, or like a hard sell (prices, "download now", hype, more than one or two mentions of the app).
+
+THIS POST IS MEANT TO SHOW HOW AN APP CALLED RIPPLE HELPED HER: one plain mention of Ripple as an app she talks to, and what it showed her, is expected and fine. Only fail the Ripple line if it's unclear that Ripple is an app, or it sounds like an ad rather than her own story.
 
 Return only JSON: {"ok": true} or {"ok": false, "problem": "which line fails and why, one sentence"}`,
       messages: [

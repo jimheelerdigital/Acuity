@@ -37,6 +37,10 @@ Every Ripple and Legendary Mythicals post is now picked from five complete optio
 - Opus 5.5 is $4/$20 per MTok (Sonnet 5.5 $2/$10). Estimate: about $0.65 per post (5 drafts + 5 sense checks), about $3/day for 5 posts.
 - Ripple data is thin: 31 IG posts in 14 days, 4 comments, 0 shares, 0 saves. Early calibration will be noisy. The kill rule waits for 40 posts.
 - No Mythicals competitor accounts exist, so its brief is our own winners and losers plus the category scoreboard.
+- **Same-day follow-ups after the first dry runs:**
+  - **Mythicals:** worked first try. 5 drafted, 1 cut by the sense editor (a vague option line), Jev ranked 4.
+  - **Ripple:** all 5 cut. The writer named Ripple without saying it's an app, and the editor treated any product mention as an ad. Fix: the writer must introduce "an app called ripple" and name people before using he/his, and the editor accepts one plain app mention.
+  - **Metrics refresh had been timing out nightly since ~10-04:** the single Facebook step looped ~270 rows past 300s. FB metrics were frozen at 10-04, and the new YouTube step never ran. Fix: YouTube moved before Facebook, and Facebook is limited to 45 days in 40-row steps (`list-facebook` + `fetch-facebook-N`).
 - The sense check fails closed. If Opus is down, Ripple posts are held from auto-posting (still emailed), and a Mythicals run with no survivor throws (no post that hour).
 
 ## [2026-10-13] — Ripple selfie posts now tell her story of using Ripple

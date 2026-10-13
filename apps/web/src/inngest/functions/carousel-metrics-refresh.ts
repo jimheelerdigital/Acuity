@@ -126,45 +126,6 @@ export const carouselMetricsRefreshFn = inngest.createFunction(
     });
     logger.info(`[metrics-refresh] Instagram: ${ig.refreshed}/${ig.candidates}`);
 
-    const fb = await step.run("fetch-facebook", async () => {
-      const { prisma } = await import("@/lib/prisma");
-      const { facebookMetricsConfigured, fetchFbPostMetrics } = await import(
-        "@/lib/content-factory/facebook-metrics"
-      );
-      const out = { candidates: 0, refreshed: 0, errors: [] as string[] };
-      const ninetyDaysAgo = new Date(Date.now() - 90 * 86_400_000);
-      const rows = await prisma.socialPublish.findMany({
-        where: {
-          platform: "facebook",
-          status: "POSTED",
-          externalId: { not: null },
-          postedAt: { gte: ninetyDaysAgo },
-        },
-        select: { id: true, externalId: true, accountKey: true },
-      });
-      for (const row of rows) {
-        if (!facebookMetricsConfigured(row.accountKey)) continue;
-        out.candidates++;
-        try {
-          const metrics = await fetchFbPostMetrics(row.externalId!, row.accountKey);
-          await prisma.socialPublish.update({
-            where: { id: row.id },
-            data: { ...metrics, metricsAt: new Date(), metricsError: null },
-          });
-          out.refreshed++;
-        } catch (err) {
-          const msg = err instanceof Error ? err.message : String(err);
-          if (out.errors.length < 5) out.errors.push(msg);
-          await prisma.socialPublish
-            .update({ where: { id: row.id }, data: { metricsError: msg.slice(0, 500) } })
-            .catch(() => {});
-        }
-        await new Promise((r) => setTimeout(r, 300));
-      }
-      return out;
-    });
-    logger.info(`[metrics-refresh] Facebook: ${fb.refreshed}/${fb.candidates}`);
-
     // YouTube Shorts stats (2026-10-13): Mythicals' win metric counts
     // YouTube views; nothing collected them before.
     const yt = await step.run("fetch-youtube", async () => {
@@ -208,6 +169,62 @@ export const carouselMetricsRefreshFn = inngest.createFunction(
       return out;
     });
     logger.info(`[metrics-refresh] YouTube: ${yt.refreshed}/${yt.candidates}${yt.errors.length ? ` errors: ${yt.errors.join("; ")}` : ""}`);
+    // Facebook in batches (2026-10-13): one step over ~270 rows (API call +
+    // 300ms pause each) ran past Vercel's 300s limit every night since
+    // ~10-04, so FB metrics froze and the YouTube step after it never ran.
+    // Now: only posts from the last 45 days (the scoring window) in steps of
+    // FB_BATCH rows.
+    const FB_BATCH = 40;
+    const fbIds = await step.run("list-facebook", async () => {
+      const { prisma } = await import("@/lib/prisma");
+      const { facebookMetricsConfigured } = await import("@/lib/content-factory/facebook-metrics");
+      const rows = await prisma.socialPublish.findMany({
+        where: {
+          platform: "facebook",
+          status: "POSTED",
+          externalId: { not: null },
+          postedAt: { gte: new Date(Date.now() - 45 * 86_400_000) },
+        },
+        orderBy: { postedAt: "desc" },
+        select: { id: true, accountKey: true },
+      });
+      return rows.filter((r) => facebookMetricsConfigured(r.accountKey)).map((r) => r.id);
+    });
+    const fb = { candidates: fbIds.length, refreshed: 0, errors: [] as string[] };
+    for (let i = 0; i < fbIds.length; i += FB_BATCH) {
+      const batch = fbIds.slice(i, i + FB_BATCH);
+      const r = await step.run(`fetch-facebook-${i / FB_BATCH}`, async () => {
+        const { prisma } = await import("@/lib/prisma");
+        const { fetchFbPostMetrics } = await import("@/lib/content-factory/facebook-metrics");
+        const out = { refreshed: 0, errors: [] as string[] };
+        const rows = await prisma.socialPublish.findMany({
+          where: { id: { in: batch } },
+          select: { id: true, externalId: true, accountKey: true },
+        });
+        for (const row of rows) {
+          try {
+            const metrics = await fetchFbPostMetrics(row.externalId!, row.accountKey);
+            await prisma.socialPublish.update({
+              where: { id: row.id },
+              data: { ...metrics, metricsAt: new Date(), metricsError: null },
+            });
+            out.refreshed++;
+          } catch (err) {
+            const msg = err instanceof Error ? err.message : String(err);
+            if (out.errors.length < 3) out.errors.push(msg);
+            await prisma.socialPublish
+              .update({ where: { id: row.id }, data: { metricsError: msg.slice(0, 500) } })
+              .catch(() => {});
+          }
+          await new Promise((r) => setTimeout(r, 300));
+        }
+        return out;
+      });
+      fb.refreshed += r.refreshed;
+      for (const e of r.errors) if (fb.errors.length < 5) fb.errors.push(e);
+    }
+    logger.info(`[metrics-refresh] Facebook: ${fb.refreshed}/${fb.candidates}`);
+
 
     // One step per account — an Apify run-sync call can take minutes.
     // Full history on Sundays (UTC) or when requested ({ full: true }).
