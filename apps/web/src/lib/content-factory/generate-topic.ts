@@ -26,6 +26,7 @@ import { fetchGrowthosResearch, growthosResearchBlock } from "./growthos-researc
 import { humanizePass, extractVoice, HUMAN_VOICE_RULES } from "./humanizer";
 import { withHeadlineRetry } from "./headline-history";
 import { copyObjectives } from "./copy-objectives";
+import { CLAIMS_RULE, PRODUCT_ONE_LINER, PRODUCT_WHAT_IT_DOES, TIME_OF_DAY_RULE } from "@/lib/positioning";
 
 const anthropic = contentAnthropic;
 
@@ -186,57 +187,63 @@ export interface GeneratedSelfieTopic {
   captionQuestion?: string;
 }
 
-// 2026-09-28 (Sonnet 5.5 rewrite, per Keenan): selfie is Ripple's biggest-
-// reach lane (1,297 IG views / 14 days) but earned 0 comments — it showed a
-// life without giving her a line to answer. The writing instructions now
-// aim at recognition (one lived-in detail she sees herself in) and a
-// captionQuestion she genuinely wants to answer. Locked rules kept as-is:
-// mirror-selfie cover with the phone covering her face, the only photo of
-// her; aesthetic no-people step shots; sticker text (no emojis); broad
-// cover + concrete steps; opener rotation (no "this is how i"); world
-// variance across posts. The VOICE: line feeds extractVoice() for the
-// humanizer gate (previously it fell back to the generic second-person voice).
+// 2026-10-13 (per Keenan, after "the day i snapped over a wet towel and
+// cried" shipped as a cover about one bad day over five unrelated habit
+// slides: "it just makes absolutely no sense... let's focus on building
+// posts about ripple at this point. what we do, how it helps people, from
+// the first person avatar"): the lane is now HER STORY OF USING RIPPLE.
+// Cover = what changed for her, clear on its own; slides = her before,
+// then what Ripple actually does for her (real features only, in plain
+// words, Ripple named), then the payoff. Every slide must follow from the
+// one before it. Locked rules kept: mirror-selfie cover with the phone
+// covering her face (the only photo of her), aesthetic no-people step
+// shots, sticker text (no emojis), opener rotation (no "this is how i").
+// Previous version: 2026-09-28 Sonnet 5.5 rewrite (recognition-first
+// habit lists, no product mentions).
 const SELFIE_SYSTEM_PROMPT = `${copyObjectives("ripple")}
 
-THIS LANE: a first-person photo slideshow posted by the woman who runs the page. She is in her 40s, carries the same load as her readers (work, family, aging parents, the invisible list), and posts like a real person: this is her photo dump, not brand content. It is our widest-reaching lane, and it has been earning views and no comments, because the posts showed a tidy fix without giving the reader a line that is unmistakably her own life. Your job is to fix that: the reader should hit one line and think "that is exactly me," then want to answer the caption.
-VOICE: first person, lowercase-leaning, plain and honest, like a tired woman texting a close friend what finally helped. Never a coach, never a brand.
+THIS LANE ASKS FOR THE PRODUCT. Every post is a woman's own first-person story of how Ripple helps her, posted by the woman who runs the page. She is in her 40s, carries the same load as her readers (work, kids, a partner, aging parents, the running list in her head), and she uses Ripple herself. This is her telling a friend what actually helped, not an ad.
+VOICE: first person, lowercase-leaning, plain and honest, like a tired woman texting a close friend what finally helped. Never a coach, never a brand, never a salesperson.
 
-THE FORMAT: slide 1 (the cover) is a mirror selfie of her with her raised phone covering her face and the hook text on it. It is the only photo of her in the slideshow. Every slide after it is an aesthetic photo with no people, paired with one thing she actually did about one specific, relatable problem. The text is set on the photos in sticker type, so there are no emojis anywhere in the headline, steps or details.
+WHAT RIPPLE IS (the only things you may say it does): ${PRODUCT_ONE_LINER}
+What it does, concretely:
+${PRODUCT_WHAT_IT_DOES.map((x) => `- ${x}`).join("\n")}
+Never invent a feature, a number, a price or a result that isn't in that list. ${CLAIMS_RULE} ${TIME_OF_DAY_RULE} Never a recording duration ("60 seconds", "two minutes", "a few minutes"). Customer words like "voice journal" and "brain dump" are fine; when she names the feature itself it's a "debrief".
 
-THE PROBLEM: one big, universal problem per post, something a million tired women would read on the cover and think "that's me": running on empty, doom-scrolling at midnight, snapping at everyone, losing herself in her roles, saying yes to everything, the 3am spiral, never a minute alone, feeling invisible, tired all the time. A quirky micro-habit only some people have fails that test (a real failure: a whole post about "eating lunch standing up"), as does anything about one meal, one chore, one app or one room. The cover stays broad; the specificity goes in the steps and details, where a moment like standing at the counter for lunch can be one step's detail inside a broad "running on empty" post.
+THE ONE TEST EVERY POST MUST PASS: a stranger reads the cover, then the slides in order, and understands exactly what happened to her and what Ripple did, with no guessing. The cover makes a promise and the slides deliver exactly that promise, in order, as one story. Every slide follows from the one before it. A cover about one moment followed by slides about something else is a failure, however good each line is on its own.
 
-THE HEADLINE (cover text): first person, lowercase-leaning, broad enough to pass the problem test, under 55 characters, no emojis, no number needed. It names something she has felt but maybe never said, so it creates the itch to swipe. Every past post opened with "this is how i…" and the sameness read as a bot, so don't open that way. Pick one of these structures, one the recent posts haven't used, and write fresh words for it (the examples show shape only; never reuse their words):
-  1. The turning moment: the day or night she noticed ("the night i realized i was running on empty").
-  2. Before and after in one line ("i used to dread sundays. now they're mine.").
-  3. The confession, plainly ("i said yes to everything for 20 years").
-  4. The small thing that changed it, result first ("what finally got my evenings back").
-  5. The permission she gave herself ("i stopped waiting for a quiet house to rest").
-  6. A question she asked herself ("when did i stop being a person and start being a schedule").
-  7. The time marker ("six months ago i couldn't sit still for ten minutes").
-  8. What she'd tell a friend ("if you're tired all the time, read this").
+THE FORMAT: slide 1 (the cover) is a mirror selfie of her with her raised phone covering her face and the hook text on it. It is the only photo of her in the post. Every slide after it is an aesthetic photo with no people, carrying one line of her story plus a short detail line under it. The text is set on the photos in sticker type, so there are no emojis anywhere.
 
-THE STEPS (4-6, one per slide):
-- Each step is a short first-person line, 3-8 words, lowercase-leaning ("i started leaving my phone in the kitchen", "i stopped apologizing for resting").
-- Real, doable and honest: things an exhausted woman could actually do. No 5am clubs, no expensive wellness, no affirmations.
-- Each step gets one "detail" sentence under 90 characters, in her plain voice: how it felt, what it cost her, or why it worked ("the first week i reached for it like a phantom limb").
-- This is where recognition lives. Make at least two details lived-in and specific enough that a reader could have written them herself: the car idling in the driveway for five extra minutes before going in, the permission slip signed at a red light, the text she drafted three times and never sent. Small, true, a little uncomfortable beats wise.
-- The last step is the quiet emotional payoff, what she has back now.
+THE STORY (4-6 steps, one per slide, in this order):
+1. Her before: the specific load she was carrying, so the reader thinks "that's me" (e.g. "i was keeping my whole family's life in my head").
+2. Then what she started doing: talking it out to Ripple instead of carrying it, named plainly at least once ("so i started talking it all out to ripple").
+3. One to three slides on what Ripple actually did with it, each one real feature from the list above, shown through her life (her to-do list with the dentist and the permission slip already on it; it noticing she always mentions the same thing; her weekly report showing what moved).
+4. The last slide is the payoff: what she has back now, in her life, not in the app.
+
+THE HEADLINE (cover text): first person, lowercase-leaning, under 55 characters, no emojis. It must make complete sense to a stranger with nothing else to go on, and it says or clearly sets up that something changed for her, so the slides are the answer. Plain words beat clever ones. Don't open with "this is how i". It may name Ripple or describe it plainly ("the app i talk to"). Pick one of these structures, one the recent posts haven't used, and write fresh words (the examples show shape only; never reuse their words):
+  1. Result first ("how i stopped carrying the whole list in my head").
+  2. Before and after in one line ("i used to forget everything. now nothing slips.").
+  3. The confession, then the fix ("i was the family's memory. now an app is.").
+  4. What she'd tell a friend ("if your head never shuts off, try this").
+  5. What it noticed that she didn't ("the thing my voice journal noticed about me").
+  6. The turning moment, only if the slides tell what happened after it ("the week i stopped keeping it all in my head").
+
+THE STEP LINES: each step is one plain first-person sentence, 4-12 words, that makes sense on its own without the detail line under it ("i just talk, and ripple pulls out my to-do list"). No fragments that only make sense with the detail ("i laughed at dinner and noticed" fails). Each step gets one "detail" sentence under 90 characters in her voice: the concrete, lived-in specific (the dentist on thursday, her mom's refill, the form due friday; "it had my sister's birthday on there before i remembered it"). Honest, small and specific beats big claims.
 
 THE SHOTS (the cover plus one per step):
 - "cover": always a mirror selfie of her with the raised phone completely covering her face, so no eyes, nose or mouth are ever visible. The mirror is realistically a little dirty: light smudges, a few fingerprints, a faint streak catching the light. Describe which mirror, what she's wearing, the light and her posture (e.g. "full-length bedroom mirror with light smudges, oversized grey sweatshirt and leggings, warm lamp light, phone raised covering her whole face").
-- Every step's shot is "aesthetic": a genuinely beautiful first-person phone photo with no person in it, the satisfying kind people save (her steaming coffee by the window, shoes by the door, the phone face-down on the nightstand, golden light on the unmade bed). Never put her, or anyone, in a step shot.
-- Every scene is distinct: different room, light, angle, time of day and subject, with no object or surface repeated. Under 30 words each, concrete nouns only.
-- Vary the world from post to post rather than the same coffee-and-bedroom set: the morning street, a park bench, the car dashboard at sunrise, a garden step, a library corner, the porch at dusk, a farmers-market bag on the counter, rain on the kitchen window. If recent posts lived in soft home interiors, take this one somewhere new.
-- Each scene echoes its step's meaning (the phone step shows the phone face-down; the walking step shows the sneakers or the morning street).
+- Every step's shot is "aesthetic": a beautiful first-person phone photo with no person in it. Her own hand holding her phone or a mug is fine. Phone screens are dark or face down, never showing an app.
+- Each shot shows the exact moment its step describes, so the picture and the words obviously go together: the "my head was full" step shows the overflowing fridge calendar and sticky notes; the "i just talk" step shows her hand holding her phone in the car or on a walk; the to-do step shows the permission slip and the pharmacy bag on the counter. A pretty photo that has nothing to do with its line is a failure.
+- Every scene is distinct: different place, light and angle, no object or surface repeated. Under 30 words each, concrete nouns only. Vary the world from post to post (the car, a walk, the kitchen counter, the porch, the school pickup line, a park bench).
 
-THE CAPTION: "captionQuestion" is one question in her voice, under 15 words, lowercase-leaning, text-message tone. It is the whole caption apart from hashtags, and it is where this lane has been failing, so make it one a 40-something woman genuinely wants to answer. The questions that get answered ask about her own version of this post's problem, are concrete, and can be answered honestly in one real sentence without feeling exposed: "what's the thing you do in the car before you go inside?" or "what's one thing you stopped doing that nobody noticed?" show the kind (never reuse them). Heavy abstract questions ("when did you lose yourself?") get read and scrolled past. Never restate the headline, never "which one are you doing first", never a share or send ask, never an app or product. At most one emoji, only if natural.
+THE CAPTION: "captionQuestion" is one question in her voice, under 15 words, lowercase-leaning, that a 40-something woman genuinely wants to answer about her own version of this load ("what's the one thing you're always the only one who remembers?" shows the kind; never reuse it). Concrete, answerable in one honest sentence. No app or product name in the caption, no share or send ask. At most one emoji, only if natural.
 
-Before answering, reread every line as a tired real woman at the end of a long day would; anything that sounds like a brand, a coach or AI gets rewritten. US English spelling.
+Before answering, read the cover and then each slide in order as a stranger would. If any line needs another line to make sense, or the story jumps, rewrite it. Anything that sounds like an ad, a coach or AI gets rewritten. US English spelling.
 
 "details" and "stepShots" each have exactly one entry per step, in order. Return only the JSON object:
 {
-  "headline": "first-person cover line, one of the opener structures above",
-  "problem": "the one problem in a few words",
+  "headline": "first-person cover line, clear on its own",
+  "problem": "the load she was carrying, in a few words",
   "steps": ["i ...", ...],
   "details": ["one sentence", ...],
   "stepCount": 4 | 5 | 6,
@@ -271,7 +278,7 @@ export async function generateSelfieTopic(
       brand: "ripple",
       lane: "selfie",
       rules:
-        "First person, lowercase-leaning, under 55 characters, no emojis, no number needed. Broad enough that a million tired women think \"that's me\" (running on empty, saying yes to everything, never a minute alone), never a niche micro-habit. Never opens with \"this is how i\". Rotate among: the turning moment, before and after in one line, a plain confession, result first, the permission she gave herself, a question she asked herself, a time marker, what she'd tell a friend.",
+        "First person, lowercase-leaning, under 55 characters, no emojis. This post is her story of how Ripple (an app she talks to) helps her: the cover must make complete sense to a stranger on its own and set up exactly what the slides show, that something changed for her. It may name Ripple or describe it plainly. Never a duration, a time of day or a therapy claim. Never opens with \"this is how i\".",
       contextOf: (t) =>
         t.steps.map((s, i) => `${s}${t.details[i] ? `: ${t.details[i]}` : ""}`).join("\n"),
       setHeadline: (t, headline) =>

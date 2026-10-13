@@ -267,6 +267,8 @@ export async function POST(req: NextRequest) {
           // Copy-only preview (2026-10-03): no images, no post; saved to
           // prompt-test-results/<date>/<lane>-<run>.json.
           dryRun: (body as { dryRun?: boolean }).dryRun === true,
+          // Selfie sample (2026-10-13): full build + email, never auto-posted.
+          sample: (body as { sample?: boolean }).sample === true,
         },
       });
       return NextResponse.json({ ok: true, queued: true });

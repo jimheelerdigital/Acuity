@@ -318,6 +318,13 @@ export const carouselDailyCronFn = inngest.createFunction(
     // copy only — no images, no post, no email — and save it to
     // prompt-test-results/<date>/<lane>-<run>.json for review.
     const dryRun = (event.data as { dryRun?: boolean } | undefined)?.dryRun === true;
+    // SAMPLE (2026-10-13, per Keenan: "create another post with this in mind
+    // and send it to me"): the full live pipeline (copy, images, video,
+    // email), but the post is saved APPROVED instead of DRAFT so the social
+    // cron and the publish gate never pick it up, and it writes no variant
+    // recipe, so the selfie bandit doesn't learn from an unposted test.
+    // Selfie lane only.
+    const sample = (event.data as { sample?: boolean } | undefined)?.sample === true;
     const saveDryRun = async (lane: string, topic: unknown) =>
       step.run("save-dry-run", async () => {
         const { supabase } = await import("@/lib/supabase.server");
@@ -1744,7 +1751,7 @@ export const carouselDailyCronFn = inngest.createFunction(
           data: {
             topicSlug: slug,
             headline: selfie.headline,
-            status: "DRAFT",
+            status: sample ? "APPROVED" : "DRAFT",
             // PHOTO format (it IS a static picture slideshow); the
             // "selfie" lane marks the sub-format — no schema change, so
             // this ships without waiting on the pending db push.
@@ -1778,7 +1785,7 @@ export const carouselDailyCronFn = inngest.createFunction(
         });
 
         // Variant recipe for the performance loop (2026-10-12).
-        try {
+        if (!sample) try {
           const { writeRecipe } = await import("@/lib/content-factory/performance-loop");
           await writeRecipe({
             postId: post.id,
