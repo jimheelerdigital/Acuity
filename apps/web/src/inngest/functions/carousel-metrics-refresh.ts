@@ -39,27 +39,38 @@ export const carouselMetricsRefreshFn = inngest.createFunction(
     ],
   },
   async ({ event, step, logger }) => {
-    const ig = await step.run("fetch-instagram", async () => {
+    // Instagram in batches (2026-10-13): one step over ~270 rows finished
+    // the work but hit Vercel's 300s limit before returning, so it retried
+    // forever and the Facebook/YouTube steps never ran. Now: list once, then
+    // IG_BATCH rows per step, then the legacy hand-pasted links.
+    const IG_BATCH = 40;
+    const igList = await step.run("list-instagram", async () => {
       const { prisma } = await import("@/lib/prisma");
       const igLib = await import("@/lib/content-factory/instagram-metrics");
-      const out = { candidates: 0, refreshed: 0, errors: [] as string[] };
-      if (!igLib.instagramConfigured()) {
-        out.errors.push("IG_ACCESS_TOKEN / IG_USER_ID not set");
-        return out;
-      }
-      const ninetyDaysAgo = new Date(Date.now() - 90 * 86_400_000);
-
-      // 1a. Auto-published posts, by media ID
+      if (!igLib.instagramConfigured()) return { ok: false as const, ids: [] as string[] };
       const rows = await prisma.socialPublish.findMany({
         where: {
           platform: "instagram",
           status: "POSTED",
           externalId: { not: null },
-          postedAt: { gte: ninetyDaysAgo },
+          postedAt: { gte: new Date(Date.now() - 90 * 86_400_000) },
         },
-        select: { id: true, externalId: true, carouselPostId: true },
+        orderBy: { postedAt: "desc" },
+        select: { id: true },
       });
-      out.candidates += rows.length;
+      return { ok: true as const, ids: rows.map((r) => r.id) };
+    });
+    const ig = { candidates: igList.ids.length, refreshed: 0, errors: igList.ok ? ([] as string[]) : ["IG_ACCESS_TOKEN / IG_USER_ID not set"] };
+    for (let b = 0; b < igList.ids.length; b += IG_BATCH) {
+      const batch = igList.ids.slice(b, b + IG_BATCH);
+      const r = await step.run(`fetch-instagram-${b / IG_BATCH}`, async () => {
+        const { prisma } = await import("@/lib/prisma");
+        const igLib = await import("@/lib/content-factory/instagram-metrics");
+        const out = { candidates: 0, refreshed: 0, errors: [] as string[] };
+        const rows = await prisma.socialPublish.findMany({
+          where: { id: { in: batch } },
+          select: { id: true, externalId: true, carouselPostId: true },
+        });
       for (const row of rows) {
         try {
           const m = await igLib.fetchIgMetricsById(row.externalId!);
@@ -90,6 +101,17 @@ export const carouselMetricsRefreshFn = inngest.createFunction(
         await new Promise((r) => setTimeout(r, 300)); // Graph API rate limits
       }
 
+        return out;
+      });
+      ig.refreshed += r.refreshed;
+      for (const e of r.errors) if (ig.errors.length < 5) ig.errors.push(e);
+    }
+    if (igList.ok) {
+      const r = await step.run("fetch-instagram-legacy", async () => {
+        const { prisma } = await import("@/lib/prisma");
+        const igLib = await import("@/lib/content-factory/instagram-metrics");
+        const out = { candidates: 0, refreshed: 0, errors: [] as string[] };
+        const ninetyDaysAgo = new Date(Date.now() - 90 * 86_400_000);
       // 1b. Legacy hand-pasted IG links with no SocialPublish row
       try {
         const legacy = await prisma.carouselPost.findMany({
@@ -122,8 +144,12 @@ export const carouselMetricsRefreshFn = inngest.createFunction(
       } catch (err) {
         out.errors.push(`legacy index: ${err instanceof Error ? err.message : String(err)}`);
       }
-      return out;
-    });
+        return out;
+      });
+      ig.candidates += r.candidates;
+      ig.refreshed += r.refreshed;
+      for (const e of r.errors) if (ig.errors.length < 5) ig.errors.push(e);
+    }
     logger.info(`[metrics-refresh] Instagram: ${ig.refreshed}/${ig.candidates}`);
 
     // YouTube Shorts stats (2026-10-13): Mythicals' win metric counts
