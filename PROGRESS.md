@@ -7,6 +7,28 @@
 
 ---
 
+## [2026-10-13] — Ripple selfie posts now tell her story of using Ripple
+
+- **Requested by:** Keenan
+- **Committed by:** Claude Code
+- **Commit hash:** (see git log: "feat: Make Ripple selfie posts about how Ripple helps her")
+
+### In plain English (for Keenan)
+The daily Ripple selfie post is now a first-person story of how Ripple helps the woman in the photo: what she was carrying, that she started talking it out to Ripple, what Ripple actually did with it (her to-do list, habits, mood, patterns, weekly report), and what she has back now. Each slide has to follow from the one before, and each photo has to show what its slide says. Today's "wet towel" post, where the cover and the slides didn't connect, is what prompted this. There is also a new "sample" switch that builds a post through the real pipeline and emails it without ever posting it.
+
+### Technical changes (for Jimmy)
+- `apps/web/src/lib/content-factory/generate-topic.ts`: `SELFIE_SYSTEM_PROMPT` rewritten as a Ripple product story: before → talking to Ripple → 1-3 real features (from `PRODUCT_WHAT_IT_DOES`) → payoff. Rules: the cover has to make sense on its own, slides can't be fragments, and each shot has to match its line. Imports `CLAIMS_RULE`, `PRODUCT_ONE_LINER`, `PRODUCT_WHAT_IT_DOES`, `TIME_OF_DAY_RULE` from `lib/positioning.ts`. The Jev best-of-5 `bestCover.rules` for the selfie lane were updated to match.
+- `apps/web/src/inngest/functions/carousel-daily.ts`: new `sample` event flag. The post is saved `APPROVED` instead of `DRAFT`, so the social cron and the publish gate skip it. It writes no performance-loop recipe. Video and email run as normal.
+- `apps/web/src/app/api/admin/carousels/route.ts`: `generate-daily` passes `sample` through.
+
+### Manual steps needed
+None
+
+### Notes
+- Root cause of the towel post: the old prompt offered a "turning moment" cover style but required every slide to be "a thing she did about the problem", so the cover told a story the slides never finished. Jev only scored single lines (typos, cover scroll-stop/sense). The publish gate skips scoring when a brand has 2 or fewer posts a day, so nothing judged the post as a whole.
+- Not yet built (proposed): a Jev whole-post coherence check, and a heavier "sense" weight in the cover pick (currently 10%, scroll-stop is 45%).
+- The caption writer still bans the app name in captions on purpose. Ripple is named on the slides.
+
 ## [2026-10-12] — Mythicals animation: camera stays still, subjects move naturally
 
 - **Requested by:** Keenan
