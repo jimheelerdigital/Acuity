@@ -1076,6 +1076,16 @@ export const carouselDailyCronFn = inngest.createFunction(
       const pickBrand = choiceLane.pickBrand;
       const topic = await step.run("generate-choice-topic", async () => {
         const { prisma } = await import("@/lib/prisma");
+        // Build a saved dry-run draft exactly (2026-10-13, per Keenan: "build
+        // that which weapon post and send me it"): topicPath points at a
+        // prompt-test-results/... JSON written by a dryRun.
+        const topicPath = (event.data as { topicPath?: string } | undefined)?.topicPath;
+        if (topicPath) {
+          const { readJson } = await import("@/lib/content-factory/performance-loop");
+          const saved = await readJson<{ topic: Awaited<ReturnType<typeof import("@/lib/content-factory/choice-lane").generateChoiceTopic>> }>(topicPath);
+          if (!saved?.topic?.options?.length) throw new Error(`topicPath ${topicPath} has no topic`);
+          return saved.topic;
+        }
         if (pickBrand) {
           const recentPick = await prisma.carouselPost.findMany({
             where: { generatedFor: { gte: new Date(Date.now() - 30 * 86_400_000) }, lane: laneKey },
@@ -1359,7 +1369,9 @@ export const carouselDailyCronFn = inngest.createFunction(
           data: {
             topicSlug: topic.slug,
             headline: topic.title,
-            status: "DRAFT",
+            // sample (2026-10-13): emailed, never auto-posted (the YouTube/IG/FB
+            // queues only take DRAFT posts).
+            status: sample ? "APPROVED" : "DRAFT",
             format: "PHOTO",
             caption,
             hashtags: extractHashtags(caption),
@@ -1398,7 +1410,7 @@ export const carouselDailyCronFn = inngest.createFunction(
         try {
           const { writeRecipe, LOOP_LANES } = await import("@/lib/content-factory/performance-loop");
           const brand = LOOP_LANES[laneKey];
-          if (brand) {
+          if (brand && !sample) {
             await writeRecipe({
               postId: post.id,
               brand,

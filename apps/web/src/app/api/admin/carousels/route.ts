@@ -289,6 +289,8 @@ export async function POST(req: NextRequest) {
           sample: (body as { sample?: boolean }).sample === true,
           // Selfie cover style override: "statement" | "question".
           coverStyle: (body as { coverStyle?: string }).coverStyle,
+          // Mythicals: build a saved dry-run draft (prompt-test-results/...json).
+          topicPath: (body as { topicPath?: string }).topicPath,
           // Selfie look override: "photo" | "toon".
           selfieStyle: (body as { selfieStyle?: string }).selfieStyle,
         },

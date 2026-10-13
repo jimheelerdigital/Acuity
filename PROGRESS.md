@@ -40,6 +40,7 @@ Every Ripple and Legendary Mythicals post is now picked from five complete optio
 - **Same-day follow-ups after the first dry runs:**
   - **Mythicals:** worked first try. 5 drafted, 1 cut by the sense editor (a vague option line), Jev ranked 4.
   - **Ripple:** all 5 cut. The writer named Ripple without saying it's an app, and the editor treated any product mention as an ad. Fix: the writer must introduce "an app called ripple" and name people before using he/his, and the editor accepts one plain app mention.
+  - **Mythicals sample from a saved draft:** `generate-daily` takes `topicPath` (a dry-run JSON in `prompt-test-results/`) and builds that exact topic. `sample: true` on the choice lane saves the post `APPROVED` (never auto-posted to YouTube/IG/FB) and skips the recipe. Used for Keenan's "WHICH WEAPON WOULD NEVER FAIL YOU?".
   - **Metrics refresh had been timing out nightly since ~10-04:** the single Facebook step looped ~270 rows past 300s. FB metrics were frozen at 10-04, and the new YouTube step never ran. Fix: YouTube moved before Facebook, and Facebook is limited to 45 days in 40-row steps (`list-facebook` + `fetch-facebook-N`).
 - The sense check fails closed. If Opus is down, Ripple posts are held from auto-posting (still emailed), and a Mythicals run with no survivor throws (no post that hour).
 
