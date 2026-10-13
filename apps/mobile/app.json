@@ -271,11 +271,48 @@
           "userTrackingPermission": "Acuity uses this only to help us see which Facebook or Instagram ads led you here, so we can keep showing the ones that actually helped. You can decline — nothing in the app changes."
         }
       ],
-      "expo-quick-actions",
+      [
+        "expo-quick-actions",
+        {
+          "androidIcons": {
+            "qa_record": {
+              "foregroundImage": "./assets/quick-actions/qa_record.png",
+              "backgroundColor": "#ED9672"
+            },
+            "qa_ask": {
+              "foregroundImage": "./assets/quick-actions/qa_ask.png",
+              "backgroundColor": "#ED9672"
+            },
+            "qa_habits": {
+              "foregroundImage": "./assets/quick-actions/qa_habits.png",
+              "backgroundColor": "#ED9672"
+            }
+          }
+        }
+      ],
       "./plugins/with-remove-ad-id.js",
       "./plugins/with-folly-mobile-flag.js",
       "./plugins/with-app-intents.js",
-      "@bacons/apple-targets"
+      "@bacons/apple-targets",
+      [
+        "react-native-android-widget",
+        {
+          "widgets": [
+            {
+              "name": "RippleToday",
+              "label": "Ripple",
+              "description": "Your streak and today's habits. Tap to start a check-in.",
+              "minWidth": "110dp",
+              "minHeight": "110dp",
+              "targetCellWidth": 2,
+              "targetCellHeight": 2,
+              "resizeMode": "horizontal|vertical",
+              "previewImage": "./assets/widget/ripple-today-preview.png",
+              "updatePeriodMillis": 3600000
+            }
+          ]
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true

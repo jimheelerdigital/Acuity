@@ -9,14 +9,24 @@ import {
   type HabitCheckRow,
 } from "@/lib/habits-api";
 import { publishSiriHabits } from "@/lib/siri-shortcuts-data";
+import {
+  clearAndroidWidget,
+  publishAndroidWidget,
+} from "@/lib/android-widget/update";
 
 /**
- * Publishes the home-screen widget's data into the shared App Group so the
- * WidgetKit extension (targets/widget) can read it. iOS only — a no-op on
- * Android. Serialization matches the widget's Swift decode:
+ * Publishes the home-screen widget's data.
+ *
+ * iOS: into the shared App Group so the WidgetKit extension
+ * (targets/widget) can read it. Serialization matches the widget's Swift
+ * decode:
  *   streak      -> Int    (setInt)
  *   habitsToday -> [{name, done:0|1}] JSON (setArray)
  * After writing we ask WidgetKit to reload so the change shows promptly.
+ *
+ * Android: the same streak + today's habits go to the
+ * react-native-android-widget snapshot (lib/android-widget), then every
+ * placed Ripple widget is redrawn.
  */
 const APP_GROUP = "group.com.heelerdigital.acuity";
 const storage = Platform.OS === "ios" ? new ExtensionStorage(APP_GROUP) : null;
@@ -25,21 +35,22 @@ export function publishHabitsToWidget(
   habits: Habit[],
   checks: HabitCheckRow[]
 ): void {
+  if (Platform.OS === "android") {
+    try {
+      const { streak, habitsToday, today } = computeWidgetData(habits, checks);
+      void publishAndroidWidget({
+        streak,
+        habits: habitsToday.map((h) => ({ name: h.name, done: h.done === 1 })),
+        localDate: today,
+      }).catch(() => {});
+    } catch {
+      // Best-effort, same as iOS.
+    }
+    return;
+  }
   if (!storage) return;
   try {
-    const today = todayLocalDate();
-    const byHabit = checksByHabit(checks);
-    const due = habits.filter((h) => !h.archivedAt && isExpectedOn(h, today));
-    const habitsToday = due.map((h) => ({
-      name: h.name,
-      done: byHabit.get(h.id)?.has(today) ? 1 : 0,
-    }));
-    // Headline number = the best current streak among today's habits.
-    const streak = due.reduce(
-      (max, h) =>
-        Math.max(max, currentStreak(h, byHabit.get(h.id) ?? new Set(), today)),
-      0
-    );
+    const { streak, habitsToday } = computeWidgetData(habits, checks);
     storage.set("streak", streak);
     storage.set("habitsToday", habitsToday);
     storage.set("updatedAt", Date.now());
@@ -49,6 +60,46 @@ export function publishHabitsToWidget(
     publishSiriHabits(habits);
   } catch {
     // Widget data is best-effort; never let it break the app.
+  }
+}
+
+/**
+ * Streak + today's due habits — the numbers both platforms' widgets show.
+ * Headline number = the best current streak among today's habits.
+ */
+function computeWidgetData(habits: Habit[], checks: HabitCheckRow[]) {
+  const today = todayLocalDate();
+  const byHabit = checksByHabit(checks);
+  const due = habits.filter((h) => !h.archivedAt && isExpectedOn(h, today));
+  const habitsToday = due.map((h) => ({
+    name: h.name,
+    done: byHabit.get(h.id)?.has(today) ? 1 : 0,
+  }));
+  const streak = due.reduce(
+    (max, h) =>
+      Math.max(max, currentStreak(h, byHabit.get(h.id) ?? new Set(), today)),
+    0
+  );
+  return { today, habitsToday, streak };
+}
+
+/**
+ * Sign-out: wipe the widget data so the next person on this device never
+ * sees the previous user's habits on the home screen. Both platforms.
+ */
+export async function clearWidgetData(): Promise<void> {
+  try {
+    if (Platform.OS === "android") {
+      await clearAndroidWidget();
+      return;
+    }
+    if (!storage) return;
+    storage.set("streak", 0);
+    storage.set("habitsToday", []);
+    storage.set("updatedAt", Date.now());
+    ExtensionStorage.reloadWidget();
+  } catch {
+    // Best-effort.
   }
 }
 

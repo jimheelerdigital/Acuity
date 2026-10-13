@@ -410,7 +410,11 @@ export default function ProfileTab() {
           <MenuItem
             icon="apps-outline"
             label="Set up Ripple everywhere"
-            sublabel="Action Button, Siri, widgets & permissions"
+            sublabel={
+              Platform.OS === "android"
+                ? "Widget, app shortcuts & permissions"
+                : "Action Button, Siri, widgets & permissions"
+            }
             onPress={() => router.push("/setup" as never)}
           />
           {/* Replay product tour — clears User.tourCompletedAt + the
