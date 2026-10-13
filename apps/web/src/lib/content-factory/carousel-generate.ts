@@ -625,6 +625,14 @@ export async function generateCheckedImage(
 ): Promise<{ buffer: Buffer; qc: string }> {
   const started = Date.now();
   const first = await make();
+  // One generation's duration sets the retry budget (2026-10-13): reference
+  // edits take 80-120s, so the old fixed 90/120/200s cutoffs let a third
+  // try start at ~200s and blow the 300s step limit (Toon selfie slides
+  // timed out 4x). A retry only starts if gen + check fits under 270s.
+  const genMs = Date.now() - started;
+  const STEP_BUDGET_MS = 270_000;
+  const CHECK_MS = 25_000;
+  const fits = () => Date.now() - started + genMs * 1.2 + CHECK_MS < STEP_BUDGET_MS;
   const { checkMoodyImageQuality } = await import("./moody-carousel");
   const check = (img: Buffer) =>
     checkMoodyImageQuality(img, opts.scene, {
@@ -637,9 +645,7 @@ export async function generateCheckedImage(
   const verdict = await check(first);
   if (verdict.ok) return { buffer: first, qc: verdict.reason };
   console.warn(`[carousel] Image failed quality check (${verdict.reason}) — regenerating once`);
-  // A cover's regen can take up to 170s by itself, so it only happens
-  // when the first pass was quick.
-  if (Date.now() - started > (opts.slot === "cover" ? 90_000 : 120_000)) {
+  if (!fits()) {
     return { buffer: first, qc: `failed, no time to retry: ${verdict.reason}` };
   }
   try {
@@ -647,7 +653,7 @@ export async function generateCheckedImage(
     // The retry is checked too (2026-10-04: it used to ship unchecked).
     const v2 = await check(second);
     if (v2.ok) return { buffer: second, qc: `regenerated after: ${verdict.reason}` };
-    if (opts.slot === "item" && Date.now() - started < 200_000) {
+    if (opts.slot === "item" && fits()) {
       console.warn(`[carousel] Retry also failed (${v2.reason}) — one last try`);
       const third = await make();
       const v3 = await check(third);
