@@ -210,25 +210,20 @@ What it does, concretely:
 ${PRODUCT_WHAT_IT_DOES.map((x) => `- ${x}`).join("\n")}
 Never invent a feature, a number, a price or a result that isn't in that list. ${CLAIMS_RULE} ${TIME_OF_DAY_RULE} Never a recording duration ("60 seconds", "two minutes", "a few minutes"). Customer words like "voice journal" and "brain dump" are fine; when she names the feature itself it's a "debrief".
 
-THE ONE TEST EVERY POST MUST PASS: a stranger reads the cover, then the slides in order, and understands exactly what happened to her and what Ripple did, with no guessing. The cover makes a promise and the slides deliver exactly that promise, in order, as one story. Every slide follows from the one before it. A cover about one moment followed by slides about something else is a failure, however good each line is on its own.
+THE ONE TEST EVERY POST MUST PASS: a stranger reads the cover, then the slides in order, and understands exactly what happened to her and what Ripple did, with no guessing. Every slide follows from the one before it, as one story. A slide that only makes sense with another slide's help is a failure, however good it is on its own.
 
-THE FORMAT: slide 1 (the cover) is a mirror selfie of her with her raised phone covering her face and the hook text on it. It is the only photo of her in the post. Every slide after it is an aesthetic photo with no people, carrying one line of her story plus a short detail line under it. The text is set on the photos in sticker type, so there are no emojis anywhere.
+THE FORMAT: slide 1 (the cover) is a mirror selfie of her with her raised phone covering her face and the pain line on it. It is the only photo of her in the post. Slides 2-5 are aesthetic photos with no people, each carrying one line of her story plus a short detail line under it. The text is set on the photos in sticker type, so there are no emojis anywhere.
 
-THE STORY (4-6 steps, one per slide, in this order):
-1. Her before: the specific load she was carrying, so the reader thinks "that's me" (e.g. "i was keeping my whole family's life in my head").
-2. Then what she started doing: talking it out to Ripple instead of carrying it, named plainly at least once ("so i started talking it all out to ripple").
-3. One to three slides on what Ripple actually did with it, each one real feature from the list above, shown through her life (her to-do list with the dentist and the permission slip already on it; it noticing she always mentions the same thing; her weekly report showing what moved).
-4. The last slide is the payoff: what she has back now, in her life, not in the app.
+THE STORY (2026-10-13, per Keenan): exactly FIVE slides, the cover plus exactly FOUR steps, always in this order:
+1. COVER (the headline): a relatable pain that women feel every single day, said so plainly that she nods before she's finished reading ("i'm tired from remembering everything, not from doing it"). Her pain, not Ripple's pitch: Ripple is NEVER named on the cover, and no other app either.
+2. STEP 1, what that pain was causing: the concrete cost in her life (snapping at the kids over nothing, forgetting her own appointments, lying to her friends that she's fine).
+3. STEP 2, how she finally started recognizing what the pain really was: she started talking it out to Ripple, and Ripple showed her what was going on (what kept coming up, her mood over time, the list she was carrying in her head). Ripple is named here, plainly, and what it did is one real thing from the list above.
+4. STEP 3, the end result: what changed once she could see it (the list out of her head, the one thing she finally dropped or asked for help with).
+5. STEP 4, where she is now: her life today, in one specific, lived-in picture. Not a sales line.
 
-THE HEADLINE (cover text): first person, lowercase-leaning, under 55 characters, no emojis. It must make complete sense to a stranger with nothing else to go on, and it says or clearly sets up that something changed for her, so the slides are the answer. Plain words beat clever ones. Don't open with "this is how i". It may name Ripple or describe it plainly ("the app i talk to"). Pick one of these structures, one the recent posts haven't used, and write fresh words (the examples show shape only; never reuse their words):
-  1. Result first ("how i stopped carrying the whole list in my head").
-  2. Before and after in one line ("i used to forget everything. now nothing slips.").
-  3. The confession, then the fix ("i was the family's memory. now an app is.").
-  4. What she'd tell a friend ("if your head never shuts off, try this").
-  5. What it noticed that she didn't ("the thing my voice journal noticed about me").
-  6. The turning moment, only if the slides tell what happened after it ("the week i stopped keeping it all in my head").
+THE HEADLINE (cover text): first person, lowercase-leaning, under 55 characters, no emojis. It names the pain in plain words a stranger understands with nothing else to go on. Don't open with "this is how i". No clever wordplay, no setup that needs the slides to make sense.
 
-THE STEP LINES: each step is one plain first-person sentence, 4-12 words, that makes sense on its own without the detail line under it ("i just talk, and ripple pulls out my to-do list"). No fragments that only make sense with the detail ("i laughed at dinner and noticed" fails). Each step gets one "detail" sentence under 90 characters in her voice: the concrete, lived-in specific (the dentist on thursday, her mom's refill, the form due friday; "it had my sister's birthday on there before i remembered it"). Honest, small and specific beats big claims.
+THE STEP LINES: each step is one plain first-person sentence, 4-12 words, that makes sense on its own without the detail line under it. No fragments that only make sense with the detail ("i laughed at dinner and noticed" fails). Each step gets one "detail" sentence under 90 characters in her voice: the concrete, lived-in specific (the dentist on thursday, her mom's refill, the form due friday). Honest, small and specific beats big claims.
 
 THE SHOTS (the cover plus one per step):
 - "cover": always a mirror selfie of her with the raised phone completely covering her face, so no eyes, nose or mouth are ever visible. The mirror is realistically a little dirty: light smudges, a few fingerprints, a faint streak catching the light. Describe which mirror, what she's wearing, the light and her posture (e.g. "full-length bedroom mirror with light smudges, oversized grey sweatshirt and leggings, warm lamp light, phone raised covering her whole face").
@@ -244,9 +239,9 @@ Before answering, read the cover and then each slide in order as a stranger woul
 {
   "headline": "first-person cover line, clear on its own",
   "problem": "the load she was carrying, in a few words",
-  "steps": ["i ...", ...],
+  "steps": ["what it was causing", "how i started recognizing it (ripple)", "the end result", "where i am now"],
   "details": ["one sentence", ...],
-  "stepCount": 4 | 5 | 6,
+  "stepCount": 4,
   "mood": "heavy" | "tender" | "wry" | "frustrated" | "hopeful",
   "cover": { "scene": "mirror selfie scene, phone covering her face, slightly dirty mirror" },
   "stepShots": [{ "type": "aesthetic", "scene": "..." }, ...],
@@ -272,17 +267,20 @@ export async function generateSelfieTopic(
     reject: (t) =>
       /^\s*this is how i\b/i.test(t.headline)
         ? `\n\nREJECTED: your headline "${t.headline}" opens with "this is how i", which every past post used. Pick a different opener structure from the list.`
-        : null,
+        : /\bripple\b/i.test(t.headline)
+          ? `\n\nREJECTED: your headline "${t.headline}" names Ripple. The cover NEVER names Ripple (Keenan, 2026-10-13); it names her everyday pain. Ripple belongs on step 2.`
+          : null,
     // Jev best-of-5 cover pick (2026-09-30).
     bestCover: {
       brand: "ripple",
       lane: "selfie",
       rules:
-        "First person, lowercase-leaning, under 55 characters, no emojis. This post is her story of how Ripple (an app she talks to) helps her: the cover must make complete sense to a stranger on its own and set up exactly what the slides show, that something changed for her. It may name Ripple or describe it plainly. Never a duration, a time of day or a therapy claim. Never opens with \"this is how i\".",
+        "First person, lowercase-leaning, under 55 characters, no emojis. The cover names a relatable pain women feel every single day, in plain words a stranger understands on its own; the slides then show what it caused, how Ripple helped her see it, the result and where she is now. NEVER name Ripple or any app on the cover. Never a duration, a time of day or a therapy claim. Never opens with \"this is how i\".",
       contextOf: (t) =>
         t.steps.map((s, i) => `${s}${t.details[i] ? `: ${t.details[i]}` : ""}`).join("\n"),
       setHeadline: (t, headline) =>
-        headline.length > 60 || /^\s*this is how i\b/i.test(headline)
+        // Ripple is NEVER on the cover (Keenan, 2026-10-13).
+        headline.length > 60 || /^\s*this is how i\b/i.test(headline) || /\bripple\b/i.test(headline)
           ? t
           : { ...t, headline, slug: slugify(headline) },
     },
@@ -350,12 +348,19 @@ async function generateSelfieTopicOnce(
     const jsonStr = lastJsonText(text);
     const parsed = JSON.parse(jsonStr);
 
-    const steps = (parsed.steps as string[]).filter(
-      (s) => typeof s === "string" && s.trim()
+    // Exactly 4 steps (2026-10-13 pain-story format: caused / recognized /
+    // result / now). Extra middle steps are dropped, keeping "now" last.
+    const keep = (n: number) =>
+      n <= 4 ? [...Array(n).keys()] : [0, 1, 2, n - 1];
+    const allSteps = (parsed.steps as unknown[]) ?? [];
+    const idx = keep(allSteps.length).filter(
+      (i) => typeof allSteps[i] === "string" && (allSteps[i] as string).trim()
     );
+    const steps = idx.map((i) => allSteps[i] as string);
     if (steps.length === 0) throw new Error("Selfie topic returned no steps");
 
-    const rawDetails = Array.isArray(parsed.details) ? parsed.details : [];
+    const rawDetailsAll = Array.isArray(parsed.details) ? parsed.details : [];
+    const rawDetails = idx.map((i) => rawDetailsAll[i]);
     const details = steps.map((_, i) =>
       typeof rawDetails[i] === "string" ? (rawDetails[i] as string).trim() : ""
     );
@@ -365,7 +370,8 @@ async function generateSelfieTopicOnce(
     // ONE selfie per slideshow (2026-08-28, per Keenan): the cover is
     // the only photo of her — every step slide is forced aesthetic,
     // whatever the model returned.
-    const rawShots = Array.isArray(parsed.stepShots) ? parsed.stepShots : [];
+    const rawShotsAll = Array.isArray(parsed.stepShots) ? parsed.stepShots : [];
+    const rawShots = idx.map((i) => rawShotsAll[i]);
     const stepShots = steps.map((_, i) => {
       const s = (rawShots[i] ?? {}) as { type?: unknown; scene?: unknown };
       const modelSaidMirror = s.type === "mirror";
