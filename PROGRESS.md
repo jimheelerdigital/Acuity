@@ -7,6 +7,38 @@
 
 ---
 
+## [2026-10-13] — Opus writes 5 options per post, nonsense is cut, Jev ranks on real results, weekly brief
+
+- **Requested by:** Keenan
+- **Committed by:** Claude Code
+- **Commit hash:** (see git log: "feat: Draft 5 options per post and rank them on real results")
+
+### In plain English (for Keenan)
+Every Ripple and Legendary Mythicals post is now picked from five complete options written by Opus. Any option that doesn't make plain sense or breaks a rule is thrown out. Jev ranks the rest, using a weekly brief of what has actually been working for us. Every Sunday you get that brief by email: top 10 and bottom 10 posts, what's trending in our niche, and whether Jev's picks are actually predicting results. If Jev turns out to be guessing, it switches itself off automatically. Jev's cover picker is off everywhere, and YouTube views are now tracked so they count for Mythicals.
+
+### Technical changes (for Jimmy)
+- **Win metric:** `performance-loop.ts` adds `BRAND_METRIC_WEIGHTS`.
+  - Ripple: comments .25, views .2, shares .2, saves .12, likes .1, watch .08, reach .05.
+  - Mythicals: views .3, follows .2, shares .15, comments .15, likes .1, saves .05, watch .05.
+  - BWK is unchanged.
+  - `scorePosts` now includes YouTube rows. Mythicals blends IG .5 / YT .4 / FB .1.
+- **YouTube stats:** new `fetchYoutubeStats` in `youtube-publish.ts` (videos.list statistics; `YOUTUBE_API_KEY` if set, else the brand OAuth token). New `fetch-youtube` step in `carousel-metrics-refresh.ts`, with an alert if 0 rows refresh.
+- **Weekly brief:** new `lib/content-factory/weekly-brief.ts` (`buildWeeklyBrief`, `readBriefBlock`, `briefEmailHtml`), stored at `briefs/<brand>.json`. New Inngest fn `weekly-brief` (`inngest/functions/weekly-brief.ts`, registered in `api/inngest/route.ts`): builds Sun 04:40 UTC, emails Sun 14:00 UTC, event `content-factory/weekly-brief`. Admin route actions: `weekly-brief`, `metrics-refresh`.
+- **Candidate pipeline:** new `lib/content-factory/candidate-pipeline.ts`. `rankCandidates()` = code rules → Opus plain-sense editor (fails closed, 60s) → Jev noul questions with the brief in state, falling back to an Opus pick. `CANDIDATE_WRITER_MODEL` (default `claude-opus-5-5`); `CANDIDATE_COUNT` (default 5).
+- **Ripple:** `generateSelfieTopic` drafts 5 in parallel (one pain branch each, cover styles mixed, 150s cap per draft). The writer gets the brief. Jev copy check is skipped via the new `humanizePass({ jev: false })`. The winner's Jev answers go in the recipe; toon posts now write a recipe too (`persona-toon`).
+- **Mythicals:** `choice-lane.ts` `generateChoiceTopicCandidates`. The existing Jev rule check (`choiceTopicProblems`) is the code rule: strict pass first, then a relaxed hard-rules-only pass. New `mythicSenseProblem` (Opus). `fixedTitle`, size and countdown keep the old single-draft path.
+- **Calibration:** new `lib/content-factory/candidate-calibration.ts`. Weekly Spearman of each Jev question vs the win score, weights move halfway per week. Kill rule: at ≥40 scored posts, a question with rho < 0.15 gets weight 0; if all are 0, `jevOff` and Opus ranks. Stored at `calibration/candidates-<brand>.json`.
+- **Pickers off:** `cover-picker.ts` `pickBestCover` is off everywhere (`COVER_PICKER=1` restores it). The Mythicals `chooseMythicCover` pre-pick is off (`MYTHIC_COVER_PICK=1` restores it).
+
+### Manual steps needed
+- [ ] If YouTube stats fail with 403 (upload-only OAuth scope), add a `YOUTUBE_API_KEY` env var in Vercel (Jimmy) and redeploy. The nightly refresh will email an alert if it fails.
+
+### Notes
+- Opus 5.5 is $4/$20 per MTok (Sonnet 5.5 $2/$10). Estimate: about $0.65 per post (5 drafts + 5 sense checks), about $3/day for 5 posts.
+- Ripple data is thin: 31 IG posts in 14 days, 4 comments, 0 shares, 0 saves. Early calibration will be noisy. The kill rule waits for 40 posts.
+- No Mythicals competitor accounts exist, so its brief is our own winners and losers plus the category scoreboard.
+- The sense check fails closed. If Opus is down, Ripple posts are held from auto-posting (still emailed), and a Mythicals run with no survivor throws (no post that hour).
+
 ## [2026-10-13] — Ripple selfie posts now tell her story of using Ripple
 
 - **Requested by:** Keenan

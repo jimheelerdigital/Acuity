@@ -165,6 +165,50 @@ export const carouselMetricsRefreshFn = inngest.createFunction(
     });
     logger.info(`[metrics-refresh] Facebook: ${fb.refreshed}/${fb.candidates}`);
 
+    // YouTube Shorts stats (2026-10-13): Mythicals' win metric counts
+    // YouTube views; nothing collected them before.
+    const yt = await step.run("fetch-youtube", async () => {
+      const { prisma } = await import("@/lib/prisma");
+      const { youtubeAccount, fetchYoutubeStats } = await import("@/lib/content-factory/youtube-publish");
+      const out = { candidates: 0, refreshed: 0, errors: [] as string[] };
+      const rows = await prisma.socialPublish.findMany({
+        where: {
+          platform: "youtube",
+          status: "POSTED",
+          externalId: { not: null },
+          postedAt: { gte: new Date(Date.now() - 60 * 86_400_000) },
+        },
+        select: { id: true, externalId: true, accountKey: true },
+      });
+      const byBrand = new Map<string, typeof rows>();
+      for (const r of rows) byBrand.set(r.accountKey, [...(byBrand.get(r.accountKey) ?? []), r]);
+      for (const [brand, list] of byBrand) {
+        const account = youtubeAccount(brand as Parameters<typeof youtubeAccount>[0]);
+        if (!account) continue;
+        out.candidates += list.length;
+        try {
+          const stats = await fetchYoutubeStats(account, list.map((r) => r.externalId!));
+          for (const r of list) {
+            const st = stats.get(r.externalId!);
+            if (!st) continue;
+            await prisma.socialPublish.update({
+              where: { id: r.id },
+              data: { views: st.views, likes: st.likes, comments: st.comments, metricsAt: new Date(), metricsError: null },
+            });
+            out.refreshed++;
+          }
+        } catch (err) {
+          const msg = err instanceof Error ? err.message : String(err);
+          out.errors.push(`${brand}: ${msg}`.slice(0, 300));
+          await prisma.socialPublish
+            .updateMany({ where: { id: { in: list.map((r) => r.id) } }, data: { metricsError: msg.slice(0, 500) } })
+            .catch(() => {});
+        }
+      }
+      return out;
+    });
+    logger.info(`[metrics-refresh] YouTube: ${yt.refreshed}/${yt.candidates}${yt.errors.length ? ` errors: ${yt.errors.join("; ")}` : ""}`);
+
     // One step per account — an Apify run-sync call can take minutes.
     // Full history on Sundays (UTC) or when requested ({ full: true }).
     const full =
@@ -189,6 +233,9 @@ export const carouselMetricsRefreshFn = inngest.createFunction(
       }
       if (fb.candidates > 0 && fb.refreshed === 0) {
         problems.push(`Facebook: 0 of ${fb.candidates} posts refreshed. Errors: ${fb.errors.join(" | ") || "none captured"}`);
+      }
+      if (yt.candidates > 0 && yt.refreshed === 0) {
+        problems.push(`YouTube: 0 of ${yt.candidates} Shorts refreshed. Errors: ${yt.errors.join(" | ") || "none captured"}`);
       }
       for (const t of tiktok) {
         if (t.error || t.fetched === 0) problems.push(`TikTok @${t.account}: ${t.error ?? "0 videos returned"}`);

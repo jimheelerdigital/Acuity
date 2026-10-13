@@ -232,6 +232,24 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ ok: true, queued: true });
     }
 
+    case "weekly-brief": {
+      // Rebuild the weekly "what's working" briefs now (2026-10-13); emails
+      // them unless { email: false }.
+      const { inngest } = await import("@/inngest/client");
+      await inngest.send({
+        name: "content-factory/weekly-brief",
+        data: { email: (body as { email?: boolean }).email !== false },
+      });
+      return NextResponse.json({ ok: true, queued: true });
+    }
+
+    case "metrics-refresh": {
+      // Pull platform metrics now (IG, FB, YouTube, TikTok) — 2026-10-13.
+      const { inngest } = await import("@/inngest/client");
+      await inngest.send({ name: "content-factory/metrics.refresh", data: {} });
+      return NextResponse.json({ ok: true, queued: true });
+    }
+
     case "generate-daily": {
       // Kick off a daily-bucket generation on demand (fresh topic, fresh
       // images). `bucket`: "memento-men" | "moody-men" | "watching" |

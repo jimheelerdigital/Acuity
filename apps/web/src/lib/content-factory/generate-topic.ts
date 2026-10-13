@@ -272,44 +272,77 @@ Before answering, read the cover and then each slide in order as a stranger woul
 export async function generateSelfieTopic(
   recentHeadlines: string[],
   feedback?: string | null,
-  /** Force a cover style (samples); omitted = 50/50. */
+  /** Force a cover style (samples); omitted = candidates mix both. */
   forceCoverStyle?: "statement" | "question",
   /** 3D cartoon version (2026-10-13): she acts out every slide. */
   toon = false
-): Promise<GeneratedSelfieTopic & { held?: string }> {
-  // No Jev best-of-5 cover pick on this lane (2026-10-13, per Keenan): its
-  // shorter rewrites swapped in "i missed my sister's birthday buying his
-  // mom's gift" (Jev rated it sense 0.81) and, earlier, a Ripple cover.
-  // The writer's own cover stands; the plain-sense check below judges it.
-  const first = await withHeadlineRetry({
-    label: "selfie-topic",
-    generate: (extra) => generateSelfieTopicOnce(recentHeadlines, feedback, extra, forceCoverStyle, toon),
-    headlineOf: (t) => t.headline,
-    reject: (t) =>
-      /^\s*this is how i\b/i.test(t.headline)
-        ? `\n\nREJECTED: your headline "${t.headline}" opens with "this is how i", which every past post used. Pick a different opener structure from the list.`
-        : /\bripple\b/i.test(t.headline)
-          ? `\n\nREJECTED: your headline "${t.headline}" names Ripple. The cover NEVER names Ripple (Keenan, 2026-10-13); it names her everyday pain. Ripple belongs on step 2.`
-          : null,
+): Promise<GeneratedSelfieTopic & { held?: string; jev?: Record<string, number> | null; rankedBy?: string; candidateLog?: string }> {
+  // CANDIDATE PIPELINE (2026-10-13, per Keenan: Opus drafts several posts,
+  // nonsense is cut, Jev ranks the rest on what the weekly brief says works).
+  // Replaces the single-draft + Jev cover-picker flow, whose rewrites
+  // shipped "i missed my sister's birthday buying his mom's gift".
+  const { CANDIDATE_COUNT, CANDIDATE_WRITER_MODEL, rankCandidates } = await import("./candidate-pipeline");
+  const { readBriefBlock } = await import("./weekly-brief");
+  const { recentHeadlinesPromptBlock, isRecentHeadline, nearDuplicateOf, noteHeadlineUsed } = await import(
+    "./headline-history"
+  );
+  const { copyFlagFor } = await import("./humanizer");
+  const { PAIN_BRANCH_STARTERS } = await import("@/lib/positioning");
+  const [brief, recentBlock] = await Promise.all([readBriefBlock("ripple"), recentHeadlinesPromptBlock()]);
+
+  // Each draft takes a different pain area so the candidates really differ.
+  const angles = [...PAIN_BRANCH_STARTERS]
+    .sort(() => Math.random() - 0.5)
+    .map((b) => `${b.name}: ${b.pain}`);
+  // Each draft gets 150s so drafting + sense checks fit the 300s step; a
+  // slow draft is dropped, not waited on.
+  const within = <T,>(p: Promise<T>, ms: number) =>
+    Promise.race([p, new Promise<never>((_, rej) => setTimeout(() => rej(new Error(`draft timed out after ${ms}ms`)), ms))]);
+  const settled = await Promise.allSettled(
+    Array.from({ length: CANDIDATE_COUNT }, (_, i) =>
+      within(generateSelfieTopicOnce(
+        recentHeadlines,
+        feedback,
+        recentBlock,
+        forceCoverStyle ?? (i % 2 === 0 ? "statement" : "question"),
+        toon,
+        { model: CANDIDATE_WRITER_MODEL, angle: angles[i % angles.length], brief }
+      ), 150_000)
+    )
+  );
+  const drafts = settled
+    .filter((r): r is PromiseFulfilledResult<GeneratedSelfieTopic> => r.status === "fulfilled")
+    .map((r) => r.value);
+  if (drafts.length === 0) {
+    const why = settled.find((r) => r.status === "rejected") as PromiseRejectedResult | undefined;
+    throw new Error(`[selfie] every candidate draft failed: ${why?.reason instanceof Error ? why.reason.message : why?.reason}`);
+  }
+
+  const ranked = await rankCandidates({
+    brand: "ripple",
+    label: toon ? "selfie-toon" : "selfie",
+    candidates: drafts,
+    render: (t) =>
+      `COVER: ${t.headline}\n${t.steps.map((st, i) => `${i + 2}. ${st}${t.details[i] ? ` (${t.details[i]})` : ""}`).join("\n")}${t.captionQuestion ? `\nCAPTION QUESTION: ${t.captionQuestion}` : ""}`,
+    reject: async (t) => {
+      if (/^\s*this is how i\b/i.test(t.headline)) return 'cover opens with "this is how i"';
+      if (/\bripple\b/i.test(t.headline)) return "cover names Ripple";
+      if (await isRecentHeadline(t.headline)) return "cover repeats a recent post";
+      const flagged = copyFlagFor(t.headline);
+      if (flagged) return flagged.trim().slice(0, 160);
+      const near = await nearDuplicateOf(t.headline);
+      return near ? `too close to recent cover "${near}"` : null;
+    },
+    senseCheck: plainSenseProblem,
   });
-  const problem1 = await plainSenseProblem(first);
-  if (!problem1) return first;
-  console.warn(`[selfie-sense] rejected "${first.headline}": ${problem1} — rewriting once`);
-  const second = await generateSelfieTopicOnce(
-    recentHeadlines,
-    feedback,
-    `\n\nREJECTED by the editor: ${problem1} Write a NEW post where the cover and every slide make plain sense on one read.`,
-    forceCoverStyle,
-    toon
-  ).catch(() => null);
-  if (!second) return { ...first, held: problem1 };
-  const problem2 =
-    (/\bripple\b/i.test(second.headline) ? "the cover names Ripple" : null) ??
-    (await plainSenseProblem(second));
-  if (!problem2) return second;
-  // Still unclear: never auto-post it (carousel-daily saves it held).
-  console.warn(`[selfie-sense] rewrite also rejected "${second.headline}": ${problem2} — holding from auto-post`);
-  return { ...second, held: problem2 };
+  const candidateLog = `${drafts.length} drafted; ${ranked ? `${ranked.survivors} survived, ranked by ${ranked.rankedBy}` : "none survived"}`;
+  if (!ranked) {
+    // Nothing passed: never auto-post (carousel-daily saves it held).
+    console.warn(`[selfie] no candidate passed the rules + sense check — holding from auto-post`);
+    return { ...drafts[0], held: "no candidate passed the plain-sense check", jev: null, rankedBy: "none", candidateLog };
+  }
+  noteHeadlineUsed(ranked.winner.headline);
+  return { ...ranked.winner, jev: ranked.jev, rankedBy: ranked.rankedBy, candidateLog };
 }
 
 /**
@@ -317,13 +350,15 @@ export async function generateSelfieTopic(
  * sister's birthday buying his mom's gift": "how are you not able to tell
  * that that doesn't make sense"). Opus reads the cover ALONE, then every
  * slide in order, as the reader would. Returns the problem, or null when
- * it reads clean. Fails open (null) on error.
+ * it reads clean. Fails CLOSED (2026-10-13, candidate pipeline): an error or
+ * a >60s answer cuts the candidate; if every candidate is cut, the post is
+ * emailed but held from auto-posting.
  */
 async function plainSenseProblem(t: GeneratedSelfieTopic): Promise<string | null> {
   const { prisma } = await import("@/lib/prisma");
   const start = Date.now();
   try {
-    const res = await anthropic.messages.create({
+    const res = await Promise.race([anthropic.messages.create({
       model: VISION_MODEL,
       max_tokens: 400,
       effort: "medium",
@@ -345,7 +380,7 @@ Return only JSON: {"ok": true} or {"ok": false, "problem": "which line fails and
             .join("\n")}`,
         },
       ],
-    });
+    }), new Promise<never>((_, rej) => setTimeout(() => rej(new Error("sense check timed out after 60s")), 60_000))]);
     void prisma.claudeCallLog
       .create({
         data: {
@@ -363,8 +398,9 @@ Return only JSON: {"ok": true} or {"ok": false, "problem": "which line fails and
     console.log(`[selfie-sense] "${t.headline}": ${parsed.ok ? "ok" : `FAIL ${parsed.problem}`}`);
     return parsed.ok === false ? (parsed.problem ?? "a line doesn't make plain sense") : null;
   } catch (err) {
-    console.warn(`[selfie-sense] check failed open:`, err instanceof Error ? err.message : err);
-    return null;
+    const msg = err instanceof Error ? err.message : String(err);
+    console.warn(`[selfie-sense] check errored — cutting this candidate: ${msg}`);
+    return `sense check unavailable (${msg.slice(0, 80)})`;
   }
 }
 
@@ -373,9 +409,12 @@ async function generateSelfieTopicOnce(
   feedback: string | null | undefined,
   extra: string,
   forceCoverStyle?: "statement" | "question",
-  toon = false
+  toon = false,
+  /** Candidate drafting (2026-10-13): Opus, a pain angle, the weekly brief. */
+  draft: { model?: string; angle?: string; brief?: string } = {}
 ): Promise<GeneratedSelfieTopic> {
   const { prisma } = await import("@/lib/prisma");
+  const writerModel = draft.model ?? MODEL;
 
   const avoidList =
     recentHeadlines.length > 0
@@ -396,7 +435,9 @@ async function generateSelfieTopicOnce(
   const toonBlock = toon
     ? `\n\nTHIS POST IS A 3D ANIMATED CARTOON (Pixar-style film look), NOT photos. It OVERRIDES THE SHOTS rules: there is no mirror selfie and her face is visible and expressive. "cover.scene" shows her, the animated heroine, in a real everyday place physically living the cover's pain (buried in requests at the kitchen island, three kids and a partner calling her name). Every "stepShots" scene ALSO shows her, acting out that slide's line with her body, face and hands, in a different place each time. Set every "type" to "aesthetic" anyway. "motion" is what SHE does in the clip (she slumps, she laughs, she sets the phone down and exhales, she sips coffee with her eyes closed), expressive like an animated film. Phone screens stay dark. Still no text anywhere.`
     : "";
-  const userPrompt = `Write one new first-person selfie slideshow post.\n\nTHIS POST'S COVER STYLE: ${coverStyle}${toonBlock}${avoidList}${feedback ?? ""}${extra}\n\nReturn ONLY valid JSON, no other text.`;
+  const angleBlock = draft.angle ? `\n\nTHIS DRAFT'S PAIN AREA (other drafts take other areas, so stay in this one): ${draft.angle}` : "";
+  const briefBlock = draft.brief ? `\n\n${draft.brief}` : "";
+  const userPrompt = `Write one new first-person selfie slideshow post.\n\nTHIS POST'S COVER STYLE: ${coverStyle}${angleBlock}${toonBlock}${briefBlock}${avoidList}${feedback ?? ""}${extra}\n\nReturn ONLY valid JSON, no other text.`;
 
   // Reddit audience pulse (2026-09-17) — soft, angle inspiration only.
   let pulse = "";
@@ -410,7 +451,7 @@ async function generateSelfieTopicOnce(
   const start = Date.now();
   try {
     const response = await anthropic.messages.create({
-      model: MODEL,
+      model: writerModel,
       max_tokens: 2000,
       // HUMAN_VOICE_RULES (2026-09-04): prevention layer — the full
       // humanizer gate still runs on the output below.
@@ -421,13 +462,14 @@ async function generateSelfieTopicOnce(
     const durationMs = Date.now() - start;
     const tokensIn = response.usage.input_tokens;
     const tokensOut = response.usage.output_tokens;
+    // Opus 5.5 is ~2x Sonnet 5.5 per token.
     const costCents = Math.ceil(
-      (tokensIn * INPUT_COST_PER_TOKEN + tokensOut * OUTPUT_COST_PER_TOKEN) * 100
+      (tokensIn * INPUT_COST_PER_TOKEN + tokensOut * OUTPUT_COST_PER_TOKEN) * 100 * (writerModel.includes("opus") ? 2 : 1)
     );
     await prisma.claudeCallLog.create({
       data: {
         purpose: "selfie-topic-generation",
-        model: MODEL,
+        model: writerModel,
         tokensIn,
         tokensOut,
         costCents,
@@ -504,6 +546,8 @@ async function generateSelfieTopicOnce(
         : undefined;
     try {
       const gated = await humanizePass({
+        // Opus plain-sense editor replaces Jev's copy check here (2026-10-13).
+        jev: false,
         purpose: "humanize:selfie-topic",
         voice: extractVoice(SELFIE_SYSTEM_PROMPT),
         payload: {
@@ -567,7 +611,7 @@ async function generateSelfieTopicOnce(
     await prisma.claudeCallLog.create({
       data: {
         purpose: "selfie-topic-generation",
-        model: MODEL,
+        model: writerModel,
         tokensIn: 0,
         tokensOut: 0,
         costCents: 0,

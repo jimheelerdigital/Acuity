@@ -71,6 +71,7 @@ import { voicedScriptDailyFn, voicedClipsFn, voicedBuildFn } from "@/inngest/fun
 import { storyboardTestFn } from "@/inngest/functions/storyboard-test";
 import { scoreboardRefreshFn, performanceReportFn } from "@/inngest/functions/performance-loop";
 import { carouselDailyDigestFn } from "@/inngest/functions/carousel-daily-digest";
+import { weeklyBriefFn } from "@/inngest/functions/weekly-brief";
 import { carouselAmbientVideoFn } from "@/inngest/functions/carousel-ambient-video";
 import { carouselQuoteLoopFn } from "@/inngest/functions/carousel-quote-loop";
 import { carouselMetricsRefreshFn } from "@/inngest/functions/carousel-metrics-refresh";
@@ -164,6 +165,7 @@ const handler = serve({
     scoreboardRefreshFn,
     performanceReportFn,
     carouselDailyDigestFn,
+    weeklyBriefFn,
     carouselAmbientVideoFn,
     carouselQuoteLoopFn,
     carouselMetricsRefreshFn,

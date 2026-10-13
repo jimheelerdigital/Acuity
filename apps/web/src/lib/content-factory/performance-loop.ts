@@ -259,6 +259,18 @@ export const METRIC_WEIGHTS: Record<MetricKey, number> = {
   likes: 0.03,
   profileVisits: 0.02,
 };
+/**
+ * Per-brand WIN METRICS (2026-10-13, per Keenan: Ripple = engagement per
+ * view, Mythicals = YouTube views + IG follows, "but factor in likes,
+ * shares, comments, and views"). Every brand's scoreboard, bandit, weekly
+ * brief and Jev calibration learn from this score. BWK keeps METRIC_WEIGHTS.
+ */
+export const BRAND_METRIC_WEIGHTS: Record<LoopBrand, Record<MetricKey, number>> = {
+  ripple: { comments: 0.25, views: 0.2, shares: 0.2, saves: 0.12, likes: 0.1, avgWatchMs: 0.08, reach: 0.05, follows: 0, profileVisits: 0 },
+  mythicals: { views: 0.3, follows: 0.2, shares: 0.15, comments: 0.15, likes: 0.1, saves: 0.05, avgWatchMs: 0.05, reach: 0, profileVisits: 0 },
+  bwk: METRIC_WEIGHTS,
+};
+
 /** One viral outlier shouldn't own the scoreboard. */
 const RATIO_CAP = 10;
 const MAX_AGE_MS = 30 * 86_400_000;
@@ -279,15 +291,19 @@ function median(xs: number[]): number {
  * row, renormalized by the weights used. +1 smoothing keeps zero-median
  * metrics (shares, follows) from exploding. 1.0 ≈ a typical post.
  */
-export function scorePlatform(m: Metrics, baseline: Record<MetricKey, number>): number | null {
+export function scorePlatform(
+  m: Metrics,
+  baseline: Record<MetricKey, number>,
+  weights: Record<MetricKey, number> = METRIC_WEIGHTS
+): number | null {
   let num = 0;
   let den = 0;
-  for (const k of Object.keys(METRIC_WEIGHTS) as MetricKey[]) {
+  for (const k of Object.keys(weights) as MetricKey[]) {
     const v = m[k];
-    if (v == null) continue;
+    if (v == null || !weights[k]) continue;
     const ratio = Math.min(RATIO_CAP, (v + 1) / ((baseline[k] ?? 0) + 1));
-    num += METRIC_WEIGHTS[k] * ratio;
-    den += METRIC_WEIGHTS[k];
+    num += weights[k] * ratio;
+    den += weights[k];
   }
   // Require an anchor (views or reach): likes+comments alone (Facebook
   // without read_insights) is too thin to rank on.
@@ -326,7 +342,8 @@ export async function scorePosts(opts: { minAgeHours?: number; allLanes?: boolea
     where: {
       status: "POSTED",
       accountKey: { in: ["ripple", "bwk", "mythicals"] },
-      platform: { in: ["instagram", "facebook"] },
+      // YouTube (2026-10-13): part of Mythicals' win metric.
+      platform: { in: ["instagram", "facebook", "youtube"] },
       postedAt: { gte: new Date(now - MAX_AGE_MS - BASELINE_DAYS * 86_400_000) },
     },
     select: {
@@ -369,25 +386,34 @@ export async function scorePosts(opts: { minAgeHours?: number; allLanes?: boolea
     return b;
   };
 
-  const byPost = new Map<string, { ig?: (typeof rows)[number]; fb?: (typeof rows)[number] }>();
+  const byPost = new Map<string, { ig?: (typeof rows)[number]; fb?: (typeof rows)[number]; yt?: (typeof rows)[number] }>();
   for (const r of rows) {
     const lane = r.carouselPost.lane ?? "";
     if ((!opts.allLanes && !LOOP_LANES[lane]) || !old(r) || now - r.postedAt!.getTime() > MAX_AGE_MS) continue;
     const e = byPost.get(r.carouselPostId) ?? {};
     if (r.platform === "instagram") e.ig = r;
+    else if (r.platform === "youtube") e.yt = r;
     else e.fb = r;
     byPost.set(r.carouselPostId, e);
   }
 
   const out: ScoredPost[] = [];
   for (const [postId, e] of byPost) {
-    const any = (e.ig ?? e.fb)!;
+    const any = (e.ig ?? e.fb ?? e.yt)!;
     const lane = any.carouselPost.lane ?? "";
     const loopBrand = LOOP_LANES[lane];
     const brand = loopBrand ?? (any.accountKey as LoopBrand);
-    const ig = e.ig ? scorePlatform(e.ig, baselineFor(brand, "instagram")) : null;
-    const fb = e.fb ? scorePlatform(e.fb, baselineFor(brand, "facebook")) : null;
-    const score = ig != null && fb != null ? 0.7 * ig + 0.3 * fb : ig ?? fb;
+    const w = BRAND_METRIC_WEIGHTS[brand] ?? METRIC_WEIGHTS;
+    const ig = e.ig ? scorePlatform(e.ig, baselineFor(brand, "instagram"), w) : null;
+    const fb = e.fb ? scorePlatform(e.fb, baselineFor(brand, "facebook"), w) : null;
+    const yt = e.yt ? scorePlatform(e.yt, baselineFor(brand, "youtube"), w) : null;
+    // Blend whatever platforms have numbers. Mythicals: YouTube views are
+    // half its win metric; Ripple/BWK: Instagram leads, Facebook 30%.
+    const parts: [number | null, number][] =
+      brand === "mythicals" ? [[ig, 0.5], [yt, 0.4], [fb, 0.1]] : [[ig, 0.7], [fb, 0.3], [yt, 0.2]];
+    const have = parts.filter(([v]) => v != null) as [number, number][];
+    const wsum = have.reduce((a, [, x]) => a + x, 0);
+    const score = have.length ? have.reduce((a, [v, x]) => a + v * x, 0) / wsum : null;
     if (score == null) continue;
     const recipe = loopBrand ? await readRecipe(postId) : null;
     out.push({
@@ -401,7 +427,7 @@ export async function scorePosts(opts: { minAgeHours?: number; allLanes?: boolea
       source: recipe?.researchSeed ? "research" : "own",
       title: any.carouselPost.headline,
       score: Math.round(score * 1000) / 1000,
-      views: e.ig?.views ?? null,
+      views: (e.ig?.views ?? 0) + (e.yt?.views ?? 0) || null,
       permalink: e.ig?.permalink ?? e.fb?.permalink ?? null,
       postedAt: any.postedAt!.toISOString(),
     });

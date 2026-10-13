@@ -279,3 +279,36 @@ export async function refreshShortMetadata(
   }
   return { metadata, thumbnail };
 }
+
+/**
+ * Public stats for posted Shorts (2026-10-13, per Keenan: Mythicals' win
+ * metric counts YouTube views). videos.list part=statistics, 50 ids a call
+ * (1 quota unit each). Uses YOUTUBE_API_KEY when set (public stats need no
+ * OAuth), else the brand's OAuth token (needs a youtube/readonly scope; an
+ * upload-only token gets 403, reported per row by the caller).
+ */
+export async function fetchYoutubeStats(
+  account: YoutubeAccount,
+  videoIds: string[]
+): Promise<Map<string, { views: number; likes: number; comments: number }>> {
+  const out = new Map<string, { views: number; likes: number; comments: number }>();
+  const key = process.env.YOUTUBE_API_KEY?.trim();
+  const token = key ? null : await accessToken(account);
+  for (let i = 0; i < videoIds.length; i += 50) {
+    const ids = videoIds.slice(i, i + 50).join(",");
+    const url = `https://www.googleapis.com/youtube/v3/videos?part=statistics&id=${encodeURIComponent(ids)}${key ? `&key=${key}` : ""}`;
+    const res = await fetch(url, token ? { headers: { Authorization: `Bearer ${token}` } } : undefined);
+    if (!res.ok) throw new Error(`YouTube stats HTTP ${res.status}: ${(await res.text().catch(() => "")).slice(0, 200)}`);
+    const json = (await res.json()) as {
+      items?: { id: string; statistics?: { viewCount?: string; likeCount?: string; commentCount?: string } }[];
+    };
+    for (const it of json.items ?? []) {
+      out.set(it.id, {
+        views: Number(it.statistics?.viewCount ?? 0),
+        likes: Number(it.statistics?.likeCount ?? 0),
+        comments: Number(it.statistics?.commentCount ?? 0),
+      });
+    }
+  }
+  return out;
+}

@@ -370,6 +370,9 @@ const COUNTDOWN_RULES = `THIS POST IS A "TOP 5" COUNTDOWN: five entries ranked f
 Everything else in the format above still applies.`;
 
 type ChoiceTopicOpts = {
+  /** Candidate drafting (2026-10-13): writer model + weekly brief block. */
+  model?: string;
+  brief?: string;
   /** "duo" = who-are-you-and-your-bro; "place" = where you two are going;
    *  "know" = if you know him/her; "scenario" = story setup + choice. */
   mode?: "choice" | "duo" | "place" | "know" | "scenario" | "size" | "versus" | "countdown";
@@ -401,6 +404,10 @@ type ChoiceTopicOpts = {
  * the first draft, and a failed rewrite ships the first draft.
  */
 export async function generateChoiceTopic(opts: ChoiceTopicOpts): Promise<ChoiceTopic> {
+  // Candidate pipeline (2026-10-13, per Keenan): Opus drafts several posts,
+  // the rules + Opus sense editor cut, Jev ranks. Hand-titled posts and the
+  // fixed-shape series (size, countdown) keep the single-draft path.
+  if (!opts.fixedTitle && opts.mode !== "size" && opts.mode !== "countdown") return generateChoiceTopicCandidates(opts);
   const topic = await generateChoiceTopicChecked(opts);
   if (opts.fixedTitle) {
     let title = opts.fixedTitle.trim().toUpperCase();
@@ -414,6 +421,97 @@ export async function generateChoiceTopic(opts: ChoiceTopicOpts): Promise<Choice
   }
   // The size series and countdowns keep their fixed-shape titles (no best-of-5 cover).
   return opts.mode === "size" || opts.mode === "countdown" ? topic : withBestTitle(topic, opts.mode ?? "choice");
+}
+
+async function generateChoiceTopicCandidates(opts: ChoiceTopicOpts): Promise<ChoiceTopic> {
+  const { CANDIDATE_COUNT, CANDIDATE_WRITER_MODEL, rankCandidates } = await import("./candidate-pipeline");
+  const { readBriefBlock } = await import("./weekly-brief");
+  const brief = await readBriefBlock("mythicals");
+  const within = <T,>(p: Promise<T>, ms: number) =>
+    Promise.race([p, new Promise<never>((_, rej) => setTimeout(() => rej(new Error(`draft timed out after ${ms}ms`)), ms))]);
+  const settled = await Promise.allSettled(
+    Array.from({ length: CANDIDATE_COUNT }, () =>
+      within(generateChoiceTopicOnce({ ...opts, model: CANDIDATE_WRITER_MODEL, brief }), 150_000)
+    )
+  );
+  const drafts = settled
+    .filter((r): r is PromiseFulfilledResult<ChoiceTopic> => r.status === "fulfilled")
+    .map((r) => r.value);
+  if (drafts.length === 0) {
+    const why = settled.find((r) => r.status === "rejected") as PromiseRejectedResult | undefined;
+    throw new Error(`[choice-lane] every candidate draft failed: ${why?.reason instanceof Error ? why.reason.message : why?.reason}`);
+  }
+  // Each check runs once per draft; the relaxed second pass reuses them.
+  const problems = new Map<ChoiceTopic, Promise<string[]>>();
+  const problemsOf = (t: ChoiceTopic) => {
+    if (!problems.has(t)) problems.set(t, choiceTopicProblems(t).catch(() => []));
+    return problems.get(t)!;
+  };
+  const sense = new Map<ChoiceTopic, Promise<string | null>>();
+  const senseOf = (t: ChoiceTopic) => {
+    if (!sense.has(t)) sense.set(t, mythicSenseProblem(t));
+    return sense.get(t)!;
+  };
+  const render = (t: ChoiceTopic) =>
+    `COVER: ${t.title}\n${t.options.map((o, i) => `${i + 1}. ${o.name}: ${o.lore}`).join("\n")}`;
+  const label = `mythic-${opts.mode ?? "choice"}`;
+  // Strict: no problems at all. Relaxed: only Keenan's hard rules.
+  const strict = await rankCandidates({
+    brand: "mythicals",
+    label,
+    candidates: drafts,
+    render,
+    reject: async (t) => ((await problemsOf(t)).join("; ") || null),
+    senseCheck: senseOf,
+  });
+  const ranked =
+    strict ??
+    (await rankCandidates({
+      brand: "mythicals",
+      label: `${label}-relaxed`,
+      candidates: drafts,
+      render,
+      reject: async (t) => ((await problemsOf(t)).filter((p) => HARD_PROBLEM_ALL.test(p)).join("; ") || null),
+      senseCheck: senseOf,
+    }));
+  if (!ranked) throw new Error(`[choice-lane] no candidate passed the hard rules and the sense check (${drafts.length} drafted)`);
+  console.log(`[choice-lane] "${ranked.winner.title}" won (${ranked.rankedBy}, ${ranked.survivors}/${drafts.length} survived${strict ? "" : ", relaxed pass"})`);
+  return { ...ranked.winner, ...(ranked.jev ? { jev: ranked.jev } : {}) };
+}
+
+/**
+ * Opus plain-sense editor for Mythicals (2026-10-13): reads the cover and
+ * the options the way a fan scrolling would. Fails closed like Ripple's.
+ */
+async function mythicSenseProblem(t: ChoiceTopic): Promise<string | null> {
+  const { VISION_MODEL, lastJsonText, messageText } = await import("./claude-client");
+  try {
+    const res = await Promise.race([
+      contentAnthropic.messages.create({
+        model: VISION_MODEL,
+        max_tokens: 400,
+        effort: "medium",
+        system: `You are a blunt, strict editor for a fantasy Instagram/YouTube account. The reader is a fantasy fan scrolling fast. Decide whether this "which would you choose" post makes plain sense on ONE read. When in doubt, fail it.
+
+FAIL if ANY of these is true:
+- The cover question isn't a plain, natural question or instruction a fan instantly understands (fragments, stitched-on phrases, riddles fail).
+- An option's name doesn't instantly tell a fan what it is, or it isn't the kind of thing the question asks for.
+- The options don't belong together as answers to that one question.
+- Any line is garbled or reads like a robot.
+
+Return only JSON: {"ok": true} or {"ok": false, "problem": "which line fails and why, one sentence"}`,
+        messages: [{ role: "user", content: `COVER: ${t.title}\nOPTIONS:\n${t.options.map((o, i) => `${i + 1}. ${o.name}: ${o.lore}`).join("\n")}` }],
+      }),
+      new Promise<never>((_, rej) => setTimeout(() => rej(new Error("sense check timed out after 60s")), 60_000)),
+    ]);
+    const parsed = JSON.parse(lastJsonText(messageText(res))) as { ok?: boolean; problem?: string };
+    console.log(`[mythic-sense] "${t.title}": ${parsed.ok ? "ok" : `FAIL ${parsed.problem}`}`);
+    return parsed.ok === false ? (parsed.problem ?? "a line doesn't make plain sense") : null;
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    console.warn(`[mythic-sense] check errored — cutting this candidate: ${msg}`);
+    return `sense check unavailable (${msg.slice(0, 80)})`;
+  }
 }
 
 /** The size series' title for part N. */
@@ -695,6 +793,7 @@ async function generateChoiceTopicOnce(opts: ChoiceTopicOpts): Promise<ChoiceTop
     opts.recentNames.length
       ? `Options used recently (pick different creatures and fighters):\n${opts.recentNames.slice(0, 60).join(", ")}`
       : "",
+    opts.brief ?? "",
     opts.feedback ?? "",
     optionCount(opts) !== 5
       ? `OPTION COUNT FOR THIS POST: exactly ${optionCount(opts)} options, not five. Everywhere the rules say five, use ${optionCount(opts)}.`
@@ -704,6 +803,7 @@ async function generateChoiceTopicOnce(opts: ChoiceTopicOpts): Promise<ChoiceTop
     .join("\n\n");
 
   const response = await contentAnthropic.messages.create({
+    ...(opts.model ? { model: opts.model } : {}),
     max_tokens: 2500,
     system: `${SYSTEM}${
       opts.mode === "duo"

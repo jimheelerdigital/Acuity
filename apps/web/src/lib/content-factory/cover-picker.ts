@@ -287,9 +287,18 @@ export async function scoreCovers(input: {
  * Best-of-5 cover pick. Returns the winning headline (possibly the
  * original) and the scored table, or null to keep the original as-is.
  */
+/**
+ * OFF everywhere (2026-10-13, per Keenan: "turn off jev picker"). Its
+ * shorter rewrites shipped nonsense ("i missed my sister's birthday buying
+ * his mom's gift") and Mythicals covers came back all-INELIGIBLE. Writers'
+ * covers stand; candidate ranking (candidate-pipeline.ts) replaced it.
+ * COVER_PICKER=1 turns it back on.
+ */
+const COVER_PICKER_ON = process.env.COVER_PICKER === "1";
+
 export async function pickBestCover(input: PickBestCoverInput): Promise<PickBestCoverResult | null> {
   try {
-    if (!jevEnabled() || !input.current.trim()) return null;
+    if (!COVER_PICKER_ON || !jevEnabled() || !input.current.trim()) return null;
     const t0 = Date.now();
     const raw = await writeAlternatives(input);
     if (!raw) return null;

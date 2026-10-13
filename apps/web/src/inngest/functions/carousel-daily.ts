@@ -1184,7 +1184,10 @@ export const carouselDailyCronFn = inngest.createFunction(
           const recentCatsLoop = await recentLoopCategories(laneKey, 3);
           const pickCat = pl.chooseCategory(board, choiceMode, catalog, recentCatsLoop);
           category = pickCat.arm;
-          const cover = choiceMode === "size" || choiceMode === "countdown" || forcedTopic ? null : await pl.chooseMythicCover({
+          // Jev cover-question pick OFF (2026-10-13, per Keenan: "turn off jev
+          // picker"): each of the 5 candidate drafts now writes its own cover,
+          // and the candidate ranking chooses. MYTHIC_COVER_PICK=1 restores it.
+          const cover = choiceMode === "size" || choiceMode === "countdown" || forcedTopic || process.env.MYTHIC_COVER_PICK !== "1" ? null : await pl.chooseMythicCover({
             postType: choiceMode,
             category,
             recentTitles: recent.map((p) => p.headline),
@@ -1491,7 +1494,7 @@ export const carouselDailyCronFn = inngest.createFunction(
 
       const slug = selfie.slug;
       logger.info(
-        `[carousel-cron] Selfie topic: "${selfie.headline}" (${selfie.steps.length} steps)`
+        `[carousel-cron] Selfie topic (${selfieStyle}): "${selfie.headline}" (${selfie.steps.length} steps) — ${selfie.candidateLog ?? ""}${selfie.held ? ` HELD: ${selfie.held}` : ""}`
       );
       if (dryRun) return saveDryRun(bucket, selfie);
 
@@ -1827,9 +1830,9 @@ export const carouselDailyCronFn = inngest.createFunction(
         });
 
         // Variant recipe for the performance loop (2026-10-12).
-        // Cartoon posts skip the recipe too: the photo-persona bandit
-        // shouldn't learn from them.
-        if (!sample && !toon) try {
+        // Cartoon posts record "persona-toon" (ignored by the photo-persona
+        // bandit) so Jev calibration and the brief still see them.
+        if (!sample) try {
           const { writeRecipe } = await import("@/lib/content-factory/performance-loop");
           await writeRecipe({
             postId: post.id,
@@ -1842,6 +1845,8 @@ export const carouselDailyCronFn = inngest.createFunction(
             coverScene: selfie.coverScene,
             generatedFor: today.toISOString().slice(0, 10),
             slotHourUtc: new Date().getUTCHours(),
+            // Winner's Jev answers (candidate-calibration.ts).
+            ...(selfie.jev ? { jev: selfie.jev } : {}),
           });
         } catch (err) {
           console.warn("[carousel-cron] selfie recipe write failed:", err instanceof Error ? err.message : err);

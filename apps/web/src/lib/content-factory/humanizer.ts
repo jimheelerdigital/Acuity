@@ -136,6 +136,8 @@ export function stripDashes(s: string): string {
 }
 
 export async function humanizePass<T>(opts: {
+  /** false skips Jev's nonsense check (lanes with the Opus sense editor). */
+  jev?: boolean;
   /** ClaudeCallLog purpose, e.g. "humanize:moody-topic". */
   purpose: string;
   /** The lane's VOICE line (context for the check). */
@@ -155,7 +157,7 @@ export async function humanizePass<T>(opts: {
     );
   }
 
-  try {
+  if (opts.jev !== false) try {
     const { askJev, noulOf } = await import("./jev");
     const r = await askJev(
       opts.purpose.replace(/^humanize:/, "copy-check:"),
