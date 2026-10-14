@@ -7,6 +7,26 @@
 
 ---
 
+## [2026-10-14] — First UGC creator added with a tracking link
+
+- **Requested by:** Keenan
+- **Committed by:** Claude Code
+- **Commit hash:** (see git log: "docs: Log the first UGC creator's tracking link")
+
+### In plain English (for Keenan)
+Our first hired UGC creator, @therapyandthingss, has their own tracking link, goripple.io/u/therapyandthings. Every signup through it is credited to them. The link was emailed to Keenan.
+
+### Technical changes (for Jimmy)
+- Prod data only: new `UgcCreator` row (platform instagram, handle `therapyandthingss`, source manual, status `deal`, `trackingCode` `therapyandthings`) plus a `UgcStatusEvent` (→ deal, by keenan).
+- The link redirects to `/start?utm_source=ugc&utm_medium=creator&utm_campaign=ugc-therapyandthings` (existing `/u/[code]` route). Verified 302.
+
+### Manual steps needed
+None
+
+### Notes
+- Added directly instead of via `manualAdd`, because that fires `ugc/discover.requested` (scoring/outreach) and starts at `found`; a hired creator should never get automated outreach.
+- Platform is assumed to be Instagram. If they're on TikTok, change `platform` and `profileUrl` on the row; the link itself doesn't depend on it.
+
 ## [2026-10-14] — Mythicals: 5 covers → Jev picks → 3 scripts → Jev picks; never drop a post over a creature
 
 - **Requested by:** Keenan
