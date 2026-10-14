@@ -7,6 +7,33 @@
 
 ---
 
+## [2026-10-14] — Subscriptions added to the dashboard's overhead costs
+
+- **Requested by:** Keenan
+- **Committed by:** Claude Code
+- **Commit hash:** (see git log: "docs: Log subscriptions added to dashboard overhead costs")
+
+### In plain English (for Keenan)
+The Business tab in the admin dashboard now counts our monthly tool and subscription bills (hosting, database, email, AI tools, content tools, company admin) as overhead: about $1,802 a month. Before this, the overhead list was empty, so costs and margin looked better than they really were.
+
+### Technical changes (for Jimmy)
+- Data only, no code or schema change: inserted 22 `InfrastructureCost` rows (effectiveAt 2026-10-01, expiresAt null). The table was empty before.
+- Amounts come from the Chase Ink statement (08/24–09/23, cards 2301 + 2319) and card activity through 10/14. Usage-billed lines use the latest bill (Vercel $303.94, Supabase $92.48) or an estimate:
+  - Higgsfield top-ups: ~$560/mo
+  - Anthropic API: ~$210/mo, the auto-reload pace minus what `ClaudeCallLog` already logs. October to date: ~$150 of reloads vs $51.83 logged.
+- Left out:
+  - Meta ads: they belong in `MetaSpend`
+  - HighLevel (agency), Hinge (looks personal), Typesafe AI (unknown), a one-off PayPal payment
+
+### Manual steps needed
+- [ ] Update the card at every merchant in the "Where to update the card" email (Keenan / Jimmy)
+- [ ] Enter Meta ad spend in the Ads tab, or automate it. `MetaSpend` is empty, so Business tab totals have no ad spend (Keenan / Jimmy)
+
+### Notes
+- `ClaudeCallLog` misses most Anthropic spend. The user-facing pipeline calls (`lib/pipeline.ts`, `lib/memory.ts`, etc.) don't log anything. Logging them would make the API estimate row unnecessary.
+- The ChatGPT plan dropped from $212.50 (Aug) to $106.25 (Sep).
+- fal.ai is still billing $10.66 even though it's unused.
+
 ## [2026-10-14] — Ripple text sits straight on the photo (no box, no haze)
 
 - **Requested by:** Keenan
