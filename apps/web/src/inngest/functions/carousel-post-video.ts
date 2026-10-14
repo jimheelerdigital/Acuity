@@ -506,11 +506,9 @@ export const carouselPostVideoFn = inngest.createFunction(
     const clipSec = (i: number) =>
       soundOn
         ? Math.min(KLING3_MAX_SEC, Math.max(3, Math.ceil(slideSec(i))))
-        : // Selfie slides run 4.5-8s: 10s clips play near real speed instead
-          // of a 5s clip slowed to fill the slide (2026-10-13).
-          plan.lane === "selfie" || plan.lane === "ripple-list"
-          ? 10
-          : LIVING_CLIP_SEC;
+        : // Ripple slides are 4.5-6s (2026-10-13): 5s clips play at about real
+          // speed (a 10s clip would be sped up to fit a 6s slide).
+          LIVING_CLIP_SEC;
 
     // ── 2. Base frame (+ rebuilt layer) per animated slide ───────────
     const prepared: Record<number, { baseUrl: string; layerUrl: string; prompt: string }> = {};

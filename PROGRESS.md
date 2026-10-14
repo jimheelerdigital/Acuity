@@ -26,7 +26,8 @@ The weekly brief now teaches the writers mostly HOW our winning posts were writt
   - 2 exploit drafts (area `theme: <winning theme>`) + 3 explore drafts. Explore areas come from `LIST_AREAS` via `chooseArm` on the brief's area stats (~25% exploration).
   - Cooldown: a draft in the last post's area is rejected. The mental-load ban applies to explore drafts only.
 - `generate-topic.ts` (selfie): the same split. Exploit drafts use winning themes; explore drafts use pain branches.
-- `performance-loop.ts`: `PostRecipe` adds `area` / `draftKind`. `carousel-daily.ts` records them (list + selfie) and passes `lastArea`.
+- `performance-loop.ts`: `PostRecipe` adds `area` / `draftKind`.
+- **Slide timing (Keenan):** Ripple selfie + list posts have a 4.5s cover and 6s slides (`postVideoSlideSeconds`). Clips go back to 5s (`LIVING_CLIP_SEC`) because a 10s clip would be sped up to fill 6s. That also halves Ripple Kling cost. `carousel-daily.ts` records them (list + selfie) and passes `lastArea`.
 
 ### Manual steps needed
 None
