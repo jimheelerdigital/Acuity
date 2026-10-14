@@ -71,31 +71,26 @@ export function parseChoiceLaneSpec(raw: unknown): ChoiceLaneSpec | null {
  * a day's three posts land in different families. The model writes fresh
  * wording each time; these are subjects, not titles.
  */
+// 2026-10-13 rebalance (per Keenan: "let's also get back to not just posting
+// legendary creatures ... all of our original posts had the best prompts by
+// far"): 10-02..10-12 added "colossal" beast categories until beasts were 12
+// of 20 and the bandit locked onto dragons. Keenan's list is back in
+// (armor, who guards your back, which creature is you, which mage, war
+// mount, which queen), and the extra colossal-beast / hatchling categories
+// are out.
 export const CHOICE_CATEGORIES = [
-  "a beast to ride as your mount (winged, armored, clawed, serpentine, spectral)",
+  "which war-mount carries you into battle (winged, armored, clawed, serpentine; each with its rider's saddle and battle gear)",
   "which dragon the reader is (each dragon a temperament: storm, ember, frost, shadow, verdant, abyssal, celestial)",
-  "a legendary armored hero to fight beside them (dragon knight, rune-armored valkyrie, titan-slayer, demon-hunter, storm paladin, each in sick mythic armor with a legendary weapon)",
-  "a guardian creature to protect their home",
-  "a companion beast that follows them into the unknown",
-  "a creature of the sea or deep to command",
-  "a colossal mythical alpha to lead their pack (dire wolf the size of a house, Fenrir-kin, Nemean lion, nine-tailed beast; never an ordinary wolf, lion or big cat)",
-  "a colossal sky-beast to summon (phoenix, thunderbird, roc, storm dragon; never an ordinary bird)",
-  "a beast from world mythology to have on their side (kitsune, qilin, griffin, kraken, fenrir, simurgh, thunderbird and more)",
-  "an armored war-mount for battle",
-  "a mythical creature that matches their personality",
-  // 2026-09-30: catalog widened from Keenan's reference account
-  // (the_mage_page_, doing very well with these shapes).
+  "who guards your back in battle: a legendary warrior to fight beside you (dragon knight, rune-armored valkyrie, titan-slayer, demon-hunter, storm paladin, each in sick mythic armor with a legendary weapon)",
+  "which mythical creature is you (a mythical creature that matches your personality)",
+  "which mage you are (a battle mage, a storm sorcerer, a rune-scribe, a frost witch, a druid of the old wood, a shadow warlock; each in striking robes or armor with a staff, tome or blade; magic shown only as softly glowing runes, never bursts or auras)",
+  "which queen you'd choose to follow (a warrior queen in battle plate, a dragon queen, an ice queen of the north, a sea queen, an elven queen of the wood; regal, crowned, in an epic throne room or on a battlefield)",
   "legendary armor to wear into battle",
   "a legendary weapon to wield",
   "a war helm to wear",
-  "a mythical companion to raise from a hatchling",
-  "a colossal war beast to command in battle",
-  // 2026-09-30, per Keenan: "add 'which superpower would you pick' and
-  // 'which weapon would you choose' as options too".
-  // "which superpower" removed 2026-10-08 (Keenan: "FIVE POWERS, ONE TITAN"
-  // came out as five look-alike warriors and "talks about 'five powers' and
-  // then lists off characters"); powers can't be shown without the magic
-  // effects that are now banned.
+  "a guardian creature to protect their home",
+  "a companion beast that follows them into the unknown",
+  "a beast from world mythology to have on their side (kitsune, qilin, griffin, kraken, fenrir, simurgh, thunderbird and more)",
   "which weapon would you choose (each a legendary weapon with its own power and story)",
   // 2026-10-07, per Keenan (veyra_lore's "ONLY ONE WEAPON WILL OBEY YOU.
   // WHICH ONE WOULD YOU TRUST?"): "you can also do weapons like this where
@@ -120,7 +115,7 @@ YOUR JOB: write one "which would you choose?" post.
   - "scene": one or two sentences describing the image for this option: the creature or fighter as the clear hero, its colors, silhouette, pose, and a setting that matches it. The five scenes must look completely different from each other (different element, color palette, silhouette, environment and time of day), so the choice is visual as well as written.
   - "motion": one sentence for its clip: the subject's NATURAL movement at real speed while the CAMERA STAYS STILL (2026-10-12, per Keenan: "I don't want the camera moving. I want the people or weapons or beasts having slight movement. natural movement of warriors or bladework or dragons breathing fire or beasts running/walking"). Examples: a warrior shifts his stance and turns the blade so it catches the light; a knight draws a sword and settles into guard; a dragon breathes slowly then turns its head and breathes fire; a dire wolf walks forward through the snow; a war beast runs across the plain; a griffin folds and resettles its wings. VARIETY (2026-10-08; 2026-10-12, per Keenan: "each scene should have independent movements", "variety is crucial"): every option does a DIFFERENT movement from the cover and from every other option, and AT MOST TWO of the five breathe. A breathing dragon fires a long jet of fire (or ice for an ice dragon) from between its open jaws in the direction they point, never pouring down its own chest. The scene lives around it: wind in the cloak and mane, drifting embers or snow, rolling clouds, moving water. Vary setting, time of day and weather from option to option. Armor and weapons may have softly pulsing runes that blend in; no other magic effects (no auras, ghostfire, crawling lightning, energy glows).
 - The five options must be genuinely different kinds of choice (a loyal one, a wild one, a patient one, a terrifying one, a wise one), so that picking one says something about the person picking. All five should be tempting; none is the obvious joke or throwaway.
-- "coverScene": ONE cover style only (2026-10-11, per Keenan: "our most viewed videos have the best covers... someone looking at five different options"; the three top covers, "WHICH ANCIENT DRAGON CHOOSES YOU?" 23.5K, "WHICH PAIR OF WEAPONS ARE YOU AND YOUR BRO?" 20.2K, "WHICH GUARDIAN STANDS BETWEEN THE ARMY AND YOUR HOME?" 6.7K, all use it). A lone hooded or armored figure seen from BEHIND, small to mid-size in the lower foreground, stands facing FIVE options lined up in a row in front of them, each glowing a DIFFERENT vivid color (e.g. red, blue, green, gold, violet), in a dark, misty, epic setting: five dragon eggs, five legendary weapons standing upright, five pillars of colored light, five armor stands, five sealed gates or doorways each leaking colored light. Use two figures side by side when the question is about a pair ("you and your bro"). The five read clearly as five separate glowing choices, but they are shown as shapes, silhouettes or closed versions, not fully revealed in clear light (the first full reveal is slide 2). Never a hidden giant, a lone silhouette in fog or a single creature as the cover.
+- "coverScene": the cover picture, in the COVER STYLE named in the user message (2026-10-13, per Keenan: "our covers are getting way too similar every single time. mix in some of the older style covers"). Whatever the style, the five options are never fully revealed on the cover (the first full reveal is slide 2), and it is never a hidden giant, a lone silhouette in fog, or a single creature filling the frame.
 - "coverMotion": one sentence of building ANTICIPATION for the cover's clip with the CAMERA STILL (2026-10-12, per Keenan): only things in the scene move: a hero's cloak stirs as he steps closer, mist rolls, the five glows pulse one after another, a shadow passes over the scene. The five stay unrevealed to the last frame.
 - "endCard": the closing line, 2-6 words, ALL-CAPS ready, asking for their pick. Vary it every post ("WHICH ONE IS YOURS?", "COMMENT YOUR NUMBER.", "CHOOSE WISELY.", "ONE CHANCE. PICK."); never reuse a recent end card.
 - "captionQuestion": one short caption question that gets a pick AND a reason in the comments ("Which one, and what would you name it?").
@@ -136,7 +131,11 @@ PROVEN WINNERS (2026-10-08, per Keenan: "our best posts with animation have been
 - "ONE EGG. FIVE POSSIBLE DRAGONS. WHICH HATCHES TONIGHT?"
 - "IF YOU KNOW HIM, WHICH LEGENDARY WEAPON IS HIS?"
 - "PICK YOUR ARMOR TO SURVIVE A DRAGON'S BREATH"
-What they share: a personal one-of-five choice framed as identity or destiny ("chooses you", "are you bonding to", "is his"); the subjects are DRAGONS (most of them) or LEGENDARY GEAR (armor, war helms, weapons); five clearly different, gorgeous options, one per slide. Lean toward these subjects and this framing.
+- "WHICH MYTHICAL CREATURE IS YOU?"
+- "WHICH WAR-MOUNT CARRIES YOU TO BATTLE?"
+- "WHO GUARDS YOUR BACK IN BATTLE?"
+- "THE LAST QUEST PAID OUT. YOU RETIRE TODAY. PICK YOUR NEW LIFE."
+What they share: a personal one-of-five choice framed as identity or destiny ("chooses you", "is you", "carries you", "guards your back"); five clearly different, gorgeous options, one per slide. The SUBJECT changes post to post (2026-10-13, per Keenan): dragons and beasts, but just as often armor, helms, weapons, mages, queens, war mounts, companions in battle and new lives. Use the subject you're given; don't drift back to dragons.
 
 TITLE STYLE (2026-10-06, per Keenan, after "ONE ARMOR TO SURVIVE A DRAGON'S BREATH. IF YOU KNOW HIM, WHICH?": "this makes no sense and sounds horrible... just ask the reader what they'd pick"):
 - The title is a plain, natural question or instruction TO THE READER, the way a person would actually say it out loud. Read it aloud: if it sounds odd, rewrite it.
@@ -146,15 +145,15 @@ TITLE STYLE (2026-10-06, per Keenan, after "ONE ARMOR TO SURVIVE A DRAGON'S BREA
 
 EPIC, NEVER ORDINARY (2026-10-02, per Keenan: "focus more on beasts and weapons and mythical creatures and sick armor... the cooler concept, the better. size also matters"):
 - Every creature is a MYTHICAL beast: dragons, wyverns, krakens, griffins, chimeras, hydras, basilisks, titans, phoenixes, and colossal legendary versions of animals. Never a real-world animal (no jaguars, dogs, wolves, lions, horses, tortoises, ordinary birds), even with a fancy name, unless it is unmistakably mythical: huge, armored, elemental or many-headed.
-- Every creature is BIG: colossal, towering, dwarfing the people and places around it. Say its scale in the scene.
+- Creatures are big and imposing in their pictures, but DON'T put "colossal" in the title (2026-10-13: it had crept into nearly every title).
 - EVERY DRAGON HAS WINGS (2026-10-04, per Keenan): dragons, wyrms, drakes and wyverns always have big, clearly visible wings, and their scenes say so. No wingless serpent dragons or lizard-like dragons.
 - NO HUMAN FACES ON CREATURES (2026-10-04, per Keenan, after "The Bronze Lamassu" with a bearded man's face): no lamassu, sphinxes, manticores, centaurs, harpies, nagas or sirens, and no man-like faces on any beast. A creature's face is fully animal, reptilian or monstrous.
-- Every hero is a legendary, larger-than-life warrior in sick mythic armor with a legendary weapon: dragon knights, titan-slayers, rune-armored valkyries, demon hunters. Never an ordinary person, a job or a quiet life (no fishers, cartographers, archivists, innkeepers).
+- Every hero is legendary and larger-than-life: warriors in sick mythic armor (dragon knights, titan-slayers, rune-armored valkyries), mages in striking robes with staffs and runes, warrior and dragon queens. Never an ordinary person or job (no fishers, cartographers, archivists, innkeepers), EXCEPT in a retirement / new-life post, where the five options are vivid, legendary fantasy LIVES.
 - Weapons and armor are legendary and striking: forged from dragon bone, storm-forged, glowing runes, ornate and intimidating.
 - ABILITIES, TONED DOWN (2026-10-06, per Keenan: "dragons can be normal full fire/ice bursts depending on the dragon type, but everything else is toned down. pulsing runes are ok as long as they blend properly. it's more so the magic stuff"): dragons breathe full fire or ice to match their type; armor and weapons may have softly pulsing runes that blend into the material; everything else stays natural. No magic effects: no auras, ghostfire, crawling lightning, energy glows or sparkles. Everything blends perfectly into the scene's light, color and materials ("everything just needs to blend perfectly"). The design, scale and setting make it epic, not effects.
-- RELATABLE TO FANTASY FANS (2026-10-07, per Keenan: "most love dragons, cool beasts, etc. anything they can identify with"): lean on what fans already love and picture themselves with: dragons and cool beasts (dire wolves, griffins, phoenixes, krakens), cool weapons (a great sword, a war axe, a dragon-bone bow) and cool characters (a dragon knight, a valkyrie, a ranger, a dark warlord). Make each option instantly recognizable from its name and picture; a cool twist on a familiar thing beats an obscure invented one. Names stay plain and readable ("The Frost Dragon", "The Knight's Greatsword"), not stacks of made-up words.
+- RELATABLE TO FANTASY FANS (2026-10-07, per Keenan: "most love dragons, cool beasts, etc. anything they can identify with"): lean on what fans already love and picture themselves with: dragons and cool beasts (dire wolves, griffins, phoenixes, krakens), cool weapons (a great sword, a war axe, a dragon-bone bow) and cool characters (a dragon knight, a valkyrie, a ranger, a dark warlord, a battle mage, a warrior queen). Make each option instantly recognizable from its name and picture; a cool twist on a familiar thing beats an obscure invented one. Names stay plain and readable ("The Frost Dragon", "The Knight's Greatsword"), not stacks of made-up words.
 - BEASTS NEVER USE WEAPONS (2026-10-05, per Keenan: "it's a god damn beast, it can't use a sword"): a creature never holds, swings or wields a sword, axe, spear or any weapon. Only a humanoid hero or warrior may hold a weapon, and they may swing and strike with it (full motion since 2026-10-12).
-- No places, towns, inns, taverns or "new lives" as options.
+- No places, towns, inns or taverns as options, unless this post's subject is a new life or retirement (then each option is a legendary fantasy life, shown as its gorgeous place).
 - STANDALONE WEAPONS: when this post's subject says the weapons are standalone, every option scene shows ONLY the weapon, alone and unheld (on an altar, pedestal or anvil, driven into stone, or hung upright), standing vertical or on a steep diagonal and whole in the frame, lit dramatically in its own setting, with no person, hand, wielder or creature anywhere. The cover may show several weapons waiting on altars in one dark hall, like an armory or cathedral. A title in the spirit of "ONLY ONE WEAPON WILL OBEY YOU. WHICH ONE WOULD YOU TRUST?" fits; write new words.
 
 OUTPUT (JSON):
@@ -256,13 +255,13 @@ Everything else in the format above still applies.`;
  * LEGENDARY ITEM." The setup is the hook.
  */
 export const SCENARIO_CATEGORIES = [
+  "the last quest paid out. you retire today: choose your new life (five vivid fantasy lives: a lighthouse keeper on a dragon coast, a mountain hold above the clouds, a tavern at the crossroads of kingdoms, a ranger's lodge in the old forest, a ship captain on the sunlit sea)",
+  "the royal tournament begins: which event do you enter",
   "you cleared the dungeon: choose your legendary weapon",
   "you slew the dragon: choose your armor forged from its scales",
-  "they attack at dawn: choose your legendary weapon",
-  "you've reached the final boss: choose your weapon",
-  "a dragon egg hatches for you: choose your dragon",
-  "the realm is falling: choose the colossal beast you ride into battle",
+  "they attack at dawn: who guards your back",
   "the gods offer you one set of armor: which one",
+  "the dragon is dead and the treasury is yours: take one relic",
   "you enter the beast's lair: choose the mythical creature that fights beside you",
 ];
 
@@ -514,6 +513,24 @@ Return only JSON: {"ok": true} or {"ok": false, "problem": "which line fails and
   }
 }
 
+/**
+ * Cover looks, rotated per draft (2026-10-13, per Keenan: covers "way too
+ * similar every single time. mix in some of the older style covers from
+ * those prior original posts"). LINEUP is the 10-11 single style; MOMENT and
+ * HALL are the original 9-29..10-05 covers (a figure at the armory gate, on
+ * a cliff above the army, at a crossroads with treasure; an empty throne
+ * room, a dragon-skull helm hall).
+ */
+export const MYTHIC_COVER_STYLES = [
+  "THE LINEUP: a lone hooded or armored figure seen from BEHIND, small to mid-size in the lower foreground, facing FIVE options lined up in a row, each glowing a different vivid color (five weapons upright, five armor stands, five sealed gates leaking colored light, five pillars of light) in a dark, misty, epic setting. Two figures side by side when the question is about a pair.",
+  "THE MOMENT: a cinematic scene of the exact moment the question puts the reader in, with a lone figure (two for a pair) seen from behind, small to mid-size in the frame, standing in a place that IS the question: at the open gate of an armory with war-mounts and an army beyond, on a cliff edge above a burning valley and an army camp, walking down a torch-lit hall lined with armor, at a misty crossroads beside an open treasure chest, entering a vast throne room. The five options themselves are not shown. Golden-hour, storm or torch light, epic scale.",
+  "THE HALL: the place where the choice waits, with NO person in it: a grand vaulted armory, a throne room with empty thrones in shadow, a dragon-skull war helm on a pedestal at the end of a hall of statues, a dark stable of shadowed war-mounts, a candlelit library of sealed tomes, a tournament arena at dawn with banners. Cinematic light, deep perspective, epic scale, the choice implied but not revealed.",
+] as const;
+
+function pickCoverStyle(): string {
+  return MYTHIC_COVER_STYLES[Math.floor(Math.random() * MYTHIC_COVER_STYLES.length)];
+}
+
 /** The size series' title for part N. */
 export function sizeSeriesTitle(part: number): string {
   return `HOW BIG WOULD THEY REALLY BE? PART ${part}`;
@@ -635,10 +652,12 @@ async function choiceTopicProblems(topic: ChoiceTopic): Promise<string[]> {
     };
     questions[`epic_${i}`] = {
       type: "noul",
-      instructions: `Is \`options[${i}]\` an epic, mythical concept: a colossal mythical beast, a legendary weapon, legendary armor, or a larger-than-life legendary armored hero?`,
+      // Widened 2026-10-13 (per Keenan: back to the original variety): mages,
+      // queens and, in retirement posts, legendary fantasy lives count.
+      instructions: `Is \`options[${i}]\` an epic, mythical concept: a mythical beast, a legendary weapon, legendary armor, a larger-than-life legendary hero (warrior, mage or queen), or, when \`question\` is about retiring or a new life, a vivid legendary fantasy life?`,
       criteria: {
         true: "Yes: mythical and epic, the kind of thing a fantasy fan finds sick",
-        false: "No: a real-world animal, an ordinary person or job, a place, or everyday life",
+        false: "No: a real-world animal, an ordinary person or job, or plain everyday life",
       },
     };
     // 2026-10-04 (Keenan, after "Bogmire the Patient" in "ONE EGG. FIVE
@@ -676,7 +695,7 @@ async function choiceTopicProblems(topic: ChoiceTopic): Promise<string[]> {
     };
     questions[`relate_${i}`] = {
       type: "score",
-      instructions: `How instantly would a typical fantasy fan recognize \`options[${i}]\` and connect with it, without needing any lore explained? Fans love dragons and cool beasts (dire wolves, griffins, phoenixes, krakens), cool weapons (a great sword, a war axe, a dragon-bone bow) and cool characters (a dragon knight, a valkyrie, a ranger, a dark warlord): things they already know and picture themselves with.`,
+      instructions: `How instantly would a typical fantasy fan recognize \`options[${i}]\` and connect with it, without needing any lore explained? Fans love dragons and cool beasts (dire wolves, griffins, phoenixes, krakens), cool weapons (a great sword, a war axe, a dragon-bone bow) and cool characters (a dragon knight, a valkyrie, a ranger, a dark warlord, a battle mage, a warrior queen): things they already know and picture themselves with.`,
       criteria: [
         "Not at all: an obscure or invented thing they'd need explained",
         "A little: recognizable, but nothing they feel drawn to",
@@ -783,8 +802,11 @@ function optionCount(opts: ChoiceTopicOpts): number {
 async function generateChoiceTopicOnce(opts: ChoiceTopicOpts): Promise<ChoiceTopic> {
   const { prisma } = await import("@/lib/prisma");
   const start = Date.now();
+  const coverStyle =
+    opts.mode === "size" || opts.mode === "countdown" ? "" : `COVER STYLE FOR THIS POST: ${pickCoverStyle()}`;
   const user = [
     `This post's subject: ${opts.category}.`,
+    coverStyle,
     opts.mode === "size" ? `Series title for this post (use it exactly): "${sizeSeriesTitle(opts.part ?? 1)}".` : "",
     opts.theme ? `Lane notes: ${opts.theme}` : "",
     opts.recentTitles.length

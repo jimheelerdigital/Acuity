@@ -1256,7 +1256,8 @@ export const carouselDailyCronFn = inngest.createFunction(
         // Text goes where it covers the least of the subject (2026-10-06).
         const { chooseTextPlacement } = await import("@/lib/content-factory/text-placement");
         const place = await chooseTextPlacement(raw, topic.coverScene);
-        const overlay = await renderChoiceOverlay({ top: topic.title, topSize: 66, place });
+        // Smaller type (2026-10-13, per Keenan: "make the text smaller on the page"): 66 → 52.
+        const overlay = await renderChoiceOverlay({ top: topic.title, topSize: 52, place });
         const { imageUrl, rawImageUrl } = await uploadOverlaySlide(
           raw,
           overlay,
@@ -1315,7 +1316,8 @@ export const carouselDailyCronFn = inngest.createFunction(
             // where it covers the least of the subject.
             const { chooseTextPlacement } = await import("@/lib/content-factory/text-placement");
             const place = await chooseTextPlacement(raw, `${o.name}: ${o.scene}`);
-            const overlay = await renderChoiceOverlay({ top: label, topSize: 44, place });
+            // Smaller type (2026-10-13): 44 → 36.
+            const overlay = await renderChoiceOverlay({ top: label, topSize: 36, place });
             const { imageUrl, rawImageUrl } = await uploadOverlaySlide(
               raw,
               overlay,

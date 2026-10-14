@@ -7,6 +7,35 @@
 
 ---
 
+## [2026-10-13] — Mythicals: back to the original variety, varied covers, smaller text
+
+- **Requested by:** Keenan
+- **Committed by:** Claude Code
+- **Commit hash:** (see git log: "content: Bring back Mythicals variety and varied covers")
+
+### In plain English (for Keenan)
+Mythicals posts stop being "which colossal beast…" every time. They rotate again through what made the original posts work: legendary armor, who guards your back in battle, which mythical creature is you, which mage are you, which war mount carries you, which queen you'd follow, "the last quest paid out, pick your new life", tournaments and relics, alongside dragons and weapons. Covers rotate between three looks, including the original cinematic scenes, instead of the same five glowing pillars. The text on the slides is smaller.
+
+### Technical changes (for Jimmy)
+- `lib/content-factory/choice-lane.ts`:
+  - `CHOICE_CATEGORIES` rebalanced: added which-mage, which-queen, who-guards-your-back, war-mount, which-creature-is-you; removed the three "colossal" beast categories, sea-deep and hatchling (eggs were already banned).
+  - `SCENARIO_CATEGORIES`: added retire/new life, royal tournament, dragon-treasury relic and dawn-attack/who guards your back; removed the egg and colossal-beast scenarios.
+  - Writer rules: "colossal" is banned from titles; mages and queens are allowed as heroes; new lives/places are allowed only in retirement posts; PROVEN WINNERS adds the original variety titles and drops "lean toward dragons".
+  - Cover: replaced the 10-11 "ONE cover style only" with `MYTHIC_COVER_STYLES` (LINEUP / MOMENT / HALL), one picked at random per draft.
+  - Jev `epic` question widened (mages, queens, fantasy lives); `relate` question and writer guidance add battle mage / warrior queen.
+- `inngest/functions/carousel-daily.ts`: Mythicals cover title size 66 → 52, option names 44 → 36.
+
+### Manual steps needed
+None
+
+### Notes
+- What overcorrected:
+  - 10-02 "EPIC ONLY / every creature colossal / no places or new lives" plus the Jev `epic` check made mages, queens and new-life posts fail as "ordinary".
+  - 10-11 forced a single cover style.
+  - 10-07 relatability and the PROVEN WINNERS list pushed dragons.
+  - The category bandit then locked onto the dragon winners.
+- The bandit still excludes categories used in the last 3 days, so the 14-item catalog rotates.
+
 ## [2026-10-13] — YouTube: hand-posting for two weeks (no API uploads)
 
 - **Requested by:** Keenan
