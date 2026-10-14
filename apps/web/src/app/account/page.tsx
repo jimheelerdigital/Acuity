@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { redirect } from "next/navigation";
 
 import { getAuthOptions } from "@/lib/auth";
+import { canManageWebSubscription } from "@/lib/billing/web-manage";
 import { entitlementsFor } from "@/lib/entitlements";
 
 import AccountClient from "./account-client";
@@ -45,6 +46,7 @@ export default async function AccountPage({
       notificationDays: true,
       notificationsEnabled: true,
       subscriptionStatus: true,
+      subscriptionSource: true,
       stripeCustomerId: true,
       stripeCurrentPeriodEnd: true,
       trialEndsAt: true,
@@ -140,7 +142,15 @@ export default async function AccountPage({
         notificationDays={user?.notificationDays ?? [0, 1, 2, 3, 4, 5, 6]}
         notificationsEnabled={user?.notificationsEnabled ?? false}
         subscriptionStatus={user?.subscriptionStatus ?? "FREE"}
-        hasStripeCustomer={Boolean(user?.stripeCustomerId)}
+        hasStripeCustomer={
+          user
+            ? canManageWebSubscription({
+                stripeCustomerId: user.stripeCustomerId,
+                subscriptionSource: user.subscriptionSource,
+                subscriptionStatus: user.subscriptionStatus,
+              })
+            : false
+        }
         periodEnd={user?.stripeCurrentPeriodEnd?.toISOString() ?? null}
         trialEndsAt={user?.trialEndsAt?.toISOString() ?? null}
         trialExpiredAt={user?.trialExpiredAt?.toISOString() ?? null}

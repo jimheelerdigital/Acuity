@@ -23,6 +23,7 @@
  */
 
 import { loadStripeJs } from "@/lib/stripe-embedded";
+import { isRcWebBillingEnabled, startRcWebPurchase } from "@/lib/revenuecat/web-billing-client";
 import { consumeTestArrival } from "@/lib/funnel-split-shared";
 import { MoodAvatar } from "@/components/mood-avatar";
 import { FunnelEntryIntro } from "@/components/funnel-entry-intro";
@@ -335,6 +336,20 @@ export function FunnelV9({ brand = "ripple", adMatch }: { brand?: V9Brand; adMat
   }, [ready, stepId, track]);
 
   const go = useCallback((id: string) => setStepId(id), []);
+  // RevenueCat Web Billing completes in-page (no Stripe redirect / session_id),
+  // so it lands here instead of in the ?payment=success branch above. Same
+  // events, same destination. Fired only after the server confirmed the
+  // entitlement with RevenueCat (/api/revenuecat/web-checkout/confirm).
+  const onPaid = useCallback(
+    (p: Plan) => {
+      setPaid(true);
+      track("funnel_payment_completed", p);
+      fireFbq("StartTrial", { value: planValueDollars(p), currency: "USD", predicted_ltv: planValueDollars("yearly") });
+      fireFbq("Purchase", { value: planValueDollars(p), currency: "USD", content_name: "Ripple Pro Subscription" });
+      setStepId("download");
+    },
+    [track]
+  );
   const next = useCallback(() => {
     const i = C.steps.findIndex((s) => s.id === stepId);
     if (i >= 0 && i < C.steps.length - 1) setStepId(C.steps[i + 1].id);
@@ -407,6 +422,7 @@ export function FunnelV9({ brand = "ripple", adMatch }: { brand?: V9Brand; adMat
           next={next}
           go={go}
           track={track}
+          onPaid={onPaid}
         />
       </main>
     </div>
@@ -427,6 +443,8 @@ type ViewProps = {
   next: () => void;
   go: (id: string) => void;
   track: (event: string, value?: string) => void;
+  /** RevenueCat Web Billing purchase confirmed in-page (no redirect). */
+  onPaid: (p: Plan) => void;
 };
 
 function StepView(p: ViewProps) {
@@ -1726,11 +1744,62 @@ function Radio({ on }: { on: boolean }) {
   );
 }
 
-function CheckoutScreen({ plan, go, track }: ViewProps) {
+function CheckoutScreen({ plan, go, track, onPaid }: ViewProps) {
   const C = useV9();
   const mountRef = useRef<HTMLDivElement>(null);
   const [state, setState] = useState<"loading" | "ready" | "fallback" | "error">("loading");
   const [err, setErr] = useState<string | null>(null);
+  const rcBilling = isRcWebBillingEnabled();
+  // Bumped by "Try again" to re-run the RevenueCat checkout effect.
+  const [rcAttempt, setRcAttempt] = useState(0);
+
+  // ── RevenueCat Web Billing (NEXT_PUBLIC_RC_WEB_BILLING=1) ──
+  // RevenueCat's checkout renders into mountRef; the Stripe effect below
+  // stands down. Server picks the offering (default → v2 prices + 1-week
+  // trial), so the "$0 today" card above stays true.
+  useEffect(() => {
+    if (!rcBilling) return;
+    let destroyed = false;
+    setState("loading");
+    (async () => {
+      const outcome = await startRcWebPurchase({
+        surface: "funnel",
+        interval: plan,
+        htmlTarget: mountRef.current ?? undefined,
+        onCheckoutShown: () => {
+          if (destroyed) return;
+          setState("ready");
+          track("funnel_checkout_started", `${plan}|rc`);
+          fireFbq("InitiateCheckout", { content_name: "Start Free Trial", currency: "USD", value: planValueDollars(plan) });
+        },
+      });
+      if (destroyed) return;
+      switch (outcome.status) {
+        case "purchased":
+          onPaid(plan);
+          return;
+        case "cancelled":
+          go("paywall");
+          return;
+        case "unauthorized":
+          setErr("Your session ended. Enter your email again to continue.");
+          setState("error");
+          return;
+        case "consent_required":
+          // Funnel surface never requires the upgrade-page acknowledgement.
+          setErr("Checkout failed. Try again.");
+          setState("error");
+          return;
+        default:
+          track("funnel_checkout_embed_failed", `rc:${outcome.message.slice(0, 110)}`);
+          setErr(outcome.message);
+          setState("error");
+      }
+    })();
+    return () => {
+      destroyed = true;
+    };
+  }, [rcBilling, rcAttempt, plan, go, track, onPaid]);
 
   const hosted = useCallback(async () => {
     const res = await fetch("/api/onboarding/create-checkout", {
@@ -1749,6 +1818,7 @@ function CheckoutScreen({ plan, go, track }: ViewProps) {
   }, [plan, track]);
 
   useEffect(() => {
+    if (rcBilling) return;
     let destroyed = false;
     let instance: { destroy: () => void } | null = null;
     const pk = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY;
@@ -1791,7 +1861,7 @@ function CheckoutScreen({ plan, go, track }: ViewProps) {
       destroyed = true;
       instance?.destroy();
     };
-  }, [plan, hosted, track]);
+  }, [rcBilling, plan, hosted, track]);
 
   return (
     <div className="enter">
@@ -1814,14 +1884,14 @@ function CheckoutScreen({ plan, go, track }: ViewProps) {
       {state === "error" && (
         <div className="card rounded-3xl p-5 text-center">
           <p className="text-[15px] text-acuity-bad">{err}</p>
-          <button onClick={() => (err?.includes("session") ? go("email") : hosted())} className="mt-4 rounded-full grad px-6 py-3 text-white font-semibold">
+          <button onClick={() => (err?.includes("session") ? go("email") : rcBilling ? setRcAttempt((n) => n + 1) : hosted())} className="mt-4 rounded-full grad px-6 py-3 text-white font-semibold">
             {err?.includes("session") ? "Continue" : "Try again"}
           </button>
         </div>
       )}
       <div ref={mountRef} className="rounded-3xl overflow-hidden" />
       <p className="mt-4 flex items-center justify-center gap-1.5 text-[12px] text-acuity-text-ter">
-        <Lock className="h-3.5 w-3.5" /> Secure checkout by Stripe. Cancel any time.
+        <Lock className="h-3.5 w-3.5" /> {rcBilling ? "Secure checkout. Cancel any time." : "Secure checkout by Stripe. Cancel any time."}
       </p>
     </div>
   );

@@ -184,13 +184,17 @@ export async function DELETE(
 
   // Cancel any active subscription before the purge (incident 2026-06-13 —
   // same source-aware, id→customer→email resolution as the self-delete path).
+  const { cancelRcBillingSubscriptions } = await import(
+    "@/lib/revenuecat/web-billing-admin"
+  );
   const stripeCancellationStatus = await cancelSubscriptionOnDelete(stripe, {
+    id: target.id,
     email: target.email,
     subscriptionStatus: target.subscriptionStatus,
     subscriptionSource: target.subscriptionSource,
     stripeSubscriptionId: target.stripeSubscriptionId,
     stripeCustomerId: target.stripeCustomerId,
-  });
+  }, { rcCancel: cancelRcBillingSubscriptions });
 
   try {
     const { canonicalizeEmail } = await import("@/lib/bootstrap-user");

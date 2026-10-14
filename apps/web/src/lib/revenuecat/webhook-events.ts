@@ -83,6 +83,12 @@ export interface RcWebhookEvent {
   new_product_id?: string | null;
   transferred_from?: string[] | null;
   transferred_to?: string[] | null;
+  /** Offering the purchase was made from (null when unknown). */
+  presented_offering_id?: string | null;
+  /** RevenueCat Billing only: metadata we passed to purchases-js purchase(). */
+  metadata?: Record<string, string | null> | null;
+  /** RENEWAL only: the previous period was a free trial. */
+  is_trial_conversion?: boolean | null;
 }
 
 export interface RcWebhookBody {

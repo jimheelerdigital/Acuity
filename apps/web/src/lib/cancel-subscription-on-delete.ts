@@ -20,6 +20,13 @@ import type Stripe from "stripe";
  * server-side — the delete-account UI warns the user to cancel in iOS / Play
  * settings. We return "not_applicable" for those.
  *
+ * RevenueCat Web Billing (2026-10-14): those subscribers are stripe-sourced
+ * but have NO local Stripe ids — RevenueCat bills them, not Stripe
+ * Subscriptions. When the row has that shape and the caller passes
+ * `rcCancel`, we also cancel through RevenueCat. (Production check on
+ * 2026-10-14: every live stripe-sourced row has a stripeCustomerId, so this
+ * shape does not catch existing Stripe subscribers.)
+ *
  * NEVER throws: the user's right to delete trumps our ability to cancel
  * cleanly. All Stripe errors are caught and surfaced as "failed" so the
  * caller can record an audit trail and proceed with the purge.
@@ -28,6 +35,8 @@ import type Stripe from "stripe";
 export type CancellationStatus = "success" | "failed" | "not_applicable";
 
 export type DeletionUser = {
+  /** App user id — RevenueCat's customer id. Needed for the RC path. */
+  id?: string;
   email: string;
   subscriptionStatus: string;
   subscriptionSource: string | null;
@@ -40,13 +49,49 @@ const BILLABLE_STATUS = new Set(["TRIAL", "PRO", "PAST_DUE"]);
 // Stripe subscription.status values that are still live (would bill).
 const LIVE_SUB_STATUS = new Set(["trialing", "active", "past_due", "unpaid"]);
 
+export type RcCancelFn = (appUserId: string) => Promise<CancellationStatus>;
+
+/** Live stripe-sourced row with no local Stripe ids = RevenueCat Web Billing. */
+export function looksLikeRcWebBilling(user: DeletionUser): boolean {
+  return (
+    BILLABLE_STATUS.has(user.subscriptionStatus) &&
+    user.subscriptionSource === "stripe" &&
+    !user.stripeSubscriptionId &&
+    !user.stripeCustomerId
+  );
+}
+
 export async function cancelSubscriptionOnDelete(
   stripe: Stripe,
-  user: DeletionUser
+  user: DeletionUser,
+  opts: { rcCancel?: RcCancelFn } = {}
 ): Promise<CancellationStatus> {
   // No live plan → nothing to cancel.
   if (!BILLABLE_STATUS.has(user.subscriptionStatus)) return "not_applicable";
 
+  // RevenueCat Web Billing subscriber → cancel through RevenueCat. Still run
+  // the Stripe email sweep afterwards (it's a no-op for them) so a row that
+  // merely LOOKS like this can't skip a real Stripe cancel.
+  if (looksLikeRcWebBilling(user) && user.id && opts.rcCancel) {
+    let rc: CancellationStatus = "failed";
+    try {
+      rc = await opts.rcCancel(user.id);
+    } catch {
+      rc = "failed";
+    }
+    const stripeResult = await cancelStripe(stripe, user);
+    if (rc === "failed" || stripeResult === "failed") return "failed";
+    if (rc === "success" || stripeResult === "success") return "success";
+    return "not_applicable";
+  }
+
+  return cancelStripe(stripe, user);
+}
+
+async function cancelStripe(
+  stripe: Stripe,
+  user: DeletionUser
+): Promise<CancellationStatus> {
   // Store-owned subscriptions can't be canceled from the server.
   if (
     user.subscriptionSource === "apple" ||

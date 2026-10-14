@@ -186,6 +186,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   const decision = decideRcWebhookAction(event, user);
 
   if (decision.action !== "set-status") {
+    if (user) await webBillingEffects(event, user.id);
     safeLog.info(`revenuecat.webhook.${decision.action}`, {
       eventId: event.id ?? null,
       type: event.type,
@@ -250,6 +251,11 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     return NextResponse.json({ error: "update-failed" }, { status: 500 });
   }
 
+  // Web Billing purchase/renewal side effects (analytics, Meta CAPI, founder
+  // email, referral, trial reminder). After the write so a failed write's
+  // retry can't run them twice — the dedup row makes them once-per-event.
+  await webBillingEffects(event, user.id);
+
   safeLog.info("revenuecat.webhook.applied", {
     eventId: event.id ?? null,
     type: event.type,
@@ -264,6 +270,26 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     action: "set-status",
     nextStatus: decision.nextStatus,
   });
+}
+
+/**
+ * RevenueCat Web Billing side effects — what the Stripe webhook does on
+ * checkout.session.completed / renewal invoices, for purchases RevenueCat
+ * bills itself. No-op for every other store. Never throws.
+ */
+async function webBillingEffects(event: RcWebhookEvent, userId: string): Promise<void> {
+  try {
+    const { rcWebBillingEffectFor, runRcWebBillingEffects } = await import(
+      "@/lib/revenuecat/web-billing-effects"
+    );
+    if (!rcWebBillingEffectFor(event)) return;
+    await runRcWebBillingEffects(event, userId);
+  } catch (err) {
+    safeLog.warn("revenuecat.webhook.web-billing-effects-failed", {
+      eventId: event.id ?? null,
+      err: err instanceof Error ? err.message : String(err),
+    });
+  }
 }
 
 /**
