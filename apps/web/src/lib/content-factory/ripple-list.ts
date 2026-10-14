@@ -48,15 +48,42 @@ export interface RippleListTopic {
   held?: string;
 }
 
-/** Title shapes rotated across the 5 drafts (Keenan: "title shapes as well"). */
+/**
+ * Title shapes (2026-10-13, per Keenan: "more along the lines of five ways to
+ * __" ... "they don't need to go. but i need more variance"). Ways and signs
+ * lead; the other shapes stay in the mix.
+ */
 export const LIST_SHAPES = [
-  'WAYS: "N ways to ___" (e.g. "5 ways to stop feeling so overwhelmed")',
-  'SIGNS: "N signs ___" (e.g. "4 signs you\'re due for a breakthrough")',
+  'WAYS: "N ways to ___" (e.g. "5 ways to stop feeling so overwhelmed", "4 ways to get your evenings back"). Each item is a clear, doable instruction to the reader.',
+  'SIGNS: "N signs ___" (e.g. "4 signs you\'re due for a breakthrough", "5 signs you\'re carrying too much"). Each item is a sign she\'ll recognize in her own week, said plainly.',
   'THINGS I STOPPED: "N things i stopped doing when ___" (first person, what she quit and what it gave back)',
   'SMALL HABITS: "N small habits that ___" (tiny, doable, specific)',
   'QUESTIONS: "N questions to ask yourself when ___" (each item a question she can actually answer)',
   'THINGS NOBODY TELLS YOU: "N things nobody tells you about ___" (honest, true, a little dry)',
 ] as const;
+
+/**
+ * Life areas, one per draft, so the 5 drafts (and the posts over a week)
+ * cover different ground instead of circling "the list in your head".
+ */
+export const LIST_AREAS = [
+  "her kids and the school/activities machine",
+  "her partner and the split of the household load",
+  "aging parents and being the family's caretaker",
+  "work, and doing it all while also running home",
+  "friendships she keeps postponing",
+  "her own rest, sleep and energy (no health claims)",
+  "money, the house and the admin nobody sees",
+  "midlife: who she is now that she isn't in her 30s",
+  "her own goals and the things she keeps putting off",
+  "confidence, saying no and asking for help",
+] as const;
+
+/** Per post: 2 "ways", 1 "signs", 2 of the other shapes (shuffled). */
+function draftShapes(): string[] {
+  const others = [...LIST_SHAPES.slice(2)].sort(() => Math.random() - 0.5).slice(0, 2);
+  return [LIST_SHAPES[0], LIST_SHAPES[1], LIST_SHAPES[0], ...others].sort(() => Math.random() - 0.5);
+}
 
 /** One scenic world per post (Keenan: snow, rolling ocean, autumn trees...). */
 export const LIST_WORLDS = [
@@ -99,6 +126,7 @@ function rippleBlock(): string {
 
 async function draftOnce(opts: {
   shape: string;
+  area: string;
   world: string;
   mentionsRipple: boolean;
   recent: string[];
@@ -109,6 +137,11 @@ async function draftOnce(opts: {
   const start = Date.now();
   const user = [
     `THIS POST'S TITLE SHAPE: ${opts.shape}`,
+    `THIS POST'S LIFE AREA (other drafts take other areas, so stay in this one): ${opts.area}`,
+    // 2026-10-13 (Keenan: "those are two of basically the exact same post ...
+    // i need variance"): both first samples centered on "the list in your
+    // head", the brief's top phrase. Keep it out of titles.
+    `VARIETY: the title must NOT be about "the list in your head", "mental load" or "carrying everything" in general (every recent post went there). Name a specific situation inside this life area instead, and make it clearly different from every recent title below.`,
     `THIS POST'S SCENIC WORLD (every slide): ${opts.world}`,
     opts.mentionsRipple ? rippleBlock() : "\n\nTHIS POST DOES NOT MENTION RIPPLE OR ANY APP: pure, useful advice.",
     opts.brief ? `\n\n${opts.brief}` : "",
@@ -214,6 +247,8 @@ Return only JSON: {"ok": true} or {"ok": false, "problem": "which line fails and
  */
 export async function generateRippleListTopic(opts: {
   recentTitles: string[];
+  /** Scenic worlds of the last list posts (e.g. ["OCEAN", "AUTUMN"]). */
+  recentWorlds?: string[];
   forceRipple?: boolean;
   forceWorld?: string;
 }): Promise<RippleListTopic> {
@@ -222,16 +257,21 @@ export async function generateRippleListTopic(opts: {
   const { isRecentHeadline, nearDuplicateOf, noteHeadlineUsed } = await import("./headline-history");
   const brief = await readBriefBlock("ripple");
   const mentionsRipple = opts.forceRipple ?? Math.random() < 0.35;
+  // No scenic world from the last two list posts (variety, 2026-10-13).
+  const recentWorlds = (opts.recentWorlds ?? []).map((w) => w.toLowerCase());
+  const freshWorlds = LIST_WORLDS.filter((w) => !recentWorlds.some((r) => w.toLowerCase().startsWith(r)));
+  const worldPool = freshWorlds.length ? freshWorlds : [...LIST_WORLDS];
   const world =
     (opts.forceWorld && LIST_WORLDS.find((w) => w.toLowerCase().startsWith(opts.forceWorld!.toLowerCase()))) ||
-    LIST_WORLDS[Math.floor(Math.random() * LIST_WORLDS.length)];
-  const shapes = [...LIST_SHAPES].sort(() => Math.random() - 0.5);
+    worldPool[Math.floor(Math.random() * worldPool.length)];
+  const shapes = draftShapes();
+  const areas = [...LIST_AREAS].sort(() => Math.random() - 0.5);
   const within = <T,>(p: Promise<T>, ms: number) =>
     Promise.race([p, new Promise<never>((_, rej) => setTimeout(() => rej(new Error(`draft timed out after ${ms}ms`)), ms))]);
   const settled = await Promise.allSettled(
     Array.from({ length: CANDIDATE_COUNT }, (_, i) =>
       within(
-        draftOnce({ shape: shapes[i % shapes.length], world, mentionsRipple, recent: opts.recentTitles.slice(0, 60), brief, model: CANDIDATE_WRITER_MODEL }),
+        draftOnce({ shape: shapes[i % shapes.length], area: areas[i % areas.length], world, mentionsRipple, recent: opts.recentTitles.slice(0, 60), brief, model: CANDIDATE_WRITER_MODEL }),
         150_000
       )
     )

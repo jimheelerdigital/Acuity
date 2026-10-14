@@ -25,6 +25,7 @@ Mythicals videos go back to how our best-animated posts (10-04/10-05) moved: mea
   - `COVER_SCALE_LINE` no longer forces the lineup cover in the image prompt;
   - the mage category allows a glowing staff and embers.
 - `lib/content-factory/ripple-list.ts`: the title's number is rewritten to the item count.
+- **List variety (Keenan: "those are two of basically the exact same post ... i need variance"):** each post's 5 drafts take 2 ways + 1 signs + 2 of the other shapes; each draft gets a different `LIST_AREAS` life area (kids, partner, aging parents, work, friendships, rest, money/home, midlife, her goals, saying no); titles can't center on "the list in your head" or "mental load"; the scenic world avoids the last two list posts' worlds (read from recipes).
 - `carousel-daily.ts`: the list caption style is highlight or classic only.
 
 ### Manual steps needed

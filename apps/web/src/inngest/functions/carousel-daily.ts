@@ -1471,8 +1471,21 @@ export const carouselDailyCronFn = inngest.createFunction(
           select: { headline: true },
           take: 80,
         });
+        // Last two list posts' scenic worlds (from their recipes) so the
+        // scenery changes post to post.
+        const { readRecipe } = await import("@/lib/content-factory/performance-loop");
+        const lastLists = await prisma.carouselPost.findMany({
+          where: { lane: "ripple-list" },
+          orderBy: { createdAt: "desc" },
+          take: 2,
+          select: { id: true },
+        });
+        const recentWorlds = (await Promise.all(lastLists.map((p) => readRecipe(p.id))))
+          .map((r) => r?.category.replace(/^world-/, "").replace(/-ripple$/, "").replace(/-/g, " ") ?? "")
+          .filter(Boolean);
         return generateRippleListTopic({
           recentTitles: recent.map((p) => p.headline),
+          recentWorlds,
           forceRipple: typeof ev.rippleMention === "boolean" ? ev.rippleMention : undefined,
           forceWorld: ev.world,
         });
