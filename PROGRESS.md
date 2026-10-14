@@ -7,6 +7,28 @@
 
 ---
 
+## [2026-10-13] — YouTube: hand-posting for two weeks (no API uploads)
+
+- **Requested by:** Keenan
+- **Committed by:** Claude Code
+- **Commit hash:** (see git log: "feat: Pause YouTube API uploads and email the daily pick")
+
+### In plain English (for Keenan)
+For the next two weeks nothing uploads to YouTube automatically. Each day, once the day's best Mythicals post is picked (late morning UTC), you get an email with the video, the exact title and the description to post by hand in the YouTube app. From October 27 automatic posting comes back at one a day.
+
+### Technical changes (for Jimmy)
+- `lib/content-factory/youtube-publish.ts`: `youtubeManual()` is true until `YOUTUBE_MANUAL_UNTIL` (2026-10-27 05:00 UTC). Env `YOUTUBE_MANUAL=0` forces API posting, `=1` keeps manual mode after the date.
+- `inngest/functions/social-publish-cron.ts`:
+  - `youtube-daily-pick`: after the Jev pick (from 11:00 UTC), in the manual window it emails Keenan today's kept YouTube pick(s) (reel link `reels/<id>.mp4`, `shortsTitle`, `youtubeDescription`, cover link) and marks those rows SKIPPED `[manual-youtube]`.
+  - The publish loop never uploads YouTube rows in the window; they're deferred an hour until the pick step handles them.
+
+### Manual steps needed
+- [ ] Post the emailed Short by hand each day until 10-27, with "Not made for kids" and "Altered or synthetic content: Yes" (Keenan)
+
+### Notes
+- Tests whether API uploads were part of the Shorts reach drop. Compare Studio's Shorts-feed share for hand-posted vs earlier API uploads.
+- The 1/day cap (`youtubeDailyCap`, until 11-17) still decides how many picks a day there are.
+
 ## [2026-10-13] — New Ripple "top N" list lane replaces the cartoon slot
 
 - **Requested by:** Keenan

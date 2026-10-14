@@ -324,3 +324,17 @@ export function youtubeDailyCap(now: Date = new Date()): number {
   if (Number.isFinite(env) && env >= 1) return Math.floor(env);
   return now < YOUTUBE_ONE_A_DAY_UNTIL ? 1 : 3;
 }
+
+/**
+ * Hand-posting window (2026-10-13, per Keenan: "turn off posting for youtube
+ * via the api for the next two weeks and i'll post the daily video by hand").
+ * Until YOUTUBE_MANUAL_UNTIL the API never uploads; the day's picked Short is
+ * emailed to Keenan instead. YOUTUBE_MANUAL=0 forces API posting back on,
+ * =1 keeps hand-posting on after the date.
+ */
+export const YOUTUBE_MANUAL_UNTIL = new Date("2026-10-27T05:00:00Z");
+export function youtubeManual(now: Date = new Date()): boolean {
+  if (process.env.YOUTUBE_MANUAL === "0") return false;
+  if (process.env.YOUTUBE_MANUAL === "1") return true;
+  return now < YOUTUBE_MANUAL_UNTIL;
+}

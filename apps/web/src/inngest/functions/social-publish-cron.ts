@@ -431,6 +431,56 @@ export const socialPublishCronFn = inngest.createFunction(
         out[account] = { open, kept: [...keep].length, skipped: skip.length, how };
         console.log(`[social-publish] youtube/${account}: today's top ${open} kept (${how}), ${skip.length} skipped`);
       }
+
+      // Hand-posting window (2026-10-13 → 2026-10-27, per Keenan): the day's
+      // pick is emailed to Keenan to upload in the YouTube app; the API never
+      // uploads it. Rows are marked SKIPPED so nothing re-sends or uploads.
+      const { youtubeManual, shortsTitle, youtubeDescription } = await import("@/lib/content-factory/youtube-publish");
+      if (youtubeManual()) {
+        const picks = await prisma.socialPublish.findMany({
+          where: { platform: "youtube", status: "PENDING", carouselPost: { generatedFor: today } },
+          select: {
+            id: true,
+            accountKey: true,
+            carouselPostId: true,
+            carouselPost: { select: { headline: true, caption: true, slides: { where: { order: 0 }, select: { imageUrl: true } } } },
+          },
+        });
+        if (picks.length) {
+          const { supabase } = await import("@/lib/supabase.server");
+          const { sendEmailOrThrow } = await import("@/lib/resend");
+          const esc = (x: string) => x.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+          const blocks = picks.map((r) => {
+            const video = supabase.storage.from("content-factory").getPublicUrl(`reels/${r.carouselPostId}.mp4`).data.publicUrl;
+            const title = shortsTitle(r.carouselPost.headline);
+            const desc = youtubeDescription(r.accountKey as Parameters<typeof youtubeDescription>[0], r.carouselPost.caption);
+            const cover = r.carouselPost.slides[0]?.imageUrl;
+            return `<div style="border:1px solid #ddd;border-radius:8px;padding:14px;margin:0 0 16px;">
+<p style="margin:0 0 8px;"><a href="${esc(video)}" style="font-weight:700;">Download the video</a>${cover ? ` · <a href="${esc(cover)}">cover image</a>` : ""}</p>
+<p style="margin:0 0 4px;color:#666;font-size:12px;">TITLE (copy exactly)</p>
+<pre style="white-space:pre-wrap;background:#f6f6f6;padding:8px;border-radius:6px;margin:0 0 10px;">${esc(title)}</pre>
+<p style="margin:0 0 4px;color:#666;font-size:12px;">DESCRIPTION</p>
+<pre style="white-space:pre-wrap;background:#f6f6f6;padding:8px;border-radius:6px;margin:0;">${esc(desc)}</pre>
+</div>`;
+          });
+          await sendEmailOrThrow({
+            from: process.env.CONTENT_FACTORY_EMAIL_FROM ?? '"Ripple Content" <content@getacuity.io>',
+            to: process.env.CONTENT_FACTORY_EMAIL_TO ?? "keenan@heelerdigital.com",
+            subject: `Today's YouTube Short to post by hand: ${picks[0].carouselPost.headline}`,
+            html: `<div style="font-family:-apple-system,Segoe UI,Helvetica,Arial,sans-serif;max-width:640px;margin:0 auto;color:#222;">
+<p style="font-size:16px;font-weight:700;margin:0 0 6px;">Post this one Short by hand in the YouTube app today (aim for around noon CT).</p>
+<p style="font-size:13px;color:#555;margin:0 0 14px;">Settings when uploading: Not made for kids. Altered or synthetic content: Yes. API uploads are paused until Oct 27.</p>
+${blocks.join("")}
+</div>`,
+          });
+          await prisma.socialPublish.updateMany({
+            where: { id: { in: picks.map((r) => r.id) } },
+            data: { status: "SKIPPED", error: "[manual-youtube] emailed to Keenan to post by hand" },
+          });
+          out.manualEmailed = picks.length;
+          console.log(`[social-publish] youtube manual window: emailed ${picks.length} pick(s) to post by hand`);
+        }
+      }
       return out;
     });
 
@@ -805,6 +855,17 @@ export const socialPublishCronFn = inngest.createFunction(
         // burst; 8 Shorts burned all retries). At most YOUTUBE_DAILY_CAP
         // uploads per channel per rolling 24h (6 by default since 2026-10-06, per Keenan "go up to 6 a day now"; ~9,900 of the 10,000 daily API units); extra rows wait, no attempt used.
         if (row.platform === "youtube") {
+          // Hand-posting window (2026-10-13 → 10-27): never upload by API. The
+          // daily-pick step emails the pick and skips its row; anything that
+          // gets here first just waits an hour for that step.
+          const { youtubeManual } = await import("@/lib/content-factory/youtube-publish");
+          if (youtubeManual()) {
+            await prisma.socialPublish.update({
+              where: { id: row.id },
+              data: { scheduledAt: new Date(Date.now() + 3600_000), error: "YouTube hand-posting window: waiting for the daily pick email" },
+            });
+            return false;
+          }
           // The day's picks plus the old-library catch-up (1c).
           const cap =
             (await import("@/lib/content-factory/youtube-publish")).youtubeDailyCap() +
