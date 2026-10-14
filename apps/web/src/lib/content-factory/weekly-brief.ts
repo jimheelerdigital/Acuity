@@ -262,7 +262,7 @@ Return JSON:
 - "whatWinning": 3 to 5 short themes or subjects the winners were about, as themes, not titles.
 - "whatFlopping": 2 to 4 themes or subjects the losers were about.
 Only use what the data shows.
-RULES FOR THE LESSONS (2026-10-13, per Keenan): never recommend opening with "this is how i" (banned on this account; it only shows up because one format repeated it dozens of times). Every "how" lesson must help write ANY subject the writer is assigned; never tell writers to avoid a subject (weak subjects go only in "whatFlopping").
+RULES FOR THE LESSONS (2026-10-13, per Keenan): never recommend opening with "this is how i" (banned on this account; it only shows up because one format repeated it dozens of times). Every "how" lesson must help write ANY subject the writer is assigned; never tell writers to avoid a subject (weak subjects go only in "whatFlopping"). Never suggest a time of day ("9pm", "before bed", "nightly", "at night") in any lesson or example.
 Return only the JSON object.`,
     messages: [
       {
@@ -290,7 +290,9 @@ ${losers.slice(0, 10).map(show).join("\n")}${hooks.length ? `\n\nOUTLIER POSTS F
 export function promptBlockFor(b: WeeklyBrief): string {
   const parts: string[] = [];
   // "this is how i" stays banned even if a lesson slips through (2026-10-13).
-  const how = (b.how ?? []).filter((x) => !/this is how i/i.test(x));
+  // Same for time-of-day examples (Ripple never pins the product to a time).
+  const BANNED_LESSON = /this is how i|\b\d{1,2}\s?(am|pm)\b|before bed|bedtime|nightly|at night|tonight/i;
+  const how = (b.how ?? []).filter((x) => !BANNED_LESSON.test(x));
   if (how.length) {
     parts.push(
       `WHAT IS WORKING FOR THIS ACCOUNT (weekly brief, ${b.builtAt.slice(0, 10)}; ${b.scoredPosts} posts scored on real results). Weigh it about 70% HOW the post is written and 30% WHAT it is about.\n\nHOW OUR WINNERS ARE WRITTEN (most important; apply to any topic):\n${how.map((x) => `- ${x}`).join("\n")}`
@@ -301,7 +303,8 @@ export function promptBlockFor(b: WeeklyBrief): string {
       what.push(
         `Themes that flopped: ${b.whatFlopping.join("; ")}.${b.brand === "mythicals" ? " (Small samples. Subjects are assigned by rotation on purpose for variety: write the assigned subject the way the winners are written, framed as something the reader would want to be, hold or follow.)" : ""}`
       );
-    if (b.winners.length) what.push(`Titles already covered (never repeat or lightly reword): ${b.winners.slice(0, 6).map((w) => `"${w.title}"`).join("; ")}.`);
+    const covered = b.winners.filter((w) => !/^\s*this is how i\b/i.test(w.title)).slice(0, 6);
+    if (covered.length) what.push(`Titles already covered (never repeat or lightly reword): ${covered.map((w) => `"${w.title}"`).join("; ")}.`);
     if (what.length) parts.push(`WHAT IT WAS ABOUT (a factor, not a mandate; lean in when it fits this post's assignment):\n${what.join("\n")}`);
   } else {
     // No distillation yet: the raw winners/losers, as before.
