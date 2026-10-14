@@ -7,6 +7,33 @@
 
 ---
 
+## [2026-10-13] — Mythicals animation back to the best-era recipe; list-post fixes
+
+- **Requested by:** Keenan
+- **Committed by:** Claude Code
+- **Commit hash:** (see git log: "content: Return Mythicals animation to the best-era recipe")
+
+### In plain English (for Keenan)
+Mythicals videos go back to how our best-animated posts (10-04/10-05) moved: measured, natural movement with a slow push-in, with glowing runes, embers and fire back on dragons, weapons and armor. They still render on Kling 3 with sound. The prompts are plain paragraphs again instead of the long AI-written JSON scripts. On the Ripple list posts, the number in the title now always matches the number of slides, and captions use the easier-to-read white-box style.
+
+### Technical changes (for Jimmy)
+- `lib/content-factory/living-reel.ts`: the Mythicals action-mode motion text is now the measured best-era recipe (one clear movement, fire/ice breath, glowing runes/embers/frost/flames along blades and armor, gentle push-in, nothing frantic). It replaces the 10-12 camera-locked text.
+- `inngest/functions/carousel-post-video.ts`: JSON shot sheets are off by default (`MYTHIC_SHOT_SHEETS=1` turns them on).
+- `lib/content-factory/choice-lane.ts`:
+  - writer `motion` / `coverMotion` rules are measured with a gentle push-in allowed;
+  - `ABILITIES AND EFFECTS` replaces the 10-06 "toned down / no glows" rule;
+  - `COVER_SCALE_LINE` no longer forces the lineup cover in the image prompt;
+  - the mage category allows a glowing staff and embers.
+- `lib/content-factory/ripple-list.ts`: the title's number is rewritten to the item count.
+- `carousel-daily.ts`: the list caption style is highlight or classic only.
+
+### Manual steps needed
+None
+
+### Notes
+- Evidence: the 10-04/10-05 Hailuo-era posts averaged ~16s IG watch and the most shares (33-121), vs ~12-13s on later Kling 2.5. Mythicals IG data since 10-08 is missing because those posts were hand-posted with no links. Auto-matching IG posts by caption is proposed, not yet built.
+- The model stays Kling 3 with sound per Keenan (not Hailuo).
+
 ## [2026-10-13] — Mythicals: back to the original variety, varied covers, smaller text
 
 - **Requested by:** Keenan

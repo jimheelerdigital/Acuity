@@ -1493,7 +1493,9 @@ export const carouselDailyCronFn = inngest.createFunction(
       let h = 0;
       for (const c of slug) h = ((h << 5) - h + c.charCodeAt(0)) | 0;
       const { SELFIE_TEXT_COLORS } = await import("@/lib/content-factory/compose");
-      const listStyle = (["classic", "highlight", "sticker"] as const)[Math.abs(h) % 3];
+      // Highlight (white box) reads best over bright landscapes (10-13 samples:
+      // the pink sticker glow got lost on the ocean shots).
+      const listStyle = (["highlight", "classic"] as const)[Math.abs(h) % 2];
       const listColor = SELFIE_TEXT_COLORS[Math.abs(h >> 3) % SELFIE_TEXT_COLORS.length];
 
       const renderListSlide = async (i: number) => {

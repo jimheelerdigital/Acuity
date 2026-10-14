@@ -152,7 +152,9 @@ async function draftOnce(opts: {
     }))
     .filter((it) => it.line)
     .slice(0, 8);
-  const title = clean(p.title);
+  // The number in the title always matches the slides (2026-10-13: a sample
+  // said "6 things" over 7 items).
+  const title = clean(p.title).replace(/^\s*(top\s+)?\d+/i, (m, top) => `${top ?? ""}${items.length}`);
   if (!title || items.length < 4) throw new Error(`list draft unusable (${items.length} items)`);
   return {
     slug: title.toLowerCase().replace(/[^a-z0-9\s-]/g, "").trim().replace(/\s+/g, "-").slice(0, 60),

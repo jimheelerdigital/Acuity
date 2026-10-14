@@ -77,7 +77,10 @@ export const carouselPostVideoFn = inngest.createFunction(
     };
     // Default ON since 2026-10-06 (Keenan: "update our prompts to now reflect
     // the new format"); MYTHIC_SHOT_SHEETS=0 switches back to the old prompts.
-    const sheetsWanted = shotSheetForced === true || process.env.MYTHIC_SHOT_SHEETS !== "0";
+    // JSON shot sheets OFF by default (2026-10-13, per Keenan: "go back to the
+    // non-json prompt format ... back to the plain one to two paragraph
+    // prompt"). MYTHIC_SHOT_SHEETS=1 (or a forced rebuild) turns them on.
+    const sheetsWanted = shotSheetForced === true || process.env.MYTHIC_SHOT_SHEETS === "1";
 
     // ── 0. Legendary Mythicals cinematic shot (mythic-colossus, 2026-10-04):
     // one Kling 3.0 15s render with its own sound, faded in and out. ──
