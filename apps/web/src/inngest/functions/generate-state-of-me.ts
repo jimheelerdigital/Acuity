@@ -26,12 +26,11 @@
 import Anthropic from "@anthropic-ai/sdk";
 
 import {
-  CLAUDE_FLAGSHIP_MAX_TOKENS,
-  CLAUDE_FLAGSHIP_MODEL,
   type StateOfMeContent,
 } from "@acuity/shared";
 
 import { inngest } from "@/inngest/client";
+import { flagshipRequest, flagshipText } from "@/lib/flagship-claude";
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
@@ -202,15 +201,12 @@ export const generateStateOfMeFn = inngest.createFunction(
         goalLines,
       ].join("\n");
 
-      const res = await anthropic.messages.create({
-        model: CLAUDE_FLAGSHIP_MODEL,
-        max_tokens: CLAUDE_FLAGSHIP_MAX_TOKENS,
+      const res = await anthropic.messages.create(flagshipRequest({
         system: SYSTEM_PROMPT,
         messages: [{ role: "user", content: userMessage }],
-      });
+      }));
 
-      const rawText =
-        res.content[0]?.type === "text" ? res.content[0].text : "";
+      const rawText = flagshipText(res);
       const jsonText = rawText
         .replace(/^```(?:json)?\n?/m, "")
         .replace(/\n?```$/m, "")

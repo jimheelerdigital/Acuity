@@ -1,7 +1,6 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { NonRetriableError } from "inngest";
 
-import { CLAUDE_FLAGSHIP_MAX_TOKENS, CLAUDE_FLAGSHIP_MODEL } from "@acuity/shared";
 
 import { inngest } from "@/inngest/client";
 import {
@@ -12,6 +11,7 @@ import {
   type LifeAuditExtraction,
 } from "@/lib/prompts/life-audit";
 import { safeLog } from "@/lib/safe-log";
+import { flagshipRequest, flagshipText } from "@/lib/flagship-claude";
 
 type GenerateLifeAuditEventData = {
   lifeAuditId: string;
@@ -218,15 +218,12 @@ export const generateLifeAuditFn = inngest.createFunction(
         new Date(loaded.periodEnd)
       );
 
-      const message = await anthropic.messages.create({
-        model: CLAUDE_FLAGSHIP_MODEL,
-        max_tokens: CLAUDE_FLAGSHIP_MAX_TOKENS,
+      const message = await anthropic.messages.create(flagshipRequest({
         system: LIFE_AUDIT_SYSTEM_PROMPT,
         messages: [{ role: "user", content: userContent }],
-      });
+      }));
 
-      const rawText =
-        message.content[0].type === "text" ? message.content[0].text : "";
+      const rawText = flagshipText(message);
       const jsonText = rawText
         .replace(/^```(?:json)?\n?/m, "")
         .replace(/\n?```$/m, "")

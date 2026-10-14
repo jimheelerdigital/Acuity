@@ -27,7 +27,6 @@ import { createHash } from "crypto";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 
-import { CLAUDE_FLAGSHIP_MODEL, CLAUDE_FLAGSHIP_MAX_TOKENS } from "@acuity/shared";
 
 import {
   retrieveRelevantEntries,
@@ -39,6 +38,7 @@ import { gateFeatureFlag } from "@/lib/feature-flags";
 import { getAnySessionUserId } from "@/lib/mobile-auth";
 import { requireEntitlement } from "@/lib/paywall";
 import { rateLimitedResponse, checkRateLimit, limiters } from "@/lib/rate-limit";
+import { flagshipRequest, flagshipText } from "@/lib/flagship-claude";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -150,9 +150,7 @@ export async function POST(req: NextRequest) {
 
   let answer: string;
   try {
-    const msg = await anthropic.messages.create({
-      model: CLAUDE_FLAGSHIP_MODEL,
-      max_tokens: CLAUDE_FLAGSHIP_MAX_TOKENS,
+    const msg = await anthropic.messages.create(flagshipRequest({
       system: SYSTEM_PROMPT,
       messages: [
         {
@@ -160,11 +158,8 @@ export async function POST(req: NextRequest) {
           content: `Here are the most relevant entries from your journal:\n\n${contextBlock}\n\nQuestion: ${question}`,
         },
       ],
-    });
-    answer =
-      msg.content[0]?.type === "text"
-        ? msg.content[0].text.trim()
-        : "";
+    }));
+    answer = flagshipText(msg).trim();
     if (!answer) throw new Error("empty Claude response");
   } catch (err) {
     console.error("[ask-past] Claude failed:", err);

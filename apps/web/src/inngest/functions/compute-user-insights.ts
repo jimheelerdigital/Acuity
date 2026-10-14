@@ -25,7 +25,6 @@
 import Anthropic from "@anthropic-ai/sdk";
 
 import {
-  CLAUDE_FLAGSHIP_MAX_TOKENS,
   CLAUDE_FLAGSHIP_MODEL,
 } from "@acuity/shared";
 
@@ -33,6 +32,7 @@ import { inngest } from "@/inngest/client";
 import { isEnabledForAnon } from "@/lib/feature-flags";
 import { evidenceReceiptsEnabled } from "@/lib/evidence/flags";
 import { selectExcerpt } from "@/lib/evidence/excerpt";
+import { flagshipRequest, flagshipText } from "@/lib/flagship-claude";
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
@@ -720,16 +720,14 @@ export async function synthesizeWithClaude(params: {
 
   const userMessage = `${params.digest}\n\nNumeric signals from this week:\n${signalBlock}`;
 
-  const res = await anthropic.messages.create({
-    model: CLAUDE_FLAGSHIP_MODEL,
-    max_tokens: CLAUDE_FLAGSHIP_MAX_TOKENS,
+  const res = await anthropic.messages.create(flagshipRequest({
     system: params.evidenceMode
       ? EVIDENCE_SYSTEM_PROMPT
       : OBSERVATION_SYSTEM_PROMPT,
     messages: [{ role: "user", content: userMessage }],
-  });
+  }));
 
-  const rawText = res.content[0]?.type === "text" ? res.content[0].text : "";
+  const rawText = flagshipText(res);
   const jsonText = rawText
     .replace(/^```(?:json)?\n?/m, "")
     .replace(/\n?```$/m, "")

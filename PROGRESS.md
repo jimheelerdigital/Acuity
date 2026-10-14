@@ -7,6 +7,30 @@
 
 ---
 
+## [2026-10-14] — Ask your past self, insights, Life Audit and State of Me move to Opus 5.5 (low effort)
+
+- **Requested by:** Keenan
+- **Committed by:** Claude Code
+- **Commit hash:** (see git log: "perf: Move flagship AI features from Opus 4.7 to Opus 5.5 low effort")
+
+### In plain English (for Keenan)
+The four in-app features that use the top AI model now run on the newer Opus 5.5 at a light thinking setting instead of Opus 4.7: Ask your past self, the insights about a user's own patterns, the Day 7 Life Audit, and State of Me. Opus 5.5 is 20% cheaper per word, and the light setting keeps its thinking short.
+
+### Technical changes (for Jimmy)
+- `packages/shared/src/constants.ts`: `CLAUDE_FLAGSHIP_MODEL` `claude-opus-4-7` → `claude-opus-5-5`.
+- New `apps/web/src/lib/flagship-claude.ts`:
+  - `flagshipRequest()`: model, max_tokens = `CLAUDE_FLAGSHIP_MAX_TOKENS` + 4000 thinking headroom, and `output_config.effort: "low"`.
+  - `flagshipText()`: reads text blocks by type.
+- Updated `api/insights/ask-past/route.ts`, `inngest/functions/compute-user-insights.ts`, `generate-life-audit.ts` and `generate-state-of-me.ts` to use the helpers. They read `content[0]`, which on Opus 5.5 is a thinking block, so a bare model swap would have returned empty answers everywhere.
+- Checked: tsc is clean for these files, and a helper check confirmed the request shape and answer extraction. No live call (the local key is invalid).
+
+### Manual steps needed
+- [ ] Jimmy: sanity-check one Ask your past self answer and one insights run in prod after deploy (Jimmy)
+
+### Notes
+- Opus 5.5 can't turn thinking off; effort is the only control (default medium). It also has broader safety classifiers. A refusal comes back with no text, which hits the existing error paths (503 / step retry).
+- `compute-user-insights` still stores `generationModel` from the constant, so new insights record `claude-opus-5-5`.
+
 ## [2026-10-14] — Win-back email: a free month for churned users, plus 3 questions
 
 - **Requested by:** Keenan

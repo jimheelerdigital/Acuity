@@ -408,7 +408,10 @@ export const TRIAL_DAYS = 7;
 // matters more than cost: Day 7 Life Audit, Quarterly audits, Annual
 // memoir. Sonnet handles the per-entry extraction + weekly synthesis
 // + memory compression + lifemap insights.
-export const CLAUDE_FLAGSHIP_MODEL = "claude-opus-4-7";
+// 2026-10-14 (Keenan): Opus 4.7 → Opus 5.5 at low effort, 20% cheaper per
+// token. Call through apps/web/src/lib/flagship-claude.ts (thinking headroom,
+// effort, text-block reading), never with a bare messages.create.
+export const CLAUDE_FLAGSHIP_MODEL = "claude-opus-5-5";
 // Long-form Claude output budget. Day 7 Life Audit target is ~1000
 // words of narrative + a few hundred tokens of metadata; 4096 tokens
 // leaves headroom. Don't raise without measuring — longer tokens =
