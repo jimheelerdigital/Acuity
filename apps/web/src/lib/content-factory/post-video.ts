@@ -290,7 +290,8 @@ export function postVideoSlideSeconds(
   // Selfie slides carry a line AND a detail sentence (the detail isn't in
   // overlayText), so word-count timing cut them short (2026-10-13, per
   // Keenan: "it's hard to read all of the text on them").
-  // 2026-10-13 later (per Keenan): opening slide 4s ("actually opening 4 sec"), other slides 6s.
-  if (lane === "selfie" || lane === "ripple-list") return slideKind === "COVER" ? 4 : 6;
+  // 2026-10-13 (per Keenan): opening slide 4s from a 5s clip (trimmed, not
+  // sped up), every other slide 5s from a 5s clip at regular speed.
+  if (lane === "selfie" || lane === "ripple-list") return slideKind === "COVER" ? 4 : 5;
   return livingSlideSeconds(slideKind, overlayText);
 }

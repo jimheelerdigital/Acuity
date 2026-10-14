@@ -410,7 +410,6 @@ export async function renderSlideSegment(
     audio?: boolean;
   }
 ): Promise<Buffer> {
-  const clipSec = opts.clipSeconds ?? LIVING_CLIP_SEC;
   const d = slide.seconds;
   return withTempDir(async (dir) => {
     const out = path.join(dir, "seg.mp4");
@@ -428,8 +427,12 @@ export async function renderSlideSegment(
         ...(opts.audio && !clipAudio ? silence : []),
         "-filter_complex",
         [
-          // tpad holds the last frame if the model returned a shorter clip.
-          `[0:v]setpts=${(d / clipSec).toFixed(3)}*PTS,scale=${W}:${H}:force_original_aspect_ratio=increase,crop=${W}:${H},fps=30,setsar=1,tpad=stop_mode=clone:stop_duration=${d},trim=0:${d},setpts=PTS-STARTPTS[bg]`,
+          // REAL SPEED ALWAYS (2026-10-13, per Keenan: "you need the clips to
+          // be the EXACT speed as the video productions. no slowing or
+          // speeding up"): the clip plays at 1x and is only TRIMMED to the
+          // slide length; tpad holds the last frame if the model returned a
+          // clip a few frames short. Callers request clips >= the slide.
+          `[0:v]setpts=PTS,scale=${W}:${H}:force_original_aspect_ratio=increase,crop=${W}:${H},fps=30,setsar=1,tpad=stop_mode=clone:stop_duration=${d},trim=0:${d},setpts=PTS-STARTPTS[bg]`,
           `[1:v]format=rgba,fps=30[l]`,
           `[bg][l]overlay=0:0:shortest=1,format=yuv420p,${dipFilters(d, opts.first)}[v]`,
           // Sound plays in real time (the clip is rendered at the slide's

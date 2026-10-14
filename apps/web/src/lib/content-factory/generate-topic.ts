@@ -230,13 +230,13 @@ THE STORY (2026-10-13, per Keenan): exactly FIVE slides, the cover plus exactly 
 5. STEP 4, where she is now: her life today, in one specific, lived-in picture. Not a sales line.
 
 THE HEADLINE (cover text): lowercase-leaning, no emojis. It names the pain in plain words a stranger understands with nothing else to go on. Don't open with "this is how i". No clever wordplay, no setup that needs the slides to make sense. The user message tells you which of these two cover styles this post uses:
-  A. STATEMENT: first person, under 55 characters, the pain said as her own plain confession ("i'm tired from remembering everything, not from doing it").
-  B. QUESTION: "have you ever felt like..." asked straight to the reader, under 80 characters, ending in a question mark ("have you ever felt like you're working nonstop but never getting ahead?" shows the shape; never reuse it). The slides after it are still her own first-person story.
+  A. STATEMENT: first person, under 45 characters, the pain said as her own plain confession ("i'm tired from remembering everything, not from doing it").
+  B. QUESTION: "have you ever felt like..." asked straight to the reader, under 60 characters, ending in a question mark ("have you ever felt like you're working nonstop but never getting ahead?" shows the shape; never reuse it). The slides after it are still her own first-person story.
 Either way, she is honest about how hard it got, in her own words ("it was wearing me down"), but never claims a diagnosis or that Ripple fixed her mental health. The payoff is how her life feels now, not a promise to the reader.
 
 PEOPLE: never use "he", "his", "she" or "they" for someone the post hasn't named. Say who it is first ("my husband", "my mom", "my teenager").
 
-THE STEP LINES: each step is one plain first-person sentence, 4-12 words, that makes sense on its own without the detail line under it. No fragments that only make sense with the detail ("i laughed at dinner and noticed" fails). Each step gets one "detail" sentence under 90 characters in her voice: the concrete, lived-in specific (the dentist on thursday, her mom's refill, the form due friday). Honest, small and specific beats big claims.
+THE STEP LINES (2026-10-13, per Keenan: every slide must be "easily readable in 5 seconds ... extremely legible and simple"): each step is ONE short, plain first-person line, 3 to 7 words, that makes sense on its own without the detail line under it. No fragments that only make sense with the detail ("i laughed at dinner and noticed" fails). Each step gets one short "detail" line under 60 characters (about 10 words) in her voice: the concrete, lived-in specific (the dentist on thursday, her mom's refill, the form due friday). Honest, small and specific beats big claims.
 
 THE SHOTS (the cover plus one per step):
 - "cover": always a mirror selfie of her with the raised phone completely covering her face, so no eyes, nose or mouth are ever visible. The mirror is realistically a little dirty: light smudges, a few fingerprints, a faint streak catching the light. Describe which mirror, what she's wearing, the light and her posture (e.g. "full-length bedroom mirror with light smudges, oversized grey sweatshirt and leggings, warm lamp light, phone raised covering her whole face").
@@ -342,6 +342,13 @@ export async function generateSelfieTopic(
       `COVER: ${t.headline}\n${t.steps.map((st, i) => `${i + 2}. ${st}${t.details[i] ? ` (${t.details[i]})` : ""}`).join("\n")}${t.captionQuestion ? `\nCAPTION QUESTION: ${t.captionQuestion}` : ""}`,
     reject: async (t) => {
       if (/^\s*this is how i\b/i.test(t.headline)) return 'cover opens with "this is how i"';
+      // Readable in 5 seconds (2026-10-13, per Keenan).
+      if (t.headline.length > 65) return `cover too long to read in 4 seconds (${t.headline.length} chars)`;
+      const wc = (x: string) => x.split(/\s+/).filter(Boolean).length;
+      const longStep = t.steps.find((x) => wc(x) > 9);
+      if (longStep) return `slide line too long to read in 5 seconds: "${longStep}"`;
+      const longDetail = t.details.find((x) => x.length > 75);
+      if (longDetail) return `detail too long to read in 5 seconds: "${longDetail}"`;
       if (/\bripple\b/i.test(t.headline)) return "cover names Ripple";
       if (await isRecentHeadline(t.headline)) return "cover repeats a recent post";
       const flagged = copyFlagFor(t.headline);
@@ -445,8 +452,8 @@ async function generateSelfieTopicOnce(
   // x?" format): A = first-person statement, B = "have you ever felt like...?"
   const coverStyle =
     (forceCoverStyle ? forceCoverStyle === "statement" : Math.random() < 0.5)
-      ? "STATEMENT (style A): her pain as a first-person confession, under 55 characters."
-      : 'QUESTION (style B): "have you ever felt like...?" asked to the reader, under 80 characters, ending in a question mark.';
+      ? "STATEMENT (style A): her pain as a first-person confession, under 45 characters."
+      : 'QUESTION (style B): "have you ever felt like...?" asked to the reader, under 60 characters, ending in a question mark.';
   // Cartoon version (2026-10-13, per Keenan: "do a completely cartoonistic
   // one with the same kind of scripting"): same story, but she is the
   // animated lead in every shot, so the clips have someone to move.

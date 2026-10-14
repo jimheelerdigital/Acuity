@@ -7,6 +7,30 @@
 
 ---
 
+## [2026-10-13] — Clips at real speed everywhere; Ripple 4s/5s slides with short, legible text
+
+- **Requested by:** Keenan
+- **Committed by:** Claude Code
+- **Commit hash:** (see git log: "fix: Play every clip at real speed and make Ripple slides readable in 5s")
+
+### In plain English (for Keenan)
+Animated clips now always play at their real speed. They're only cut to length, never sped up or slowed down (until now every Ripple video had been slightly sped up or slowed down to fit). Ripple posts open on a 4-second slide, and every other slide is 5 seconds. Each slide now has one short header and one short subtext you can read in 5 seconds, in the two clearest caption styles. The weekly brief can no longer push the "this is how i" opener, and Mythicals keeps its subject variety.
+
+### Technical changes (for Jimmy)
+- `lib/content-factory/living-reel.ts` `renderSlideSegment`: the `setpts=(d/clipSec)*PTS` retiming is removed. Clips play at 1x and are trimmed (tpad holds the last frame if a clip comes back a few frames short). Applies to every animated lane; callers request clips >= the slide length (Mythicals Kling 3 = ceil(slide), Ripple 5s).
+- `lib/content-factory/post-video.ts`: Ripple selfie/list cover 4s, other slides 5s (5s Kling 2.5 clips).
+- `generate-topic.ts` / `ripple-list.ts`:
+  - Limits: lines 3-7 words, details under 60 chars, cover under 45 chars (questions under 60), list title under 55.
+  - Code rule cuts drafts with a line over 9 words, a detail over 75 chars or a cover over 65 chars.
+- `carousel-daily.ts`: selfie caption styles limited to highlight / classic.
+- `weekly-brief.ts`: distillation is told never to recommend "this is how i" or to avoid subjects. Lessons mentioning it are filtered out, and the Mythicals flopped-themes line notes that subjects rotate on purpose.
+
+### Manual steps needed
+None
+
+### Notes
+- `voiced-video.ts` still retimes clips, but that lane is retired (AI voiceovers are off).
+
 ## [2026-10-13] — Brief = 70% how it was written / 30% what; drafts split 2 exploit + 3 explore
 
 - **Requested by:** Keenan

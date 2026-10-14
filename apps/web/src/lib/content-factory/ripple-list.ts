@@ -104,8 +104,9 @@ const SYSTEM = `${copyObjectives("ripple")}
 THIS LANE: a "top N" list post that is genuinely useful. The reader saves it because every item is something real she can do or recognize this week, said plainly. Speak to her directly ("you") in the brand voice: plain, honest, specific, a little dry, never a coach, never preachy, never a lecture. Use her own words for her life ("the list in my head", "running everyone's week", "nobody notices until it isn't done") over wellness vocabulary.
 
 THE POST:
-- "title" (the cover): the list's title in lowercase-leaning text, under 70 characters, with the number written as a digit ("5 ways to..."). It names a pain or wish women ~40-50 feel every single day, in plain words a stranger understands on its own. Never names Ripple or any app.
-- "items": 4 to 8 items, in a deliberate order. Each "line" is a short, plain instruction or sign, 4 to 12 words, that makes sense on its own (no fragments that need the detail to make sense). Each "detail" is ONE sentence under 110 characters that makes it concrete: what to actually do, what it looks like in her real life, or why it works. Specific beats wise: "write the three things only you can do, then let the rest wait" beats "prioritize".
+READABLE IN 5 SECONDS (2026-10-13, per Keenan: "it needs to be easily readable in 5 seconds ... extremely legible and simple to read"): every slide is one short header and one short subtext, nothing more.
+- "title" (the cover): the list's title in lowercase-leaning text, under 55 characters, with the number written as a digit ("5 ways to..."). It names a pain or wish women ~40-50 feel every single day, in plain words a stranger understands on its own. Never names Ripple or any app.
+- "items": 4 to 8 items, in a deliberate order. Each "line" is a short, plain instruction or sign, 3 to 7 words, that makes sense on its own (no fragments that need the detail to make sense). Each "detail" is ONE short line under 60 characters (about 10 words) that makes it concrete: what to actually do, what it looks like in her real life, or why it works. Specific beats wise: "write the three things only you can do, then let the rest wait" beats "prioritize".
 - Items are genuinely different from each other: no two saying the same thing in other words.
 - No numbers inside "line" (the slide adds "1.", "2." itself).
 
@@ -320,6 +321,13 @@ export async function generateRippleListTopic(opts: {
     render: (t) => `TITLE: ${t.title}\n${t.items.map((it, i) => `${i + 1}. ${it.line} (${it.detail})`).join("\n")}`,
     reject: async (t) => {
       if (/\bripple\b/i.test(t.title)) return "title names Ripple";
+      // Readable in 5 seconds (2026-10-13, per Keenan).
+      if (t.title.length > 65) return `title too long to read in 4 seconds (${t.title.length} chars)`;
+      const wc = (x: string) => x.split(/\s+/).filter(Boolean).length;
+      const longLine = t.items.find((it) => wc(it.line) > 9);
+      if (longLine) return `item too long to read in 5 seconds: "${longLine.line}"`;
+      const longDetail = t.items.find((it) => it.detail.length > 75);
+      if (longDetail) return `detail too long to read in 5 seconds: "${longDetail.detail}"`;
       if (opts.lastArea && t.area === opts.lastArea) return "same area as the last list post";
       const ripples = t.items.filter((it) => /\bripple\b/i.test(`${it.line} ${it.detail}`)).length;
       if (t.mentionsRipple && ripples !== 1) return `should mention Ripple exactly once (found ${ripples})`;

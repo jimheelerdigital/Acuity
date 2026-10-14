@@ -261,7 +261,9 @@ Return JSON:
 - "how": 6 to 8 lessons about HOW the winners were written, the part that matters most: the hook shape and cover wording, how specific the details are, structure and order, voice and tone, length, how (and whether) a product is mentioned, what the last slide does. Each lesson is one concrete, usable sentence a writer can apply to ANY topic ("names one specific moment, like the permission slip at a red light, instead of a feeling"). Never just restate a topic.
 - "whatWinning": 3 to 5 short themes or subjects the winners were about, as themes, not titles.
 - "whatFlopping": 2 to 4 themes or subjects the losers were about.
-Only use what the data shows. Return only the JSON object.`,
+Only use what the data shows.
+RULES FOR THE LESSONS (2026-10-13, per Keenan): never recommend opening with "this is how i" (banned on this account; it only shows up because one format repeated it dozens of times). Every "how" lesson must help write ANY subject the writer is assigned; never tell writers to avoid a subject (weak subjects go only in "whatFlopping").
+Return only the JSON object.`,
     messages: [
       {
         role: "user",
@@ -287,13 +289,18 @@ ${losers.slice(0, 10).map(show).join("\n")}${hooks.length ? `\n\nOUTLIER POSTS F
  */
 export function promptBlockFor(b: WeeklyBrief): string {
   const parts: string[] = [];
-  if (b.how?.length) {
+  // "this is how i" stays banned even if a lesson slips through (2026-10-13).
+  const how = (b.how ?? []).filter((x) => !/this is how i/i.test(x));
+  if (how.length) {
     parts.push(
-      `WHAT IS WORKING FOR THIS ACCOUNT (weekly brief, ${b.builtAt.slice(0, 10)}; ${b.scoredPosts} posts scored on real results). Weigh it about 70% HOW the post is written and 30% WHAT it is about.\n\nHOW OUR WINNERS ARE WRITTEN (most important; apply to any topic):\n${b.how.map((x) => `- ${x}`).join("\n")}`
+      `WHAT IS WORKING FOR THIS ACCOUNT (weekly brief, ${b.builtAt.slice(0, 10)}; ${b.scoredPosts} posts scored on real results). Weigh it about 70% HOW the post is written and 30% WHAT it is about.\n\nHOW OUR WINNERS ARE WRITTEN (most important; apply to any topic):\n${how.map((x) => `- ${x}`).join("\n")}`
     );
     const what: string[] = [];
     if (b.whatWinning?.length) what.push(`Themes that have won: ${b.whatWinning.join("; ")}.`);
-    if (b.whatFlopping?.length) what.push(`Themes that flopped: ${b.whatFlopping.join("; ")}.`);
+    if (b.whatFlopping?.length)
+      what.push(
+        `Themes that flopped: ${b.whatFlopping.join("; ")}.${b.brand === "mythicals" ? " (Small samples. Subjects are assigned by rotation on purpose for variety: write the assigned subject the way the winners are written, framed as something the reader would want to be, hold or follow.)" : ""}`
+      );
     if (b.winners.length) what.push(`Titles already covered (never repeat or lightly reword): ${b.winners.slice(0, 6).map((w) => `"${w.title}"`).join("; ")}.`);
     if (what.length) parts.push(`WHAT IT WAS ABOUT (a factor, not a mandate; lean in when it fits this post's assignment):\n${what.join("\n")}`);
   } else {

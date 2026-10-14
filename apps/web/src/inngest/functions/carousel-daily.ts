@@ -1699,7 +1699,9 @@ export const carouselDailyCronFn = inngest.createFunction(
         const choice = chooseSelfieVariant(
           await readScoreboard("ripple"),
           SELFIE_PERSONAS.map((p) => p.id),
-          SELFIE_TEXT_STYLES,
+          // Most legible caption looks only (2026-10-13, per Keenan: "extremely
+          // legible and simple to read").
+          SELFIE_TEXT_STYLES.filter((t) => t === "highlight" || t === "classic"),
           previous
         );
         const same = recent.findIndex((_, i) => recipes[i]?.category === `persona-${choice.persona}`);
