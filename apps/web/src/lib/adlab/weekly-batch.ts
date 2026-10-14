@@ -17,6 +17,7 @@
  * optimizing for signups; lib/adlab/evergreen.ts).
  */
 
+import { createHash } from "node:crypto";
 import { z } from "zod";
 import OpenAI from "openai";
 import sharp from "sharp";
@@ -736,7 +737,7 @@ const BatchAdSchema = z.object({
 });
 
 /** JSON schema for the submit_ads tool (structured output, 2026-09-29). */
-const SUBMIT_ADS_TOOL = {
+export const SUBMIT_ADS_TOOL = {
   name: "submit_ads",
   description: "Submit the requested ad creatives for this week's batch.",
   schema: {
@@ -1010,9 +1011,61 @@ export function parseVideoAds(raw: string, templates: VideoTemplate[], perTempla
  * Copy only — images are generated separately (see generateBatchImage) so
  * the Inngest function can chunk them into steps.
  */
+/** One ad-copy request, collected so it can go out in a Message Batch. */
+export interface WeeklyCopyRequest {
+  purpose: string;
+  systemPrompt: string;
+  userPrompt: string;
+  maxTokens: number;
+  promptHash: string;
+}
+
+/** Batch replies for createBatchForGroup, by purpose. Used only when the request prompt still hashes the same. */
+export type PrefetchedCopy = Record<string, { promptHash: string; raw: string }>;
+
+interface CreateBatchOpts {
+  /** Fixes the look shuffle so the collect pass and the build pass write identical prompts. */
+  seed?: number;
+  /** Collect pass: record the copy requests instead of calling Claude, and stop before any ad is written. */
+  collect?: WeeklyCopyRequest[];
+  prefetched?: PrefetchedCopy;
+}
+
+type BatchResult = { experimentId: string; creativeIds: string[]; videoCreativeIds: string[]; digestDate: string };
+
+const promptHash = (s: string) => createHash("sha1").update(s).digest("hex");
+
+/** Small deterministic PRNG (mulberry32) for the seeded look shuffle. */
+function seededRng(seed: number): () => number {
+  let a = seed >>> 0;
+  return () => {
+    a = (a + 0x6d2b79f5) >>> 0;
+    let t = a;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
 export async function createBatchForGroup(
-  groupKey: BatchGroupKey
-): Promise<{ experimentId: string; creativeIds: string[]; videoCreativeIds: string[]; digestDate: string }> {
+  groupKey: BatchGroupKey,
+  opts: Omit<CreateBatchOpts, "collect"> = {}
+): Promise<BatchResult> {
+  return (await runCreateBatch(groupKey, opts))!;
+}
+
+/**
+ * The week's ad-copy requests for a lane, without calling Claude or writing
+ * anything (2026-10-14: the Saturday cron sends them as a Message Batch at
+ * half price, then createBatchForGroup builds the ads from the replies).
+ */
+export async function collectBatchCopyRequests(groupKey: BatchGroupKey, seed: number): Promise<WeeklyCopyRequest[]> {
+  const collect: WeeklyCopyRequest[] = [];
+  await runCreateBatch(groupKey, { seed, collect });
+  return collect;
+}
+
+async function runCreateBatch(groupKey: BatchGroupKey, opts: CreateBatchOpts): Promise<BatchResult | null> {
   const g = BATCH_GROUPS[groupKey];
   // Each lane has its own slots (2026-09-30): the men's are BWK-shaped.
   // LOOKS (2026-10-05, per Keenan: "the more variance the better"): the slot
@@ -1031,7 +1084,7 @@ export async function createBatchForGroup(
       .map((c) => c.formatKey)
       .filter((k): k is string => !!k)
   );
-  const assignedLooks = assignLooks(SLOTS_BY_LANE[groupKey].length, recentLooks);
+  const assignedLooks = assignLooks(SLOTS_BY_LANE[groupKey].length, recentLooks, opts.seed === undefined ? undefined : seededRng(opts.seed));
   const SLOTS = SLOTS_BY_LANE[groupKey].map((sl, i) => ({ ...sl, format: assignedLooks[i].key }));
   const { id: projectId } = await ensureGroupProject(groupKey);
   const project = await prisma.adLabProject.findUniqueOrThrow({ where: { id: projectId } });
@@ -1172,15 +1225,27 @@ Submit the ads with the submit_ads tool.`;
 Call the submit_ads tool IMMEDIATELY. Do not write any analysis, plan, draft or commentary before or after the tool call; think silently and put everything into the tool input.`;
 
   const generateHalf = async (i: number): Promise<z.infer<typeof BatchAdSchema>[]> => {
+    const purpose = `weekly-batch-${groupKey}-${i + 1}`;
+    const userPrompt = halfPrompt(i);
+    if (opts.collect) {
+      opts.collect.push({ purpose, systemPrompt, userPrompt, maxTokens: 16000, promptHash: promptHash(userPrompt) });
+      return [];
+    }
+    // A batch reply is used only for the same slots, looks and themes it was
+    // written for; anything else (or an unparseable reply) goes live below.
+    const pre = opts.prefetched?.[purpose];
     try {
-      const raw = await callAdLabClaude({
-        purpose: `weekly-batch-${groupKey}-${i + 1}`,
-        systemPrompt,
-        userPrompt: halfPrompt(i),
-        maxTokens: 16000,
-        models: AD_COPY_MODELS,
-        outputTool: SUBMIT_ADS_TOOL,
-      });
+      const raw =
+        pre && pre.promptHash === promptHash(userPrompt)
+          ? pre.raw
+          : await callAdLabClaude({
+              purpose,
+              systemPrompt,
+              userPrompt,
+              maxTokens: 16000,
+              models: AD_COPY_MODELS,
+              outputTool: SUBMIT_ADS_TOOL,
+            });
       return parseBatchAds(raw, halves[i].length).map((ad, k) => tagSlot(ad, i, k));
     } catch (err1) {
       const raw2 = await callAdLabClaude({
@@ -1262,10 +1327,11 @@ Call the submit_video_ads tool IMMEDIATELY with no text before or after it.`;
     }
     return drafts;
   };
-  const [videoOut, ...halvesOut] = await Promise.allSettled([videoTemplates.length ? generateVideos() : Promise.resolve([] as Awaited<ReturnType<typeof generateVideos>>), ...halves.map((_, i) => generateHalf(i))]);
+  const [videoOut, ...halvesOut] = await Promise.allSettled([videoTemplates.length && !opts.collect ? generateVideos() : Promise.resolve([] as Awaited<ReturnType<typeof generateVideos>>), ...halves.map((_, i) => generateHalf(i))]);
   const videoCandidates = videoOut.status === "fulfilled" ? videoOut.value : [];
   if (videoOut.status === "rejected") console.warn(`[adlab-weekly] ${groupKey} videos failed: ${videoOut.reason instanceof Error ? videoOut.reason.message : videoOut.reason}`);
   const drafts: z.infer<typeof BatchAdSchema>[] = halvesOut.flatMap((r) => (r.status === "fulfilled" ? r.value : []));
+  if (opts.collect) return null;
 
   // ── Jev picks the winners (2026-09-30) ──
   const { judgeDrafts, pickBest, jevCalibration } = await import("@/lib/adlab/jev-judge");

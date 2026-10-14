@@ -5,9 +5,13 @@ import type { GroupBatchSummary } from "@/lib/adlab/weekly-batch";
 /**
  * Weekly Reddit→AdLab ad batch (2026-09-23, per Keenan).
  *
- * Runs Sunday 10:00 UTC (5am CDT) — after the Saturday 11:59pm CDT Reddit
- * pulse — so 20 fresh Reddit-grounded ads (10 per audience group: women /
- * men) are waiting for Keenan's Sunday admin session:
+ * Runs Saturday 21:00 UTC (4pm CDT), three hours after the Saturday
+ * competitor research (2026-10-14, per Keenan: "push the sunday ad drafts to
+ * saturday and then batch it for Monday"). The ad copy goes out as an
+ * Anthropic Message Batch at half price: both lanes' requests are sent, the
+ * run checks every 10 minutes for up to 12 hours, then builds the ads from
+ * the replies. Any lane or request the batch didn't return is written with a
+ * live call, so the drafts are always waiting by Sunday morning:
  *   learning snapshot → create batch (copy, informed by learning + the
  *   Saturday competitor brief) → images (one step each, idempotent) →
  *   compliance → review email.
@@ -28,7 +32,7 @@ export const adlabWeeklyBatchFn = inngest.createFunction(
     retries: 1,
     concurrency: { limit: 1 },
     triggers: [
-      { cron: "0 10 * * 0" },
+      { cron: "0 21 * * 6" },
       { event: "adlab/weekly-batch.requested" },
     ],
   },
@@ -40,6 +44,12 @@ export const adlabWeeklyBatchFn = inngest.createFunction(
     );
     const groups = requested.length ? requested : (["women", "men"] as const);
     const summaries: GroupBatchSummary[] = [];
+    // The scheduled run batches the copy; a manual run stays live (someone is
+    // waiting on it) unless it asks for { batch: true }.
+    const useBatch = event?.name !== "adlab/weekly-batch.requested" || (event?.data as { batch?: boolean } | undefined)?.batch === true;
+    // Same seed for the collect pass and the build pass, so the looks (and
+    // therefore the prompts) match and the batch replies can be used.
+    const seed = await step.run("seed", () => Date.now() % 2_147_483_647);
 
     for (const groupKey of groups) {
       // 0. Learning loop — refresh this group's first-party performance
@@ -57,12 +67,66 @@ export const adlabWeeklyBatchFn = inngest.createFunction(
           return { error: msg };
         }
       });
+    }
 
-      // 1. Copy generation (one Claude call → experiment + 10 creatives)
+    // 0b. Send every lane's copy requests as one Message Batch (half price).
+    // Soft: if this fails, the build step below writes the copy live.
+    const sent = useBatch
+      ? await step.run("batch-submit", async () => {
+          try {
+            const { SUBMIT_ADS_TOOL, collectBatchCopyRequests } = await import("@/lib/adlab/weekly-batch");
+            const { AD_COPY_MODELS, submitAdLabBatch } = await import("@/lib/adlab/claude");
+            const items = [];
+            for (const groupKey of groups) {
+              for (const r of await collectBatchCopyRequests(groupKey, seed)) {
+                items.push({ ...r, customId: r.purpose, model: AD_COPY_MODELS[0], outputTool: SUBMIT_ADS_TOOL });
+              }
+            }
+            if (!items.length) return null;
+            return { batchId: await submitAdLabBatch(items), items };
+          } catch (err) {
+            logger.warn(`[adlab-weekly] batch submit failed, writing copy live: ${err instanceof Error ? err.message : err}`);
+            return null;
+          }
+        })
+      : null;
+
+    // 0c. Wait for it: check every 10 minutes, for up to 12 hours.
+    let prefetched: import("@/lib/adlab/weekly-batch").PrefetchedCopy = {};
+    if (sent) {
+      let status = "in_progress";
+      for (let round = 0; round < 72 && status !== "ended"; round++) {
+        await step.sleep(`batch-wait-${round}`, "10m");
+        status = await step.run(`batch-status-${round}`, async () => {
+          const { adLabBatchStatus } = await import("@/lib/adlab/claude");
+          return adLabBatchStatus(sent.batchId).catch(() => "in_progress");
+        });
+      }
+      if (status === "ended") {
+        prefetched = await step.run("batch-results", async () => {
+          try {
+            const { adLabBatchResults } = await import("@/lib/adlab/claude");
+            const text = await adLabBatchResults(sent.batchId, sent.items);
+            const out: import("@/lib/adlab/weekly-batch").PrefetchedCopy = {};
+            for (const i of sent.items) if (text[i.customId]) out[i.purpose] = { promptHash: i.promptHash, raw: text[i.customId] };
+            return out;
+          } catch (err) {
+            logger.warn(`[adlab-weekly] batch results failed, writing copy live: ${err instanceof Error ? err.message : err}`);
+            return {};
+          }
+        });
+      } else {
+        logger.warn(`[adlab-weekly] batch ${sent.batchId} not done after 12h, writing copy live`);
+      }
+    }
+
+    for (const groupKey of groups) {
+      // 1. Copy generation → experiment + 10 creatives (from the batch
+      // replies when they match; live calls otherwise)
       const batch = await step.run(`create-batch-${groupKey}`, async () => {
         try {
           const { createBatchForGroup } = await import("@/lib/adlab/weekly-batch");
-          return await createBatchForGroup(groupKey);
+          return await createBatchForGroup(groupKey, { seed, prefetched });
         } catch (err) {
           const msg = err instanceof Error ? err.message : String(err);
           logger.error(`[adlab-weekly] ${groupKey} batch failed: ${msg}`);

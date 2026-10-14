@@ -7,6 +7,43 @@
 
 ---
 
+## [2026-10-14] — Weekly ad drafts move to Saturday and run at half price
+
+- **Requested by:** Keenan
+- **Committed by:** Claude Code
+- **Commit hash:** (see git log: "perf: Write weekly ad copy through the Batch API on Saturdays")
+
+### In plain English (for Keenan)
+The weekly batch of new ad drafts now starts Saturday afternoon instead of early Sunday. The AI writing step goes through Anthropic's "batch" option, which costs half as much but can take a while to come back, so the drafts and review email arrive Saturday evening or overnight. They're ready well before Monday's launches. If the batch is ever slow or fails, the drafts get written the normal way, so they always show up.
+
+### Technical changes (for Jimmy)
+- `apps/web/src/lib/adlab/claude.ts`:
+  - `callOnce` split into `requestParams()` + `replyText()` (shared by live and batch).
+  - New `submitAdLabBatch`, `adLabBatchStatus` and `adLabBatchResults`. SDK 0.27 has no batch helpers, so these call `/v1/messages/batches` through the client's generic `post`/`get` and parse JSONL from `.asResponse()`.
+  - Batch replies are logged to ClaudeCallLog as `adlab-<purpose>-batch` at 50% cost.
+- `apps/web/src/lib/adlab/weekly-batch.ts`:
+  - `createBatchForGroup(groupKey, { seed, prefetched })`.
+  - New `collectBatchCopyRequests(groupKey, seed)`, which records the 4 copy requests and returns before any DB write. Videos are skipped in collect mode; they're off by default since 10-12.
+  - Seeded mulberry32 shuffle for `assignLooks`.
+  - A prefetched reply is used only if the user prompt's sha1 matches. Otherwise, or on a parse failure, the existing live/retry path runs.
+  - `SUBMIT_ADS_TOOL` is exported.
+- `apps/web/src/inngest/functions/adlab-weekly-batch.ts`:
+  - Cron `0 10 * * 0` → `0 21 * * 6`.
+  - Order: learning for both lanes, one batch for both lanes, `step.sleep` 10m polling (max 72 rounds = 12h), results, then the unchanged per-lane build/images/compliance/email.
+  - Manual `adlab/weekly-batch.requested` runs stay live unless `data.batch === true`.
+- Tested:
+  - collect mode: 4 requests, same seed gives identical prompt hashes, a different seed differs, 0 experiments written
+  - submit/status/results against a local stub (test log row deleted)
+- Not tested: a real batch call, because the local Anthropic key is invalid.
+
+### Manual steps needed
+- [ ] After deploy, resync Inngest so the new Saturday cron registers: `curl -X PUT https://goripple.io/api/inngest` (Keenan / Claude)
+- [ ] Saturday 10-17: check the run in Inngest. ClaudeCallLog should show `adlab-weekly-batch-*-batch` rows (Keenan / Claude)
+
+### Notes
+- Saves only about $5–10/mo at current volume (weekly ad copy was about $8/30 days logged). Done on Keenan's call; the Saturday start keeps the drafts ahead of Monday.
+- The competitor research cron stays Saturday 18:00 UTC; the batch runs 3h later so it uses this week's brief.
+
 ## [2026-10-14] — Social and Mythicals AI calls reuse their instructions (prompt caching)
 
 - **Requested by:** Keenan
