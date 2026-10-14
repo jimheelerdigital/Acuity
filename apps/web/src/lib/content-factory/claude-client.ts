@@ -63,6 +63,27 @@ type CreateParams = Omit<Anthropic.MessageCreateParamsNonStreaming, "model"> & {
 
 const base = new Anthropic();
 
+/**
+ * Prompt caching on the system prompt (2026-10-14, per Keenan: "do the
+ * caching one now for anything mythical and social media related"). The
+ * Console showed a 27% cache hit rate and "up to $107 a month" saved.
+ * Every content caller keeps its rules in `system` and the per-post
+ * material in `messages`, and a run sends the same system prompt many
+ * times (best-of-5 drafts, fix passes, per-slide checks), so a breakpoint
+ * on the last system block lets those repeats read it at ~10% of the price.
+ * Prompts under the model's minimum cacheable length simply don't cache.
+ * A block that already carries cache_control is left as the caller set it.
+ */
+function withCachedSystem(system: CreateParams["system"]): CreateParams["system"] {
+  if (!system) return system;
+  const blocks = typeof system === "string" ? [{ type: "text" as const, text: system }] : [...system];
+  if (blocks.length === 0) return system;
+  const last = blocks[blocks.length - 1] as (typeof blocks)[number] & { cache_control?: unknown };
+  if (last.cache_control) return system;
+  blocks[blocks.length - 1] = { ...last, cache_control: { type: "ephemeral" } } as (typeof blocks)[number];
+  return blocks;
+}
+
 function modelUnavailable(err: unknown): boolean {
   if (err instanceof Anthropic.NotFoundError) return true;
   return err instanceof Anthropic.BadRequestError && /model/i.test(err.message);
@@ -76,11 +97,14 @@ async function create(params: CreateParams): Promise<Anthropic.Message> {
     temperature: _temperature,
     top_p: _topP,
     top_k: _topK,
+    system,
     ...rest
   } = params;
+  const cachedSystem = withCachedSystem(system);
   const body = (model: string) =>
     ({
       ...rest,
+      ...(cachedSystem ? { system: cachedSystem } : {}),
       model,
       max_tokens: max_tokens + THINKING_HEADROOM[effort],
       // output_config is newer than this SDK version's types; the API accepts it.

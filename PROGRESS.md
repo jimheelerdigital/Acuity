@@ -7,6 +7,31 @@
 
 ---
 
+## [2026-10-14] — Social and Mythicals AI calls reuse their instructions (prompt caching)
+
+- **Requested by:** Keenan
+- **Committed by:** Claude Code
+- **Commit hash:** (see git log: "perf: Cache system prompts on every content-factory Claude call")
+
+### In plain English (for Keenan)
+Every post we generate (Mythicals, Ripple, Build with Key, captions, image checks) re-sent its full rulebook to Claude on every request and paid full price each time. Now Claude keeps that rulebook for a few minutes, and repeat requests read it at about a tenth of the price. The posts themselves don't change. Anthropic estimated this saves up to about $107 a month.
+
+### Technical changes (for Jimmy)
+- `apps/web/src/lib/content-factory/claude-client.ts`: new `withCachedSystem()`, applied inside `create()` (the `contentAnthropic` wrapper that every content-factory call and `mythicals-portrait` goes through).
+  - It turns a string `system` into one text block with `cache_control: {type: "ephemeral"}` (5-minute TTL), or adds the marker to the last block of an array `system`.
+  - Caller-set `cache_control` is left alone. Calls with no `system` are unchanged.
+- Checked by capturing the outgoing request body against a local stub server. The local `ANTHROPIC_API_KEY` is invalid, so no live call was made.
+- Not touched: user-facing app calls (`pipeline.ts`, `memory.ts`, etc.), `adlab/claude.ts`, and the legacy `callClaude` path.
+
+### Manual steps needed
+- [ ] After deploy, check the Anthropic Console cache hit rate (was 27%) in a few days (Keenan)
+
+### Notes
+- Callers compute `ClaudeCallLog.costCents` from `usage.input_tokens`, which leaves out cache reads and writes. Logged costs will now read a bit lower than the real bill. The Console is the source of truth.
+- System prompts under the model's minimum cacheable length just don't cache. A prompt used only once within 5 minutes pays a 25% write premium on that block. Nearly every content prompt repeats within a run (best-of-5, fix passes, per-slide checks).
+- Batch API for weekly jobs: not built. They total about $17/30 days logged (ad batch, competitor briefs, lane report, niche memo), so 50% saves roughly $8–20/mo. Getting that means splitting each Sunday job into submit/wait/collect steps, which could delay the Sunday ad drafts by up to 24h. This is waiting on Keenan's call.
+- Console key breakdown, 2026-10-14: "Acuity" key = all prod usage. "Claude_Long_Term_Agent" ($19.34 on 10-12, Opus 4.7) and "heeler-brain" are not Ripple code.
+
 ## [2026-10-14] — Subscriptions added to the dashboard's overhead costs
 
 - **Requested by:** Keenan
