@@ -278,7 +278,7 @@ export async function generateSelfieTopic(
   forceCoverStyle?: "statement" | "question",
   /** 3D cartoon version (2026-10-13): she acts out every slide. */
   toon = false
-): Promise<GeneratedSelfieTopic & { held?: string; jev?: Record<string, number> | null; rankedBy?: string; candidateLog?: string }> {
+): Promise<GeneratedSelfieTopic & { held?: string; jev?: Record<string, number> | null; rankedBy?: string; candidateLog?: string; area?: string; draftKind?: "exploit" | "explore" }> {
   // CANDIDATE PIPELINE (2026-10-13, per Keenan: Opus drafts several posts,
   // nonsense is cut, Jev ranks the rest on what the weekly brief says works).
   // Replaces the single-draft + Jev cover-picker flow, whose rewrites
@@ -292,10 +292,22 @@ export async function generateSelfieTopic(
   const { PAIN_BRANCH_STARTERS } = await import("@/lib/positioning");
   const [brief, recentBlock] = await Promise.all([readBriefBlock("ripple"), recentHeadlinesPromptBlock()]);
 
-  // Each draft takes a different pain area so the candidates really differ.
-  const angles = [...PAIN_BRANCH_STARTERS]
-    .sort(() => Math.random() - 0.5)
-    .map((b) => `${b.name}: ${b.pain}`);
+  // 2 exploit + 3 explore drafts (2026-10-13, per Keenan): exploit drafts
+  // build on the brief's winning themes; explore drafts take pain branches,
+  // never the last selfie post's area. Results steer via the weekly brief.
+  const { readWinningThemes } = await import("./weekly-brief");
+  const themes = await readWinningThemes("ripple");
+  const branches = [...PAIN_BRANCH_STARTERS].sort(() => Math.random() - 0.5).map((b) => `${b.name}: ${b.pain}`);
+  const exploit = themes.slice(0, 2).map((t) => ({
+    area: `theme: ${t}`,
+    angle: `BUILD ON WHAT HAS WON: ${t}. Come at it from a fresh angle and a specific situation none of the recent posts used.`,
+    kind: "exploit" as const,
+  }));
+  const plan = [
+    ...exploit,
+    ...branches.slice(0, Math.max(0, CANDIDATE_COUNT - exploit.length)).map((b) => ({ area: b.split(":")[0], angle: b, kind: "explore" as const })),
+  ];
+  const angles = plan.map((p) => p.angle);
   // Each draft gets 150s so drafting + sense checks fit the 300s step; a
   // slow draft is dropped, not waited on.
   const within = <T,>(p: Promise<T>, ms: number) =>
@@ -312,9 +324,11 @@ export async function generateSelfieTopic(
       ), 150_000)
     )
   );
-  const drafts = settled
-    .filter((r): r is PromiseFulfilledResult<GeneratedSelfieTopic> => r.status === "fulfilled")
-    .map((r) => r.value);
+  type Draft = GeneratedSelfieTopic & { area?: string; draftKind?: "exploit" | "explore" };
+  const drafts: Draft[] = [];
+  settled.forEach((r, i) => {
+    if (r.status === "fulfilled") drafts.push({ ...r.value, area: plan[i % plan.length]?.area, draftKind: plan[i % plan.length]?.kind });
+  });
   if (drafts.length === 0) {
     const why = settled.find((r) => r.status === "rejected") as PromiseRejectedResult | undefined;
     throw new Error(`[selfie] every candidate draft failed: ${why?.reason instanceof Error ? why.reason.message : why?.reason}`);

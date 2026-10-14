@@ -7,6 +7,34 @@
 
 ---
 
+## [2026-10-13] — Brief = 70% how it was written / 30% what; drafts split 2 exploit + 3 explore
+
+- **Requested by:** Keenan
+- **Committed by:** Claude Code
+- **Commit hash:** (see git log: "feat: Split Ripple drafts into exploit and explore, brief 70/30 how/what")
+
+### In plain English (for Keenan)
+The weekly brief now teaches the writers mostly HOW our winning posts were written (hooks, specific details, structure, voice, how Ripple is mentioned), plus WHAT they were about as a smaller factor. Each Ripple post is picked from 5 drafts: 2 build on themes that have won for us, and 3 try different areas of her life. Jev ranks them with the brief in hand, and real results decide which areas show up more over time. No area can win two posts in a row.
+
+### Technical changes (for Jimmy)
+- `lib/content-factory/weekly-brief.ts`:
+  - `distillHowWhat()` (Opus) writes `how[]`, `whatWinning[]` and `whatFlopping[]` from winners vs losers.
+  - `promptBlockFor` leads with the HOW lessons ("weigh ~70% how / 30% what"), then the WHAT themes plus already-covered titles. It falls back to the raw winners when there's no distillation.
+  - New `areas` / `draftKinds` stats from recipes; new `readWinningThemes` and `readAreaStats`. The email shows how/what, life areas and exploit vs explore.
+- `candidate-calibration.ts` / `candidate-pipeline.ts`: new calibrated Jev question `pattern` (follows the brief's how/what), with default weights for newly added questions.
+- `ripple-list.ts`:
+  - 2 exploit drafts (area `theme: <winning theme>`) + 3 explore drafts. Explore areas come from `LIST_AREAS` via `chooseArm` on the brief's area stats (~25% exploration).
+  - Cooldown: a draft in the last post's area is rejected. The mental-load ban applies to explore drafts only.
+- `generate-topic.ts` (selfie): the same split. Exploit drafts use winning themes; explore drafts use pain branches.
+- `performance-loop.ts`: `PostRecipe` adds `area` / `draftKind`. `carousel-daily.ts` records them (list + selfie) and passes `lastArea`.
+
+### Manual steps needed
+None
+
+### Notes
+- The brief was rebuilt on 10-13 right after deploy so the 10-14 05:00 UTC posts have the how/what lessons.
+- Mythicals keeps its category rotation for "what". Its drafts get the 70/30 brief and Jev's `pattern` question.
+
 ## [2026-10-13] — Mythicals animation back to the best-era recipe; list-post fixes
 
 - **Requested by:** Keenan

@@ -123,6 +123,10 @@ export interface PostRecipe {
   researchSeed?: string;
   /** Jev's scores for the chosen pick concept (jev-calibration.ts). */
   jev?: Record<string, number>;
+  /** Ripple life area or "theme: ..." (exploit/explore steering, 2026-10-13). */
+  area?: string;
+  /** Exploit (brief's winning theme) vs explore (new life area). */
+  draftKind?: "exploit" | "explore";
   createdAt: string;
   backfilled?: boolean;
 }

@@ -22,9 +22,11 @@ import { spearman } from "./jev-calibration";
 export type CandidateBrand = "ripple" | "mythicals";
 
 /** Jev questions per brand: the only ones with any link to results so far. */
+// "pattern" (2026-10-13, per Keenan: Jev ranks on the brief's 70/30 how/what
+// lessons) is calibrated and killed like the others if it doesn't predict.
 export const CANDIDATE_DIMS: Record<CandidateBrand, string[]> = {
-  ripple: ["comment", "send"],
-  mythicals: ["comment", "watch"],
+  ripple: ["comment", "send", "pattern"],
+  mythicals: ["comment", "watch", "pattern"],
 };
 
 const MIN_POSTS = 8;
@@ -54,7 +56,11 @@ export async function readCandidateCalibration(brand: CandidateBrand): Promise<C
 
 export async function readCandidateWeights(brand: CandidateBrand): Promise<{ weights: Record<string, number>; jevOff: boolean }> {
   const c = await readCandidateCalibration(brand).catch(() => null);
-  return c ? { weights: c.weights, jevOff: c.jevOff } : { weights: defaultWeights(brand), jevOff: false };
+  if (!c) return { weights: defaultWeights(brand), jevOff: false };
+  // A question added after the last calibration starts at its default weight.
+  const base = defaultWeights(brand);
+  const weights = Object.fromEntries(CANDIDATE_DIMS[brand].map((d) => [d, c.weights[d] ?? base[d]]));
+  return { weights, jevOff: c.jevOff };
 }
 
 export function nextWeights(
@@ -100,7 +106,7 @@ export async function refreshCandidateCalibration(scored: ScoredPost[]): Promise
     const next =
       pairs.length >= MIN_POSTS
         ? nextWeights(brand, rho, prev?.weights ?? defaultWeights(brand), pairs.length)
-        : { weights: prev?.weights ?? defaultWeights(brand), jevOff: prev?.jevOff ?? false };
+        : { weights: { ...defaultWeights(brand), ...(prev?.weights ?? {}) }, jevOff: prev?.jevOff ?? false };
     const cal: CandidateCalibration = { brand, updatedAt: new Date().toISOString(), n: pairs.length, rho, ...next };
     await writeJson(path(brand), cal);
     out.push(cal);

@@ -40,6 +40,10 @@ export interface RippleListTopic {
   coverMotion: string;
   items: ListItem[];
   captionQuestion: string;
+  /** Life area (explore) or "theme: <winning theme>" (exploit). */
+  area?: string;
+  /** Exploit (built on the brief's winning themes) vs explore (new area). */
+  draftKind?: "exploit" | "explore";
   /** Winner's Jev answers (candidate-calibration.ts). */
   jev?: Record<string, number> | null;
   rankedBy?: string;
@@ -127,6 +131,7 @@ function rippleBlock(): string {
 async function draftOnce(opts: {
   shape: string;
   area: string;
+  kind: "exploit" | "explore";
   world: string;
   mentionsRipple: boolean;
   recent: string[];
@@ -137,11 +142,13 @@ async function draftOnce(opts: {
   const start = Date.now();
   const user = [
     `THIS POST'S TITLE SHAPE: ${opts.shape}`,
-    `THIS POST'S LIFE AREA (other drafts take other areas, so stay in this one): ${opts.area}`,
-    // 2026-10-13 (Keenan: "those are two of basically the exact same post ...
-    // i need variance"): both first samples centered on "the list in your
-    // head", the brief's top phrase. Keep it out of titles.
-    `VARIETY: the title must NOT be about "the list in your head", "mental load" or "carrying everything" in general (every recent post went there). Name a specific situation inside this life area instead, and make it clearly different from every recent title below.`,
+    // Exploit vs explore (2026-10-13, per Keenan: "split each of the drafts
+    // into the 2 exploit vs explore ... the real results will steer the
+    // variety"). Both follow the brief's HOW lessons; exploit drafts also
+    // build on a theme that has won, explore drafts take a new life area.
+    opts.kind === "exploit"
+      ? `THIS DRAFT BUILDS ON WHAT HAS WON: base it on this theme from our results: ${opts.area.replace(/^theme:\s*/, "")}. Come at it from a fresh angle and a specific situation none of the recent titles below used; never reword a recent title.`
+      : `THIS POST'S LIFE AREA (other drafts take other areas, so stay in this one): ${opts.area}\nVARIETY: the title must NOT be about "the list in your head", "mental load" or "carrying everything" in general (every recent post went there). Name a specific situation inside this life area instead, and make it clearly different from every recent title below.`,
     `THIS POST'S SCENIC WORLD (every slide): ${opts.world}`,
     opts.mentionsRipple ? rippleBlock() : "\n\nTHIS POST DOES NOT MENTION RIPPLE OR ANY APP: pure, useful advice.",
     opts.brief ? `\n\n${opts.brief}` : "",
@@ -193,6 +200,8 @@ async function draftOnce(opts: {
     slug: title.toLowerCase().replace(/[^a-z0-9\s-]/g, "").trim().replace(/\s+/g, "-").slice(0, 60),
     title,
     shape: opts.shape.split(":")[0],
+    area: opts.area,
+    draftKind: opts.kind,
     world: opts.world.split(":")[0],
     mentionsRipple: opts.mentionsRipple,
     coverScene: clean(p.coverScene) || items[0].scene,
@@ -249,6 +258,8 @@ export async function generateRippleListTopic(opts: {
   recentTitles: string[];
   /** Scenic worlds of the last list posts (e.g. ["OCEAN", "AUTUMN"]). */
   recentWorlds?: string[];
+  /** The last list post's area (cooldown: no area wins twice in a row). */
+  lastArea?: string;
   forceRipple?: boolean;
   forceWorld?: string;
 }): Promise<RippleListTopic> {
@@ -265,13 +276,34 @@ export async function generateRippleListTopic(opts: {
     (opts.forceWorld && LIST_WORLDS.find((w) => w.toLowerCase().startsWith(opts.forceWorld!.toLowerCase()))) ||
     worldPool[Math.floor(Math.random() * worldPool.length)];
   const shapes = draftShapes();
-  const areas = [...LIST_AREAS].sort(() => Math.random() - 0.5);
+  // 2 exploit drafts on the brief's winning themes + 3 explore drafts on life
+  // areas chosen by real results (Thompson + ~25% untested), never the last
+  // post's area. No themes yet → all five explore.
+  const { readWinningThemes, readAreaStats } = await import("./weekly-brief");
+  const { chooseArm } = await import("./performance-loop");
+  const [themes, areaStats] = await Promise.all([readWinningThemes("ripple"), readAreaStats("ripple")]);
+  const exploitAreas = themes
+    .map((t) => `theme: ${t}`)
+    .filter((a) => a !== opts.lastArea)
+    .slice(0, 2);
+  const exploreCount = CANDIDATE_COUNT - exploitAreas.length;
+  const pool: string[] = LIST_AREAS.filter((a) => a !== opts.lastArea);
+  const exploreAreas: string[] = [];
+  while (exploreAreas.length < exploreCount && pool.length) {
+    const { arm } = chooseArm(pool, areaStats);
+    exploreAreas.push(arm);
+    pool.splice(pool.indexOf(arm), 1);
+  }
+  const plan: { area: string; kind: "exploit" | "explore" }[] = [
+    ...exploitAreas.map((area) => ({ area, kind: "exploit" as const })),
+    ...exploreAreas.map((area) => ({ area, kind: "explore" as const })),
+  ];
   const within = <T,>(p: Promise<T>, ms: number) =>
     Promise.race([p, new Promise<never>((_, rej) => setTimeout(() => rej(new Error(`draft timed out after ${ms}ms`)), ms))]);
   const settled = await Promise.allSettled(
     Array.from({ length: CANDIDATE_COUNT }, (_, i) =>
       within(
-        draftOnce({ shape: shapes[i % shapes.length], area: areas[i % areas.length], world, mentionsRipple, recent: opts.recentTitles.slice(0, 60), brief, model: CANDIDATE_WRITER_MODEL }),
+        draftOnce({ shape: shapes[i % shapes.length], area: plan[i % plan.length].area, kind: plan[i % plan.length].kind, world, mentionsRipple, recent: opts.recentTitles.slice(0, 60), brief, model: CANDIDATE_WRITER_MODEL }),
         150_000
       )
     )
@@ -288,6 +320,7 @@ export async function generateRippleListTopic(opts: {
     render: (t) => `TITLE: ${t.title}\n${t.items.map((it, i) => `${i + 1}. ${it.line} (${it.detail})`).join("\n")}`,
     reject: async (t) => {
       if (/\bripple\b/i.test(t.title)) return "title names Ripple";
+      if (opts.lastArea && t.area === opts.lastArea) return "same area as the last list post";
       const ripples = t.items.filter((it) => /\bripple\b/i.test(`${it.line} ${it.detail}`)).length;
       if (t.mentionsRipple && ripples !== 1) return `should mention Ripple exactly once (found ${ripples})`;
       if (!t.mentionsRipple && ripples > 0) return "mentions Ripple in a brand-free post";

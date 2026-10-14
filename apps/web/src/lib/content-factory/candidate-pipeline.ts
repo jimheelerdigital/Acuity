@@ -40,12 +40,18 @@ const QUESTIONS: Record<CandidateBrand, Record<string, (i: number) => string>> =
       `Would the reader described in \`audience\` comment on or answer the post \`candidates[${i}]\`, because it describes her own life and asks something she wants to answer?`,
     send: (i) =>
       `Would the reader described in \`audience\` send the post \`candidates[${i}]\` to a friend or partner with a message like "this is so me"?`,
+
+    pattern: (i) =>
+      `Is \`candidates[${i}]\` written the way \`whatWorks\` says this account's winners are written (mostly HOW: the hook, the specific details, the structure, the voice), and, secondarily, about the kind of thing that has worked?`,
   },
   mythicals: {
     comment: (i) =>
       `Would a fan described in \`audience\` comment their pick on the post \`candidates[${i}]\`, because the choice is genuinely hard and every option is something they'd love to be or own?`,
     watch: (i) =>
       `Would a fan described in \`audience\` watch the reel of \`candidates[${i}]\` all the way to the last option?`,
+
+    pattern: (i) =>
+      `Is \`candidates[${i}]\` written the way \`whatWorks\` says this account's winners are written (mostly HOW: the cover question's shape, the options, the framing), and, secondarily, about the kind of thing that has worked?`,
   },
 };
 

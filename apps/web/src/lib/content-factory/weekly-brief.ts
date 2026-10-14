@@ -58,6 +58,17 @@ export interface WeeklyBrief {
   audienceLanguage: string;
   categories: { name: string; label: string; n: number; mean: number }[];
   jevSummary: string;
+  /**
+   * 70/30 distillation (2026-10-13, per Keenan: "make it mostly about HOW it
+   * was written, and have WHAT it was written about play a factor as well.
+   * 70% how, 30% what"). Opus reads winners vs losers.
+   */
+  how?: string[];
+  whatWinning?: string[];
+  whatFlopping?: string[];
+  /** Ripple life areas / draft kinds by win score (exploit vs explore steering). */
+  areas?: { name: string; n: number; mean: number }[];
+  draftKinds?: { name: string; n: number; mean: number }[];
   promptBlock: string;
 }
 
@@ -192,6 +203,33 @@ export async function buildWeeklyBrief(brand: BriefBrand): Promise<WeeklyBrief> 
     jevSummary,
     promptBlock: "",
   };
+  try {
+    const d = await distillHowWhat(brand, winners, losers, competitorHooks);
+    brief.how = d.how;
+    brief.whatWinning = d.whatWinning;
+    brief.whatFlopping = d.whatFlopping;
+  } catch (err) {
+    console.warn(`[weekly-brief] ${brand} how/what distillation failed — raw brief only:`, err instanceof Error ? err.message : err);
+  }
+  // Area / draft-kind stats from recipes (what the exploit/explore split learns).
+  try {
+    const { readRecipe } = await import("./performance-loop");
+    const areaAgg = new Map<string, number[]>();
+    const kindAgg = new Map<string, number[]>();
+    for (const p of scored) {
+      const r = (await readRecipe(p.postId)) as { area?: string; draftKind?: string } | null;
+      if (r?.area) areaAgg.set(r.area, [...(areaAgg.get(r.area) ?? []), p.score]);
+      if (r?.draftKind) kindAgg.set(r.draftKind, [...(kindAgg.get(r.draftKind) ?? []), p.score]);
+    }
+    const toStats = (m: Map<string, number[]>) =>
+      [...m.entries()]
+        .map(([name, xs]) => ({ name, n: xs.length, mean: Math.round((xs.reduce((a, b) => a + b, 0) / xs.length) * 100) / 100 }))
+        .sort((a, b) => b.mean - a.mean);
+    brief.areas = toStats(areaAgg);
+    brief.draftKinds = toStats(kindAgg);
+  } catch {
+    /* soft */
+  }
   brief.promptBlock = promptBlockFor(brief);
   await writeJson(briefPath(brand), brief);
   return brief;
@@ -202,13 +240,70 @@ function postLine(p: BriefPost): string {
   return `- "${p.title}" (score ${p.score.toFixed(2)}; ${nums})${p.slides.length ? `\n  slides: ${p.slides.join(" / ").slice(0, 260)}` : ""}`;
 }
 
-/** Plain-text block for writer prompts and Jev state. */
+/** Opus: what about HOW the winners were written, and WHAT they were about. */
+async function distillHowWhat(
+  brand: BriefBrand,
+  winners: BriefPost[],
+  losers: BriefPost[],
+  hooks: CompetitorHook[]
+): Promise<{ how: string[]; whatWinning: string[]; whatFlopping: string[] }> {
+  if (winners.length < 3) return { how: [], whatWinning: [], whatFlopping: [] };
+  const { contentAnthropic, lastJsonText, messageText, VISION_MODEL } = await import("./claude-client");
+  const show = (p: BriefPost) =>
+    `- "${p.title}" (score ${p.score.toFixed(2)}; ${p.views} views, ${p.comments} comments, ${p.shares} shares, ${p.saves} saves)${p.slides.length ? `\n  slides: ${p.slides.join(" / ").slice(0, 400)}` : ""}`;
+  const res = await contentAnthropic.messages.create({
+    model: VISION_MODEL,
+    max_tokens: 1500,
+    effort: "medium",
+    system: `You analyze a social account's results for its writers. Compare the WINNERS with the LOSERS and explain what separates them.
+
+Return JSON:
+- "how": 6 to 8 lessons about HOW the winners were written, the part that matters most: the hook shape and cover wording, how specific the details are, structure and order, voice and tone, length, how (and whether) a product is mentioned, what the last slide does. Each lesson is one concrete, usable sentence a writer can apply to ANY topic ("names one specific moment, like the permission slip at a red light, instead of a feeling"). Never just restate a topic.
+- "whatWinning": 3 to 5 short themes or subjects the winners were about, as themes, not titles.
+- "whatFlopping": 2 to 4 themes or subjects the losers were about.
+Only use what the data shows. Return only the JSON object.`,
+    messages: [
+      {
+        role: "user",
+        content: `ACCOUNT: ${brand === "ripple" ? "Ripple (women ~40-50 carrying the mental load)" : "Legendary Mythicals (fantasy fans, 'which would you choose' posts)"}
+
+WINNERS:
+${winners.slice(0, 10).map(show).join("\n")}
+
+LOSERS:
+${losers.slice(0, 10).map(show).join("\n")}${hooks.length ? `\n\nOUTLIER POSTS FROM OTHER ACCOUNTS IN THE NICHE:\n${hooks.slice(0, 5).map((h) => `- ${h.hook} (${h.whyItWorks})`).join("\n")}` : ""}`,
+      },
+    ],
+  });
+  const j = JSON.parse(lastJsonText(messageText(res))) as { how?: unknown; whatWinning?: unknown; whatFlopping?: unknown };
+  const list = (x: unknown, n: number) => (Array.isArray(x) ? x.filter((v): v is string => typeof v === "string").slice(0, n) : []);
+  return { how: list(j.how, 8), whatWinning: list(j.whatWinning, 5), whatFlopping: list(j.whatFlopping, 4) };
+}
+
+/**
+ * Plain-text block for writer prompts and Jev state. 70% HOW (the lessons
+ * lead and carry the weight), 30% WHAT (themes as a factor, plus the titles
+ * already covered so they aren't repeated).
+ */
 export function promptBlockFor(b: WeeklyBrief): string {
-  const parts: string[] = [
-    `WHAT IS WORKING FOR THIS ACCOUNT (weekly brief, ${b.builtAt.slice(0, 10)}; ${b.scoredPosts} posts scored on our win metric, 1.0 = a typical post). Learn the PATTERN from the winners (the situation named, the kind of detail, the structure); never copy their words. Avoid what the losers have in common.`,
-  ];
-  if (b.winners.length) parts.push(`OUR WINNERS:\n${b.winners.slice(0, 8).map(postLine).join("\n")}`);
-  if (b.losers.length) parts.push(`OUR LOSERS (what flopped):\n${b.losers.slice(0, 6).map(postLine).join("\n")}`);
+  const parts: string[] = [];
+  if (b.how?.length) {
+    parts.push(
+      `WHAT IS WORKING FOR THIS ACCOUNT (weekly brief, ${b.builtAt.slice(0, 10)}; ${b.scoredPosts} posts scored on real results). Weigh it about 70% HOW the post is written and 30% WHAT it is about.\n\nHOW OUR WINNERS ARE WRITTEN (most important; apply to any topic):\n${b.how.map((x) => `- ${x}`).join("\n")}`
+    );
+    const what: string[] = [];
+    if (b.whatWinning?.length) what.push(`Themes that have won: ${b.whatWinning.join("; ")}.`);
+    if (b.whatFlopping?.length) what.push(`Themes that flopped: ${b.whatFlopping.join("; ")}.`);
+    if (b.winners.length) what.push(`Titles already covered (never repeat or lightly reword): ${b.winners.slice(0, 6).map((w) => `"${w.title}"`).join("; ")}.`);
+    if (what.length) parts.push(`WHAT IT WAS ABOUT (a factor, not a mandate; lean in when it fits this post's assignment):\n${what.join("\n")}`);
+  } else {
+    // No distillation yet: the raw winners/losers, as before.
+    parts.push(
+      `WHAT IS WORKING FOR THIS ACCOUNT (weekly brief, ${b.builtAt.slice(0, 10)}; ${b.scoredPosts} posts scored, 1.0 = a typical post). Learn the PATTERN from the winners (how they're written); never copy their topics or words.`
+    );
+    if (b.winners.length) parts.push(`OUR WINNERS:\n${b.winners.slice(0, 8).map(postLine).join("\n")}`);
+    if (b.losers.length) parts.push(`OUR LOSERS (what flopped):\n${b.losers.slice(0, 6).map(postLine).join("\n")}`);
+  }
   if (b.categories.length)
     parts.push(
       `BY CATEGORY / FORMAT: ${b.categories
@@ -216,15 +311,27 @@ export function promptBlockFor(b: WeeklyBrief): string {
         .map((c) => `${c.name} = ${c.label} (${c.mean}, n=${c.n})`)
         .join("; ")}`
     );
-  if (b.competitorHooks.length)
-    parts.push(
-      `OUTLIER POSTS IN OUR NICHE (other accounts, far above their usual views):\n${b.competitorHooks
-        .slice(0, 5)
-        .map((h) => `- ${h.hook}${h.whyItWorks ? ` Why it worked: ${h.whyItWorks}` : ""}`)
-        .join("\n")}`
-    );
-  if (b.audienceLanguage) parts.push(`HOW THE AUDIENCE TALKS THIS WEEK:\n${b.audienceLanguage}`);
+  if (b.audienceLanguage) parts.push(`HOW THE AUDIENCE TALKS THIS WEEK:\n${b.audienceLanguage.slice(0, 800)}`);
   return parts.join("\n\n").slice(0, MAX_BLOCK_CHARS);
+}
+
+/** The brief's winning themes (exploit drafts build on these). */
+export async function readWinningThemes(brand: BriefBrand): Promise<string[]> {
+  try {
+    return (await readBrief(brand))?.whatWinning ?? [];
+  } catch {
+    return [];
+  }
+}
+
+/** Life-area stats from the brief (explore drafts' steering). */
+export async function readAreaStats(brand: BriefBrand): Promise<Record<string, { n: number; mean: number }>> {
+  try {
+    const b = await readBrief(brand);
+    return Object.fromEntries((b?.areas ?? []).map((a) => [a.name, { n: a.n, mean: a.mean }]));
+  } catch {
+    return {};
+  }
 }
 
 function esc(s: string): string {
@@ -258,6 +365,10 @@ ${table("What's working (top 10)", b.winners)}
 ${table("What's been tragic (bottom 10)", b.losers)}
 ${b.categories.length ? `<h3 style="margin:18px 0 6px;">By category / format</h3><p style="font-size:13px;">${b.categories.map((c) => `${esc(c.name)}: <strong>${esc(c.label)}</strong> (${c.mean}, n=${c.n})`).join("<br>")}</p>` : ""}
 ${b.competitorHooks.length ? `<h3 style="margin:18px 0 6px;">Outliers in our niche</h3><ul style="font-size:13px;">${b.competitorHooks.map((h) => `<li><a href="${esc(h.url)}">@${esc(h.handle)}</a> (${h.views.toLocaleString()} views): ${esc(h.hook)}</li>`).join("")}</ul>` : ""}
+${b.how?.length ? `<h3 style="margin:18px 0 6px;">How our winners are written (70% of what the writers follow)</h3><ul style="font-size:13px;">${b.how.map((x) => `<li>${esc(x)}</li>`).join("")}</ul>` : ""}
+${b.whatWinning?.length ? `<h3 style="margin:18px 0 6px;">What they were about (30%)</h3><p style="font-size:13px;"><strong>Won:</strong> ${esc(b.whatWinning.join("; "))}${b.whatFlopping?.length ? `<br><strong>Flopped:</strong> ${esc(b.whatFlopping.join("; "))}` : ""}</p>` : ""}
+${b.areas?.length ? `<h3 style="margin:18px 0 6px;">Life areas (explore drafts steer toward these)</h3><p style="font-size:13px;">${b.areas.map((a) => `${esc(a.name)}: ${a.mean} (n=${a.n})`).join("<br>")}</p>` : ""}
+${b.draftKinds?.length ? `<p style="font-size:13px;"><strong>Exploit vs explore:</strong> ${b.draftKinds.map((a) => `${esc(a.name)} ${a.mean} (n=${a.n})`).join(" · ")}</p>` : ""}
 <h3 style="margin:18px 0 6px;">Is Jev earning its keep?</h3>
 <p style="font-size:13px;">${esc(b.jevSummary || "Not enough scored posts with Jev rankings yet. Needs posts made after 2026-10-14 that are 48h+ old.")}</p>`;
   });

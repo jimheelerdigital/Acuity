@@ -1480,18 +1480,20 @@ export const carouselDailyCronFn = inngest.createFunction(
           take: 2,
           select: { id: true },
         });
-        const recentWorlds = (await Promise.all(lastLists.map((p) => readRecipe(p.id))))
+        const lastRecipes = await Promise.all(lastLists.map((p) => readRecipe(p.id)));
+        const recentWorlds = lastRecipes
           .map((r) => r?.category.replace(/^world-/, "").replace(/-ripple$/, "").replace(/-/g, " ") ?? "")
           .filter(Boolean);
         return generateRippleListTopic({
           recentTitles: recent.map((p) => p.headline),
           recentWorlds,
+          lastArea: lastRecipes[0]?.area,
           forceRipple: typeof ev.rippleMention === "boolean" ? ev.rippleMention : undefined,
           forceWorld: ev.world,
         });
       });
       logger.info(
-        `[carousel-cron] List: "${list.title}" (${list.items.length} items, ${list.shape}, ${list.world}, ripple=${list.mentionsRipple}) — ${list.candidateLog ?? ""}${list.held ? ` HELD: ${list.held}` : ""}`
+        `[carousel-cron] List: "${list.title}" (${list.items.length} items, ${list.shape}, ${list.world}, ${list.draftKind}: ${list.area}, ripple=${list.mentionsRipple}) — ${list.candidateLog ?? ""}${list.held ? ` HELD: ${list.held}` : ""}`
       );
       if (dryRun) return saveDryRun(bucket, list);
       const slug = list.slug;
@@ -1598,6 +1600,8 @@ export const carouselDailyCronFn = inngest.createFunction(
               generatedFor: today.toISOString().slice(0, 10),
               slotHourUtc: new Date().getUTCHours(),
               ...(list.jev ? { jev: list.jev } : {}),
+              ...(list.area ? { area: list.area } : {}),
+              ...(list.draftKind ? { draftKind: list.draftKind } : {}),
             });
           } catch (err) {
             console.warn("[carousel-cron] list recipe write failed:", err instanceof Error ? err.message : err);
@@ -2019,6 +2023,8 @@ export const carouselDailyCronFn = inngest.createFunction(
             slotHourUtc: new Date().getUTCHours(),
             // Winner's Jev answers (candidate-calibration.ts).
             ...(selfie.jev ? { jev: selfie.jev } : {}),
+            ...(selfie.area ? { area: selfie.area } : {}),
+            ...(selfie.draftKind ? { draftKind: selfie.draftKind } : {}),
           });
         } catch (err) {
           console.warn("[carousel-cron] selfie recipe write failed:", err instanceof Error ? err.message : err);
