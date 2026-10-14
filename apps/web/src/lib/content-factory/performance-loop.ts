@@ -39,6 +39,8 @@ export const LOOP_LANES: Record<string, LoopBrand> = {
   // Selfie variant test (2026-10-12): postType = caption style
   // ("text-<style>"), category = character ("persona-<id>").
   selfie: "ripple",
+  // Ripple list lane (2026-10-13): postType = title shape, category = scenic world.
+  "ripple-list": "ripple",
 };
 
 /**

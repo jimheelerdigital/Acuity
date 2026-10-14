@@ -45,7 +45,7 @@ function ffmpegPath(): string | null {
  */
 export function livingMotionPrompt(
   imagePrompt: string,
-  opts: { person?: boolean; action?: boolean; realistic?: boolean; calm?: boolean; selfie?: "photo" | "toon" } = {}
+  opts: { person?: boolean; action?: boolean; realistic?: boolean; calm?: boolean; selfie?: "photo" | "toon" | "scenic" } = {}
 ): string {
   // SELFIE story reels (2026-10-13, per Keenan: "the animations also look
   // pretty bad... there's not much going on in them"). The writer scripts
@@ -55,6 +55,21 @@ export function livingMotionPrompt(
   if (opts.selfie) {
     const motion = imagePrompt.match(/^MOTION:\s*(.+)$/m)?.[1]?.trim();
     const scene = (imagePrompt.match(/^Scene[^:]*:\s*(.+)$/m)?.[1] ?? "").trim().slice(0, 300);
+    if (opts.selfie === "scenic") {
+      // Ripple list lane (2026-10-13): people-free landscapes; the nature
+      // itself moves (Keenan: "snowy backgrounds, ocean rolling, trees and
+      // leaves in autumn").
+      const land = (imagePrompt.match(/landscape photograph:\s*(.+)$/m)?.[1] ?? scene).trim().slice(0, 300);
+      return [
+        "Realistic nature footage: the landscape photo comes alive.",
+        land ? `Scene: ${land}` : "",
+        `Action: ${motion ?? "the scene's natural elements move: water, clouds, leaves, snow or grass"}. Clearly visible movement at natural, real-world speed through the whole clip, and everything else in the scene moves the way it really would (light shifting, mist drifting, branches swaying).`,
+        "Camera: a slow, smooth push-in or gentle drift, nothing fast.",
+        "Keep the composition, light and color as in the photo. No people, no animals appearing, no text, no morphing or warping.",
+      ]
+        .filter(Boolean)
+        .join(" ");
+    }
     if (opts.selfie === "toon") {
       return [
         "A shot from a modern 3D animated film (Pixar/DreamWorks style), keeping the image's exact animated style.",

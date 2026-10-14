@@ -148,7 +148,7 @@ async function ctaSlide(
   const { laneBrand } = await import("./social-publish");
   const brand = await laneBrand(lane);
   if (brand === "mythicals") return null; // posts carry their own closing slide
-  if (lane === "selfie") return null; // no end card, more organic (2026-10-13, per Keenan)
+  if (lane === "selfie" || lane === "ripple-list") return null; // no end card, more organic (2026-10-13, per Keenan)
   const url = `https://goripple.io/cta-slide-${brand}.jpg`;
   try {
     const fs = await import("fs");

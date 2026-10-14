@@ -505,7 +505,7 @@ export const carouselPostVideoFn = inngest.createFunction(
         ? Math.min(KLING3_MAX_SEC, Math.max(3, Math.ceil(slideSec(i))))
         : // Selfie slides run 4.5-8s: 10s clips play near real speed instead
           // of a 5s clip slowed to fill the slide (2026-10-13).
-          plan.lane === "selfie"
+          plan.lane === "selfie" || plan.lane === "ripple-list"
           ? 10
           : LIVING_CLIP_SEC;
 
@@ -559,7 +559,9 @@ export const carouselPostVideoFn = inngest.createFunction(
           selfie:
             plan.lane === "selfie"
               ? /Soft 3D animated illustration/.test(s.imagePrompt) ? "toon" : "photo"
-              : undefined,
+              : plan.lane === "ripple-list"
+                ? "scenic"
+                : undefined,
         });
         // Camera stays still (2026-10-12, per Keenan: "I don't want the camera
         // moving"): only the subject moves. The per-slide camera moves were removed.
@@ -762,7 +764,7 @@ export const carouselPostVideoFn = inngest.createFunction(
       );
       const live = segments.filter((sg) => !sg.still).length;
       // Song must cover the whole reel, no looping (2026-09-30, per Keenan).
-      const ctaSec = plan.brand === "mythicals" || plan.lane === "selfie" || (plan.lane?.startsWith("pick-") && process.env.PICK_CTA !== "1") ? 0 : 3;
+      const ctaSec = plan.brand === "mythicals" || plan.lane === "selfie" || plan.lane === "ripple-list" || (plan.lane?.startsWith("pick-") && process.env.PICK_CTA !== "1") ? 0 : 3;
       const reelSec = segments.reduce((a, sg) => a + sg.seconds, 0) + ctaSec;
       // Kling 3.0 sound reels carry only the clips' own sound (YouTube's copy adds music below).
       const music = soundOn
@@ -782,7 +784,7 @@ export const carouselPostVideoFn = inngest.createFunction(
         // NOT include the ripple callout end slide ... same with bwk").
         // PICK_CTA=1 turns it back on.
         ctaUrl:
-          plan.brand === "mythicals" || plan.lane === "selfie" || (plan.lane?.startsWith("pick-") && process.env.PICK_CTA !== "1")
+          plan.brand === "mythicals" || plan.lane === "selfie" || plan.lane === "ripple-list" || (plan.lane?.startsWith("pick-") && process.env.PICK_CTA !== "1")
             ? null
             : `https://goripple.io/cta-slide-${plan.brand}.jpg`,
         musicUrl: music,
@@ -879,7 +881,7 @@ export const carouselPostVideoFn = inngest.createFunction(
       const { igReelPath } = await import("@/lib/content-factory/post-video");
       const igPath = igReelPath(postId);
       await supabase.storage.from("content-factory").remove([igPath]);
-      const ctaSec = plan.brand === "mythicals" || plan.lane === "selfie" || (plan.lane?.startsWith("pick-") && process.env.PICK_CTA !== "1") ? 0 : 3;
+      const ctaSec = plan.brand === "mythicals" || plan.lane === "selfie" || plan.lane === "ripple-list" || (plan.lane?.startsWith("pick-") && process.env.PICK_CTA !== "1") ? 0 : 3;
       const reelSec = segments.reduce((a, sg) => a + sg.seconds, 0) + ctaSec;
       const music = await pickMusicTrack(plan.lane, undefined, {
         minSeconds: Math.max(Math.ceil(reelSec), musicOpts?.minSeconds ?? 0),
@@ -901,7 +903,7 @@ export const carouselPostVideoFn = inngest.createFunction(
       const { buf } = await joinPostVideo({
         segments: bufs,
         ctaUrl:
-          plan.brand === "mythicals" || plan.lane === "selfie" || (plan.lane?.startsWith("pick-") && process.env.PICK_CTA !== "1")
+          plan.brand === "mythicals" || plan.lane === "selfie" || plan.lane === "ripple-list" || (plan.lane?.startsWith("pick-") && process.env.PICK_CTA !== "1")
             ? null
             : `https://goripple.io/cta-slide-${plan.brand}.jpg`,
         musicUrl: music,

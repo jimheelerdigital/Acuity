@@ -142,6 +142,8 @@ const CAROUSEL_LANES = [
   "questions",
   "memento",
   "selfie",
+  // Ripple "top N" list lane (2026-10-13): scenic, animated, no faces.
+  "ripple-list",
   "phone-quote",
   "phone-quote-men",
   // Five lanes added 2026-09-14 night (per Keenan: "do 1, 2, 3 for
@@ -1451,6 +1453,147 @@ export const carouselDailyCronFn = inngest.createFunction(
     // identity anchored on a reference image) + 4-6 hyper-realistic
     // aesthetic POV step slides. Captions burned onto every image in
     // TikTok sticker style. Emails immediately (no animation).
+    // ── RIPPLE LIST bucket (2026-10-13, per Keenan: "top 4-8 ways to ____
+    // ... no faces. scenic backgrounds, super informative, super helpful";
+    // "add ripple in SOME of the posts but not all... animate them"). Cover
+    // + 4-8 item slides over one scenic world (snow, ocean, autumn...),
+    // picked from 5 Opus drafts (ripple-list.ts), animated like selfie posts.
+    if (bucket === "ripple-list") {
+      const ev = (event.data ?? {}) as { rippleMention?: boolean; world?: string };
+      const list = await step.run("generate-list-topic", async () => {
+        const { prisma } = await import("@/lib/prisma");
+        const { generateRippleListTopic } = await import("@/lib/content-factory/ripple-list");
+        const recent = await prisma.carouselPost.findMany({
+          where: { generatedFor: { gte: new Date(Date.now() - 30 * 86_400_000) } },
+          orderBy: { createdAt: "desc" },
+          select: { headline: true },
+          take: 80,
+        });
+        return generateRippleListTopic({
+          recentTitles: recent.map((p) => p.headline),
+          forceRipple: typeof ev.rippleMention === "boolean" ? ev.rippleMention : undefined,
+          forceWorld: ev.world,
+        });
+      });
+      logger.info(
+        `[carousel-cron] List: "${list.title}" (${list.items.length} items, ${list.shape}, ${list.world}, ripple=${list.mentionsRipple}) — ${list.candidateLog ?? ""}${list.held ? ` HELD: ${list.held}` : ""}`
+      );
+      if (dryRun) return saveDryRun(bucket, list);
+      const slug = list.slug;
+
+      await step.run("ensure-bucket", async () => {
+        const { ensureBucket } = await import("@/lib/content-factory/carousel-generate");
+        await ensureBucket();
+      });
+
+      // Caption look: deterministic per post; the most readable styles on
+      // busy landscapes.
+      let h = 0;
+      for (const c of slug) h = ((h << 5) - h + c.charCodeAt(0)) | 0;
+      const { SELFIE_TEXT_COLORS } = await import("@/lib/content-factory/compose");
+      const listStyle = (["classic", "highlight", "sticker"] as const)[Math.abs(h) % 3];
+      const listColor = SELFIE_TEXT_COLORS[Math.abs(h >> 3) % SELFIE_TEXT_COLORS.length];
+
+      const renderListSlide = async (i: number) => {
+        const { buildListScenePrompt } = await import("@/lib/content-factory/ripple-list");
+        const { generateImage, generateCheckedImage, uploadImage, uploadTextLayer } = await import(
+          "@/lib/content-factory/carousel-generate"
+        );
+        const { composeSlide, composeSlideWithOverlay, renderSelfieCaptionOverlay, buildTextLayer } = await import(
+          "@/lib/content-factory/compose"
+        );
+        const cover = i < 0;
+        const item = cover ? null : list.items[i];
+        const scene = cover ? list.coverScene : item!.scene;
+        const prompt = buildListScenePrompt(scene, list.world);
+        const { buffer: raw } = await generateCheckedImage(
+          () => (cover ? generateImage(prompt) : generateImage(prompt, "item")),
+          { scene, slot: cover ? "cover" : "item", personAllowed: false }
+        );
+        const name = cover ? "slide-0-cover" : `slide-${i + 1}-item`;
+        const textFree = await composeSlide(raw, "", cover ? "COVER" : "REASON");
+        const rawImageUrl = await uploadImage(textFree, `carousels/${dateStr}/${slug}/${name}-raw.jpg`);
+        const overlayText = cover ? list.title : `${i + 1}. ${item!.line}`;
+        const overlay = await renderSelfieCaptionOverlay(overlayText, {
+          kind: cover ? "COVER" : "REASON",
+          detail: item?.detail || undefined,
+          color: listColor,
+          textStyle: listStyle,
+          placement: "upper",
+        });
+        const composed = await composeSlideWithOverlay(raw, overlay);
+        const imageUrl = await uploadImage(composed, `carousels/${dateStr}/${slug}/${name}.jpg`);
+        await uploadTextLayer(await buildTextLayer(raw, overlay), `carousels/${dateStr}/${slug}/${name}.jpg`);
+        const motion = cover ? list.coverMotion : item!.motion;
+        // MOTION line feeds the animator (living-reel "scenic" mode).
+        return { imageUrl, rawImageUrl, overlayText, imagePrompt: `${prompt}\nMOTION: ${motion}` };
+      };
+
+      const listCover = await step.run("generate-list-cover", () => renderListSlide(-1));
+      const listSlides: Awaited<ReturnType<typeof renderListSlide>>[] = [];
+      for (let i = 0; i < list.items.length; i++) {
+        listSlides.push(await step.run(`generate-list-item-${i}`, () => renderListSlide(i)));
+      }
+
+      const listResult = await step.run("save-list", async () => {
+        const { prisma } = await import("@/lib/prisma");
+        const { buildCaption } = await import("@/lib/content-factory/caption");
+        const { extractHashtags } = await import("@/lib/content-factory/carousel-generate");
+        const caption = buildCaption({
+          slug,
+          headline: list.title,
+          style: "hook",
+          lane: "cinematicReal",
+          reasons: list.items.map((it) => it.line),
+          captionQuestion: list.captionQuestion,
+        });
+        const post = await prisma.carouselPost.create({
+          data: {
+            topicSlug: slug,
+            headline: list.title,
+            // sample / held: emailed, never auto-posted.
+            status: sample || list.held ? "APPROVED" : "DRAFT",
+            format: "PHOTO",
+            caption,
+            hashtags: extractHashtags(caption),
+            generatedFor: today,
+            lane: "ripple-list",
+            slides: {
+              create: [
+                { order: 0, kind: "COVER" as const, ...listCover },
+                ...listSlides.map((sl, i) => ({ order: i + 1, kind: "REASON" as const, ...sl })),
+              ],
+            },
+          },
+        });
+        if (!sample) {
+          try {
+            const { writeRecipe } = await import("@/lib/content-factory/performance-loop");
+            await writeRecipe({
+              postId: post.id,
+              brand: "ripple",
+              lane: "ripple-list",
+              postType: `list-${list.shape.toLowerCase().replace(/\s+/g, "-")}`,
+              category: `world-${list.world.toLowerCase().replace(/\s+/g, "-")}${list.mentionsRipple ? "-ripple" : ""}`,
+              title: list.title,
+              options: list.items.map((it) => it.line),
+              coverScene: list.coverScene,
+              generatedFor: today.toISOString().slice(0, 10),
+              slotHourUtc: new Date().getUTCHours(),
+              ...(list.jev ? { jev: list.jev } : {}),
+            });
+          } catch (err) {
+            console.warn("[carousel-cron] list recipe write failed:", err instanceof Error ? err.message : err);
+          }
+        }
+        const { queuePostVideo } = await import("@/lib/content-factory/post-video");
+        await queuePostVideo(post.id);
+        return { postId: post.id, slideCount: listSlides.length + 1 };
+      });
+      logger.info(`[carousel-cron] Generated list "${list.title}": ${listResult.slideCount} slides`);
+      return { generated: 1, bucket, ...listResult };
+    }
+
     if (bucket === "selfie") {
       // Photo or 3D cartoon (2026-10-13, per Keenan: "1 regular one, one
       // cartoonistic/animated one"): the day's first selfie post is photo,

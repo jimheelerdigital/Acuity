@@ -160,6 +160,8 @@ export function maxAnimatedSlides(brand: string, lane?: string | null): number {
   // Selfie animates every slide (2026-10-12, per Keenan: "animate it with
   // higgsfield as well"): cover + up to 6 steps.
   if (lane === "selfie") return 7;
+  // Ripple list (2026-10-13): cover + up to 8 items, every slide animated.
+  if (lane === "ripple-list") return 9;
   const perBrand = process.env[`POST_VIDEO_MAX_LIVE_${brand.toUpperCase()}`];
   if (perBrand !== undefined && perBrand.trim() !== "") {
     const b = Number(perBrand);
@@ -288,6 +290,6 @@ export function postVideoSlideSeconds(
   // Selfie slides carry a line AND a detail sentence (the detail isn't in
   // overlayText), so word-count timing cut them short (2026-10-13, per
   // Keenan: "it's hard to read all of the text on them").
-  if (lane === "selfie") return slideKind === "COVER" ? 4.5 : 8;
+  if (lane === "selfie" || lane === "ripple-list") return slideKind === "COVER" ? 4.5 : 8;
   return livingSlideSeconds(slideKind, overlayText);
 }

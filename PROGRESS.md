@@ -7,6 +7,32 @@
 
 ---
 
+## [2026-10-13] — New Ripple "top N" list lane replaces the cartoon slot
+
+- **Requested by:** Keenan
+- **Committed by:** Claude Code
+- **Commit hash:** (see git log: "feat: Add a scenic top-N list lane for Ripple")
+
+### In plain English (for Keenan)
+Ripple's second daily post is now a genuinely useful list, like "5 ways to stop feeling so overwhelmed" or "4 signs you're due for a breakthrough". It's set over beautiful moving nature scenes (snow falling, ocean waves, autumn leaves) with no people or faces. About one in three of these posts includes Ripple as one plain, useful tip; the rest are pure advice. The realistic selfie post stays as the first daily post.
+
+### Technical changes (for Jimmy)
+- New `lib/content-factory/ripple-list.ts`:
+  - `generateRippleListTopic` drafts 5 Opus candidates. Each draft gets a different title shape from `LIST_SHAPES` (ways / signs / things i stopped / small habits / questions / nobody tells you). All share one scenic world per post from `LIST_WORLDS` (snow, ocean, autumn, mountain lake, spring meadow, desert dawn).
+  - Ripple is mentioned in about 35% of posts, exactly once, never in the title.
+  - Rule checks + `listSenseProblem` (Opus, fails closed), then `rankCandidates`.
+  - `buildListScenePrompt` builds the people-free landscape image prompts.
+- `carousel-daily.ts`: new `ripple-list` bucket (added to `CAROUSEL_LANES`). Cover + 4-8 item slides (gpt-image scenic, `renderSelfieCaptionOverlay` line + detail), a `MOTION:` line per slide, sample/held → `APPROVED`, recipe postType `list-<shape>` and category `world-<world>[-ripple]`.
+- `living-reel.ts`: new `selfie: "scenic"` motion mode (nature moves at real speed, slow push-in). `carousel-post-video.ts`, `post-video.ts`, `social-publish-cron.ts` and `email.ts` treat `ripple-list` like `selfie`: 10s clips, 4.5s/8s slides, no Ripple end card. `maxAnimatedSlides` is 9. `LOOP_LANES` includes it.
+- Admin `generate-daily` passes `rippleMention` and `world` for samples.
+- Prod data: ContentLane `selfie` hoursUtc [5, 7] → [5]; new ContentLane `ripple-list` (brand ripple, template code, hoursUtc [7], ACTIVE).
+
+### Manual steps needed
+None
+
+### Notes
+- The cartoon selfie code stays in place but no longer runs: with selfie at once a day, `pick-selfie-style` always picks photo. `selfieStyle: "toon"` still works for samples.
+
 ## [2026-10-13] — YouTube: 1 Short a day for five weeks
 
 - **Requested by:** Keenan
