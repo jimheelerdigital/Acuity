@@ -9,11 +9,18 @@
  *
  * Only users with an existing stripeCustomerId can access this. Users
  * who never subscribed hit /upgrade instead.
+ *
+ * RevenueCat Web Billing subscribers (2026-10-14) have no stripeCustomerId
+ * — RevenueCat owns that billing relationship. For them we return RC's
+ * customer-portal link (subscriber.management_url), where they can update
+ * their card or cancel. Same response shape, so web /account, the mobile
+ * profile row and the past-due banner all work unchanged.
  */
 
 import { NextRequest, NextResponse } from "next/server";
 
 import { getAnySessionUserId } from "@/lib/mobile-auth";
+import { fetchRcSubscriber } from "@/lib/revenuecat/client";
 import { stripe } from "@/lib/stripe";
 
 export const dynamic = "force-dynamic";
@@ -31,6 +38,10 @@ export async function POST(req: NextRequest) {
     select: { stripeCustomerId: true },
   });
   if (!user?.stripeCustomerId) {
+    // RevenueCat Web Billing subscriber → RC's customer portal.
+    const rcUrl = await rcManagementUrl(userId);
+    if (rcUrl) return NextResponse.json({ url: rcUrl });
+
     // User has no Stripe customer yet — route them to the upgrade
     // flow instead of dead-ending with a blank portal.
     return NextResponse.json(
@@ -57,6 +68,23 @@ export async function POST(req: NextRequest) {
       { error: "PortalError", detail: err instanceof Error ? err.message : "unknown" },
       { status: 500 }
     );
+  }
+}
+
+/**
+ * RevenueCat's management link for this user's active subscription, or
+ * null. Only https links are passed through. Never throws — a failed RC read
+ * falls back to the existing "start a subscription" response.
+ */
+async function rcManagementUrl(userId: string): Promise<string | null> {
+  try {
+    const rc = await fetchRcSubscriber(userId);
+    if (!rc.ok) return null;
+    const url = rc.subscriber.management_url;
+    if (typeof url !== "string" || !url.startsWith("https://")) return null;
+    return url;
+  } catch {
+    return null;
   }
 }
 

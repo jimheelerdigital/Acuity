@@ -10,13 +10,16 @@
  * token is short-lived and per-user), so we mint it on click instead:
  *   - not signed in        → bounce through /auth/signin and come back here
  *   - has a Stripe customer → Billing Portal session (update card / pay)
- *   - no Stripe customer    → /upgrade to start a subscription
+ *   - no Stripe customer    → RevenueCat's customer portal when they have
+ *                             a Web Billing subscription (2026-10-14),
+ *                             otherwise /upgrade to start a subscription
  */
 
 import { getServerSession } from "next-auth";
 import { NextRequest, NextResponse } from "next/server";
 
 import { getAuthOptions } from "@/lib/auth";
+import { fetchRcSubscriber } from "@/lib/revenuecat/client";
 import { stripe } from "@/lib/stripe";
 
 export const dynamic = "force-dynamic";
@@ -50,6 +53,16 @@ export async function GET(_req: NextRequest) {
   // No Stripe customer yet → they've never subscribed; send them to the
   // upgrade flow rather than an empty portal.
   if (!user?.stripeCustomerId) {
+    // RevenueCat Web Billing subscriber → RC's customer portal.
+    try {
+      const rc = await fetchRcSubscriber(session.user.id);
+      const url = rc.ok ? rc.subscriber.management_url : null;
+      if (typeof url === "string" && url.startsWith("https://")) {
+        return NextResponse.redirect(url);
+      }
+    } catch {
+      // fall through to /upgrade
+    }
     return NextResponse.redirect(`${base}/upgrade`);
   }
 

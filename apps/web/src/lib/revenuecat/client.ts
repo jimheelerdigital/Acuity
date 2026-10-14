@@ -54,6 +54,12 @@ export interface RcSubscription {
 
 export interface RcSubscriber {
   original_app_user_id?: string;
+  /**
+   * Where the customer manages their ACTIVE subscription: RevenueCat's
+   * customer portal for a Web Billing sub, the App Store / Play page for a
+   * store sub, null when nothing is active.
+   */
+  management_url?: string | null;
   entitlements?: Record<string, RcEntitlement>;
   subscriptions?: Record<string, RcSubscription>;
 }

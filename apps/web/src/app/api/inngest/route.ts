@@ -91,6 +91,7 @@ import { musicLibraryFn } from "@/inngest/functions/music-library";
 import { adlabRegenImagesFn } from "@/inngest/functions/adlab-regen-images";
 import { adlabDailyCronFn } from "@/inngest/functions/adlab-daily-cron";
 import { mythicalsPortraitFn } from "@/inngest/functions/mythicals-portrait";
+import { rcTrialReminderFn } from "@/inngest/functions/rc-trial-reminder";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -129,6 +130,7 @@ const handler = serve({
     entitlementDriftMonitorFn,
     entitlementReconcileNightlyFn,
     rcParitySoakFn,
+    rcTrialReminderFn,
     trialCountdownEmailsCronFn,
     trialCountdownPushCronFn,
     // Flag-gated on ENABLE_V10_DAY2_PUSH; registered always so Inngest
