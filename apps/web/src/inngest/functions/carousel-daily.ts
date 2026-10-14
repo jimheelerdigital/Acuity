@@ -1538,7 +1538,10 @@ export const carouselDailyCronFn = inngest.createFunction(
       const { SELFIE_TEXT_COLORS } = await import("@/lib/content-factory/compose");
       // Highlight (white box) reads best over bright landscapes (10-13 samples:
       // the pink sticker glow got lost on the ocean shots).
-      const listStyle = (["highlight", "classic"] as const)[Math.abs(h) % 2];
+      // Text straight on the photo, no box or haze (2026-10-14, per Keenan:
+      // "they shouldn't have a background for text, it should just be text
+      // overlaid"): classic = white type with a thin dark outline.
+      const listStyle = "classic" as const;
       const listColor = SELFIE_TEXT_COLORS[Math.abs(h >> 3) % SELFIE_TEXT_COLORS.length];
 
       const renderListSlide = async (i: number) => {
@@ -1568,9 +1571,9 @@ export const carouselDailyCronFn = inngest.createFunction(
           textStyle: listStyle,
           placement: "upper",
         });
-        const composed = await composeSlideWithOverlay(raw, overlay);
+        const composed = await composeSlideWithOverlay(raw, overlay, { scrim: false });
         const imageUrl = await uploadImage(composed, `carousels/${dateStr}/${slug}/${name}.jpg`);
-        await uploadTextLayer(await buildTextLayer(raw, overlay), `carousels/${dateStr}/${slug}/${name}.jpg`);
+        await uploadTextLayer(await buildTextLayer(raw, overlay, { scrim: false }), `carousels/${dateStr}/${slug}/${name}.jpg`);
         const motion = cover ? list.coverMotion : item!.motion;
         // MOTION line feeds the animator (living-reel "scenic" mode).
         return { imageUrl, rawImageUrl, overlayText, imagePrompt: `${prompt}\nMOTION: ${motion}` };
@@ -1729,7 +1732,8 @@ export const carouselDailyCronFn = inngest.createFunction(
           SELFIE_PERSONAS.map((p) => p.id),
           // Most legible caption looks only (2026-10-13, per Keenan: "extremely
           // legible and simple to read").
-          SELFIE_TEXT_STYLES.filter((t) => t === "highlight" || t === "classic"),
+          // Plain overlaid text only, no box (2026-10-14, per Keenan).
+          SELFIE_TEXT_STYLES.filter((t) => t === "classic"),
           previous
         );
         const same = recent.findIndex((_, i) => recipes[i]?.category === `persona-${choice.persona}`);
@@ -1843,13 +1847,13 @@ export const carouselDailyCronFn = inngest.createFunction(
           textStyle,
           placement: "lower", // cover is always a mirror selfie — keep off the face
         });
-        const composed = await composeSlideWithOverlay(rawBuffer, overlay);
+        const composed = await composeSlideWithOverlay(rawBuffer, overlay, { scrim: false });
         const imageUrl = await uploadImage(
           composed,
           `carousels/${dateStr}/${slug}/slide-0-cover.jpg`
         );
         await uploadTextLayer(
-          await buildTextLayer(rawBuffer, overlay),
+          await buildTextLayer(rawBuffer, overlay, { scrim: false }),
           `carousels/${dateStr}/${slug}/slide-0-cover.jpg`
         );
         return {
@@ -1958,13 +1962,13 @@ export const carouselDailyCronFn = inngest.createFunction(
             // Aesthetic = no people → upper-middle keeps the subject clear.
             placement: shot.type === "mirror" ? "lower" : "upper",
           });
-          const composed = await composeSlideWithOverlay(rawBuffer, overlay);
+          const composed = await composeSlideWithOverlay(rawBuffer, overlay, { scrim: false });
           const imageUrl = await uploadImage(
             composed,
             `carousels/${dateStr}/${slug}/slide-${i + 1}-step.jpg`
           );
           await uploadTextLayer(
-            await buildTextLayer(rawBuffer, overlay),
+            await buildTextLayer(rawBuffer, overlay, { scrim: false }),
             `carousels/${dateStr}/${slug}/slide-${i + 1}-step.jpg`
           );
           return {

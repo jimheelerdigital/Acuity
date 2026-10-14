@@ -1712,7 +1712,9 @@ export async function composeQuoteSurfaceSlide(
  */
 export async function composeSlideWithOverlay(
   rawImage: Buffer,
-  overlayPng: Buffer
+  overlayPng: Buffer,
+  /** scrim: false = text straight on the photo, no haze (Ripple, 2026-10-14). */
+  opts: { scrim?: boolean } = {}
 ): Promise<Buffer> {
   // Light sharpen after the cover-fit upscale (item images come in at
   // 1024x1536 and are enlarged ~1.25x), applied to the photo only.
@@ -1720,7 +1722,7 @@ export async function composeSlideWithOverlay(
     .resize(OUTPUT_W, OUTPUT_H, { fit: "cover", position: "centre" })
     .sharpen({ sigma: 0.6 })
     .toBuffer();
-  const scrim = await buildAdaptiveScrim(base, overlayPng).catch(() => null);
+  const scrim = opts.scrim === false ? null : await buildAdaptiveScrim(base, overlayPng).catch(() => null);
   return sharp(base)
     .composite([
       ...(scrim ? [{ input: scrim, top: 0, left: 0 }] : []),
@@ -1740,13 +1742,14 @@ export async function composeSlideWithOverlay(
  */
 export async function buildTextLayer(
   rawImage: Buffer,
-  overlayPng: Buffer
+  overlayPng: Buffer,
+  opts: { scrim?: boolean } = {}
 ): Promise<Buffer> {
   const base = await sharp(rawImage)
     .resize(OUTPUT_W, OUTPUT_H, { fit: "cover", position: "centre" })
     .sharpen({ sigma: 0.6 })
     .toBuffer();
-  const scrim = await buildAdaptiveScrim(base, overlayPng).catch(() => null);
+  const scrim = opts.scrim === false ? null : await buildAdaptiveScrim(base, overlayPng).catch(() => null);
   return sharp({
     create: { width: OUTPUT_W, height: OUTPUT_H, channels: 4, background: { r: 0, g: 0, b: 0, alpha: 0 } },
   })

@@ -7,6 +7,25 @@
 
 ---
 
+## [2026-10-14] — Ripple text sits straight on the photo (no box, no haze)
+
+- **Requested by:** Keenan
+- **Committed by:** Claude Code
+- **Commit hash:** (see git log: "content: Lay Ripple text straight on the photo")
+
+### In plain English (for Keenan)
+Ripple slides no longer put a white box or a dark haze behind the words. The text is laid straight on the photo, white with a thin dark outline so it still reads.
+
+### Technical changes (for Jimmy)
+- `lib/content-factory/compose.ts`: `composeSlideWithOverlay` and `buildTextLayer` take `{ scrim: false }` to skip `buildAdaptiveScrim`. Default behavior is unchanged for other lanes.
+- `inngest/functions/carousel-daily.ts`: the selfie + ripple-list branches pass `{ scrim: false }` (stills and video text layers). The selfie caption style is limited to `classic`, and the list style is `classic` (the `highlight` white box is dropped).
+
+### Manual steps needed
+None
+
+### Notes
+- Pre-existing tsc errors in compose.ts (`sharp.OverlayOptions` namespace, lines ~349/830/1971) are untouched.
+
 ## [2026-10-14] — New Ripple link preview (logo + current positioning)
 
 - **Requested by:** Keenan
