@@ -368,7 +368,11 @@ const COUNTDOWN_RULES = `THIS POST IS A "TOP 5" COUNTDOWN: five entries ranked f
 - "captionQuestion": asks what they'd put at #1, or what's missing from the list.
 Everything else in the format above still applies.`;
 
-type ChoiceTopicOpts = {
+export type ChoiceTopicOpts = {
+  /** Staged pipeline (2026-10-14): the cover already picked by Jev. */
+  fixedCover?: { title: string; coverScene: string; coverMotion: string };
+  /** Exact option names to use, in order (hand-requested remakes). */
+  forcedOptions?: string[];
   /** Candidate drafting (2026-10-13): writer model + weekly brief block. */
   model?: string;
   brief?: string;
@@ -406,8 +410,12 @@ export async function generateChoiceTopic(opts: ChoiceTopicOpts): Promise<Choice
   // Candidate pipeline (2026-10-13, per Keenan): Opus drafts several posts,
   // the rules + Opus sense editor cut, Jev ranks. Hand-titled posts and the
   // fixed-shape series (size, countdown) keep the single-draft path.
-  if (!opts.fixedTitle && opts.mode !== "size" && opts.mode !== "countdown") return generateChoiceTopicCandidates(opts);
-  const topic = await generateChoiceTopicChecked(opts);
+  if (usesStagedPipeline(opts)) {
+    const cover = await pickChoiceCover(opts);
+    return repairChoiceTopic(await writeChoiceScripts(opts, cover), opts);
+  }
+  // Hand-requested exact options (2026-10-14 remake): one draft, names kept.
+  const topic = opts.forcedOptions?.length ? await generateChoiceTopicOnce(opts) : await generateChoiceTopicChecked(opts);
   if (opts.fixedTitle) {
     let title = opts.fixedTitle.trim().toUpperCase();
     // Only questions get a "?" (2026-10-06: "PICK YOUR ARMOR TO SURVIVE A
@@ -422,60 +430,195 @@ export async function generateChoiceTopic(opts: ChoiceTopicOpts): Promise<Choice
   return opts.mode === "size" || opts.mode === "countdown" ? topic : withBestTitle(topic, opts.mode ?? "choice");
 }
 
-async function generateChoiceTopicCandidates(opts: ChoiceTopicOpts): Promise<ChoiceTopic> {
-  const { CANDIDATE_COUNT, CANDIDATE_WRITER_MODEL, rankCandidates } = await import("./candidate-pipeline");
+/**
+ * STAGED PIPELINE (2026-10-14, per Keenan: "5 separate covers are written,
+ * jev picks what's best, then 3 scripts are written which jev picks from to
+ * post ... there should never be an elimination based on a monster").
+ * Replaces the 10-13 whole-post drafts, where five independent drafts landed
+ * on three near-identical titles and three were thrown out over one obscure
+ * creature, leaving "WHICH BEAST FOLLOWS YOU OFF THE MAP?" as the only one.
+ *   1. pickChoiceCover: one Opus call writes FIVE different covers; the
+ *      cover-only sense editor cuts unclear ones; Jev picks the best.
+ *   2. writeChoiceScripts: three Opus scripts (options, end card, caption)
+ *      for that cover; Jev picks. Nothing is eliminated.
+ *   3. repairChoiceTopic: the winner's hard problems (human faces, pictures
+ *      that don't show the asked-for thing, ordinary options, garbled lines)
+ *      are FIXED in place by Opus. A creature is never a reason to drop a post.
+ * Each stage runs in its own Inngest step (carousel-daily), so it fits the
+ * 300s limit. Hand-titled posts and fixed-shape series keep the old path.
+ */
+/** The per-mode rules block appended to SYSTEM (same as the writer uses). */
+function modeRules(mode: ChoiceTopicOpts["mode"]): string {
+  return mode === "duo"
+    ? `\n\n${DUO_RULES}`
+    : mode === "place"
+      ? `\n\n${PLACE_RULES}`
+      : mode === "know"
+        ? `\n\n${KNOW_RULES}`
+        : mode === "scenario"
+          ? `\n\n${SCENARIO_RULES}`
+          : mode === "size"
+            ? `\n\n${SIZE_RULES}`
+            : mode === "versus"
+              ? `\n\n${VERSUS_RULES}`
+              : mode === "countdown"
+                ? `\n\n${COUNTDOWN_RULES}`
+                : "";
+}
+
+export function usesStagedPipeline(opts: ChoiceTopicOpts): boolean {
+  return !opts.fixedTitle && !opts.forcedOptions?.length && opts.mode !== "size" && opts.mode !== "countdown";
+}
+
+type ChoiceCover = { title: string; coverScene: string; coverMotion: string; jev?: Record<string, number> | null };
+
+export async function pickChoiceCover(opts: ChoiceTopicOpts): Promise<ChoiceCover> {
+  const { CANDIDATE_WRITER_MODEL, rankCandidates } = await import("./candidate-pipeline");
+  const { readBriefBlock } = await import("./weekly-brief");
+  const { isRecentHeadline, nearDuplicateOf } = await import("./headline-history");
+  const brief = await readBriefBlock("mythicals");
+  const styles = [...MYTHIC_COVER_STYLES, ...MYTHIC_COVER_STYLES].sort(() => Math.random() - 0.5).slice(0, 5);
+  const write = async (extra: string): Promise<ChoiceCover[]> => {
+    const res = await contentAnthropic.messages.create({
+      model: CANDIDATE_WRITER_MODEL,
+      max_tokens: 2500,
+      system: `${SYSTEM}${modeRules(opts.mode)}\n\n${HUMAN_VOICE_RULES}`,
+      messages: [
+        {
+          role: "user",
+          content: [
+            `This post's subject: ${opts.category}.`,
+            opts.theme ? `Lane notes: ${opts.theme}` : "",
+            opts.recentTitles.length ? `Recent titles (don't repeat or lightly reword these):\n${opts.recentTitles.map((t) => `- ${t}`).join("\n")}` : "",
+            brief,
+            opts.feedback ?? "",
+            `TASK: write FIVE different COVERS for this post (no options yet). Each is a plain, natural question or instruction a fan instantly understands as "pick one of these five" (no stitched-on teaser sentences like "THE MAP ENDS HERE.", no verb that could read two ways). The five take genuinely different angles and wordings; never the same title twice.`,
+            `Cover ${"1-5"} styles, in order: ${styles.map((st, i) => `(${i + 1}) ${st}`).join(" ")}`,
+            extra,
+            `Return only JSON: {"covers": [{"title": "...", "coverScene": "...", "coverMotion": "..."}]} with exactly five covers.`,
+          ]
+            .filter(Boolean)
+            .join("\n\n"),
+        },
+      ],
+    });
+    const j = JSON.parse(lastJsonText(res.content.map((b) => (b.type === "text" ? b.text : "")).join(""))) as { covers?: Partial<ChoiceCover>[] };
+    return (j.covers ?? [])
+      .filter((c) => typeof c.title === "string" && c.title.trim() && typeof c.coverScene === "string")
+      .map((c) => ({ title: c.title!.trim().toUpperCase(), coverScene: c.coverScene!.trim(), coverMotion: (c.coverMotion ?? "").trim() }));
+  };
+  const rank = (covers: ChoiceCover[]) =>
+    rankCandidates({
+      brand: "mythicals",
+      label: `mythic-cover-${opts.mode ?? "choice"}`,
+      candidates: covers,
+      render: (c) => `COVER: ${c.title}\n(picture: ${c.coverScene.slice(0, 200)})`,
+      reject: async (c) => {
+        if (await isRecentHeadline(c.title)) return "repeats a recent title";
+        const near = await nearDuplicateOf(c.title);
+        return near ? `too close to recent title "${near}"` : null;
+      },
+      senseCheck: (c) => coverSenseProblem(c.title),
+    });
+  let covers = await write("");
+  let ranked = covers.length ? await rank(covers) : null;
+  if (!ranked) {
+    const why = covers.map((c) => c.title).join(" | ");
+    covers = await write(`REJECTED (none read clearly to a fan in one glance): ${why}. Write five NEW covers that do.`);
+    ranked = covers.length ? await rank(covers) : null;
+  }
+  if (!ranked) throw new Error(`[choice-lane] no cover passed the sense check (${opts.category})`);
+  console.log(`[choice-lane] cover picked: "${ranked.winner.title}" (${ranked.rankedBy}, ${ranked.survivors}/${covers.length})\n${ranked.table}`);
+  return { ...ranked.winner, jev: ranked.jev };
+}
+
+export async function writeChoiceScripts(opts: ChoiceTopicOpts, cover: ChoiceCover): Promise<ChoiceTopic> {
+  const { CANDIDATE_WRITER_MODEL, rankCandidates } = await import("./candidate-pipeline");
   const { readBriefBlock } = await import("./weekly-brief");
   const brief = await readBriefBlock("mythicals");
+  const fixedCover = { title: cover.title, coverScene: cover.coverScene, coverMotion: cover.coverMotion };
   const within = <T,>(p: Promise<T>, ms: number) =>
-    Promise.race([p, new Promise<never>((_, rej) => setTimeout(() => rej(new Error(`draft timed out after ${ms}ms`)), ms))]);
+    Promise.race([p, new Promise<never>((_, rej) => setTimeout(() => rej(new Error(`script timed out after ${ms}ms`)), ms))]);
   const settled = await Promise.allSettled(
-    Array.from({ length: CANDIDATE_COUNT }, () =>
-      within(generateChoiceTopicOnce({ ...opts, model: CANDIDATE_WRITER_MODEL, brief }), 150_000)
+    Array.from({ length: 3 }, () =>
+      within(generateChoiceTopicOnce({ ...opts, fixedCover, model: CANDIDATE_WRITER_MODEL, brief }), 200_000)
     )
   );
-  const drafts = settled
-    .filter((r): r is PromiseFulfilledResult<ChoiceTopic> => r.status === "fulfilled")
-    .map((r) => r.value);
-  if (drafts.length === 0) {
+  const scripts = settled.filter((r): r is PromiseFulfilledResult<ChoiceTopic> => r.status === "fulfilled").map((r) => r.value);
+  if (scripts.length === 0) {
     const why = settled.find((r) => r.status === "rejected") as PromiseRejectedResult | undefined;
-    throw new Error(`[choice-lane] every candidate draft failed: ${why?.reason instanceof Error ? why.reason.message : why?.reason}`);
+    throw new Error(`[choice-lane] every script failed: ${why?.reason instanceof Error ? why.reason.message : why?.reason}`);
   }
-  // Each check runs once per draft; the relaxed second pass reuses them.
-  const problems = new Map<ChoiceTopic, Promise<string[]>>();
-  const problemsOf = (t: ChoiceTopic) => {
-    if (!problems.has(t)) problems.set(t, choiceTopicProblems(t).catch(() => []));
-    return problems.get(t)!;
-  };
-  const sense = new Map<ChoiceTopic, Promise<string | null>>();
-  const senseOf = (t: ChoiceTopic) => {
-    if (!sense.has(t)) sense.set(t, mythicSenseProblem(t));
-    return sense.get(t)!;
-  };
-  const render = (t: ChoiceTopic) =>
-    `COVER: ${t.title}\n${t.options.map((o, i) => `${i + 1}. ${o.name}: ${o.lore}`).join("\n")}`;
-  const label = `mythic-${opts.mode ?? "choice"}`;
-  // Strict: no problems at all. Relaxed: only Keenan's hard rules.
-  const strict = await rankCandidates({
+  const ranked = await rankCandidates({
     brand: "mythicals",
-    label,
-    candidates: drafts,
-    render,
-    reject: async (t) => ((await problemsOf(t)).join("; ") || null),
-    senseCheck: senseOf,
+    label: `mythic-script-${opts.mode ?? "choice"}`,
+    candidates: scripts,
+    render: (t) => `COVER: ${t.title}\n${t.options.map((o, i) => `${i + 1}. ${o.name}: ${o.lore}`).join("\n")}`,
+    // Never eliminate a script over a creature (Keenan, 2026-10-14).
+    senseCheck: async () => null,
   });
-  const ranked =
-    strict ??
-    (await rankCandidates({
-      brand: "mythicals",
-      label: `${label}-relaxed`,
-      candidates: drafts,
-      render,
-      reject: async (t) => ((await problemsOf(t)).filter((p) => HARD_PROBLEM_ALL.test(p)).join("; ") || null),
-      senseCheck: senseOf,
-    }));
-  if (!ranked) throw new Error(`[choice-lane] no candidate passed the hard rules and the sense check (${drafts.length} drafted)`);
-  console.log(`[choice-lane] "${ranked.winner.title}" won (${ranked.rankedBy}, ${ranked.survivors}/${drafts.length} survived${strict ? "" : ", relaxed pass"})`);
-  return { ...ranked.winner, ...(ranked.jev ? { jev: ranked.jev } : {}) };
+  const winner = ranked?.winner ?? scripts[0];
+  console.log(`[choice-lane] script picked for "${cover.title}": ${winner.options.map((o) => o.name).join(" / ")} (${ranked?.rankedBy ?? "first"})${ranked ? `\n${ranked.table}` : ""}`);
+  return { ...winner, ...(ranked?.jev ? { jev: ranked.jev } : {}) };
+}
+
+/** Problems worth FIXING in place (never a reason to drop the post). */
+const REPAIR_PROBLEM = /human faces|pictures don't show|realistic or ordinary|copy check flagged/;
+
+export async function repairChoiceTopic(topic: ChoiceTopic, opts: ChoiceTopicOpts): Promise<ChoiceTopic> {
+  try {
+    const { CANDIDATE_WRITER_MODEL: VISION_MODEL_FOR_REPAIR } = await import("./candidate-pipeline");
+    const problems = (await choiceTopicProblems(topic).catch(() => [] as string[])).filter((p) => REPAIR_PROBLEM.test(p));
+    const sense = await mythicSenseProblem(topic);
+    const all = [...problems, ...(sense && !/sense check unavailable/.test(sense) ? [sense] : [])];
+    if (!all.length) return topic;
+    console.warn(`[choice-lane] repairing "${topic.title}": ${all.join("; ")}`);
+    const res = await contentAnthropic.messages.create({
+      model: VISION_MODEL_FOR_REPAIR,
+      max_tokens: 3000,
+      system: `${SYSTEM}${modeRules(opts.mode)}\n\n${HUMAN_VOICE_RULES}`,
+      messages: [
+        {
+          role: "user",
+          content: `This post is finished except for these problems:\n- ${all.join("\n- ")}\n\nFix ONLY what these problems name: rewrite (or, if it must, replace) just the affected option's name, lore, scene and motion, or the garbled line. Keep the title, cover, every other option, the end card and the caption exactly as they are. Return the full post as JSON in the same shape.\n\n${JSON.stringify({ title: topic.title, coverScene: topic.coverScene, coverMotion: topic.coverMotion, options: topic.options, endCard: topic.endCard, captionQuestion: topic.captionQuestion })}`,
+        },
+      ],
+    });
+    const j = JSON.parse(lastJsonText(res.content.map((b) => (b.type === "text" ? b.text : "")).join(""))) as Partial<ChoiceTopic>;
+    const fixed = (j.options ?? []).filter((o) => o?.name && o?.lore && o?.scene);
+    if (fixed.length !== topic.options.length) return topic;
+    return {
+      ...topic,
+      options: fixed.map((o) => ({ name: o.name!.trim(), lore: o.lore!.trim(), scene: o.scene!.trim(), motion: (o.motion ?? "").trim() })),
+      endCard: (j.endCard ?? topic.endCard).trim() || topic.endCard,
+      captionQuestion: (j.captionQuestion ?? topic.captionQuestion).trim() || topic.captionQuestion,
+    };
+  } catch (err) {
+    console.warn("[choice-lane] repair failed — shipping the picked script:", err instanceof Error ? err.message : err);
+    return topic;
+  }
+}
+
+/** Opus check on a cover question alone (fails closed). */
+async function coverSenseProblem(title: string): Promise<string | null> {
+  const { VISION_MODEL, messageText } = await import("./claude-client");
+  try {
+    const res = await Promise.race([
+      contentAnthropic.messages.create({
+        model: VISION_MODEL,
+        max_tokens: 300,
+        effort: "medium",
+        system: `You are a blunt editor for a fantasy account. A fan scrolling fast sees only this cover question. FAIL it if they wouldn't instantly understand they're being asked to PICK one of several options, if it has a stitched-on teaser sentence, if a word could be read two ways (e.g. "follows you" as hunts you), or if it isn't how a person would naturally say it out loud. Return only JSON: {"ok": true} or {"ok": false, "problem": "one sentence"}`,
+        messages: [{ role: "user", content: `COVER: ${title}` }],
+      }),
+      new Promise<never>((_, rej) => setTimeout(() => rej(new Error("cover check timed out after 45s")), 45_000)),
+    ]);
+    const parsed = JSON.parse(lastJsonText(messageText(res))) as { ok?: boolean; problem?: string };
+    console.log(`[cover-sense] "${title}": ${parsed.ok ? "ok" : `FAIL ${parsed.problem}`}`);
+    return parsed.ok === false ? (parsed.problem ?? "unclear cover") : null;
+  } catch (err) {
+    return `cover check unavailable (${(err instanceof Error ? err.message : String(err)).slice(0, 60)})`;
+  }
 }
 
 /**
@@ -803,10 +946,16 @@ async function generateChoiceTopicOnce(opts: ChoiceTopicOpts): Promise<ChoiceTop
   const { prisma } = await import("@/lib/prisma");
   const start = Date.now();
   const coverStyle =
-    opts.mode === "size" || opts.mode === "countdown" ? "" : `COVER STYLE FOR THIS POST: ${pickCoverStyle()}`;
+    opts.fixedCover || opts.mode === "size" || opts.mode === "countdown" ? "" : `COVER STYLE FOR THIS POST: ${pickCoverStyle()}`;
   const user = [
     `This post's subject: ${opts.category}.`,
     coverStyle,
+    opts.fixedCover
+      ? `THE COVER IS ALREADY CHOSEN. Put these in your JSON exactly as given and write the options, endCard and captionQuestion for it:\n- title: ${opts.fixedCover.title}\n- coverScene: ${opts.fixedCover.coverScene}\n- coverMotion: ${opts.fixedCover.coverMotion}`
+      : "",
+    opts.forcedOptions?.length
+      ? `USE EXACTLY THESE OPTIONS, in this order, with these exact names (write their lore, scene and motion): ${opts.forcedOptions.map((n, i) => `${i + 1}. ${n}`).join("; ")}`
+      : "",
     opts.mode === "size" ? `Series title for this post (use it exactly): "${sizeSeriesTitle(opts.part ?? 1)}".` : "",
     opts.theme ? `Lane notes: ${opts.theme}` : "",
     opts.recentTitles.length
@@ -877,6 +1026,13 @@ async function generateChoiceTopicOnce(opts: ChoiceTopicOpts): Promise<ChoiceTop
       motion: typeof o.motion === "string" ? o.motion.trim() : "",
     }))
     .slice(0, optionCount(opts));
+  // Locked parts (2026-10-14): the Jev-picked cover and any forced names.
+  if (opts.forcedOptions?.length) opts.forcedOptions.forEach((n, i) => { if (options[i]) options[i].name = n; });
+  if (opts.fixedCover) {
+    parsed.title = opts.fixedCover.title;
+    parsed.coverScene = opts.fixedCover.coverScene;
+    parsed.coverMotion = opts.fixedCover.coverMotion;
+  }
   const title = (parsed.title ?? "").trim();
   if (!title || options.length < optionCount(opts) || !parsed.coverScene) {
     throw new Error(`choice topic unusable: title="${title}", ${options.length} options`);
@@ -899,11 +1055,11 @@ async function generateChoiceTopicOnce(opts: ChoiceTopicOpts): Promise<ChoiceTop
         captionQuestion,
       },
     });
-    if (typeof gated.title === "string" && gated.title.trim()) gatedTitle = gated.title.trim();
+    if (!opts.fixedCover && typeof gated.title === "string" && gated.title.trim()) gatedTitle = gated.title.trim();
     if (Array.isArray(gated.options) && gated.options.length === options.length) {
       gatedOptions = options.map((o, i) => ({
         ...o,
-        name: typeof gated.options[i]?.name === "string" && gated.options[i].name.trim() ? gated.options[i].name.trim() : o.name,
+        name: !opts.forcedOptions?.length && typeof gated.options[i]?.name === "string" && gated.options[i].name.trim() ? gated.options[i].name.trim() : o.name,
         lore: typeof gated.options[i]?.lore === "string" && gated.options[i].lore.trim() ? gated.options[i].lore.trim() : o.lore,
       }));
     }

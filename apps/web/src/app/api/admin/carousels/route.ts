@@ -289,6 +289,10 @@ export async function POST(req: NextRequest) {
           sample: (body as { sample?: boolean }).sample === true,
           // Selfie cover style override: "statement" | "question".
           coverStyle: (body as { coverStyle?: string }).coverStyle,
+          // Mythicals: exact cover question + option names for a remake.
+          topic: (body as { topic?: string }).topic,
+          options: (body as { options?: string[] }).options,
+          category: (body as { category?: string }).category,
           // Mythicals: build a saved dry-run draft (prompt-test-results/...json).
           topicPath: (body as { topicPath?: string }).topicPath,
           // Ripple list lane: force a Ripple mention on/off and the scenic world.

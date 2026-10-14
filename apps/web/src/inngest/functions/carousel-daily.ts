@@ -907,6 +907,8 @@ export const carouselDailyCronFn = inngest.createFunction(
       // Requested subject and option count (lane-requests body, 2026-10-07).
       const forcedCategory = (event.data as { category?: string } | undefined)?.category?.trim() || undefined;
       const forcedOptionCount = (event.data as { optionCount?: number } | undefined)?.optionCount;
+      // Exact option names for a hand-requested remake (2026-10-14).
+      const forcedOptions = (event.data as { options?: string[] } | undefined)?.options?.filter((x) => typeof x === "string" && x.trim());
       // 2026-09-30: no fixed lane per hour (Keenan: "i no longer want set
       // lanes... i want random variation based on the theme post"). Each
       // Mythicals run draws a post type at random, skipping types already
@@ -1076,7 +1078,7 @@ export const carouselDailyCronFn = inngest.createFunction(
       }
 
       const pickBrand = choiceLane.pickBrand;
-      const topic = await step.run("generate-choice-topic", async () => {
+      const topicStep = await step.run("generate-choice-topic", async () => {
         const { prisma } = await import("@/lib/prisma");
         // Build a saved dry-run draft exactly (2026-10-13, per Keenan: "build
         // that which weapon post and send me it"): topicPath points at a
@@ -1216,7 +1218,7 @@ export const carouselDailyCronFn = inngest.createFunction(
         if (forcedTopic) {
           coverGuidance = `\n\nREQUESTED COVER QUESTION (Keenan asked for this exact post): "${forcedTopic}". Use it as the title, in ALL CAPS, changing nothing but capitalization (add a "?" only if it is a question; instructions like \"PICK YOUR ARMOR...\" keep no question mark). Build all ${forcedOptionCount ?? "five"} options as answers to exactly this question.`;
         }
-        return generateChoiceTopic({
+        const choiceOpts = {
           mode: choiceMode,
           part: sizePart,
           category,
@@ -1226,8 +1228,34 @@ export const carouselDailyCronFn = inngest.createFunction(
           feedback: `${(await getLaneFeedback(laneKey)) ?? ""}${coverGuidance}` || null,
           ...(forcedTopic ? { fixedTitle: forcedTopic } : {}),
           ...(forcedOptionCount ? { optionCount: forcedOptionCount } : {}),
-        });
+          ...(forcedOptions?.length ? { forcedOptions } : {}),
+        } as import("@/lib/content-factory/choice-lane").ChoiceTopicOpts;
+        // Staged pipeline (2026-10-14): covers → scripts → repair, each its
+        // own step below so the whole thing fits the 300s step limit.
+        const { usesStagedPipeline } = await import("@/lib/content-factory/choice-lane");
+        if (usesStagedPipeline(choiceOpts)) return { staged: choiceOpts };
+        return generateChoiceTopic(choiceOpts);
       });
+      type ChoiceTopicT = import("@/lib/content-factory/choice-lane").ChoiceTopic;
+      type ChoiceOptsT = import("@/lib/content-factory/choice-lane").ChoiceTopicOpts;
+      const topic: ChoiceTopicT =
+        topicStep && typeof topicStep === "object" && "staged" in topicStep
+          ? await (async () => {
+              const o = (topicStep as { staged: ChoiceOptsT }).staged;
+              const cover = await step.run("choice-pick-cover", async () => {
+                const { pickChoiceCover } = await import("@/lib/content-factory/choice-lane");
+                return pickChoiceCover(o);
+              });
+              const script = await step.run("choice-write-scripts", async () => {
+                const { writeChoiceScripts } = await import("@/lib/content-factory/choice-lane");
+                return writeChoiceScripts(o, cover);
+              });
+              return (await step.run("choice-repair", async () => {
+                const { repairChoiceTopic } = await import("@/lib/content-factory/choice-lane");
+                return repairChoiceTopic(script as ChoiceTopicT, o);
+              })) as ChoiceTopicT;
+            })()
+          : (topicStep as ChoiceTopicT);
       logger.info(`[carousel-cron] Choice (${laneKey}): "${topic.title}" — ${topic.options.map((o) => o.name).join(" / ")}`);
       if (dryRun) return saveDryRun(laneKey, topic);
 

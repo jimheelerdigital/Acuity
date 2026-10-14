@@ -7,6 +7,30 @@
 
 ---
 
+## [2026-10-14] — Mythicals: 5 covers → Jev picks → 3 scripts → Jev picks; never drop a post over a creature
+
+- **Requested by:** Keenan
+- **Committed by:** Claude Code
+- **Commit hash:** (see git log: "feat: Pick Mythicals covers first, then scripts, and repair instead of cut")
+
+### In plain English (for Keenan)
+Each Mythicals post is now made in two rounds. First, five genuinely different cover questions are written and Jev picks the best one. Then three full option sets are written for that cover and Jev picks the best one to post. A post is never thrown out because of one creature: if an option has a real problem (a human face, a picture that doesn't show the thing, a garbled line), just that option gets fixed. This replaces the 10-13 setup that produced "WHICH BEAST FOLLOWS YOU OFF THE MAP?" as the only survivor of five drafts.
+
+### Technical changes (for Jimmy)
+- `lib/content-factory/choice-lane.ts`:
+  - New `usesStagedPipeline`, `pickChoiceCover` (one Opus call → 5 covers in 5 assigned cover styles; recent/near-dup rules + `coverSenseProblem` Opus check; Jev rank; one rewrite round if none pass), `writeChoiceScripts` (3 parallel Opus scripts with the cover locked via `fixedCover`; Jev rank; no elimination), `repairChoiceTopic` (only `REPAIR_PROBLEM` (human faces / pictures don't show / ordinary / copy flagged) + the sense editor's note are fixed in place by Opus).
+  - Name-recognizability problems (obscure, off-kind, twins, throwaways) never cut or change a post.
+  - `ChoiceTopicOpts` is exported and gains `fixedCover` and `forcedOptions`. The old `generateChoiceTopicCandidates` is removed.
+- `inngest/functions/carousel-daily.ts`: the choice step returns `{ staged }`, then runs `choice-pick-cover` → `choice-write-scripts` → `choice-repair` as separate steps (300s each). New event field `options` (forced names).
+- `app/api/admin/carousels/route.ts`: `generate-daily` passes `topic`, `options` and `category`.
+
+### Manual steps needed
+None
+
+### Notes
+- Remade 10-14's post as Keenan asked, with draft #0's cover and options ("WHICH BEAST FOLLOWS YOU INTO THE UNKNOWN?": Rune Bear, Wildfire Drake, Shadow Stalker, Deep Hydra, Elder Simurgh), as an emailed sample.
+- Why only 3 distinct covers on 10-13: five independent drafts converged on the same title. Writing all 5 covers in one call fixes that.
+
 ## [2026-10-13] — Clips at real speed everywhere; Ripple 4s/5s slides with short, legible text
 
 - **Requested by:** Keenan
