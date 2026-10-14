@@ -1,0 +1,139 @@
+/**
+ * /free-month?t=<signed token> — the button in the win-back free month email
+ * (lib/free-month.ts). Same shape as /free-week: the GET only shows the
+ * offer, and the month starts on a form POST, so mail scanners that pre-open
+ * links can't start someone's 30-day clock. The token identifies the
+ * account, so no sign-in is needed.
+ */
+import Link from "next/link";
+import { redirect } from "next/navigation";
+import { APP_STORE_URL, PLAY_STORE_URL } from "@/lib/app-access";
+import { claimFreeMonth, freeMonthState, verifyFreeMonthToken } from "@/lib/free-month";
+
+export const dynamic = "force-dynamic";
+export const metadata = { title: "A free month of Ripple Pro", robots: { index: false, follow: false } };
+
+async function startFreeMonth(formData: FormData) {
+  "use server";
+  const token = String(formData.get("t") ?? "");
+  const userId = verifyFreeMonthToken(token);
+  if (userId) await claimFreeMonth(userId);
+  redirect(`/free-month?t=${encodeURIComponent(token)}`);
+}
+
+const btnPrimary =
+  "block w-full rounded-full bg-acuity-primary px-6 py-3.5 text-center text-[15px] font-semibold text-white transition active:scale-[0.98]";
+const btnSecondary =
+  "block w-full rounded-full border border-zinc-200 dark:border-white/10 px-6 py-3.5 text-center text-[15px] font-semibold text-zinc-900 dark:text-zinc-50";
+
+function Card({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="flex min-h-screen items-center justify-center px-6">
+      <div className="w-full max-w-sm rounded-[22px] border border-zinc-200 dark:border-white/10 bg-white dark:bg-acuity-card-bg p-8 shadow-lg animate-fade-in">
+        {children}
+      </div>
+    </div>
+  );
+}
+
+function Title({ children }: { children: React.ReactNode }) {
+  return <h1 className="mb-3 text-2xl font-semibold text-zinc-900 dark:text-zinc-50">{children}</h1>;
+}
+
+function Body({ children }: { children: React.ReactNode }) {
+  return <p className="mb-4 text-[15px] leading-relaxed text-zinc-600 dark:text-zinc-300">{children}</p>;
+}
+
+export default async function FreeMonthPage({ searchParams }: { searchParams: { t?: string } }) {
+  const token = searchParams.t ?? "";
+  const userId = verifyFreeMonthToken(token);
+
+  if (!userId) {
+    return (
+      <Card>
+        <Title>This link has expired</Title>
+        <Body>Sign in to Ripple and you&apos;ll find your account where you left it.</Body>
+        <Link href="/auth/signin" className={btnPrimary}>Sign in</Link>
+      </Card>
+    );
+  }
+
+  const state = await freeMonthState(userId);
+
+  if (state === "eligible") {
+    return (
+      <Card>
+        <Title>A free month of Ripple Pro</Title>
+        <Body>
+          Thirty days of everything Pro does: the to-do list pulled from what you say, habit tracking, your
+          weekly report and the patterns that keep coming up.
+        </Body>
+        <Body>No card, nothing to cancel. When the month ends you go back to the free plan unless you choose to keep Pro.</Body>
+        <form action={startFreeMonth} className="mt-6">
+          <input type="hidden" name="t" value={token} />
+          <button type="submit" className={btnPrimary}>Start my free month</button>
+        </form>
+      </Card>
+    );
+  }
+
+  if (state === "already_claimed" || state === "already_pro") {
+    const { prisma } = await import("@/lib/prisma");
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { email: true, subscriptionStatus: true, trialEndsAt: true },
+    });
+    let signInUrl: string | null = null;
+    if (user?.email) {
+      const { createAppSignInUrl } = await import("@/lib/app-access");
+      signInUrl = await createAppSignInUrl(user.email).catch(() => null);
+    }
+    const onTrial = user?.subscriptionStatus === "TRIAL" && user.trialEndsAt && user.trialEndsAt > new Date();
+    const until = onTrial
+      ? user!.trialEndsAt!.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" })
+      : null;
+
+    return (
+      <Card>
+        {state === "already_pro" ? (
+          <>
+            <Title>You already have Pro</Title>
+            <Body>Everything is on. Open Ripple and say what&apos;s on your plate.</Body>
+          </>
+        ) : onTrial ? (
+          <>
+            <Title>Your free month is on</Title>
+            <Body>Pro is on until {until}. No card, nothing to cancel.</Body>
+            <p className="mb-3 text-[15px] font-semibold text-zinc-900 dark:text-zinc-50">1. Get the app</p>
+            <div className="mb-6 space-y-3">
+              <a href={APP_STORE_URL} className={btnPrimary}>Download on the App Store</a>
+              <a href={PLAY_STORE_URL} className={btnSecondary}>Get it on Google Play</a>
+            </div>
+            <p className="mb-1 text-[15px] font-semibold text-zinc-900 dark:text-zinc-50">2. Open it signed in</p>
+            <Body>Once it&apos;s installed, tap the button below on your phone. Ripple opens on this account, no password. Please don&apos;t make a new account in the app: your free month is on this one.</Body>
+          </>
+        ) : (
+          <>
+            <Title>Your free month has ended</Title>
+            <Body>Your account and everything you recorded are still there. You can keep Pro from inside the app.</Body>
+          </>
+        )}
+        <div className="mt-6 space-y-3">
+          {signInUrl && <a href={signInUrl} className={onTrial ? btnSecondary : btnPrimary}>Open Ripple, signed in</a>}
+          <Link href="/home" className={btnSecondary}>Use Ripple on the web</Link>
+        </div>
+      </Card>
+    );
+  }
+
+  return (
+    <Card>
+      <Title>This offer isn&apos;t available on this account</Title>
+      <Body>
+        The free month is for accounts that had Pro before. If you subscribe through the App Store or Google Play,
+        reply to the email and we&apos;ll sort it out.
+      </Body>
+      <Link href="/home" className={btnPrimary}>Go to Ripple</Link>
+    </Card>
+  );
+}

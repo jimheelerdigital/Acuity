@@ -7,6 +7,38 @@
 
 ---
 
+## [2026-10-14] — Win-back email: a free month for churned users, plus 3 questions
+
+- **Requested by:** Keenan
+- **Committed by:** Claude Code
+- **Commit hash:** (see git log: "feat: Add free-month win-back email for churned users")
+
+### In plain English (for Keenan)
+There's a new email for everyone who had Ripple Pro and lost it: people whose paid plan ended, and people whose free trial ran out. It comes from Keenan and asks three questions: what the app lacked, why they stopped, and what kept it from being their go-to app. They answer by replying. It also gives them a free month of Pro with no card. Tapping the button starts the month, and it switches off by itself after 30 days. The test copy has been sent to Keenan. Nothing goes to customers until he approves.
+
+### Technical changes (for Jimmy)
+- New `apps/web/src/lib/free-month.ts`:
+  - signed claim token (HMAC `free-month:` + NEXTAUTH_SECRET, 45-day TTL)
+  - `FREE_MONTH_ELIGIBLE_WHERE`: FREE, plus (stripeSubscriptionId, source stripe, or trialExpiredAt), plus `NOT_IAP_SOURCE_WHERE`, plus no `free_month_claimed` event
+  - `claimFreeMonth`: TRIAL with `trialEndsAt` +30d and an OnboardingEvent, in one transaction
+  - `freeMonthState`
+- New `apps/web/src/app/free-month/page.tsx`: GET shows the offer; a server-action POST claims it, so mail scanners can't start the clock. Mirrors `/free-week`.
+- New `apps/web/src/emails/announcements/free-month-winback.ts`.
+- New `apps/web/scripts/free-month-winback-send.ts`: dry-run / test / live --yes. TrialEmailLog key `winback_free_month`, claimed before send. Excludes internal emails, unsubscribed users and an optional suppression file. Fixes first names that are really email handles ("chantia.brown" → no name).
+- No schema change. Expiry goes through the existing trial-expiration-cron (TRIAL → FREE, non-IAP).
+
+### Manual steps needed
+- [ ] Push and deploy before the live send: `/free-month` 404s until then (Keenan says "push it")
+- [ ] Keenan approves the test email, then: `cd apps/web && npx tsx scripts/free-month-winback-send.ts live --yes` (Keenan / Claude)
+- [ ] Jimmy: quick review. Claiming flips users to TRIAL (an entitlement change); some of them have an old canceled `stripeSubscriptionId`
+
+### Notes
+- Dry run on 10-14: 330 recipients (44 ex-paid, 286 trial ran out).
+- App Store / Google Play churners are excluded. The store owns their entitlement, so a server-side trial would be overwritten.
+- Funnel leavers who never had a trial (123) aren't "churned" and already get the free-week emails.
+- Known duplicate: the Apple relay plus the real-email pair for one person (LeJean) gets two copies. That's the same Apple-duplicate problem as 10-01.
+- Claimers get the normal trial lifecycle emails (trial_ending etc.) near day 30.
+
 ## [2026-10-14] — Weekly ad drafts move to Saturday and run at half price
 
 - **Requested by:** Keenan
