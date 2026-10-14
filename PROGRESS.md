@@ -30,6 +30,7 @@ None
 
 ### Notes
 - `voiced-video.ts` still retimes clips, but that lane is retired (AI voiceovers are off).
+- Follow-up `d37b56be`: the rebuilt brief still showed "this is how i" through the covered-titles list, and one lesson used "past 9pm". Both are now filtered (`BANNED_LESSON`, covered-titles filter, plus a distillation rule against times of day).
 
 ## [2026-10-13] — Brief = 70% how it was written / 30% what; drafts split 2 exploit + 3 explore
 
