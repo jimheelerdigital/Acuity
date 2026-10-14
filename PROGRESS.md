@@ -7,6 +7,26 @@
 
 ---
 
+## [2026-10-14] — New Ripple link preview (logo + current positioning)
+
+- **Requested by:** Keenan
+- **Committed by:** Claude Code
+- **Commit hash:** (see git log: "fix: Show the Ripple logo and current positioning in link previews")
+
+### In plain English (for Keenan)
+When someone shares a goripple.io link (Instagram DMs, iMessage, Facebook, including the creator's tracking link), the preview now shows the Ripple logo with "Change your life for the better" instead of the old Acuity image and "One Minute a Day".
+
+### Technical changes (for Jimmy)
+- `apps/web/public/og-image.png`: new 1200x630, rendered from `ripple-lockup-cream.png` on the cream background (#FBF5F0) with Poppins text.
+- `apps/web/src/app/layout.tsx`: default/OG/Twitter title is "Ripple — Change Your Life for the Better"; the description uses the `lib/positioning.ts` category line; the image is `?v=4` (cache bust).
+
+### Manual steps needed
+None
+
+### Notes
+- Instagram and other apps cache previews per URL. Links already shared may keep the old card for a while; new shares pick up the new one.
+- "One minute a day" still appears in visible landing/signup/footer copy and the founder welcome email (it breaks the no-duration positioning rule). Not changed here because funnel and email copy changes are Monday-only.
+
 ## [2026-10-14] — First UGC creator added with a tracking link
 
 - **Requested by:** Keenan

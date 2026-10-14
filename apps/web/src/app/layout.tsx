@@ -53,13 +53,16 @@ const manrope = Manrope({
   weight: ["400", "500", "600", "700", "800"],
 });
 
+// Link previews (2026-10-14, per Keenan after an Instagram DM preview showed
+// the old Acuity image and "One Minute a Day"): positioning from
+// lib/positioning.ts, no recording-duration claim, new og-image.png.
 export const metadata: Metadata = {
   title: {
-    default: "Ripple — One Minute a Day. A Life of Clarity.",
+    default: "Ripple — Change Your Life for the Better",
     template: "%s | Ripple",
   },
   description:
-    "The AI journal that listens. Record your daily debrief by voice — AI extracts tasks, tracks goals, detects life patterns, and delivers your weekly report. No typing. No prompts. Just talk.",
+    "Ripple is an AI life optimizer: a habit tracker, voice journal and insight tool. Talk it out and Ripple turns it into your to-do list, tracks your habits and mood, and shows you what keeps coming up.",
   metadataBase: new URL("https://goripple.io"),
   alternates: {
     canonical: "https://goripple.io",
@@ -68,17 +71,17 @@ export const metadata: Metadata = {
     type: "website",
     url: "https://goripple.io",
     siteName: "Ripple",
-    title: "Ripple — One Minute a Day. A Life of Clarity.",
+    title: "Ripple — Change Your Life for the Better",
     description:
-      "The AI journal that listens. Record your daily debrief by voice — AI extracts tasks, tracks goals, detects life patterns, and delivers your weekly report. No typing. No prompts. Just talk.",
-    images: [{ url: "/og-image.png?v=3", width: 1200, height: 630, alt: "Ripple — AI voice journal for your daily debrief" }],
+      "Ripple is an AI life optimizer: a habit tracker, voice journal and insight tool. Talk it out and Ripple turns it into your to-do list, tracks your habits and mood, and shows you what keeps coming up.",
+    images: [{ url: "/og-image.png?v=4", width: 1200, height: 630, alt: "Ripple — change your life for the better" }],
   },
   twitter: {
     card: "summary_large_image",
-    title: "Ripple — One Minute a Day. A Life of Clarity.",
+    title: "Ripple — Change Your Life for the Better",
     description:
-      "The AI journal that listens. Record your daily debrief by voice — AI extracts tasks, tracks goals, detects life patterns, and delivers your weekly report.",
-    images: ["/og-image.png?v=3"],
+      "Ripple is an AI life optimizer: a habit tracker, voice journal and insight tool. Talk it out and Ripple turns it into your to-do list, tracks your habits and mood, and shows you what keeps coming up.",
+    images: ["/og-image.png?v=4"],
   },
   robots: {
     index: true,
