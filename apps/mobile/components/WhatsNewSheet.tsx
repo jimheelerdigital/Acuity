@@ -109,13 +109,14 @@ export function WhatsNewSheet({
                   accessibilityLabel={
                     tappable ? `${item.title}. ${action?.label}` : item.title
                   }
-                  style={({ pressed }) => ({
+                  // Static style: NativeWind drops function-form Pressable
+                  // styles (this is why rows rendered stacked in build 165).
+                  style={{
                     flexDirection: "row",
                     alignItems: "flex-start",
                     gap: 14,
                     paddingVertical: 12,
-                    opacity: pressed ? 0.6 : 1,
-                  })}
+                  }}
                 >
                   <View
                     style={{

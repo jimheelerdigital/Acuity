@@ -84,6 +84,9 @@ export function SwipeRow({
     onDelete();
   }, [onDelete]);
 
+  // NOTE: static style objects only. NativeWind's Pressable interop drops
+  // function-form styles (`style={({ pressed }) => …}`) — the 1.9.1 What's
+  // New sheet lost its row layout that way. The rest of the app avoids it.
   const card = variant === "card";
   const buttonBase = {
     width: card ? 76 : 80,
@@ -98,11 +101,7 @@ export function SwipeRow({
         onPress={handleEdit}
         accessibilityRole="button"
         accessibilityLabel={`Edit ${itemName}`}
-        style={({ pressed }) => ({
-          ...buttonBase,
-          backgroundColor: tokens.bgInset,
-          opacity: pressed ? 0.7 : 1,
-        })}
+        style={{ ...buttonBase, backgroundColor: tokens.bgInset }}
       >
         <Ionicons name="pencil" size={18} color={tokens.textSec} />
         <Text
@@ -120,11 +119,7 @@ export function SwipeRow({
         onPress={handleDelete}
         accessibilityRole="button"
         accessibilityLabel={`Delete ${itemName}`}
-        style={({ pressed }) => ({
-          ...buttonBase,
-          backgroundColor: tokens.bad,
-          opacity: pressed ? 0.7 : 1,
-        })}
+        style={{ ...buttonBase, backgroundColor: tokens.bad }}
       >
         <Ionicons name="trash" size={18} color="#ffffff" />
         <Text
