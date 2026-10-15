@@ -125,14 +125,14 @@ export function stateName(a: { sound?: "yes" | "no"; carrying: string[] }): stri
 
 /** First-habit suggestions (Miro #13), picked from what she's carrying. */
 const HABITS_BY_CARRY: Record<string, string[]> = {
-  health: ["Work out", "Drink more water"],
-  work: ["Plan tomorrow before I log off"],
+  health: ["Work out", "Drink 8 glasses of water"],
+  work: ["Read 10 pages"],
   side: ["One hour on the side project"],
   money: ["Check my spending"],
-  family: ["Phone-free time with family"],
+  family: ["Phone-free dinner"],
   partner: ["Quality time with my partner"],
 };
-const HABIT_FALLBACK = ["Walk outside", "Read before bed", "Drink more water"];
+const HABIT_FALLBACK = ["Read 10 pages", "Walk 10 minutes", "Drink 8 glasses of water"];
 
 export function habitSuggestions(carrying: string[]): string[] {
   const out: string[] = [];

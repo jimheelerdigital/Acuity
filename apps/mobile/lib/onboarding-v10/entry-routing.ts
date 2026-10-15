@@ -199,8 +199,12 @@ export function decideColdStartRoute(f: ColdStartFacts): ColdStartRoute {
       // starting the trial goes back to it, not Home. Gated on v10Offered
       // so an older account that never saw the v11 funnel is never trapped
       // behind a paywall it didn't come through.
-      const paying = f.subscriptionStatus === "PRO" || f.subscriptionStatus === "TRIAL";
-      if (f.v10Offered && !paying) return "v10-paywall";
+      // TRIAL is the server's automatic no-card trial (every new account),
+      // not a purchase — only PRO counts as paying here. A real App Store
+      // trial is caught on the paywall itself (RevenueCat entitlement) and
+      // finishOnboarding then marks onboarding complete, so this branch
+      // never sees them again.
+      if (f.v10Offered && f.subscriptionStatus !== "PRO") return "v10-paywall";
       return "home";
     }
     return "v10-resume";

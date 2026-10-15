@@ -92,8 +92,8 @@ describe("signed in", () => {
     // They already recorded, saw a reveal, made a paywall decision and set
     // a reminder. /onboarding?step=N would be a second onboarding.
     expect(
-      at({ signedIn: true, onboardingCompleted: false, v10Offered: true, hasRecorded: true, subscriptionStatus: "TRIAL" })
-    ).toBe("home");
+      at({ signedIn: true, onboardingCompleted: true, v10Offered: true, hasRecorded: true, subscriptionStatus: "TRIAL" })
+    ).toBe("stay");
   });
 
   it("1.9.1: resumes the funnel for a signed-in account with no debrief yet", () => {
@@ -108,10 +108,12 @@ describe("signed in", () => {
     ).toBe("v10-resume");
   });
 
-  it("1.9.1: keeps Home for v10 arrivals who recorded and started the trial", () => {
+  it("1.9.1: keeps Home for v10 arrivals who recorded and are paying", () => {
+    // TRIAL is the server's automatic no-card trial, not a purchase: it
+    // still goes to the required-trial paywall (see the v11 test below).
     expect(
       at({ signedIn: true, onboardingCompleted: false, hasRecorded: true, v10Offered: true, subscriptionStatus: "TRIAL" })
-    ).toBe("home");
+    ).toBe("v10-paywall");
     expect(
       at({ signedIn: true, onboardingCompleted: false, hasRecorded: true, v10Offered: true, subscriptionStatus: "PRO" })
     ).toBe("stay");

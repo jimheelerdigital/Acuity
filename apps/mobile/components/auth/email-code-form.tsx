@@ -51,6 +51,13 @@ export function EmailCodeForm({
   const [error, setError] = useState<string | null>(null);
   const [cooldown, setCooldown] = useState(0);
   const codeRef = useRef<TextInput>(null);
+  // iOS one-time-code autofill can fire onChangeText twice in one frame,
+  // before `busy` (a prop from the parent's state) updates — two verifies
+  // went out, the first consumed the code and signed in, the second came
+  // back "That code isn't right" on top of a successful sign-in (Keenan,
+  // build 172). A ref guards synchronously.
+  const verifyingRef = useRef(false);
+  const verifiedRef = useRef(false);
   const busy = loading !== null;
 
   useEffect(() => {
@@ -89,11 +96,15 @@ export function EmailCodeForm({
 
   async function verify(value: string) {
     const digits = value.replace(/\D/g, "");
-    if (digits.length !== 6 || busy) return;
+    if (digits.length !== 6 || busy || verifyingRef.current || verifiedRef.current) return;
+    verifyingRef.current = true;
     setError(null);
     setLoading("code");
-    const res = await verifyEmailCode(email.trim(), digits);
+    const res = await verifyEmailCode(email.trim(), digits).finally(() => {
+      verifyingRef.current = false;
+    });
     setLoading(null);
+    if (res.ok) verifiedRef.current = true;
     if (!res.ok) {
       setCode("");
       setError(

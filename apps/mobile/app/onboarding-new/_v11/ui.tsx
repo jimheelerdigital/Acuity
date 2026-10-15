@@ -17,12 +17,16 @@ import {
 import Animated, {
   Easing,
   FadeInDown,
+  useAnimatedProps,
   useAnimatedStyle,
   useSharedValue,
+  withDelay,
+  withRepeat,
+  withSequence,
   withTiming,
 } from "react-native-reanimated";
 import { SafeAreaView } from "react-native-safe-area-context";
-import Svg, { Circle, Defs, LinearGradient as SvgLinearGradient, Path, Stop } from "react-native-svg";
+import Svg, { Circle, Defs, Ellipse, LinearGradient as SvgLinearGradient, Path, Stop } from "react-native-svg";
 import {
   ArrowRight,
   Bell,
@@ -222,6 +226,9 @@ export function Body({
         keyboardDismissMode="interactive"
         automaticallyAdjustKeyboardInsets
         showsVerticalScrollIndicator={false}
+        // No rubber-band into blank space past the content (Keenan, build
+        // 172: "lets you scroll down way too far").
+        bounces={false}
       >
         {children}
       </ScrollView>
@@ -575,45 +582,105 @@ const MOOD_COLORS: Record<Mood, { top: string; bottom: string; ink: string; chee
   hopeful: { top: "#E3F8E7", bottom: "#BDEBC6", ink: "#1E4729", cheek: "#93D6A2" },
 };
 
+const AnimatedEllipse = Animated.createAnimatedComponent(Ellipse);
+const AnimatedCircle = Animated.createAnimatedComponent(Circle);
+
+/**
+ * Animated (Keenan, build 172: "an animated face of someone flustered").
+ * Every face blinks every few seconds. The overloaded face is FLUSTERED: a
+ * nervous little head-shake, cheeks flushing, eyes darting. Worried tilts
+ * side to side; hopeful bobs gently. Respects Reduce Motion via reanimated's
+ * system setting.
+ */
 export function MoodFace({ mood, size = 64 }: { mood: Mood; size?: number }) {
   const c = MOOD_COLORS[mood];
   const id = `mf-${mood}`;
   const line = { stroke: c.ink, strokeWidth: 3.2, strokeLinecap: "round" as const, strokeLinejoin: "round" as const, fill: "none" };
+
+  const blink = useSharedValue(1);
+  const sway = useSharedValue(0);
+  const flush = useSharedValue(0.45);
+  const dart = useSharedValue(0);
+
+  useEffect(() => {
+    blink.value = withRepeat(
+      withSequence(withDelay(2600, withTiming(0.1, { duration: 80 })), withTiming(1, { duration: 110 })),
+      -1,
+      false
+    );
+    if (mood === "overloaded") {
+      sway.value = withRepeat(
+        withSequence(
+          withTiming(-7, { duration: 70 }),
+          withTiming(7, { duration: 90 }),
+          withTiming(-5, { duration: 80 }),
+          withTiming(4, { duration: 80 }),
+          withTiming(0, { duration: 70 }),
+          withDelay(1500, withTiming(0, { duration: 1 }))
+        ),
+        -1,
+        false
+      );
+      flush.value = withRepeat(withSequence(withTiming(0.85, { duration: 700 }), withTiming(0.45, { duration: 900 })), -1, false);
+      dart.value = withRepeat(
+        withSequence(withDelay(900, withTiming(-1.6, { duration: 120 })), withDelay(500, withTiming(1.6, { duration: 120 })), withDelay(500, withTiming(0, { duration: 120 }))),
+        -1,
+        false
+      );
+    } else if (mood === "worried") {
+      sway.value = withRepeat(withSequence(withTiming(-4, { duration: 1100 }), withTiming(4, { duration: 1100 })), -1, true);
+    } else {
+      sway.value = withRepeat(withSequence(withTiming(-3, { duration: 900 }), withTiming(0, { duration: 900 })), -1, true);
+    }
+  }, [mood, blink, sway, flush, dart]);
+
+  const wrap = useAnimatedStyle(() =>
+    mood === "hopeful"
+      ? { transform: [{ translateY: sway.value }] }
+      : { transform: [{ rotate: `${sway.value}deg` }] }
+  );
+  const eyeL = useAnimatedProps(() => ({ ry: 3.2 * blink.value, cx: 24 + dart.value }));
+  const eyeR = useAnimatedProps(() => ({ ry: 3.2 * blink.value, cx: 40 + dart.value }));
+  const cheek = useAnimatedProps(() => ({ opacity: flush.value }));
+
   return (
-    <Svg width={size} height={size} viewBox="0 0 64 64" accessibilityLabel={mood}>
-      <Defs>
-        <SvgLinearGradient id={id} x1="0" y1="0" x2="0" y2="1">
-          <Stop offset="0" stopColor={c.top} />
-          <Stop offset="1" stopColor={c.bottom} />
-        </SvgLinearGradient>
-      </Defs>
-      <Circle cx={32} cy={32} r={32} fill={`url(#${id})`} />
-      {/* cheeks */}
-      <Circle cx={17} cy={39} r={4.5} fill={c.cheek} opacity={0.45} />
-      <Circle cx={47} cy={39} r={4.5} fill={c.cheek} opacity={0.45} />
-      {mood === "hopeful" ? (
-        <>
-          <Path d="M20 30 q4 -5 8 0" {...line} />
-          <Path d="M36 30 q4 -5 8 0" {...line} />
-          <Path d="M23 41 q9 9 18 0" {...line} />
-        </>
-      ) : null}
-      {mood === "worried" ? (
-        <>
-          <Path d="M19.5 23.5 l7 -2" {...line} strokeWidth={2.8} />
-          <Path d="M44.5 23.5 l-7 -2" {...line} strokeWidth={2.8} />
-          <Circle cx={24} cy={30} r={3.2} fill={c.ink} />
-          <Circle cx={40} cy={30} r={3.2} fill={c.ink} />
-          <Path d="M25 45 q7 -5 14 0" {...line} />
-        </>
-      ) : null}
-      {mood === "overloaded" ? (
-        <>
-          <Circle cx={24} cy={30} r={3.2} fill={c.ink} />
-          <Circle cx={40} cy={30} r={3.2} fill={c.ink} />
-          <Path d="M24 44 q2.7 -2.6 5.4 0 t5.4 0 t5.4 0" {...line} strokeWidth={2.8} />
-        </>
-      ) : null}
-    </Svg>
+    <Animated.View style={[{ width: size, height: size }, wrap]}>
+      <Svg width={size} height={size} viewBox="0 0 64 64" accessibilityLabel={mood}>
+        <Defs>
+          <SvgLinearGradient id={id} x1="0" y1="0" x2="0" y2="1">
+            <Stop offset="0" stopColor={c.top} />
+            <Stop offset="1" stopColor={c.bottom} />
+          </SvgLinearGradient>
+        </Defs>
+        <Circle cx={32} cy={32} r={32} fill={`url(#${id})`} />
+        <AnimatedCircle cx={17} cy={39} r={4.5} fill={c.cheek} animatedProps={cheek} />
+        <AnimatedCircle cx={47} cy={39} r={4.5} fill={c.cheek} animatedProps={cheek} />
+        {mood === "hopeful" ? (
+          <>
+            <Path d="M20 30 q4 -5 8 0" {...line} />
+            <Path d="M36 30 q4 -5 8 0" {...line} />
+            <Path d="M23 41 q9 9 18 0" {...line} />
+          </>
+        ) : null}
+        {mood === "worried" ? (
+          <>
+            <Path d="M19.5 23.5 l7 -2" {...line} strokeWidth={2.8} />
+            <Path d="M44.5 23.5 l-7 -2" {...line} strokeWidth={2.8} />
+            <AnimatedEllipse cx={24} cy={30} rx={3.2} ry={3.2} fill={c.ink} animatedProps={eyeL} />
+            <AnimatedEllipse cx={40} cy={30} rx={3.2} ry={3.2} fill={c.ink} animatedProps={eyeR} />
+            <Path d="M25 45 q7 -5 14 0" {...line} />
+          </>
+        ) : null}
+        {mood === "overloaded" ? (
+          <>
+            <Path d="M19 23 l7 1.5" {...line} strokeWidth={2.6} />
+            <Path d="M45 23 l-7 1.5" {...line} strokeWidth={2.6} />
+            <AnimatedEllipse cx={24} cy={30} rx={3.2} ry={3.2} fill={c.ink} animatedProps={eyeL} />
+            <AnimatedEllipse cx={40} cy={30} rx={3.2} ry={3.2} fill={c.ink} animatedProps={eyeR} />
+            <Path d="M24 44 q2.7 -2.6 5.4 0 t5.4 0 t5.4 0" {...line} strokeWidth={2.8} />
+          </>
+        ) : null}
+      </Svg>
+    </Animated.View>
   );
 }

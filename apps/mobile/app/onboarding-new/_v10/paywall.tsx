@@ -101,11 +101,13 @@ export default function V10Paywall() {
 
   const finish = useCallback(() => finishOnboarding({ firstName: userFirstName, refresh }), [userFirstName, refresh]);
 
-  // Already Pro (restored on another device, a web subscriber who signed in
-  // on the account step, a TestFlight re-run) → nothing to sell.
+  // Already paying (restored on another device, a web subscriber who signed
+  // in on the account step) → nothing to sell. NOT "TRIAL": the server puts
+  // every new account on a no-card TRIAL at sign-up (bootstrap-user), and
+  // treating that as paid skipped this required-trial paywall for every new
+  // user (Keenan, build 172). Only PRO or a live RevenueCat entitlement count.
   useEffect(() => {
-    const status = user?.subscriptionStatus;
-    if (status === "PRO" || status === "TRIAL") {
+    if (user?.subscriptionStatus === "PRO") {
       void finish();
       return;
     }
@@ -252,7 +254,7 @@ export default function V10Paywall() {
       {/* Trial required: no swipe-back past the paywall either. */}
       <Stack.Screen options={{ gestureEnabled: false }} />
       <View style={{ flex: 1 }}>
-        <ScrollView contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 16, paddingBottom: 28 }} showsVerticalScrollIndicator={false}>
+        <ScrollView contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 16, paddingBottom: 28 }} showsVerticalScrollIndicator={false} bounces={false}>
           {/* Badge */}
           <Animated.View entering={FadeInDown.duration(380)} style={{ alignItems: "center", marginBottom: 14 }}>
             <View style={{ flexDirection: "row", alignItems: "center", gap: 6, backgroundColor: "#fff", borderRadius: 999, borderWidth: 1, borderColor: V11.lineStrong, paddingHorizontal: 12, paddingVertical: 6 }}>
