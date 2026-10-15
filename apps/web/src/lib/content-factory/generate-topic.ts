@@ -357,6 +357,7 @@ export async function generateSelfieTopic(
       return near ? `too close to recent cover "${near}"` : null;
     },
     senseCheck: plainSenseProblem,
+    repair: repairSelfieLine,
   });
   const candidateLog = `${drafts.length} drafted; ${ranked ? `${ranked.survivors} survived, ranked by ${ranked.rankedBy}` : "none survived"}`;
   if (!ranked) {
@@ -366,6 +367,31 @@ export async function generateSelfieTopic(
   }
   noteHeadlineUsed(ranked.winner.headline);
   return { ...ranked.winner, jev: ranked.jev, rankedBy: ranked.rankedBy, candidateLog };
+}
+
+/** Fix only the line(s) the editor flagged (2026-10-14); null if it can't. */
+async function repairSelfieLine<T extends GeneratedSelfieTopic>(t: T, problem: string): Promise<T | null> {
+  const { CANDIDATE_WRITER_MODEL } = await import("./candidate-pipeline");
+  const res = await anthropic.messages.create({
+    model: CANDIDATE_WRITER_MODEL,
+    max_tokens: 1500,
+    effort: "medium",
+    system: `${SELFIE_SYSTEM_PROMPT}\n\n${HUMAN_VOICE_RULES}`,
+    messages: [
+      {
+        role: "user",
+        content: `An editor flagged this finished post: ${problem}\n\nFix ONLY the line(s) that problem names (name the person instead of a bare he/she, say plainly that Ripple is an app, make a detail match its line). Keep the cover and every other line exactly as they are, within their length limits. Return JSON: {"headline": "...", "steps": [...], "details": [...]}.\n\n${JSON.stringify({ headline: t.headline, steps: t.steps, details: t.details })}`,
+      },
+    ],
+  });
+  const j = JSON.parse(lastJsonText(messageText(res))) as { headline?: string; steps?: string[]; details?: string[] };
+  if (!Array.isArray(j.steps) || j.steps.length !== t.steps.length || !Array.isArray(j.details) || j.details.length !== t.details.length) return null;
+  return {
+    ...t,
+    headline: typeof j.headline === "string" && j.headline.trim() ? j.headline.trim() : t.headline,
+    steps: j.steps.map((x) => String(x).trim()),
+    details: j.details.map((x) => String(x).trim()),
+  };
 }
 
 /**

@@ -334,7 +334,8 @@ export function youtubeDailyCap(now: Date = new Date()): number {
  */
 export const YOUTUBE_MANUAL_UNTIL = new Date("2026-10-27T05:00:00Z");
 export function youtubeManual(now: Date = new Date()): boolean {
-  if (process.env.YOUTUBE_MANUAL === "0") return false;
-  if (process.env.YOUTUBE_MANUAL === "1") return true;
-  return now < YOUTUBE_MANUAL_UNTIL;
+  // Ended early 2026-10-14 (per Keenan: "same with youtube for the 1 post per
+  // day" via the API). YOUTUBE_MANUAL=1 turns hand-posting back on.
+  void now;
+  return process.env.YOUTUBE_MANUAL === "1";
 }

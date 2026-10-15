@@ -317,10 +317,14 @@ export const socialPublishCronFn = inngest.createFunction(
           // doesn't apply. Only Legendary Mythicals stays manual (Keenan:
           // "automated instagram/facebook uploads should only be turned off
           // for mythical legendary").
-          if (!list(process.env.IG_MANUAL_BRANDS, "mythicals").includes(brand)) platforms.push("instagram");
+          // Mythicals back ON 2026-10-14 (per Keenan: "turn auto posting back on
+          // for instagram and facebook for our 3 posts per day via the api ...
+          // add the music from the music library"): every brand auto-posts;
+          // Mythicals IG/FB get the music copies (-ig / -yt) below.
+          if (!list(process.env.IG_MANUAL_BRANDS, "").includes(brand)) platforms.push("instagram");
           // FB via Instagram's share (2026-10-08: Mythicals FB averaged 0–5
           // views per direct upload).
-          if (!list(process.env.FB_VIA_IG_BRANDS, "mythicals").includes(brand)) platforms.push("facebook");
+          if (!list(process.env.FB_VIA_IG_BRANDS, "").includes(brand)) platforms.push("facebook");
         }
         // Threads + YouTube have their own per-brand creds (2026-09-23)
         // and only get rows when those exist — no SKIPPED noise.
@@ -666,9 +670,10 @@ ${blocks.join("")}
                   const igHead = await fetch(igUrl, { method: "HEAD" }).catch(() => null);
                   if (igHead?.ok) return igUrl;
                 }
-                // YouTube uses its music copy of a clip-sound reel when the
-                // build made one (2026-10-09, Mythicals on Kling 3.0).
-                if (row.platform === "youtube") {
+                // YouTube, and since 2026-10-14 Facebook (plus Instagram when it
+                // has no -ig copy), use the music copy of a clip-sound reel
+                // (Mythicals on Kling 3.0) so nothing posts with clip sound only.
+                if (row.platform === "youtube" || row.platform === "facebook" || row.platform === "instagram") {
                   const ytUrl = supabase.storage
                     .from("content-factory")
                     .getPublicUrl(`reels/${row.carouselPostId}-yt.mp4`).data.publicUrl;

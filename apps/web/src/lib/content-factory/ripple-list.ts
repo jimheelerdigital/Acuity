@@ -212,6 +212,36 @@ async function draftOnce(opts: {
   };
 }
 
+/** Fix only the line(s) the editor flagged (2026-10-14); null if it can't. */
+async function repairListLine(t: RippleListTopic, problem: string): Promise<RippleListTopic | null> {
+  const { CANDIDATE_WRITER_MODEL } = await import("./candidate-pipeline");
+  const res = await contentAnthropic.messages.create({
+    model: CANDIDATE_WRITER_MODEL,
+    max_tokens: 1500,
+    effort: "medium",
+    system: `${SYSTEM}\n\n${HUMAN_VOICE_RULES}`,
+    messages: [
+      {
+        role: "user",
+        content: `An editor flagged this finished list post: ${problem}\n\nFix ONLY the line(s) that problem names (name the person instead of a bare he/she, make a detail match its line, or replace a repeated item with a genuinely different one). Keep the title, every other item, scenes, motions and caption exactly as they are, and keep every line within its length limits. Return the full post as JSON in the same shape.\n\n${JSON.stringify({ title: t.title, items: t.items, captionQuestion: t.captionQuestion })}`,
+      },
+    ],
+  });
+  const j = JSON.parse(lastJsonText(messageText(res))) as { items?: Partial<ListItem>[]; captionQuestion?: string };
+  const items = (j.items ?? []).filter((it) => it?.line && it?.detail);
+  if (items.length !== t.items.length) return null;
+  return {
+    ...t,
+    items: items.map((it, i) => ({
+      line: stripDashes(String(it.line)).replace(/^\d+[.)]\s*/, "").trim(),
+      detail: stripDashes(String(it.detail)).trim(),
+      scene: t.items[i].scene,
+      motion: t.items[i].motion,
+    })),
+    captionQuestion: typeof j.captionQuestion === "string" && j.captionQuestion.trim() ? j.captionQuestion.trim() : t.captionQuestion,
+  };
+}
+
 /** Opus plain-sense editor for list posts. Fails closed. */
 async function listSenseProblem(t: RippleListTopic): Promise<string | null> {
   try {
@@ -337,6 +367,7 @@ export async function generateRippleListTopic(opts: {
       return near ? `too close to recent title "${near}"` : null;
     },
     senseCheck: listSenseProblem,
+    repair: repairListLine,
   });
   const candidateLog = `${drafts.length} drafted; ${ranked ? `${ranked.survivors} survived, ranked by ${ranked.rankedBy}` : "none survived"}`;
   if (!ranked) return { ...drafts[0], held: "no candidate passed the plain-sense check", jev: null, rankedBy: "none", candidateLog };

@@ -870,12 +870,9 @@ export const carouselPostVideoFn = inngest.createFunction(
           });
       };
       await note({ stage: "started" });
-      if (soundOn) {
-        // Kling 3.0 sound reels post with their own sound everywhere but YouTube.
-        await supabase.storage.from("content-factory").remove([`reels/${postId}-ig.mp4`]);
-        await note({ stage: "skipped", reason: "clip sound reel (no music on Instagram)" });
-        return { ig: false, reason: "clip sound reel" };
-      }
+      // Kling 3.0 sound reels (Mythicals) get an Instagram copy too since
+      // 2026-10-14 (per Keenan: "add the music from the music library"):
+      // original-songs music mixed UNDER the clips' own sound.
       try {
       const { joinPostVideo } = await import("@/lib/content-factory/living-reel");
       const { pickMusicTrack } = await import("@/lib/content-factory/slideshow-reel");
@@ -908,6 +905,7 @@ export const carouselPostVideoFn = inngest.createFunction(
             ? null
             : `https://goripple.io/cta-slide-${plan.brand}.jpg`,
         musicUrl: music,
+        ...(soundOn ? { segmentAudio: true } : {}),
       });
       const { error } = await supabase.storage.from("content-factory").upload(igPath, buf, { contentType: "video/mp4", upsert: true });
       if (error) throw new Error(`IG video upload failed: ${error.message}`);

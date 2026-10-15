@@ -152,6 +152,32 @@ The Business tab in the admin dashboard now counts our monthly tool and subscrip
 - The ChatGPT plan dropped from $212.50 (Aug) to $106.25 (Sep).
 - fal.ai is still billing $10.66 even though it's unused.
 
+## [2026-10-14] — Mythicals auto-posting back on (IG/FB with music, YouTube via API); Ripple drafts get fixed, not dropped
+
+- **Requested by:** Keenan
+- **Committed by:** Claude Code
+- **Commit hash:** (see git log: "feat: Auto-post Mythicals with music again and repair flagged Ripple lines")
+
+### In plain English (for Keenan)
+Legendary Mythicals posts go out automatically again: all 3 a day to Instagram and Facebook with music from our library mixed under the video's own sound, and 1 a day to YouTube through the API (the hand-posting window ended early). Ripple's two daily posts keep going to Instagram and Facebook with music. Ripple posts were sometimes not posting at all (today's list post was held), because one shaky line threw out the whole draft. Now that line gets rewritten and the draft stays in.
+
+### Technical changes (for Jimmy)
+- `inngest/functions/social-publish-cron.ts`:
+  - `IG_MANUAL_BRANDS` / `FB_VIA_IG_BRANDS` default to "" (every brand auto-posts IG + FB).
+  - Video pick: Instagram uses `-ig` if present, else `-yt`; Facebook and YouTube use `-yt` (music copy) when present, else the main reel.
+- `inngest/functions/carousel-post-video.ts`: `join-ig` no longer skips Kling 3 sound reels. Mythicals get an `-ig` copy with a `music-ig/` song mixed under the clip sound (`segmentAudio: true`).
+- `lib/content-factory/youtube-publish.ts`: `youtubeManual()` is now false unless `YOUTUBE_MANUAL=1` (API posting back on). The 1/day cap stays until 11-17.
+- `lib/content-factory/candidate-pipeline.ts`: optional `repair(c, problem)`. A draft that fails the sense check is fixed once, then re-checked against rules + sense, and kept if clean.
+- `ripple-list.ts` (`repairListLine`) and `generate-topic.ts` (`repairSelfieLine`): Opus rewrites only the flagged line(s).
+
+### Manual steps needed
+None
+
+### Notes
+- Today's (10-14) list post "7 things i stopped doing when my kids became teenagers" was HELD. All 5 drafts were cut for one line each (dangling he/her, a mismatched detail, a repeated item), so it never posted. Today's selfie posted to IG + FB with music (verified audio).
+- Mythicals IG/FB starts with the next posts. Older Mythicals posts already have YouTube rows, so there's no backlog flood.
+- Root cause of the 10-12 silent Mythicals IG/FB: the main reel is Kling clip sound only; only the `-yt` copy had music.
+
 ## [2026-10-14] — First UGC video set up as its own $15/day Meta ad (paused until approved)
 
 - **Requested by:** Keenan

@@ -76,8 +76,15 @@ export async function rankCandidates<T>(opts: {
   reject?: (c: T) => Promise<string | null> | string | null;
   /** Opus plain-sense editor: return a reason to cut, or null. */
   senseCheck: (c: T) => Promise<string | null>;
+  /**
+   * Fix the flagged line instead of dropping the draft (2026-10-14, per
+   * Keenan: never drop a post over one line). Called once per draft that
+   * fails the sense check; the fixed draft is re-checked and kept if clean.
+   */
+  repair?: (c: T, problem: string) => Promise<T | null>;
 }): Promise<RankedCandidate<T> | null> {
-  const { brand, label, candidates } = opts;
+  const { brand, label } = opts;
+  const candidates = [...opts.candidates];
   const rejected: { index: number; reason: string }[] = [];
 
   // 1 + 2: code rules, then the sense editor, all candidates in parallel.
@@ -86,6 +93,18 @@ export async function rankCandidates<T>(opts: {
       const rule = opts.reject ? await opts.reject(c) : null;
       if (rule) return { i, reason: `rule: ${rule}` };
       const sense = await opts.senseCheck(c);
+      if (sense && opts.repair && !/unavailable/.test(sense)) {
+        const fixed = await opts.repair(c, sense).catch(() => null);
+        if (fixed) {
+          const rule2 = opts.reject ? await opts.reject(fixed) : null;
+          const sense2 = rule2 ? null : await opts.senseCheck(fixed);
+          if (!rule2 && !sense2) {
+            candidates[i] = fixed;
+            console.log(`[candidates] ${label} #${i} repaired (was: ${sense.slice(0, 120)})`);
+            return { i, reason: null };
+          }
+        }
+      }
       return sense ? { i, reason: `sense: ${sense}` } : { i, reason: null };
     })
   );
