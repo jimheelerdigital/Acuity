@@ -19,6 +19,7 @@
 //
 // See docs/AUTH_HARDENING.md for the full test checklist.
 
+import { logCompletedRegistration } from "@/lib/meta-sdk";
 import * as AuthSession from "expo-auth-session";
 import * as Google from "expo-auth-session/providers/google";
 import Constants from "expo-constants";
@@ -454,6 +455,7 @@ export async function verifyEmailCode(
     }
     await setToken(body.sessionToken);
     await setStoredUser(body.user);
+    if (body.isNewUser) logCompletedRegistration("email");
     return { ok: true, user: body.user, sessionToken: body.sessionToken, isNewUser: !!body.isNewUser };
   } catch {
     return { ok: false, reason: "NetworkError" };
@@ -856,9 +858,12 @@ export function useGoogleSignIn() {
       const body = (await res.json()) as {
         sessionToken: string;
         user: User;
+        isNewUser?: boolean;
       };
       await setToken(body.sessionToken);
       await setStoredUser(body.user);
+      // Real signups only (server says whether it created the account).
+      if (body.isNewUser) logCompletedRegistration("google");
       return { ok: true, user: body.user, sessionToken: body.sessionToken };
     } catch (err) {
       debug.callbackError =

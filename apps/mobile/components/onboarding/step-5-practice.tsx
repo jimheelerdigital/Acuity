@@ -3,6 +3,7 @@ import { Audio } from "expo-av";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Alert, Pressable, Text, View } from "react-native";
 
+import { useAuth } from "@/contexts/auth-context";
 import { useTheme } from "@/contexts/theme-context";
 
 import { useOnboarding } from "./context";
@@ -26,8 +27,20 @@ const MAX_SECONDS = 10;
 
 export function Step5Practice() {
   const { tokens } = useTheme();
-  const { setCanContinue, setCapturedData } = useOnboarding();
+  const { setCanContinue, setCapturedData, goNext } = useOnboarding();
+  const { user } = useAuth();
   const [phase, setPhase] = useState<Phase>("idle");
+
+  // 1.9.1: no throwaway practice round for anyone who has already recorded a
+  // real debrief (e.g. a web-funnel buyer). It's a rehearsal for something
+  // they've done — skip straight past it.
+  const alreadyRecorded = (user?.totalRecordings ?? 0) > 0;
+  const skippedRef = useRef(false);
+  useEffect(() => {
+    if (!alreadyRecorded || skippedRef.current) return;
+    skippedRef.current = true;
+    goNext();
+  }, [alreadyRecorded, goNext]);
   const [elapsed, setElapsed] = useState(0);
 
   const recRef = useRef<Audio.Recording | null>(null);
@@ -106,6 +119,8 @@ export function Step5Practice() {
       );
     }
   }, [stop]);
+
+  if (alreadyRecorded) return null;
 
   return (
     <View className="flex-1">

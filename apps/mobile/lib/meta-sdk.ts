@@ -66,6 +66,31 @@ let attStatus: "unrequested" | "granted" | "denied" | "unknown" =
  * authenticated app render satisfies that better than firing it
  * at splash time before any UI has loaded.
  */
+// Events logged before the SDK is initialized (initMetaSdk waits on the ATT
+// prompt, and sign-up fires its registration event right away) are queued
+// and flushed once it's ready, instead of being dropped.
+const pending: Array<() => void> = [];
+function logOrQueue(fn: () => void): void {
+  if (sdkInitialized) {
+    try {
+      fn();
+    } catch {
+      /* analytics only */
+    }
+  } else if (pending.length < 20) {
+    pending.push(fn);
+  }
+}
+function flushPending(): void {
+  for (const fn of pending.splice(0)) {
+    try {
+      fn();
+    } catch {
+      /* analytics only */
+    }
+  }
+}
+
 export async function initMetaSdk(): Promise<void> {
   if (sdkInitialized) return;
 
@@ -100,6 +125,7 @@ export async function initMetaSdk(): Promise<void> {
     // equivalent — we just init.
     Settings.initializeSDK();
     sdkInitialized = true;
+    flushPending();
     // RevenueCat → Meta Ads (Conversions API) matching. RC sends
     // StartTrial / Subscribe / renewals to Meta server-side; it needs the
     // Meta anonymous id + device identifiers to attribute them to the ad
@@ -170,9 +196,11 @@ export function logRecordingCompleted(): void {
  */
 export function logCompletedRegistration(method: "apple" | "google" | "email"): void {
   try {
-    AppEventsLogger.logEvent("fb_mobile_complete_registration", {
-      fb_registration_method: method,
-    });
+    logOrQueue(() =>
+      AppEventsLogger.logEvent("fb_mobile_complete_registration", {
+        fb_registration_method: method,
+      })
+    );
   } catch {
     // ignore
   }

@@ -39,6 +39,7 @@ import {
 import { tokenBridge } from "@/lib/token-bridge";
 import { isQaForceV10, warnIfQaForceV10Active } from "@/lib/qa/force-v10";
 import { clearWidgetData } from "@/lib/widget-data";
+import { notifyV10StateChanged } from "@/lib/onboarding-v10/state";
 
 export type DeleteAccountResult =
   | { ok: true }
@@ -424,6 +425,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       "ripple.v10.offered",
       "ripple.v10.dismissed",
     ]).catch(() => {});
+    // Routing reads these flags; tell it they changed (1.9.1).
+    notifyV10StateChanged();
     // Reset IAP recovery debounce so a subsequent sign-in (possibly
     // by a different user on the same device) gets a fresh recovery
     // pass. Without this, the same-session sign-out → sign-in cycle

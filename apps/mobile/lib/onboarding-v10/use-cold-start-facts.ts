@@ -5,7 +5,7 @@ import { getToken } from "@/lib/auth";
 import { isOnboardingV10Enabled } from "@/lib/feature-flags";
 import { isQaForceV10, warnIfQaForceV10Active } from "@/lib/qa/force-v10";
 import { hasAppHistoryFromKeys } from "./entry-routing";
-import { isV10Guest, wasV10Dismissed, wasV10Offered } from "./state";
+import { isV10Guest, onV10StateChanged, wasV10Dismissed, wasV10Offered } from "./state";
 
 export interface DeviceRoutingFacts {
   v10Enabled: boolean;
@@ -46,6 +46,11 @@ export function useColdStartFacts(): {
     hasAppHistory: true,
   });
   const [ready, setReady] = useState(false);
+
+  // Bumped whenever a routing flag is written (see onV10StateChanged), so
+  // the facts are re-read instead of staying a once-per-launch snapshot.
+  const [version, setVersion] = useState(0);
+  useEffect(() => onV10StateChanged(() => setVersion((v) => v + 1)), []);
 
   useEffect(() => {
     let cancelled = false;
@@ -120,7 +125,7 @@ export function useColdStartFacts(): {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [version]);
 
   return { facts, ready };
 }
