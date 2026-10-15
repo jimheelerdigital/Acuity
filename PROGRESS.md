@@ -152,6 +152,27 @@ The Business tab in the admin dashboard now counts our monthly tool and subscrip
 - The ChatGPT plan dropped from $212.50 (Aug) to $106.25 (Sep).
 - fal.ai is still billing $10.66 even though it's unused.
 
+## [2026-10-15] — Second UGC ad live: the 35s cut with a download end screen, $15/day
+
+- **Requested by:** Keenan
+- **Committed by:** Claude Code
+- **Commit hash:** (see git log: "docs: Log the second UGC ad (cut + end screen)")
+
+### In plain English (for Keenan)
+The shorter, smoother version of @therapyandthingss's video (32s cut with punch-ins, then a "Download Ripple · Free for 7 days" end screen) is live as its own ad at $15/day. It runs next to the original at $20/day, so the two can be compared.
+
+### Technical changes (for Jimmy)
+- No code. Created via `/api/admin/adlab/ugc-ad` (create, then activate).
+- Meta ids: ad set 120255173042450581 ("… | therapyandthingss video 1 cut", $15/day, ACTIVE), ad 120255173050120581, creative 1468414351847342, video 29424154313858105.
+- Link: `goripple.io/u/therapyandthings?utm_content=video1cut` (the original is `utm_content=video1`).
+- Assets: `content-factory/ugc/therapyandthings/video-1-cut-endcard.mp4`, `endcard.jpg`. Cuts at 0-5.1 / 18.7-22.95 / 23.1-38.45 / 44-51.7s of the original; every other piece punched in 8%; 0.35s dissolve into a 3s end card.
+
+### Manual steps needed
+None
+
+### Notes
+- Same copy as the original ad. Neither ad is under the AdLab kill engine; judge by hand on cost per paid trial.
+
 ## [2026-10-14] — Mythicals auto-posting back on (IG/FB with music, YouTube via API); Ripple drafts get fixed, not dropped
 
 - **Requested by:** Keenan
