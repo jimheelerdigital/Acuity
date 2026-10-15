@@ -258,11 +258,11 @@ export default function V10Paywall() {
             //   {{ custom.observation }}  the branch observation line
             header: CustomVariableValue.string(headerFor(taskCount)),
             //   {{ custom.name }}         first name, "" when unknown
-            //   {{ custom.state_name }}   e.g. "The Planner" (from her answers)
-            //   {{ custom.ready_line }}   "Your plan is ready, Keenan" / "Your plan is ready"
+            //   {{ custom.stateName }}    e.g. "The Planner" (from her answers)
+            //   {{ custom.readyLine }}    "Your plan is ready, Keenan" / "Your plan is ready"
             name: CustomVariableValue.string(persona.name),
-            state_name: CustomVariableValue.string(persona.state),
-            ready_line: CustomVariableValue.string(
+            stateName: CustomVariableValue.string(persona.state),
+            readyLine: CustomVariableValue.string(
               persona.name ? `Your plan is ready, ${persona.name}` : "Your plan is ready"
             ),
             observation: CustomVariableValue.string(
