@@ -36,33 +36,33 @@ export async function applyPendingSetup(): Promise<{ entryId: string | null }> {
     /* finishOnboarding retries */
   }
 
-  if (a.consentAgreedAt) {
-    await recordConsent({
-      consentType: "special_category_processing",
-      granted: true,
-      consentText: ART9_CONSENT_TEXT,
-      wordingVersion: ART9_WORDING_VERSION,
-    }).catch(() => {});
-  }
-
-  if (a.firstName) {
-    await api.post("/api/user/name", { name: a.firstName }).catch(() => {});
-  }
-
-  if (a.reminderPending) {
-    const time = a.checkInTime ?? null;
-    await api
-      .put("/api/account/reminders", {
-        reminders: time ? [{ time, daysActive: [0, 1, 2, 3, 4, 5, 6], enabled: true }] : [],
-      })
-      .catch(() => {});
-    // Permission was granted (or not) during processing; this only posts
-    // the token now that there's an account to attach it to.
-    if (time) await registerPushTokenForReminderSlot().catch(() => "error");
-  }
-
-  if (a.pendingHabits?.length) {
-    try {
+  // Independent of each other — run together (sequential awaits made the
+  // sign-up → paywall wait ~5s).
+  await Promise.allSettled([
+    (async () => {
+      if (!a.consentAgreedAt) return;
+      await recordConsent({
+        consentType: "special_category_processing",
+        granted: true,
+        consentText: ART9_CONSENT_TEXT,
+        wordingVersion: ART9_WORDING_VERSION,
+      }).catch(() => {});
+    })(),
+    (async () => {
+      if (a.firstName) await api.post("/api/user/name", { name: a.firstName }).catch(() => {});
+    })(),
+    (async () => {
+      if (!a.reminderPending) return;
+      const time = a.checkInTime ?? null;
+      await api
+        .put("/api/account/reminders", {
+          reminders: time ? [{ time, daysActive: [0, 1, 2, 3, 4, 5, 6], enabled: true }] : [],
+        })
+        .catch(() => {});
+      if (time) await registerPushTokenForReminderSlot().catch(() => "error");
+    })(),
+    (async () => {
+      if (!a.pendingHabits?.length) return;
       const existing = await fetchHabits().catch(() => ({ habits: [], checks: [] }));
       const have = new Set(existing.habits.map((h) => h.name.trim().toLowerCase()));
       const hasReflection = existing.habits.some((h) => isReflectionHabit(h));
@@ -73,10 +73,8 @@ export async function applyPendingSetup(): Promise<{ entryId: string | null }> {
           await createHabit(name).catch(() => null);
         }
       }
-    } catch {
-      /* non-fatal */
-    }
-  }
+    })(),
+  ]);
 
   await saveAnswers({ consentAgreedAt: undefined, pendingHabits: undefined, reminderPending: false });
   return { entryId };

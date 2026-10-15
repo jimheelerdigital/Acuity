@@ -12,6 +12,7 @@ import Animated, {
 } from "react-native-reanimated";
 
 import { useAuth } from "@/contexts/auth-context";
+import { prefetchOffering } from "@/lib/onboarding-v11/offering-cache";
 
 import { Body, Card, FunnelHeader, Heading, IconTile, LightScreen, PROGRESS, PrimaryButton, RippleAppIcon, V11 } from "../_v11/ui";
 import {
@@ -122,6 +123,10 @@ function normalize(raw: Record<string, unknown> | null): RevealData {
 
 export default function V10Reveal() {
   const { user } = useAuth();
+  // Warm the paywall's store request while she reads her results.
+  useEffect(() => {
+    void prefetchOffering();
+  }, []);
   const firstName = user?.name?.trim().split(/\s+/)[0] || null;
 
   const [branch, setBranch] = useState<V10Branch>("open");

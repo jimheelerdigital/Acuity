@@ -6,15 +6,13 @@ import { Bell, CalendarCheck, ChevronRight, CircleCheck, Sparkles } from "lucide
 import type { PurchasesPackage } from "react-native-purchases";
 
 import { useAuth } from "@/contexts/auth-context";
-import { DEFAULT_PRICING_CONFIG } from "@acuity/shared";
-import { isNewPricingEnabled } from "@/lib/feature-flags";
 import { trackV10 } from "@/lib/onboarding-v10/analytics";
 import { setV10PlanDecision } from "@/lib/onboarding-v10/state";
 import { loadAnswers } from "@/lib/onboarding-v11/answers";
 import { FAQ, PRO_FEATURES, REVIEWS, stateName } from "@/lib/onboarding-v11/copy";
 import { finishOnboarding } from "@/lib/onboarding-v11/finish";
+import { prefetchOffering } from "@/lib/onboarding-v11/offering-cache";
 import {
-  getProOffering,
   hasProEntitlement,
   purchaseProPackage,
   restoreProPurchases,
@@ -124,10 +122,8 @@ export default function V10Paywall() {
 
   const load = useCallback(async () => {
     setLoadState("loading");
-    const o = await getProOffering(
-      { paidSince: null },
-      { ...DEFAULT_PRICING_CONFIG, newPricingEnabled: isNewPricingEnabled() }
-    );
+    // Usually already fetched (results screen / account set-up).
+    const o = await prefetchOffering();
     if (o && (o.annual || o.monthly)) {
       setOffering(o);
       setLoadState("ready");

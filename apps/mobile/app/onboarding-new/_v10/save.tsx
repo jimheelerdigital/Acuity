@@ -11,7 +11,7 @@ import { FunnelHeader, Heading, LightScreen, PROGRESS, RippleAppIcon, V11 } from
 import { signInWithApple, isAppleSignInAvailable } from "@/lib/apple-auth";
 import { useGoogleSignIn, type User } from "@/lib/auth";
 import { trackV10 } from "@/lib/onboarding-v10/analytics";
-import { applyPendingSetup } from "@/lib/onboarding-v11/apply";
+import { prefetchOffering } from "@/lib/onboarding-v11/offering-cache";
 
 /**
  * Account step (1.9.1 — account first). Shown right after "I'm new", BEFORE
@@ -47,7 +47,8 @@ export default function V10Save() {
 
   useEffect(() => {
     void isAppleSignInAvailable().then(setAppleAvailable);
-    trackV10("v10_save_viewed", { position: "account_first" });
+    trackV10("v10_save_viewed", { position: "after_results" });
+    void prefetchOffering();
   }, []);
 
   /**
@@ -58,22 +59,13 @@ export default function V10Save() {
    */
   const finishSignup = useCallback(
     async (method: "apple" | "google" | "email", isNewUser?: boolean) => {
-      await refresh();
       trackV10("v10_account_completed", { method, position: "after_results", is_new: isNewUser ?? null });
-      // Account comes after the results (2026-10-15): attach the first
-      // debrief, consent, name, check-in time and habits she chose while
-      // signed out, then the paywall. Bounded so a slow network can't hold
-      // her on this screen; whatever doesn't finish is retried by
-      // finishOnboarding (claim) or simply left for Settings.
-      setBusy(true);
-      await Promise.race([
-        applyPendingSetup().catch(() => null),
-        new Promise((r) => setTimeout(r, 8000)),
-      ]);
-      await refresh();
-      router.replace("/onboarding-new/paywall");
+      // Straight to "Setting up your account", which attaches the first
+      // debrief + everything chosen signed-out and readies the paywall in
+      // parallel (it used to run here, on a blank screen, ~5s).
+      router.replace("/onboarding-new/setup");
     },
-    [refresh]
+    []
   );
 
   const onApple = useCallback(async () => {
