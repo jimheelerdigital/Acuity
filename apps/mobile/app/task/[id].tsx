@@ -13,7 +13,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { api } from "@/lib/api";
-import { getCached, isStale, setCached } from "@/lib/cache";
+import { getCached, invalidate, isStale, setCached } from "@/lib/cache";
 import { useTheme } from "@/contexts/theme-context";
 import { DueDateField } from "@/components/due-date-field";
 
@@ -180,6 +180,9 @@ export default function TaskEditScreen() {
           groupId: groupId ?? null,
         });
       }
+      // Drop the cached list so Tasks + Home's TODAY card refetch the
+      // saved version instead of showing the pre-edit one for up to 30s.
+      invalidate(TASKS_CACHE_KEY);
       router.back();
     } catch (err) {
       Alert.alert(
@@ -412,6 +415,7 @@ export default function TaskEditScreen() {
                             id: task.id,
                             action: "dismiss",
                           });
+                          invalidate(TASKS_CACHE_KEY);
                           router.back();
                         } catch {
                           Alert.alert("Couldn't delete — try again.");

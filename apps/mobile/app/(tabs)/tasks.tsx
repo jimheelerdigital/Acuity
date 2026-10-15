@@ -24,9 +24,10 @@ import { Confetti } from "@/components/tasks/confetti";
 import { useAuth } from "@/contexts/auth-context";
 import { useTheme } from "@/contexts/theme-context";
 import { api } from "@/lib/api";
-import { cachedGet, getCached } from "@/lib/cache";
+import { cachedGet, getCached, setCached } from "@/lib/cache";
 import { isFreeTierUser } from "@/lib/free-tier";
 import { dueDateToneColor, priorityToneColor } from "@/lib/tone-colors";
+import { publishTodayToWidget } from "@/lib/widget-data";
 
 // Q8 — finish-day confetti throttle. AsyncStorage stores YYYY-MM-DD;
 // burst only fires when the stored value !== today.
@@ -133,6 +134,10 @@ export default function TasksTab() {
   // Tracks pending mutations so focus-driven refetches don't clobber
   // optimistic UI before the server has acknowledged the write.
   const pendingMutationsRef = useRef<Set<string>>(new Set());
+  // True once `tasks` holds real data (hydrated from cache or a fetch
+  // succeeded) — a failed first fetch must not write an empty list to the
+  // shared cache or the widget.
+  const hasDataRef = useRef(!!getCached<{ tasks: Task[] }>(TASKS_CACHE_KEY));
 
   const fetchAll = useCallback(async (silent: boolean, force = false) => {
     if (!silent) setLoading(true);
@@ -158,6 +163,7 @@ export default function TasksTab() {
         );
       });
       setGroups(groupsData.groups ?? []);
+      hasDataRef.current = true;
     } catch {
       // silent
     } finally {
@@ -198,6 +204,15 @@ export default function TasksTab() {
     }
   }, [tasks, loading, visitSnapshot]);
 
+  // Write what this screen shows (server data + optimistic edits) back to
+  // the shared cache so Home's TODAY card never shows a task you just
+  // completed or deleted here, and refresh the "Today" widget.
+  useEffect(() => {
+    if (loading || !hasDataRef.current) return;
+    setCached(TASKS_CACHE_KEY, { tasks });
+    publishTodayToWidget(tasks);
+  }, [tasks, loading]);
+
   const onRefresh = useCallback(() => {
     setRefreshing(true);
     fetchAll(true, true);
@@ -223,6 +238,15 @@ export default function TasksTab() {
       } else {
         if (action === "dismiss") {
           setTasks((prev) => prev.filter((t) => t.id !== id));
+        } else if (action === "snooze") {
+          // Mirror the server (24h snooze) so the row moves to Snoozed and
+          // drops off Home's TODAY card right away.
+          const until = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+          setTasks((prev) =>
+            prev.map((t) =>
+              t.id === id ? { ...t, status: "SNOOZED", snoozedUntil: until } : t
+            )
+          );
         }
         setVisitSnapshot((prev) => {
           if (!prev) return prev;

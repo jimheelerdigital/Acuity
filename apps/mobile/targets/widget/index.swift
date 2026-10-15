@@ -216,9 +216,232 @@ struct RippleWidget: Widget {
     }
 }
 
+// ── "Today" widget (1.9.1) ───────────────────────────────────────────
+// Most pressing open tasks. The app publishes candidate tasks to
+// `todayTasks` (lib/widget-data.ts publishTodayToWidget); this applies the
+// SAME rule as lib/today-tasks.ts so the list rolls over at midnight and
+// when a snooze ends without the app running:
+//   overdue (oldest first) → due today → high priority with no date;
+//   snoozed hidden; within a bucket, priority rank then id.
+
+private let TASKS_URL = URL(string: "acuity://tasks")!
+private let TODAY_LIMIT = 5
+
+struct TodayTaskItem: Decodable {
+    let id: String
+    let title: String
+    let due: String        // "YYYY-MM-DD" or ""
+    let high: Int          // 1 = URGENT/HIGH
+    let rank: Int          // 0 URGENT … 3 LOW, 9 unknown
+    let snoozedUntil: Int  // epoch seconds, 0 = not snoozed
+}
+
+enum TodayBucket: Int { case overdue = 0, today = 1, priority = 2 }
+
+struct TodayRow {
+    let item: TodayTaskItem
+    let bucket: TodayBucket
+}
+
+struct TodayEntry: TimelineEntry {
+    let date: Date
+    let rows: [TodayRow]   // full ordered list; views slice
+    let hasData: Bool      // false = app hasn't published yet / signed out
+}
+
+private func ymd(_ d: Date) -> String {
+    let f = DateFormatter()
+    f.calendar = Calendar.current
+    f.timeZone = TimeZone.current
+    f.locale = Locale(identifier: "en_US_POSIX")
+    f.dateFormat = "yyyy-MM-dd"
+    return f.string(from: d)
+}
+
+private func readTodayItems() -> [TodayTaskItem]? {
+    let defaults = UserDefaults(suiteName: APP_GROUP)
+    guard let data = defaults?.data(forKey: "todayTasks") else { return nil }
+    return try? JSONDecoder().decode([TodayTaskItem].self, from: data)
+}
+
+func selectToday(_ items: [TodayTaskItem], at date: Date) -> [TodayRow] {
+    let today = ymd(date)
+    let nowSec = Int(date.timeIntervalSince1970)
+    var rows: [TodayRow] = []
+    for it in items {
+        if it.snoozedUntil > nowSec { continue }
+        var bucket: TodayBucket? = nil
+        if !it.due.isEmpty && it.due < today { bucket = .overdue }
+        else if it.due == today { bucket = .today }
+        else if it.due.isEmpty && it.high == 1 { bucket = .priority }
+        if let b = bucket { rows.append(TodayRow(item: it, bucket: b)) }
+    }
+    rows.sort { a, b in
+        if a.bucket != b.bucket { return a.bucket.rawValue < b.bucket.rawValue }
+        if a.bucket == .overdue && a.item.due != b.item.due { return a.item.due < b.item.due }
+        if a.item.rank != b.item.rank { return a.item.rank < b.item.rank }
+        return a.item.id < b.item.id
+    }
+    return rows
+}
+
+struct TodayProvider: TimelineProvider {
+    func placeholder(in context: Context) -> TodayEntry {
+        let sample = [
+            TodayTaskItem(id: "1", title: "Send the proposal", due: "2000-01-01", high: 1, rank: 1, snoozedUntil: 0),
+            TodayTaskItem(id: "2", title: "Call the dentist", due: ymd(Date()), high: 0, rank: 2, snoozedUntil: 0),
+            TodayTaskItem(id: "3", title: "Plan the week", due: "", high: 1, rank: 1, snoozedUntil: 0),
+        ]
+        return TodayEntry(date: Date(), rows: selectToday(sample, at: Date()), hasData: true)
+    }
+
+    func getSnapshot(in context: Context, completion: @escaping (TodayEntry) -> Void) {
+        if context.isPreview, readTodayItems() == nil {
+            completion(placeholder(in: context))
+            return
+        }
+        let items = readTodayItems()
+        completion(TodayEntry(date: Date(), rows: selectToday(items ?? [], at: Date()), hasData: items != nil))
+    }
+
+    func getTimeline(in context: Context, completion: @escaping (Timeline<TodayEntry>) -> Void) {
+        let now = Date()
+        let items = readTodayItems()
+        let list = items ?? []
+        // Re-evaluate at midnight (overdue/today roll over) and whenever a
+        // snooze ends in the next day. The app also reloads us on changes.
+        var dates: [Date] = [now]
+        let cal = Calendar.current
+        if let midnight = cal.nextDate(after: now, matching: DateComponents(hour: 0, minute: 0, second: 5), matchingPolicy: .nextTime) {
+            dates.append(midnight)
+        }
+        let horizon = now.addingTimeInterval(86400)
+        for it in list where it.snoozedUntil > 0 {
+            let d = Date(timeIntervalSince1970: TimeInterval(it.snoozedUntil + 1))
+            if d > now && d < horizon { dates.append(d) }
+        }
+        dates.sort()
+        let entries = dates.map { TodayEntry(date: $0, rows: selectToday(list, at: $0), hasData: items != nil) }
+        completion(Timeline(entries: entries, policy: .atEnd))
+    }
+}
+
+private func bucketLabel(_ row: TodayRow) -> String {
+    switch row.bucket {
+    case .overdue: return "Overdue"
+    case .today: return "Today"
+    case .priority: return "Priority"
+    }
+}
+
+private func bucketColor(_ row: TodayRow) -> Color {
+    switch row.bucket {
+    case .overdue: return .red
+    case .today: return .orange
+    case .priority: return accent
+    }
+}
+
+struct TodayRowView: View {
+    let row: TodayRow
+    var body: some View {
+        Link(destination: URL(string: "acuity://task/\(row.item.id)") ?? TASKS_URL) {
+            HStack(spacing: 8) {
+                Image(systemName: "circle").foregroundColor(.secondary).font(.system(size: 13))
+                Text(row.item.title).font(.system(size: 14)).lineLimit(1)
+                Spacer(minLength: 4)
+                Text(bucketLabel(row))
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundColor(bucketColor(row))
+            }
+        }
+    }
+}
+
+struct TodayListView: View {
+    let entry: TodayEntry
+    let limit: Int
+    var body: some View {
+        let shown = Array(entry.rows.prefix(limit))
+        let more = entry.rows.count - shown.count
+        VStack(alignment: .leading, spacing: 7) {
+            HStack {
+                Text("TODAY").font(.system(size: 11, weight: .bold)).foregroundColor(accent)
+                Spacer()
+                if more > 0 {
+                    Text("+\(more) more").font(.system(size: 11, weight: .medium)).foregroundColor(.secondary)
+                }
+            }
+            if !entry.hasData {
+                Text("Open Ripple to load your tasks").font(.system(size: 14, weight: .medium)).foregroundColor(.secondary)
+            } else if shown.isEmpty {
+                Text("Nothing overdue or due today. You're clear.")
+                    .font(.system(size: 14, weight: .medium)).foregroundColor(.secondary)
+            } else {
+                ForEach(Array(shown.enumerated()), id: \.offset) { _, row in
+                    TodayRowView(row: row)
+                }
+            }
+            Spacer(minLength: 0)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .padding(16)
+    }
+}
+
+struct TodayRectangularView: View {
+    let entry: TodayEntry
+    var body: some View {
+        VStack(alignment: .leading, spacing: 1) {
+            Label(entry.rows.isEmpty ? "Today: clear" : "Today: \(entry.rows.count)", systemImage: "checklist")
+                .font(.headline)
+            if let first = entry.rows.first {
+                Text(first.item.title).font(.caption).lineLimit(1)
+            }
+            if entry.rows.count > 1 {
+                Text(entry.rows[1].item.title).font(.caption).lineLimit(1)
+            }
+        }
+    }
+}
+
+struct RippleTodayWidgetEntryView: View {
+    @Environment(\.widgetFamily) var family
+    let entry: TodayEntry
+    var body: some View {
+        switch family {
+        case .accessoryRectangular:
+            TodayRectangularView(entry: entry)
+                .widgetURL(TASKS_URL)
+                .containerBackground(for: .widget) { Color.clear }
+        case .systemLarge:
+            TodayListView(entry: entry, limit: TODAY_LIMIT)
+                .widgetURL(TASKS_URL)
+                .containerBackground(for: .widget) { Color(.systemBackground) }
+        default:
+            TodayListView(entry: entry, limit: 4)
+                .widgetURL(TASKS_URL)
+                .containerBackground(for: .widget) { Color(.systemBackground) }
+        }
+    }
+}
+
+struct RippleTodayWidget: Widget {
+    let kind = "RippleTodayWidget"
+    var body: some WidgetConfiguration {
+        StaticConfiguration(kind: kind, provider: TodayProvider()) { entry in
+            RippleTodayWidgetEntryView(entry: entry)
+        }
+        .configurationDisplayName("Ripple Today")
+        .description("Your most pressing tasks: overdue, due today, high priority.")
+        .supportedFamilies([.systemMedium, .systemLarge, .accessoryRectangular])
+    }
+}
+
 @main
 struct RippleWidgetBundle: WidgetBundle {
     var body: some Widget {
         RippleWidget()
+        RippleTodayWidget()
     }
 }

@@ -24,6 +24,7 @@ import { IdentityHero } from "@/components/home/identity-hero";
 import { LastNightCard } from "@/components/home/last-night-card";
 import { PeopleThisWeek } from "@/components/home/people-this-week";
 import { RecentThemesRow } from "@/components/home/recent-themes-row";
+import { TodayList } from "@/components/home/today-list";
 import { TodayStatsRow } from "@/components/home/today-stats-row";
 import { TonightCTA } from "@/components/home/tonight-cta";
 import { WeeklyInsightCard } from "@/components/home/weekly-insight-card";
@@ -320,6 +321,10 @@ export default function DashboardTab() {
         />
 
         <View style={{ height: 16 }} />
+
+        {/* 1.9.1 TODAY — most pressing tasks (overdue → due today → high
+            priority). Renders nothing for accounts with no open tasks. */}
+        <TodayList />
 
         {/* Today stats — streak ring + entries sparkbar + minutes */}
         <TodayStatsRow
