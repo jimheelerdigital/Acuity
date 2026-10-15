@@ -28,6 +28,7 @@ export type V10Event =
   | "v10_start_tapped"
   | "v10_mic_result"
   | "v10_recording_started"
+  | "v10_recording_start_failed"
   | "v10_chip_tapped"
   | "v10_recording_completed"
   | "v10_processing_viewed"

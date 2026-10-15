@@ -24,7 +24,7 @@ import { useTheme } from "@/contexts/theme-context";
 import { makeAcuityTokens } from "@/lib/theme/tokens";
 import { trackOnboardingEvent } from "@/lib/onboarding-events";
 import { submitTryRecording } from "@/lib/try-session";
-import { SPEECH_RECORDING_OPTIONS } from "@/lib/audio-recording-options";
+import { startSpeechRecording } from "@/lib/start-speech-recording";
 
 import V10Recording from "./_v10/recording";
 import { V10Switch } from "./_v10/route-switch";
@@ -169,22 +169,20 @@ function RecordScreen() {
     }
 
     try {
-      const recording = new Audio.Recording();
-      await recording.prepareToRecordAsync({
-        ...SPEECH_RECORDING_OPTIONS,
+      const recording = await startSpeechRecording({
+        source: "onboarding_legacy",
+        progressIntervalMs: 1000,
+        onStatus: (status) => {
+          if (!status.isRecording) return;
+          const meteringDb = status.metering ?? -60;
+          const normalized = Math.max(0, Math.min(1, (meteringDb + 60) / 60));
+          setLevels((prev) => {
+            const next = prev.slice(1);
+            next.push(Math.max(0.05, normalized));
+            return next;
+          });
+        },
       });
-      recording.setProgressUpdateInterval(1000);
-      recording.setOnRecordingStatusUpdate((status) => {
-        if (!status.isRecording) return;
-        const meteringDb = status.metering ?? -60;
-        const normalized = Math.max(0, Math.min(1, (meteringDb + 60) / 60));
-        setLevels((prev) => {
-          const next = prev.slice(1);
-          next.push(Math.max(0.05, normalized));
-          return next;
-        });
-      });
-      await recording.startAsync();
       recordingRef.current = recording;
       startedAtRef.current = Date.now();
       setElapsedSeconds(0);
