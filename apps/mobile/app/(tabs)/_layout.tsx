@@ -15,6 +15,7 @@ import { AttachStep } from "react-native-spotlight-tour";
 import { TOUR_STEP_INDEX } from "@/components/tour/steps";
 import { TourTarget } from "@/components/tour/TourTarget";
 import { PastDueBanner } from "@/components/past-due-banner";
+import { AnonymousSubscriberPrompt } from "@/components/anonymous-subscriber-prompt";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 
@@ -108,6 +109,9 @@ export default function TabsLayout() {
           <Tabs.Screen name="profile" options={{ href: null }} />
         </Tabs>
       </View>
+      {/* 1.9.1: subscribed-without-an-account guests → create an account
+          (attaches the anonymous RevenueCat purchase). Self-gates. */}
+      <AnonymousSubscriberPrompt />
       {/* Compliant "Enjoying Ripple?" review nudge — self-gates (arms only
           after completed debriefs, frequency-capped, dismissible). */}
       {/* The custom "Enjoying Ripple?" nudge is retired: the automatic ask is
