@@ -14,7 +14,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { useTheme } from "@/contexts/theme-context";
 import { getToken } from "@/lib/auth";
-import { bumpDebriefSignal, maybeNativePromptAfterDebrief } from "@/lib/review";
+import { bumpDebriefSignal, maybeAskForReviewAfterDebrief } from "@/lib/review";
 
 /**
  * App-wide "your brief is ready" notifier.
@@ -123,9 +123,9 @@ export function ProcessingNotifierProvider({
               // Only celebrate real briefs; a failed one gets no banner.
               if (status !== "FAILED" && !cancelled) {
                 if (!silent) setToastEntryId(id);
-                // A completed debrief is the positive signal that arms the
-                // "Enjoying Ripple?" review nudge (frequency-capped).
-                void bumpDebriefSignal().then(maybeNativePromptAfterDebrief);
+                // A completed debrief: count it for the "Enjoying Ripple?"
+                // nudge and make the one-time native review ask at 2.
+                void bumpDebriefSignal().then(() => maybeAskForReviewAfterDebrief());
               }
             }
           } catch {

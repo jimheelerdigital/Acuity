@@ -37,6 +37,7 @@ import { shouldAutostartRecording } from "@/lib/record-deeplink";
 import { getToken } from "@/lib/auth";
 import { invalidate } from "@/lib/cache";
 import { registerPushTokenAfterRecording } from "@/lib/push-token";
+import { bumpDebriefSignal, maybeAskForReviewAfterDebrief } from "@/lib/review";
 import { SPEECH_RECORDING_OPTIONS } from "@/lib/audio-recording-options";
 import { noteWelcomeDebrief } from "@/lib/welcome/flow";
 
@@ -240,10 +241,15 @@ export default function RecordScreen() {
       void (async () => {
         try {
           const meRes = await api.get<{
-            user?: { totalRecordings?: number };
+            user?: { id?: string; totalRecordings?: number };
           }>("/api/user/me");
           const total = meRes.user?.totalRecordings ?? 0;
           await registerPushTokenAfterRecording(total);
+          // This path takes the entry off the global notifier (above), so
+          // the review ask must run here too — in 1.9 it didn't, which is
+          // why the 2nd-debrief rating prompt never appeared.
+          await bumpDebriefSignal();
+          await maybeAskForReviewAfterDebrief({ id: meRes.user?.id, totalRecordings: total });
         } catch {
           // Non-fatal — registration will retry on the next
           // qualifying record completion.
