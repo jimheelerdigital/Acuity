@@ -43,6 +43,7 @@ import {
 } from "@/lib/push-token";
 import { bumpDebriefSignal, maybeAskForReviewAfterDebrief } from "@/lib/review";
 import { startSpeechRecording } from "@/lib/start-speech-recording";
+import { trackV10 } from "@/lib/onboarding-v10/analytics";
 import { noteWelcomeDebrief } from "@/lib/welcome/flow";
 
 /**
@@ -485,9 +486,22 @@ export default function RecordScreen() {
         );
         return;
       }
+      // Record the native reason where we can read it (Sentry breadcrumbs
+      // only surface with a later error; the 2026-10-15 user report could
+      // not be diagnosed from data). Reuses the funnel's event name — the
+      // server accepts only the ^v10_ prefix — with source "main".
+      trackV10("v10_recording_start_failed", {
+        source: "main",
+        error: nativeMessage.slice(0, 200),
+        code: nativeCode,
+      });
+      // Don't blame "another app": this catch fires for ANY start failure
+      // (audio-mode race, app not yet active after a system prompt, …), and
+      // telling someone with no other app open that one is using the mic
+      // reads as a broken app (user report 2026-10-15).
       Alert.alert(
-        "Recording unavailable",
-        "Your phone is in use by another app or a call. End the call or close the other app, then try again."
+        "Couldn't start recording",
+        "Ripple couldn't get the microphone. Tap record to try again. If you're on a call or using another audio app, end it first."
       );
     }
   };
