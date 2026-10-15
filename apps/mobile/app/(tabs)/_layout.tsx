@@ -4,10 +4,11 @@ import type { BottomTabBarProps } from "@react-navigation/bottom-tabs";
 import { useQuickActionRouting } from "expo-quick-actions/router";
 
 import { setupQuickActions } from "@/lib/quick-actions";
+import { maybeAskForReviewAfterDebrief } from "@/lib/review";
 import { isHabitsEnabled } from "@/lib/feature-flags";
 import { forwardRef, useEffect, useRef, useState } from "react";
 import * as Haptics from "expo-haptics";
-import { Animated, Pressable, Text, View } from "react-native";
+import { Animated, AppState, Pressable, Text, View } from "react-native";
 import { AttachStep } from "react-native-spotlight-tour";
 
 import { TOUR_STEP_INDEX } from "@/components/tour/steps";
@@ -68,6 +69,18 @@ export default function TabsLayout() {
   useQuickActionRouting();
   useEffect(() => {
     void setupQuickActions();
+  }, []);
+
+  // App Store rating ask: whenever the signed-in app opens or comes back to
+  // the foreground, ask once if this account has >= 2 completed debriefs.
+  // Doesn't depend on where the user was when a debrief finished (left the
+  // app, closed it, another screen) — the server count decides.
+  useEffect(() => {
+    void maybeAskForReviewAfterDebrief();
+    const sub = AppState.addEventListener("change", (state) => {
+      if (state === "active") void maybeAskForReviewAfterDebrief();
+    });
+    return () => sub.remove();
   }, []);
 
   return (
