@@ -1,29 +1,20 @@
 import { useEffect, useMemo, useState } from "react";
-import { Alert, ScrollView, Text, View } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { Alert, Text, View } from "react-native";
+import { CircleCheck } from "lucide-react-native";
 import * as Haptics from "expo-haptics";
 import { router, useLocalSearchParams } from "expo-router";
 import Animated, {
+  FadeInDown,
   useAnimatedStyle,
   useSharedValue,
   withSequence,
   withTiming,
 } from "react-native-reanimated";
 
-import { useTheme } from "@/contexts/theme-context";
+import { useAuth } from "@/contexts/auth-context";
 
+import { Body, Card, FunnelHeader, Heading, IconTile, LightScreen, PROGRESS, PrimaryButton, RippleAppIcon, V11 } from "../_v11/ui";
 import {
-  CoralScreen,
-  FunnelCta,
-  FunnelProgress,
-  RippleWordmark,
-  coralLabel,
-  coralWhiteCard,
-} from "./_ui";
-import { makeAcuityTokens } from "@/lib/theme/tokens";
-import {
-  V10_BRANCHES,
   resolveObservationFallback,
   type V10Branch,
 } from "@/lib/onboarding-v10/branches";
@@ -130,8 +121,8 @@ function normalize(raw: Record<string, unknown> | null): RevealData {
 }
 
 export default function V10Reveal() {
-  const { palette } = useTheme();
-  const tokens = makeAcuityTokens({ dark: false, accent: palette });
+  const { user } = useAuth();
+  const firstName = user?.name?.trim().split(/\s+/)[0] || null;
 
   const [branch, setBranch] = useState<V10Branch>("open");
   const [data, setData] = useState<RevealData>({
@@ -260,358 +251,166 @@ export default function V10Reveal() {
   const onList = !!(listTasks && listTasks.length > 0);
 
   return (
-    <CoralScreen tokens={tokens}>
-      <SafeAreaView style={{ flex: 1 }}>
-      <FunnelProgress step={5} total={5} tokens={tokens} />
-      <ScrollView
-        contentContainerStyle={{ paddingHorizontal: 24, paddingTop: 20, paddingBottom: 40 }}
-        showsVerticalScrollIndicator={false}
+    <LightScreen>
+      <FunnelHeader progress={PROGRESS.reveal} />
+      <Body
+        footer={
+          <PrimaryButton
+            label="Keep building my Ripple"
+            onPress={() => {
+              trackV10("v10_keep_building_tapped", { branch });
+              router.push("/onboarding-new/paywall");
+            }}
+          />
+        }
       >
-        {/* First appearance of the wordmark in the entire flow. */}
-        <View style={{ marginBottom: 14 }}>
-          <RippleWordmark height={22} />
-        </View>
-
-        <Text
-          accessibilityRole="header"
-          style={{
-            fontFamily: tokens.fontDisplay,
-            fontSize: 26,
-            lineHeight: 34,
-            color: "#ffffff",
-            marginBottom: 18,
-          }}
-        >
-          Here's what Ripple heard.
-        </Text>
+        <Animated.View style={[{ alignSelf: "center", marginBottom: 14 }, pulseStyle]}>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 8, backgroundColor: "#ffffff", borderRadius: 999, borderWidth: 1, borderColor: V11.lineStrong, paddingHorizontal: 12, paddingVertical: 6 }}>
+            <CircleCheck size={15} color={V11.good} />
+            <Text style={{ fontSize: 13, fontWeight: "700", color: V11.ink }}>First debrief complete</Text>
+          </View>
+        </Animated.View>
+        <Heading eyebrow="Your results" title={firstName ? `Here's what Ripple heard, ${firstName}.` : "Here's what Ripple heard."} />
 
         {/* ── YOUR TO-DOS — real tasks on their list (1.9.1) ────────── */}
         {rows.length > 0 && (
-          <View style={[coralWhiteCard(tokens, { padding: 0 }), { marginBottom: 16, overflow: "hidden" }]}>
-            <View
-              style={{
-                flexDirection: "row",
-                alignItems: "center",
-                gap: 12,
-                paddingHorizontal: 16,
-                paddingTop: 16,
-                paddingBottom: 12,
-              }}
-            >
-              <View
-                style={{
-                  width: 36,
-                  height: 36,
-                  borderRadius: 10,
-                  backgroundColor: `${tokens.primary}1F`,
-                  alignItems: "center",
-                  justifyContent: "center",
-                }}
-              >
-                <Ionicons name="checkbox-outline" size={20} color={tokens.primaryLo} />
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={{ fontFamily: tokens.fontDisplay, fontSize: 17, color: tokens.text }}>
-                  {totalTodos} {totalTodos === 1 ? "to-do" : "to-dos"} from what you said
-                </Text>
-                <View style={{ flexDirection: "row", alignItems: "center", gap: 4, marginTop: 2 }}>
-                  {onList ? (
-                    <Ionicons name="checkmark-circle" size={14} color={tokens.good} />
-                  ) : null}
-                  <Text
-                    style={{
-                      fontFamily: tokens.fontSans,
-                      fontSize: 13,
-                      color: onList ? tokens.good : tokens.textSec,
-                      fontWeight: "600",
-                    }}
-                  >
-                    {onList ? "Already on your Tasks list" : "Going on your Tasks list"}
+          <Animated.View entering={FadeInDown.delay(80).duration(420)}>
+            <Card style={{ marginBottom: 14, overflow: "hidden" }}>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 12, paddingHorizontal: 16, paddingTop: 16, paddingBottom: 12 }}>
+                <IconTile name="list" on size={42} radius={12} />
+                <View style={{ flex: 1 }}>
+                  <Text style={{ fontFamily: V11.display, fontSize: 17, color: V11.ink }}>
+                    {totalTodos} {totalTodos === 1 ? "to-do" : "to-dos"} from what you said
                   </Text>
+                  <View style={{ flexDirection: "row", alignItems: "center", gap: 4, marginTop: 2 }}>
+                    {onList ? <CircleCheck size={13} color={V11.good} /> : null}
+                    <Text style={{ fontSize: 13, fontWeight: "600", color: onList ? V11.good : V11.sec }}>
+                      {onList ? "Already on your Tasks list" : "Going on your Tasks list"}
+                    </Text>
+                  </View>
                 </View>
               </View>
-            </View>
 
-            {rows.map((row) => {
-              const t = row.real;
-              const done = t?.status === "DONE";
-              const line = (
-                <View
-                  style={{
-                    flexDirection: "row",
-                    alignItems: "center",
-                    gap: 12,
-                    paddingHorizontal: 16,
-                    paddingVertical: 13,
-                    backgroundColor: "#ffffff",
-                    borderTopWidth: 1,
-                    borderTopColor: tokens.line,
-                  }}
-                >
-                  {t ? (
-                    <GradientCheckbox checked={done} onPress={() => toggleDone(t)} />
-                  ) : (
-                    <View
+              {rows.map((row) => {
+                const t = row.real;
+                const done = t?.status === "DONE";
+                const line = (
+                  <View
+                    style={{
+                      flexDirection: "row",
+                      alignItems: "center",
+                      gap: 12,
+                      paddingHorizontal: 16,
+                      paddingVertical: 14,
+                      backgroundColor: "#ffffff",
+                      borderTopWidth: 1,
+                      borderTopColor: V11.line,
+                    }}
+                  >
+                    {t ? (
+                      <GradientCheckbox checked={done} onPress={() => toggleDone(t)} />
+                    ) : (
+                      <View style={{ width: 22, height: 22, borderRadius: 11, borderWidth: 1.5, borderColor: V11.quiet }} />
+                    )}
+                    <Text
                       style={{
-                        width: 22,
-                        height: 22,
-                        borderRadius: 11,
-                        borderWidth: 1.5,
-                        borderColor: tokens.line,
+                        flex: 1,
+                        fontSize: 16,
+                        lineHeight: 22,
+                        fontWeight: "500",
+                        color: done ? V11.ter : V11.ink,
+                        textDecorationLine: done ? "line-through" : "none",
                       }}
-                    />
-                  )}
-                  <Text
-                    style={{
-                      flex: 1,
-                      fontFamily: tokens.fontSans,
-                      fontSize: 16,
-                      lineHeight: 22,
-                      color: done ? tokens.textTer : tokens.text,
-                      textDecorationLine: done ? "line-through" : "none",
-                    }}
+                    >
+                      {row.label}
+                    </Text>
+                  </View>
+                );
+                return t ? (
+                  <SwipeRow
+                    key={row.key}
+                    variant="flush"
+                    itemName={row.label}
+                    onEdit={() => router.push(`/task/${t.id}`)}
+                    onDelete={() => confirmDelete(t)}
                   >
-                    {row.label}
-                  </Text>
-                </View>
-              );
-              return t ? (
-                <SwipeRow
-                  key={row.key}
-                  variant="flush"
-                  itemName={row.label}
-                  onEdit={() => router.push(`/task/${t.id}`)}
-                  onDelete={() => confirmDelete(t)}
-                >
-                  {line}
-                </SwipeRow>
-              ) : (
-                <View key={row.key}>{line}</View>
-              );
-            })}
+                    {line}
+                  </SwipeRow>
+                ) : (
+                  <View key={row.key}>{line}</View>
+                );
+              })}
 
-            {onList ? (
-              <Text
-                style={{
-                  fontFamily: tokens.fontSans,
-                  fontSize: 12,
-                  color: tokens.textTer,
-                  paddingHorizontal: 16,
-                  paddingVertical: 10,
-                  borderTopWidth: 1,
-                  borderTopColor: tokens.line,
-                }}
-              >
-                {totalTodos > rows.length
-                  ? `+${totalTodos - rows.length} more in Tasks · `
-                  : ""}
-                Tap to check off · swipe left to edit or delete
-              </Text>
-            ) : null}
-          </View>
+              {onList ? (
+                <Text style={{ fontSize: 12, color: V11.ter, paddingHorizontal: 16, paddingVertical: 10, borderTopWidth: 1, borderTopColor: V11.line }}>
+                  {totalTodos > rows.length ? `+${totalTodos - rows.length} more in Tasks · ` : ""}
+                  Tap to check off · swipe left to edit or delete
+                </Text>
+              ) : null}
+            </Card>
+          </Animated.View>
         )}
 
         {/* ── WHAT IT WAS ABOUT — the summary once + theme chips ─────── */}
         {(data.summary || data.themes.length > 0) && (
-          <View style={[coralWhiteCard(tokens), { marginBottom: 16 }]}>
-            <Text
-              style={{
-                fontFamily: tokens.fontSans,
-                fontWeight: "700",
-                fontSize: 11,
-                letterSpacing: 0.8,
-                textTransform: "uppercase",
-                color: tokens.primaryLo,
-                marginBottom: 8,
-              }}
-            >
-              What it was about
-            </Text>
-            {data.summary ? (
-              <Text
-                style={{
-                  fontFamily: tokens.fontSans,
-                  fontSize: 16,
-                  lineHeight: 24,
-                  color: tokens.text,
-                  marginBottom: data.themes.length > 0 ? 14 : 0,
-                }}
-              >
-                {data.summary}
-              </Text>
-            ) : null}
-            {data.themes.length > 0 ? (
-              <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
-                {data.themes.slice(0, 4).map((theme) => (
-                  <View
-                    key={theme}
-                    style={{
-                      borderRadius: 999,
-                      paddingHorizontal: 12,
-                      paddingVertical: 6,
-                      backgroundColor: `${tokens.primary}1A`,
-                    }}
-                  >
-                    <Text
-                      style={{
-                        fontFamily: tokens.fontSans,
-                        fontSize: 13,
-                        fontWeight: "600",
-                        color: tokens.primaryLo,
-                      }}
-                    >
-                      {theme}
-                    </Text>
-                  </View>
-                ))}
-              </View>
-            ) : null}
-          </View>
+          <Animated.View entering={FadeInDown.delay(160).duration(420)}>
+            <Card style={{ padding: 18, marginBottom: 14 }}>
+              <Text style={{ fontSize: 12, fontWeight: "800", letterSpacing: 0.8, color: V11.coral, marginBottom: 8 }}>WHAT IT WAS ABOUT</Text>
+              {data.summary ? (
+                <Text style={{ fontSize: 16, lineHeight: 24, color: V11.ink, marginBottom: data.themes.length > 0 ? 14 : 0 }}>
+                  {data.summary}
+                </Text>
+              ) : null}
+              {data.themes.length > 0 ? (
+                <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+                  {data.themes.slice(0, 4).map((theme) => (
+                    <View key={theme} style={{ borderRadius: 999, paddingHorizontal: 12, paddingVertical: 6, backgroundColor: V11.coralSoft }}>
+                      <Text style={{ fontSize: 13, fontWeight: "600", color: V11.coralDeep }}>{theme}</Text>
+                    </View>
+                  ))}
+                </View>
+              ) : null}
+            </Card>
+          </Animated.View>
         )}
 
         {/* ── RIPPLE NOTICED — only a real, distinct observation, or the
-            branch fallback when there's nothing else to show. Never a
-            repeat of the summary. ─────────────────────────────────────── */}
+            branch fallback when there's nothing else to show. ──────────── */}
         {(data.pullQuote || !data.summary) && (
-          <View style={[coralWhiteCard(tokens, { tinted: true }), { marginBottom: 16 }]}>
-            <Text
-              style={{
-                fontFamily: tokens.fontSans,
-                fontWeight: "700",
-                fontSize: 11,
-                letterSpacing: 0.8,
-                textTransform: "uppercase",
-                color: "#ffffff",
-                opacity: 0.85,
-                marginBottom: 8,
-              }}
-            >
-              Ripple noticed
-            </Text>
-            <Text
-              style={{
-                fontFamily: tokens.fontSans,
-                fontSize: 16,
-                lineHeight: 24,
-                color: "#ffffff",
-              }}
-            >
-              {observation}
-            </Text>
-          </View>
+          <Animated.View entering={FadeInDown.delay(240).duration(420)}>
+            <Card selected style={{ padding: 18, marginBottom: 14, flexDirection: "row", gap: 12 }}>
+              <RippleAppIcon size={34} />
+              <View style={{ flex: 1 }}>
+                <Text style={{ fontSize: 12, fontWeight: "800", letterSpacing: 0.8, color: V11.coral, marginBottom: 6 }}>RIPPLE NOTICED</Text>
+                <Text style={{ fontSize: 16, lineHeight: 24, color: V11.ink }}>{observation}</Text>
+              </View>
+            </Card>
+          </Animated.View>
         )}
 
-        {/* ── First debrief complete — pulse + haptic, no confetti ─── */}
-        <View
-          style={{
-            flexDirection: "row",
-            alignItems: "center",
-            gap: 10,
-            marginBottom: 18,
-          }}
-        >
-          <Animated.View
-            style={[
-              {
-                width: 10,
-                height: 10,
-                borderRadius: 5,
-                backgroundColor: "#ffffff",
-              },
-              pulseStyle,
-            ]}
-          />
-          <Text
-            style={{
-              fontFamily: tokens.fontSans,
-              fontSize: 15,
-              color: "#ffffff",
-              opacity: 0.92,
-            }}
-          >
-            First debrief complete
-          </Text>
-        </View>
-
         {/* ── WHAT RIPPLE CAN SEE FROM MORE ───────────────────────── */}
-        <Text style={[coralLabel(tokens), { marginBottom: 12 }]}>
+        <Text style={{ marginTop: 10, marginBottom: 10, fontFamily: V11.heading, fontSize: 20, letterSpacing: -0.4, color: V11.ink }}>
           {V10_COMPOUNDING_HEADING}
         </Text>
-
-        <View style={{ gap: 10, marginBottom: 16 }}>
-          {V10_COMPOUNDING_CARDS.map((card) => (
-            <View key={card.key} style={coralWhiteCard(tokens, { padding: 14 })}>
-              <Text
-                style={{
-                  fontFamily: tokens.fontDisplay,
-                  fontSize: 16,
-                  color: tokens.text,
-                  marginBottom: 4,
-                }}
-              >
-                {card.title}
-              </Text>
-              {/* Subline comes straight from the verified-threshold config.
-                  Life Matrix says "already here" because it exists at zero
-                  entries; claiming a gate would be a fabricated lock. */}
-              <Text
-                style={{
-                  fontFamily: tokens.fontSans,
-                  fontSize: 14,
-                  lineHeight: 20,
-                  color: tokens.textSec,
-                }}
-              >
-                {card.subline}
-              </Text>
+        <Card style={{ padding: 16, gap: 14, marginBottom: 12 }}>
+          {V10_COMPOUNDING_CARDS.map((card, i) => (
+            <View key={card.key} style={{ flexDirection: "row", gap: 12 }}>
+              <IconTile name={COMPOUND_ICONS[i % COMPOUND_ICONS.length]} on={false} size={38} radius={12} />
+              <View style={{ flex: 1 }}>
+                <Text style={{ fontFamily: V11.display, fontSize: 16, color: V11.ink }}>{card.title}</Text>
+                {/* Subline comes straight from the verified-threshold config. */}
+                <Text style={{ marginTop: 2, fontSize: 14, lineHeight: 20, color: V11.sec }}>{card.subline}</Text>
+              </View>
             </View>
           ))}
-        </View>
-
-        <Text
-          style={{
-            fontFamily: tokens.fontSans,
-            fontSize: 14,
-            lineHeight: 21,
-            color: "#ffffff",
-            opacity: 0.9,
-            marginBottom: 18,
-          }}
-        >
-          {V10_COMPOUNDING_FOOTER}
-        </Text>
-
-        <FunnelCta
-          label="Keep building my Ripple"
-          onPress={() => {
-            trackV10("v10_keep_building_tapped", { branch });
-            router.push("/onboarding-new/paywall");
-          }}
-          tokens={tokens}
-          onCoral
-        />
-      </ScrollView>
-      </SafeAreaView>
-    </CoralScreen>
+        </Card>
+        <Text style={{ fontSize: 14, lineHeight: 21, color: V11.sec, textAlign: "center" }}>{V10_COMPOUNDING_FOOTER}</Text>
+      </Body>
+    </LightScreen>
   );
 }
 
-function Section({
-  title,
-  tokens,
-  children,
-}: {
-  title: string;
-  tokens: ReturnType<typeof makeAcuityTokens>;
-  children: React.ReactNode;
-}) {
-  return (
-    <View style={{ marginBottom: 18 }}>
-      <Text style={[coralLabel(tokens), { marginBottom: 8 }]}>{title}</Text>
-      {children}
-    </View>
-  );
-}
+const COMPOUND_ICONS = ["eye", "target", "waves", "sprout"] as const;
 
 /**
  * Which kind of observation we ended up showing — reported so we can measure

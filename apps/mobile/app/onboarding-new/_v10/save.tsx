@@ -1,16 +1,13 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Pressable, ScrollView, Text, View } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
 import { router } from "expo-router";
 import Svg, { Path } from "react-native-svg";
 
 import { useAuth } from "@/contexts/auth-context";
-import { useTheme } from "@/contexts/theme-context";
 import { EmailCodeForm } from "@/components/auth/email-code-form";
 import type { AuthLoading } from "@/components/auth/social-auth-buttons";
 
-import { CoralScreen, FunnelCta, RippleWordmark } from "./_ui";
-import { makeAcuityTokens } from "@/lib/theme/tokens";
+import { FunnelHeader, Heading, LightScreen, PROGRESS, RippleAppIcon, V11 } from "../_v11/ui";
 import { signInWithApple, isAppleSignInAvailable } from "@/lib/apple-auth";
 import { useGoogleSignIn, type User } from "@/lib/auth";
 import { trackV10 } from "@/lib/onboarding-v10/analytics";
@@ -37,11 +34,6 @@ const COPY = {
 };
 
 export default function V10Save() {
-  const { palette } = useTheme();
-  const tokens = useMemo(
-    () => makeAcuityTokens({ dark: false, accent: palette }),
-    [palette]
-  );
   const { refresh, setAuthenticatedUser } = useAuth();
   const { signIn: googleSignIn, ready: googleReady } = useGoogleSignIn();
 
@@ -70,7 +62,9 @@ export default function V10Save() {
       await setV10Guest(false);
       await refresh();
       trackV10("v10_account_completed", { method, position: "account_first", is_new: isNewUser ?? null });
-      router.replace("/onboarding-new/pain");
+      // v11 (2026-10-15): on to Keenan's questions. The name screen skips
+      // itself when the sign-in already gave us a name.
+      router.replace("/onboarding-new/name");
     },
     [refresh]
   );
@@ -133,98 +127,46 @@ export default function V10Save() {
 
 
   return (
-    <CoralScreen tokens={tokens}>
-      <SafeAreaView style={{ flex: 1 }}>
+    <LightScreen>
+      <FunnelHeader progress={PROGRESS.account} onBack={() => router.canGoBack() && router.back()} />
       <ScrollView
-        contentContainerStyle={{ paddingHorizontal: 24, paddingTop: 32, flexGrow: 1 }}
+        contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 18, paddingBottom: 32, flexGrow: 1 }}
         keyboardShouldPersistTaps="handled"
+        automaticallyAdjustKeyboardInsets
       >
-        <View style={{ alignItems: "center", marginTop: 24, marginBottom: 20 }}>
-          <RippleWordmark height={34} />
+        <View style={{ alignItems: "center", marginBottom: 18 }}>
+          <RippleAppIcon size={60} />
         </View>
-
-        <Text
-          style={{
-            fontFamily: tokens.fontDisplay,
-            fontSize: 26,
-            lineHeight: 32,
-            color: "#ffffff",
-            textAlign: "center",
-            marginBottom: 8,
-          }}
-        >
-          {copy.headline}
-        </Text>
-        <Text
-          style={{
-            fontFamily: tokens.fontSans,
-            fontSize: 16,
-            lineHeight: 24,
-            color: "#ffffff",
-            opacity: 0.9,
-            textAlign: "center",
-            marginBottom: 28,
-          }}
-        >
-          {copy.sub}
-        </Text>
+        <Heading title={copy.headline} sub={copy.sub} />
 
         {error ? (
-          <Text
-            style={{
-              fontFamily: tokens.fontDisplay,
-              fontSize: 14,
-              color: "#ffffff",
-              textAlign: "center",
-              marginBottom: 12,
-            }}
-          >
+          <Text style={{ fontFamily: V11.display, fontSize: 14, color: "#C2412D", textAlign: "center", marginBottom: 12 }}>
             {error}
           </Text>
         ) : null}
 
-        <View style={{ gap: 10 }}>
+        <View style={{ gap: 12 }}>
           {appleAvailable ? (
-            <OAuthButton
-              provider="apple"
-              label="Continue with Apple"
-              onPress={onApple}
-              disabled={busy}
-              tokens={tokens}
-            />
+            <OAuthButton provider="apple" label="Continue with Apple" onPress={onApple} disabled={busy} />
           ) : null}
-          <OAuthButton
-            provider="google"
-            label="Continue with Google"
-            onPress={onGoogle}
-            disabled={busy || !googleReady}
-            tokens={tokens}
-          />
-          <Text
-            style={{
-              fontFamily: tokens.fontSans,
-              fontSize: 12,
-              color: "#ffffff",
-              opacity: 0.9,
-              textAlign: "center",
-              marginTop: -2,
-            }}
-          >
-            Paid on the website? Use the same email below.
-          </Text>
-          <View style={{ height: 6 }} />
+          <OAuthButton provider="google" label="Continue with Google" onPress={onGoogle} disabled={busy || !googleReady} />
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 12, marginVertical: 6 }}>
+            <View style={{ flex: 1, height: 1, backgroundColor: V11.lineStrong }} />
+            <Text style={{ fontSize: 13, color: V11.ter }}>or</Text>
+            <View style={{ flex: 1, height: 1, backgroundColor: V11.lineStrong }} />
+          </View>
           <EmailCodeForm
             colors={{
-              text: "#ffffff",
-              textSec: "rgba(255,255,255,0.85)",
-              placeholder: tokens.textTer,
-              border: "#ffffff",
+              text: V11.ink,
+              textSec: V11.sec,
+              placeholder: V11.quiet,
+              border: V11.lineStrong,
               inputBg: "#ffffff",
-              inputText: tokens.text,
-              buttonBg: "#ffffff",
-              buttonText: tokens.primaryLo,
-              link: "#ffffff",
-              error: "#ffffff",
+              inputText: V11.ink,
+              buttonBg: V11.coral,
+              buttonText: "#ffffff",
+              link: V11.coral,
+              error: "#C2412D",
             }}
             loading={emailLoading}
             setLoading={(v) => {
@@ -234,75 +176,12 @@ export default function V10Save() {
             submitLabel="Continue with email"
             onAuthenticated={(u, t, isNew) => void onEmailAuthenticated(u, t, isNew)}
           />
+          <Text style={{ fontSize: 13, color: V11.ter, textAlign: "center", marginTop: 4 }}>
+            Paid on the website? Use the same email.
+          </Text>
         </View>
-
-        <View style={{ flex: 1, minHeight: 24 }} />
-
-        <View style={{ height: 24 }} />
       </ScrollView>
-      </SafeAreaView>
-    </CoralScreen>
-  );
-}
-
-type Tokens = ReturnType<typeof makeAcuityTokens>;
-
-function AuthButton({
-  label,
-  onPress,
-  disabled,
-  tokens,
-  primary,
-}: {
-  label: string;
-  onPress: () => void;
-  disabled?: boolean;
-  tokens: Tokens;
-  primary?: boolean;
-}) {
-  // The primary variant IS the funnel CTA — delegate rather than keep a
-  // second coral-button implementation that can drift from it.
-  if (primary) {
-    return (
-      <FunnelCta
-        label={label}
-        onPress={onPress}
-        tokens={tokens}
-        disabled={disabled}
-        onCoral
-      />
-    );
-  }
-
-  // Secondary on coral: translucent white outline with a white label.
-  return (
-    <Pressable
-      onPress={onPress}
-      disabled={disabled}
-      accessibilityRole="button"
-      accessibilityState={{ disabled: !!disabled }}
-      style={{
-        // Object style, not a function — RN 0.81.5 here drops Pressable
-        // function-styles (see FunnelCta note).
-        backgroundColor: "rgba(255,255,255,0.12)",
-        borderWidth: 1,
-        borderColor: "rgba(255,255,255,0.4)",
-        borderRadius: tokens.radius.pill,
-        paddingVertical: 16,
-        alignItems: "center",
-        opacity: disabled ? 0.5 : 1,
-      }}
-    >
-      <Text
-        style={{
-          fontFamily: tokens.fontDisplay,
-          fontSize: 16,
-          color: "#ffffff",
-        }}
-      >
-        {label}
-      </Text>
-    </Pressable>
+    </LightScreen>
   );
 }
 
@@ -317,13 +196,11 @@ function OAuthButton({
   label,
   onPress,
   disabled,
-  tokens,
 }: {
   provider: "apple" | "google";
   label: string;
   onPress: () => void;
   disabled?: boolean;
-  tokens: Tokens;
 }) {
   return (
     <Pressable
@@ -339,22 +216,24 @@ function OAuthButton({
         justifyContent: "center",
         gap: 10,
         backgroundColor: "#ffffff",
-        borderRadius: tokens.radius.pill,
-        paddingVertical: 15,
+        borderRadius: 999,
+        borderWidth: 1,
+        borderColor: V11.lineStrong,
+        paddingVertical: 17,
         opacity: disabled ? 0.6 : 1,
-        shadowColor: "#7a3d24",
-        shadowOffset: { width: 0, height: 8 },
-        shadowRadius: 18,
-        shadowOpacity: 0.16,
-        elevation: 4,
+        shadowColor: "#141028",
+        shadowOffset: { width: 0, height: 6 },
+        shadowRadius: 14,
+        shadowOpacity: 0.06,
+        elevation: 2,
       }}
     >
       {provider === "apple" ? <AppleLogo /> : <GoogleLogo />}
       <Text
         style={{
-          fontFamily: tokens.fontDisplay,
-          fontSize: 15,
-          color: "#1f1f1f",
+          fontFamily: V11.display,
+          fontSize: 16,
+          color: V11.ink,
         }}
       >
         {label}

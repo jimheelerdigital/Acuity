@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { AppState, Pressable, Text, View } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
 import { Audio } from "expo-av";
 import * as Haptics from "expo-haptics";
 import { router } from "expo-router";
@@ -10,12 +9,8 @@ import Animated, {
   withTiming,
 } from "react-native-reanimated";
 
-import { useTheme } from "@/contexts/theme-context";
-
-import { CoralScreen, FunnelCta, FunnelProgress, coralChipStyle } from "./_ui";
-import { makeAcuityTokens } from "@/lib/theme/tokens";
+import { FunnelHeader, LightScreen, PROGRESS, PrimaryButton, V11 } from "../_v11/ui";
 import {
-  V10_BRANCHES,
   V10_RECORDING_CHIPS,
   V10_RECORDING_GUIDANCE,
   V10_RECORDING_PROMPT,
@@ -55,10 +50,6 @@ import { V10_MAX_RECORDING_MS as MAX_MS } from "@/lib/onboarding-v10/limits";
 const TICK_MS = 100;
 
 export default function V10Recording() {
-  const { palette } = useTheme();
-  // Light from Screen 3 onward (spec §1).
-  const tokens = makeAcuityTokens({ dark: false, accent: palette });
-
   const [branch, setBranch] = useState<V10Branch>("open");
   const [elapsedMs, setElapsedMs] = useState(0);
   const [level, setLevel] = useState(0);
@@ -260,131 +251,62 @@ export default function V10Recording() {
     : V10_RECORDING_PROMPT;
 
   return (
-    <CoralScreen tokens={tokens}>
-      <SafeAreaView style={{ flex: 1 }}>
-      <FunnelProgress step={3} total={5} tokens={tokens} />
-      <View style={{ flex: 1, paddingHorizontal: 24, paddingTop: 20, paddingBottom: 28 }}>
-        <Animated.View style={listeningStyle}>
-          <Text
-            style={{
-              fontFamily: tokens.fontSans,
-              fontWeight: "700",
-              fontSize: 12,
-              letterSpacing: 1.4,
-              textTransform: "uppercase",
-              color: "#ffffff",
-              opacity: 0.82,
-              marginBottom: 16,
-            }}
-          >
-            Listening…
-          </Text>
+    <LightScreen>
+      <FunnelHeader progress={PROGRESS.record} />
+      <View style={{ flex: 1, paddingHorizontal: 20, paddingTop: 14, paddingBottom: 10 }}>
+        <Animated.View style={[{ alignItems: "center" }, listeningStyle]}>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 8, backgroundColor: V11.coralSoft, borderRadius: 999, paddingHorizontal: 14, paddingVertical: 6, marginBottom: 14 }}>
+            <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: V11.coral }} />
+            <Text style={{ fontFamily: V11.display, fontSize: 13, color: V11.coral }}>Listening</Text>
+          </View>
         </Animated.View>
 
         <Text
           accessibilityRole="header"
-          style={{
-            fontFamily: tokens.fontDisplay,
-            fontSize: 24,
-            lineHeight: 32,
-            color: "#ffffff",
-          }}
+          style={{ textAlign: "center", fontFamily: V11.heading, fontSize: 26, lineHeight: 31, letterSpacing: -0.6, color: V11.ink }}
         >
           {topPrompt}
         </Text>
-
-        {/* Branch sub-prompt sits under the top prompt. */}
-        <Text
-          style={{
-            fontFamily: tokens.fontSans,
-            fontSize: 15,
-            lineHeight: 22,
-            color: "#ffffff",
-            opacity: 0.9,
-            marginTop: 8,
-          }}
-        >
-          {V10_BRANCHES[branch].support}
-        </Text>
-
-        <Text
-          style={{
-            fontFamily: tokens.fontSans,
-            fontSize: 14,
-            lineHeight: 21,
-            color: "#ffffff",
-            opacity: 0.82,
-            marginTop: 16,
-          }}
-        >
+        <Text style={{ textAlign: "center", marginTop: 10, fontSize: 16, lineHeight: 23, color: V11.sec }}>
           {V10_RECORDING_GUIDANCE}
         </Text>
 
         <View style={{ flex: 1, justifyContent: "center" }}>
           {/* Same voice-reactive orb + scrolling waveform as the main
               recorder (1.9.1, Jimmy: the funnel must match the real
-              recording). The orb breathes when idle and pulses with the
-              REAL mic level; the waveform scrolls a history of real
-              levels. Tapping the orb stops, like the main recorder. */}
+              recording). Tapping the orb stops, like the main recorder. */}
           <View style={{ alignItems: "center", marginBottom: 8 }}>
-            <RecordOrb
-              amplitude={level}
-              active={isRecording}
-              onPress={() => void handleStop()}
-              onCoral
-            />
+            <RecordOrb amplitude={level} active={isRecording} onPress={() => void handleStop()} />
           </View>
-
-          <RecordWaveform levels={[level]} active={isRecording} height={72} onCoral />
-
+          <RecordWaveform levels={[level]} active={isRecording} height={64} />
           <Text
             style={{
-              fontFamily: tokens.fontDisplay,
-              fontSize: 30,
-              color: "#ffffff",
+              fontFamily: V11.heading,
+              fontSize: 32,
+              color: V11.ink,
               textAlign: "center",
-              marginTop: 20,
+              marginTop: 16,
               fontVariant: ["tabular-nums"],
             }}
           >
             {mmss}
           </Text>
-
           {/* Appears at ~20s and STAYS. Not a threshold — reassurance. */}
           {pastSoftFloor && (
-            <Text
-              style={{
-                fontFamily: tokens.fontSans,
-                fontSize: 14,
-                lineHeight: 21,
-                color: "#ffffff",
-                opacity: 0.9,
-                textAlign: "center",
-                marginTop: 12,
-                paddingHorizontal: 16,
-              }}
-            >
+            <Text style={{ fontSize: 15, lineHeight: 21, color: V11.sec, textAlign: "center", marginTop: 8, paddingHorizontal: 16 }}>
               {V10_SOFT_FLOOR_LINE}
             </Text>
           )}
-
           {error && (
-            <Text
-              style={{
-                fontFamily: tokens.fontDisplay,
-                fontSize: 14,
-                color: "#ffffff",
-                textAlign: "center",
-                marginTop: 16,
-              }}
-            >
+            <Text style={{ fontFamily: V11.display, fontSize: 15, lineHeight: 21, color: "#C2412D", textAlign: "center", marginTop: 14, paddingHorizontal: 12 }}>
               {error}
             </Text>
           )}
         </View>
 
         {/* Optional prompts. Tapping one swaps the heading; nothing pauses. */}
-        <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8, marginBottom: 20 }}>
+        <Text style={{ textAlign: "center", fontSize: 13, color: V11.ter, marginBottom: 8 }}>Stuck? Tap a prompt</Text>
+        <View style={{ flexDirection: "row", flexWrap: "wrap", justifyContent: "center", gap: 8, marginBottom: 16 }}>
           {V10_RECORDING_CHIPS.map((chip) => {
             const active = activeChip === chip.key;
             return (
@@ -395,18 +317,17 @@ export default function V10Recording() {
                   trackV10("v10_chip_tapped", { chip: chip.key, branch });
                 }}
                 accessibilityRole="button"
-                style={coralChipStyle({ selected: active })}
+                accessibilityState={{ selected: active }}
+                style={{
+                  borderRadius: 999,
+                  paddingHorizontal: 14,
+                  paddingVertical: 9,
+                  borderWidth: 1.5,
+                  borderColor: active ? V11.coral : V11.lineStrong,
+                  backgroundColor: active ? V11.tint : "#ffffff",
+                }}
               >
-                <Text
-                  style={{
-                    fontFamily: tokens.fontSans,
-                    fontSize: 14,
-                    fontWeight: active ? "700" : "500",
-                    color: active ? tokens.primaryLo : "#ffffff",
-                  }}
-                >
-                  {chip.label}
-                </Text>
+                <Text style={{ fontSize: 14, fontWeight: active ? "700" : "500", color: active ? V11.coral : V11.sec }}>{chip.label}</Text>
               </Pressable>
             );
           })}
@@ -415,30 +336,23 @@ export default function V10Recording() {
         {/* If the start failed, the main button retries instead of being a
             Stop with nothing to stop. */}
         {error && !recordingRef.current && !stopping ? (
-          <FunnelCta
+          <PrimaryButton
             label="Try again"
-            busyLabel="Starting…"
+            icon="none"
             busy={starting}
             onPress={() => void beginRecording()}
-            tokens={tokens}
-            size="lg"
-            onCoral
             accessibilityLabel="Try recording again"
           />
         ) : (
-          <FunnelCta
-            label="Stop"
-            busyLabel="Saving…"
+          <PrimaryButton
+            label="I'm done"
+            icon="check"
             busy={stopping}
             onPress={() => void handleStop()}
-            tokens={tokens}
-            size="lg"
-            onCoral
             accessibilityLabel="Stop recording"
           />
         )}
       </View>
-      </SafeAreaView>
-    </CoralScreen>
+    </LightScreen>
   );
 }

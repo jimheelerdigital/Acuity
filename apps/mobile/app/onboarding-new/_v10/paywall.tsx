@@ -3,7 +3,11 @@ import { Alert, Linking, Pressable, ScrollView, Text, View } from "react-native"
 import { SafeAreaView } from "react-native-safe-area-context";
 import { router } from "expo-router";
 
+import { useAuth } from "@/contexts/auth-context";
 import { useTheme } from "@/contexts/theme-context";
+import { loadAnswers } from "@/lib/onboarding-v11/answers";
+import { stateName } from "@/lib/onboarding-v11/copy";
+import { finishOnboarding } from "@/lib/onboarding-v11/finish";
 
 import { CoralScreen, FunnelCta, coralWhiteCard } from "./_ui";
 import { makeAcuityTokens } from "@/lib/theme/tokens";
@@ -75,6 +79,24 @@ export default function V10Paywall() {
     () => makeAcuityTokens({ dark: false, accent: palette }),
     [palette]
   );
+
+  // v11: the paywall is the last step before Home + the app tour (Miro #15
+  // → #16). Check-in time is picked while the debrief analyzes, so the old
+  // reminders screen is no longer in between.
+  const { user, refresh } = useAuth();
+  const userFirstName = user?.name?.trim().split(/\s+/)[0] || null;
+  const finish = useCallback(
+    () => finishOnboarding({ firstName: userFirstName, refresh }),
+    [userFirstName, refresh]
+  );
+  // For Keenan's RevenueCat paywall copy: "Your plan is ready, {name}" and
+  // "Made for {state}".
+  const [persona, setPersona] = useState<{ name: string; state: string }>({ name: "", state: "The Planner" });
+  useEffect(() => {
+    void loadAnswers().then((a) =>
+      setPersona({ name: a.firstName || userFirstName || "", state: stateName({ sound: a.sound, carrying: a.carrying }) })
+    );
+  }, [userFirstName]);
 
   // Spec §4 Screen 6: "ANNUAL PRE-SELECTED."
   const [plan, setPlan] = useState<Plan>("annual");
@@ -170,7 +192,7 @@ export default function V10Paywall() {
         if (result.status === "success") {
           trackV10("v10_plan_decision", { decision: plan });
           await setV10PlanDecision(plan);
-          router.push("/onboarding-new/reminders" as never);
+          void finish();
           return;
         }
         Alert.alert(
@@ -191,8 +213,8 @@ export default function V10Paywall() {
     // explicitly not a receipt — see lib/onboarding-v10/state.ts.
     trackV10("v10_plan_decision", { decision: plan });
     void setV10PlanDecision(plan);
-    router.push("/onboarding-new/reminders" as never);
-  }, [plan, rcPurchases, rcOffering, busy]);
+    void finish();
+  }, [plan, rcPurchases, rcOffering, busy, finish]);
 
   const handleRestore = useCallback(async () => {
     trackV10("v10_plan_decision", { decision: "restore_attempted" });
@@ -205,7 +227,7 @@ export default function V10Paywall() {
       if (hasPro) {
         // Entitlement is on the store account and aliases to the real
         // User.id at the account step. Advance there.
-        router.push("/onboarding-new/reminders" as never);
+        void finish();
         return;
       }
       Alert.alert(
@@ -215,13 +237,13 @@ export default function V10Paywall() {
     } finally {
       setBusy(false);
     }
-  }, [rcPurchases, busy]);
+  }, [rcPurchases, busy, finish]);
 
   const onContinueFree = useCallback(() => {
     trackV10("v10_plan_decision", { decision: "free" });
     void setV10PlanDecision("free");
-    router.push("/onboarding-new/reminders" as never);
-  }, []);
+    void finish();
+  }, [finish]);
 
   if (rcPurchases && pwOffering) {
     return (
@@ -235,6 +257,14 @@ export default function V10Paywall() {
             //   {{ custom.header }}       e.g. "You mentioned 4 things to do."
             //   {{ custom.observation }}  the branch observation line
             header: CustomVariableValue.string(headerFor(taskCount)),
+            //   {{ custom.name }}         first name, "" when unknown
+            //   {{ custom.state_name }}   e.g. "The Planner" (from her answers)
+            //   {{ custom.ready_line }}   "Your plan is ready, Keenan" / "Your plan is ready"
+            name: CustomVariableValue.string(persona.name),
+            state_name: CustomVariableValue.string(persona.state),
+            ready_line: CustomVariableValue.string(
+              persona.name ? `Your plan is ready, ${persona.name}` : "Your plan is ready"
+            ),
             observation: CustomVariableValue.string(
               branch ? V10_BRANCHES[branch].paywallObservation : DEFAULT_OBSERVATION
             ),
@@ -244,11 +274,11 @@ export default function V10Paywall() {
               pkg?.packageType === "MONTHLY" ? "monthly" : "annual";
             trackV10("v10_plan_decision", { decision: decided });
             void setV10PlanDecision(decided);
-            router.push("/onboarding-new/reminders" as never);
+            void finish();
           }}
           onRestored={(hasPro) => {
             if (hasPro) {
-              router.push("/onboarding-new/reminders" as never);
+              void finish();
               return;
             }
             Alert.alert(

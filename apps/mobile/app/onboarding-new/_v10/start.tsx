@@ -1,14 +1,12 @@
 import { useCallback, useEffect } from "react";
 import { Pressable, Text, View } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
 import { router } from "expo-router";
+import Animated, { FadeInDown } from "react-native-reanimated";
 
-import { useTheme } from "@/contexts/theme-context";
-import { makeAcuityTokens } from "@/lib/theme/tokens";
 import { trackV10 } from "@/lib/onboarding-v10/analytics";
 import { dismissV10, markV10Started } from "@/lib/onboarding-v10/state";
 
-import { CoralScreen, FunnelCta, RippleWordmark, coralType } from "./_ui";
+import { LightScreen, PrimaryButton, RippleLockupCoral, Stars, V11 } from "../_v11/ui";
 
 /**
  * First screen (1.9.1): two clear choices.
@@ -20,9 +18,6 @@ import { CoralScreen, FunnelCta, RippleWordmark, coralType } from "./_ui";
  * creating a second, empty account).
  */
 export default function V10Start() {
-  const { palette } = useTheme();
-  const tokens = makeAcuityTokens({ dark: true, accent: palette });
-  const ct = coralType(tokens);
 
   useEffect(() => {
     void markV10Started();
@@ -43,39 +38,42 @@ export default function V10Start() {
   }, []);
 
   return (
-    <CoralScreen tokens={tokens}>
-      <SafeAreaView style={{ flex: 1 }}>
-        <View style={{ flex: 1, paddingHorizontal: 24, justifyContent: "center" }}>
-          <View style={{ alignItems: "center", marginBottom: 28 }}>
-            <RippleWordmark height={40} />
-          </View>
-          <Text accessibilityRole="header" style={{ ...ct.h1, textAlign: "center", marginBottom: 12 }}>
+    <LightScreen>
+      <View style={{ flex: 1, paddingHorizontal: 24, justifyContent: "center" }}>
+        <Animated.View entering={FadeInDown.duration(450)} style={{ alignItems: "center" }}>
+          <RippleLockupCoral height={46} />
+          <Text
+            accessibilityRole="header"
+            style={{ marginTop: 26, textAlign: "center", fontFamily: V11.heading, fontSize: 30, lineHeight: 36, letterSpacing: -0.8, color: V11.ink }}
+          >
             Talk it out. Ripple sorts it out.
           </Text>
-          <Text style={{ ...ct.muted, textAlign: "center" }}>
+          <Text style={{ marginTop: 12, textAlign: "center", fontSize: 17, lineHeight: 25, color: V11.sec, maxWidth: 320 }}>
             Your to-dos, habits and patterns, from a few minutes of talking.
           </Text>
-        </View>
-        <View style={{ paddingHorizontal: 24, paddingBottom: 24, gap: 12 }}>
-          <FunnelCta label="I'm new" onPress={onNew} tokens={tokens} onCoral />
-          <Pressable
-            onPress={onLogIn}
-            accessibilityRole="button"
-            accessibilityLabel="I have an account. Log in"
-            style={{
-              borderWidth: 1.5,
-              borderColor: "rgba(255,255,255,0.85)",
-              borderRadius: 999,
-              paddingVertical: 15,
-              alignItems: "center",
-            }}
-          >
-            <Text style={{ fontFamily: tokens.fontDisplay, fontSize: 16, color: "#ffffff" }}>
-              I have an account — Log in
-            </Text>
-          </Pressable>
-        </View>
-      </SafeAreaView>
-    </CoralScreen>
+          <View style={{ marginTop: 22 }}>
+            <Stars label="on the App Store" />
+          </View>
+        </Animated.View>
+      </View>
+      <View style={{ paddingHorizontal: 20, paddingBottom: 12, gap: 12 }}>
+        <PrimaryButton label="I'm new here" onPress={onNew} />
+        <Pressable
+          onPress={onLogIn}
+          accessibilityRole="button"
+          accessibilityLabel="I have an account. Log in"
+          style={{
+            borderWidth: 1,
+            borderColor: V11.lineStrong,
+            backgroundColor: "#ffffff",
+            borderRadius: 999,
+            paddingVertical: 17,
+            alignItems: "center",
+          }}
+        >
+          <Text style={{ fontFamily: V11.display, fontSize: 17, color: V11.ink }}>I have an account · Log in</Text>
+        </Pressable>
+      </View>
+    </LightScreen>
   );
 }

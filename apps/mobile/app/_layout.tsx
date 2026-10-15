@@ -263,7 +263,7 @@ function AuthGate() {
         // account-first): continue the new funnel right after the account
         // step instead of the legacy onboarding.
         void markV10Offered();
-        router.replace("/onboarding-new/pain" as never);
+        router.replace("/onboarding-new/name" as never);
         return;
 
       case "welcome":
