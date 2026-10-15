@@ -152,7 +152,9 @@ The Business tab in the admin dashboard now counts our monthly tool and subscrip
 - The ChatGPT plan dropped from $212.50 (Aug) to $106.25 (Sep).
 - fal.ai is still billing $10.66 even though it's unused.
 
-## [2026-10-15] — Ripple covers: our avatar walking away through a scenic place (no more selfies)
+## [2026-10-15] — Selfie-lane cover: our avatar walking away through a scenic place (no more selfies)
+
+> **Correction (same day, per Keenan):** this applies ONLY to the selfie lane (the post that had the mirror selfie). The list lane was reverted to its pre-change scenery covers and slides (`ripple-list.ts` restored from `19f33f1d^`, list cover block in `carousel-daily.ts` restored). `latestAvatarCoverUrl` now only looks at selfie-lane covers. The `living-reel.ts` walking detection stays, but it only triggers on the avatar marker, so list posts are unaffected.
 
 - **Requested by:** Keenan
 - **Committed by:** Claude Code

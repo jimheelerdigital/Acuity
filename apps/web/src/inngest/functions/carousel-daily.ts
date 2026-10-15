@@ -1555,30 +1555,12 @@ export const carouselDailyCronFn = inngest.createFunction(
         const cover = i < 0;
         const item = cover ? null : list.items[i];
         const scene = cover ? list.coverScene : item!.scene;
-        // Cover = our avatar walking away through the post's world, identity
-        // anchored on her latest cover (2026-10-15, per Keenan); items are
-        // people-free scenic / home / everyday shots.
-        const { buildAvatarWalkPrompt, latestAvatarCoverUrl } = await import("@/lib/content-factory/ripple-avatar");
-        const { generateImageWithReference } = await import("@/lib/content-factory/carousel-generate");
-        let anchor: Buffer | null = null;
-        if (cover) {
-          const anchorUrl = await latestAvatarCoverUrl();
-          if (anchorUrl) {
-            const res = await fetch(anchorUrl);
-            if (res.ok) anchor = Buffer.from(await res.arrayBuffer());
-          }
-        }
-        const prompt = cover
-          ? buildAvatarWalkPrompt({ scene, setting: list.world, hasReference: !!anchor })
-          : buildListScenePrompt(scene, list.world);
+        // List covers stay scenery only (2026-10-15, per Keenan: the walking
+        // avatar is ONLY for the selfie lane's cover).
+        const prompt = buildListScenePrompt(scene, list.world);
         const { buffer: raw } = await generateCheckedImage(
-          () =>
-            cover
-              ? anchor
-                ? generateImageWithReference(prompt, anchor, "cover")
-                : generateImage(prompt)
-              : generateImage(prompt, "item"),
-          { scene, slot: cover ? "cover" : "item", personAllowed: cover }
+          () => (cover ? generateImage(prompt) : generateImage(prompt, "item")),
+          { scene, slot: cover ? "cover" : "item", personAllowed: false }
         );
         const name = cover ? "slide-0-cover" : `slide-${i + 1}-item`;
         const textFree = await composeSlide(raw, "", cover ? "COVER" : "REASON");
