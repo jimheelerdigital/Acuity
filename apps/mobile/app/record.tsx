@@ -36,7 +36,11 @@ import { useSaveWall } from "@/components/onboarding/v10-save-wall";
 import { shouldAutostartRecording } from "@/lib/record-deeplink";
 import { getToken } from "@/lib/auth";
 import { invalidate } from "@/lib/cache";
-import { registerPushTokenAfterRecording } from "@/lib/push-token";
+import {
+  readyPushAction,
+  registerPushTokenAfterRecording,
+  registerPushTokenForReminderSlot,
+} from "@/lib/push-token";
 import { bumpDebriefSignal, maybeAskForReviewAfterDebrief } from "@/lib/review";
 import { SPEECH_RECORDING_OPTIONS } from "@/lib/audio-recording-options";
 import { noteWelcomeDebrief } from "@/lib/welcome/flow";
@@ -200,6 +204,25 @@ export default function RecordScreen() {
   useEffect(() => {
     if (polledEntryId) trackEntry(polledEntryId);
   }, [polledEntryId, trackEntry]);
+
+  // 1.9.1: while it processes, offer a "ready" notification so leaving the
+  // app is fine (the server already sends it when there's a push token).
+  // Our own primer first; the one-shot OS dialog only if they say yes.
+  useEffect(() => {
+    if (!polledEntryId) return;
+    void (async () => {
+      const action = await readyPushAction();
+      if (action !== "offer") return;
+      Alert.alert(
+        "Want a heads-up when it's ready?",
+        "Ripple can send you a notification when your debrief is processed, so you don't have to wait here.",
+        [
+          { text: "Not now", style: "cancel" },
+          { text: "Notify me", onPress: () => void registerPushTokenForReminderSlot() },
+        ]
+      );
+    })();
+  }, [polledEntryId]);
 
   // Bridge polling terminal states → nav or error surface.
   useEffect(() => {
