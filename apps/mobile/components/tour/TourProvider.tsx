@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useRef, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useMemo, useRef, useState, type ReactNode } from "react";
 import {
   SpotlightTourProvider,
   type TourStep,
@@ -13,6 +13,9 @@ import { useTheme } from "@/contexts/theme-context";
 import { api } from "@/lib/api";
 import { trackOnboardingEvent } from "@/lib/onboarding-events";
 import { TourTooltip } from "./TourTooltip";
+import { WelcomeTourCard } from "./WelcomeTourCard";
+import { welcomeTourCards, type WelcomeTourRequest } from "./welcome-tour";
+import { WELCOME_CORAL } from "@/lib/welcome/look";
 import {
   TOUR_STEP_CONTENT,
   TOUR_STEP_INDEX,
@@ -66,6 +69,20 @@ const NAV_SETTLE_MS = 450;
  * now live on the per-step `before` (tour_step_viewed) and `onStop`
  * (tour_completed/skipped + POST /api/user/tour-complete) below.
  */
+/**
+ * Welcome mode (2026-10-12): the funnel welcome flow's last step runs the
+ * tour through THIS provider — same engine, same AttachStep targets — but
+ * with its own stops (welcome-tour.ts), the coral WelcomeTourCard and a
+ * progress bar continuing from the welcome screens. A child calls
+ * prepareWelcomeTour(req) and then spotlight's start(); welcome card 0 is
+ * step 0 (the Home button), so start() lands on it.
+ */
+type TourModeApi = { prepareWelcomeTour: (req: WelcomeTourRequest) => void };
+const TourModeContext = createContext<TourModeApi>({ prepareWelcomeTour: () => {} });
+export function useTourMode(): TourModeApi {
+  return useContext(TourModeContext);
+}
+
 export function TourProvider({ children }: { children: ReactNode }) {
   const { tokens } = useTheme();
   const { refresh } = useAuth();
@@ -74,6 +91,18 @@ export function TourProvider({ children }: { children: ReactNode }) {
   // opens there); used to skip a redundant navigate+settle when the next
   // step is on the same screen (mic → dashboard are both home).
   const lastPathRef = useRef<string>(HOME_PATH);
+  // Welcome mode. Refs (read at render time) so the first step renders in
+  // the right mode even though start() runs in the same tick as prepare;
+  // the state mirror only re-renders the provider's own props.
+  const welcomeReqRef = useRef<WelcomeTourRequest | null>(null);
+  const welcomeCardRef = useRef(0);
+  const [welcomeActive, setWelcomeActive] = useState(false);
+  const prepareWelcomeTour = useCallback((req: WelcomeTourRequest) => {
+    welcomeReqRef.current = req;
+    welcomeCardRef.current = 0;
+    setWelcomeActive(true);
+  }, []);
+  const modeApi = useMemo(() => ({ prepareWelcomeTour }), [prepareWelcomeTour]);
 
   const steps = useMemo<TourStep[]>(
     () =>
@@ -92,13 +121,22 @@ export function TourProvider({ children }: { children: ReactNode }) {
           i === TOUR_STEP_INDEX.dashboard || i === TOUR_STEP_INDEX.settings
             ? "bottom"
             : "top",
+        // Keep the card off the screen edges (it sat flush against the
+        // right edge on the Entries stop in build 159).
+        shift: { padding: 16 },
         // Navigate to this step's screen before it renders, so the spotlight
         // measures a visible target. Awaited by spotlight, so the step waits
         // for the tab to settle. Same-screen transitions skip the delay.
         before: async () => {
-          void trackOnboardingEvent("tour_step_viewed", {
-            value: String(i + 1),
-          });
+          if (welcomeReqRef.current) {
+            void trackOnboardingEvent("v10_welcome_tour_step", {
+              value: String(welcomeCardRef.current + 1),
+            });
+          } else {
+            void trackOnboardingEvent("tour_step_viewed", {
+              value: String(i + 1),
+            });
+          }
           const path = TOUR_STEP_PATHS[i] ?? HOME_PATH;
           if (path !== lastPathRef.current) {
             lastPathRef.current = path;
@@ -114,9 +152,42 @@ export function TourProvider({ children }: { children: ReactNode }) {
             await new Promise((r) => setTimeout(r, NAV_SETTLE_MS));
           }
         },
-        render: (props) => (
-          <TourTooltip {...props} content={content} total={TOUR_TOTAL_STEPS} />
-        ),
+        render: (props) => {
+          const req = welcomeReqRef.current;
+          if (req) {
+            const cards = welcomeTourCards(req);
+            const at = Math.min(welcomeCardRef.current, cards.length - 1);
+            const card = cards[at];
+            const isLast = at === cards.length - 1;
+            return (
+              <WelcomeTourCard
+                label={card.label}
+                title={card.title}
+                body={card.body}
+                cta={card.cta}
+                stop={at}
+                stops={cards.length - 1}
+                isFirst={at === 0}
+                isLast={isLast}
+                onNext={() => {
+                  if (isLast) {
+                    props.stop();
+                    return;
+                  }
+                  welcomeCardRef.current = at + 1;
+                  props.goTo(cards[at + 1].target);
+                }}
+                onBack={() => {
+                  if (at === 0) return;
+                  welcomeCardRef.current = at - 1;
+                  props.goTo(cards[at - 1].target);
+                }}
+                onSkip={() => props.stop()}
+              />
+            );
+          }
+          return <TourTooltip {...props} content={content} total={TOUR_TOTAL_STEPS} />;
+        },
       })),
     [router]
   );
@@ -124,7 +195,19 @@ export function TourProvider({ children }: { children: ReactNode }) {
   const handleStop = useCallback(
     (state: TourState) => {
       // Reaching the last step = completion; stopping earlier = skip.
-      const finished = state.isLast;
+      // Welcome mode walks its own sequence, so "last" is its last card.
+      const welcomeReq = welcomeReqRef.current;
+      const finished = welcomeReq
+        ? welcomeCardRef.current >= welcomeTourCards(welcomeReq).length - 1
+        : state.isLast;
+      if (welcomeReq) {
+        void trackOnboardingEvent(finished ? "v10_welcome_tour_completed" : "v10_welcome_tour_skipped", {
+          value: String(welcomeCardRef.current + 1),
+        });
+        welcomeReqRef.current = null;
+        welcomeCardRef.current = 0;
+        setWelcomeActive(false);
+      }
       // The tour now walks across tabs (ending on /profile). Return the
       // user home when it ends (finish or skip), and reset the path ref
       // so a later replay starts cleanly from home.
@@ -161,21 +244,27 @@ export function TourProvider({ children }: { children: ReactNode }) {
   );
 
   return (
+    <TourModeContext.Provider value={modeApi}>
     <SpotlightTourProvider
       steps={steps}
       overlayColor="rgb(8, 8, 16)"
-      overlayOpacity={0.78}
+      // Welcome mode barely dims: the point of each stop is to SHOW that
+      // page (Jimmy, 2026-10-12), so it must read clearly behind the card.
+      overlayOpacity={welcomeActive ? 0.12 : 0.78}
       motion="fade"
       // Tapping the overlay (incl. the highlighted target area) advances
       // to the next step rather than doing nothing — so a tap on the
       // spotlit element feels responsive. Explicit Skip (in the tooltip)
       // is the exit. On the last step, "continue" stops the tour.
-      onBackdropPress="continue"
-      arrow={{ color: tokens.cardBg }}
+      // Welcome mode walks a custom sequence (goTo), so a backdrop tap must
+      // not advance spotlight's own index.
+      onBackdropPress={welcomeActive ? undefined : "continue"}
+      arrow={{ color: welcomeActive ? WELCOME_CORAL.bottom : tokens.cardBg }}
       shape={{ type: "rectangle", padding: 8 }}
       onStop={handleStop}
     >
       {children}
     </SpotlightTourProvider>
+    </TourModeContext.Provider>
   );
 }

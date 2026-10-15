@@ -299,12 +299,12 @@ function RecordScreen() {
             </Text>
             <Pressable
               onPress={openSettings}
-              style={({ pressed }) => ({
+              style={({
                 backgroundColor: PURPLE,
                 borderRadius: tokens.radius.pill,
                 paddingHorizontal: 24,
                 paddingVertical: 14,
-                opacity: pressed ? 0.85 : 1,
+                opacity: 1,
               })}
             >
               <Text

@@ -5,6 +5,7 @@ import * as SplashScreen from "expo-splash-screen";
 
 import { SaveWallProvider } from "@/components/onboarding/v10-save-wall";
 import { decideColdStartRoute } from "@/lib/onboarding-v10/entry-routing";
+import { isFunnelWelcomeEnabled } from "@/lib/feature-flags";
 import { markV10Offered } from "@/lib/onboarding-v10/state";
 import { useColdStartFacts } from "@/lib/onboarding-v10/use-cold-start-facts";
 import { StatusBar } from "expo-status-bar";
@@ -35,7 +36,9 @@ import { ThemeProvider, useTheme } from "@/contexts/theme-context";
 import { ProcessingNotifierProvider } from "@/contexts/processing-notifier";
 import { LockScreenOverlay } from "@/components/lock-screen-overlay";
 import { UniversalLinkHandler } from "@/components/universal-link-handler";
+import { WebRedemptionHandler } from "@/components/web-redemption-handler";
 import { UpdatePromptOverlay } from "@/components/UpdatePromptOverlay";
+import { WhatsNewOverlay } from "@/components/WhatsNewOverlay";
 import { CelebrationModal } from "@/components/achievements/CelebrationModal";
 import { TourProvider } from "@/components/tour/TourProvider";
 import { useAchievementQueue } from "@/hooks/use-achievement-queue";
@@ -47,6 +50,7 @@ import {
   registerNotificationTapRouting,
 } from "@/lib/notification-routing";
 import { initSentry, setSentryUser } from "@/lib/sentry";
+import { configureRevenueCat } from "@/lib/revenuecat";
 
 // Sentry init at module scope — idempotent on re-import.
 initSentry();
@@ -83,6 +87,26 @@ function AuthGate() {
   // for (push-token refresh, Meta SDK init), so user-object churn from
   // refresh() doesn't re-fire them. See the effect below.
   const pushBootedForRef = useRef<string | null>(null);
+  // Guards the one-shot RevenueCat app-start configure below.
+  const rcBootedRef = useRef(false);
+
+  // RevenueCat: configure the SDK once at launch, with the signed-in
+  // User.id when we have one and an anonymous id otherwise. The anonymous
+  // case is what the onboarding paywall needs — a purchase made before an
+  // account exists lands on the anon id, and auth-context's
+  // identifyRevenueCatUser(user.id) later aliases it to the real account
+  // (purchase-before-account). auth-context alone can't cover this: its
+  // configure effect returns early when there's no user.id.
+  //
+  // Completely inert until the RC flags are on: configureRevenueCat()
+  // returns "disabled" and never loads the native module. Idempotent, so
+  // this and auth-context's per-user call don't double-configure.
+  useEffect(() => {
+    if (loading) return;
+    if (rcBootedRef.current) return;
+    rcBootedRef.current = true;
+    void configureRevenueCat(user?.id ?? null);
+  }, [loading, user?.id]);
 
   // Hide the native splash once auth has resolved AND the routing facts
   // are in. We block on `loading` rather than `user` because a signed-out
@@ -192,6 +216,8 @@ function AuthGate() {
       v10Dismissed: facts.v10Dismissed,
       hasAppHistory: facts.hasAppHistory,
       segment,
+      funnelWelcomeEnabled: isFunnelWelcomeEnabled(),
+      welcomeEligible: user?.welcomeEligible,
     });
 
     switch (route) {
@@ -221,6 +247,11 @@ function AuthGate() {
         // funnel instead of being read as a brand-new install forever.
         void markV10Offered();
         router.replace("/onboarding-new/pain");
+        return;
+
+      case "welcome":
+        // A web subscriber's first run (app/welcome.tsx). No paywall in it.
+        router.replace("/welcome" as never);
         return;
 
       case "legacy-onboarding": {
@@ -309,6 +340,7 @@ function ThemedApp() {
     <>
       <StatusBar style={isDark ? "light" : "dark"} />
       <AuthGate />
+      <WebRedemptionHandler />
       <Stack
         screenOptions={{
           headerShown: false,
@@ -322,6 +354,7 @@ function ThemedApp() {
         <Stack.Screen name="(tabs)" />
         <Stack.Screen name="(auth)" />
         <Stack.Screen name="onboarding" options={{ headerShown: false }} />
+        <Stack.Screen name="welcome" options={{ headerShown: false, gestureEnabled: false }} />
         <Stack.Screen name="auth-callback" options={{ headerShown: false }} />
         <Stack.Screen
           name="entry/[id]"
@@ -381,6 +414,7 @@ function ThemedApp() {
         />
         <Stack.Screen name="habits" options={{ headerShown: false }} />
         <Stack.Screen name="habits-archived" options={{ headerShown: false }} />
+        <Stack.Screen name="setup" options={{ headerShown: false }} />
         <Stack.Screen
           name="insights/theme/[themeId]"
           options={{ headerShown: false }}
@@ -419,6 +453,11 @@ function ThemedApp() {
           the Stack so it covers any route, BELOW the lock overlay so
           a locked app can't be bypassed by tapping through. */}
       <UpdatePromptOverlay />
+      {/* v1.8 "What's New" sheet. Shown once on the first launch after an
+          update (running version == server recommendedVersion), reusing the
+          release's releaseNotes. Mutually exclusive with the update prompt
+          above by construction. */}
+      <WhatsNewOverlay />
       {/* v1.3 achievements celebration. Polls /pending on app
           foreground + cold launch; renders the CelebrationModal
           sequentially for each unseen UserAchievement row. Sits

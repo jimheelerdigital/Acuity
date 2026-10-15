@@ -5,6 +5,8 @@ import {
   Settings,
 } from "react-native-fbsdk-next";
 
+import { linkRevenueCatAdIdentifiers } from "@/lib/revenuecat";
+
 /**
  * Meta SDK (Facebook App Events) integration for mobile ad
  * attribution. 2026-05-25 — Keenan-requested install.
@@ -98,6 +100,14 @@ export async function initMetaSdk(): Promise<void> {
     // equivalent — we just init.
     Settings.initializeSDK();
     sdkInitialized = true;
+    // RevenueCat → Meta Ads (Conversions API) matching. RC sends
+    // StartTrial / Subscribe / renewals to Meta server-side; it needs the
+    // Meta anonymous id + device identifiers to attribute them to the ad
+    // click. Runs after the ATT decision above, so the IDFA RC collects
+    // reflects the user's choice. Fire-and-forget; never blocks init.
+    void AppEventsLogger.getAnonymousID()
+      .then((anonId) => linkRevenueCatAdIdentifiers(anonId))
+      .catch(() => {});
   } catch (err) {
     // Non-fatal. The SDK has known init-time crashes on edge cases
     // (missing client token, network at init, etc.); we'd rather lose

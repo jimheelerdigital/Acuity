@@ -458,12 +458,12 @@ function PaywallScreen() {
               onPress={() => void onStartTrial()}
               accessibilityRole="button"
               accessibilityLabel="Start trial"
-              style={({ pressed }) => ({
+              style={({
                 backgroundColor: PURPLE,
                 borderRadius: tokens.radius.pill,
                 paddingVertical: 16,
                 alignItems: "center",
-                opacity: pressed ? 0.85 : 1,
+                opacity: 1,
                 shadowColor: PURPLE,
                 shadowOpacity: 0.35,
                 shadowRadius: 24,
@@ -486,11 +486,11 @@ function PaywallScreen() {
               onPress={onRemindLater}
               accessibilityRole="button"
               accessibilityLabel="Remind me later"
-              style={({ pressed }) => ({
+              style={({
                 marginTop: 12,
                 paddingVertical: 12,
                 alignItems: "center",
-                opacity: pressed ? 0.7 : 1,
+                opacity: 1,
               })}
             >
               <Text

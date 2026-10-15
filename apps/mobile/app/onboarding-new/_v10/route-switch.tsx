@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import { router } from "expo-router";
 
 import { isOnboardingV10Enabled } from "@/lib/feature-flags";
+import { markV10Offered } from "@/lib/onboarding-v10/state";
 
 /**
  * Route-level switching between v10 and the existing onboarding-v2 flow.
@@ -38,7 +39,15 @@ export function V10Switch({
   v10: React.ReactNode;
   legacy: React.ReactNode;
 }): React.ReactElement {
-  return <>{isOnboardingV10Enabled() ? v10 : legacy}</>;
+  const enabled = isOnboardingV10Enabled();
+  // Deep links (Keenan's Meta ads) land directly on /onboarding-new/* and
+  // never pass through AuthGate's "v10" branch, which is the only other
+  // place this flag gets set. Without it, AuthGate treats a v10 finisher
+  // as a legacy-onboarding user after signup. Mark on render, idempotent.
+  useEffect(() => {
+    if (enabled) void markV10Offered();
+  }, [enabled]);
+  return <>{enabled ? v10 : legacy}</>;
 }
 
 /**

@@ -30,7 +30,8 @@ export type ColdStartRoute =
   | "home"
   | "signin"
   | "v10"
-  | "legacy-onboarding";
+  | "legacy-onboarding"
+  | "welcome";
 
 export interface ColdStartFacts {
   /** EXPO_PUBLIC_ONBOARDING_V10. Off ⇒ behaviour is exactly as before. */
@@ -69,7 +70,35 @@ export interface ColdStartFacts {
   hasAppHistory: boolean;
   /** First path segment, e.g. "(auth)", "onboarding-new", "(tabs)". */
   segment: string;
+  /**
+   * EXPO_PUBLIC_FUNNEL_WELCOME. The first-run welcome flow for people who
+   * already paid on the web funnel (app/welcome.tsx). Optional so callers
+   * and tests written before it existed keep their exact behaviour.
+   */
+  funnelWelcomeEnabled?: boolean;
+  /**
+   * Server `welcomeEligible` (apps/web/src/lib/welcome-eligibility.ts): a
+   * web subscriber whose onboarding was never actually completed, with no
+   * entries or only their web first debrief. Its own flag because the
+   * server reports every PRO / Stripe-trial user as onboardingCompleted
+   * (2026-10-04 hotfix), so onboardingCompleted can't spot them. Only an
+   * explicit `true` counts: a missing field (older server) never traps an
+   * active user in the flow.
+   */
+  welcomeEligible?: boolean;
 }
+
+/**
+ * Segments a signed-in user can be redirected AWAY from. Everything else is
+ * a real in-app screen (record, entry detail, goal, settings...) and must
+ * never be yanked out from under them.
+ *
+ * Why this exists (2026-10-10): the Pro-bypass used to return "home" for a
+ * web subscriber with onboarding unfinished on EVERY segment. AuthGate runs
+ * on every navigation, so tapping the mic pushed /record and the next tick
+ * replaced it with /(tabs) — the recorder could not stay open for that user.
+ */
+const ENTRY_POINT_SEGMENTS = new Set(["", "index", "(auth)", "(tabs)", "onboarding"]);
 
 /**
  * Where a launch should land. `"stay"` means leave the user where they are.
@@ -82,6 +111,7 @@ export function decideColdStartRoute(f: ColdStartFacts): ColdStartRoute {
   const inAuthCallback = f.segment === "auth-callback";
   const inOnboarding = f.segment === "onboarding";
   const inOnboardingNew = f.segment === "onboarding-new";
+  const inWelcome = f.segment === "welcome";
 
   // ── Signed out ────────────────────────────────────────────────────
   if (!f.signedIn) {
@@ -114,10 +144,37 @@ export function decideColdStartRoute(f: ColdStartFacts): ColdStartRoute {
   }
 
   // ── Signed in ─────────────────────────────────────────────────────
+  // The welcome flow owns its own route; never redirect out of it.
+  if (inWelcome) return "stay";
+
+  // First run for a web subscriber: the welcome flow (no paywall, so
+  // Apple Guideline 3.1.3(b) is respected — they are never asked to pay
+  // again). Only from an entry point, so the recorder it opens isn't
+  // yanked away. Deliberately NOT gated on onboardingCompleted (see the
+  // welcomeEligible doc above).
+  if (
+    f.funnelWelcomeEnabled &&
+    f.welcomeEligible === true &&
+    !inAuthCallback &&
+    ENTRY_POINT_SEGMENTS.has(f.segment)
+  ) {
+    return "welcome";
+  }
+
+  // Already paid (typically web/Stripe). Checked BEFORE the generic
+  // onboarding branch so the in-onboarding exemptions below can't route a
+  // subscriber into the legacy flow.
+  if (!f.onboardingCompleted && f.subscriptionStatus === "PRO" && !inAuthCallback) {
+    // Pro-bypass: never routed through mobile onboarding. Send them home
+    // only from sign-in or the bare root. Everywhere else, leave them be —
+    // including onboarding-new, where a v10 user who just bought on the
+    // paywall becomes PRO mid-funnel and still has account + reminders to
+    // finish.
+    if (inAuth || f.segment === "" || f.segment === "index") return "home";
+    return "stay";
+  }
+
   if (!f.onboardingCompleted && !inOnboarding && !inOnboardingNew && !inAuthCallback) {
-    // Pro-bypass: a user who already paid (typically web/Stripe) is not
-    // routed through mobile onboarding — Apple Guideline 3.1.3(b).
-    if (f.subscriptionStatus === "PRO") return "home";
 
     // v10 arrivals must NOT be handed to the legacy post-signup flow. They
     // have already recorded, seen a reveal, made a paywall decision and

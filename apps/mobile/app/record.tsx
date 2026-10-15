@@ -38,6 +38,7 @@ import { getToken } from "@/lib/auth";
 import { invalidate } from "@/lib/cache";
 import { registerPushTokenAfterRecording } from "@/lib/push-token";
 import { SPEECH_RECORDING_OPTIONS } from "@/lib/audio-recording-options";
+import { noteWelcomeDebrief } from "@/lib/welcome/flow";
 
 /**
  * Recording modal. One screen, one state machine. Consolidates the
@@ -126,7 +127,15 @@ export default function RecordScreen() {
      * recording without a clear act of consent.
      */
     autostart?: string;
+    /**
+     * `welcome` — opened by the funnel welcome flow (app/welcome.tsx) for a
+     * web subscriber's first debrief. On a successful send the entry id is
+     * handed back to that flow and we pop to it, instead of the normal
+     * "saved" state / entry detail.
+     */
+    from?: string;
   }>();
+  const fromWelcome = params.from === "welcome";
   const goalId =
     typeof params.goalId === "string" && params.goalId.length > 0
       ? params.goalId
@@ -629,7 +638,12 @@ export default function RecordScreen() {
             // are. (This path doesn't poll, so the polledEntryId hook
             // never covered it — this is the real fix for the missing
             // banner.)
-            trackEntry(responseEntryId);
+            trackEntry(responseEntryId, { silent: fromWelcome });
+            if (fromWelcome) {
+              await noteWelcomeDebrief(responseEntryId);
+              router.back();
+              return;
+            }
             void (async () => {
               try {
                 const meRes = await api.get<{
@@ -647,6 +661,13 @@ export default function RecordScreen() {
 
           // Sync path — the server returned an inline RecordResponse
           // with the extraction already done. Nav straight to detail.
+          if (responseEntryId && fromWelcome) {
+            // Sync pipeline: the extraction is already done, so the welcome
+            // flow's poll resolves on its first request.
+            await noteWelcomeDebrief(responseEntryId);
+            router.back();
+            return;
+          }
           if (responseEntryId) {
             router.replace(`/entry/${responseEntryId}`);
             // Slice 9b — same post-second-recording trigger as the
@@ -687,7 +708,7 @@ export default function RecordScreen() {
         }
       }
     },
-    [router, goalId, dimensionKey, trackEntry]
+    [router, goalId, dimensionKey, trackEntry, fromWelcome]
   );
 
   /**

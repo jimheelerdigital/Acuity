@@ -5,6 +5,8 @@ import { ActivityIndicator, Alert, Platform, Pressable, Text } from "react-nativ
 import { useTheme } from "@/contexts/theme-context";
 import { restorePurchases } from "@/lib/iap";
 import { isIapEnabled } from "@/lib/iap-config";
+import { restoreProPurchases } from "@/lib/revenuecat";
+import { rcFlags } from "@/lib/revenuecat/flags";
 
 /**
  * "Restore Purchases" link. Required by Apple App Review on every
@@ -31,12 +33,50 @@ export function RestorePurchasesButton({
   const { tokens } = useTheme();
   const [busy, setBusy] = useState(false);
 
-  if (Platform.OS !== "ios" || !isIapEnabled()) return null;
+  // Rail-aware. RC restores on iOS + Android; the legacy StoreKit path is
+  // iOS-only and stays gated on isIapEnabled().
+  const rcPurchases = rcFlags().RC_SDK_PURCHASES;
+  const show = rcPurchases
+    ? Platform.OS === "ios" || Platform.OS === "android"
+    : Platform.OS === "ios" && isIapEnabled();
+  if (!show) return null;
 
   const handlePress = async () => {
     if (busy) return;
     setBusy(true);
     try {
+      // ── RevenueCat rail ──────────────────────────────────────────
+      if (rcPurchases) {
+        const hasPro = await restoreProPurchases();
+        if (hasPro === null) {
+          Alert.alert(
+            "Couldn't restore",
+            "Something went wrong restoring your purchases. Please try again."
+          );
+          return;
+        }
+        if (hasPro) {
+          Alert.alert(
+            "Subscription restored",
+            "Your Ripple Pro access is active.",
+            [
+              {
+                text: "OK",
+                onPress: () => {
+                  void Promise.resolve(onRestored?.());
+                },
+              },
+            ]
+          );
+          return;
+        }
+        Alert.alert(
+          "No purchases to restore",
+          "We didn't find any Ripple Pro subscriptions on this account."
+        );
+        return;
+      }
+
       const outcome = await restorePurchases();
       if (outcome.kind === "none") {
         Alert.alert(

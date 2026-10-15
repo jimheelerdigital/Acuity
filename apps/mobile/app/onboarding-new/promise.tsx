@@ -263,13 +263,13 @@ function PromiseScreen() {
             disabled={!showCta}
             accessibilityRole="button"
             accessibilityLabel="Continue"
-            style={({ pressed }) => ({
+            style={({
               alignSelf: "stretch",
               backgroundColor: CURSOR_COLOR,
               borderRadius: tokens.radius.pill,
               paddingVertical: 14,
               alignItems: "center",
-              opacity: pressed ? 0.85 : 1,
+              opacity: 1,
             })}
           >
             <Text
