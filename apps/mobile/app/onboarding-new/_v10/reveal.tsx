@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
-import { Pressable, ScrollView, Text, View } from "react-native";
+import { Alert, ScrollView, Text, View } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
 import { SafeAreaView } from "react-native-safe-area-context";
 import * as Haptics from "expo-haptics";
-import { router } from "expo-router";
+import { router, useLocalSearchParams } from "expo-router";
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
@@ -34,6 +35,10 @@ import {
 import { trackV10 } from "@/lib/onboarding-v10/analytics";
 import { getV10Branch } from "@/lib/onboarding-v10/state";
 import { getStoredTryExtraction } from "@/lib/try-session";
+import { GradientCheckbox } from "@/components/acuity";
+import { SwipeRow } from "@/components/swipe-row";
+import { api } from "@/lib/api";
+import { cachedGet, setCached } from "@/lib/cache";
 
 /**
  * Screen 5 — Reveal + what compounds (light; the Ripple wordmark appears
@@ -46,9 +51,12 @@ import { getStoredTryExtraction } from "@/lib/try-session";
  * nothing — an empty section is honest, a filled-in one is not.
  *
  * Three specific rules:
- *   - Tasks are never auto-added. They render UNCHECKED, and the user opts
- *     in. An uncertain task silently added to someone's list is the fastest
- *     way to lose their trust in everything else here.
+ *   - Tasks: the claim (right after processing) puts every extracted task on
+ *     the user's real list. 1.9.1 shows them as exactly that — their real
+ *     to-dos, checkable, swipe to edit/delete — instead of the old
+ *     "Add / Dismiss" buttons, which never wrote anything and so misstated
+ *     what had happened. Falls back to the extraction (read-only) if the
+ *     claim hasn't landed.
  *   - The observation is HEDGED ("sounds like / seems / may"), and when the
  *     extraction gives us nothing worth hedging about, it falls back to the
  *     branch line — which claims nothing about the transcript at all.
@@ -64,17 +72,30 @@ interface RevealTask {
 
 interface RevealData {
   pullQuote: string | null;
+  /** The extraction's own summary (shown once, under "What it was about"). */
+  summary: string | null;
   themes: string[];
   tasks: RevealTask[];
 }
 
-const MAX_TASKS = 3;
+const MAX_TASKS = 5;
+
+/** A real task row from /api/tasks (claimed from this debrief). */
+interface ListTask {
+  id: string;
+  title: string | null;
+  text: string | null;
+  status: string;
+  entryId?: string | null;
+}
+
+const TASKS_CACHE_KEY = "/api/tasks?all=1";
 
 /** Words that make a sentence a hedge rather than a claim. */
 const HEDGES = ["sounds like", "seems", "may", "might", "looks like"];
 
 function normalize(raw: Record<string, unknown> | null): RevealData {
-  if (!raw) return { pullQuote: null, themes: [], tasks: [] };
+  if (!raw) return { pullQuote: null, summary: null, themes: [], tasks: [] };
 
   const themes = Array.isArray(raw.themes)
     ? raw.themes.filter((t): t is string => typeof t === "string" && t.length > 0)
@@ -92,13 +113,20 @@ function normalize(raw: Record<string, unknown> | null): RevealData {
         .slice(0, MAX_TASKS)
     : [];
 
-  const summary = typeof raw.summary === "string" ? raw.summary : null;
+  const summary =
+    typeof raw.summary === "string" && raw.summary.trim().length > 0
+      ? raw.summary.trim()
+      : null;
+  // Only a REAL pull quote — never the summary again. The old fallback made
+  // "What seems to matter" and "Ripple noticed" print the same paragraph.
   const pullQuote =
-    typeof raw.pullQuote === "string" && raw.pullQuote.length > 0
-      ? raw.pullQuote
-      : summary;
+    typeof raw.pullQuote === "string" &&
+    raw.pullQuote.trim().length > 0 &&
+    raw.pullQuote.trim() !== summary
+      ? raw.pullQuote.trim()
+      : null;
 
-  return { pullQuote, themes, tasks };
+  return { pullQuote, summary, themes, tasks };
 }
 
 export default function V10Reveal() {
@@ -108,11 +136,71 @@ export default function V10Reveal() {
   const [branch, setBranch] = useState<V10Branch>("open");
   const [data, setData] = useState<RevealData>({
     pullQuote: null,
+    summary: null,
     themes: [],
     tasks: [],
   });
-  const [dismissed, setDismissed] = useState<Set<number>>(new Set());
-  const [added, setAdded] = useState<Set<number>>(new Set());
+  const params = useLocalSearchParams<{ entryId?: string }>();
+  const entryId = typeof params.entryId === "string" ? params.entryId : null;
+  // Real tasks the claim created for this debrief (null = not loaded / none).
+  const [listTasks, setListTasks] = useState<ListTask[] | null>(null);
+
+  useEffect(() => {
+    if (!entryId) return;
+    let cancelled = false;
+    void cachedGet<{ tasks: ListTask[] }>(TASKS_CACHE_KEY, { force: true })
+      .then((res) => {
+        if (cancelled) return;
+        const mine = (res.tasks ?? []).filter((t) => t.entryId === entryId);
+        if (mine.length > 0) setListTasks(mine);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [entryId]);
+
+  const updateList = (fn: (prev: ListTask[]) => ListTask[]) => {
+    setListTasks((prev) => {
+      const next = fn(prev ?? []);
+      return next;
+    });
+    // Keep the shared cache honest for Tasks / Home TODAY.
+    void cachedGet<{ tasks: ListTask[] }>(TASKS_CACHE_KEY)
+      .then((res) => setCached(TASKS_CACHE_KEY, { tasks: fn(res.tasks ?? []) }))
+      .catch(() => {});
+  };
+
+  const toggleDone = (t: ListTask) => {
+    const done = t.status === "DONE";
+    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+    updateList((prev) =>
+      prev.map((x) => (x.id === t.id ? { ...x, status: done ? "OPEN" : "DONE" } : x))
+    );
+    api.patch("/api/tasks", { id: t.id, action: done ? "reopen" : "complete" }).catch(() => {
+      updateList((prev) =>
+        prev.map((x) => (x.id === t.id ? { ...x, status: t.status } : x))
+      );
+    });
+  };
+
+  const confirmDelete = (t: ListTask) => {
+    const label = t.title ?? t.text ?? "this to-do";
+    Alert.alert("Delete to-do?", `"${label}" will be removed from your Tasks.`, [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "Delete",
+        style: "destructive",
+        onPress: () => {
+          updateList((prev) => prev.filter((x) => x.id !== t.id));
+          api.patch("/api/tasks", { id: t.id, action: "dismiss" }).catch(() => {
+            updateList((prev) => [...prev, t]);
+            Alert.alert("Couldn't delete", "Please try again.");
+          });
+        },
+      },
+    ]);
+  };
 
   const pulse = useSharedValue(1);
   const pulseStyle = useAnimatedStyle(() => ({ transform: [{ scale: pulse.value }] }));
@@ -158,9 +246,18 @@ export default function V10Reveal() {
     [data, branch]
   );
 
-  const visibleTasks = data.tasks
-    .map((t, i) => ({ task: t, index: i }))
-    .filter(({ index }) => !dismissed.has(index));
+  // Rows to show: the real claimed tasks when we have them, otherwise the
+  // extraction's titles (read-only).
+  const rows: { key: string; label: string; real: ListTask | null }[] =
+    listTasks && listTasks.length > 0
+      ? listTasks.slice(0, MAX_TASKS).map((t) => ({
+          key: t.id,
+          label: t.title ?? t.text ?? "Untitled",
+          real: t,
+        }))
+      : data.tasks.map((t, i) => ({ key: `x-${i}`, label: t.title, real: null }));
+  const totalTodos = listTasks && listTasks.length > 0 ? listTasks.length : data.tasks.length;
+  const onList = !!(listTasks && listTasks.length > 0);
 
   return (
     <CoralScreen tokens={tokens}>
@@ -188,126 +285,221 @@ export default function V10Reveal() {
           Here's what Ripple heard.
         </Text>
 
-        {/* ── TASKS — never auto-added ─────────────────────────────── */}
-        {visibleTasks.length > 0 && (
-          <Section title="A few things to do" tokens={tokens}>
-            {visibleTasks.map(({ task, index }) => (
+        {/* ── YOUR TO-DOS — real tasks on their list (1.9.1) ────────── */}
+        {rows.length > 0 && (
+          <View style={[coralWhiteCard(tokens, { padding: 0 }), { marginBottom: 16, overflow: "hidden" }]}>
+            <View
+              style={{
+                flexDirection: "row",
+                alignItems: "center",
+                gap: 12,
+                paddingHorizontal: 16,
+                paddingTop: 16,
+                paddingBottom: 12,
+              }}
+            >
               <View
-                key={`${task.title}-${index}`}
-                style={[coralWhiteCard(tokens, { padding: 14 }), { marginBottom: 10 }]}
+                style={{
+                  width: 36,
+                  height: 36,
+                  borderRadius: 10,
+                  backgroundColor: `${tokens.primary}1F`,
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
               >
-                <Text
+                <Ionicons name="checkbox-outline" size={20} color={tokens.primaryLo} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={{ fontFamily: tokens.fontDisplay, fontSize: 17, color: tokens.text }}>
+                  {totalTodos} {totalTodos === 1 ? "to-do" : "to-dos"} from what you said
+                </Text>
+                <View style={{ flexDirection: "row", alignItems: "center", gap: 4, marginTop: 2 }}>
+                  {onList ? (
+                    <Ionicons name="checkmark-circle" size={14} color={tokens.good} />
+                  ) : null}
+                  <Text
+                    style={{
+                      fontFamily: tokens.fontSans,
+                      fontSize: 13,
+                      color: onList ? tokens.good : tokens.textSec,
+                      fontWeight: "600",
+                    }}
+                  >
+                    {onList ? "Already on your Tasks list" : "Going on your Tasks list"}
+                  </Text>
+                </View>
+              </View>
+            </View>
+
+            {rows.map((row) => {
+              const t = row.real;
+              const done = t?.status === "DONE";
+              const line = (
+                <View
                   style={{
-                    fontFamily: tokens.fontSans,
-                    fontSize: 16,
-                    lineHeight: 23,
-                    color: tokens.text,
+                    flexDirection: "row",
+                    alignItems: "center",
+                    gap: 12,
+                    paddingHorizontal: 16,
+                    paddingVertical: 13,
+                    backgroundColor: "#ffffff",
+                    borderTopWidth: 1,
+                    borderTopColor: tokens.line,
                   }}
                 >
-                  {task.title}
-                </Text>
-
-                <View style={{ flexDirection: "row", gap: 16, marginTop: 12 }}>
-                  <Pressable
-                    onPress={() => {
-                      const next = new Set(added);
-                      // Explicit opt-in, and reversible. Nothing reaches the
-                      // user's real task list until they say so.
-                      next.has(index) ? next.delete(index) : next.add(index);
-                      setAdded(next);
-                    }}
-                    accessibilityRole="button"
-                  >
-                    <Text
+                  {t ? (
+                    <GradientCheckbox checked={done} onPress={() => toggleDone(t)} />
+                  ) : (
+                    <View
                       style={{
-                        fontFamily: tokens.fontDisplay,
-                        fontSize: 14,
-                        color: added.has(index) ? tokens.good : tokens.primaryLo,
+                        width: 22,
+                        height: 22,
+                        borderRadius: 11,
+                        borderWidth: 1.5,
+                        borderColor: tokens.line,
                       }}
-                    >
-                      {added.has(index) ? "✓ Added" : "Add"}
-                    </Text>
-                  </Pressable>
+                    />
+                  )}
+                  <Text
+                    style={{
+                      flex: 1,
+                      fontFamily: tokens.fontSans,
+                      fontSize: 16,
+                      lineHeight: 22,
+                      color: done ? tokens.textTer : tokens.text,
+                      textDecorationLine: done ? "line-through" : "none",
+                    }}
+                  >
+                    {row.label}
+                  </Text>
+                </View>
+              );
+              return t ? (
+                <SwipeRow
+                  key={row.key}
+                  variant="flush"
+                  itemName={row.label}
+                  onEdit={() => router.push(`/task/${t.id}`)}
+                  onDelete={() => confirmDelete(t)}
+                >
+                  {line}
+                </SwipeRow>
+              ) : (
+                <View key={row.key}>{line}</View>
+              );
+            })}
 
-                  <Pressable
-                    onPress={() => setDismissed(new Set(dismissed).add(index))}
-                    accessibilityRole="button"
+            {onList ? (
+              <Text
+                style={{
+                  fontFamily: tokens.fontSans,
+                  fontSize: 12,
+                  color: tokens.textTer,
+                  paddingHorizontal: 16,
+                  paddingVertical: 10,
+                  borderTopWidth: 1,
+                  borderTopColor: tokens.line,
+                }}
+              >
+                {totalTodos > rows.length
+                  ? `+${totalTodos - rows.length} more in Tasks · `
+                  : ""}
+                Tap to check off · swipe left to edit or delete
+              </Text>
+            ) : null}
+          </View>
+        )}
+
+        {/* ── WHAT IT WAS ABOUT — the summary once + theme chips ─────── */}
+        {(data.summary || data.themes.length > 0) && (
+          <View style={[coralWhiteCard(tokens), { marginBottom: 16 }]}>
+            <Text
+              style={{
+                fontFamily: tokens.fontSans,
+                fontWeight: "700",
+                fontSize: 11,
+                letterSpacing: 0.8,
+                textTransform: "uppercase",
+                color: tokens.primaryLo,
+                marginBottom: 8,
+              }}
+            >
+              What it was about
+            </Text>
+            {data.summary ? (
+              <Text
+                style={{
+                  fontFamily: tokens.fontSans,
+                  fontSize: 16,
+                  lineHeight: 24,
+                  color: tokens.text,
+                  marginBottom: data.themes.length > 0 ? 14 : 0,
+                }}
+              >
+                {data.summary}
+              </Text>
+            ) : null}
+            {data.themes.length > 0 ? (
+              <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+                {data.themes.slice(0, 4).map((theme) => (
+                  <View
+                    key={theme}
+                    style={{
+                      borderRadius: 999,
+                      paddingHorizontal: 12,
+                      paddingVertical: 6,
+                      backgroundColor: `${tokens.primary}1A`,
+                    }}
                   >
                     <Text
                       style={{
                         fontFamily: tokens.fontSans,
-                        fontSize: 14,
-                        color: tokens.textSec,
+                        fontSize: 13,
+                        fontWeight: "600",
+                        color: tokens.primaryLo,
                       }}
                     >
-                      Dismiss
+                      {theme}
                     </Text>
-                  </Pressable>
-                </View>
+                  </View>
+                ))}
               </View>
-            ))}
-          </Section>
+            ) : null}
+          </View>
         )}
 
-        {/* ── WHAT SEEMS TO MATTER — echoes the transcript ─────────── */}
-        {(data.pullQuote || data.themes.length > 0) && (
-          <Section title="What seems to matter" tokens={tokens}>
-            <View style={coralWhiteCard(tokens)}>
-              {data.pullQuote && (
-                <Text
-                  style={{
-                    fontFamily: tokens.fontSans,
-                    fontSize: 16,
-                    lineHeight: 24,
-                    color: tokens.textSec,
-                    marginBottom: data.themes.length > 0 ? 12 : 0,
-                  }}
-                >
-                  {data.pullQuote}
-                </Text>
-              )}
-              {data.themes.length > 0 && (
-                <Text
-                  style={{
-                    fontFamily: tokens.fontSans,
-                    fontSize: 15,
-                    lineHeight: 22,
-                    color: tokens.textSec,
-                  }}
-                >
-                  {data.themes.slice(0, 3).join(" · ")}
-                </Text>
-              )}
-            </View>
-          </Section>
+        {/* ── RIPPLE NOTICED — only a real, distinct observation, or the
+            branch fallback when there's nothing else to show. Never a
+            repeat of the summary. ─────────────────────────────────────── */}
+        {(data.pullQuote || !data.summary) && (
+          <View style={[coralWhiteCard(tokens, { tinted: true }), { marginBottom: 16 }]}>
+            <Text
+              style={{
+                fontFamily: tokens.fontSans,
+                fontWeight: "700",
+                fontSize: 11,
+                letterSpacing: 0.8,
+                textTransform: "uppercase",
+                color: "#ffffff",
+                opacity: 0.85,
+                marginBottom: 8,
+              }}
+            >
+              Ripple noticed
+            </Text>
+            <Text
+              style={{
+                fontFamily: tokens.fontSans,
+                fontSize: 16,
+                lineHeight: 24,
+                color: "#ffffff",
+              }}
+            >
+              {observation}
+            </Text>
+          </View>
         )}
-
-        {/* ── SOMETHING WORTH NOTICING — hedged, or branch fallback ── */}
-        <View style={[coralWhiteCard(tokens), { marginBottom: 16 }]}>
-          <Text
-            style={{
-              fontFamily: tokens.fontSans,
-              fontWeight: "700",
-              fontSize: 11,
-              letterSpacing: 0.6,
-              textTransform: "uppercase",
-              color: tokens.primaryLo,
-              marginBottom: 8,
-            }}
-          >
-            Ripple noticed
-          </Text>
-          <Text
-            style={{
-              fontFamily: tokens.fontSans,
-              fontSize: 16,
-              lineHeight: 24,
-              color: tokens.text,
-            }}
-          >
-            {observation}
-          </Text>
-        </View>
 
         {/* ── First debrief complete — pulse + haptic, no confetti ─── */}
         <View

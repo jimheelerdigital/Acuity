@@ -103,15 +103,28 @@ export default function V10Processing() {
     // 1.9.1 account-first: they're signed in by now, so attach this debrief
     // to their account immediately — it must never sit on an anonymous
     // token that expires. claimAnonymousDebrief is a no-op when signed out.
-    void claimAnonymousDebrief().catch(() => {});
-
+    // Awaited (max 6s) so the reveal can show the REAL tasks the claim just
+    // put on their list — the claim creates every extracted task. On a
+    // timeout/failure the reveal falls back to the extraction, and the
+    // reminders step retries the claim.
     setStage(1);
+    const claim = await Promise.race([
+      claimAnonymousDebrief().catch(() => null),
+      new Promise<null>((r) => setTimeout(() => r(null), 6000)),
+    ]);
+    const entryId =
+      claim && claim.status === "claimed" && claim.entryId ? claim.entryId : null;
+
     setStage(2);
 
     const latencyMs = Date.now() - startedAtRef.current;
     trackV10("v10_processing_latency", { ms: latencyMs, attempt: attemptRef.current });
 
-    router.replace("/onboarding-new/reveal");
+    router.replace(
+      entryId
+        ? { pathname: "/onboarding-new/reveal", params: { entryId } }
+        : "/onboarding-new/reveal"
+    );
   }, [uri]);
 
   useEffect(() => {

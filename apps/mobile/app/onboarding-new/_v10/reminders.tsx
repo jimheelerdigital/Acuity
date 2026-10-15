@@ -2,6 +2,8 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { Pressable, ScrollView, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { router } from "expo-router";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { WELCOME_TOUR_KEY, type WelcomeTourRequest } from "@/components/tour/welcome-tour";
 
 import { useAuth } from "@/contexts/auth-context";
 import { useTheme } from "@/contexts/theme-context";
@@ -64,7 +66,25 @@ export default function V10Reminders() {
   // doesn't run the legacy onboarding next, and make sure the first
   // debrief is attached to the account (normally already done right after
   // processing; this is the backstop). Both best-effort.
-  const finish = useCallback(async () => {
+  const finish = useCallback(async (slot: ReminderSlot | null) => {
+    // 1.9.1: hand off to the app tour. The first-login auto tour skips
+    // anyone who has recorded — and every funnel finisher has (their first
+    // debrief) — so nobody coming out of the funnel ever got a tour. Use the
+    // welcome-mode tour (Home → Entries → Tasks → Growth → Insights → done),
+    // written for exactly this person ("your first one is already in");
+    // Home's focus trigger picks it up.
+    try {
+      const time = slot ? localTimeFor(slot) : null;
+      const req: WelcomeTourRequest = {
+        setupScreens: 5,
+        stepOf: 5,
+        firstName: user?.name?.trim().split(/\s+/)[0] || null,
+        checkInTime: time ? formatClock(time) : null,
+      };
+      await AsyncStorage.setItem(WELCOME_TOUR_KEY, JSON.stringify(req));
+    } catch {
+      /* non-fatal — no tour is better than a stuck funnel */
+    }
     try {
       const claim = await claimAnonymousDebrief();
       // Funnel done — the reveal/paywall no longer need the cached result.
@@ -79,7 +99,7 @@ export default function V10Reminders() {
     }
     await refresh();
     router.replace("/(tabs)");
-  }, [refresh]);
+  }, [refresh, user?.name]);
 
   const onSelect = useCallback((slot: ReminderSlot) => {
     setSelected(slot);
@@ -119,7 +139,7 @@ export default function V10Reminders() {
         trackV10("v10_os_push_prompt", { result });
       }
 
-      finish();
+      finish(selected);
     } finally {
       setBusy(false);
     }
@@ -209,4 +229,13 @@ export default function V10Reminders() {
       </SafeAreaView>
     </CoralScreen>
   );
+}
+
+/** "21:00" → "9:00 PM" (tour copy: "We'll check in at 9:00 PM"). */
+function formatClock(hhmm: string): string {
+  const [h, m] = hhmm.split(":").map((x) => Number(x));
+  if (!Number.isFinite(h) || !Number.isFinite(m)) return hhmm;
+  const suffix = h >= 12 ? "PM" : "AM";
+  const h12 = h % 12 === 0 ? 12 : h % 12;
+  return `${h12}:${String(m).padStart(2, "0")} ${suffix}`;
 }
