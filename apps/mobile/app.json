@@ -2,7 +2,7 @@
   "expo": {
     "name": "Ripple",
     "slug": "acuity",
-    "version": "1.9.1",
+    "version": "1.9.3",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "scheme": "acuity",
@@ -334,7 +334,9 @@
       "policy": "appVersion"
     },
     "updates": {
-      "url": "https://u.expo.dev/dc4dcfc3-54f4-44e8-bc84-dfcedb8ba533"
+      "url": "https://u.expo.dev/dc4dcfc3-54f4-44e8-bc84-dfcedb8ba533",
+      "checkAutomatically": "ON_LOAD",
+      "fallbackToCacheTimeout": 5000
     }
   }
 }
