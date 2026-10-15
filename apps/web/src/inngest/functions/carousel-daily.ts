@@ -1488,8 +1488,18 @@ export const carouselDailyCronFn = inngest.createFunction(
     // "add ripple in SOME of the posts but not all... animate them"). Cover
     // + 4-8 item slides over one scenic world (snow, ocean, autumn...),
     // picked from 5 Opus drafts (ripple-list.ts), animated like selfie posts.
-    if (bucket === "ripple-list") {
+    // The 05 UTC "selfie" slot is a list post too since 2026-10-15 (per
+    // Keenan: "the story post is absolutely terrible. replace it with a lists
+    // post with the same picture format. two list posts, different image
+    // formats"): avatar format = the walking-avatar cover + a mix of scenic
+    // and everyday slides; the 07 UTC post keeps the all-scenic format.
+    // Saved as lane "ripple-list" so both share rotation, history and the
+    // learning loop. `story: true` still reaches the old story branch.
+    const listEv = (event.data ?? {}) as { story?: boolean; listFormat?: string };
+    if (bucket === "ripple-list" || (bucket === "selfie" && !listEv.story)) {
       const ev = (event.data ?? {}) as { rippleMention?: boolean; world?: string };
+      const listFormat: "scenic" | "avatar" =
+        listEv.listFormat === "avatar" || listEv.listFormat === "scenic" ? listEv.listFormat : bucket === "selfie" ? "avatar" : "scenic";
       const list = await step.run("generate-list-topic", async () => {
         const { prisma } = await import("@/lib/prisma");
         const { generateRippleListTopic } = await import("@/lib/content-factory/ripple-list");
@@ -1518,10 +1528,11 @@ export const carouselDailyCronFn = inngest.createFunction(
           lastArea: lastRecipes[0]?.area,
           forceRipple: typeof ev.rippleMention === "boolean" ? ev.rippleMention : undefined,
           forceWorld: ev.world,
+          format: listFormat,
         });
       });
       logger.info(
-        `[carousel-cron] List: "${list.title}" (${list.items.length} items, ${list.shape}, ${list.world}, ${list.draftKind}: ${list.area}, ripple=${list.mentionsRipple}) — ${list.candidateLog ?? ""}${list.held ? ` HELD: ${list.held}` : ""}`
+        `[carousel-cron] List: "${list.title}" (${list.items.length} items, ${list.format}, ${list.shape}, ${list.world}, ${list.draftKind}: ${list.area}, ripple=${list.mentionsRipple}) — ${list.candidateLog ?? ""}${list.held ? ` HELD: ${list.held}` : ""}`
       );
       if (dryRun) return saveDryRun(bucket, list);
       const slug = list.slug;
@@ -1555,13 +1566,36 @@ export const carouselDailyCronFn = inngest.createFunction(
         const cover = i < 0;
         const item = cover ? null : list.items[i];
         const scene = cover ? list.coverScene : item!.scene;
-        // List covers stay scenery only (2026-10-15, per Keenan: the walking
-        // avatar is ONLY for the selfie lane's cover).
-        const prompt = buildListScenePrompt(scene, list.world);
-        const { buffer: raw } = await generateCheckedImage(
-          () => (cover ? generateImage(prompt) : generateImage(prompt, "item")),
-          { scene, slot: cover ? "cover" : "item", personAllowed: false }
-        );
+        let prompt: string;
+        let raw: Buffer;
+        if (list.format === "avatar" && cover) {
+          // Avatar format cover: our woman walking away through the place;
+          // her latest walking cover anchors her identity.
+          const { buildAvatarWalkPrompt, latestAvatarCoverUrl } = await import("@/lib/content-factory/ripple-avatar");
+          const { generateImageWithReference } = await import("@/lib/content-factory/carousel-generate");
+          const anchorUrl = await latestAvatarCoverUrl();
+          let reference: Buffer | null = null;
+          if (anchorUrl) {
+            const res = await fetch(anchorUrl).catch(() => null);
+            if (res?.ok) reference = Buffer.from(await res.arrayBuffer());
+          }
+          prompt = buildAvatarWalkPrompt({ scene, setting: list.world, hasReference: !!reference });
+          ({ buffer: raw } = await generateCheckedImage(
+            () => (reference ? generateImageWithReference(prompt, reference) : generateImage(prompt)),
+            { scene, slot: "cover", personAllowed: true }
+          ));
+        } else {
+          // Scenic format: landscapes only (the walking avatar is never on
+          // the 07 UTC post, 2026-10-15). Avatar format items: scenic or
+          // everyday per the writer's "place".
+          const { buildEverydayScenePrompt } = await import("@/lib/content-factory/ripple-list");
+          prompt =
+            list.format === "avatar" && item?.place === "everyday" ? buildEverydayScenePrompt(scene) : buildListScenePrompt(scene, list.world);
+          ({ buffer: raw } = await generateCheckedImage(
+            () => (cover ? generateImage(prompt) : generateImage(prompt, "item")),
+            { scene, slot: cover ? "cover" : "item", personAllowed: false }
+          ));
+        }
         const name = cover ? "slide-0-cover" : `slide-${i + 1}-item`;
         const textFree = await composeSlide(raw, "", cover ? "COVER" : "REASON");
         const rawImageUrl = await uploadImage(textFree, `carousels/${dateStr}/${slug}/${name}-raw.jpg`);
@@ -1625,7 +1659,7 @@ export const carouselDailyCronFn = inngest.createFunction(
               postId: post.id,
               brand: "ripple",
               lane: "ripple-list",
-              postType: `list-${list.shape.toLowerCase().replace(/\s+/g, "-")}`,
+              postType: `list-${list.format === "avatar" ? "avatar-" : ""}${list.shape.toLowerCase().replace(/\s+/g, "-")}`,
               category: `world-${list.world.toLowerCase().replace(/\s+/g, "-")}${list.mentionsRipple ? "-ripple" : ""}`,
               title: list.title,
               options: list.items.map((it) => it.line),

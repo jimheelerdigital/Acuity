@@ -300,6 +300,10 @@ export async function POST(req: NextRequest) {
           world: (body as { world?: string }).world,
           // Selfie look override: "photo" | "toon".
           selfieStyle: (body as { selfieStyle?: string }).selfieStyle,
+          // Ripple list picture format: "avatar" | "scenic" (2026-10-15).
+          listFormat: (body as { listFormat?: string }).listFormat,
+          // Selfie slot: true = the retired 5-slide story instead of a list.
+          story: (body as { story?: boolean }).story === true,
         },
       });
       return NextResponse.json({ ok: true, queued: true });

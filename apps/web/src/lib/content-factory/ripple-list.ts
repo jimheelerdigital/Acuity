@@ -28,6 +28,8 @@ export interface ListItem {
   scene: string;
   /** One natural movement for the clip (waves roll in, snow falls...). */
   motion: string;
+  /** Avatar format only: outdoor view or everyday/home shot. */
+  place?: "scenic" | "everyday";
 }
 
 export interface RippleListTopic {
@@ -35,6 +37,8 @@ export interface RippleListTopic {
   title: string;
   shape: string;
   world: string;
+  /** "scenic" (landscapes only) or "avatar" (walking-avatar cover + mixed slides). */
+  format: ListFormat;
   mentionsRipple: boolean;
   coverScene: string;
   coverMotion: string;
@@ -99,6 +103,42 @@ export const LIST_WORLDS = [
   "DESERT DAWN: desert dunes at sunrise, long shadows, wind-blown sand, a canyon glowing orange, a wide clear sky",
 ] as const;
 
+/**
+ * Clip motion at REAL speed (2026-10-15, per Keenan: "every post in the '6
+ * questions to ask yourself' looks crazy sped up"). Our render plays Kling's
+ * clips untouched; the speed-up came from the prompts: "clouds moving fast",
+ * fog lifting, sun breaking through, shadows sweeping. Over 5 seconds Kling
+ * can only show those as a timelapse. Motion must be something that visibly
+ * moves in 5 real seconds.
+ */
+const REAL_TIME_MOTION = `Each slide's "motion" is the one small natural movement a real camera would catch in five ordinary seconds, filmed in real time: waves rolling in, snow falling, leaves drifting down, grass and branches swaying, rain dimpling water, a stream flowing, steam rising from a mug, a curtain moving in a breeze. NEVER anything that takes minutes or hours in real life: no clouds racing or rolling, no fog lifting or burning off, no sun rising, setting or breaking through, no shadows moving or sweeping, no light changing, no flowers opening, and never the words "fast", "quickly", "rushing" or "timelapse". Every slide's motion is different.`;
+
+const SCENIC_PICTURES = `THE PICTURES: every slide is a breathtaking, people-free landscape photo from the ONE scenic world named in the user message, a different view each slide (wide, close, different light, different spot) so the post feels like one calm place. NO people, NO faces, NO hands, NO animals in focus, NO buildings as the subject, NO text. Each "scene" is under 30 words, concrete nouns only, and leaves calm open sky, water or snow in the upper half for the text. ${REAL_TIME_MOTION}`;
+
+/**
+ * Avatar format (2026-10-15, per Keenan: "replace [the story post] with a
+ * lists post with the same picture format"): the cover is our avatar walking
+ * away through a scenic place (the code adds her; "coverScene" names only
+ * the place); item slides mix scenic places with quiet everyday/home shots.
+ */
+const AVATAR_PICTURES = `THE PICTURES: the COVER shows our recurring woman walking away from the camera through a beautiful outdoor place from the scenic world named in the user message. Write "coverScene" as the place only (the path, the view, the light), under 30 words; the code adds her. Each ITEM slide is a real, people-free photo, and the slides MIX two kinds: scenic outdoor views from that same world, and quiet everyday moments from her real life (a kitchen counter with a coffee mug in morning light, a car parked at school pickup, a calendar on the fridge, a porch chair with a folded blanket, a laundry basket by a sunny window). Where an item names a real thing (a calendar, the car, the kitchen), its picture shows that thing; otherwise a scenic view. At least two scenic and at least two everyday slides. Give every item a "place" field: "scenic" or "everyday". NO people, NO faces, NO hands, NO animals in focus, NO text, letters, readable screens or logos. Each "scene" is under 30 words, concrete nouns only, with calm open space in the upper half for the text. ${REAL_TIME_MOTION}`;
+
+export type ListFormat = "scenic" | "avatar";
+
+const systemFor = (format: ListFormat) => SYSTEM.replace("__PICTURES__", format === "avatar" ? AVATAR_PICTURES : SCENIC_PICTURES);
+
+/**
+ * Last line of defense for the motion line: anything that only happens over
+ * minutes (or says "fast") becomes a safe real-time movement.
+ */
+export function realTimeMotion(motion: string, fallback = "a light breeze moves the leaves and grass"): string {
+  const m = motion.trim();
+  if (!m) return fallback;
+  return /(fast|quick(ly)?|rapid(ly)?|rush(es|ing)?|rac(e|es|ing)|timelapse|time-lapse|sweep(s|ing)?|clouds?|shadows?|sun ?(rise|set|rises|sets|rays?|breaks?|light shifts)|fog (lifts|thins|burns|clears)|mist (lifts|thins|burns|clears)|light (shifts|changes|moves|spreads|grows)|blooms?|opens? up|dawn breaks|darkens|brightens)/i.test(m)
+    ? fallback
+    : m;
+}
+
 const SYSTEM = `${copyObjectives("ripple")}
 
 THIS LANE: a "top N" list post that is genuinely useful. The reader saves it because every item is something real she can do or recognize this week, said plainly. Speak to her directly ("you") in the brand voice: plain, honest, specific, a little dry, never a coach, never preachy, never a lecture. Use her own words for her life ("the list in my head", "running everyone's week", "nobody notices until it isn't done") over wellness vocabulary.
@@ -110,7 +150,7 @@ READABLE IN 5 SECONDS (2026-10-13, per Keenan: "it needs to be easily readable i
 - Items are genuinely different from each other: no two saying the same thing in other words.
 - No numbers inside "line" (the slide adds "1.", "2." itself).
 
-THE PICTURES: every slide is a breathtaking, people-free landscape photo from the ONE scenic world named in the user message, a different view each slide (wide, close, different light, different spot) so the post feels like one calm place. NO people, NO faces, NO hands, NO animals in focus, NO buildings as the subject, NO text. Each "scene" is under 30 words, concrete nouns only, and leaves calm open sky, water or snow in the upper half for the text. Each slide's "motion" is the one natural movement the clip shows, at real speed: waves rolling in and spray lifting, snow falling and drifting off branches, leaves spinning down and skittering across a path, mist sliding across the lake, grass rippling in wind, clouds moving fast over the dunes. Every slide's motion is different.
+__PICTURES__
 
 THE CAPTION: "captionQuestion" is one question under 15 words, lowercase-leaning, that she genuinely wants to answer about her own version of this list (concrete, answerable in one honest sentence). No app name, no share or save ask.
 
@@ -134,6 +174,7 @@ async function draftOnce(opts: {
   area: string;
   kind: "exploit" | "explore";
   world: string;
+  format: ListFormat;
   mentionsRipple: boolean;
   recent: string[];
   brief: string;
@@ -150,7 +191,9 @@ async function draftOnce(opts: {
     opts.kind === "exploit"
       ? `THIS DRAFT BUILDS ON WHAT HAS WON: base it on this theme from our results: ${opts.area.replace(/^theme:\s*/, "")}. Come at it from a fresh angle and a specific situation none of the recent titles below used; never reword a recent title.`
       : `THIS POST'S LIFE AREA (other drafts take other areas, so stay in this one): ${opts.area}\nVARIETY: the title must NOT be about "the list in your head", "mental load" or "carrying everything" in general (every recent post went there). Name a specific situation inside this life area instead, and make it clearly different from every recent title below.`,
-    `THIS POST'S SCENIC WORLD (every slide): ${opts.world}`,
+    opts.format === "avatar"
+      ? `THIS POST'S SCENIC WORLD (the cover place and the scenic slides): ${opts.world}`
+      : `THIS POST'S SCENIC WORLD (every slide): ${opts.world}`,
     opts.mentionsRipple ? rippleBlock() : "\n\nTHIS POST DOES NOT MENTION RIPPLE OR ANY APP: pure, useful advice.",
     opts.brief ? `\n\n${opts.brief}` : "",
     opts.recent.length ? `\n\nRECENT TITLES (don't repeat or lightly reword these):\n${opts.recent.map((t) => `- ${t}`).join("\n")}` : "",
@@ -159,7 +202,7 @@ async function draftOnce(opts: {
   const res = await contentAnthropic.messages.create({
     model: opts.model,
     max_tokens: 2500,
-    system: `${SYSTEM}\n\n${HUMAN_VOICE_RULES}`,
+    system: `${systemFor(opts.format)}\n\n${HUMAN_VOICE_RULES}`,
     messages: [{ role: "user", content: user }],
   });
   void prisma.claudeCallLog
@@ -189,7 +232,8 @@ async function draftOnce(opts: {
       line: clean(it.line).replace(/^\d+[.)]\s*/, ""),
       detail: clean(it.detail),
       scene: clean(it.scene) || "a wide, calm landscape in soft natural light, no people",
-      motion: clean(it.motion) || "clouds drift and the light shifts slowly",
+      motion: realTimeMotion(clean(it.motion)),
+      ...(opts.format === "avatar" ? { place: it.place === "everyday" ? ("everyday" as const) : ("scenic" as const) } : {}),
     }))
     .filter((it) => it.line)
     .slice(0, 8);
@@ -204,9 +248,10 @@ async function draftOnce(opts: {
     area: opts.area,
     draftKind: opts.kind,
     world: opts.world.split(":")[0],
+    format: opts.format,
     mentionsRipple: opts.mentionsRipple,
     coverScene: clean(p.coverScene) || items[0].scene,
-    coverMotion: clean(p.coverMotion) || items[0].motion,
+    coverMotion: realTimeMotion(clean(p.coverMotion), items[0].motion),
     items,
     captionQuestion: clean(p.captionQuestion),
   };
@@ -219,7 +264,7 @@ async function repairListLine(t: RippleListTopic, problem: string): Promise<Ripp
     model: CANDIDATE_WRITER_MODEL,
     max_tokens: 1500,
     effort: "medium",
-    system: `${SYSTEM}\n\n${HUMAN_VOICE_RULES}`,
+    system: `${systemFor(t.format)}\n\n${HUMAN_VOICE_RULES}`,
     messages: [
       {
         role: "user",
@@ -237,6 +282,7 @@ async function repairListLine(t: RippleListTopic, problem: string): Promise<Ripp
       detail: stripDashes(String(it.detail)).trim(),
       scene: t.items[i].scene,
       motion: t.items[i].motion,
+      ...(t.items[i].place ? { place: t.items[i].place } : {}),
     })),
     captionQuestion: typeof j.captionQuestion === "string" && j.captionQuestion.trim() ? j.captionQuestion.trim() : t.captionQuestion,
   };
@@ -293,6 +339,8 @@ export async function generateRippleListTopic(opts: {
   lastArea?: string;
   forceRipple?: boolean;
   forceWorld?: string;
+  /** Picture format (default scenic). */
+  format?: ListFormat;
 }): Promise<RippleListTopic> {
   const { CANDIDATE_COUNT, CANDIDATE_WRITER_MODEL, rankCandidates } = await import("./candidate-pipeline");
   const { readBriefBlock } = await import("./weekly-brief");
@@ -334,7 +382,7 @@ export async function generateRippleListTopic(opts: {
   const settled = await Promise.allSettled(
     Array.from({ length: CANDIDATE_COUNT }, (_, i) =>
       within(
-        draftOnce({ shape: shapes[i % shapes.length], area: plan[i % plan.length].area, kind: plan[i % plan.length].kind, world, mentionsRipple, recent: opts.recentTitles.slice(0, 60), brief, model: CANDIDATE_WRITER_MODEL }),
+        draftOnce({ shape: shapes[i % shapes.length], area: plan[i % plan.length].area, kind: plan[i % plan.length].kind, world, format: opts.format ?? "scenic", mentionsRipple, recent: opts.recentTitles.slice(0, 60), brief, model: CANDIDATE_WRITER_MODEL }),
         150_000
       )
     )
@@ -373,6 +421,17 @@ export async function generateRippleListTopic(opts: {
   if (!ranked) return { ...drafts[0], held: "no candidate passed the plain-sense check", jev: null, rankedBy: "none", candidateLog };
   noteHeadlineUsed(ranked.winner.title);
   return { ...ranked.winner, jev: ranked.jev, rankedBy: ranked.rankedBy, candidateLog };
+}
+
+/** Image prompt for one people-free everyday/home slide (avatar format). */
+export function buildEverydayScenePrompt(scene: string): string {
+  return [
+    `A real, beautiful photograph: ${scene}.`,
+    "Shot like a calm lifestyle photo someone saves: soft natural light, true color, crisp detail, real depth, a lived-in real home or everyday place. It must look like a genuine photograph, never a render or painting.",
+    "Leave calm open space (wall, sky, window light or a plain surface) in the upper half of the frame for text.",
+    "ABSOLUTELY NO people, faces, hands, silhouettes, animals in focus, text, letters, readable screens, signs or logos.",
+    "9:16 vertical portrait.",
+  ].join("\n");
 }
 
 /** Image prompt for one people-free scenic slide. */

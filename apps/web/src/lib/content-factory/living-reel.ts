@@ -63,13 +63,18 @@ export function livingMotionPrompt(
       // Ripple list lane (2026-10-13): people-free landscapes; the nature
       // itself moves (Keenan: "snowy backgrounds, ocean rolling, trees and
       // leaves in autumn").
-      const land = (imagePrompt.match(/landscape photograph:\s*(.+)$/m)?.[1] ?? scene).trim().slice(0, 300);
+      const land = (imagePrompt.match(/(?:landscape )?photograph:\s*(.+)$/m)?.[1] ?? scene).trim().slice(0, 300);
+      // Real time, never a timelapse (2026-10-15, per Keenan: the list
+      // posts "look crazy sped up"). The old line asked for "clearly visible
+      // movement ... through the whole clip", which Kling delivered as racing
+      // clouds and sweeping light.
       return [
-        "Realistic nature footage: the landscape photo comes alive.",
+        "Real-time footage filmed at normal speed: the photo comes alive. This is NOT a timelapse and NOT sped up.",
         land ? `Scene: ${land}` : "",
-        `Action: ${motion ?? "the scene's natural elements move: water, clouds, leaves, snow or grass"}. Clearly visible movement at natural, real-world speed through the whole clip, and everything else in the scene moves the way it really would (light shifting, mist drifting, branches swaying).`,
+        `Action: ${motion ?? "a light breeze moves the leaves and grass"}, at true real-world speed, the way it looks to someone standing there for five seconds.`,
+        "Everything that moves slowly in real life stays almost still: clouds, sky, sun, shadows and light do not visibly change. Only small natural movement (water, leaves, grass, snow, rain, steam, fabric).",
         walking ? WALK : "",
-        "Camera: a slow, smooth push-in or gentle drift, nothing fast.",
+        "Camera: steady, with at most a very slow, gentle push-in.",
         walking
           ? "Keep the composition, light and color as in the photo. No other people, no animals appearing, no text, no morphing or warping."
           : "Keep the composition, light and color as in the photo. No people, no animals appearing, no text, no morphing or warping.",

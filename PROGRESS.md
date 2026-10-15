@@ -7,6 +7,40 @@
 
 ---
 
+## [2026-10-15] — Ripple: both daily posts are list posts now, and clips stop looking sped up
+
+- **Requested by:** Keenan
+- **Committed by:** Claude Code
+- **Commit hash:** (see git log: "fix: Turn the Ripple story slot into a list post and stop timelapse clips")
+
+### In plain English (for Keenan)
+The 5-slide story post is gone. Ripple now makes two different list posts a day. The early one shows our avatar walking away on the cover, followed by a mix of scenic and everyday home shots. The later one keeps the all-scenery look. Separately, the list videos looked sped up because we were asking the video model for things like "clouds moving fast", which it can only show as a timelapse. Clips now ask only for movement that happens in five real seconds: waves, leaves, snow, rain, steam.
+
+### Technical changes (for Jimmy)
+- `apps/web/src/lib/content-factory/ripple-list.ts`:
+  - New `ListFormat` ("scenic" | "avatar") on drafts and topics.
+  - `systemFor(format)` picks between `SCENIC_PICTURES` and `AVATAR_PICTURES`. Avatar items carry `place: "scenic" | "everyday"`.
+  - Shared `REAL_TIME_MOTION` rule bans clouds, fog lifting, sun and shadow changes, and "fast". The removed example "clouds moving fast over the dunes" was the main cause.
+  - `realTimeMotion()` swaps any slow-process or "fast" motion line for a safe default.
+  - New `buildEverydayScenePrompt()`.
+- `apps/web/src/lib/content-factory/living-reel.ts`, scenic mode: the prompt now says real-time, not a timelapse, and asks that clouds, sky, sun, shadows and light hold still. It replaces "clearly visible movement through the whole clip". Scene extraction also handles the "photograph:" prompts.
+- `apps/web/src/inngest/functions/carousel-daily.ts`:
+  - The `selfie` bucket (05 UTC ContentLane) runs the list branch with format "avatar" unless `story: true`.
+  - The avatar cover uses `buildAvatarWalkPrompt` plus a reference to her latest walking cover.
+  - Both formats save as lane `ripple-list`, so they share world/area rotation, title dedupe and the learning loop. The avatar format's recipe postType is `list-avatar-*`.
+- `apps/web/src/lib/content-factory/ripple-avatar.ts`: `latestAvatarCoverUrl()` no longer filters on lane `selfie`.
+- `apps/web/src/app/api/admin/carousels/route.ts`: `generate-daily` passes `listFormat` and `story`.
+
+### Manual steps needed
+- [ ] None. No schema, env, or cron change; the 05 and 07 UTC ContentLane rows are unchanged.
+
+### Notes
+- Verified the render isn't the cause: frames of the "6 questions to ask yourself" reel match its raw Kling clip second for second (both about 5s; 24fps raw, 30fps out). The speed-up is inside Kling's output, so the fix lives in the prompts.
+- The 07 UTC run sees the 05 UTC post's title, area and world, so the two daily lists can't share a world or a life area.
+- The old story branch is still reachable with `story: true` for reference; nothing schedules it.
+
+---
+
 ## [2026-10-14] — Ask your past self, insights, Life Audit and State of Me move to Opus 5.5 (low effort)
 
 - **Requested by:** Keenan

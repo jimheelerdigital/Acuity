@@ -3,8 +3,8 @@
  * more selfie... it should be a picture of a women who's our avatar walking in
  * a scenic area away from the camera"; "just the cover").
  *
- * The selfie lane's cover ONLY (the list lane keeps scenery; 2026-10-15
- * correction) is the SAME woman, seen from
+ * The 05 UTC post's cover ONLY (an avatar-format list post since 10-15; the
+ * 07 UTC scenic list keeps scenery) is the SAME woman, seen from
  * behind, walking away from the camera through a scenic place. Identity
  * carries across posts by passing her latest cover as the reference image.
  * The marker line lets the animator and the anchor lookup recognize these.
@@ -40,8 +40,8 @@ export async function latestAvatarCoverUrl(): Promise<string | null> {
     where: {
       order: 0,
       rawImageUrl: { not: null },
+      // Any Ripple post's walking cover (the 05 UTC list post since 10-15).
       imagePrompt: { contains: RIPPLE_AVATAR_MARKER },
-      carouselPost: { lane: "selfie" },
     },
     orderBy: { createdAt: "desc" },
     select: { rawImageUrl: true },
