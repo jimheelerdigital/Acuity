@@ -162,14 +162,14 @@ The Business tab in the admin dashboard now counts our monthly tool and subscrip
 @therapyandthingss's first video is set up on Meta as its own ad with its own $15/day budget, pointing at her tracking link so her signups are credited to her. It stays paused until Keenan approves the exact ad.
 
 ### Technical changes (for Jimmy)
-- New `apps/web/src/app/api/admin/adlab/ugc-ad/route.ts`:
+- New `apps/web/src/app/api/admin/adlab/ugc-ad/route.ts` (`activate` takes an optional `budgetCents`):
   - `create`: `ensureDedicatedAdSet` (lane evergreen campaign, MAIN targeting, PURCHASE optimization) → ad set paused immediately → `uploadVideo` + `uploadImage` (thumbnail) → `createAdCreative` → `createAd` (PAUSED) → `UgcVideo` row.
   - `activate`: sets the ad set + ad ACTIVE.
   - Auth: admin session or CRON_SECRET.
 - Assets: H.264 transcode of the creator's HEVC file plus a 1s thumbnail, at `content-factory/ugc/therapyandthings/video-1.mp4` / `video-1-thumb.jpg`.
 
 ### Manual steps needed
-- [ ] Keenan approves the exact ad, then it gets activated via `action: "activate"` (Claude Code)
+- [x] Keenan approved 10-14 at **$20/day** (not 15). Activated via `action: "activate"` with `budgetCents: 2000`. Meta ids: campaign 120254810968320581, ad set 120255161391250581, ad 120255161395820581, creative 1684322063113703, video 1102604089179536.
 
 ### Notes
 - Runs on prod because `META_ACCESS_TOKEN` is Vercel-sensitive (empty locally).

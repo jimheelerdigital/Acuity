@@ -11,7 +11,8 @@
  * (standing rule: never switch an ad live on Meta unasked). Also records a
  * UgcVideo row for the creator.
  *
- * action "activate": { adsetId, adId } → both ACTIVE.
+ * action "activate": { adsetId, adId, budgetCents? } → optional new daily
+ * budget, then both ACTIVE.
  *
  * Auth: admin session OR `Authorization: Bearer ${CRON_SECRET}`.
  */
@@ -51,6 +52,11 @@ export async function POST(req: NextRequest) {
   if (body.action === "activate") {
     if (!body.adsetId || !body.adId) return NextResponse.json({ error: "adsetId and adId required" }, { status: 400 });
     try {
+      // Optional new daily budget on activation (Keenan raised video 1 to $20, 2026-10-14).
+      const newBudget = Number((body as { budgetCents?: number }).budgetCents);
+      if (Number.isFinite(newBudget) && newBudget >= 500 && newBudget <= 10000) {
+        await meta.updateAdSetBudget(body.adsetId, Math.round(newBudget));
+      }
       await meta.setStatus(body.adsetId, "adset", "ACTIVE");
       await meta.setStatus(body.adId, "ad", "ACTIVE");
       const check = await meta.metaGraph(body.adId, "GET", { fields: "effective_status,adset{name,daily_budget,effective_status}" });
