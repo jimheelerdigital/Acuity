@@ -98,7 +98,7 @@ export default function TabsLayout() {
           after completed debriefs, frequency-capped, dismissible). */}
       {/* The custom "Enjoying Ripple?" nudge is retired: the automatic ask is
           now Apple's native prompt after the 2nd debrief
-          (lib/review.ts maybeNativePromptAfterDebrief). Settings keeps an
+          (lib/review.ts maybeAskForReviewAfterDebrief). Settings keeps an
           explicit "Rate Ripple". Component left in-tree. */}
     </View>
   );
