@@ -264,13 +264,6 @@ function AuthGate() {
         router.replace("/welcome" as never);
         return;
 
-      case "legacy-onboarding": {
-        // Fresh signup, or a user predating the onboarding schema (no row
-        // → completedAt falsy). Resume at the step they last reached.
-        const step = Math.max(1, user?.onboardingStep ?? 1);
-        router.replace(`/onboarding?step=${step}`);
-        return;
-      }
     }
   }, [user, loading, segments, router, facts, factsReady]);
 

@@ -30,7 +30,6 @@ export type ColdStartRoute =
   | "home"
   | "signin"
   | "v10"
-  | "legacy-onboarding"
   | "v10-resume"
   | "welcome";
 
@@ -183,19 +182,18 @@ export function decideColdStartRoute(f: ColdStartFacts): ColdStartRoute {
     return "stay";
   }
 
-  if (!f.onboardingCompleted && !inOnboarding && !inOnboardingNew && !inAuthCallback) {
-    // 1.9.1 account-first: a signed-in account with no debrief yet hasn't
-    // done the funnel's core — pick it up after the account step. Never the
-    // legacy flow, and not Home (which used to assume they'd recorded).
-    if (f.v10Enabled && f.hasRecorded === false) return "v10-resume";
-
-    // v10 arrivals must NOT be handed to the legacy post-signup flow. They
-    // have already recorded, seen a reveal, made a paywall decision and
-    // picked a reminder slot; sending them to /onboarding?step=N is a
-    // second onboarding covering the same ground.
-    if (f.v10Enabled && f.v10Offered) return "home";
-
-    return "legacy-onboarding";
+  // 1.9.1: the legacy post-signup onboarding (/onboarding) is gone (Jimmy,
+  // 2026-10-15: "the old funnel shouldn't even exist"). It used to catch
+  // any signed-in account with unfinished onboarding — which, with
+  // account-first + iOS keeping the Keychain sign-in across a reinstall,
+  // meant every re-download landed in it. Now:
+  //   - no debrief yet → finish the new funnel (after the account step);
+  //   - has recorded   → Home. Never a second onboarding.
+  // Being ON /onboarding (stale link / old state) is treated like an entry
+  // point, not a place to stay.
+  if (!f.onboardingCompleted && !inOnboardingNew && !inAuthCallback) {
+    if (f.hasRecorded === true) return "home";
+    return "v10-resume";
   }
 
   if (f.onboardingCompleted && (inAuth || inOnboarding)) return "home";

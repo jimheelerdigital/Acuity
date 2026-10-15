@@ -2,6 +2,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useEffect, useState } from "react";
 
 import { getToken } from "@/lib/auth";
+import { sessionGateSettled } from "@/lib/session-expiry";
 import { isOnboardingV10Enabled } from "@/lib/feature-flags";
 import { isQaForceV10, warnIfQaForceV10Active } from "@/lib/qa/force-v10";
 import { hasAppHistoryFromKeys } from "./entry-routing";
@@ -94,6 +95,15 @@ export function useColdStartFacts(): {
         }
         return;
       }
+
+      // Wait for the launch session gate (max 3s) so a Keychain token left
+      // over from a deleted install has already been cleared — otherwise a
+      // re-download reads as "has an account" and skips the start screen.
+      await Promise.race([
+        sessionGateSettled,
+        new Promise((r) => setTimeout(r, 3000)),
+      ]);
+      if (cancelled) return;
 
       const [guest, offered, dismissed, keys, token] = await Promise.all([
         isV10Guest(),

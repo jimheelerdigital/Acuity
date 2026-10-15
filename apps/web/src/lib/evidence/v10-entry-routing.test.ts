@@ -92,7 +92,7 @@ describe("signed in", () => {
     // They already recorded, saw a reveal, made a paywall decision and set
     // a reminder. /onboarding?step=N would be a second onboarding.
     expect(
-      at({ signedIn: true, onboardingCompleted: false, v10Offered: true })
+      at({ signedIn: true, onboardingCompleted: false, v10Offered: true, hasRecorded: true })
     ).toBe("home");
   });
 
@@ -114,10 +114,18 @@ describe("signed in", () => {
     ).toBe("home");
   });
 
-  it("1.9.1: never resumes v10 when the flag is off", () => {
+  it("1.9.1: the legacy onboarding is gone — never routed to", () => {
+    // Jimmy 2026-10-15: "the old funnel shouldn't even exist".
     expect(
       at({ v10Enabled: false, signedIn: true, onboardingCompleted: false, hasRecorded: false })
-    ).toBe("legacy-onboarding");
+    ).toBe("v10-resume");
+    // Sitting on /onboarding (stale state) is not a place to stay.
+    expect(
+      at({ signedIn: true, onboardingCompleted: false, hasRecorded: false, segment: "onboarding" })
+    ).toBe("v10-resume");
+    expect(
+      at({ signedIn: true, onboardingCompleted: false, hasRecorded: true, segment: "onboarding" })
+    ).toBe("home");
   });
 
   it("1.9.1: stays put while already inside the funnel", () => {
@@ -126,10 +134,8 @@ describe("signed in", () => {
     ).toBe("stay");
   });
 
-  it("still runs the legacy flow for non-v10 signups", () => {
-    expect(at({ signedIn: true, onboardingCompleted: false })).toBe(
-      "legacy-onboarding"
-    );
+  it("1.9.1: a signup outside the funnel finishes the new funnel, not legacy", () => {
+    expect(at({ signedIn: true, onboardingCompleted: false })).toBe("v10-resume");
   });
 
   it("keeps the PRO bypass ahead of everything", () => {

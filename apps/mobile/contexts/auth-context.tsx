@@ -34,6 +34,7 @@ import {
   getLastActiveMs,
   isFirstLaunchSeen,
   markFirstLaunchSeen,
+  markSessionGateSettled,
   recordActive,
 } from "@/lib/session-expiry";
 import { tokenBridge } from "@/lib/token-bridge";
@@ -267,7 +268,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         // SecureStore. Under the QA override the session must be ignored
         // but NOT destroyed, so the idle-expiry branch is skipped. On a
         // normal build this is unreachable and behaviour is unchanged.
-        if (decision.action === "clear-stale" && !isQaForceV10()) {
+        if (
+          (decision.action === "clear-stale" ||
+            decision.action === "clear-uninstalled") &&
+          !isQaForceV10()
+        ) {
           // Idle expiry — keychain token is older than the threshold.
           // clearSession() wipes SecureStore + memoryToken; refresh()
           // below will then route to sign-in.
@@ -286,6 +291,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         // leave a user signed in than to crash the app start path.
         console.warn("[session-gate] failed:", err);
       }
+      // Routing facts wait for this (see sessionGateSettled).
+      markSessionGateSettled();
       if (!cancelled) {
         void refresh();
       }
