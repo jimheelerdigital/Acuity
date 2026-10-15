@@ -256,10 +256,12 @@ export default function V10Reveal() {
       <Body
         footer={
           <PrimaryButton
-            label="Keep building my Ripple"
+            label={user ? "Keep building my Ripple" : "Save my results"}
             onPress={() => {
-              trackV10("v10_keep_building_tapped", { branch });
-              router.push("/onboarding-new/paywall");
+              trackV10("v10_keep_building_tapped", { branch, signed_in: !!user });
+              // Account comes here (2026-10-15): save the results, then the
+              // paywall. A signed-in user (resumed funnel) goes straight on.
+              router.push(user ? "/onboarding-new/paywall" : "/onboarding-new/account");
             }}
           />
         }
@@ -285,7 +287,7 @@ export default function V10Reveal() {
                   <View style={{ flexDirection: "row", alignItems: "center", gap: 4, marginTop: 2 }}>
                     {onList ? <CircleCheck size={13} color={V11.good} /> : null}
                     <Text style={{ fontSize: 13, fontWeight: "600", color: onList ? V11.good : V11.sec }}>
-                      {onList ? "Already on your Tasks list" : "Going on your Tasks list"}
+                      {onList ? "Already on your Tasks list" : user ? "Going on your Tasks list" : "Saved to your Tasks when you create your account"}
                     </Text>
                   </View>
                 </View>

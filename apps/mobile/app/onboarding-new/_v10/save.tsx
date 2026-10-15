@@ -11,7 +11,7 @@ import { FunnelHeader, Heading, LightScreen, PROGRESS, RippleAppIcon, V11 } from
 import { signInWithApple, isAppleSignInAvailable } from "@/lib/apple-auth";
 import { useGoogleSignIn, type User } from "@/lib/auth";
 import { trackV10 } from "@/lib/onboarding-v10/analytics";
-import { setV10Guest } from "@/lib/onboarding-v10/state";
+import { applyPendingSetup } from "@/lib/onboarding-v11/apply";
 
 /**
  * Account step (1.9.1 — account first). Shown right after "I'm new", BEFORE
@@ -29,8 +29,8 @@ import { setV10Guest } from "@/lib/onboarding-v10/state";
  */
 
 const COPY = {
-  headline: "Create your account",
-  sub: "Every debrief is saved to it, on any device. No password needed.",
+  headline: "Save your results",
+  sub: "Create your free account to keep your to-dos, habits and first debrief, on any device. No password needed.",
 };
 
 export default function V10Save() {
@@ -58,13 +58,20 @@ export default function V10Save() {
    */
   const finishSignup = useCallback(
     async (method: "apple" | "google" | "email", isNewUser?: boolean) => {
-      // Not a guest — clears any guest state left by a 1.9.0 install.
-      await setV10Guest(false);
       await refresh();
-      trackV10("v10_account_completed", { method, position: "account_first", is_new: isNewUser ?? null });
-      // v11 (2026-10-15): on to Keenan's questions. The name screen skips
-      // itself when the sign-in already gave us a name.
-      router.replace("/onboarding-new/name");
+      trackV10("v10_account_completed", { method, position: "after_results", is_new: isNewUser ?? null });
+      // Account comes after the results (2026-10-15): attach the first
+      // debrief, consent, name, check-in time and habits she chose while
+      // signed out, then the paywall. Bounded so a slow network can't hold
+      // her on this screen; whatever doesn't finish is retried by
+      // finishOnboarding (claim) or simply left for Settings.
+      setBusy(true);
+      await Promise.race([
+        applyPendingSetup().catch(() => null),
+        new Promise((r) => setTimeout(r, 8000)),
+      ]);
+      await refresh();
+      router.replace("/onboarding-new/paywall");
     },
     [refresh]
   );

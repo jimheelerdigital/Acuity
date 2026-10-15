@@ -9,7 +9,10 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
  * credential, so AsyncStorage rather than SecureStore.
  */
 
-const KEY = "ripple.v11.answers";
+// "ripple.v10." prefix on purpose: entry-routing's isHistoryKey() treats
+// every other "ripple." key as proof of a returning user, which would send a
+// signed-out funnel-taker to sign-in on relaunch.
+const KEY = "ripple.v10.v11answers";
 
 export interface V11Answers {
   firstName?: string;
@@ -19,6 +22,15 @@ export interface V11Answers {
   sound?: "yes" | "no";
   /** Check-in time chosen while the debrief analyzes ("21:00"), or null for none. */
   checkInTime?: string | null;
+  // ── Choices made before the account exists (account comes after the
+  //    results, Jimmy 2026-10-15). Applied by applyPendingSetup() right
+  //    after sign-up, then cleared. ──
+  /** When she ticked the AI-consent box (ms). Recorded to the ledger after sign-up. */
+  consentAgreedAt?: number;
+  /** Habits picked while the debrief analyzed. Created after sign-up. */
+  pendingHabits?: string[];
+  /** A reminder time was chosen but not yet saved to the account. */
+  reminderPending?: boolean;
 }
 
 const EMPTY: V11Answers = { carrying: [] };

@@ -4,7 +4,7 @@ import { Text, View } from "react-native";
 import { setV10Branch, markV10Started } from "@/lib/onboarding-v10/state";
 import { HOOK } from "@/lib/onboarding-v11/copy";
 import { saveAnswers } from "@/lib/onboarding-v11/answers";
-import { goNext, trackV11 } from "@/lib/onboarding-v11/flow";
+import { goBack, goNext, trackV11 } from "@/lib/onboarding-v11/flow";
 
 import { StatementScreenBody } from "./_v11/statement";
 import { Body, FunnelHeader, LightScreen, PROGRESS, RippleLockupCoral, Stars, V11 } from "./_v11/ui";
@@ -22,7 +22,7 @@ export default function V11Hook() {
 
   return (
     <LightScreen>
-      <FunnelHeader progress={PROGRESS.hook} />
+      <FunnelHeader progress={PROGRESS.hook} onBack={goBack} />
       <Body center>
         <StatementScreenBody
           top={

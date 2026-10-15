@@ -5,7 +5,9 @@ import { router } from "expo-router";
 import Animated, { FadeIn, FadeInDown } from "react-native-reanimated";
 import { ChevronDown, ChevronUp, Keyboard, Mic } from "lucide-react-native";
 
+import { useAuth } from "@/contexts/auth-context";
 import { ART9_CONSENT_TEXT, ART9_WORDING_VERSION, recordConsent } from "@/lib/consent";
+import { saveAnswers } from "@/lib/onboarding-v11/answers";
 import { trackV10 } from "@/lib/onboarding-v10/analytics";
 import { goBack, trackV11 } from "@/lib/onboarding-v11/flow";
 import { submitTryDebriefText } from "@/lib/try-session";
@@ -18,11 +20,12 @@ import { Body, Card, Checkbox, FunnelHeader, Heading, LightScreen, PROGRESS, Pri
  * what we don't, OR type instead.
  *
  * Consent comes BEFORE any audio is recorded: Apple rejected build 40 for
- * audio reaching AI before consent. The ledger row (Art. 9, ART9 wording)
- * is written when she agrees — the full ART9 text is on screen under the
- * box, so what we store is exactly what she saw.
+ * audio reaching AI before consent. The full ART9 text is on screen under
+ * the box, so the ledger row (written at sign-up, see recordAgreement) is
+ * exactly what she saw.
  */
 export default function V11Consent() {
+  const { user } = useAuth();
   const [agreed, setAgreed] = useState(false);
   const [details, setDetails] = useState(false);
   const [mode, setMode] = useState<"talk" | "type">("talk");
@@ -38,14 +41,20 @@ export default function V11Consent() {
 
   const recordAgreement = async () => {
     trackV11("consent", "answered", mode);
-    // Fail soft: trapping her on a ledger write is worse than a missing row
-    // the app can re-ask for (same call as the welcome flow).
-    await recordConsent({
-      consentType: "special_category_processing",
-      granted: true,
-      consentText: ART9_CONSENT_TEXT,
-      wordingVersion: ART9_WORDING_VERSION,
-    }).catch(() => {});
+    // The account usually doesn't exist yet (it comes after the results):
+    // keep the agreement on the device and write the ledger row at sign-up
+    // (applyPendingSetup). A signed-in user (resumed funnel) is recorded now.
+    // Fail soft either way — trapping her on a ledger write is worse than a
+    // missing row the app can re-ask for.
+    await saveAnswers({ consentAgreedAt: Date.now() });
+    if (user) {
+      await recordConsent({
+        consentType: "special_category_processing",
+        granted: true,
+        consentText: ART9_CONSENT_TEXT,
+        wordingVersion: ART9_WORDING_VERSION,
+      }).catch(() => {});
+    }
   };
 
   const startTalking = async () => {

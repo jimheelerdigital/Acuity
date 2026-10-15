@@ -4,13 +4,13 @@ import { router } from "expo-router";
 import Animated, { FadeInDown } from "react-native-reanimated";
 
 import { trackV10 } from "@/lib/onboarding-v10/analytics";
-import { dismissV10, markV10Started } from "@/lib/onboarding-v10/state";
+import { dismissV10, markV10Offered, markV10Started } from "@/lib/onboarding-v10/state";
 
 import { LightScreen, PrimaryButton, RippleLockupCoral, Stars, V11 } from "../_v11/ui";
 
 /**
  * First screen (1.9.1): two clear choices.
- *   - "I'm new" → create the account → the questions → first recording.
+ *   - "I'm new" → the questions → first recording → results → account.
  *   - "I have an account — Log in" → the Log in screen.
  *
  * Replaces the small "Already have an account? Sign in" link that used to
@@ -26,7 +26,10 @@ export default function V10Start() {
 
   const onNew = useCallback(() => {
     trackV10("v10_start_new", {});
-    router.push("/onboarding-new/account");
+    // Account comes after the results now (2026-10-15) — straight into the
+    // questions. markV10Offered keeps a relaunch in the funnel.
+    void markV10Offered();
+    router.push("/onboarding-new/hook");
   }, []);
 
   const onLogIn = useCallback(async () => {

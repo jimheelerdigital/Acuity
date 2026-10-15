@@ -22,7 +22,7 @@ import Animated, {
   withTiming,
 } from "react-native-reanimated";
 import { SafeAreaView } from "react-native-safe-area-context";
-import Svg, { Circle, G, Path } from "react-native-svg";
+import Svg, { Circle, Defs, LinearGradient as SvgLinearGradient, Path, Stop } from "react-native-svg";
 import {
   ArrowRight,
   Bell,
@@ -109,19 +109,19 @@ export function tap() {
  * lib/onboarding-v11/flow.ts.
  */
 export const PROGRESS: Record<string, number> = {
-  account: 0.04,
-  name: 0.08,
-  hook: 0.12,
-  age: 0.18,
-  carrying: 0.25,
-  sound: 0.32,
-  notlazy: 0.39,
-  year: 0.46,
-  ready: 0.52,
-  consent: 0.58,
-  record: 0.66,
-  processing: 0.78,
-  reveal: 0.9,
+  hook: 0.06,
+  age: 0.12,
+  carrying: 0.19,
+  sound: 0.26,
+  notlazy: 0.33,
+  name: 0.39,
+  year: 0.45,
+  ready: 0.51,
+  consent: 0.57,
+  record: 0.64,
+  processing: 0.74,
+  reveal: 0.84,
+  account: 0.92,
 };
 
 // ── Page ─────────────────────────────────────────────────────────────────
@@ -563,62 +563,57 @@ export function Checkbox({ on }: { on: boolean }) {
   return <View style={{ width: 26, height: 26, borderRadius: 8, borderWidth: 2, borderColor: V11.quiet, backgroundColor: "#ffffff" }} />;
 }
 
-// ── Mood faces (port of web components/mood-avatar.tsx, "hue" tone) ──────
-// Only the moods this funnel uses. Colours are the web's oklch values
-// resolved to hex.
+// ── Mood faces ───────────────────────────────────────────────────────────
+// Cleaner redraw (Keenan, 2026-10-15: "make the faces look a bit cleaner"):
+// a soft gradient disc, solid rounded eyes, one bold mouth stroke, and no
+// scribbles / sweat drops. Same three moods, same colour families as the
+// web funnel's MoodAvatar so ad → web → app still match.
 type Mood = "overloaded" | "worried" | "hopeful";
-const MOOD_COLORS: Record<Mood, { disc: string; ring: string; ink: string; cue: string }> = {
-  overloaded: { disc: "#ffdbd2", ring: "#fcc1b6", ink: "#5c2e26", cue: "#cd6151" },
-  worried: { disc: "#fee3c0", ring: "#eccb9e", ink: "#523709", cue: "#b67700" },
-  hopeful: { disc: "#cff3d5", ring: "#b1dfb9", ink: "#1e4729", cue: "#399d57" },
+const MOOD_COLORS: Record<Mood, { top: string; bottom: string; ink: string; cheek: string }> = {
+  overloaded: { top: "#FFE6DF", bottom: "#FFC9BC", ink: "#5C2E26", cheek: "#F7A897" },
+  worried: { top: "#FFF0D6", bottom: "#FBD9A6", ink: "#523709", cheek: "#F2BE7A" },
+  hopeful: { top: "#E3F8E7", bottom: "#BDEBC6", ink: "#1E4729", cheek: "#93D6A2" },
 };
 
 export function MoodFace({ mood, size = 64 }: { mood: Mood; size?: number }) {
   const c = MOOD_COLORS[mood];
-  const sw = 2.4;
-  const stroke = { stroke: c.ink, strokeWidth: sw, strokeLinecap: "round" as const, strokeLinejoin: "round" as const, fill: "none" };
+  const id = `mf-${mood}`;
+  const line = { stroke: c.ink, strokeWidth: 3.2, strokeLinecap: "round" as const, strokeLinejoin: "round" as const, fill: "none" };
   return (
     <Svg width={size} height={size} viewBox="0 0 64 64" accessibilityLabel={mood}>
-      <Circle cx={32} cy={32} r={31} fill={c.disc} stroke={c.ring} strokeWidth={1.5} />
-      <G transform="translate(32 41) scale(1.25) translate(-32 -41)">
-        {mood === "overloaded" ? (
-          <>
-            <Circle cx={25} cy={36} r={3.2} {...stroke} />
-            <Circle cx={39} cy={36} r={3.2} {...stroke} />
-            <Path d="M25 47 q2.3 -2.4 4.6 0 t4.6 0 t4.6 0" {...stroke} />
-          </>
-        ) : null}
-        {mood === "worried" ? (
-          <>
-            <Path d="M21 31 l7 -2.5" {...stroke} />
-            <Path d="M43 31 l-7 -2.5" {...stroke} />
-            <Circle cx={25} cy={36} r={2.4} fill={c.ink} />
-            <Circle cx={39} cy={36} r={2.4} fill={c.ink} />
-            <Path d="M27 49 q5 -4 10 0" {...stroke} />
-          </>
-        ) : null}
-        {mood === "hopeful" ? (
-          <>
-            <Path d="M21.5 37 q3.5 -4 7 0" {...stroke} />
-            <Path d="M35.5 37 q3.5 -4 7 0" {...stroke} />
-            <Path d="M25 46 q7 6 14 0" {...stroke} />
-          </>
-        ) : null}
-      </G>
-      {mood === "overloaded" ? (
-        <Path
-          d="M22 16 c3 -7 9 3 12 -3 s6 6 9 0 m-19 3 c4 3 7 -4 11 0 s5 2 7 -2"
-          stroke={c.cue}
-          strokeWidth={sw}
-          strokeLinecap="round"
-          fill="none"
-        />
+      <Defs>
+        <SvgLinearGradient id={id} x1="0" y1="0" x2="0" y2="1">
+          <Stop offset="0" stopColor={c.top} />
+          <Stop offset="1" stopColor={c.bottom} />
+        </SvgLinearGradient>
+      </Defs>
+      <Circle cx={32} cy={32} r={32} fill={`url(#${id})`} />
+      {/* cheeks */}
+      <Circle cx={17} cy={39} r={4.5} fill={c.cheek} opacity={0.45} />
+      <Circle cx={47} cy={39} r={4.5} fill={c.cheek} opacity={0.45} />
+      {mood === "hopeful" ? (
+        <>
+          <Path d="M20 30 q4 -5 8 0" {...line} />
+          <Path d="M36 30 q4 -5 8 0" {...line} />
+          <Path d="M23 41 q9 9 18 0" {...line} />
+        </>
       ) : null}
       {mood === "worried" ? (
-        <Path d="M49 22 c-2.6 3.6 -3.4 5.6 -3.4 7 a3.4 3.4 0 0 0 6.8 0 c0 -1.4 -0.8 -3.4 -3.4 -7 z" fill={c.cue} />
+        <>
+          <Path d="M19.5 23.5 l7 -2" {...line} strokeWidth={2.8} />
+          <Path d="M44.5 23.5 l-7 -2" {...line} strokeWidth={2.8} />
+          <Circle cx={24} cy={30} r={3.2} fill={c.ink} />
+          <Circle cx={40} cy={30} r={3.2} fill={c.ink} />
+          <Path d="M25 45 q7 -5 14 0" {...line} />
+        </>
       ) : null}
-      {mood === "hopeful" ? <Path d="M46 8 q1 6 7 7 q-6 1 -7 7 q-1 -6 -7 -7 q6 -1 7 -7 z" fill={c.cue} /> : null}
+      {mood === "overloaded" ? (
+        <>
+          <Circle cx={24} cy={30} r={3.2} fill={c.ink} />
+          <Circle cx={40} cy={30} r={3.2} fill={c.ink} />
+          <Path d="M24 44 q2.7 -2.6 5.4 0 t5.4 0 t5.4 0" {...line} strokeWidth={2.8} />
+        </>
+      ) : null}
     </Svg>
   );
 }
-

@@ -4,25 +4,28 @@ import { trackV10 } from "@/lib/onboarding-v10/analytics";
 
 /**
  * Onboarding v11 route order — Keenan's Miro "BRAND NEW USER (ORGANIC/UGC)"
- * list, with the account kept FIRST (Jimmy, 2026-10-15: "Account first (as
- * now)") and one funnel for everyone (no per-ad versions).
+ * list, one funnel for everyone. Account AFTER the results (Jimmy,
+ * 2026-10-15, on Keenan's feedback: collect their info first, then create
+ * the account), and a required trial on the paywall.
  *
- *   start → account → name* → hook → age → carrying → sound → notlazy →
- *   year → ready → consent → record → processing (check-in + first habit
- *   while it analyzes) → reveal → paywall → Home + app tour
+ *   start → hook → age → carrying → sound → notlazy → name → year → ready →
+ *   consent → record → processing (check-in + first habit while it
+ *   analyzes) → reveal → account (save your results) → paywall (trial
+ *   required) → Home + app tour
  *
- *   * name only when the sign-in didn't give us one (Apple sometimes does).
+ * Choices made before the account exists are kept on the device and
+ * applied right after sign-up (lib/onboarding-v11/apply.ts).
  *
  * Every screen moves with push() so the round back button (router.back)
  * returns to the previous question with its answer still selected.
  */
 export const V11_ORDER = [
-  "name",
   "hook",
   "age",
   "carrying",
   "sound",
   "notlazy",
+  "name",
   "year",
   "ready",
   "consent",
@@ -41,9 +44,9 @@ export function goNext(from: V11Screen): void {
   else router.push("/onboarding-new/record" as Href);
 }
 
-/** Where the questions start once she's signed in. */
-export function firstQuestionHref(hasName: boolean): Href {
-  return hrefFor(hasName ? "hook" : "name");
+/** Where the questions start. */
+export function firstQuestionHref(): Href {
+  return hrefFor("hook");
 }
 
 export function goBack(): void {

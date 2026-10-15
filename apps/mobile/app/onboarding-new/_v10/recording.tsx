@@ -48,6 +48,12 @@ import { V10_MAX_RECORDING_MS as MAX_MS } from "@/lib/onboarding-v10/limits";
 
 // 🔒 Capped centrally — see V10_MAX_RECORDING_MS. Do not inline a number here.
 const TICK_MS = 100;
+/**
+ * A take shorter than this isn't sent. Whisper invents plausible sentences
+ * for near-empty audio — a ~2s take on 2026-10-15 came back as a sentence
+ * Keenan never said. "I'm done" stays disabled until here.
+ */
+const MIN_TAKE_MS = 5_000;
 
 export default function V10Recording() {
   const [branch, setBranch] = useState<V10Branch>("open");
@@ -136,7 +142,9 @@ export default function V10Recording() {
       const b = (await getV10Branch()) ?? "open";
       branchRef.current = b;
       if (mountedRef.current) setBranch(b);
-      await beginRecording();
+      // No auto-start (Keenan, 2026-10-15: people started talking before
+      // they realised it was recording, or didn't realise it was). The
+      // screen opens ready; tapping the orb or "Start recording" begins.
     })();
 
     return () => {
@@ -254,7 +262,14 @@ export default function V10Recording() {
     <LightScreen>
       <FunnelHeader progress={PROGRESS.record} />
       <View style={{ flex: 1, paddingHorizontal: 20, paddingTop: 14, paddingBottom: 10 }}>
-        <Animated.View style={[{ alignItems: "center" }, listeningStyle]}>
+        {!isRecording && !stopping ? (
+          <View style={{ alignItems: "center" }}>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 8, backgroundColor: "#ffffff", borderWidth: 1, borderColor: V11.lineStrong, borderRadius: 999, paddingHorizontal: 14, paddingVertical: 6, marginBottom: 14 }}>
+              <Text style={{ fontFamily: V11.display, fontSize: 13, color: V11.sec }}>Ready when you are</Text>
+            </View>
+          </View>
+        ) : null}
+        <Animated.View style={[{ alignItems: "center", display: isRecording || stopping ? "flex" : "none" }, listeningStyle]}>
           <View style={{ flexDirection: "row", alignItems: "center", gap: 8, backgroundColor: V11.coralSoft, borderRadius: 999, paddingHorizontal: 14, paddingVertical: 6, marginBottom: 14 }}>
             <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: V11.coral }} />
             <Text style={{ fontFamily: V11.display, fontSize: 13, color: V11.coral }}>Listening</Text>
@@ -276,20 +291,30 @@ export default function V10Recording() {
               recorder (1.9.1, Jimmy: the funnel must match the real
               recording). Tapping the orb stops, like the main recorder. */}
           <View style={{ alignItems: "center", marginBottom: 8 }}>
-            <RecordOrb amplitude={level} active={isRecording} onPress={() => void handleStop()} />
+            <RecordOrb
+              amplitude={level}
+              active={isRecording}
+              onPress={() => {
+                if (!isRecording) {
+                  if (!starting && !stopping) void beginRecording();
+                  return;
+                }
+                if (elapsedMs >= MIN_TAKE_MS) void handleStop();
+              }}
+            />
           </View>
           <RecordWaveform levels={[level]} active={isRecording} height={64} />
           <Text
             style={{
               fontFamily: V11.heading,
-              fontSize: 32,
-              color: V11.ink,
+              fontSize: isRecording || stopping ? 32 : 20,
+              color: isRecording || stopping ? V11.ink : V11.coral,
               textAlign: "center",
               marginTop: 16,
               fontVariant: ["tabular-nums"],
             }}
           >
-            {mmss}
+            {isRecording || stopping ? mmss : "Tap the orb to start"}
           </Text>
           {/* Appears at ~20s and STAYS. Not a threshold — reassurance. */}
           {pastSoftFloor && (
@@ -344,13 +369,24 @@ export default function V10Recording() {
             accessibilityLabel="Try recording again"
           />
         ) : (
-          <PrimaryButton
-            label="I'm done"
-            icon="check"
-            busy={stopping}
-            onPress={() => void handleStop()}
-            accessibilityLabel="Stop recording"
-          />
+          !isRecording && !stopping ? (
+            <PrimaryButton
+              label="Start recording"
+              icon="none"
+              busy={starting}
+              onPress={() => void beginRecording()}
+              accessibilityLabel="Start recording"
+            />
+          ) : (
+            <PrimaryButton
+              label={elapsedMs >= MIN_TAKE_MS ? "I'm done" : "Keep going…"}
+              icon={elapsedMs >= MIN_TAKE_MS ? "check" : "none"}
+              busy={stopping}
+              disabled={elapsedMs < MIN_TAKE_MS}
+              onPress={() => void handleStop()}
+              accessibilityLabel="Stop recording"
+            />
+          )
         )}
       </View>
     </LightScreen>

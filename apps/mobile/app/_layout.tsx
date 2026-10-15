@@ -263,7 +263,13 @@ function AuthGate() {
         // account-first): continue the new funnel right after the account
         // step instead of the legacy onboarding.
         void markV10Offered();
-        router.replace("/onboarding-new/name" as never);
+        router.replace("/onboarding-new/hook" as never);
+        return;
+
+      case "v10-paywall":
+        // Recorded in the funnel on this install but quit at the paywall,
+        // which requires a trial (v11). Back to it.
+        router.replace("/onboarding-new/paywall" as never);
         return;
 
       case "welcome":

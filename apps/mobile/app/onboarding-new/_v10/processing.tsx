@@ -69,6 +69,8 @@ const STAGES = ["Listening back to what you said", "Pulling out your to-dos and 
 type Phase = "notify" | "habit" | "waiting";
 
 export default function V10Processing() {
+  const { user } = useAuth();
+  const signedIn = !!user;
   const params = useLocalSearchParams<{ uri?: string; typed?: string }>();
   const uri = typeof params.uri === "string" ? params.uri : null;
   const typed = params.typed === "1";
@@ -117,15 +119,21 @@ export default function V10Processing() {
     // to-dos. Max 6s; on a timeout the results fall back to the extraction
     // and finishOnboarding() retries the claim.
     setStage(1);
-    const claim = await Promise.race([
-      claimAnonymousDebrief().catch(() => null),
-      new Promise<null>((r) => setTimeout(() => r(null), 6000)),
-    ]);
-    setEntryId(claim && claim.status === "claimed" && claim.entryId ? claim.entryId : null);
+    // Usually signed OUT here (account comes after the results): the
+    // debrief stays on the anonymous try-session and is claimed at sign-up.
+    // A signed-in user (resumed funnel) claims now so the results can show
+    // the real to-dos.
+    if (signedIn) {
+      const claim = await Promise.race([
+        claimAnonymousDebrief().catch(() => null),
+        new Promise<null>((r) => setTimeout(() => r(null), 6000)),
+      ]);
+      setEntryId(claim && claim.status === "claimed" && claim.entryId ? claim.entryId : null);
+    }
     setStage(2);
     trackV10("v10_processing_latency", { ms: Date.now() - startedAtRef.current, attempt: attemptRef.current, typed });
     setReady(true);
-  }, [uri, typed]);
+  }, [uri, typed, signedIn]);
 
   useEffect(() => {
     trackV10("v10_processing_viewed", { flow: "v11" });
@@ -157,8 +165,8 @@ export default function V10Processing() {
       ) : (
         <View style={{ flex: 1 }}>
           <AnalyzingCard stage={stage} ready={ready} onOpen={() => openResults("button")} />
-          {phase === "notify" ? <NotifyStep onDone={afterNotify} /> : null}
-          {phase === "habit" ? <HabitStep onDone={() => setPhase("waiting")} /> : null}
+          {phase === "notify" ? <NotifyStep signedIn={signedIn} onDone={afterNotify} /> : null}
+          {phase === "habit" ? <HabitStep signedIn={signedIn} onDone={() => setPhase("waiting")} /> : null}
           {phase === "waiting" ? <WaitingState /> : null}
         </View>
       )}
@@ -237,7 +245,7 @@ function clock(hhmm: string): string {
   return `${h % 12 === 0 ? 12 : h % 12}:${String(m).padStart(2, "0")} ${h >= 12 ? "PM" : "AM"}`;
 }
 
-function NotifyStep({ onDone }: { onDone: () => void }) {
+function NotifyStep({ signedIn, onDone }: { signedIn: boolean; onDone: () => void }) {
   const [selected, setSelected] = useState<Exclude<ReminderSlot, "none">>("late");
   const [busy, setBusy] = useState(false);
   const slots = REMINDER_SLOTS.filter((s) => s.key !== "none") as {
@@ -258,14 +266,19 @@ function NotifyStep({ onDone }: { onDone: () => void }) {
       // Persist BEFORE the OS prompt, through the reminders API the
       // scheduler already reads (same as v10 Screen 8 / the welcome flow).
       const time = localTimeFor(slot);
-      await saveAnswers({ checkInTime: time });
-      await api
-        .put("/api/account/reminders", {
-          reminders: time ? [{ time, daysActive: [0, 1, 2, 3, 4, 5, 6], enabled: true }] : [],
-        })
-        .catch(() => {});
+      // No account yet → keep it on the device; applyPendingSetup saves it
+      // (and posts the push token) right after sign-up.
+      await saveAnswers({ checkInTime: time, reminderPending: !signedIn });
+      if (signedIn) {
+        await api
+          .put("/api/account/reminders", {
+            reminders: time ? [{ time, daysActive: [0, 1, 2, 3, 4, 5, 6], enabled: true }] : [],
+          })
+          .catch(() => {});
+      }
       // iOS gives ONE chance at the permission prompt — never spend it on
-      // someone who just said no to reminders.
+      // someone who just said no to reminders. Signed out, this asks the
+      // permission now; the token is posted after sign-up.
       if (slot !== "none") {
         const result = await registerPushTokenForReminderSlot();
         trackV10("v10_os_push_prompt", { result, flow: "v11" });
@@ -332,7 +345,7 @@ function NotifyStep({ onDone }: { onDone: () => void }) {
 
 // ── #13 First habit ──────────────────────────────────────────────────────
 
-function HabitStep({ onDone }: { onDone: () => void }) {
+function HabitStep({ signedIn, onDone }: { signedIn: boolean; onDone: () => void }) {
   const [options, setOptions] = useState<string[]>([REFLECTION_HABIT_NAME]);
   const [selected, setSelected] = useState<string[]>([]);
   const [draft, setDraft] = useState("");
@@ -365,6 +378,14 @@ function HabitStep({ onDone }: { onDone: () => void }) {
     if (!selected.length || busy) return;
     setBusy(true);
     try {
+      const chosen = options.filter((o) => selected.includes(o));
+      if (!signedIn) {
+        // No account yet: created by applyPendingSetup right after sign-up.
+        await saveAnswers({ pendingHabits: chosen });
+        trackV11("habit", "answered", chosen.join(" | ").slice(0, 200));
+        onDone();
+        return;
+      }
       // Skip any she already has (a repeated visit must not duplicate).
       const existing = await fetchHabits().catch(() => ({ habits: [], checks: [] }));
       const have = new Set(existing.habits.map((h) => h.name.trim().toLowerCase()));

@@ -92,7 +92,7 @@ describe("signed in", () => {
     // They already recorded, saw a reveal, made a paywall decision and set
     // a reminder. /onboarding?step=N would be a second onboarding.
     expect(
-      at({ signedIn: true, onboardingCompleted: false, v10Offered: true, hasRecorded: true })
+      at({ signedIn: true, onboardingCompleted: false, v10Offered: true, hasRecorded: true, subscriptionStatus: "TRIAL" })
     ).toBe("home");
   });
 
@@ -108,9 +108,27 @@ describe("signed in", () => {
     ).toBe("v10-resume");
   });
 
-  it("1.9.1: keeps Home for v10 arrivals who did record", () => {
+  it("1.9.1: keeps Home for v10 arrivals who recorded and started the trial", () => {
+    expect(
+      at({ signedIn: true, onboardingCompleted: false, hasRecorded: true, v10Offered: true, subscriptionStatus: "TRIAL" })
+    ).toBe("home");
+    expect(
+      at({ signedIn: true, onboardingCompleted: false, hasRecorded: true, v10Offered: true, subscriptionStatus: "PRO" })
+    ).toBe("stay");
+  });
+
+  it("v11: back to the paywall (trial required) when they quit there on this install", () => {
+    expect(
+      at({ signedIn: true, onboardingCompleted: false, hasRecorded: true, v10Offered: true, subscriptionStatus: "FREE" })
+    ).toBe("v10-paywall");
     expect(
       at({ signedIn: true, onboardingCompleted: false, hasRecorded: true, v10Offered: true })
+    ).toBe("v10-paywall");
+  });
+
+  it("v11: never traps an older account that didn't come through the v11 funnel", () => {
+    expect(
+      at({ signedIn: true, onboardingCompleted: false, hasRecorded: true, v10Offered: false, subscriptionStatus: "FREE" })
     ).toBe("home");
   });
 

@@ -5,14 +5,15 @@ import { router } from "expo-router";
 import { useAuth } from "@/contexts/auth-context";
 import { api } from "@/lib/api";
 import { loadAnswers, saveAnswers } from "@/lib/onboarding-v11/answers";
-import { goNext, hrefFor, trackV11 } from "@/lib/onboarding-v11/flow";
+import { goBack, goNext, hrefFor, trackV11 } from "@/lib/onboarding-v11/flow";
 
 import { Body, Card, FunnelHeader, Heading, IconTile, LightScreen, PROGRESS, PrimaryButton, V11 } from "./_v11/ui";
 
 /**
- * "What should Ripple call you?" — only shown when the sign-in gave us no
- * name (email code never does; Apple only on the first authorization). The
- * year plan and the paywall greet her by it.
+ * "What should Ripple call you?" — asked before the year plan, which greets
+ * her by it. The account doesn't exist yet (it comes after the results), so
+ * the name is kept on the device and saved to the account at sign-up
+ * (applyPendingSetup). Skips itself for a signed-in user who has a name.
  */
 export default function V11Name() {
   const { user, setAuthenticatedUser } = useAuth();
@@ -26,7 +27,7 @@ export default function V11Name() {
   useEffect(() => {
     if (!known) return;
     void saveAnswers({ firstName: known });
-    router.replace(hrefFor("hook"));
+    router.replace(hrefFor("year"));
   }, [known]);
 
   useEffect(() => {
@@ -45,8 +46,10 @@ export default function V11Name() {
     trackV11("name", "answered", name ? "given" : "skipped");
     if (name) {
       void saveAnswers({ firstName: name.split(/\s+/)[0] });
-      if (user) setAuthenticatedUser({ ...user, name });
-      void api.post("/api/user/name", { name }).catch(() => {});
+      if (user) {
+        setAuthenticatedUser({ ...user, name });
+        void api.post("/api/user/name", { name }).catch(() => {});
+      }
     }
     goNext("name");
   };
@@ -55,7 +58,7 @@ export default function V11Name() {
 
   return (
     <LightScreen>
-      <FunnelHeader progress={PROGRESS.name} />
+      <FunnelHeader progress={PROGRESS.name} onBack={goBack} />
       <Body footer={<PrimaryButton label={v.trim() ? "Continue" : "Skip for now"} onPress={save} />}>
         <Heading title="What should Ripple call you?" sub="Your plan will be made for you." />
         <Card style={{ flexDirection: "row", alignItems: "center", gap: 10, padding: 8 }}>

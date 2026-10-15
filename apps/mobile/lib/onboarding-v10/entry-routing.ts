@@ -31,6 +31,7 @@ export type ColdStartRoute =
   | "signin"
   | "v10"
   | "v10-resume"
+  | "v10-paywall"
   | "welcome";
 
 export interface ColdStartFacts {
@@ -192,7 +193,16 @@ export function decideColdStartRoute(f: ColdStartFacts): ColdStartRoute {
   // Being ON /onboarding (stale link / old state) is treated like an entry
   // point, not a place to stay.
   if (!f.onboardingCompleted && !inOnboardingNew && !inAuthCallback) {
-    if (f.hasRecorded === true) return "home";
+    if (f.hasRecorded === true) {
+      // v11 (2026-10-15): the funnel's paywall requires a trial. Someone
+      // who reached it on THIS install (v10Offered) and quit before
+      // starting the trial goes back to it, not Home. Gated on v10Offered
+      // so an older account that never saw the v11 funnel is never trapped
+      // behind a paywall it didn't come through.
+      const paying = f.subscriptionStatus === "PRO" || f.subscriptionStatus === "TRIAL";
+      if (f.v10Offered && !paying) return "v10-paywall";
+      return "home";
+    }
     return "v10-resume";
   }
 
