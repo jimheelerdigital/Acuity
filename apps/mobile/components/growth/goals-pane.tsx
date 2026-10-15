@@ -44,6 +44,7 @@ import { GradientCheckbox } from "@/components/acuity";
 import { LockedFeatureCard } from "@/components/locked-feature-card";
 import { ProLockedCard } from "@/components/pro-locked-card";
 import { Skeleton, SkeletonCard } from "@/components/skeleton";
+import { SwipeRow } from "@/components/swipe-row";
 import { useAuth } from "@/contexts/auth-context";
 import { useTheme } from "@/contexts/theme-context";
 import { api } from "@/lib/api";
@@ -793,6 +794,7 @@ export function GoalsPane() {
                           onOpen={openGoal}
                           onAddSubgoal={setAddSubgoalFor}
                           onActions={setActionSheetFor}
+                          onDelete={deleteGoal}
                           onToggleTask={toggleTask}
                         />
                       ))}
@@ -858,6 +860,7 @@ const TreeNode = memo(function TreeNode({
   onOpen,
   onAddSubgoal,
   onActions,
+  onDelete,
   onToggleTask,
 }: {
   goal: TreeGoal;
@@ -867,6 +870,7 @@ const TreeNode = memo(function TreeNode({
   onOpen: (id: string) => void;
   onAddSubgoal: (goal: TreeGoal) => void;
   onActions: (goal: TreeGoal) => void;
+  onDelete: (id: string) => void;
   onToggleTask: (id: string, status: string) => void;
 }) {
   const { tokens } = useTheme();
@@ -884,6 +888,12 @@ const TreeNode = memo(function TreeNode({
 
   return (
     <View style={{ marginLeft: depth * 16 }}>
+      <SwipeRow
+        itemName={goal.title}
+        radius={16}
+        onEdit={() => onOpen(goal.id)}
+        onDelete={() => onDelete(goal.id)}
+      >
       <View
         className="rounded-2xl border p-3"
         style={{ borderColor: tokens.line, backgroundColor: tokens.cardBg }}
@@ -1008,6 +1018,7 @@ const TreeNode = memo(function TreeNode({
           </View>
         </View>
       </View>
+      </SwipeRow>
 
       {isExpanded && hasAny && (
         <View
@@ -1032,6 +1043,7 @@ const TreeNode = memo(function TreeNode({
               onOpen={onOpen}
               onAddSubgoal={onAddSubgoal}
               onActions={onActions}
+              onDelete={onDelete}
               onToggleTask={onToggleTask}
             />
           ))}

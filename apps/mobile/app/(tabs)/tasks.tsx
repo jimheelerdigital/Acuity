@@ -5,6 +5,7 @@ import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActionSheetIOS,
   ActivityIndicator,
+  Alert,
   Platform,
   Pressable,
   RefreshControl,
@@ -18,6 +19,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { GradientCheckbox } from "@/components/acuity";
 import { ProLockedCard } from "@/components/pro-locked-card";
 import { Skeleton, SkeletonCard } from "@/components/skeleton";
+import { SwipeRow } from "@/components/swipe-row";
 import { Confetti } from "@/components/tasks/confetti";
 import { useAuth } from "@/contexts/auth-context";
 import { useTheme } from "@/contexts/theme-context";
@@ -219,6 +221,9 @@ export default function TasksTab() {
           )
         );
       } else {
+        if (action === "dismiss") {
+          setTasks((prev) => prev.filter((t) => t.id !== id));
+        }
         setVisitSnapshot((prev) => {
           if (!prev) return prev;
           if (
@@ -264,6 +269,23 @@ export default function TasksTab() {
       router.push(`/task/${task.id}`);
     },
     [router]
+  );
+
+  // Delete is permanent (PATCH action "dismiss" hard-deletes), so it
+  // always confirms — from the swipe button and from the long-press menu.
+  const confirmDeleteTask = useCallback(
+    (task: Task) => {
+      const label = task.title ?? task.text ?? "this task";
+      Alert.alert("Delete task?", `"${label}" will be deleted.`, [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Delete",
+          style: "destructive",
+          onPress: () => act(task.id, "dismiss"),
+        },
+      ]);
+    },
+    [act]
   );
 
   const openMoveSheet = useCallback(
@@ -323,7 +345,7 @@ export default function TasksTab() {
       actions.push({
         label: "Delete",
         destructive: true,
-        run: () => act(task.id, "dismiss"),
+        run: () => confirmDeleteTask(task),
       });
       actions.push({ label: "Cancel", run: () => {} });
 
@@ -340,7 +362,7 @@ export default function TasksTab() {
         }
       );
     },
-    [act, openMoveSheet]
+    [act, openMoveSheet, confirmDeleteTask]
   );
 
   // Snapshot grouping once per tasks/snapshot change. The previous
@@ -576,6 +598,7 @@ export default function TasksTab() {
                   onOpenEditor={openTaskEditor}
                   onToggleComplete={handleToggleComplete}
                   onLongPress={openRowMenu}
+                  onDelete={confirmDeleteTask}
                 />
               );
             })}
@@ -595,6 +618,7 @@ export default function TasksTab() {
                   onOpenEditor={openTaskEditor}
                   onToggleComplete={handleToggleComplete}
                   onLongPress={openRowMenu}
+                  onDelete={confirmDeleteTask}
                 />
               );
             })()}
@@ -635,6 +659,7 @@ const GroupSection = memo(function GroupSection({
   onToggleComplete,
   onLongPress,
   onOpenEditor,
+  onDelete,
 }: {
   group: TaskGroup;
   tasks: Task[];
@@ -644,6 +669,7 @@ const GroupSection = memo(function GroupSection({
   onToggleComplete: (task: Task) => void;
   onLongPress: (task: Task) => void;
   onOpenEditor: (task: Task) => void;
+  onDelete: (task: Task) => void;
 }) {
   const { tokens } = useTheme();
   return (
@@ -731,6 +757,7 @@ const GroupSection = memo(function GroupSection({
               onToggle={onToggleComplete}
               onLongPress={onLongPress}
               onOpenEditor={onOpenEditor}
+              onDelete={onDelete}
             />
           </View>
         ))}
@@ -745,12 +772,14 @@ const TaskRow = memo(
     onToggle,
     onLongPress,
     onOpenEditor,
+    onDelete,
   }: {
     task: Task;
     tab: Tab;
     onToggle: (task: Task) => void;
     onLongPress: (task: Task) => void;
     onOpenEditor: (task: Task) => void;
+    onDelete: (task: Task) => void;
   }) {
     const { tokens } = useTheme();
     const label = task.title ?? task.text ?? "Untitled task";
@@ -782,8 +811,17 @@ const TaskRow = memo(
       () => onOpenEditor(task),
       [onOpenEditor, task]
     );
+    const handleDelete = useCallback(() => onDelete(task), [onDelete, task]);
 
     return (
+      <SwipeRow
+        variant="flush"
+        itemName={label}
+        onEdit={handleOpenEditor}
+        onDelete={handleDelete}
+      >
+      {/* Opaque background so the swipe buttons stay hidden until revealed. */}
+      <View style={{ backgroundColor: tokens.bg }}>
       <View
         style={{
           flexDirection: "row",
@@ -847,6 +885,8 @@ const TaskRow = memo(
           )}
         </Pressable>
       </View>
+      </View>
+      </SwipeRow>
     );
   },
   (prev, next) =>
@@ -854,7 +894,8 @@ const TaskRow = memo(
     prev.tab === next.tab &&
     prev.onToggle === next.onToggle &&
     prev.onLongPress === next.onLongPress &&
-    prev.onOpenEditor === next.onOpenEditor
+    prev.onOpenEditor === next.onOpenEditor &&
+    prev.onDelete === next.onDelete
 );
 
 // Local <Checkbox> removed in Slice Q8 — see <GradientCheckbox> in
