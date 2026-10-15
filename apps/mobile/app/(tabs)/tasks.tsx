@@ -14,12 +14,14 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { AttachStep } from "react-native-spotlight-tour";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
 import { GradientCheckbox } from "@/components/acuity";
 import { ProLockedCard } from "@/components/pro-locked-card";
 import { Skeleton, SkeletonCard } from "@/components/skeleton";
 import { SwipeRow } from "@/components/swipe-row";
+import { WHATS_NEW_STEP_INDEX } from "@/components/tour/steps";
 import { Confetti } from "@/components/tasks/confetti";
 import { useAuth } from "@/contexts/auth-context";
 import { useTheme } from "@/contexts/theme-context";
@@ -521,6 +523,20 @@ export default function TasksTab() {
     );
   }
 
+  // What's New tour (1.9.1): the first visible row is the one spotlit and
+  // slid open to demo the swipe.
+  const demoTaskId = (() => {
+    for (const g of sortedGroups) {
+      if (collapsedGroups.has(g.id)) continue;
+      const first = tasksByGroup.get(g.id)?.[0];
+      if (first) return first.id;
+    }
+    if (!collapsedGroups.has(UNGROUPED_KEY)) {
+      return tasksByGroup.get(UNGROUPED_KEY)?.[0]?.id ?? null;
+    }
+    return null;
+  })();
+
   return (
     <SafeAreaView
       className="flex-1"
@@ -623,6 +639,7 @@ export default function TasksTab() {
                   onToggleComplete={handleToggleComplete}
                   onLongPress={openRowMenu}
                   onDelete={confirmDeleteTask}
+                  demoTaskId={demoTaskId}
                 />
               );
             })}
@@ -643,6 +660,7 @@ export default function TasksTab() {
                   onToggleComplete={handleToggleComplete}
                   onLongPress={openRowMenu}
                   onDelete={confirmDeleteTask}
+                  demoTaskId={demoTaskId}
                 />
               );
             })()}
@@ -684,6 +702,7 @@ const GroupSection = memo(function GroupSection({
   onLongPress,
   onOpenEditor,
   onDelete,
+  demoTaskId,
 }: {
   group: TaskGroup;
   tasks: Task[];
@@ -694,6 +713,7 @@ const GroupSection = memo(function GroupSection({
   onLongPress: (task: Task) => void;
   onOpenEditor: (task: Task) => void;
   onDelete: (task: Task) => void;
+  demoTaskId: string | null;
 }) {
   const { tokens } = useTheme();
   return (
@@ -782,6 +802,7 @@ const GroupSection = memo(function GroupSection({
               onLongPress={onLongPress}
               onOpenEditor={onOpenEditor}
               onDelete={onDelete}
+              isDemo={task.id === demoTaskId}
             />
           </View>
         ))}
@@ -797,6 +818,7 @@ const TaskRow = memo(
     onLongPress,
     onOpenEditor,
     onDelete,
+    isDemo = false,
   }: {
     task: Task;
     tab: Tab;
@@ -804,6 +826,8 @@ const TaskRow = memo(
     onLongPress: (task: Task) => void;
     onOpenEditor: (task: Task) => void;
     onDelete: (task: Task) => void;
+    /** First visible row: the What's New tour spotlights + demos it. */
+    isDemo?: boolean;
   }) {
     const { tokens } = useTheme();
     const label = task.title ?? task.text ?? "Untitled task";
@@ -837,12 +861,13 @@ const TaskRow = memo(
     );
     const handleDelete = useCallback(() => onDelete(task), [onDelete, task]);
 
-    return (
+    const row = (
       <SwipeRow
         variant="flush"
         itemName={label}
         onEdit={handleOpenEditor}
         onDelete={handleDelete}
+        tourDemo={isDemo}
       >
       {/* Opaque background so the swipe buttons stay hidden until revealed. */}
       <View style={{ backgroundColor: tokens.bg }}>
@@ -912,6 +937,13 @@ const TaskRow = memo(
       </View>
       </SwipeRow>
     );
+    return isDemo ? (
+      <AttachStep index={WHATS_NEW_STEP_INDEX.swipe} fill>
+        {row}
+      </AttachStep>
+    ) : (
+      row
+    );
   },
   (prev, next) =>
     prev.task === next.task &&
@@ -919,7 +951,8 @@ const TaskRow = memo(
     prev.onToggle === next.onToggle &&
     prev.onLongPress === next.onLongPress &&
     prev.onOpenEditor === next.onOpenEditor &&
-    prev.onDelete === next.onDelete
+    prev.onDelete === next.onDelete &&
+    prev.isDemo === next.isDemo
 );
 
 // Local <Checkbox> removed in Slice Q8 — see <GradientCheckbox> in

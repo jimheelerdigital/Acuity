@@ -32,6 +32,7 @@ import {
 } from "@/lib/app-lock";
 import { TOUR_FORCE_REPLAY_KEY } from "@/hooks/use-tour-trigger";
 import { isObsidianExportEnabled } from "@/lib/feature-flags";
+import { showProfileDot, useWhatsNewState } from "@/lib/whats-new-state";
 import { isIapEnabled } from "@/lib/iap-config";
 import { rcFlags } from "@/lib/revenuecat/flags";
 import { showManageSubscriptions } from "@/lib/revenuecat";
@@ -405,6 +406,9 @@ export default function ProfileTab() {
             sublabel="Reminders, nudges, tone & quiet hours"
             onPress={() => router.push("/notification-preferences" as never)}
           />
+          {/* What's New (1.9.1) — this version's changes + the guided
+              tour, any time. Dot until everything's been explored. */}
+          <WhatsNewMenuItem onPress={() => router.push("/whats-new" as never)} />
           {/* Set up Ripple everywhere (1.7) — Action Button, Siri,
               widgets, and the mic/notification permission jumps. */}
           <MenuItem
@@ -605,12 +609,15 @@ function MenuItem({
   label,
   sublabel,
   destructive = false,
+  dot = false,
   onPress,
 }: {
   icon: React.ComponentProps<typeof Ionicons>["name"];
   label: string;
   sublabel?: string;
   destructive?: boolean;
+  /** Small primary dot after the label (e.g. unexplored What's New). */
+  dot?: boolean;
   onPress?: () => void;
 }) {
   const { tokens } = useTheme();
@@ -643,6 +650,7 @@ function MenuItem({
           }}
         >
           {label}
+          {dot ? <Text style={{ color: tokens.primary }}>{"  ●"}</Text> : null}
         </Text>
         {sublabel && (
           <Text
@@ -705,6 +713,23 @@ function AchievementsRow() {
       // expo-env.d.ts. `as never` is the established escape hatch
       // used elsewhere in the codebase for the same situation.
       onPress={() => router.push("/achievements" as never)}
+    />
+  );
+}
+
+function WhatsNewMenuItem({ onPress }: { onPress: () => void }) {
+  const wn = useWhatsNewState();
+  return (
+    <MenuItem
+      icon="sparkles-outline"
+      label="What's New"
+      sublabel={
+        wn.release
+          ? `What changed in Ripple ${wn.release.version}, with a quick tour`
+          : "Recent changes to Ripple"
+      }
+      dot={showProfileDot(wn)}
+      onPress={onPress}
     />
   );
 }

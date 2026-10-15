@@ -1,11 +1,13 @@
 import { Ionicons } from "@expo/vector-icons";
 import { useFocusEffect, useRouter } from "expo-router";
+import { AttachStep } from "react-native-spotlight-tour";
 import { useCallback, useState } from "react";
 import { Linking, Platform, Pressable, ScrollView, Text, View } from "react-native";
 import { requestPinWidget } from "react-native-android-widget";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { StickyBackButton } from "@/components/back-button";
+import { WHATS_NEW_STEP_INDEX } from "@/components/tour/steps";
 import { useTheme } from "@/contexts/theme-context";
 import { ANDROID_WIDGET_NAME } from "@/lib/android-widget/snapshot";
 import { readSetupStatus, type SetupStatus } from "@/lib/setup-status";
@@ -72,6 +74,7 @@ export default function SetupScreen() {
         ) : (
           <>
             {/* Action Button */}
+            <AttachStep index={WHATS_NEW_STEP_INDEX.actionButton} fill>
             <Card tokens={tokens} icon="ellipse-outline" title="Action Button" done={status?.actionButton}>
               <Text style={cardBody(tokens)}>
                 On iPhone 15 Pro and later, set the side Action Button to start a
@@ -85,6 +88,7 @@ export default function SetupScreen() {
                 it's set, one press opens Ripple ready to record.
               </Text>
             </Card>
+            </AttachStep>
 
             {/* Siri */}
             <Card tokens={tokens} icon="mic-circle-outline" title="Siri" done={status?.siri}>
@@ -100,6 +104,7 @@ export default function SetupScreen() {
             </Card>
 
             {/* Widgets */}
+            <AttachStep index={WHATS_NEW_STEP_INDEX.widgets} fill>
             <Card tokens={tokens} icon="apps-outline" title="Widgets" done={status?.widget}>
               <Text style={cardBody(tokens)}>
                 Two widgets: Ripple (your streak and today's habits, tap to
@@ -108,6 +113,7 @@ export default function SetupScreen() {
               <Step tokens={tokens} n={1} text="Home screen: long-press an empty area → + (top-left) → search Ripple." />
               <Step tokens={tokens} n={2} text="Lock screen: long-press the lock screen → Customize → tap the area under the clock → add Ripple." />
             </Card>
+            </AttachStep>
 
             {/* Permissions — these DO deep-link to Ripple's own Settings page */}
             <Card tokens={tokens} icon="options-outline" title="Permissions">

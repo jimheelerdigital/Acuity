@@ -5,7 +5,7 @@ import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Pressable, ScrollView, Text, View } from "react-native";
 import { AttachStep } from "react-native-spotlight-tour";
 
-import { TOUR_STEP_INDEX } from "@/components/tour/steps";
+import { TOUR_STEP_INDEX, WHATS_NEW_STEP_INDEX } from "@/components/tour/steps";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { GradientText, HeroCard } from "@/components/acuity";
@@ -25,6 +25,7 @@ import { LastNightCard } from "@/components/home/last-night-card";
 import { PeopleThisWeek } from "@/components/home/people-this-week";
 import { RecentThemesRow } from "@/components/home/recent-themes-row";
 import { TodayList } from "@/components/home/today-list";
+import { WhatsNewPill } from "@/components/home/whats-new-pill";
 import { TodayStatsRow } from "@/components/home/today-stats-row";
 import { TonightCTA } from "@/components/home/tonight-cta";
 import { WeeklyInsightCard } from "@/components/home/weekly-insight-card";
@@ -293,6 +294,10 @@ export default function DashboardTab() {
 
         <View style={{ height: 16 }} />
 
+        {/* 1.9.1 "New in 1.9.1 · 2 of 5 explored" → What's New. Updaters
+            only, 7 days, until explored or closed. */}
+        <WhatsNewPill />
+
         {/* v10 Screen 9 surfaces. Driven by real state (debrief count,
             subscription status), NOT by which onboarding the user saw —
             the pinned card is about where someone is, not how they got
@@ -324,7 +329,9 @@ export default function DashboardTab() {
 
         {/* 1.9.1 TODAY — most pressing tasks (overdue → due today → high
             priority). Renders nothing for accounts with no open tasks. */}
-        <TodayList />
+        <AttachStep index={WHATS_NEW_STEP_INDEX.today} fill>
+          <TodayList />
+        </AttachStep>
 
         {/* Today stats — streak ring + entries sparkbar + minutes */}
         <TodayStatsRow

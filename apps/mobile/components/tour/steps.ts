@@ -66,3 +66,26 @@ export const TOUR_TOTAL_STEPS = TOUR_STEP_CONTENT.length;
 
 /** First step the tour opens on (spotlight `start()` always begins at 0). */
 export const TOUR_FIRST_STEP_INDEX = 0;
+
+/**
+ * What's New tour targets (1.9.1). Appended AFTER the first-login steps so
+ * those keep indices 0–6; the first-login tour stops at
+ * TOUR_TOTAL_STEPS - 1 and never walks into these. Only What's New mode
+ * (components/tour/whats-new-tour.ts) visits them, via goTo().
+ */
+export const WHATS_NEW_STEP_INDEX = {
+  today: TOUR_TOTAL_STEPS, // Home → TODAY card
+  swipe: TOUR_TOTAL_STEPS + 1, // Tasks → first task row
+  widgets: TOUR_TOTAL_STEPS + 2, // Setup → Widgets card
+  actionButton: TOUR_TOTAL_STEPS + 3, // Setup → Action Button card
+  notifications: TOUR_TOTAL_STEPS + 4, // Notifications → master toggle
+} as const;
+
+/** Screen each What's New target lives on (navigated to before measuring). */
+export const WHATS_NEW_STEP_PATHS: Record<keyof typeof WHATS_NEW_STEP_INDEX, string> = {
+  today: "/(tabs)",
+  swipe: "/(tabs)/tasks",
+  widgets: "/setup",
+  actionButton: "/setup",
+  notifications: "/notification-preferences",
+};

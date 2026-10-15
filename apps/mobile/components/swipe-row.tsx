@@ -26,6 +26,18 @@ import { fireHaptic } from "@/lib/haptics";
 // The single open row, shared across every list on screen.
 let openRow: Swipeable | null = null;
 
+// The row the What's New tour uses to demo the swipe (first task row).
+let tourDemoRow: Swipeable | null = null;
+
+/** What's New tour: slide the demo row open to show Edit / Delete. */
+export function peekTourDemoRow(): void {
+  const row = tourDemoRow;
+  if (!row) return;
+  if (openRow && openRow !== row) openRow.close();
+  openRow = row;
+  row.openRight();
+}
+
 /** Close whichever row is open (call on scroll / screen blur if wanted). */
 export function closeOpenSwipeRow(): void {
   openRow?.close();
@@ -40,6 +52,7 @@ export function SwipeRow({
   variant = "card",
   radius = 12,
   enabled = true,
+  tourDemo = false,
 }: {
   children: ReactNode;
   onEdit: () => void;
@@ -50,6 +63,8 @@ export function SwipeRow({
   variant?: "card" | "flush";
   radius?: number;
   enabled?: boolean;
+  /** This row is the one the What's New tour slides open as a demo. */
+  tourDemo?: boolean;
 }) {
   const { tokens } = useTheme();
   const ref = useRef<Swipeable | null>(null);
@@ -61,6 +76,14 @@ export function SwipeRow({
     },
     []
   );
+
+  useEffect(() => {
+    if (!tourDemo) return;
+    tourDemoRow = ref.current;
+    return () => {
+      if (tourDemoRow === ref.current) tourDemoRow = null;
+    };
+  }, [tourDemo]);
 
   const claimOpen = useCallback(() => {
     const self = ref.current;
