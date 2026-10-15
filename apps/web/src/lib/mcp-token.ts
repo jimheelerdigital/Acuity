@@ -56,7 +56,8 @@ function hashToken(plaintext: string): string {
  */
 export async function mintMcpToken(
   userId: string,
-  name?: string | null
+  name?: string | null,
+  opts: { connectionId?: string; expiresAt?: Date } = {}
 ): Promise<MintedToken> {
   const secret = randomBytes(32).toString("base64url");
   const plaintext = `${TOKEN_PREFIX}${secret}`;
@@ -69,6 +70,9 @@ export async function mintMcpToken(
       tokenHash,
       prefix,
       name: name?.trim() ? name.trim().slice(0, 80) : null,
+      // Set only for OAuth-issued access tokens (lib/mcp-oauth/server.ts).
+      connectionId: opts.connectionId ?? null,
+      expiresAt: opts.expiresAt ?? null,
     },
     select: { id: true },
   });
@@ -100,11 +104,14 @@ export async function verifyMcpToken(
       revokedAt: true,
       expiresAt: true,
       lastUsedAt: true,
+      connection: { select: { revokedAt: true } },
     },
   });
 
   if (!row) return null;
   if (row.revokedAt) return null;
+  // OAuth-issued token whose connection the user disconnected.
+  if (row.connection?.revokedAt) return null;
   if (row.expiresAt && row.expiresAt.getTime() <= Date.now()) return null;
 
   const now = Date.now();
@@ -128,10 +135,14 @@ export interface McpTokenSummary {
   expiresAt: Date | null;
 }
 
-/** All of a user's tokens, newest first. Never includes the hash or plaintext. */
+/**
+ * The user's hand-made tokens, newest first. Never includes the hash or
+ * plaintext. OAuth-issued access tokens are excluded — those belong to a
+ * connected app (listConnections in lib/mcp-oauth/server.ts).
+ */
 export async function listMcpTokens(userId: string): Promise<McpTokenSummary[]> {
   return prisma.mcpAccessToken.findMany({
-    where: { userId },
+    where: { userId, connectionId: null },
     orderBy: { createdAt: "desc" },
     select: {
       id: true,

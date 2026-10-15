@@ -7,10 +7,15 @@ import { Button, Card, SectionHeader } from "@/components/acuity";
 /**
  * "Connect your AI" — /account section (Ripple 1.8, MCP).
  *
- * Lets a Pro user mint + revoke access tokens for the Ripple MCP server and
- * copy the connection config into an external assistant (Claude Desktop,
- * Cursor, ChatGPT, …). Bring-your-own-AI: the user points their OWN
- * assistant at their OWN journal, read-only.
+ * Two ways in:
+ *   1. Claude (claude.ai, Desktop, mobile) — the main path. The user adds
+ *      https://goripple.io/api/mcp as a custom connector and approves on
+ *      /oauth/authorize ("Sign in with Ripple", lib/mcp-oauth). Those
+ *      connections are listed here with Disconnect.
+ *   2. Developer tools (Cursor, Claude Code, …) — mint a token by hand and
+ *      paste it as a bearer header. Tucked under "Developer tools".
+ * Bring-your-own-AI: the user points their OWN assistant at their OWN
+ * journal, read-only.
  *
  * Self-contained — talks to /api/mcp-tokens (list/create) and
  * /api/mcp-tokens/[id] (revoke). The plaintext token is shown EXACTLY ONCE,
@@ -19,6 +24,13 @@ import { Button, Card, SectionHeader } from "@/components/acuity";
  * Pro-gated: when `isProLocked`, the mint control is replaced with an
  * upgrade nudge. No "$"/price tokens here — upgrade lives at /upgrade.
  */
+
+interface ConnectionSummary {
+  id: string;
+  clientName: string | null;
+  createdAt: string;
+  lastUsedAt: string | null;
+}
 
 interface TokenSummary {
   id: string;
@@ -53,13 +65,38 @@ export function McpSection({ isProLocked }: McpSectionProps) {
   const [creating, setCreating] = useState(false);
   const [newName, setNewName] = useState("");
   const [freshToken, setFreshToken] = useState<string | null>(null);
-  const [copied, setCopied] = useState<"token" | "config" | null>(null);
+  const [copied, setCopied] = useState<"token" | "config" | "url" | "claude-code" | null>(null);
   const [confirmRevokeId, setConfirmRevokeId] = useState<string | null>(null);
+  const [connections, setConnections] = useState<ConnectionSummary[]>([]);
+  const [confirmDisconnectId, setConfirmDisconnectId] = useState<string | null>(null);
 
   const mcpUrl =
     typeof window !== "undefined"
       ? `${window.location.origin}/api/mcp`
       : "https://goripple.io/api/mcp";
+
+  async function loadConnections() {
+    try {
+      const res = await fetch("/api/mcp-connections");
+      if (!res.ok) return;
+      const data = (await res.json()) as { connections: ConnectionSummary[] };
+      setConnections(data.connections);
+    } catch {
+      /* the token list's error message covers a broken connection */
+    }
+  }
+
+  async function disconnect(id: string) {
+    setError(null);
+    try {
+      const res = await fetch(`/api/mcp-connections/${id}`, { method: "DELETE" });
+      if (!res.ok && res.status !== 404) throw new Error(`Could not disconnect (${res.status})`);
+      setConfirmDisconnectId(null);
+      await loadConnections();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Could not disconnect");
+    }
+  }
 
   async function load() {
     setLoading(true);
@@ -77,6 +114,9 @@ export function McpSection({ isProLocked }: McpSectionProps) {
   }
 
   useEffect(() => {
+    // Connections list even when locked: a lapsed user must be able to
+    // see and disconnect what's connected.
+    void loadConnections();
     if (!isProLocked) void load();
     else setLoading(false);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -122,13 +162,14 @@ export function McpSection({ isProLocked }: McpSectionProps) {
     }
   }
 
-  function copy(text: string, which: "token" | "config") {
+  function copy(text: string, which: "token" | "config" | "url" | "claude-code") {
     void navigator.clipboard?.writeText(text).then(() => {
       setCopied(which);
       setTimeout(() => setCopied(null), 2000);
     });
   }
 
+  // Cursor's mcp.json format (remote server + header).
   const configSnippet = `{
   "mcpServers": {
     "ripple": {
@@ -137,6 +178,7 @@ export function McpSection({ isProLocked }: McpSectionProps) {
     }
   }
 }`;
+  const claudeCodeSnippet = `claude mcp add --transport http ripple ${mcpUrl} --header "Authorization: Bearer YOUR_TOKEN"`;
 
   return (
     <Card>
@@ -146,6 +188,43 @@ export function McpSection({ isProLocked }: McpSectionProps) {
         journal over MCP. It&apos;s read-only, scoped to your account, and you
         can revoke access any time. We never train on your entries.
       </p>
+
+      {connections.length > 0 && (
+        <div className="mt-4">
+          <p className="text-xs font-semibold uppercase tracking-wide text-acuity-text-sec">
+            Connected apps
+          </p>
+          <ul className="mt-2 flex flex-col gap-2">
+            {connections.map((c) => (
+              <li
+                key={c.id}
+                className="flex items-center justify-between gap-3 rounded-acuity-lg border border-acuity-line bg-acuity-bg-sub px-4 py-3"
+              >
+                <div className="min-w-0">
+                  <p className="truncate text-sm text-acuity-text">{c.clientName ?? "Connected app"}</p>
+                  <p className="text-xs text-acuity-text-sec">
+                    Connected {relativeTime(c.createdAt)} · last used {relativeTime(c.lastUsedAt)}
+                  </p>
+                </div>
+                {confirmDisconnectId === c.id ? (
+                  <div className="flex shrink-0 gap-2">
+                    <Button size="sm" variant="destructive" onClick={() => disconnect(c.id)}>
+                      Confirm
+                    </Button>
+                    <Button size="sm" variant="ghost" onClick={() => setConfirmDisconnectId(null)}>
+                      Cancel
+                    </Button>
+                  </div>
+                ) : (
+                  <Button size="sm" variant="ghost" onClick={() => setConfirmDisconnectId(c.id)}>
+                    Disconnect
+                  </Button>
+                )}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
 
       {isProLocked ? (
         <div className="mt-4 rounded-acuity-lg border border-acuity-line bg-acuity-bg-sub p-4">
@@ -161,6 +240,55 @@ export function McpSection({ isProLocked }: McpSectionProps) {
         </div>
       ) : (
         <>
+          <div className="mt-4 rounded-acuity-lg border border-acuity-line bg-acuity-bg-sub p-4">
+            <p className="text-sm font-semibold text-acuity-text">Connect Claude</p>
+            <ol className="mt-2 list-decimal space-y-2 pl-5 text-sm text-acuity-text-sec">
+              <li>
+                Copy Ripple&apos;s address:
+                <div className="mt-1 flex flex-wrap items-center gap-2">
+                  <code className="break-all rounded-acuity-lg bg-acuity-bg-inset px-2 py-1 font-mono text-[12px] text-acuity-text">
+                    {mcpUrl}
+                  </code>
+                  <Button size="sm" variant="secondary" onClick={() => copy(mcpUrl, "url")}>
+                    {copied === "url" ? "Copied" : "Copy"}
+                  </Button>
+                </div>
+              </li>
+              <li>
+                In Claude (web, desktop or phone app) open{" "}
+                <a
+                  href="https://claude.ai/customize/connectors"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="font-semibold text-acuity-primary hover:underline"
+                >
+                  Customize → Connectors
+                </a>
+                .
+              </li>
+              <li>
+                Click <span className="font-semibold">Add custom connector</span>, name it
+                &ldquo;Ripple&rdquo;, paste the address, and click{" "}
+                <span className="font-semibold">Add</span>.
+              </li>
+              <li>
+                Click <span className="font-semibold">Connect</span>. You&apos;ll come back to
+                Ripple to approve — then ask Claude about your journal.
+              </li>
+            </ol>
+            <p className="mt-3 text-xs text-acuity-text-sec">
+              On a Claude Team or Enterprise plan, an Owner adds the connector under
+              Organization settings → Connectors; then you click Connect.
+            </p>
+          </div>
+
+          <details className="mt-5">
+            <summary className="cursor-pointer text-sm font-semibold text-acuity-text">
+              Developer tools (Cursor, Claude Code, …)
+            </summary>
+            <p className="mt-2 text-sm text-acuity-text-sec">
+              Apps that take a header instead of a sign-in use a personal token.
+            </p>
           {freshToken && (
             <div className="mt-4 rounded-acuity-lg border border-acuity-primary bg-acuity-bg-sub p-4">
               <p className="text-sm font-semibold text-acuity-text">
@@ -282,10 +410,10 @@ export function McpSection({ isProLocked }: McpSectionProps) {
 
           <div className="mt-5">
             <p className="text-xs font-semibold uppercase tracking-wide text-acuity-text-sec">
-              How to connect
+              How to connect a developer tool
             </p>
             <p className="mt-1 text-sm text-acuity-text-sec">
-              Add this to your client&apos;s MCP config, replacing{" "}
+              Cursor (<code className="font-mono">mcp.json</code>), replacing{" "}
               <code className="font-mono">YOUR_TOKEN</code>:
             </p>
             <pre className="mt-2 overflow-x-auto rounded-acuity-lg bg-acuity-bg-inset p-3 font-mono text-[12px] leading-relaxed text-acuity-text">
@@ -299,12 +427,25 @@ export function McpSection({ isProLocked }: McpSectionProps) {
               >
                 {copied === "config" ? "Copied" : "Copy config"}
               </Button>
+            </div>
+            <p className="mt-4 text-sm text-acuity-text-sec">Claude Code:</p>
+            <pre className="mt-2 overflow-x-auto rounded-acuity-lg bg-acuity-bg-inset p-3 font-mono text-[12px] leading-relaxed text-acuity-text">
+              {claudeCodeSnippet}
+            </pre>
+            <div className="mt-2 flex items-center gap-3">
+              <Button size="sm" variant="secondary" onClick={() => copy(claudeCodeSnippet, "claude-code")}>
+                {copied === "claude-code" ? "Copied" : "Copy command"}
+              </Button>
               <span className="text-xs text-acuity-text-sec">
-                Stdio-only client? Bridge with{" "}
-                <code className="font-mono">npx mcp-remote {mcpUrl}</code>.
+                Local-only (stdio) client? Bridge with{" "}
+                <code className="font-mono">
+                  npx mcp-remote {mcpUrl} --header &quot;Authorization: Bearer YOUR_TOKEN&quot;
+                </code>
+                .
               </span>
             </div>
           </div>
+          </details>
         </>
       )}
     </Card>

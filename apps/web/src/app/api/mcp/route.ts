@@ -46,6 +46,7 @@ import {
 import { resolveEntitlement } from "@/lib/entitlements/resolve";
 import { localDateForTimezone } from "@/lib/habits-autocheck";
 import { retrieveRelevantEntries, toCitations } from "@/lib/journal-query";
+import { oauthIssuer } from "@/lib/mcp-oauth/core";
 import { verifyMcpToken } from "@/lib/mcp-token";
 import { prisma } from "@/lib/prisma";
 
@@ -583,6 +584,11 @@ async function verifyToken(
 const handler = withMcpAuth(baseHandler, verifyToken, {
   required: true,
   requiredScopes: [SCOPE_READ],
+  // 401s carry WWW-Authenticate: Bearer resource_metadata="<issuer>/.well-known/
+  // oauth-protected-resource" — how Claude finds "Sign in with Ripple"
+  // (app/.well-known/*, lib/mcp-oauth). Pinned to the public origin so the
+  // pointer is right behind any proxy.
+  resourceUrl: oauthIssuer(),
 });
 
 export { handler as GET, handler as POST };

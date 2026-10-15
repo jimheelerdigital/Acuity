@@ -57,7 +57,7 @@ export async function POST(req: NextRequest) {
   }
 
   const activeCount = await prisma.mcpAccessToken.count({
-    where: { userId, revokedAt: null },
+    where: { userId, revokedAt: null, connectionId: null },
   });
   if (activeCount >= MAX_ACTIVE_TOKENS) {
     return NextResponse.json(
