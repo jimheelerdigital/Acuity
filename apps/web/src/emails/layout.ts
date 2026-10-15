@@ -18,8 +18,9 @@ export function emailLayout(opts: {
   title: string;
   preheader?: string;
   intro: string;
-  ctaLabel: string;
-  ctaUrl: string;
+  /** Omit both for an email with no button (e.g. a sign-in code). */
+  ctaLabel?: string;
+  ctaUrl?: string;
   /** Optional paragraph below the CTA (e.g. "expires in 1 hour"). */
   footnote?: string;
 }): string {
@@ -45,9 +46,13 @@ export function emailLayout(opts: {
     <p style="color:#374151;font-size:16px;line-height:1.6;margin:0 0 32px;">
       ${intro}
     </p>
-    <a href="${ctaUrl}" style="display:block;background:#E06B46;background:linear-gradient(135deg,#FFA47E 0%,#FF8A65 55%,#E06B46 100%);color:#FFFFFF;text-decoration:none;text-align:center;padding:14px 24px;border-radius:8px;font-weight:600;font-size:15px;margin-bottom:24px;">
+    ${
+      ctaLabel && ctaUrl
+        ? `<a href="${ctaUrl}" style="display:block;background:#E06B46;background:linear-gradient(135deg,#FFA47E 0%,#FF8A65 55%,#E06B46 100%);color:#FFFFFF;text-decoration:none;text-align:center;padding:14px 24px;border-radius:8px;font-weight:600;font-size:15px;margin-bottom:24px;">
       ${ctaLabel}
-    </a>
+    </a>`
+        : ""
+    }
     ${
       footnote
         ? `<p style="color:#6b7280;font-size:13px;text-align:center;margin:0;">${footnote}</p>`
