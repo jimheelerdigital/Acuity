@@ -83,8 +83,9 @@ export function shouldAutoAsk(input: {
  *   - the count is the server's `totalRecordings` (bumped when processing
  *     completes), so it's right on any device and any completion path;
  *   - it's called from every completion path (record screen + notifier)
- *     AND whenever the signed-in app opens / returns to the foreground
- *     ((tabs)/_layout.tsx), so leaving or closing the app can't skip it;
+ *     AND when the signed-in user the auth context already loads changes
+ *     ((tabs)/_layout.tsx — no extra request), so leaving or closing the
+ *     app can't skip it;
  *   - "already asked" is remembered per account on this device.
  * Fires once per account per device when the count is >= 2, so people
  * already past 2 debriefs get asked on their next one.

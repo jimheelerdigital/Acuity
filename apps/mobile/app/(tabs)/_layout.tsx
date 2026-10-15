@@ -5,10 +5,11 @@ import { useQuickActionRouting } from "expo-quick-actions/router";
 
 import { setupQuickActions } from "@/lib/quick-actions";
 import { maybeAskForReviewAfterDebrief } from "@/lib/review";
+import { useAuth } from "@/contexts/auth-context";
 import { isHabitsEnabled } from "@/lib/feature-flags";
 import { forwardRef, useEffect, useRef, useState } from "react";
 import * as Haptics from "expo-haptics";
-import { Animated, AppState, Pressable, Text, View } from "react-native";
+import { Animated, Pressable, Text, View } from "react-native";
 import { AttachStep } from "react-native-spotlight-tour";
 
 import { TOUR_STEP_INDEX } from "@/components/tour/steps";
@@ -71,17 +72,15 @@ export default function TabsLayout() {
     void setupQuickActions();
   }, []);
 
-  // App Store rating ask: whenever the signed-in app opens or comes back to
-  // the foreground, ask once if this account has >= 2 completed debriefs.
-  // Doesn't depend on where the user was when a debrief finished (left the
-  // app, closed it, another screen) — the server count decides.
+  // App Store rating ask, driven by the signed-in user the auth context
+  // already loads (and re-fetches on foreground) — no extra network call.
+  // Runs only when the user id or their recording count changes; once this
+  // account has been asked, it's a single local flag read and nothing else.
+  const { user } = useAuth();
   useEffect(() => {
-    void maybeAskForReviewAfterDebrief();
-    const sub = AppState.addEventListener("change", (state) => {
-      if (state === "active") void maybeAskForReviewAfterDebrief();
-    });
-    return () => sub.remove();
-  }, []);
+    if (!user?.id || user.totalRecordings == null) return;
+    void maybeAskForReviewAfterDebrief({ id: user.id, totalRecordings: user.totalRecordings });
+  }, [user?.id, user?.totalRecordings]);
 
   return (
     <View style={{ flex: 1 }}>
