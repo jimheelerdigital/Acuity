@@ -13,6 +13,17 @@ import SwiftUI
 // (iOS won't give a widget the mic; the tap brings the app forward to record).
 
 private let APP_GROUP = "group.com.heelerdigital.acuity"
+
+// Setup-hub check mark (1.9.1): getTimeline only runs for widgets actually
+// placed on a Home/Lock Screen (gallery previews use getSnapshot), so the
+// first call records "a Ripple widget is set up". Read by
+// apps/mobile/lib/setup-status.ts.
+private func markWidgetPlaced() {
+    let d = UserDefaults(suiteName: APP_GROUP)
+    if d?.object(forKey: "setup.widgetSeenAt") == nil {
+        d?.set(Date().timeIntervalSince1970, forKey: "setup.widgetSeenAt")
+    }
+}
 private let RECORD_URL = URL(string: "acuity://record?autostart=1")!
 
 struct HabitItem: Decodable {
@@ -51,6 +62,7 @@ struct Provider: TimelineProvider {
     func getTimeline(in context: Context, completion: @escaping (Timeline<RippleEntry>) -> Void) {
         // Refresh a few times a day; the app also nudges a reload after habit
         // actions via ExtensionStorage.reloadWidget().
+        markWidgetPlaced()
         let entry = readEntry()
         let next = Calendar.current.date(byAdding: .hour, value: 6, to: Date()) ?? Date().addingTimeInterval(21600)
         completion(Timeline(entries: [entry], policy: .after(next)))
@@ -305,6 +317,7 @@ struct TodayProvider: TimelineProvider {
     }
 
     func getTimeline(in context: Context, completion: @escaping (Timeline<TodayEntry>) -> Void) {
+        markWidgetPlaced()
         let now = Date()
         let items = readTodayItems()
         let list = items ?? []

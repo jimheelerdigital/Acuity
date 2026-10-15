@@ -1,6 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
-import { useRouter } from "expo-router";
-import { useState } from "react";
+import { useFocusEffect, useRouter } from "expo-router";
+import { useCallback, useState } from "react";
 import { Linking, Platform, Pressable, ScrollView, Text, View } from "react-native";
 import { requestPinWidget } from "react-native-android-widget";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -8,6 +8,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { StickyBackButton } from "@/components/back-button";
 import { useTheme } from "@/contexts/theme-context";
 import { ANDROID_WIDGET_NAME } from "@/lib/android-widget/snapshot";
+import { readSetupStatus, type SetupStatus } from "@/lib/setup-status";
 import type { AcuityTokens } from "@/lib/theme/tokens";
 
 /**
@@ -26,6 +27,20 @@ import type { AcuityTokens } from "@/lib/theme/tokens";
 export default function SetupScreen() {
   const { tokens } = useTheme();
   const router = useRouter();
+  // Green checks (1.9.1). Re-read on focus so coming back from Settings /
+  // adding a widget updates the screen. See lib/setup-status.ts.
+  const [status, setStatus] = useState<SetupStatus | null>(null);
+  useFocusEffect(
+    useCallback(() => {
+      let cancelled = false;
+      void readSetupStatus().then((s) => {
+        if (!cancelled) setStatus(s);
+      });
+      return () => {
+        cancelled = true;
+      };
+    }, [])
+  );
 
   const openAppSettings = () => {
     if (Platform.OS === "ios") {
@@ -49,11 +64,15 @@ export default function SetupScreen() {
         </Text>
 
         {Platform.OS === "android" ? (
-          <AndroidCards tokens={tokens} openAppSettings={openAppSettings} />
+          <AndroidCards
+            tokens={tokens}
+            openAppSettings={openAppSettings}
+            widgetDone={status?.widget ?? false}
+          />
         ) : (
           <>
             {/* Action Button */}
-            <Card tokens={tokens} icon="ellipse-outline" title="Action Button">
+            <Card tokens={tokens} icon="ellipse-outline" title="Action Button" done={status?.actionButton}>
               <Text style={cardBody(tokens)}>
                 On iPhone 15 Pro and later, set the side Action Button to start a
                 debrief instantly. Apple only lets you assign it in Settings:
@@ -68,7 +87,7 @@ export default function SetupScreen() {
             </Card>
 
             {/* Siri */}
-            <Card tokens={tokens} icon="mic-circle-outline" title="Siri">
+            <Card tokens={tokens} icon="mic-circle-outline" title="Siri" done={status?.siri}>
               <Text style={cardBody(tokens)}>
                 No setup needed — just say it:
               </Text>
@@ -81,9 +100,10 @@ export default function SetupScreen() {
             </Card>
 
             {/* Widgets */}
-            <Card tokens={tokens} icon="apps-outline" title="Widgets">
+            <Card tokens={tokens} icon="apps-outline" title="Widgets" done={status?.widget}>
               <Text style={cardBody(tokens)}>
-                Keep your streak and today's habits in view — tap to record.
+                Two widgets: Ripple (your streak and today's habits, tap to
+                record) and Ripple Today (your most pressing tasks).
               </Text>
               <Step tokens={tokens} n={1} text="Home screen: long-press an empty area → + (top-left) → search Ripple." />
               <Step tokens={tokens} n={2} text="Lock screen: long-press the lock screen → Customize → tap the area under the clock → add Ripple." />
@@ -113,24 +133,29 @@ export default function SetupScreen() {
 function AndroidCards({
   tokens,
   openAppSettings,
+  widgetDone,
 }: {
   tokens: AcuityTokens;
   openAppSettings: () => void;
+  widgetDone: boolean;
 }) {
   // null = not tried; false = this launcher can't pin, show the manual steps.
   const [pinSupported, setPinSupported] = useState<boolean | null>(null);
+  // Pin dialog accepted this visit (the focus re-read catches it later too).
+  const [pinned, setPinned] = useState(false);
 
   const addWidget = async () => {
     const ok = await requestPinWidget({ widgetName: ANDROID_WIDGET_NAME }).catch(
       () => false
     );
     setPinSupported(ok);
+    if (ok) setPinned(true);
   };
 
   return (
     <>
       {/* Home-screen widget */}
-      <Card tokens={tokens} icon="apps-outline" title="Home screen widget">
+      <Card tokens={tokens} icon="apps-outline" title="Home screen widget" done={widgetDone || pinned}>
         <Text style={cardBody(tokens)}>
           Keep your streak and today's habits in view — tap it to start a
           check-in.
@@ -214,11 +239,14 @@ function Card({
   tokens,
   icon,
   title,
+  done,
   children,
 }: {
   tokens: AcuityTokens;
   icon: keyof typeof Ionicons.glyphMap;
   title: string;
+  /** Green check once this has been set up / used (1.9.1). */
+  done?: boolean;
   children: React.ReactNode;
 }) {
   return (
@@ -234,9 +262,20 @@ function Card({
     >
       <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 10 }}>
         <Ionicons name={icon} size={20} color={tokens.primary} />
-        <Text style={{ fontFamily: tokens.fontDisplay, fontSize: 17, color: tokens.text }}>
+        <Text style={{ fontFamily: tokens.fontDisplay, fontSize: 17, color: tokens.text, flex: 1 }}>
           {title}
         </Text>
+        {done ? (
+          <View
+            accessibilityLabel={`${title} is set up`}
+            style={{ flexDirection: "row", alignItems: "center", gap: 4 }}
+          >
+            <Ionicons name="checkmark-circle" size={20} color={tokens.good} />
+            <Text style={{ fontFamily: tokens.fontSans, fontSize: 13, fontWeight: "600", color: tokens.good }}>
+              Set up
+            </Text>
+          </View>
+        ) : null}
       </View>
       {children}
     </View>

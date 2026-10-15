@@ -158,6 +158,23 @@ private func speakResult(
     }
 }
 
+/// Setup-hub check marks (1.9.1). Records that an intent has been used so
+/// the in-app "Set up Ripple everywhere" screen can show a green check.
+/// iOS doesn't tell an intent whether it came from Siri, the Action Button,
+/// Shortcuts or Spotlight, so: "Start a Check-in" (the intent the Action
+/// Button is set to) marks the Action Button; every other intent marks Siri.
+/// Read by apps/mobile/lib/setup-status.ts. Non-secret, App Group only.
+private enum SetupStamp {
+    static let actionButtonKey = "setup.startDebriefAt"
+    static let siriKey = "setup.siriAt"
+    static func mark(_ key: String) {
+        let d = UserDefaults(suiteName: APP_GROUP)
+        if d?.object(forKey: key) == nil {
+            d?.set(Date().timeIntervalSince1970, forKey: key)
+        }
+    }
+}
+
 /// Open a deep link on the main actor. Shared by every open-app intent.
 @available(iOS 16.0, *)
 @MainActor
@@ -220,6 +237,7 @@ struct StartDebriefIntent: AppIntent {
 
     @MainActor
     func perform() async throws -> some IntentResult {
+        SetupStamp.mark(SetupStamp.actionButtonKey)
         await openRippleURL(recordAutostartURL)
         return .result()
     }
@@ -235,6 +253,7 @@ struct CheckHabitsIntent: AppIntent {
 
     @MainActor
     func perform() async throws -> some IntentResult {
+        SetupStamp.mark(SetupStamp.siriKey)
         await openRippleURL(habitsURL)
         return .result()
     }
@@ -250,6 +269,7 @@ struct AskRippleIntent: AppIntent {
 
     @MainActor
     func perform() async throws -> some IntentResult {
+        SetupStamp.mark(SetupStamp.siriKey)
         await openRippleURL(askRippleURL)
         return .result()
     }
@@ -265,6 +285,7 @@ struct ReviewInsightsIntent: AppIntent {
 
     @MainActor
     func perform() async throws -> some IntentResult {
+        SetupStamp.mark(SetupStamp.siriKey)
         await openRippleURL(insightsURL)
         return .result()
     }
@@ -282,6 +303,7 @@ struct AddHabitIntent: AppIntent {
     var name: String
 
     func perform() async throws -> some IntentResult & ProvidesDialog {
+        SetupStamp.mark(SetupStamp.siriKey)
         let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return .result(dialog: "I didn't catch the habit name.") }
         let msg = await speakResult(
@@ -303,6 +325,7 @@ struct AddTaskIntent: AppIntent {
     var taskTitle: String
 
     func perform() async throws -> some IntentResult & ProvidesDialog {
+        SetupStamp.mark(SetupStamp.siriKey)
         let trimmed = taskTitle.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return .result(dialog: "I didn't catch the task.") }
         let msg = await speakResult(
@@ -324,6 +347,7 @@ struct CompleteHabitIntent: AppIntent {
     var habit: HabitEntity
 
     func perform() async throws -> some IntentResult & ProvidesDialog {
+        SetupStamp.mark(SetupStamp.siriKey)
         let msg = await speakResult(
             {
                 try await RippleAPI.post(
@@ -345,6 +369,7 @@ struct CurrentStreakIntent: AppIntent {
     static var openAppWhenRun: Bool = false
 
     func perform() async throws -> some IntentResult & ProvidesDialog {
+        SetupStamp.mark(SetupStamp.siriKey)
         let s = RippleShared.streak
         if s <= 0 {
             return .result(dialog: "No active streak yet — record a check-in to start one.")
