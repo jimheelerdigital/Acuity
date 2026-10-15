@@ -42,6 +42,21 @@ model VerificationToken {
   @@unique([identifier, token])
 }
 
+/// 6-digit email sign-in code (app 1.9.1 passwordless sign-in). Only an
+/// HMAC of the code is stored. 10-minute life, 5 wrong tries, single use;
+/// requesting a new code retires the previous ones for that email.
+model EmailSignInCode {
+  id         String    @id @default(cuid())
+  email      String
+  codeHash   String
+  expiresAt  DateTime
+  attempts   Int       @default(0)
+  consumedAt DateTime?
+  createdAt  DateTime  @default(now())
+
+  @@index([email, createdAt])
+}
+
 model User {
   id                     String    @id @default(cuid())
   email                  String    @unique
@@ -405,7 +420,7 @@ model User {
   signupUtmTerm     String?
   signupReferrer    String?
   signupLandingPath String?
-  signupMethod      String? // "email" | "google" | "apple" | "mobile-email" | "mobile-google" | "mobile-apple" | "magic-link"
+  signupMethod      String? // "email" | "google" | "apple" | "mobile-email" | "mobile-google" | "mobile-apple" | "magic-link" | "mobile-email-code"
 
   // ── Calendar integration (v1.1 slice C3) ─────────────────────────
   // See docs/v1-1/calendar-integration-scoping.md §8 + the locked

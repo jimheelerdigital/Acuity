@@ -310,7 +310,10 @@ export async function POST(req: NextRequest) {
       claims.is_private_email === "true",
   });
 
-  return NextResponse.json(
-    await mobileSessionResponse({ sessionToken, expiresAt, user })
-  );
+  // isNewUser (app 1.9.1): lets the app fire its "completed registration"
+  // event for real signups only, not returning users signing in.
+  return NextResponse.json({
+    ...(await mobileSessionResponse({ sessionToken, expiresAt, user })),
+    isNewUser: wasCreated,
+  });
 }
