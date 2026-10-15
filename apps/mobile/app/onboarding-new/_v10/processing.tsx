@@ -9,6 +9,7 @@ import { CoralScreen, FunnelCta, FunnelProgress, coralWhiteCard } from "./_ui";
 import { makeAcuityTokens } from "@/lib/theme/tokens";
 import { trackV10 } from "@/lib/onboarding-v10/analytics";
 import { uploadDebrief } from "@/lib/onboarding-v10/upload";
+import { claimAnonymousDebrief } from "@/lib/onboarding-v10/claim";
 
 /**
  * Screen 4 — Processing (light).
@@ -90,6 +91,11 @@ export default function V10Processing() {
 
     // Upload done → the server is transcribing, then extracting. Reflect
     // that order without claiming to know the boundary.
+    // 1.9.1 account-first: they're signed in by now, so attach this debrief
+    // to their account immediately — it must never sit on an anonymous
+    // token that expires. claimAnonymousDebrief is a no-op when signed out.
+    void claimAnonymousDebrief().catch(() => {});
+
     setStage(1);
     setStage(2);
 

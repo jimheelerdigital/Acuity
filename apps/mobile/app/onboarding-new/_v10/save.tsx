@@ -1,60 +1,39 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Pressable, ScrollView, Text, TextInput, View } from "react-native";
+import { Pressable, ScrollView, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { router } from "expo-router";
 import Svg, { Path } from "react-native-svg";
 
 import { useAuth } from "@/contexts/auth-context";
-import { api } from "@/lib/api";
 import { useTheme } from "@/contexts/theme-context";
+import { EmailCodeForm } from "@/components/auth/email-code-form";
+import type { AuthLoading } from "@/components/auth/social-auth-buttons";
 
 import { CoralScreen, FunnelCta, RippleWordmark } from "./_ui";
 import { makeAcuityTokens } from "@/lib/theme/tokens";
 import { signInWithApple, isAppleSignInAvailable } from "@/lib/apple-auth";
-import {
-  signInWithPassword,
-  signUpWithPassword,
-  useGoogleSignIn,
-} from "@/lib/auth";
+import { useGoogleSignIn, type User } from "@/lib/auth";
 import { trackV10 } from "@/lib/onboarding-v10/analytics";
-import { claimAnonymousDebrief } from "@/lib/onboarding-v10/claim";
-import {
-  getV10PlanDecision,
-  setV10Guest,
-} from "@/lib/onboarding-v10/state";
+import { setV10Guest } from "@/lib/onboarding-v10/state";
 
 /**
- * Screen 7 — Save / account (light).
+ * Account step (1.9.1 — account first). Shown right after "I'm new", BEFORE
+ * recording and the paywall.
  *
- * ── Why the account ask is HERE and not earlier ──────────────────────
- * The user has recorded, seen their result, and made a paywall decision.
- * They are being asked to save something that already exists and that they
- * can see. Spec §1 forbids any account step before the reveal, and this is
- * why: an account wall in front of the value is a wall in front of nothing.
+ * Why it moved (2026-10-14, Jimmy): in 1.9 the account came last and could
+ * be skipped ("Later"), so first recordings lived on an anonymous token and
+ * were deleted after 24h if never claimed — one user lost hers twice and
+ * uninstalled — and people could pay on an anonymous RevenueCat ID with no
+ * account. Now every recording and purchase belongs to a real account from
+ * the start. There is no "Later".
  *
- * ── The copy changes with what they just decided ─────────────────────
- * Someone who just started a trial is told their Ripple has started.
- * Someone who chose Free is told their insight will be kept. Showing the
- * paid line to a free user reads as a system that wasn't listening — which
- * is the exact opposite of the product's premise.
- *
- * ── "Later" is real ──────────────────────────────────────────────────
- * Guest mode keeps the debrief on-device and lets them into the app. It is
- * not a decoy that loops back. The save wall arrives later, on the second
- * recording attempt (spec §4 Screen 9).
+ * Apple / Google / email 6-digit code; all of them sign in an existing
+ * account too, so a returning user who taps "I'm new" isn't stuck.
  */
 
-type PaidState = "paid" | "free";
-
-const COPY: Record<PaidState, { headline: string; sub: string }> = {
-  paid: {
-    headline: "Your Ripple has started.",
-    sub: "Save your first debrief so patterns can begin connecting.",
-  },
-  free: {
-    headline: "Keep your first insight.",
-    sub: "Save this debrief and come back whenever your head is full.",
-  },
+const COPY = {
+  headline: "Create your account",
+  sub: "Every debrief is saved to it, on any device. No password needed.",
 };
 
 export default function V10Save() {
@@ -63,79 +42,37 @@ export default function V10Save() {
     () => makeAcuityTokens({ dark: false, accent: palette }),
     [palette]
   );
-  const { refresh } = useAuth();
+  const { refresh, setAuthenticatedUser } = useAuth();
   const { signIn: googleSignIn, ready: googleReady } = useGoogleSignIn();
 
-  const [paidState, setPaidState] = useState<PaidState>("free");
   const [appleAvailable, setAppleAvailable] = useState(false);
-  const [showEmail, setShowEmail] = useState(false);
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [emailLoading, setEmailLoading] = useState<AuthLoading>(null);
 
   // Guard against a double-tap firing two signups on top of each other.
   const inflightRef = useRef(false);
 
   useEffect(() => {
-    void (async () => {
-      const [available, decision] = await Promise.all([
-        isAppleSignInAvailable(),
-        getV10PlanDecision(),
-      ]);
-      setAppleAvailable(available);
-      // Default stays "free" when the decision is missing. Under-claiming
-      // is the safe direction: telling a free user their Ripple has started
-      // is a promise the product then has to break.
-      if (decision === "annual" || decision === "monthly") setPaidState("paid");
-    })();
+    void isAppleSignInAvailable().then(setAppleAvailable);
+    trackV10("v10_save_viewed", { position: "account_first" });
   }, []);
 
-  useEffect(() => {
-    trackV10("v10_save_viewed", { paid_state: paidState });
-  }, [paidState]);
-
   /**
-   * Shared tail for every successful auth path.
-   *
-   * Claim first, THEN route. If claiming is left until after navigation the
-   * screen unmounts mid-request and the debrief is silently orphaned — the
-   * account exists, the audio exists, and nothing connects them.
+   * Shared tail for every successful auth path: they're now signed in, mid-
+   * funnel. AuthGate leaves a signed-in user on /onboarding-new alone, so we
+   * continue to the questions and the first recording. The debrief claim and
+   * "onboarding complete" happen at the end of the funnel (reminders).
    */
   const finishSignup = useCallback(
-    async (method: "apple" | "google" | "email") => {
-      const outcome = await claimAnonymousDebrief();
-      if (outcome.status === "failed") {
-        // The account was still created — this is not a signup failure, and
-        // treating it as one would strand a real user on an error screen.
-        // The token is deliberately still on the device, so a later attempt
-        // can recover the debrief.
-        console.warn("[v10.save] Claim failed, continuing:", outcome.error);
-      }
-
-      // No longer a guest — they have an account. Cleared BEFORE routing
-      // so a cold launch during the transition can't read stale guest
-      // state and skip the signed-in branch.
+    async (method: "apple" | "google" | "email", isNewUser?: boolean) => {
+      // Not a guest — clears any guest state left by a 1.9.0 install.
       await setV10Guest(false);
-
-      // The v10 funnel IS onboarding. Mark it complete server-side, the
-      // same call the legacy account/paywall screens make — otherwise
-      // AuthGate sees onboardingCompleted=false and runs the legacy
-      // onboarding ("Before your first entry…") right after v10 finishes.
-      // Best-effort: AuthGate's v10Offered guard is the local backstop.
-      try {
-        await api.post<{ ok: boolean }>("/api/onboarding/complete", {
-          skipped: false,
-        });
-      } catch {
-        /* non-fatal */
-      }
-
       await refresh();
-      trackV10("v10_account_completed", { method, paid_state: paidState });
-      router.replace("/onboarding-new/reminders" as never);
+      trackV10("v10_account_completed", { method, position: "account_first", is_new: isNewUser ?? null });
+      router.replace("/onboarding-new/pain");
     },
-    [paidState, refresh]
+    [refresh]
   );
 
   const onApple = useCallback(async () => {
@@ -182,55 +119,18 @@ export default function V10Save() {
     }
   }, [finishSignup, googleSignIn]);
 
-  const onEmail = useCallback(async () => {
-    if (inflightRef.current) return;
-    const trimmed = email.trim();
-    if (!trimmed || password.length < 12) {
-      setError("Use an email and a password of at least 12 characters.");
-      return;
-    }
-    inflightRef.current = true;
-    setBusy(true);
-    setError(null);
-    try {
-      const result = await signUpWithPassword(trimmed, password);
-      if (!result.ok) {
-        setError(result.message ?? "That didn’t go through.");
-        return;
-      }
-      // Sign-up creates the account but returns NO session (the server's
-      // mobile-signup contract). Without this login the user is signed out:
-      // the debrief claim 401s and AuthGate bounces them to sign-in right
-      // after the reminders screen. Same two-step pattern as
-      // (auth)/sign-up.tsx and the legacy onboarding account screen.
-      const login = await signInWithPassword(trimmed, password);
-      if (!login.ok) {
-        setError(
-          "Your account was created, but we couldn't sign you in. Try signing in with the same email and password."
-        );
-        return;
-      }
-      await finishSignup("email");
-    } finally {
-      inflightRef.current = false;
-      setBusy(false);
-    }
-  }, [email, password, finishSignup]);
+  const onEmailAuthenticated = useCallback(
+    async (user: User, sessionToken: string, isNewUser: boolean) => {
+      // Hand the session to the auth context directly (keychain race —
+      // see components/auth/social-auth-buttons.tsx), then continue.
+      setAuthenticatedUser(user, sessionToken);
+      await finishSignup("email", isNewUser);
+    },
+    [finishSignup, setAuthenticatedUser]
+  );
 
-  const onLater = useCallback(async () => {
-    // Guest mode. The debrief stays on-device under its anonymous token —
-    // NOT discarded — so a later signup can still claim it.
-    //
-    // The flag must be written BEFORE navigating: AuthGate reads it to
-    // decide whether a signed-out user at /(tabs) is a guest or someone to
-    // bounce to sign-in. Navigating first is a race the user loses by
-    // landing back on sign-in, which reads as "Later does nothing".
-    trackV10("v10_save_later", { paid_state: paidState });
-    await setV10Guest(true);
-    router.replace("/(tabs)");
-  }, [paidState]);
+  const copy = COPY;
 
-  const copy = COPY[paidState];
 
   return (
     <CoralScreen tokens={tokens}>
@@ -300,62 +200,45 @@ export default function V10Save() {
             disabled={busy || !googleReady}
             tokens={tokens}
           />
-          {showEmail ? (
-            <View style={{ gap: 10 }}>
-              <Field
-                value={email}
-                onChangeText={setEmail}
-                placeholder="Email"
-                tokens={tokens}
-                autoComplete="email"
-                keyboardType="email-address"
-              />
-              <Field
-                value={password}
-                onChangeText={setPassword}
-                placeholder="Password (12+ characters)"
-                tokens={tokens}
-                autoComplete="new-password"
-                secureTextEntry
-              />
-              <AuthButton
-                label="Create account"
-                onPress={onEmail}
-                disabled={busy}
-                tokens={tokens}
-                primary
-              />
-            </View>
-          ) : (
-            <AuthButton
-              label="Sign up with email"
-              onPress={() => setShowEmail(true)}
-              disabled={busy}
-              tokens={tokens}
-            />
-          )}
+          <Text
+            style={{
+              fontFamily: tokens.fontSans,
+              fontSize: 12,
+              color: "#ffffff",
+              opacity: 0.9,
+              textAlign: "center",
+              marginTop: -2,
+            }}
+          >
+            Paid on the website? Use the same email below.
+          </Text>
+          <View style={{ height: 6 }} />
+          <EmailCodeForm
+            colors={{
+              text: "#ffffff",
+              textSec: "rgba(255,255,255,0.85)",
+              placeholder: tokens.textTer,
+              border: "#ffffff",
+              inputBg: "#ffffff",
+              inputText: tokens.text,
+              buttonBg: "#ffffff",
+              buttonText: tokens.primaryLo,
+              link: "#ffffff",
+              error: "#ffffff",
+            }}
+            loading={emailLoading}
+            setLoading={(v) => {
+              setEmailLoading(v);
+              setBusy(v !== null);
+            }}
+            submitLabel="Continue with email"
+            onAuthenticated={(u, t, isNew) => void onEmailAuthenticated(u, t, isNew)}
+          />
         </View>
 
         <View style={{ flex: 1, minHeight: 24 }} />
 
-        <Pressable
-          onPress={onLater}
-          accessibilityRole="button"
-          disabled={busy}
-          style={{ paddingVertical: 20, alignItems: "center" }}
-        >
-          <Text
-            style={{
-              fontFamily: tokens.fontSans,
-              fontSize: 14,
-              color: "#ffffff",
-              opacity: 0.85,
-              textDecorationLine: "underline",
-            }}
-          >
-            Later
-          </Text>
-        </Pressable>
+        <View style={{ height: 24 }} />
       </ScrollView>
       </SafeAreaView>
     </CoralScreen>
@@ -514,25 +397,3 @@ function GoogleLogo() {
   );
 }
 
-function Field({
-  tokens,
-  ...props
-}: React.ComponentProps<typeof TextInput> & { tokens: Tokens }) {
-  return (
-    <TextInput
-      {...props}
-      autoCapitalize="none"
-      placeholderTextColor={tokens.textTer}
-      style={{
-        backgroundColor: "#ffffff",
-        borderWidth: 0,
-        borderRadius: 12,
-        paddingHorizontal: 16,
-        paddingVertical: 14,
-        fontFamily: tokens.fontSans,
-        fontSize: 16,
-        color: tokens.text,
-      }}
-    />
-  );
-}

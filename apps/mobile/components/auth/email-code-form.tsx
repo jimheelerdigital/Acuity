@@ -20,6 +20,8 @@ export interface EmailCodeColors {
   placeholder: string;
   border: string;
   inputBg: string;
+  /** Text color inside the inputs (defaults to `text`). */
+  inputText?: string;
   buttonBg: string;
   buttonText: string;
   link: string;
@@ -113,7 +115,7 @@ export function EmailCodeForm({
   const inputStyle = {
     borderColor: colors.border,
     backgroundColor: colors.inputBg,
-    color: colors.text,
+    color: colors.inputText ?? colors.text,
   };
 
   if (step === "email") {

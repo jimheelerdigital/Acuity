@@ -10,6 +10,8 @@ import { CoralScreen, FunnelCta } from "./_ui";
 import { api } from "@/lib/api";
 import { makeAcuityTokens } from "@/lib/theme/tokens";
 import { trackV10 } from "@/lib/onboarding-v10/analytics";
+import { claimAnonymousDebrief } from "@/lib/onboarding-v10/claim";
+import { clearStoredTrySession } from "@/lib/try-session";
 import {
   REMINDER_PRIMER,
   REMINDER_SLOTS,
@@ -48,7 +50,7 @@ export default function V10Reminders() {
     () => makeAcuityTokens({ dark: false, accent: palette }),
     [palette]
   );
-  const { user } = useAuth();
+  const { user, refresh } = useAuth();
 
   const [selected, setSelected] = useState<ReminderSlot | null>(null);
   const [busy, setBusy] = useState(false);
@@ -57,9 +59,27 @@ export default function V10Reminders() {
     trackV10("v10_reminder_viewed", {});
   }, []);
 
-  const finish = useCallback(() => {
+  // End of the funnel (1.9.1: account → questions → record → reveal →
+  // paywall → here). Mark onboarding complete server-side so AuthGate
+  // doesn't run the legacy onboarding next, and make sure the first
+  // debrief is attached to the account (normally already done right after
+  // processing; this is the backstop). Both best-effort.
+  const finish = useCallback(async () => {
+    try {
+      const claim = await claimAnonymousDebrief();
+      // Funnel done — the reveal/paywall no longer need the cached result.
+      if (claim.status !== "failed") await clearStoredTrySession();
+    } catch {
+      /* non-fatal */
+    }
+    try {
+      await api.post<{ ok: boolean }>("/api/onboarding/complete", { skipped: false });
+    } catch {
+      /* non-fatal — AuthGate's v10Offered guard is the local backstop */
+    }
+    await refresh();
     router.replace("/(tabs)");
-  }, []);
+  }, [refresh]);
 
   const onSelect = useCallback((slot: ReminderSlot) => {
     setSelected(slot);

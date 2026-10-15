@@ -170,7 +170,7 @@ export default function V10Paywall() {
         if (result.status === "success") {
           trackV10("v10_plan_decision", { decision: plan });
           await setV10PlanDecision(plan);
-          router.push("/onboarding-new/account");
+          router.push("/onboarding-new/reminders" as never);
           return;
         }
         Alert.alert(
@@ -191,7 +191,7 @@ export default function V10Paywall() {
     // explicitly not a receipt — see lib/onboarding-v10/state.ts.
     trackV10("v10_plan_decision", { decision: plan });
     void setV10PlanDecision(plan);
-    router.push("/onboarding-new/account");
+    router.push("/onboarding-new/reminders" as never);
   }, [plan, rcPurchases, rcOffering, busy]);
 
   const handleRestore = useCallback(async () => {
@@ -205,7 +205,7 @@ export default function V10Paywall() {
       if (hasPro) {
         // Entitlement is on the store account and aliases to the real
         // User.id at the account step. Advance there.
-        router.push("/onboarding-new/account");
+        router.push("/onboarding-new/reminders" as never);
         return;
       }
       Alert.alert(
@@ -220,7 +220,7 @@ export default function V10Paywall() {
   const onContinueFree = useCallback(() => {
     trackV10("v10_plan_decision", { decision: "free" });
     void setV10PlanDecision("free");
-    router.push("/onboarding-new/account");
+    router.push("/onboarding-new/reminders" as never);
   }, []);
 
   if (rcPurchases && pwOffering) {
@@ -244,11 +244,11 @@ export default function V10Paywall() {
               pkg?.packageType === "MONTHLY" ? "monthly" : "annual";
             trackV10("v10_plan_decision", { decision: decided });
             void setV10PlanDecision(decided);
-            router.push("/onboarding-new/account");
+            router.push("/onboarding-new/reminders" as never);
           }}
           onRestored={(hasPro) => {
             if (hasPro) {
-              router.push("/onboarding-new/account");
+              router.push("/onboarding-new/reminders" as never);
               return;
             }
             Alert.alert(

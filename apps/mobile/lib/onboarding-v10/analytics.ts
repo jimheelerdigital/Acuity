@@ -49,6 +49,8 @@ export type V10Event =
   // signing up. Worth measuring: a high rate means cold-start routing
   // is catching people it should not.
   | "v10_signin_from_funnel"
+  | "v10_start_viewed"
+  | "v10_start_new"
   // Guest save wall (spec §9). `attempt` distinguishes the soft first
   // showing from the hard ones after it.
   | "v10_save_wall_shown"

@@ -246,7 +246,8 @@ function AuthGate() {
         // Mark at ROUTING time so a force-quit on Screen 1 resumes the
         // funnel instead of being read as a brand-new install forever.
         void markV10Offered();
-        router.replace("/onboarding-new/pain");
+        // 1.9.1: the funnel opens on "I'm new" / "I have an account".
+        router.replace("/onboarding-new/start" as never);
         return;
 
       case "welcome":
