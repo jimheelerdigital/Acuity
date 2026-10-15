@@ -384,6 +384,82 @@ export async function requestMagicLink(
   }
 }
 
+// ─── Email one-time code (1.9.1 passwordless) ───────────────────
+
+export type EmailCodeRequestResult =
+  | { ok: true }
+  | { ok: false; reason: "RateLimited" | "InvalidEmail" | "SendFailed" | "NetworkError" };
+
+/**
+ * Email a 6-digit sign-in code (POST /api/auth/mobile-email-code/request).
+ * Never reveals whether the account exists; the account is created when the
+ * code is verified.
+ */
+export async function requestEmailCode(email: string): Promise<EmailCodeRequestResult> {
+  try {
+    const res = await fetch(`${apiBaseUrl()}/api/auth/mobile-email-code/request`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email: email.trim() }),
+    });
+    if (res.ok) return { ok: true };
+    if (res.status === 429) return { ok: false, reason: "RateLimited" };
+    if (res.status === 400) return { ok: false, reason: "InvalidEmail" };
+    if (res.status === 502) return { ok: false, reason: "SendFailed" };
+    return { ok: false, reason: "NetworkError" };
+  } catch {
+    return { ok: false, reason: "NetworkError" };
+  }
+}
+
+export type EmailCodeVerifyResult =
+  | { ok: true; user: User; sessionToken: string; isNewUser: boolean }
+  | {
+      ok: false;
+      reason: "InvalidCode" | "ExpiredCode" | "TooManyAttempts" | "RateLimited" | "NetworkError";
+    };
+
+/**
+ * Exchange email + 6-digit code for a session (creates the account on first
+ * use). Stores the session exactly like the other sign-in paths; callers
+ * then hand the user to AuthContext.setAuthenticatedUser.
+ */
+export async function verifyEmailCode(
+  email: string,
+  code: string
+): Promise<EmailCodeVerifyResult> {
+  try {
+    const res = await fetch(`${apiBaseUrl()}/api/auth/mobile-email-code/verify`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email: email.trim(), code: code.replace(/\D/g, "") }),
+    });
+    const body = (await res.json().catch(() => ({}))) as {
+      error?: string;
+      sessionToken?: string;
+      user?: User;
+      isNewUser?: boolean;
+    };
+    if (!res.ok || !body.sessionToken || !body.user) {
+      if (res.status === 429) return { ok: false, reason: "RateLimited" };
+      const reason =
+        body.error === "ExpiredCode"
+          ? "ExpiredCode"
+          : body.error === "TooManyAttempts"
+          ? "TooManyAttempts"
+          : body.error === "InvalidCode" || res.status === 400
+          ? "InvalidCode"
+          : "NetworkError";
+      return { ok: false, reason };
+    }
+    await setToken(body.sessionToken);
+    await setStoredUser(body.user);
+    return { ok: true, user: body.user, sessionToken: body.sessionToken, isNewUser: !!body.isNewUser };
+  } catch {
+    return { ok: false, reason: "NetworkError" };
+  }
+}
+
 export async function requestPasswordReset(
   email: string
 ): Promise<{ ok: true } | { ok: false; reason: "RateLimited" | "InvalidEmail" | "NetworkError" }> {
