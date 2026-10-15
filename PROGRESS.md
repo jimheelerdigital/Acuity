@@ -7,6 +7,32 @@
 
 ---
 
+## [2026-10-15] — How-to guides come in two sizes: Instagram and TikTok
+
+- **Requested by:** Keenan
+- **Committed by:** Claude Code
+- **Commit hash:** (see git log: "feat: Email how-to guides in Instagram and TikTok sizes")
+
+### In plain English (for Keenan)
+Each daily how-to guide email now has two labeled sets of the same slides. The "instagram-" photos are 4:5, the tallest an Instagram carousel shows without cropping. The "tiktok-" photos are full-screen for TikTok photo mode, with the text moved up so TikTok's buttons and caption don't cover it. The Ripple end slide is no longer attached to the guides, because it was a different size and Instagram would have cropped it.
+
+### Technical changes (for Jimmy)
+- `apps/web/src/lib/content-factory/paper-guide.ts`: `renderPaperSlide({ tiktokSafe })` centers the text block at 36% of the height (min top 12%) instead of 47%.
+- `apps/web/src/inngest/functions/carousel-daily.ts`: how-to guides render 1080x1350 (`slide-i-feed.jpg`, the slide's imageUrl) and 1080x1920 tiktokSafe (`slide-i-tiktok.jpg`).
+- `apps/web/src/lib/content-factory/email.ts`:
+  - When a slide's imagePrompt contains ":howto", the static email attaches `instagram-NN-*.jpg` then `tiktok-NN-*.jpg`, with a note explaining both.
+  - No CTA end card on those posts.
+  - `SlideRow.imagePrompt` added.
+
+### Manual steps needed
+- [ ] None
+
+### Notes
+- Previewed the TikTok size against TikTok's UI zones (right-side buttons and the bottom caption band); the text clears both.
+- A narrower text box was tried first but wrapped 28-character lines badly, so the width stayed the same and the block moved up.
+
+---
+
 ## [2026-10-15] — How-to guides: always written to "you", bigger type
 
 - **Requested by:** Keenan

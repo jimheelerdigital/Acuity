@@ -625,9 +625,17 @@ export const carouselDailyCronFn = inngest.createFunction(
         const all = [{ cover: guide.title }, ...guide.slides.map((slide) => ({ slide }))];
         const out: { imageUrl: string; overlayText: string }[] = [];
         for (let i = 0; i < all.length; i++) {
-          // 4:5 is the tallest an Instagram carousel shows uncropped.
-          const feed = await renderPaperSlide({ paper: paperLane.spec.paper, W: 1080, H: 1350, seed: guide.slug, large: true, ...all[i] });
+          // Two sets (2026-10-15, per Keenan: posted by hand on TikTok AND
+          // Instagram): 4:5 is the tallest an Instagram carousel shows
+          // uncropped; TikTok photo mode is full-screen 9:16, with the text
+          // kept clear of its buttons. imageUrl = Instagram; the TikTok copy
+          // sits next to it ("-feed.jpg" → "-tiktok.jpg", see email.ts).
+          const [feed, tall] = await Promise.all([
+            renderPaperSlide({ paper: paperLane.spec.paper, W: 1080, H: 1350, seed: guide.slug, large: true, ...all[i] }),
+            renderPaperSlide({ paper: paperLane.spec.paper, W: 1080, H: 1920, seed: guide.slug, large: true, tiktokSafe: true, ...all[i] }),
+          ]);
           const imageUrl = await uploadImage(feed, `carousels/${dateStr}/${guide.slug}/slide-${i}-feed.jpg`);
+          await uploadImage(tall, `carousels/${dateStr}/${guide.slug}/slide-${i}-tiktok.jpg`);
           const it = all[i] as { cover?: string; slide?: { header: string; sub: string; body: string[] } };
           out.push({ imageUrl, overlayText: it.cover ?? `${it.slide!.header}\n${it.slide!.sub}\n\n${it.slide!.body.join("\n")}` });
         }

@@ -326,6 +326,12 @@ export async function renderPaperSlide(opts: {
   slide?: PaperGuideSlide;
   /** Bigger type for the how-to guides (2026-10-15, per Keenan: the text only filled the top half of the sheet). */
   large?: boolean;
+  /**
+   * TikTok photo-mode safe area (2026-10-15, per Keenan: posting the guides
+   * on TikTok and Instagram): the text block sits higher (centered at 36%
+   * of the height), above TikTok's right-side buttons and bottom caption.
+   */
+  tiktokSafe?: boolean;
 }): Promise<Buffer> {
   const { W, H } = opts;
   const [regular, bold] = await Promise.all([ensureTinos("Regular"), ensureTinos("Bold")]);
@@ -358,7 +364,7 @@ export async function renderPaperSlide(opts: {
     blocks.push({ buf: body.buf, h: body.h, dy: head.h + Math.round(size * (opts.large ? 0.7 : 0.3)) });
   }
   const total = blocks.reduce((m, b) => Math.max(m, b.dy + b.h), 0);
-  const top = Math.max(Math.round(H * 0.1), Math.round(H * 0.47 - total / 2));
+  const top = Math.max(Math.round(H * (opts.tiktokSafe ? 0.12 : 0.1)), Math.round(H * (opts.tiktokSafe ? 0.36 : 0.47) - total / 2));
   // Ink, not a sticker: multiply lets the paper's grain and light show
   // through the letters, and a hair of blur takes off the digital edge.
   const layers = await Promise.all(

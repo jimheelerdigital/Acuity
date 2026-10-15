@@ -222,6 +222,7 @@ interface SlideRow {
   overlayText: string;
   imageUrl: string;
   videoUrl: string | null;
+  imagePrompt?: string | null;
 }
 
 interface PostRow {
@@ -320,25 +321,39 @@ export async function sendCarouselEmail(
   const slideBuffers: { filename: string; buf: Buffer; url: string }[] = [];
   let totalBytes = 0;
 
-  for (const slide of post.slides) {
-    try {
-      const res = await fetch(slide.imageUrl);
-      if (!res.ok) continue;
-      const buf = Buffer.from(await res.arrayBuffer());
-      const num = String(slide.order + 1).padStart(2, "0");
-      slideBuffers.push({
-        filename: `${num}-${slide.kind.toLowerCase()}.jpg`,
-        buf,
-        url: slide.imageUrl,
-      });
-      totalBytes += buf.length;
-    } catch {
-      console.warn(`[carousel-email] Failed to fetch slide ${slide.id}`);
+  // How-to paper guides (2026-10-15, per Keenan: posted by hand on TikTok
+  // and Instagram): two labeled sets, Instagram 4:5 then TikTok 9:16.
+  const howto = post.slides.some((sl) => sl.imagePrompt?.includes(":howto"));
+  const sets: { prefix: string; urlOf: (u: string) => string }[] = howto
+    ? [
+        { prefix: "instagram-", urlOf: (u) => u },
+        { prefix: "tiktok-", urlOf: (u) => u.replace(/-feed\.jpg$/, "-tiktok.jpg") },
+      ]
+    : [{ prefix: "", urlOf: (u) => u }];
+  for (const set of sets) {
+    for (const slide of post.slides) {
+      const url = set.urlOf(slide.imageUrl);
+      if (set.prefix === "tiktok-" && url === slide.imageUrl) continue; // older guide, no TikTok copy
+      try {
+        const res = await fetch(url);
+        if (!res.ok) continue;
+        const buf = Buffer.from(await res.arrayBuffer());
+        const num = String(slide.order + 1).padStart(2, "0");
+        slideBuffers.push({
+          filename: `${set.prefix}${num}-${slide.kind.toLowerCase()}.jpg`,
+          buf,
+          url,
+        });
+        totalBytes += buf.length;
+      } catch {
+        console.warn(`[carousel-email] Failed to fetch slide ${slide.id}`);
+      }
     }
   }
 
-  // Branded CTA end slide — last slide of every post (2026-09-22).
-  const cta = await ctaSlide(post.lane);
+  // Branded CTA end slide — last slide of every post (2026-09-22). Not on
+  // how-to guides: it's 9:16, so Instagram would crop it inside a 4:5 carousel.
+  const cta = howto ? null : await ctaSlide(post.lane);
   if (cta) {
     slideBuffers.push({
       filename: `${String(post.slides.length + 1).padStart(2, "0")}-cta.jpg`,
@@ -396,7 +411,9 @@ export async function sendCarouselEmail(
   const reviewUrl = `${REVIEW_BASE_URL}/admin/content-factory/carousels`;
 
   const attachNote = useAttachments
-    ? `<p style="font-size:13px;color:#888;">📎 ${slideBuffers.length} slides attached — save to Photos and post.</p>`
+    ? howto
+      ? `<p style="font-size:13px;color:#888;">📎 Two sets attached: <b>instagram-</b> files are 4:5 for the Instagram carousel, <b>tiktok-</b> files are full-screen 9:16 for TikTok photo mode. Same slides, same order.</p>`
+      : `<p style="font-size:13px;color:#888;">📎 ${slideBuffers.length} slides attached — save to Photos and post.</p>`
     : `<p style="font-size:13px;color:#E06C75;font-weight:600;">⚠️ Attachments exceeded the size limit — images linked below instead.</p>` +
       slideBuffers
         .map((s) => `<p style="font-size:12px;"><a href="${escapeHtml(s.url)}" style="color:#F97E4E;">${escapeHtml(s.filename)}</a></p>`)
