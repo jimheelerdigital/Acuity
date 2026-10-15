@@ -1555,10 +1555,30 @@ export const carouselDailyCronFn = inngest.createFunction(
         const cover = i < 0;
         const item = cover ? null : list.items[i];
         const scene = cover ? list.coverScene : item!.scene;
-        const prompt = buildListScenePrompt(scene, list.world);
+        // Cover = our avatar walking away through the post's world, identity
+        // anchored on her latest cover (2026-10-15, per Keenan); items are
+        // people-free scenic / home / everyday shots.
+        const { buildAvatarWalkPrompt, latestAvatarCoverUrl } = await import("@/lib/content-factory/ripple-avatar");
+        const { generateImageWithReference } = await import("@/lib/content-factory/carousel-generate");
+        let anchor: Buffer | null = null;
+        if (cover) {
+          const anchorUrl = await latestAvatarCoverUrl();
+          if (anchorUrl) {
+            const res = await fetch(anchorUrl);
+            if (res.ok) anchor = Buffer.from(await res.arrayBuffer());
+          }
+        }
+        const prompt = cover
+          ? buildAvatarWalkPrompt({ scene, setting: list.world, hasReference: !!anchor })
+          : buildListScenePrompt(scene, list.world);
         const { buffer: raw } = await generateCheckedImage(
-          () => (cover ? generateImage(prompt) : generateImage(prompt, "item")),
-          { scene, slot: cover ? "cover" : "item", personAllowed: false }
+          () =>
+            cover
+              ? anchor
+                ? generateImageWithReference(prompt, anchor, "cover")
+                : generateImage(prompt)
+              : generateImage(prompt, "item"),
+          { scene, slot: cover ? "cover" : "item", personAllowed: cover }
         );
         const name = cover ? "slide-0-cover" : `slide-${i + 1}-item`;
         const textFree = await composeSlide(raw, "", cover ? "COVER" : "REASON");
@@ -1742,7 +1762,12 @@ export const carouselDailyCronFn = inngest.createFunction(
         console.log(`[carousel-cron] selfie variant: ${choice.persona} / ${choice.textStyle} (${choice.reason})${anchorUrl ? " — anchored" : ""}`);
         // Cartoon posts use the Toon 3D heroine, never a photo anchor.
         if (toon) return { personaId: "toon", personaLook: "", textStyle: choice.textStyle, anchorUrl: null };
-        return { personaId: persona.id, personaLook: persona.look, textStyle: choice.textStyle, anchorUrl };
+        // One avatar, walking away on every Ripple cover (2026-10-15, per
+        // Keenan: "no more selfie"); her latest walking cover anchors identity.
+        void persona;
+        void anchorUrl;
+        const { RIPPLE_AVATAR_LOOK, latestAvatarCoverUrl } = await import("@/lib/content-factory/ripple-avatar");
+        return { personaId: "avatar", personaLook: RIPPLE_AVATAR_LOOK, textStyle: choice.textStyle, anchorUrl: await latestAvatarCoverUrl() };
       });
       const textStyle = variant.textStyle as import("@/lib/content-factory/compose").SelfieTextStyle;
 
@@ -1817,13 +1842,15 @@ export const carouselDailyCronFn = inngest.createFunction(
         }
         // Cartoon cover: the Toon 3D heroine living the cover's pain.
         const { carouselAvatarDna } = await import("@/lib/content-factory/brand");
+        const { buildAvatarWalkPrompt } = await import("@/lib/content-factory/ripple-avatar");
+        void prompt;
         const coverPrompt = toon
           ? [
               `Scene (follow exactly): ${selfie.coverScene}`,
               `Context (shown, not told): this is the cover of a story titled "${selfie.headline}".`,
               carouselAvatarDna("midlife"),
             ].join("\n")
-          : prompt;
+          : buildAvatarWalkPrompt({ scene: selfie.coverScene, hasReference: !!anchor });
         const { buffer: rawBuffer, qc } = await generateCheckedImage(
           () =>
             anchor && !toon
@@ -1845,7 +1872,7 @@ export const carouselDailyCronFn = inngest.createFunction(
           kind: "COVER",
           color: stickerColor,
           textStyle,
-          placement: "lower", // cover is always a mirror selfie — keep off the face
+          placement: "upper", // she walks away in the lower part of the frame (2026-10-15)
         });
         const composed = await composeSlideWithOverlay(rawBuffer, overlay, { scrim: false });
         const imageUrl = await uploadImage(

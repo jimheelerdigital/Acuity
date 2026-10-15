@@ -144,7 +144,7 @@ VISUAL DIRECTION: these are static image carousels, and you direct each still. T
 
 ${SCENE_DIRECTION[visualStyle]}
 
-THE MOTION (every slide becomes a 5-second animated clip, 2026-10-13, per Keenan: "there's not much going on in them"): give the cover and every shot a "motion", one clear, visible movement at real speed that acts out that slide's line, plus the natural ambient movement of the scene. Under 30 words, physical and concrete, things a camera can see. Examples of the kind: her hand sets the phone face-down and slides the coffee closer; steam curls up as coffee is poured; the junk drawer is yanked open and things rattle; sticky notes flutter off the fridge in a draft; a pen ticks items off a paper list; pages turn in the breeze. On the mirror-selfie cover she moves naturally (shifts her weight, tucks her hair, sighs, her free hand gestures) while the phone stays covering her face the whole time. Never a person appearing who isn't in the shot, never text appearing, never a phone screen lighting up. Every slide's motion is different.
+THE MOTION (every slide becomes a 5-second animated clip, 2026-10-13, per Keenan: "there's not much going on in them"): give the cover and every shot a "motion", one clear, visible movement at real speed that acts out that slide's line, plus the natural ambient movement of the scene. Under 30 words, physical and concrete, things a camera can see. Examples of the kind: her hand sets the phone face-down and slides the coffee closer; steam curls up as coffee is poured; the junk drawer is yanked open and things rattle; sticky notes flutter off the fridge in a draft; a pen ticks items off a paper list; pages turn in the breeze. On the cover she keeps walking away from the camera at a natural pace while the place moves around her. Never a person appearing who isn't in the shot, never text appearing, never a phone screen lighting up. Every slide's motion is different.
 
 THE CAPTION: "captionQuestion" is one question in the voice of the real woman who runs the page, under 15 words, lowercase-leaning, text-message tone with contractions. It should be something she genuinely wants to answer about her own life, and easy to answer honestly in one real sentence ("when did being tired become your baseline?" shows the register). It never restates the headline or summarizes the slides, never asks her to share or send, never asks "which one are you doing first", never mentions an app or product. At most one emoji, only if natural. This question plus a few hashtags is the entire caption.
 
@@ -220,7 +220,7 @@ Never invent a feature, a number, a price or a result that isn't in that list. $
 
 THE ONE TEST EVERY POST MUST PASS: a stranger reads the cover, then the slides in order, and understands exactly what happened to her and what Ripple did, with no guessing. Every slide follows from the one before it, as one story. A slide that only makes sense with another slide's help is a failure, however good it is on its own.
 
-THE FORMAT: slide 1 (the cover) is a mirror selfie of her with her raised phone covering her face and the pain line on it. It is the only photo of her in the post. Slides 2-5 are aesthetic photos with no people, each carrying one line of her story plus a short detail line under it. The text is set on the photos in sticker type, so there are no emojis anywhere.
+THE FORMAT (2026-10-15, per Keenan: "no more selfie"): slide 1 (the cover) is a beautiful photo of her, our avatar, seen from behind and walking AWAY from the camera through a scenic place, with the pain line on it. It is the only photo of her in the post. Slides 2-5 are photos with no people, each carrying one line of her story plus a short detail line under it. The text is set straight on the photos, so there are no emojis anywhere.
 
 THE STORY (2026-10-13, per Keenan): exactly FIVE slides, the cover plus exactly FOUR steps, always in this order:
 1. COVER (the headline): a relatable pain that women feel every single day, said so plainly that she nods before she's finished reading ("i'm tired from remembering everything, not from doing it"). Her pain, not Ripple's pitch: Ripple is NEVER named on the cover, and no other app either.
@@ -239,8 +239,8 @@ PEOPLE: never use "he", "his", "she" or "they" for someone the post hasn't named
 THE STEP LINES (2026-10-13, per Keenan: every slide must be "easily readable in 5 seconds ... extremely legible and simple"): each step is ONE short, plain first-person line, 3 to 7 words, that makes sense on its own without the detail line under it. No fragments that only make sense with the detail ("i laughed at dinner and noticed" fails). Each step gets one short "detail" line under 60 characters (about 10 words) in her voice: the concrete, lived-in specific (the dentist on thursday, her mom's refill, the form due friday). Honest, small and specific beats big claims.
 
 THE SHOTS (the cover plus one per step):
-- "cover": always a mirror selfie of her with the raised phone completely covering her face, so no eyes, nose or mouth are ever visible. The mirror is realistically a little dirty: light smudges, a few fingerprints, a faint streak catching the light. Describe which mirror, what she's wearing, the light and her posture (e.g. "full-length bedroom mirror with light smudges, oversized grey sweatshirt and leggings, warm lamp light, phone raised covering her whole face").
-- Every step's shot is "aesthetic": a beautiful first-person phone photo with no person in it. Her own hand holding her phone or a mug is fine. Phone screens are dark or face down, never showing an app.
+- "cover": her walking away from the camera, seen from behind, through a scenic place that fits the post's mood: a coastal path, an autumn trail, a snowy lane, a meadow at golden hour, a misty lakeside, a quiet beach. Describe the place, the light and what she's wearing (e.g. "a coastal cliff path at golden hour, long grass moving in the wind, she walks away in a cream knit sweater and jeans"). Never a selfie, never a mirror, never her face.
+- Every step's shot is "aesthetic": a beautiful photo with no person in it. MIX them (2026-10-15, per Keenan): scenic places outdoors, details around the home, and other everyday things (her coffee on the porch rail, shoes by the door, a sunlit kitchen counter, a garden gate, the car parked by a field). At most her own hand holding a mug. Phone screens are dark or face down, never showing an app.
 - Each shot shows the exact moment its step describes, so the picture and the words obviously go together: the "my head was full" step shows the overflowing fridge calendar and sticky notes; the "i just talk" step shows her hand holding her phone in the car or on a walk; the to-do step shows the permission slip and the pharmacy bag on the counter. A pretty photo that has nothing to do with its line is a failure.
 - Every scene is distinct: different place, light and angle, no object or surface repeated. Under 30 words each, concrete nouns only. Vary the world from post to post (the car, a walk, the kitchen counter, the porch, the school pickup line, a park bench).
 - NEVER a phone in hand behind a steering wheel or anything that reads as using a phone while driving (2026-10-13, per Keenan). If a shot is in a car, the car is clearly parked and the phone rests on the seat or in a dash mount.
@@ -258,7 +258,7 @@ Before answering, read the cover and then each slide in order as a stranger woul
   "details": ["one sentence", ...],
   "stepCount": 4,
   "mood": "heavy" | "tender" | "wry" | "frustrated" | "hopeful",
-  "cover": { "scene": "mirror selfie scene, phone covering her face, slightly dirty mirror", "motion": "the one movement in the cover's animation" },
+  "cover": { "scene": "the scenic place she walks away through, the light, what she wears", "motion": "she keeps walking away; what moves around her" },
   "stepShots": [{ "type": "aesthetic", "scene": "...", "motion": "the one movement in this shot's animation" }, ...],
   "captionQuestion": "one question in her voice"
 }`;
@@ -651,7 +651,7 @@ async function generateSelfieTopicOnce(
           ? parsed.cover.scene.trim()
           : toon
             ? "the animated heroine at her kitchen island, surrounded by everyone's requests"
-            : "full-length bedroom mirror selfie, casual sweatshirt, warm lamp light, phone raised covering her whole face, mirror lightly smudged",
+            : "a coastal path at golden hour, long grass moving in the wind, she walks away from the camera in a cream knit sweater and jeans",
       coverMotion: motionOf(parsed.cover?.motion),
       toon,
       stepShots,

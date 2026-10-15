@@ -110,7 +110,7 @@ READABLE IN 5 SECONDS (2026-10-13, per Keenan: "it needs to be easily readable i
 - Items are genuinely different from each other: no two saying the same thing in other words.
 - No numbers inside "line" (the slide adds "1.", "2." itself).
 
-THE PICTURES: every slide is a breathtaking, people-free landscape photo from the ONE scenic world named in the user message, a different view each slide (wide, close, different light, different spot) so the post feels like one calm place. NO people, NO faces, NO hands, NO animals in focus, NO buildings as the subject, NO text. Each "scene" is under 30 words, concrete nouns only, and leaves calm open sky, water or snow in the upper half for the text. Each slide's "motion" is the one natural movement the clip shows, at real speed: waves rolling in and spray lifting, snow falling and drifting off branches, leaves spinning down and skittering across a path, mist sliding across the lake, grass rippling in wind, clouds moving fast over the dunes. Every slide's motion is different.
+THE PICTURES (2026-10-15, per Keenan): "coverScene" is her, our avatar, seen from behind and walking AWAY from the camera through the ONE scenic world named in the user message (describe the exact place, the light and what she's wearing; never her face). The item slides have NO people and MIX three kinds of shot, a different one each slide: wide scenic views from that same world, quiet details around the home (a sunlit kitchen counter, a mug on a windowsill, shoes by the door, a folded blanket), and other everyday things (a notebook on a car seat, a garden gate, a porch rail). Keep them in that world's light and palette so the post feels like one place. NO faces, NO hands, NO animals in focus, NO text. Each "scene" is under 30 words, concrete nouns only, and leaves calm space in the upper half for the text. Each slide's "motion" is the one natural movement the clip shows, at real speed: on the cover she keeps walking away while the place moves around her; elsewhere waves roll in, snow falls, leaves spin down, steam curls off a mug, a curtain stirs, light moves across a counter. Every slide's motion is different.
 
 THE CAPTION: "captionQuestion" is one question under 15 words, lowercase-leaning, that she genuinely wants to answer about her own version of this list (concrete, answerable in one honest sentence). No app name, no share or save ask.
 
@@ -375,14 +375,18 @@ export async function generateRippleListTopic(opts: {
   return { ...ranked.winner, jev: ranked.jev, rankedBy: ranked.rankedBy, candidateLog };
 }
 
-/** Image prompt for one people-free scenic slide. */
+/**
+ * Image prompt for one people-free list slide (a scenic view, a detail around
+ * the home or an everyday object, 2026-10-15). The cover uses the avatar
+ * prompt instead (ripple-avatar.ts).
+ */
 export function buildListScenePrompt(scene: string, world: string): string {
   return [
-    `A breathtaking, real landscape photograph: ${scene}.`,
-    `Setting: ${world}.`,
-    "Shot like a beautiful nature photo someone saves: natural light, rich true color, crisp detail in rock, water, snow, leaves and grass, real depth. It must look like a genuine photograph, never a render or painting.",
-    "Leave calm open space (sky, water, snow or mist) in the upper half of the frame for text.",
-    "ABSOLUTELY NO people, faces, hands, silhouettes, animals in focus, vehicles, buildings as the subject, text, letters, signs or logos.",
+    `Scene (follow exactly): ${scene}.`,
+    `A breathtaking, real photograph of that scene. Light and palette from this world: ${world}.`,
+    "Shot like a beautiful photo someone saves: natural light, rich true color, crisp detail in every material (water, snow, leaves, wood, linen, ceramic), real depth. It must look like a genuine photograph, never a render or painting.",
+    "Leave calm open space in the upper half of the frame for text.",
+    "ABSOLUTELY NO people, faces, hands, silhouettes, animals in focus, text, letters, signs or logos.",
     "9:16 vertical portrait.",
   ].join("\n");
 }

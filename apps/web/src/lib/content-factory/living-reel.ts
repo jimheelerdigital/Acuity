@@ -54,6 +54,10 @@ export function livingMotionPrompt(
   // "perfectly still". Camera barely moves; the subject does the work.
   if (opts.selfie) {
     const motion = imagePrompt.match(/^MOTION:\s*(.+)$/m)?.[1]?.trim();
+    // Ripple's walking-avatar cover (2026-10-15): she keeps walking away.
+    const walking = imagePrompt.includes("RIPPLE AVATAR WALK");
+    const WALK =
+      "The woman keeps walking away from the camera at a natural, unhurried pace, her hair and clothes moving in the breeze; we never see her face and she never turns around. The place moves around her naturally.";
     const scene = (imagePrompt.match(/^Scene[^:]*:\s*(.+)$/m)?.[1] ?? "").trim().slice(0, 300);
     if (opts.selfie === "scenic") {
       // Ripple list lane (2026-10-13): people-free landscapes; the nature
@@ -64,8 +68,11 @@ export function livingMotionPrompt(
         "Realistic nature footage: the landscape photo comes alive.",
         land ? `Scene: ${land}` : "",
         `Action: ${motion ?? "the scene's natural elements move: water, clouds, leaves, snow or grass"}. Clearly visible movement at natural, real-world speed through the whole clip, and everything else in the scene moves the way it really would (light shifting, mist drifting, branches swaying).`,
+        walking ? WALK : "",
         "Camera: a slow, smooth push-in or gentle drift, nothing fast.",
-        "Keep the composition, light and color as in the photo. No people, no animals appearing, no text, no morphing or warping.",
+        walking
+          ? "Keep the composition, light and color as in the photo. No other people, no animals appearing, no text, no morphing or warping."
+          : "Keep the composition, light and color as in the photo. No people, no animals appearing, no text, no morphing or warping.",
       ]
         .filter(Boolean)
         .join(" ");
@@ -85,9 +92,11 @@ export function livingMotionPrompt(
       "Realistic phone-camera footage: the photo comes to life.",
       scene ? `Scene: ${scene}` : "",
       `Action: ${motion ?? "the moment in the photo plays out naturally"}. The movement is clearly visible and happens at natural, real-world speed through the whole clip, along with the scene's own ambient movement (steam, light, leaves, fabric, hair).`,
-      opts.person
-        ? "The woman keeps her phone raised in front of her face for the ENTIRE clip; her face is never revealed. She moves naturally: shifts her weight, her free hand gestures, her hair and clothes move."
-        : "No person appears; at most her own hand from her point of view if the action calls for it.",
+      walking
+        ? WALK
+        : opts.person
+          ? "The woman keeps her phone raised in front of her face for the ENTIRE clip; her face is never revealed. She moves naturally: shifts her weight, her free hand gestures, her hair and clothes move."
+          : "No person appears; at most her own hand from her point of view if the action calls for it.",
       "Camera: steady, like a phone held by a real person, with only a very slow push-in.",
       "Keep composition, lighting, color and every object exactly as in the photo. No text, no new people, no phone screen lighting up, no morphing or warping.",
     ]

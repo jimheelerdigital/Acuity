@@ -152,6 +152,31 @@ The Business tab in the admin dashboard now counts our monthly tool and subscrip
 - The ChatGPT plan dropped from $212.50 (Aug) to $106.25 (Sep).
 - fal.ai is still billing $10.66 even though it's unused.
 
+## [2026-10-15] — Ripple covers: our avatar walking away through a scenic place (no more selfies)
+
+- **Requested by:** Keenan
+- **Committed by:** Claude Code
+- **Commit hash:** (see git log: "content: Replace Ripple selfie covers with the avatar walking away")
+
+### In plain English (for Keenan)
+Every Ripple post's cover is now the same woman, our avatar, photographed from behind as she walks away through a beautiful place (a coastal path, an autumn trail, a snowy lane). The mirror selfies are gone. The slides after the cover mix scenic shots, quiet details around the home and other everyday moments, with no people. In the video she keeps walking while the place moves around her.
+
+### Technical changes (for Jimmy)
+- New `lib/content-factory/ripple-avatar.ts`: `RIPPLE_AVATAR_LOOK` (the original brunette-greying avatar), `buildAvatarWalkPrompt` (marker line `RIPPLE AVATAR WALK`), `latestAvatarCoverUrl` (identity anchor = her newest walking cover).
+- `generate-topic.ts`: selfie writer cover = walking-away scenic shot; step shots mix scenic / home / everyday; cover motion = keeps walking.
+- `carousel-daily.ts`:
+  - Selfie: persona fixed to "avatar", anchored on `latestAvatarCoverUrl`; cover uses `buildAvatarWalkPrompt`; text placement upper.
+  - List: cover uses the avatar prompt + reference with `personAllowed`; items use `buildListScenePrompt` (now scenic / home / everyday, no people).
+- `ripple-list.ts`: writer picture rules (avatar cover, mixed item shots); `buildListScenePrompt` reworded with a `Scene (follow exactly):` line.
+- `living-reel.ts`: selfie "photo" and "scenic" modes detect the marker and keep her walking away (replaces the phone-raised / no-people lines for those covers).
+
+### Manual steps needed
+None
+
+### Notes
+- The 6-character persona test ends here (one consistent avatar). Recipes now record `persona-avatar`.
+- The first walking cover has no reference; every later one anchors on the previous cover.
+
 ## [2026-10-15] — Second UGC ad live: the 35s cut with a download end screen, $15/day
 
 - **Requested by:** Keenan
