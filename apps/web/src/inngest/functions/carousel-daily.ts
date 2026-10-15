@@ -626,7 +626,7 @@ export const carouselDailyCronFn = inngest.createFunction(
         const out: { imageUrl: string; overlayText: string }[] = [];
         for (let i = 0; i < all.length; i++) {
           // 4:5 is the tallest an Instagram carousel shows uncropped.
-          const feed = await renderPaperSlide({ paper: paperLane.spec.paper, W: 1080, H: 1350, seed: guide.slug, ...all[i] });
+          const feed = await renderPaperSlide({ paper: paperLane.spec.paper, W: 1080, H: 1350, seed: guide.slug, large: true, ...all[i] });
           const imageUrl = await uploadImage(feed, `carousels/${dateStr}/${guide.slug}/slide-${i}-feed.jpg`);
           const it = all[i] as { cover?: string; slide?: { header: string; sub: string; body: string[] } };
           out.push({ imageUrl, overlayText: it.cover ?? `${it.slide!.header}\n${it.slide!.sub}\n\n${it.slide!.body.join("\n")}` });

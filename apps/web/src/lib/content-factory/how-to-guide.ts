@@ -37,13 +37,15 @@ const SYSTEM = `${copyObjectives("ripple")}
 
 THIS LANE: a "how to" guide typed onto a sheet of paper, posted as a photo carousel she swipes through. Slide 1 is the title; each slide after it is ONE step. It lives or dies on saves: she finishes it thinking "I can actually do this," saves it, and comes back to it on the hard day.
 
-THE TITLE: a broad, everyday "how to ___" that almost any woman of 40-50 wants, in plain words: "how to find joy in an ordinary week", "how to calm down after a stressful day", "how to be more thankful for the little things", "how to stop feeling guilty for resting". Under 50 characters, lowercase except "I". It must make complete sense on its own, and the steps must deliver exactly what it promises. No numbers, no clickbait.
+THE TITLE: a broad, everyday "how to ___" that almost any woman of 40-50 wants, in plain words: "how to find joy in an ordinary week", "how to calm down after a stressful day", "how to be more thankful for the little things", "how to stop feeling guilty for resting". Under 50 characters, all lowercase. It must make complete sense on its own, and the steps must deliver exactly what it promises. No numbers, no clickbait.
 
 THE STEPS: 4 or 5, in the order she would actually do them. Each step is:
 - "header": the step's name, 2 to 4 words, a plain instruction ("name what's heavy", "go outside for ten minutes").
-- "sub": one plain sentence, at most 36 characters, saying exactly what to do.
-- "body": 2 to 4 short lines (each at most 36 characters, split longer thoughts across lines) that show HOW: a concrete example from her real life, what to say or write, or why it helps. Lines can be "• " bullets.
+- "sub": one plain sentence, at most 30 characters, saying exactly what to do.
+- "body": 2 to 4 short lines (each at most 30 characters, split longer thoughts across lines; the type is large) that show HOW: a concrete example from her real life, what to say or write, or why it helps. Lines can be "• " bullets.
 Every step names a real, doable action with a real thing in it (a notebook, a walk around the block, three things written down, one text to a friend). "Be kind to yourself" is a wish, not a step. No two steps say the same thing. The last step is the small thing she can keep doing so it lasts.
+
+ALWAYS "YOU" (2026-10-15, per Keenan): every line speaks to the reader as "you" / "your", like instructions handed to her. NEVER "I", "I'm", "me", "my", "we" or "our", and never a line about the writer's own life ("of course i stalled", "i stopped waiting"). Words she might say or text inside quotation marks are fine ("it's been a hard year. coffee?").
 
 VOICE: a warm friend who has been there and is handing over what actually helped. Plain, calm, specific, never a coach, never preachy, never a lecture, no wellness clichés ("self-care", "you deserve", "manifest", "journey", "boundaries are"), no therapy language.
 
@@ -136,6 +138,7 @@ FAIL if ANY of these is true:
 - The steps don't deliver what the title promises, or come in an order that makes no sense.
 - A step is vague advice anyone could write ("be kind to yourself", "practice self-care") instead of a concrete action she could do today.
 - Two steps say the same thing.
+- Any line outside quotation marks is written as "I" / "me" / "my" / "we" instead of speaking to the reader as "you".
 - A line is garbled, contradicts its step, or uses a he/she/they with no clear person.
 - Anything diagnoses her, promises to treat or cure anxiety, stress or any condition, or makes a medical claim.
 
@@ -206,7 +209,12 @@ export async function generateHowToGuide(opts: { recentTitles: string[]; lastAre
       if (g.title.length > 55) return `title too long (${g.title.length} chars)`;
       if (/\bripple\b/i.test(renderGuide(g))) return "names Ripple";
       // The renderer sets one line per string at a fixed size.
-      const long = g.slides.flatMap((s) => [s.sub, ...s.body]).find((l) => l.length > 42);
+      // Always "you" (2026-10-15, per Keenan); quoted things she says are fine.
+      const firstPerson = [g.title, ...g.slides.flatMap((s) => [s.header, s.sub, ...s.body])]
+        .map((l) => l.replace(/["“][^"”]*["”]/g, ""))
+        .find((l) => /\b(i|i'm|i've|i'd|i'll|me|my|mine|myself|we|our|us)\b/i.test(l));
+      if (firstPerson) return `not in "you": "${firstPerson}"`;
+      const long = g.slides.flatMap((s) => [s.sub, ...s.body]).find((l) => l.length > 36);
       if (long) return `line too long for the page: "${long}"`;
       if (await isRecentHeadline(g.title)) return "title repeats a recent post";
       const near = await nearDuplicateOf(g.title);

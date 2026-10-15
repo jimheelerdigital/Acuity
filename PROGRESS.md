@@ -7,6 +7,32 @@
 
 ---
 
+## [2026-10-15] — How-to guides: always written to "you", bigger type
+
+- **Requested by:** Keenan
+- **Committed by:** Claude Code
+- **Commit hash:** (see git log: "fix: Write how-to guides in 'you' and set them in larger type")
+
+### In plain English (for Keenan)
+The daily "how to" guide now always speaks to the reader as "you". The first sample slipped into "I" on some steps ("of course i stalled"). The text is also about 30% bigger and spaced out so it fills the page instead of sitting in the top half.
+
+### Technical changes (for Jimmy)
+- `apps/web/src/lib/content-factory/how-to-guide.ts`:
+  - The prompt requires second person; first person is allowed only inside quotation marks.
+  - New code rule rejects any I/me/my/we/our outside quotes.
+  - The sense editor also fails first-person lines.
+  - Line limit tightened to 30 characters in the prompt and 36 in code; title is all lowercase.
+- `apps/web/src/lib/content-factory/paper-guide.ts`: `renderPaperSlide({ large })` sets body type at 6% of width (was 4.6%), the cover at 11% (was 7.8%), with 1.35 line height and more space under the header.
+- `apps/web/src/inngest/functions/carousel-daily.ts`: how-to guides render with `large: true`.
+
+### Manual steps needed
+- [ ] None
+
+### Notes
+- Previewed locally with the bundled Tinos font at 1080x1350. The cover fills about the middle third of the page, and step text wraps cleanly at 30 characters.
+
+---
+
 ## [2026-10-15] — Daily "how to" paper guide, emailed as a photo carousel to post by hand
 
 - **Requested by:** Keenan

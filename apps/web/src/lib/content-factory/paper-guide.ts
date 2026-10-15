@@ -324,6 +324,8 @@ export async function renderPaperSlide(opts: {
   seed?: string;
   cover?: string;
   slide?: PaperGuideSlide;
+  /** Bigger type for the how-to guides (2026-10-15, per Keenan: the text only filled the top half of the sheet). */
+  large?: boolean;
 }): Promise<Buffer> {
   const { W, H } = opts;
   const [regular, bold] = await Promise.all([ensureTinos("Regular"), ensureTinos("Bold")]);
@@ -335,12 +337,12 @@ export async function renderPaperSlide(opts: {
   // caps with slight tracking, the subline directly under it.
   const left = Math.round(W * 0.09);
   const textW = Math.round(W * 0.8);
-  const size = Math.round(W * 0.046);
+  const size = Math.round(W * (opts.large ? 0.06 : 0.046));
   // Header and body are separate blocks because sharp registers one
   // fontfile per text render (Lambda needs Bold and Regular each).
   const blocks: { buf: Buffer; h: number; dy: number }[] = [];
   if (opts.cover) {
-    const c = await textBlock(`<span font_desc="Tinos ${Math.round(W * 0.078)}" foreground="${INK}" line_height="1.15">${esc(opts.cover)}</span>`, regular, textW);
+    const c = await textBlock(`<span font_desc="Tinos ${Math.round(W * (opts.large ? 0.11 : 0.078))}" foreground="${INK}" line_height="1.15">${esc(opts.cover)}</span>`, regular, textW);
     blocks.push({ buf: c.buf, h: c.h, dy: 0 });
   } else if (opts.slide) {
     const s = opts.slide;
@@ -350,9 +352,10 @@ export async function renderPaperSlide(opts: {
       textW
     );
     const rest = [s.sub, "", ...s.body].map((l) => esc(l)).join("\n");
-    const body = await textBlock(`<span font_desc="Tinos ${size}" foreground="${INK}" line_height="1.2">${rest}</span>`, regular, textW);
+    // Large: more air between lines and under the header so the page fills.
+    const body = await textBlock(`<span font_desc="Tinos ${size}" foreground="${INK}" line_height="${opts.large ? 1.35 : 1.2}">${rest}</span>`, regular, textW);
     blocks.push({ buf: head.buf, h: head.h, dy: 0 });
-    blocks.push({ buf: body.buf, h: body.h, dy: head.h + Math.round(size * 0.3) });
+    blocks.push({ buf: body.buf, h: body.h, dy: head.h + Math.round(size * (opts.large ? 0.7 : 0.3)) });
   }
   const total = blocks.reduce((m, b) => Math.max(m, b.dy + b.h), 0);
   const top = Math.max(Math.round(H * 0.1), Math.round(H * 0.47 - total / 2));
