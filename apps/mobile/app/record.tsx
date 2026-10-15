@@ -268,19 +268,8 @@ export default function RecordScreen() {
   // session. allowsRecordingIOS makes the OS grant foreground audio.
   useEffect(() => {
     Audio.requestPermissionsAsync();
-    Audio.setAudioModeAsync({
-      allowsRecordingIOS: true,
-      playsInSilentModeIOS: true,
-      interruptionModeIOS: InterruptionModeIOS.DoNotMix,
-      // Android (v1.3.3 baseline): explicit interruption handling so a
-      // call/alarm pauses cleanly instead of the OS deciding ad hoc.
-      interruptionModeAndroid: InterruptionModeAndroid.DoNotMix,
-      shouldDuckAndroid: false,
-    }).catch(() => {
-      // Some older iOS versions + Expo Go can reject the mode; not
-      // fatal, recording will still start, just without clean
-      // interruption handling.
-    });
+    void ensureAudioSession();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // If the user backgrounds the app while polling, we just keep
@@ -350,7 +339,61 @@ export default function RecordScreen() {
     };
   }, []);
 
-  const startRecording = async () => {
+  /**
+   * Put the audio session in record mode and WAIT for it.
+   *
+   * 1.9.1 fix for "Recording unavailable — your phone is in use by another
+   * app or a call" when recording from the Action Button / widget / Siri
+   * (acuity://record?autostart=1). The mount effect used to fire
+   * setAudioModeAsync without awaiting it, and the autostart effect ran in
+   * the same commit — so prepareToRecordAsync ran before
+   * allowsRecordingIOS was applied, threw, and we reported it as "phone in
+   * use". Tapping record by hand worked only because by then the mode had
+   * landed.
+   */
+  const audioModeRef = useRef<Promise<void> | null>(null);
+  const ensureAudioSession = (force = false): Promise<void> => {
+    if (!audioModeRef.current || force) {
+      audioModeRef.current = Audio.setAudioModeAsync({
+        allowsRecordingIOS: true,
+        playsInSilentModeIOS: true,
+        interruptionModeIOS: InterruptionModeIOS.DoNotMix,
+        // Android (v1.3.3 baseline): explicit interruption handling so a
+        // call/alarm pauses cleanly instead of the OS deciding ad hoc.
+        interruptionModeAndroid: InterruptionModeAndroid.DoNotMix,
+        shouldDuckAndroid: false,
+      }).catch(() => {
+        // Some older iOS versions + Expo Go can reject the mode; not
+        // fatal, recording will still start, just without clean
+        // interruption handling.
+      });
+    }
+    return audioModeRef.current;
+  };
+
+  /**
+   * A launch from the Action Button / widget can reach this screen while
+   * the app is still "inactive" (mid-transition to the foreground), and iOS
+   * won't start a recording session for an app that isn't active yet. Wait
+   * briefly for "active".
+   */
+  const waitUntilActive = (timeoutMs = 3000): Promise<void> =>
+    new Promise((resolve) => {
+      if (AppState.currentState === "active") return resolve();
+      const timer = setTimeout(() => {
+        sub.remove();
+        resolve();
+      }, timeoutMs);
+      const sub = AppState.addEventListener("change", (next) => {
+        if (next === "active") {
+          clearTimeout(timer);
+          sub.remove();
+          resolve();
+        }
+      });
+    });
+
+  const startRecording = async (attempt = 1): Promise<void> => {
     setError(null);
     setInterrupted(false);
     setPolledEntryId(null);
@@ -366,6 +409,9 @@ export default function RecordScreen() {
         return;
       }
     }
+
+    await waitUntilActive();
+    await ensureAudioSession(attempt > 1);
 
     try {
       const recording = new Audio.Recording();
@@ -436,6 +482,13 @@ export default function RecordScreen() {
         message: "recording.start failed",
         data: { nativeMessage, nativeCode },
       });
+
+      // One automatic retry: a launch transition (audio route still being
+      // handed over, session not yet active) clears up within moments.
+      if (attempt === 1) {
+        await new Promise((r) => setTimeout(r, 600));
+        return startRecording(2);
+      }
 
       const fresh = await Audio.getPermissionsAsync().catch(() => null);
       if (fresh && !fresh.granted) {
