@@ -28,7 +28,7 @@ import {
 } from "@/lib/onboarding-v10/branches";
 import { trackV10 } from "@/lib/onboarding-v10/analytics";
 import { getV10Branch } from "@/lib/onboarding-v10/state";
-import { SPEECH_RECORDING_OPTIONS } from "@/lib/audio-recording-options";
+import { startSpeechRecording } from "@/lib/start-speech-recording";
 import { V10_MAX_RECORDING_MS as MAX_MS } from "@/lib/onboarding-v10/limits";
 
 /**
@@ -77,58 +77,75 @@ export default function V10Recording() {
   }));
 
   // ── Start recording immediately on mount ───────────────────────────
-  useEffect(() => {
-    let cancelled = false;
+  const mountedRef = useRef(true);
+  const branchRef = useRef<V10Branch>("open");
+  const [starting, setStarting] = useState(false);
 
-    void (async () => {
-      const b = (await getV10Branch()) ?? "open";
-      if (!cancelled) setBranch(b);
-
-      try {
-        await Audio.setAudioModeAsync({
-          allowsRecordingIOS: true,
-          playsInSilentModeIOS: true,
-        });
-
-        const recording = new Audio.Recording();
-        // Same 64 kbps mono spec as every other recorder in the app —
-        // speech for Whisper, not music. See lib/audio-recording-options.
-        await recording.prepareToRecordAsync(SPEECH_RECORDING_OPTIONS);
+  const beginRecording = useCallback(async () => {
+    setError(null);
+    setStarting(true);
+    try {
+      // Shared starter (lib/start-speech-recording): waits for the app to
+      // be active after the mic prompt closes, awaits the audio mode,
+      // retries once. This screen opens right after the permission alert,
+      // which is exactly when a bare start failed (1.9.1 fix).
+      const recording = await startSpeechRecording({
+        source: "onboarding_v10",
+        progressIntervalMs: TICK_MS,
         // Same normalization the legacy recorder uses: metering is dBFS,
         // roughly -60 (silence) to 0 (peak).
-        recording.setOnRecordingStatusUpdate((status) => {
+        onStatus: (status) => {
           if (!status.isRecording) return;
           const db = status.metering ?? -60;
           setLevel(Math.max(0, Math.min(1, (db + 60) / 60)));
-        });
-        recording.setProgressUpdateInterval(TICK_MS);
-
-        await recording.startAsync();
-        if (cancelled) {
-          void recording.stopAndUnloadAsync().catch(() => {});
-          return;
-        }
-
-        recordingRef.current = recording;
-        startedAtRef.current = Date.now();
-        listeningOpacity.value = withTiming(1, { duration: 1000 });
-        trackV10("v10_recording_started", { input: "voice", branch: b });
-      } catch {
-        if (!cancelled) {
-          setError("Ripple couldn't start recording. Try again in a moment.");
-        }
+        },
+      });
+      if (!mountedRef.current) {
+        void recording.stopAndUnloadAsync().catch(() => {});
+        return;
       }
+      recordingRef.current = recording;
+      startedAtRef.current = Date.now();
+      listeningOpacity.value = withTiming(1, { duration: 1000 });
+      trackV10("v10_recording_started", { input: "voice", branch: branchRef.current });
+    } catch (err) {
+      // Record the native reason (this used to be swallowed, so the cause of
+      // the 2026-10-15 failures couldn't be read from the data).
+      trackV10("v10_recording_start_failed", {
+        branch: branchRef.current,
+        error: (err instanceof Error ? err.message : String(err)).slice(0, 200),
+        code:
+          err && typeof err === "object" && "code" in err
+            ? String((err as { code?: unknown }).code)
+            : null,
+      });
+      if (mountedRef.current) {
+        // Not a dead end: the main button becomes "Try again".
+        setError("Ripple couldn't start recording. Tap Try again.");
+      }
+    } finally {
+      if (mountedRef.current) setStarting(false);
+    }
+  }, [listeningOpacity]);
+
+  useEffect(() => {
+    mountedRef.current = true;
+    void (async () => {
+      const b = (await getV10Branch()) ?? "open";
+      branchRef.current = b;
+      if (mountedRef.current) setBranch(b);
+      await beginRecording();
     })();
 
     return () => {
-      cancelled = true;
+      mountedRef.current = false;
       // Stop cleanly if the screen is torn down mid-recording so the mic is
       // released and no orphan file is left behind.
       const r = recordingRef.current;
       recordingRef.current = null;
       if (r) void r.stopAndUnloadAsync().catch(() => {});
     };
-  }, [listeningOpacity]);
+  }, [beginRecording]);
 
   // ── Elapsed clock ──────────────────────────────────────────────────
   useEffect(() => {
@@ -371,16 +388,31 @@ export default function V10Recording() {
           })}
         </View>
 
-        <FunnelCta
-          label="Stop"
-          busyLabel="Saving…"
-          busy={stopping}
-          onPress={() => void handleStop()}
-          tokens={tokens}
-          size="lg"
-          onCoral
-          accessibilityLabel="Stop recording"
-        />
+        {/* If the start failed, the main button retries instead of being a
+            Stop with nothing to stop. */}
+        {error && !recordingRef.current && !stopping ? (
+          <FunnelCta
+            label="Try again"
+            busyLabel="Starting…"
+            busy={starting}
+            onPress={() => void beginRecording()}
+            tokens={tokens}
+            size="lg"
+            onCoral
+            accessibilityLabel="Try recording again"
+          />
+        ) : (
+          <FunnelCta
+            label="Stop"
+            busyLabel="Saving…"
+            busy={stopping}
+            onPress={() => void handleStop()}
+            tokens={tokens}
+            size="lg"
+            onCoral
+            accessibilityLabel="Stop recording"
+          />
+        )}
       </View>
       </SafeAreaView>
     </CoralScreen>

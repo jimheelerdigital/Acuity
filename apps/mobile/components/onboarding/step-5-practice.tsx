@@ -7,7 +7,7 @@ import { useAuth } from "@/contexts/auth-context";
 import { useTheme } from "@/contexts/theme-context";
 
 import { useOnboarding } from "./context";
-import { SPEECH_RECORDING_OPTIONS } from "@/lib/audio-recording-options";
+import { startSpeechRecording } from "@/lib/start-speech-recording";
 
 /**
  * Step 5 — Practice recording. A throwaway 10-second sample. The audio
@@ -92,14 +92,7 @@ export function Step5Practice() {
         }
       }
 
-      await Audio.setAudioModeAsync({
-        allowsRecordingIOS: true,
-        playsInSilentModeIOS: true,
-      });
-
-      const rec = new Audio.Recording();
-      await rec.prepareToRecordAsync(SPEECH_RECORDING_OPTIONS);
-      await rec.startAsync();
+      const rec = await startSpeechRecording({ source: "practice" });
       recRef.current = rec;
 
       const started = Date.now();

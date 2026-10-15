@@ -42,7 +42,7 @@ import {
   registerPushTokenForReminderSlot,
 } from "@/lib/push-token";
 import { bumpDebriefSignal, maybeAskForReviewAfterDebrief } from "@/lib/review";
-import { SPEECH_RECORDING_OPTIONS } from "@/lib/audio-recording-options";
+import { startSpeechRecording } from "@/lib/start-speech-recording";
 import { noteWelcomeDebrief } from "@/lib/welcome/flow";
 
 /**
@@ -394,29 +394,7 @@ export default function RecordScreen() {
     return audioModeRef.current;
   };
 
-  /**
-   * A launch from the Action Button / widget can reach this screen while
-   * the app is still "inactive" (mid-transition to the foreground), and iOS
-   * won't start a recording session for an app that isn't active yet. Wait
-   * briefly for "active".
-   */
-  const waitUntilActive = (timeoutMs = 3000): Promise<void> =>
-    new Promise((resolve) => {
-      if (AppState.currentState === "active") return resolve();
-      const timer = setTimeout(() => {
-        sub.remove();
-        resolve();
-      }, timeoutMs);
-      const sub = AppState.addEventListener("change", (next) => {
-        if (next === "active") {
-          clearTimeout(timer);
-          sub.remove();
-          resolve();
-        }
-      });
-    });
-
-  const startRecording = async (attempt = 1): Promise<void> => {
+  const startRecording = async (): Promise<void> => {
     setError(null);
     setInterrupted(false);
     setPolledEntryId(null);
@@ -433,23 +411,15 @@ export default function RecordScreen() {
       }
     }
 
-    await waitUntilActive();
-    await ensureAudioSession(attempt > 1);
-
     try {
-      const recording = new Audio.Recording();
-      // 64 kbps MONO, not HIGH_QUALITY's 128 kbps stereo — see
-      // lib/audio-recording-options.ts. A 5-min entry was ~4.8MB and hit
-      // Vercel's non-configurable 4.5MB body cap; this brings it to ~2.4MB.
-      await recording.prepareToRecordAsync(SPEECH_RECORDING_OPTIONS);
-      // expo-av's default metering cadence is 500ms (2 Hz). Bumping
-      // to 1000ms (1 Hz) halves the JS-thread setLevels churn with
-      // zero visible impact on the level-bar animation — each status
-      // callback forces a re-render cascade, so cutting them in half
-      // is free perf.
-      recording.setProgressUpdateInterval(1000);
-      // Subscribe to metering updates for the level-bar visualization.
-      recording.setOnRecordingStatusUpdate((status) => {
+      peakLevelRef.current = 0; // P1: reset peak for this recording
+      // Shared starter (lib/start-speech-recording): waits for "active",
+      // awaits the audio mode, unloads + retries once on failure. 1000ms
+      // metering cadence halves setLevels churn vs the 500ms default.
+      const recording = await startSpeechRecording({
+        source: "main",
+        progressIntervalMs: 1000,
+        onStatus: (status) => {
         if (!status.isRecording) return;
         const meteringDb = status.metering ?? -60;
         // Map -60..0 dB → 0..1. Apple's dB range is roughly -60 silent
@@ -466,9 +436,8 @@ export default function RecordScreen() {
           next.push(Math.max(0.05, normalized));
           return next;
         });
+        },
       });
-      peakLevelRef.current = 0; // P1: reset peak for this recording
-      await recording.startAsync();
       recordingRef.current = recording;
       setElapsed(0);
       setState("recording");
@@ -506,13 +475,7 @@ export default function RecordScreen() {
         data: { nativeMessage, nativeCode },
       });
 
-      // One automatic retry: a launch transition (audio route still being
-      // handed over, session not yet active) clears up within moments.
-      if (attempt === 1) {
-        await new Promise((r) => setTimeout(r, 600));
-        return startRecording(2);
-      }
-
+      // (The automatic retry now lives in startSpeechRecording.)
       const fresh = await Audio.getPermissionsAsync().catch(() => null);
       if (fresh && !fresh.granted) {
         Alert.alert(
