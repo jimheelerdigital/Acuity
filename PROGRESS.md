@@ -7,6 +7,37 @@
 
 ---
 
+## [2026-10-15] — Daily "how to" paper guide, emailed as a photo carousel to post by hand
+
+- **Requested by:** Keenan
+- **Committed by:** Claude Code
+- **Commit hash:** (see git log: "feat: Add a daily how-to paper guide emailed as a photo carousel")
+
+### In plain English (for Keenan)
+Every day between the two Ripple list posts (06 UTC), Ripple writes a "how to" guide on the paper background, such as "how to calm down after a stressful day" or "how to be more thankful for the little things". It's 4–5 steps, each a clear thing to do plus a few lines on how. It arrives by email as ready-to-post photos sized for an Instagram carousel. It never posts itself: Meta's API can't add music to a photo carousel, so Keenan posts it by hand and picks the song in the app.
+
+### Technical changes (for Jimmy)
+- New `apps/web/src/lib/content-factory/how-to-guide.ts`:
+  - `generateHowToGuide()` writes 5 Opus drafts, one life area each from `HOWTO_AREAS`.
+  - Code rules: the title must start with "how to", be under 55 characters and not name Ripple; every line must be 42 characters or less; no recent or near-duplicate titles.
+  - Then `howToSenseProblem` (Opus, fails closed) with `repairGuide`, then the Jev rank via `rankCandidates`.
+- `apps/web/src/lib/content-factory/paper-guide.ts`: `PaperLaneSpec.style` ("reset" | "howto").
+- `apps/web/src/inngest/functions/carousel-daily.ts`: a paper lane with `style: "howto"` does the following:
+  - Renders 4:5 sheets only (1080x1350).
+  - Saves the post as APPROVED with no video.
+  - Calls `sendCarouselEmail(..., { allLanes: true })`.
+  - Recent titles come from every lane, so the guide doesn't echo the list posts.
+- DB: ContentLane `reset-guide` set back to ACTIVE at hour 6 UTC with spec `style: "howto"`, minSlides 4, maxSlides 5, emailOnly true. Done after deploy, by script, not schema.
+
+### Manual steps needed
+- [ ] Keenan: post the guide from the daily email by hand on IG (add music in the app)
+
+### Notes
+- Meta's Graph API publishes IG photo carousels but cannot attach library music to them. Music on a photo carousel is app-only, which is why this lane is hand-posted.
+- The old reset-guide writer (`generatePaperGuideTopic`, time-boxed resets) is untouched and still serves any paper lane without `style: "howto"`.
+
+---
+
 ## [2026-10-15] — Ripple: both daily posts are list posts now, and clips stop looking sped up
 
 - **Requested by:** Keenan

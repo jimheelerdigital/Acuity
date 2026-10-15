@@ -52,6 +52,8 @@ export interface PaperLaneSpec {
   paper: "cream" | "charcoal";
   minSlides: number;
   maxSlides: number;
+  /** "howto" (2026-10-15): broad "how to ___" guides (how-to-guide.ts), photo carousel emailed for hand posting. */
+  style?: "reset" | "howto";
 }
 
 /** Parse a ContentLane.spec for template "paper-guide". Null = unusable. */
@@ -67,6 +69,7 @@ export function parsePaperLaneSpec(raw: unknown): PaperLaneSpec | null {
     paper: s.paper === "charcoal" ? "charcoal" : "cream",
     minSlides: clamp(s.minSlides, 5),
     maxSlides: clamp(s.maxSlides, 7),
+    style: s.style === "howto" ? "howto" : "reset",
   };
 }
 

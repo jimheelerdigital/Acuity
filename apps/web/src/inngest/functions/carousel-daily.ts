@@ -595,6 +595,87 @@ export const carouselDailyCronFn = inngest.createFunction(
             return { key: row.key, spec };
           })
         : null;
+    // "How to" guides (2026-10-15, per Keenan: general "how to calm down
+    // after a stressful day" guides, 4-5 steps, "send me the photo carousel
+    // daily and I'll post by hand"): same paper sheets, new writer, 4:5 photo
+    // carousel emailed as images, no video, never auto-posted.
+    if (paperLane && paperLane.spec.style === "howto") {
+      const laneKey = paperLane.key;
+      const guide = await step.run("generate-howto-guide", async () => {
+        const { prisma } = await import("@/lib/prisma");
+        const { generateHowToGuide } = await import("@/lib/content-factory/how-to-guide");
+        // Every lane's titles, so the guide never echoes the day's list posts.
+        const recent = await prisma.carouselPost.findMany({
+          where: { generatedFor: { gte: new Date(Date.now() - 30 * 86_400_000) } },
+          orderBy: { createdAt: "desc" },
+          select: { headline: true },
+          take: 80,
+        });
+        return generateHowToGuide({ recentTitles: recent.map((p) => p.headline) });
+      });
+      logger.info(
+        `[carousel-cron] How-to guide (${laneKey}): "${guide.title}" (${guide.slides.length} steps, ${guide.area}) — ${guide.candidateLog ?? ""}${guide.held ? ` HELD: ${guide.held}` : ""}`
+      );
+      if (dryRun) return saveDryRun(laneKey, guide);
+
+      const guideSlides = await step.run("render-howto-slides", async () => {
+        const { ensureBucket, uploadImage } = await import("@/lib/content-factory/carousel-generate");
+        const { renderPaperSlide } = await import("@/lib/content-factory/paper-guide");
+        await ensureBucket();
+        const all = [{ cover: guide.title }, ...guide.slides.map((slide) => ({ slide }))];
+        const out: { imageUrl: string; overlayText: string }[] = [];
+        for (let i = 0; i < all.length; i++) {
+          // 4:5 is the tallest an Instagram carousel shows uncropped.
+          const feed = await renderPaperSlide({ paper: paperLane.spec.paper, W: 1080, H: 1350, seed: guide.slug, ...all[i] });
+          const imageUrl = await uploadImage(feed, `carousels/${dateStr}/${guide.slug}/slide-${i}-feed.jpg`);
+          const it = all[i] as { cover?: string; slide?: { header: string; sub: string; body: string[] } };
+          out.push({ imageUrl, overlayText: it.cover ?? `${it.slide!.header}\n${it.slide!.sub}\n\n${it.slide!.body.join("\n")}` });
+        }
+        return out;
+      });
+
+      const guideResult = await step.run("save-and-email-howto", async () => {
+        const { prisma } = await import("@/lib/prisma");
+        const { buildCaption } = await import("@/lib/content-factory/caption");
+        const { extractHashtags } = await import("@/lib/content-factory/carousel-generate");
+        const caption = buildCaption({
+          slug: guide.slug,
+          headline: guide.title,
+          style: "hook",
+          lane: "cinematicReal",
+          reasons: guide.slides.map((s) => s.sub),
+          captionQuestion: guide.captionQuestion,
+        });
+        const post = await prisma.carouselPost.create({
+          data: {
+            topicSlug: guide.slug,
+            headline: guide.title,
+            // Posted by hand: APPROVED never enters the auto-post queue
+            // (the lane's spec.emailOnly also keeps it out).
+            status: "APPROVED",
+            format: "PHOTO",
+            caption,
+            hashtags: extractHashtags(caption),
+            generatedFor: today,
+            lane: laneKey,
+            slides: {
+              create: guideSlides.map((s, i) => ({
+                order: i,
+                kind: i === 0 ? ("COVER" as const) : ("REASON" as const),
+                overlayText: s.overlayText,
+                imagePrompt: `paper-guide:${paperLane.spec.paper}:howto`,
+                imageUrl: s.imageUrl,
+              })),
+            },
+          },
+        });
+        const { sendCarouselEmail } = await import("@/lib/content-factory/email");
+        const sent = await sendCarouselEmail(post.id, false, { allLanes: true });
+        return { postId: post.id, slideCount: guideSlides.length, emailId: sent.emailId };
+      });
+      logger.info(`[carousel-cron] Generated how-to guide "${guide.title}": ${guideResult.slideCount} slides, emailed ${guideResult.emailId}`);
+      return { generated: 1, bucket: laneKey, ...guideResult };
+    }
     if (paperLane) {
       const laneKey = paperLane.key;
       const topic = await step.run("generate-paper-topic", async () => {
