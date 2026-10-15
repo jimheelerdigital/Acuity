@@ -152,6 +152,29 @@ The Business tab in the admin dashboard now counts our monthly tool and subscrip
 - The ChatGPT plan dropped from $212.50 (Aug) to $106.25 (Sep).
 - fal.ai is still billing $10.66 even though it's unused.
 
+## [2026-10-14] — First UGC video set up as its own $15/day Meta ad (paused until approved)
+
+- **Requested by:** Keenan
+- **Committed by:** Claude Code
+- **Commit hash:** (see git log: "feat: Add a route to run a UGC creator video as its own Meta ad")
+
+### In plain English (for Keenan)
+@therapyandthingss's first video is set up on Meta as its own ad with its own $15/day budget, pointing at her tracking link so her signups are credited to her. It stays paused until Keenan approves the exact ad.
+
+### Technical changes (for Jimmy)
+- New `apps/web/src/app/api/admin/adlab/ugc-ad/route.ts`:
+  - `create`: `ensureDedicatedAdSet` (lane evergreen campaign, MAIN targeting, PURCHASE optimization) → ad set paused immediately → `uploadVideo` + `uploadImage` (thumbnail) → `createAdCreative` → `createAd` (PAUSED) → `UgcVideo` row.
+  - `activate`: sets the ad set + ad ACTIVE.
+  - Auth: admin session or CRON_SECRET.
+- Assets: H.264 transcode of the creator's HEVC file plus a 1s thumbnail, at `content-factory/ugc/therapyandthings/video-1.mp4` / `video-1-thumb.jpg`.
+
+### Manual steps needed
+- [ ] Keenan approves the exact ad, then it gets activated via `action: "activate"` (Claude Code)
+
+### Notes
+- Runs on prod because `META_ACCESS_TOKEN` is Vercel-sensitive (empty locally).
+- This ad lives outside AdLab's `AdLabAd` table, so the daily kill engine doesn't manage it. Spend and trials are tracked via the creator's UTM (`ugc-therapyandthings`) and the `UgcVideo` row.
+
 ## [2026-10-14] — Ripple text sits straight on the photo (no box, no haze)
 
 - **Requested by:** Keenan
