@@ -38,7 +38,7 @@ import { getToken } from "@/lib/auth";
 import { invalidate } from "@/lib/cache";
 import { registerPushTokenAfterRecording } from "@/lib/push-token";
 import { bumpDebriefSignal, maybeAskForReviewAfterDebrief } from "@/lib/review";
-import { SPEECH_RECORDING_OPTIONS } from "@/lib/audio-recording-options";
+import { startSpeechRecording } from "@/lib/start-speech-recording";
 import { noteWelcomeDebrief } from "@/lib/welcome/flow";
 
 /**
@@ -368,19 +368,16 @@ export default function RecordScreen() {
     }
 
     try {
-      const recording = new Audio.Recording();
-      // 64 kbps MONO, not HIGH_QUALITY's 128 kbps stereo — see
-      // lib/audio-recording-options.ts. A 5-min entry was ~4.8MB and hit
-      // Vercel's non-configurable 4.5MB body cap; this brings it to ~2.4MB.
-      await recording.prepareToRecordAsync(SPEECH_RECORDING_OPTIONS);
-      // expo-av's default metering cadence is 500ms (2 Hz). Bumping
-      // to 1000ms (1 Hz) halves the JS-thread setLevels churn with
-      // zero visible impact on the level-bar animation — each status
-      // callback forces a re-render cascade, so cutting them in half
-      // is free perf.
-      recording.setProgressUpdateInterval(1000);
-      // Subscribe to metering updates for the level-bar visualization.
-      recording.setOnRecordingStatusUpdate((status) => {
+      peakLevelRef.current = 0; // P1: reset peak for this recording
+      // Shared starter (lib/start-speech-recording, 1.9.0 hotfix): waits
+      // for the app to be active (Action Button / widget launches arrive
+      // mid-transition), awaits the recording audio mode (the mount effect
+      // set it fire-and-forget, so an autostart could race it), unloads a
+      // half-prepared recorder and retries once. 64 kbps mono options.
+      const recording = await startSpeechRecording({
+        source: "main",
+        progressIntervalMs: 1000,
+        onStatus: (status) => {
         if (!status.isRecording) return;
         const meteringDb = status.metering ?? -60;
         // Map -60..0 dB → 0..1. Apple's dB range is roughly -60 silent
@@ -397,9 +394,8 @@ export default function RecordScreen() {
           next.push(Math.max(0.05, normalized));
           return next;
         });
+        },
       });
-      peakLevelRef.current = 0; // P1: reset peak for this recording
-      await recording.startAsync();
       recordingRef.current = recording;
       setElapsed(0);
       setState("recording");
