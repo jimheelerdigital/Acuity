@@ -218,6 +218,7 @@ function AuthGate() {
       segment,
       funnelWelcomeEnabled: isFunnelWelcomeEnabled(),
       welcomeEligible: user?.welcomeEligible,
+      hasRecorded: user ? (user.totalRecordings ?? 0) > 0 : undefined,
     });
 
     switch (route) {
@@ -248,6 +249,14 @@ function AuthGate() {
         void markV10Offered();
         // 1.9.1: the funnel opens on "I'm new" / "I have an account".
         router.replace("/onboarding-new/start" as never);
+        return;
+
+      case "v10-resume":
+        // Signed in, onboarding unfinished, no debrief yet (1.9.1
+        // account-first): continue the new funnel right after the account
+        // step instead of the legacy onboarding.
+        void markV10Offered();
+        router.replace("/onboarding-new/pain" as never);
         return;
 
       case "welcome":

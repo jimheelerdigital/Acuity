@@ -31,6 +31,7 @@ export type ColdStartRoute =
   | "signin"
   | "v10"
   | "legacy-onboarding"
+  | "v10-resume"
   | "welcome";
 
 export interface ColdStartFacts {
@@ -86,6 +87,14 @@ export interface ColdStartFacts {
    * active user in the flow.
    */
   welcomeEligible?: boolean;
+  /**
+   * 1.9.1: has this account recorded at least one debrief (server
+   * totalRecordings > 0)? Account-first means an account can now exist
+   * BEFORE the first recording — e.g. someone who quits mid-funnel and
+   * relaunches, or reinstalls (iOS keeps the sign-in in the Keychain while
+   * the device flags are wiped). Optional: undefined keeps the old rules.
+   */
+  hasRecorded?: boolean;
 }
 
 /**
@@ -175,6 +184,10 @@ export function decideColdStartRoute(f: ColdStartFacts): ColdStartRoute {
   }
 
   if (!f.onboardingCompleted && !inOnboarding && !inOnboardingNew && !inAuthCallback) {
+    // 1.9.1 account-first: a signed-in account with no debrief yet hasn't
+    // done the funnel's core — pick it up after the account step. Never the
+    // legacy flow, and not Home (which used to assume they'd recorded).
+    if (f.v10Enabled && f.hasRecorded === false) return "v10-resume";
 
     // v10 arrivals must NOT be handed to the legacy post-signup flow. They
     // have already recorded, seen a reveal, made a paywall decision and

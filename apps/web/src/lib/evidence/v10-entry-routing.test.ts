@@ -96,6 +96,36 @@ describe("signed in", () => {
     ).toBe("home");
   });
 
+  it("1.9.1: resumes the funnel for a signed-in account with no debrief yet", () => {
+    // Account-first: the account exists before the first recording. A
+    // relaunch or reinstall mid-funnel must not land in the legacy flow
+    // (or on Home without ever recording).
+    expect(
+      at({ signedIn: true, onboardingCompleted: false, hasRecorded: false })
+    ).toBe("v10-resume");
+    expect(
+      at({ signedIn: true, onboardingCompleted: false, hasRecorded: false, v10Offered: true })
+    ).toBe("v10-resume");
+  });
+
+  it("1.9.1: keeps Home for v10 arrivals who did record", () => {
+    expect(
+      at({ signedIn: true, onboardingCompleted: false, hasRecorded: true, v10Offered: true })
+    ).toBe("home");
+  });
+
+  it("1.9.1: never resumes v10 when the flag is off", () => {
+    expect(
+      at({ v10Enabled: false, signedIn: true, onboardingCompleted: false, hasRecorded: false })
+    ).toBe("legacy-onboarding");
+  });
+
+  it("1.9.1: stays put while already inside the funnel", () => {
+    expect(
+      at({ signedIn: true, onboardingCompleted: false, hasRecorded: false, segment: "onboarding-new" })
+    ).toBe("stay");
+  });
+
   it("still runs the legacy flow for non-v10 signups", () => {
     expect(at({ signedIn: true, onboardingCompleted: false })).toBe(
       "legacy-onboarding"
