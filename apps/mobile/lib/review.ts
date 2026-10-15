@@ -1,5 +1,6 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Platform, Linking } from "react-native";
+import Constants from "expo-constants";
 import * as StoreReview from "expo-store-review";
 
 import { api } from "@/lib/api";
@@ -23,8 +24,10 @@ const K = {
   lastShown: "review.lastShownAt",
   rated: "review.rated",
   off: "review.dismissedForever",
-  // Per-ACCOUNT marker for the automatic native ask (suffix = User.id).
-  autoAskedPrefix: "review.autoAsked.",
+  // Per-ACCOUNT state for the automatic native ask (suffix = User.id).
+  seenPrefix: "review.seenDebriefs.", // last server count we saw
+  askedVersionPrefix: "review.askedVersion.", // app version we last asked on
+  askedAtPrefix: "review.askedAt.", // when we last asked (epoch ms)
 };
 
 // Gating knobs.
@@ -54,45 +57,67 @@ export async function bumpDebriefSignal(): Promise<void> {
 
 /** Completed debriefs at which we make the automatic native ask. */
 export const AUTO_ASK_AT_DEBRIEFS = 2;
+/** Minimum gap between asks ("a week or two" — Apple HIG). */
+export const MIN_DAYS_BETWEEN_ASKS = 14;
 
-/** Pure gate for the automatic ask (unit-tested). */
+/**
+ * Pure gate for the automatic native ask (unit-testable).
+ *
+ * Ask when ALL hold:
+ *   - a debrief just completed (server count went up since we last looked),
+ *     so the ask lands at the end of a success, never on a cold launch;
+ *   - the account has >= 2 completed debriefs;
+ *   - we haven't asked on THIS app version yet (Apple's own sample pattern),
+ *     so people who tapped "Not Now" get asked again after an update;
+ *   - at least 14 days since the last ask;
+ *   - they haven't turned asks off or tapped "Rate Ripple" in Settings.
+ * Apple then decides whether to actually show it: max 3 times per 365 days,
+ * and not to people who've already left feedback. Apps are never told
+ * whether someone rated, so this is the most we can know.
+ */
 export function shouldAutoAsk(input: {
   completedDebriefs: number;
-  alreadyAsked: boolean;
+  lastSeenDebriefs: number | null;
+  appVersion: string | null;
+  lastAskedVersion: string | null;
+  lastAskedAt: number | null;
   turnedOff: boolean;
   rated: boolean;
+  now?: number;
 }): boolean {
-  return (
-    !input.alreadyAsked &&
-    !input.turnedOff &&
-    !input.rated &&
-    input.completedDebriefs >= AUTO_ASK_AT_DEBRIEFS
-  );
+  const now = input.now ?? Date.now();
+  if (input.turnedOff || input.rated) return false;
+  if (input.completedDebriefs < AUTO_ASK_AT_DEBRIEFS) return false;
+  // First time we see this account on this device (e.g. right after this
+  // update ships): just record the count. Ask on their next debrief.
+  if (input.lastSeenDebriefs == null) return false;
+  if (input.completedDebriefs <= input.lastSeenDebriefs) return false;
+  if (input.appVersion && input.lastAskedVersion === input.appVersion) return false;
+  if (input.lastAskedAt != null && now - input.lastAskedAt < MIN_DAYS_BETWEEN_ASKS * 86_400_000) {
+    return false;
+  }
+  return true;
+}
+
+function currentAppVersion(): string | null {
+  return Constants.expoConfig?.version ?? null;
 }
 
 /**
- * Apple's / Google's own rating pop-up after the 2nd completed debrief
- * (Ripple App Planner: "AFTER 2ND RECORDING — use Apple's built-in rating
- * pop-up"; decided 2026-10-10).
+ * Apple's / Google's own rating pop-up — first after the 2nd completed
+ * debrief (Ripple App Planner: "AFTER 2ND RECORDING — use Apple's built-in
+ * rating pop-up"; decided 2026-10-10), then again once per new app version
+ * for people who haven't rated (decided 2026-10-15). See shouldAutoAsk.
  *
- * Fixed 2026-10-15 (1.9.1). The 1.9 version never fired in the normal flow:
- * it ran only from the global processing notifier, and record.tsx takes the
- * entry off the notifier when the user waits on the record screen — the
- * usual path — so the debrief was never counted. It also counted debriefs
- * per INSTALL, not per account. Now:
- *   - the count is the server's `totalRecordings` (bumped when processing
- *     completes), so it's right on any device and any completion path;
- *   - it's called from every completion path (record screen + notifier)
- *     AND when the signed-in user the auth context already loads changes
- *     ((tabs)/_layout.tsx — no extra request), so leaving or closing the
- *     app can't skip it;
- *   - "already asked" is remembered per account on this device.
- * Fires once per account per device when the count is >= 2, so people
- * already past 2 debriefs get asked on their next one.
+ * Fixed 2026-10-15: the 1.9.0 version never fired in practice — it only ran
+ * from the in-app processing notifier (skipped when the user waited on the
+ * record screen, and stopped when they left the app) and counted per
+ * install. Now the count is the server's `totalRecordings`, read from data
+ * the app already loads (no extra requests once prefetched), and state is
+ * kept per account on the device.
  *
  * Only the OS-native prompt — never a fallback to the store page, which may
- * only open from an explicit tap. The OS still decides whether it actually
- * appears (Apple: max 3 times a year; never in TestFlight builds).
+ * only open from an explicit tap. Never shows in TestFlight builds.
  */
 let askInFlight = false;
 
@@ -100,7 +125,7 @@ export async function maybeAskForReviewAfterDebrief(prefetched?: {
   id?: string | null;
   totalRecordings?: number | null;
 }): Promise<void> {
-  // Several triggers (foreground, record screen, notifier) can land at once.
+  // Several triggers (record screen, notifier, user refresh) can land at once.
   if (askInFlight) return;
   askInFlight = true;
   try {
@@ -113,20 +138,34 @@ export async function maybeAskForReviewAfterDebrief(prefetched?: {
       userId = me.user?.id ?? null;
       total = me.user?.totalRecordings ?? 0;
     }
-    if (!userId) return;
-    const askedKey = `${K.autoAskedPrefix}${userId}`;
+    if (!userId || total == null) return;
+
+    const seenKey = `${K.seenPrefix}${userId}`;
+    const versionKey = `${K.askedVersionPrefix}${userId}`;
+    const atKey = `${K.askedAtPrefix}${userId}`;
+    const seenRaw = await AsyncStorage.getItem(seenKey);
+    const lastSeen = seenRaw == null ? null : Number(seenRaw) || 0;
+    const appVersion = currentAppVersion();
+
     const ok = shouldAutoAsk({
-      completedDebriefs: total ?? 0,
-      alreadyAsked: await flag(askedKey),
+      completedDebriefs: total,
+      lastSeenDebriefs: lastSeen,
+      appVersion,
+      lastAskedVersion: await AsyncStorage.getItem(versionKey),
+      lastAskedAt: (await num(atKey)) || null,
       turnedOff: await flag(K.off),
       rated: await flag(K.rated),
     });
+    if (lastSeen == null || total > lastSeen) {
+      await AsyncStorage.setItem(seenKey, String(total));
+    }
     if (!ok) return;
     if (!(await StoreReview.isAvailableAsync()) || !(await StoreReview.hasAction())) return;
-    await AsyncStorage.setItem(askedKey, "1");
+    if (appVersion) await AsyncStorage.setItem(versionKey, appVersion);
+    await AsyncStorage.setItem(atKey, String(Date.now()));
     // Let the entry screen land first so the sheet appears over the result,
-    // not over a navigation transition.
-    await new Promise((r) => setTimeout(r, 1500));
+    // not over a navigation transition (Apple: don't interrupt).
+    await new Promise((r) => setTimeout(r, 2000));
     await StoreReview.requestReview();
   } catch {
     // best-effort — a review ask must never break the debrief flow

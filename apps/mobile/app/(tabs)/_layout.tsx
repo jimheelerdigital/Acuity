@@ -74,8 +74,10 @@ export default function TabsLayout() {
 
   // App Store rating ask, driven by the signed-in user the auth context
   // already loads (and re-fetches on foreground) — no extra network call.
-  // Runs only when the user id or their recording count changes; once this
-  // account has been asked, it's a single local flag read and nothing else.
+  // Runs only when the user id or their recording count changes, so it can
+  // catch a debrief that finished while the app was in the background.
+  // Rules (once per app version, 14-day gap, after a completed debrief) live
+  // in lib/review.ts shouldAutoAsk.
   const { user } = useAuth();
   useEffect(() => {
     if (!user?.id || user.totalRecordings == null) return;
