@@ -7,6 +7,7 @@
 import Anthropic from "@anthropic-ai/sdk";
 import OpenAI from "openai";
 import { toFile } from "openai/uploads";
+import { filterWhisperVerbose, type WhisperVerbose } from "@/lib/whisper-speech-filter";
 
 import {
   CLAUDE_MAX_TOKENS,
@@ -100,14 +101,25 @@ export async function transcribeAudio(
     filename ?? `recording.${extensionForMimeType(mimeType)}`;
   const file = await toFile(audioBuffer, resolvedFilename, { type: mimeType });
 
+  // verbose_json so we can drop segments Whisper invented from silence
+  // (lib/whisper-speech-filter.ts). Callers' "too short" checks then see
+  // only real speech.
   const response = await openai.audio.transcriptions.create({
     file,
     model: WHISPER_MODEL,
     language: WHISPER_LANGUAGE,
-    response_format: "text",
+    response_format: "verbose_json",
   });
 
-  return (response as unknown as string).trim();
+  const filtered = filterWhisperVerbose(response as unknown as WhisperVerbose);
+  if (filtered.dropped > 0) {
+    console.warn("[pipeline] whisper.dropped_nonspeech", {
+      dropped: filtered.dropped,
+      total: filtered.total,
+      duration: filtered.duration,
+    });
+  }
+  return filtered.text;
 }
 
 // ─── Step 3: Extract ─────────────────────────────────────────────────────────
