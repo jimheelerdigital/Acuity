@@ -31,6 +31,7 @@ export type V10Event =
   | "v10_recording_start_failed"
   | "v10_processing_failed"
   | "v10_recording_silent"
+  | "v10_recording_interrupted"
   | "v10_chip_tapped"
   | "v10_recording_completed"
   | "v10_processing_viewed"

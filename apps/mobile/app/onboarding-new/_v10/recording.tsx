@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Pressable, Text, View } from "react-native";
+import { AppState, Pressable, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Audio } from "expo-av";
 import * as Haptics from "expo-haptics";
@@ -156,6 +156,35 @@ export default function V10Recording() {
       recordingRef.current = null;
       if (r) void r.stopAndUnloadAsync().catch(() => {});
     };
+  }, [beginRecording]);
+
+  // ── System interruptions ───────────────────────────────────────────
+  // Any system alert / call / Siri / app switch makes the app inactive and
+  // iOS cuts the mic. The take keeps "recording" but captures silence, so
+  // coming back would upload nothing usable. Start a fresh take instead and
+  // say why.
+  const interruptedRef = useRef(false);
+  useEffect(() => {
+    const sub = AppState.addEventListener("change", (next) => {
+      if (next !== "active") {
+        if (recordingRef.current) interruptedRef.current = true;
+        return;
+      }
+      if (!interruptedRef.current) return;
+      interruptedRef.current = false;
+      const r = recordingRef.current;
+      recordingRef.current = null;
+      setIsRecording(false);
+      void (async () => {
+        if (r) await r.stopAndUnloadAsync().catch(() => {});
+        trackV10("v10_recording_interrupted", { branch: branchRef.current });
+        await beginRecording();
+        if (mountedRef.current) {
+          setError("Something interrupted the recording, so we started a fresh one.");
+        }
+      })();
+    });
+    return () => sub.remove();
   }, [beginRecording]);
 
   // ── Elapsed clock ──────────────────────────────────────────────────

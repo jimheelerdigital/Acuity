@@ -163,10 +163,6 @@ function AuthGate() {
       // No-op when never registered or permission denied; only writes
       // when Expo's current token differs from the device-local marker.
       void refreshPushTokenOnLaunch();
-      // Meta SDK (2026-05-25, Keenan request) — initialize on first
-      // authenticated render so the ATT prompt appears with context.
-      // Idempotent — subsequent calls are no-ops.
-      void initMetaSdk();
       // Phase 2/3 (v1.3.3): if the app was cold-launched by tapping an
       // entry completion/failure push, route to it now that auth resolved.
       void handleColdStartNotificationTap((entryId) =>
@@ -174,6 +170,17 @@ function AuthGate() {
       );
     }
     setMetaUserId(userId);
+    // Meta SDK + the iOS App Tracking Transparency prompt: only once
+    // onboarding is finished. 1.9.1 account-first signs people in BEFORE
+    // the funnel, so "first authenticated render" put the system tracking
+    // pop-up in the middle of the funnel — including during the first
+    // recording, where a system alert interrupts the mic and the take comes
+    // back silent ("too short or unclear"). Events logged before init
+    // (e.g. CompleteRegistration at the account step) are queued and
+    // flushed on init. Idempotent.
+    if (user.onboardingCompleted) {
+      void initMetaSdk();
+    }
     const sub = AppState.addEventListener("change", (next) => {
       if (next === "active") {
         void reapplyRemindersIfNeeded(userId);
