@@ -82,7 +82,9 @@ export function shouldAutoAsk(input: {
  * per INSTALL, not per account. Now:
  *   - the count is the server's `totalRecordings` (bumped when processing
  *     completes), so it's right on any device and any completion path;
- *   - it's called from every completion path (record screen + notifier);
+ *   - it's called from every completion path (record screen + notifier)
+ *     AND whenever the signed-in app opens / returns to the foreground
+ *     ((tabs)/_layout.tsx), so leaving or closing the app can't skip it;
  *   - "already asked" is remembered per account on this device.
  * Fires once per account per device when the count is >= 2, so people
  * already past 2 debriefs get asked on their next one.
@@ -91,10 +93,15 @@ export function shouldAutoAsk(input: {
  * only open from an explicit tap. The OS still decides whether it actually
  * appears (Apple: max 3 times a year; never in TestFlight builds).
  */
+let askInFlight = false;
+
 export async function maybeAskForReviewAfterDebrief(prefetched?: {
   id?: string | null;
   totalRecordings?: number | null;
 }): Promise<void> {
+  // Several triggers (foreground, record screen, notifier) can land at once.
+  if (askInFlight) return;
+  askInFlight = true;
   try {
     let userId = prefetched?.id ?? null;
     let total = prefetched?.totalRecordings ?? null;
@@ -122,6 +129,8 @@ export async function maybeAskForReviewAfterDebrief(prefetched?: {
     await StoreReview.requestReview();
   } catch {
     // best-effort — a review ask must never break the debrief flow
+  } finally {
+    askInFlight = false;
   }
 }
 
