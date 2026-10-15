@@ -56,9 +56,11 @@ export default function V10Processing() {
 
   const [stage, setStage] = useState(0);
   const [slowWait, setSlowWait] = useState(false);
-  const [failed, setFailed] = useState<{ message: string; retryable: boolean } | null>(
-    null
-  );
+  const [failed, setFailed] = useState<{
+    message: string;
+    retryable: boolean;
+    rerecord?: boolean;
+  } | null>(null);
   const startedAtRef = useRef(Date.now());
   const attemptRef = useRef(0);
 
@@ -80,11 +82,18 @@ export default function V10Processing() {
     const result = await uploadDebrief(uri);
 
     if (!result.ok) {
+      trackV10("v10_processing_failed", {
+        rerecord: !!result.rerecord,
+        retryable: result.retryable,
+        detail: result.detail ?? null,
+        attempt: attemptRef.current,
+      });
       setFailed({
         message:
           result.error ??
           "Ripple couldn't finish that one. Your recording is safe — try again.",
         retryable: result.retryable,
+        rerecord: result.rerecord,
       });
       return;
     }
@@ -217,6 +226,15 @@ export default function V10Processing() {
               <FunnelCta
                 label="Try again"
                 onPress={() => void run()}
+                tokens={tokens}
+                onCoral
+              />
+            )}
+            {/* Nothing usable in the audio: a new take is the only fix. */}
+            {failed.rerecord && (
+              <FunnelCta
+                label="Record again"
+                onPress={() => router.replace("/onboarding-new/record")}
                 tokens={tokens}
                 onCoral
               />

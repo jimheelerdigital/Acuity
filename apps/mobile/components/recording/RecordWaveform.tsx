@@ -80,14 +80,19 @@ export interface RecordWaveformProps {
   active: boolean;
   /** Strip height in pt. Default 80 per design. */
   height?: number;
+  /** Onboarding funnel (coral background): white bars. */
+  onCoral?: boolean;
 }
 
 export function RecordWaveform({
   levels,
   active,
   height = 80,
+  onCoral = false,
 }: RecordWaveformProps) {
   const { tokens } = useTheme();
+  const c1 = onCoral ? "#ffffff" : tokens.primary;
+  const c2 = onCoral ? "#ffffff" : tokens.secondary;
   const { width: screenWidth } = useWindowDimensions();
   const stripWidth = Math.max(0, screenWidth - 64);
   const cy = height / 2;
@@ -204,18 +209,10 @@ export function RecordWaveform({
             y2="0"
             gradientUnits="userSpaceOnUse"
           >
-            <Stop offset="0" stopColor={tokens.primary} stopOpacity="0" />
-            <Stop
-              offset="0.15"
-              stopColor={tokens.primary}
-              stopOpacity="1"
-            />
-            <Stop
-              offset="0.55"
-              stopColor={tokens.primary}
-              stopOpacity="1"
-            />
-            <Stop offset="1" stopColor={tokens.secondary} stopOpacity="1" />
+            <Stop offset="0" stopColor={c1} stopOpacity="0" />
+            <Stop offset="0.15" stopColor={c1} stopOpacity="1" />
+            <Stop offset="0.55" stopColor={c1} stopOpacity="1" />
+            <Stop offset="1" stopColor={c2} stopOpacity="1" />
           </SvgLinearGradient>
         </Defs>
         <AnimatedPath

@@ -4,8 +4,6 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { Audio } from "expo-av";
 import * as Haptics from "expo-haptics";
 import { router } from "expo-router";
-import { LinearGradient } from "expo-linear-gradient";
-import Svg, { Path, Rect } from "react-native-svg";
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
@@ -29,6 +27,7 @@ import {
 import { trackV10 } from "@/lib/onboarding-v10/analytics";
 import { getV10Branch } from "@/lib/onboarding-v10/state";
 import { startSpeechRecording } from "@/lib/start-speech-recording";
+import { RecordOrb, RecordWaveform } from "@/components/recording";
 import { V10_MAX_RECORDING_MS as MAX_MS } from "@/lib/onboarding-v10/limits";
 
 /**
@@ -80,6 +79,12 @@ export default function V10Recording() {
   const mountedRef = useRef(true);
   const branchRef = useRef<V10Branch>("open");
   const [starting, setStarting] = useState(false);
+  // Drives the orb's live/idle morph + the waveform scroll (same
+  // components as the main recorder).
+  const [isRecording, setIsRecording] = useState(false);
+  // Loudest metering seen this take (dBFS). Digital silence (-160) for a
+  // whole take means the mic never connected — don't upload nothing.
+  const peakDbRef = useRef(-Infinity);
 
   const beginRecording = useCallback(async () => {
     setError(null);
@@ -96,6 +101,9 @@ export default function V10Recording() {
         // roughly -60 (silence) to 0 (peak).
         onStatus: (status) => {
           if (!status.isRecording) return;
+          if (typeof status.metering === "number") {
+            peakDbRef.current = Math.max(peakDbRef.current, status.metering);
+          }
           const db = status.metering ?? -60;
           setLevel(Math.max(0, Math.min(1, (db + 60) / 60)));
         },
@@ -105,7 +113,10 @@ export default function V10Recording() {
         return;
       }
       recordingRef.current = recording;
+      peakDbRef.current = -Infinity;
       startedAtRef.current = Date.now();
+      setElapsedMs(0);
+      setIsRecording(true);
       listeningOpacity.value = withTiming(1, { duration: 1000 });
       trackV10("v10_recording_started", { input: "voice", branch: branchRef.current });
     } catch (err) {
@@ -171,10 +182,23 @@ export default function V10Recording() {
 
     const durationS = Math.round((Date.now() - startedAtRef.current) / 1000);
 
+    setIsRecording(false);
+    setLevel(0);
     try {
       await recording.stopAndUnloadAsync();
       const uri = recording.getURI();
       if (!uri) throw new Error("no recording uri");
+
+      // Whole take was digital silence: the mic never connected. Uploading
+      // would only come back "too short or unclear" — restart instead.
+      if (peakDbRef.current !== -Infinity && peakDbRef.current <= -120) {
+        trackV10("v10_recording_silent", { duration_s: durationS, branch });
+        setStopping(false);
+        void beginRecording().then(() =>
+          setError("Ripple didn't pick up any sound, so we restarted. Check your mic isn't blocked, then talk."),
+        );
+        return;
+      }
 
       trackV10("v10_recording_completed", {
         duration_s: durationS,
@@ -195,7 +219,7 @@ export default function V10Recording() {
       setStopping(false);
       setError("That didn't save. Tap stop again and Ripple will retry.");
     }
-  }, [activeChip, branch, stopping]);
+  }, [activeChip, branch, stopping, beginRecording]);
 
   const seconds = Math.floor(elapsedMs / 1000);
   const mmss = `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")}`;
@@ -268,50 +292,21 @@ export default function V10Recording() {
         </Text>
 
         <View style={{ flex: 1, justifyContent: "center" }}>
-          {/* Orb — coral core + mic, scaled by REAL mic level (never a
-              decorative loop). The ring is a soft white bloom on the coral. */}
-          <View style={{ alignItems: "center", marginBottom: 4 }}>
-            <View
-              style={{
-                width: 150,
-                height: 150,
-                borderRadius: 75,
-                alignItems: "center",
-                justifyContent: "center",
-                backgroundColor: "rgba(255,255,255,0.14)",
-                shadowColor: "#ffffff",
-                shadowOffset: { width: 0, height: 0 },
-                shadowRadius: 26,
-                shadowOpacity: 0.5,
-                transform: [{ scale: 1 + Math.min(level, 1) * 0.06 }],
-              }}
-            >
-              <LinearGradient
-                colors={[tokens.primaryHi, tokens.primaryLo]}
-                start={{ x: 0.2, y: 0 }}
-                end={{ x: 0.8, y: 1 }}
-                style={{
-                  width: 98,
-                  height: 98,
-                  borderRadius: 49,
-                  alignItems: "center",
-                  justifyContent: "center",
-                }}
-              >
-                <Svg width={34} height={34} viewBox="0 0 24 24" fill="none">
-                  <Rect x={9} y={3} width={6} height={12} rx={3} stroke="#ffffff" strokeWidth={1.8} />
-                  <Path
-                    d="M6 11a6 6 0 0 0 12 0M12 17v4"
-                    stroke="#ffffff"
-                    strokeWidth={1.8}
-                    strokeLinecap="round"
-                  />
-                </Svg>
-              </LinearGradient>
-            </View>
+          {/* Same voice-reactive orb + scrolling waveform as the main
+              recorder (1.9.1, Jimmy: the funnel must match the real
+              recording). The orb breathes when idle and pulses with the
+              REAL mic level; the waveform scrolls a history of real
+              levels. Tapping the orb stops, like the main recorder. */}
+          <View style={{ alignItems: "center", marginBottom: 8 }}>
+            <RecordOrb
+              amplitude={level}
+              active={isRecording}
+              onPress={() => void handleStop()}
+              onCoral
+            />
           </View>
 
-          <Waveform level={level} />
+          <RecordWaveform levels={[level]} active={isRecording} height={72} onCoral />
 
           <Text
             style={{
@@ -416,48 +411,5 @@ export default function V10Recording() {
       </View>
       </SafeAreaView>
     </CoralScreen>
-  );
-}
-
-/**
- * Waveform driven by REAL microphone metering — never a decorative
- * animation. Spec §1 bans invented feedback, and a fake waveform that moves
- * while the mic is muted is exactly that: it would tell her she's being
- * heard when she isn't.
- */
-function Waveform({ level }: { level: number }) {
-  const BARS = 24;
-  return (
-    <View
-      style={{
-        flexDirection: "row",
-        alignItems: "center",
-        justifyContent: "center",
-        height: 96,
-        gap: 4,
-      }}
-      accessibilityElementsHidden
-      importantForAccessibility="no-hide-descendants"
-    >
-      {Array.from({ length: BARS }).map((_, i) => {
-        // Centre bars react most, edges least — a simple envelope so the
-        // shape reads as a voice rather than a bar chart.
-        const distance = Math.abs(i - (BARS - 1) / 2) / ((BARS - 1) / 2);
-        const envelope = 1 - distance * 0.75;
-        const h = 6 + level * envelope * 84;
-        return (
-          <View
-            key={i}
-            style={{
-              width: 3,
-              height: h,
-              borderRadius: 2,
-              backgroundColor: "#ffffff",
-              opacity: 0.4 + envelope * 0.55,
-            }}
-          />
-        );
-      })}
-    </View>
   );
 }
