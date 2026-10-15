@@ -1,6 +1,9 @@
+import { Ionicons } from "@expo/vector-icons";
 import { Modal, Pressable, ScrollView, Text, View } from "react-native";
 
 import { useTheme } from "@/contexts/theme-context";
+import { fireHaptic } from "@/lib/haptics";
+import type { WhatsNewItem } from "@/lib/whats-new-content";
 
 /**
  * WhatsNewSheet — one-time-per-version "here's what changed" bottom sheet,
@@ -12,10 +15,20 @@ import { useTheme } from "@/contexts/theme-context";
 export interface WhatsNewSheetProps {
   version: string;
   notes: string[];
+  /** 1.9.1 rich items (icon, title, body, optional tap-through). */
+  items?: WhatsNewItem[];
   onDismiss: () => void;
+  /** Called with an item's href when it's tapped. */
+  onOpen?: (href: string) => void;
 }
 
-export function WhatsNewSheet({ version, notes, onDismiss }: WhatsNewSheetProps) {
+export function WhatsNewSheet({
+  version,
+  notes,
+  items,
+  onDismiss,
+  onOpen,
+}: WhatsNewSheetProps) {
   const { tokens } = useTheme();
   return (
     <Modal
@@ -80,7 +93,73 @@ export function WhatsNewSheet({ version, notes, onDismiss }: WhatsNewSheetProps)
           </Text>
 
           <ScrollView style={{ marginBottom: 20 }}>
-            {notes.map((note, i) => (
+            {items?.map((item) => {
+              const action = item.action;
+              const tappable = !!(action && onOpen);
+              return (
+                <Pressable
+                  key={item.title}
+                  disabled={!tappable}
+                  onPress={() => {
+                    if (!action || !onOpen) return;
+                    fireHaptic("light");
+                    onOpen(action.href);
+                  }}
+                  accessibilityRole={tappable ? "button" : "text"}
+                  accessibilityLabel={
+                    tappable ? `${item.title}. ${action?.label}` : item.title
+                  }
+                  style={({ pressed }) => ({
+                    flexDirection: "row",
+                    alignItems: "flex-start",
+                    gap: 14,
+                    paddingVertical: 12,
+                    opacity: pressed ? 0.6 : 1,
+                  })}
+                >
+                  <View
+                    style={{
+                      width: 36,
+                      height: 36,
+                      borderRadius: 10,
+                      backgroundColor: `${tokens.primary}1F`,
+                      alignItems: "center",
+                      justifyContent: "center",
+                    }}
+                  >
+                    <Ionicons name={item.icon} size={19} color={tokens.primary} />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text
+                      style={{
+                        fontSize: 16,
+                        fontWeight: "600",
+                        color: tokens.text,
+                        marginBottom: 2,
+                      }}
+                    >
+                      {item.title}
+                    </Text>
+                    <Text style={{ fontSize: 14, lineHeight: 20, color: tokens.textSec }}>
+                      {item.body}
+                    </Text>
+                    {tappable ? (
+                      <Text
+                        style={{
+                          fontSize: 14,
+                          fontWeight: "600",
+                          color: tokens.primary,
+                          marginTop: 6,
+                        }}
+                      >
+                        {action?.label} ›
+                      </Text>
+                    ) : null}
+                  </View>
+                </Pressable>
+              );
+            })}
+            {!items && notes.map((note, i) => (
               <View
                 key={`${i}-${note.slice(0, 12)}`}
                 style={{ flexDirection: "row", marginBottom: 14 }}

@@ -1,5 +1,7 @@
-import { useEffect, useState } from "react";
+import { useRouter, useSegments } from "expo-router";
+import { useEffect, useRef, useState } from "react";
 
+import { useAuth } from "@/contexts/auth-context";
 import {
   checkWhatsNew,
   rememberWhatsNewSeen,
@@ -12,47 +14,61 @@ import { WhatsNewSheet } from "./WhatsNewSheet";
  * WhatsNewOverlay — shows the What's New sheet once, on the first launch after
  * an update. Mounted once in the root layout alongside UpdatePromptOverlay.
  *
- * Mutually exclusive with the update prompt: checkWhatsNew only returns
- * shouldShow when the running version matches the server's recommendedVersion,
- * which is exactly when the update prompt stays silent. Launch-only cadence
- * (no foreground re-check), matching the update prompt.
+ * 1.9.1: waits until someone is signed in AND on the main tabs, so it never
+ * covers sign-in, onboarding, or a recording started from the Action Button
+ * / widget (those land on /record). Runs the check once per launch.
+ * Tapping an item records the version as seen, closes the sheet, and opens
+ * that feature's how-to / screen.
  */
 export function WhatsNewOverlay() {
+  const { user } = useAuth();
+  const segments = useSegments();
+  const router = useRouter();
   const [result, setResult] = useState<WhatsNewResult | null>(null);
   const [dismissed, setDismissed] = useState(false);
+  const checkedRef = useRef(false);
+
+  const onTabs = segments[0] === "(tabs)";
+  const signedIn = !!user;
+
+  const mountedRef = useRef(true);
+  useEffect(
+    () => () => {
+      mountedRef.current = false;
+    },
+    []
+  );
 
   useEffect(() => {
-    let cancelled = false;
+    if (checkedRef.current || !signedIn || !onTabs) return;
+    checkedRef.current = true;
     void (async () => {
       const r = await checkWhatsNew();
-      if (cancelled) return;
-      setResult(r);
+      if (mountedRef.current) setResult(r);
     })();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+  }, [signedIn, onTabs]);
 
-  if (
-    !result ||
-    !result.shouldShow ||
-    dismissed ||
-    !result.version ||
-    !result.notes
-  ) {
+  if (!result || !result.shouldShow || dismissed || !result.version) {
     return null;
   }
+  if (!result.items && !result.notes) return null;
 
-  const { version, notes } = result;
+  const { version } = result;
+  const close = () => {
+    // Persist BEFORE hiding so a mid-dismiss app kill still records it.
+    rememberWhatsNewSeen(version);
+    setDismissed(true);
+  };
 
   return (
     <WhatsNewSheet
       version={version}
-      notes={notes}
-      onDismiss={() => {
-        // Persist BEFORE hiding so a mid-dismiss app kill still records it.
-        rememberWhatsNewSeen(version);
-        setDismissed(true);
+      notes={result.notes ?? []}
+      items={result.items ?? undefined}
+      onDismiss={close}
+      onOpen={(href) => {
+        close();
+        router.push(href as never);
       }}
     />
   );

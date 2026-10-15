@@ -40,6 +40,7 @@ import { tokenBridge } from "@/lib/token-bridge";
 import { isQaForceV10, warnIfQaForceV10Active } from "@/lib/qa/force-v10";
 import { clearWidgetData } from "@/lib/widget-data";
 import { notifyV10StateChanged } from "@/lib/onboarding-v10/state";
+import { primeWhatsNewInstallState } from "@/lib/whats-new";
 
 export type DeleteAccountResult =
   | { ok: true }
@@ -250,6 +251,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         ]);
         const token = await getToken();
         if (cancelled) return;
+        // Before this launch marks itself: lets What's New tell an update
+        // from a fresh install.
+        await primeWhatsNewInstallState(hasLaunchedBefore);
 
         const decision = decideSessionGate({
           hasLaunchedBefore,

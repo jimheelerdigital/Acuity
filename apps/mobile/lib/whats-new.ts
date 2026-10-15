@@ -3,6 +3,10 @@ import Constants from "expo-constants";
 import { Platform } from "react-native";
 
 import { compareVersion, type VersionCheckConfig } from "@/lib/version-check";
+import {
+  WHATS_NEW_RELEASES,
+  type WhatsNewItem,
+} from "@/lib/whats-new-content";
 
 /**
  * "What's New" client (Ripple 1.8, workstream 4).
@@ -21,6 +25,13 @@ import { compareVersion, type VersionCheckConfig } from "@/lib/version-check";
  * Shows once per version: gated on a stored last-seen version. A brand-new
  * install is baselined silently (no sheet) so onboarding isn't interrupted —
  * we only ever celebrate an actual upgrade.
+ *
+ * 1.9.1: content now ships in the app (lib/whats-new-content.ts) so the sheet
+ * shows on every update without a server step; the server notes above are
+ * only a fallback. Also, someone updating from a build older than 1.8 has no
+ * stored version; primeWhatsNewInstallState (called by auth-context at
+ * launch with the existing "has launched before" flag) tells that upgrade
+ * apart from a brand-new install so those people see the sheet too.
  */
 
 const API_BASE_URL =
@@ -34,10 +45,39 @@ const FETCH_TIMEOUT_MS = 4000;
 export interface WhatsNewResult {
   shouldShow: boolean;
   version: string | null;
+  /** Plain bullets (server fallback). */
   notes: string[] | null;
+  /** Rich, tappable items (bundled content). Preferred when present. */
+  items: WhatsNewItem[] | null;
 }
 
-const NONE: WhatsNewResult = { shouldShow: false, version: null, notes: null };
+const NONE: WhatsNewResult = {
+  shouldShow: false,
+  version: null,
+  notes: null,
+  items: null,
+};
+
+/**
+ * Newest bundled release with seen < version <= current, filtered to this
+ * platform. Null when there's nothing to show.
+ */
+export function bundledWhatsNew(
+  seen: string,
+  current: string,
+  platform: "ios" | "android"
+): WhatsNewItem[] | null {
+  const release = WHATS_NEW_RELEASES.filter(
+    (r) =>
+      compareVersion(seen, r.version) === -1 &&
+      compareVersion(r.version, current) !== 1
+  ).sort((a, b) => compareVersion(b.version, a.version))[0];
+  if (!release) return null;
+  const items = release.items.filter(
+    (i) => !i.platform || i.platform === platform
+  );
+  return items.length > 0 ? items : null;
+}
 
 function abortableFetch(url: string, timeoutMs: number): Promise<Response> {
   const controller = new AbortController();
@@ -60,6 +100,30 @@ async function setSeen(version: string): Promise<void> {
  * failure path (no version, network error, malformed payload) — a working app
  * never gets surprised by this.
  */
+/**
+ * Called once at launch by auth-context with `hasLaunchedBefore` (the
+ * `acuity_has_launched` flag every build since May 2026 writes), read
+ * BEFORE this launch marks it. Only acts when no What's New version is
+ * stored yet:
+ *   - launched before → an older build was here → store "0.0.0" so this
+ *     update's sheet shows.
+ *   - never launched  → brand-new install → store the current version so
+ *     nothing interrupts onboarding.
+ */
+export async function primeWhatsNewInstallState(
+  hasLaunchedBefore: boolean
+): Promise<void> {
+  const current = Constants.expoConfig?.version;
+  if (!current) return;
+  try {
+    const seen = await AsyncStorage.getItem(SEEN_KEY);
+    if (seen) return;
+    await setSeen(hasLaunchedBefore ? "0.0.0" : current);
+  } catch {
+    // Non-fatal: checkWhatsNew baselines silently when nothing is stored.
+  }
+}
+
 export async function checkWhatsNew(): Promise<WhatsNewResult> {
   const current = Constants.expoConfig?.version;
   if (!current) return NONE;
@@ -71,7 +135,7 @@ export async function checkWhatsNew(): Promise<WhatsNewResult> {
     // Treat a read failure as "unknown" → baseline below.
   }
 
-  // First run of a What's-New-aware build: baseline silently, never interrupt.
+  // Nothing stored (priming failed): baseline silently, never interrupt.
   if (!seen) {
     await setSeen(current);
     return NONE;
@@ -85,6 +149,12 @@ export async function checkWhatsNew(): Promise<WhatsNewResult> {
   }
 
   const platform: "ios" | "android" = Platform.OS === "ios" ? "ios" : "android";
+
+  const items = bundledWhatsNew(seen, current, platform);
+  if (items) {
+    return { shouldShow: true, version: current, notes: null, items };
+  }
+
   try {
     const res = await abortableFetch(
       `${API_BASE_URL}/api/app/version-check?platform=${platform}`,
@@ -107,7 +177,7 @@ export async function checkWhatsNew(): Promise<WhatsNewResult> {
         : null;
     if (!notes || notes.length === 0) return NONE;
 
-    return { shouldShow: true, version: current, notes };
+    return { shouldShow: true, version: current, notes, items: null };
   } catch {
     return NONE;
   }
