@@ -105,6 +105,21 @@ export async function setStoredTrySession(
   }
 }
 
+/**
+ * Forget the anonymous session token only (after a successful claim), but
+ * KEEP the stored extraction: in the 1.9.1 account-first flow the claim
+ * runs right after processing, while the reveal and paywall screens still
+ * read the extraction. The funnel clears it at the end (reminders).
+ */
+export async function clearStoredTryToken(): Promise<void> {
+  try {
+    await AsyncStorage.removeItem(TRY_SESSION_TOKEN_KEY);
+    await AsyncStorage.removeItem(TRY_SESSION_EXPIRES_KEY);
+  } catch {
+    // ignore
+  }
+}
+
 export async function clearStoredTrySession(): Promise<void> {
   try {
     await AsyncStorage.removeItem(TRY_SESSION_TOKEN_KEY);

@@ -24,7 +24,12 @@ export interface UploadResult {
   ok: boolean;
   /** True when the failure is worth offering a retry for. */
   retryable: boolean;
+  /** The audio itself can't work (nothing intelligible) — record again. */
+  rerecord?: boolean;
+  /** Friendly, user-facing text. Never a raw server/HTTP message. */
   error?: string;
+  /** Raw failure detail for analytics only. */
+  detail?: string;
 }
 
 /**
@@ -53,8 +58,27 @@ export async function uploadDebrief(uri: string): Promise<UploadResult> {
       };
     }
 
+    // 422 = the server heard nothing usable (transcript too short). Sending
+    // the same file again can't change that — ask for a new take, kindly.
+    // (It used to show the raw 'try-recording failed (422): {...}' text.)
+    if (status === 422 || /\(422\)/.test(message)) {
+      return {
+        ok: false,
+        retryable: false,
+        rerecord: true,
+        error:
+          "We couldn't quite hear that one. Let's record it again. Talk like you would to a friend, about 20 seconds is plenty.",
+        detail: message.slice(0, 200),
+      };
+    }
+
     // Everything else (network blip, 5xx, timeout) is worth another attempt
     // with the SAME audio.
-    return { ok: false, retryable: true, error: message };
+    return {
+      ok: false,
+      retryable: true,
+      error: "That didn't go through. Your recording is safe, try again.",
+      detail: message.slice(0, 200),
+    };
   }
 }

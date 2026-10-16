@@ -142,11 +142,19 @@ export function decideSessionGate(input: {
 
   if (!hasLaunchedBefore) {
     if (tokenPresent) {
+      // 1.9.1: a REINSTALL, not a migration. iOS keeps Keychain items when
+      // an app is deleted, so a re-download used to come back silently
+      // signed in to the previous session (often an account mid-onboarding)
+      // instead of the "I'm new / I have an account" start screen.
+      // The build-42 → 43 migration this branch protected is from May 2026;
+      // every build since writes the has-launched flag, so a missing flag
+      // with a token present now means the app was deleted and reinstalled.
+      // Worst case for someone jumping from a pre-May build: sign in once.
       return {
-        action: "keep",
+        action: "clear-uninstalled",
         markLaunched: true,
-        recordActiveNow: true,
-        reason: "migration: existing live user on first launch of new build",
+        recordActiveNow: false,
+        reason: "reinstall: keychain session left over from a deleted install",
       };
     }
     return {
@@ -176,4 +184,20 @@ export function decideSessionGate(input: {
     recordActiveNow: true,
     reason: "normal warm launch",
   };
+}
+
+/**
+ * Resolves once auth-context's launch gate has run (including clearing a
+ * session left over from a deleted install). Cold-start routing facts wait
+ * on it before reading the Keychain token, so a reinstall's stale token is
+ * never read as "this person has an account here" (which would send them
+ * to sign-in instead of the start screen). Resolved exactly once per launch.
+ */
+let resolveGate: (() => void) | null = null;
+export const sessionGateSettled: Promise<void> = new Promise<void>((r) => {
+  resolveGate = r;
+});
+export function markSessionGateSettled(): void {
+  resolveGate?.();
+  resolveGate = null;
 }

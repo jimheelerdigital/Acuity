@@ -1,8 +1,10 @@
 import { Platform } from "react-native";
 
 import {
+  LEGACY_TIER,
   RC_ENTITLEMENT_PRO,
   RC_PACKAGES,
+  V2_TIER,
   offeringIdForTier,
   pricingTierFor,
   rcConfigureMode,
@@ -81,6 +83,7 @@ export type RcConfigureResult =
   | "error";
 
 let configured = false;
+let configuredResult: RcConfigureResult | null = null;
 
 /**
  * Configure the RC SDK. Idempotent — safe to call on every app start.
@@ -101,6 +104,17 @@ export async function configureRevenueCat(
 
   if (mode === "disabled") {
     return "disabled";
+  }
+
+  // Idempotent across the app session. RC's guidance is to call
+  // Purchases.configure exactly once; identity changes after that go
+  // through identifyRevenueCatUser (Purchases.logIn), NOT a second
+  // configure. Both the app-start anonymous configure (app/_layout.tsx)
+  // and auth-context's per-user configure land here, so the first call
+  // wins and later calls return the cached result instead of
+  // re-configuring the native SDK with a different appUserID.
+  if (configured && configuredResult) {
+    return configuredResult;
   }
 
   if (rcUnsafePurchaseConfig(flags)) {
@@ -137,6 +151,7 @@ export async function configureRevenueCat(
         purchasesAreCompletedBy: PURCHASES_ARE_COMPLETED_BY_TYPE.REVENUECAT,
       });
       configured = true;
+      configuredResult = "configured-purchases";
       log("configured — RC completes purchases");
       return "configured-purchases";
     }
@@ -167,6 +182,7 @@ export async function configureRevenueCat(
       },
     });
     configured = true;
+    configuredResult = "configured-observer";
     log("configured — observer mode (our app completes purchases)");
     return "configured-observer";
   } catch (err) {
@@ -267,6 +283,224 @@ export async function hasProEntitlement(): Promise<boolean | null> {
   }
 }
 
+// ─── Active plan (for the "Current plan" paywall state) ──────────────
+
+export type ProPlanInterval = "monthly" | "annual";
+
+export interface ActiveProPlan {
+  productId: string;
+  interval: ProPlanInterval;
+  /**
+   * Where the subscription is billed. Only "app_store" / "play_store" plans
+   * can be changed with an in-app purchase; a "stripe" (web) or
+   * "promotional" plan must never be offered an in-app buy (double billing).
+   */
+  store: "app_store" | "play_store" | "stripe" | "other";
+}
+
+/** Map a store product id or Stripe price id onto monthly / annual. */
+export function intervalForProduct(productId: string): ProPlanInterval {
+  for (const tier of [V2_TIER, LEGACY_TIER]) {
+    for (const interval of ["monthly", "annual"] as const) {
+      const p = tier.products[interval];
+      if (productId === p.apple || productId === p.google || productId === p.stripe) {
+        return interval;
+      }
+    }
+  }
+  // Play subscriptions can come back as "product:baseplan"; promos carry
+  // "yearly"/"annual" in the id. Anything else reads as monthly.
+  return /annual|yearly|year/i.test(productId) ? "annual" : "monthly";
+}
+
+function normalizeStore(store: unknown): ActiveProPlan["store"] {
+  const s = String(store ?? "").toUpperCase();
+  if (s === "APP_STORE" || s === "MAC_APP_STORE") return "app_store";
+  if (s === "PLAY_STORE") return "play_store";
+  if (s === "STRIPE" || s === "RC_BILLING") return "stripe";
+  return "other";
+}
+
+/**
+ * The customer's active Pro plan according to RevenueCat on this device, or
+ * null when not Pro / RC unavailable. Read straight from RC (not our DB) so
+ * the paywall reflects transfers and fresh purchases immediately.
+ */
+export async function getActiveProPlan(): Promise<ActiveProPlan | null> {
+  if (!configured) return null;
+  const mod = await loadPurchases();
+  if (!mod) return null;
+  try {
+    const info = await mod.default.getCustomerInfo();
+    const ent = info.entitlements.active[RC_ENTITLEMENT_PRO];
+    if (!ent) return null;
+    return {
+      productId: ent.productIdentifier,
+      interval: intervalForProduct(ent.productIdentifier),
+      store: normalizeStore(ent.store),
+    };
+  } catch (err) {
+    log("getActiveProPlan failed", err);
+    return null;
+  }
+}
+
+// ─── Attributes + offering selection (Targeting / Experiments) ───────
+
+/**
+ * RevenueCat Experiments and Targeting only work when the app shows RC's
+ * CURRENT offering — RC decides it server-side per customer (experiment
+ * variant first, then Targeting rules, then the project default). So the
+ * paywall must never ask for an offering by name.
+ *
+ * The one exception is a safety net for legacy (grandfathered) customers:
+ * if the Targeting rule `pricing_tier = legacy -> grandfathered` is ever
+ * missing or misconfigured, RC would hand them current pricing. For them we
+ * fall back to the `grandfathered` offering by id. Legacy customers are
+ * never in experiments, so this costs nothing.
+ */
+type OfferingsLike = {
+  current: { identifier: string } | null;
+  all: Record<string, unknown>;
+};
+export function pickOffering<T extends OfferingsLike>(
+  offerings: T,
+  wantedId: string
+): T["current"] {
+  const current = offerings.current;
+  if (wantedId === "grandfathered" && current?.identifier !== "grandfathered") {
+    const g = offerings.all["grandfathered"] as T["current"] | undefined;
+    if (g && offeringHasPackages(g)) return g;
+  }
+  // Platform guard: an offering can exist but carry no product for THIS
+  // store (e.g. `grandfathered` has legacy App Store + web products but no
+  // Google Play legacy SKUs, because none were ever sold on Android). An
+  // empty offering would render an empty paywall, so fall back to
+  // `default`, which has products on every platform.
+  if (current && !offeringHasPackages(current)) {
+    const d = offerings.all["default"] as T["current"] | undefined;
+    if (d && offeringHasPackages(d)) return d;
+  }
+  return current;
+}
+
+function offeringHasPackages(offering: unknown): boolean {
+  const pkgs = (offering as { availablePackages?: unknown[] } | null)
+    ?.availablePackages;
+  // Objects without the field (tests, older shapes) are treated as usable.
+  return pkgs === undefined || pkgs.length > 0;
+}
+
+/**
+ * Push the customer attributes RevenueCat keys on — `pricing_tier` (drives
+ * the grandfathered Targeting rule) and attribution ($mediaSource,
+ * $campaign) for funnel breakdowns — then force RC to re-evaluate offerings
+ * so Targeting sees the new values in THIS session (RC otherwise syncs
+ * attributes only on foreground/background).
+ */
+export async function syncRevenueCatAttributes(
+  attrs: Record<string, string | null>
+): Promise<void> {
+  if (!configured) return;
+  const mod = await loadPurchases();
+  if (!mod) return;
+  try {
+    await mod.default.setAttributes(attrs);
+    await mod.default.syncAttributesAndOfferingsIfNeeded();
+  } catch (err) {
+    log("syncRevenueCatAttributes failed", err);
+  }
+}
+
+/**
+ * The raw offering for a RevenueCat Paywall (RevenueCatUI.Paywall renders
+ * the paywall attached to it in the dashboard). Same selection rule as
+ * pickOffering.
+ */
+export async function getPaywallOffering(
+  tier: "legacy" | "v2"
+): Promise<import("react-native-purchases").PurchasesOffering | null> {
+  if (!rcFlags().RC_SDK_PURCHASES) return null;
+  const mod = await loadPurchases();
+  if (!mod) return null;
+  try {
+    const offerings = await mod.default.getOfferings();
+    return pickOffering(
+      offerings,
+      tier === "legacy" ? "grandfathered" : "default"
+    );
+  } catch (err) {
+    log("getPaywallOffering failed", err);
+    return null;
+  }
+}
+
+/**
+ * Apple's in-app "Manage subscriptions" sheet (StoreKit, via RevenueCat).
+ * Returns false when RC isn't configured so the caller can fall back to a
+ * link. Preferred over the itms-apps:// deep link, which didn't open for
+ * Jimmy on build 146 and never shows sandbox/TestFlight subscriptions.
+ */
+/**
+ * Meta Ads integration support: hand RevenueCat the Meta anonymous id and
+ * let it collect device identifiers (IDFA/IDFV/GAID, per ATT) so the
+ * events RC forwards to Meta's Conversions API can be matched to ad
+ * clicks. Waits briefly for the app-start configure (it races Meta init
+ * at boot). No-op on non-RC builds. Never throws.
+ */
+export async function linkRevenueCatAdIdentifiers(
+  fbAnonymousId: string | null
+): Promise<void> {
+  if (!rcFlags().RC_SDK_PURCHASES) return;
+  for (let i = 0; i < 20 && !configured; i++) {
+    await new Promise((r) => setTimeout(r, 500));
+  }
+  if (!configured) return;
+  const mod = await loadPurchases();
+  if (!mod) return;
+  try {
+    await mod.default.collectDeviceIdentifiers();
+    if (fbAnonymousId) await mod.default.setFBAnonymousID(fbAnonymousId);
+  } catch (err) {
+    log("linkRevenueCatAdIdentifiers failed", err);
+  }
+}
+
+/**
+ * Country code of the customer's App Store / Play Store account, via
+ * RevenueCat. Apple returns ISO alpha-3 ("USA", "GBR"); Google may return
+ * alpha-2. Null when RC isn't configured or the store doesn't answer —
+ * callers must treat null as "unknown", not as a country.
+ */
+export async function getStorefrontCountryCode(): Promise<string | null> {
+  for (let i = 0; i < 10 && !configured; i++) {
+    await new Promise((r) => setTimeout(r, 300));
+  }
+  if (!configured) return null;
+  const mod = await loadPurchases();
+  if (!mod) return null;
+  try {
+    const sf = await mod.default.getStorefront();
+    return sf?.countryCode ? sf.countryCode.toUpperCase() : null;
+  } catch (err) {
+    log("getStorefront failed", err);
+    return null;
+  }
+}
+
+export async function showManageSubscriptions(): Promise<boolean> {
+  if (!configured) return false;
+  const mod = await loadPurchases();
+  if (!mod) return false;
+  try {
+    await mod.default.showManageSubscriptions();
+    return true;
+  } catch (err) {
+    log("showManageSubscriptions failed", err);
+    return false;
+  }
+}
+
 // ─── Purchase flow (behind RC_SDK_PURCHASES) ─────────────────────────
 
 export interface RcOfferingPackages {
@@ -301,7 +535,7 @@ export async function getProOffering(
     const tier = pricingTierFor(grandfather, pricingConfig);
     const wantedId = offeringIdForTier(tier);
     const offerings = await mod.default.getOfferings();
-    const offering = offerings.all[wantedId] ?? offerings.current;
+    const offering = pickOffering(offerings, wantedId);
     if (!offering) {
       log(`no offering found for id=${wantedId} and no current offering`);
       return null;

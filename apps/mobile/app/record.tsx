@@ -36,8 +36,15 @@ import { useSaveWall } from "@/components/onboarding/v10-save-wall";
 import { shouldAutostartRecording } from "@/lib/record-deeplink";
 import { getToken } from "@/lib/auth";
 import { invalidate } from "@/lib/cache";
-import { registerPushTokenAfterRecording } from "@/lib/push-token";
-import { SPEECH_RECORDING_OPTIONS } from "@/lib/audio-recording-options";
+import {
+  readyPushAction,
+  registerPushTokenAfterRecording,
+  registerPushTokenForReminderSlot,
+} from "@/lib/push-token";
+import { bumpDebriefSignal, maybeAskForReviewAfterDebrief } from "@/lib/review";
+import { startSpeechRecording } from "@/lib/start-speech-recording";
+import { trackV10 } from "@/lib/onboarding-v10/analytics";
+import { noteWelcomeDebrief } from "@/lib/welcome/flow";
 
 /**
  * Recording modal. One screen, one state machine. Consolidates the
@@ -126,7 +133,15 @@ export default function RecordScreen() {
      * recording without a clear act of consent.
      */
     autostart?: string;
+    /**
+     * `welcome` — opened by the funnel welcome flow (app/welcome.tsx) for a
+     * web subscriber's first debrief. On a successful send the entry id is
+     * handed back to that flow and we pop to it, instead of the normal
+     * "saved" state / entry detail.
+     */
+    from?: string;
   }>();
+  const fromWelcome = params.from === "welcome";
   const goalId =
     typeof params.goalId === "string" && params.goalId.length > 0
       ? params.goalId
@@ -191,6 +206,25 @@ export default function RecordScreen() {
     if (polledEntryId) trackEntry(polledEntryId);
   }, [polledEntryId, trackEntry]);
 
+  // 1.9.1: while it processes, offer a "ready" notification so leaving the
+  // app is fine (the server already sends it when there's a push token).
+  // Our own primer first; the one-shot OS dialog only if they say yes.
+  useEffect(() => {
+    if (!polledEntryId) return;
+    void (async () => {
+      const action = await readyPushAction();
+      if (action !== "offer") return;
+      Alert.alert(
+        "Want a heads-up when it's ready?",
+        "Ripple can send you a notification when your debrief is processed, so you don't have to wait here.",
+        [
+          { text: "Not now", style: "cancel" },
+          { text: "Notify me", onPress: () => void registerPushTokenForReminderSlot() },
+        ]
+      );
+    })();
+  }, [polledEntryId]);
+
   // Bridge polling terminal states → nav or error surface.
   useEffect(() => {
     if (!polledEntryId) return;
@@ -231,10 +265,15 @@ export default function RecordScreen() {
       void (async () => {
         try {
           const meRes = await api.get<{
-            user?: { totalRecordings?: number };
+            user?: { id?: string; totalRecordings?: number };
           }>("/api/user/me");
           const total = meRes.user?.totalRecordings ?? 0;
           await registerPushTokenAfterRecording(total);
+          // This path takes the entry off the global notifier (above), so
+          // the review ask must run here too — in 1.9 it didn't, which is
+          // why the 2nd-debrief rating prompt never appeared.
+          await bumpDebriefSignal();
+          await maybeAskForReviewAfterDebrief({ id: meRes.user?.id, totalRecordings: total });
         } catch {
           // Non-fatal — registration will retry on the next
           // qualifying record completion.
@@ -253,19 +292,8 @@ export default function RecordScreen() {
   // session. allowsRecordingIOS makes the OS grant foreground audio.
   useEffect(() => {
     Audio.requestPermissionsAsync();
-    Audio.setAudioModeAsync({
-      allowsRecordingIOS: true,
-      playsInSilentModeIOS: true,
-      interruptionModeIOS: InterruptionModeIOS.DoNotMix,
-      // Android (v1.3.3 baseline): explicit interruption handling so a
-      // call/alarm pauses cleanly instead of the OS deciding ad hoc.
-      interruptionModeAndroid: InterruptionModeAndroid.DoNotMix,
-      shouldDuckAndroid: false,
-    }).catch(() => {
-      // Some older iOS versions + Expo Go can reject the mode; not
-      // fatal, recording will still start, just without clean
-      // interruption handling.
-    });
+    void ensureAudioSession();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // If the user backgrounds the app while polling, we just keep
@@ -335,7 +363,39 @@ export default function RecordScreen() {
     };
   }, []);
 
-  const startRecording = async () => {
+  /**
+   * Put the audio session in record mode and WAIT for it.
+   *
+   * 1.9.1 fix for "Recording unavailable — your phone is in use by another
+   * app or a call" when recording from the Action Button / widget / Siri
+   * (acuity://record?autostart=1). The mount effect used to fire
+   * setAudioModeAsync without awaiting it, and the autostart effect ran in
+   * the same commit — so prepareToRecordAsync ran before
+   * allowsRecordingIOS was applied, threw, and we reported it as "phone in
+   * use". Tapping record by hand worked only because by then the mode had
+   * landed.
+   */
+  const audioModeRef = useRef<Promise<void> | null>(null);
+  const ensureAudioSession = (force = false): Promise<void> => {
+    if (!audioModeRef.current || force) {
+      audioModeRef.current = Audio.setAudioModeAsync({
+        allowsRecordingIOS: true,
+        playsInSilentModeIOS: true,
+        interruptionModeIOS: InterruptionModeIOS.DoNotMix,
+        // Android (v1.3.3 baseline): explicit interruption handling so a
+        // call/alarm pauses cleanly instead of the OS deciding ad hoc.
+        interruptionModeAndroid: InterruptionModeAndroid.DoNotMix,
+        shouldDuckAndroid: false,
+      }).catch(() => {
+        // Some older iOS versions + Expo Go can reject the mode; not
+        // fatal, recording will still start, just without clean
+        // interruption handling.
+      });
+    }
+    return audioModeRef.current;
+  };
+
+  const startRecording = async (): Promise<void> => {
     setError(null);
     setInterrupted(false);
     setPolledEntryId(null);
@@ -353,19 +413,14 @@ export default function RecordScreen() {
     }
 
     try {
-      const recording = new Audio.Recording();
-      // 64 kbps MONO, not HIGH_QUALITY's 128 kbps stereo — see
-      // lib/audio-recording-options.ts. A 5-min entry was ~4.8MB and hit
-      // Vercel's non-configurable 4.5MB body cap; this brings it to ~2.4MB.
-      await recording.prepareToRecordAsync(SPEECH_RECORDING_OPTIONS);
-      // expo-av's default metering cadence is 500ms (2 Hz). Bumping
-      // to 1000ms (1 Hz) halves the JS-thread setLevels churn with
-      // zero visible impact on the level-bar animation — each status
-      // callback forces a re-render cascade, so cutting them in half
-      // is free perf.
-      recording.setProgressUpdateInterval(1000);
-      // Subscribe to metering updates for the level-bar visualization.
-      recording.setOnRecordingStatusUpdate((status) => {
+      peakLevelRef.current = 0; // P1: reset peak for this recording
+      // Shared starter (lib/start-speech-recording): waits for "active",
+      // awaits the audio mode, unloads + retries once on failure. 1000ms
+      // metering cadence halves setLevels churn vs the 500ms default.
+      const recording = await startSpeechRecording({
+        source: "main",
+        progressIntervalMs: 1000,
+        onStatus: (status) => {
         if (!status.isRecording) return;
         const meteringDb = status.metering ?? -60;
         // Map -60..0 dB → 0..1. Apple's dB range is roughly -60 silent
@@ -382,9 +437,8 @@ export default function RecordScreen() {
           next.push(Math.max(0.05, normalized));
           return next;
         });
+        },
       });
-      peakLevelRef.current = 0; // P1: reset peak for this recording
-      await recording.startAsync();
       recordingRef.current = recording;
       setElapsed(0);
       setState("recording");
@@ -422,6 +476,7 @@ export default function RecordScreen() {
         data: { nativeMessage, nativeCode },
       });
 
+      // (The automatic retry now lives in startSpeechRecording.)
       const fresh = await Audio.getPermissionsAsync().catch(() => null);
       if (fresh && !fresh.granted) {
         Alert.alert(
@@ -431,9 +486,22 @@ export default function RecordScreen() {
         );
         return;
       }
+      // Record the native reason where we can read it (Sentry breadcrumbs
+      // only surface with a later error; the 2026-10-15 user report could
+      // not be diagnosed from data). Reuses the funnel's event name — the
+      // server accepts only the ^v10_ prefix — with source "main".
+      trackV10("v10_recording_start_failed", {
+        source: "main",
+        error: nativeMessage.slice(0, 200),
+        code: nativeCode,
+      });
+      // Don't blame "another app": this catch fires for ANY start failure
+      // (audio-mode race, app not yet active after a system prompt, …), and
+      // telling someone with no other app open that one is using the mic
+      // reads as a broken app (user report 2026-10-15).
       Alert.alert(
-        "Recording unavailable",
-        "Your phone is in use by another app or a call. End the call or close the other app, then try again."
+        "Couldn't start recording",
+        "Ripple couldn't get the microphone. Tap record to try again. If you're on a call or using another audio app, end it first."
       );
     }
   };
@@ -629,7 +697,12 @@ export default function RecordScreen() {
             // are. (This path doesn't poll, so the polledEntryId hook
             // never covered it — this is the real fix for the missing
             // banner.)
-            trackEntry(responseEntryId);
+            trackEntry(responseEntryId, { silent: fromWelcome });
+            if (fromWelcome) {
+              await noteWelcomeDebrief(responseEntryId);
+              router.back();
+              return;
+            }
             void (async () => {
               try {
                 const meRes = await api.get<{
@@ -647,6 +720,13 @@ export default function RecordScreen() {
 
           // Sync path — the server returned an inline RecordResponse
           // with the extraction already done. Nav straight to detail.
+          if (responseEntryId && fromWelcome) {
+            // Sync pipeline: the extraction is already done, so the welcome
+            // flow's poll resolves on its first request.
+            await noteWelcomeDebrief(responseEntryId);
+            router.back();
+            return;
+          }
           if (responseEntryId) {
             router.replace(`/entry/${responseEntryId}`);
             // Slice 9b — same post-second-recording trigger as the
@@ -687,7 +767,7 @@ export default function RecordScreen() {
         }
       }
     },
-    [router, goalId, dimensionKey, trackEntry]
+    [router, goalId, dimensionKey, trackEntry, fromWelcome]
   );
 
   /**

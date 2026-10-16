@@ -28,6 +28,10 @@ export type V10Event =
   | "v10_start_tapped"
   | "v10_mic_result"
   | "v10_recording_started"
+  | "v10_recording_start_failed"
+  | "v10_processing_failed"
+  | "v10_recording_silent"
+  | "v10_recording_interrupted"
   | "v10_chip_tapped"
   | "v10_recording_completed"
   | "v10_processing_viewed"
@@ -49,11 +53,18 @@ export type V10Event =
   // signing up. Worth measuring: a high rate means cold-start routing
   // is catching people it should not.
   | "v10_signin_from_funnel"
+  | "v10_start_viewed"
+  | "v10_start_new"
   // Guest save wall (spec §9). `attempt` distinguishes the soft first
   // showing from the hard ones after it.
   | "v10_save_wall_shown"
   | "v10_save_wall_accepted"
-  | "v10_save_wall_dismissed";
+  | "v10_save_wall_dismissed"
+  // v11 screens (Keenan's Miro funnel, 2026-10-15): one view + one answer
+  // event per screen; `screen` names it (hook, age, carrying, …). Named
+  // v10_* because the server accepts only the ^v10_ prefix.
+  | "v10_q_viewed"
+  | "v10_q_answered";
 
 /**
  * Experiment assignment. "baseline" until §8 test #1 actually starts —

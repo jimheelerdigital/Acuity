@@ -1,6 +1,6 @@
 import { api } from "@/lib/api";
 import {
-  clearStoredTrySession,
+  clearStoredTryToken,
   getStoredTrySessionToken,
 } from "@/lib/try-session";
 
@@ -51,8 +51,9 @@ export async function claimAnonymousDebrief(): Promise<ClaimOutcome> {
       "/api/try-recording/claim",
       { sessionToken }
     );
-    // Cleared only on confirmed success — see property 2 above.
-    await clearStoredTrySession();
+    // Cleared only on confirmed success — see property 2 above. Keeps the
+    // extraction (reveal/paywall may still need it); see clearStoredTryToken.
+    await clearStoredTryToken();
     return { status: "claimed", entryId: res?.entryId };
   } catch (err) {
     return {

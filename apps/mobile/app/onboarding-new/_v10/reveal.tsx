@@ -1,28 +1,21 @@
 import { useEffect, useMemo, useState } from "react";
-import { Pressable, ScrollView, Text, View } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { Alert, Text, View } from "react-native";
+import { CircleCheck } from "lucide-react-native";
 import * as Haptics from "expo-haptics";
-import { router } from "expo-router";
+import { router, useLocalSearchParams } from "expo-router";
 import Animated, {
+  FadeInDown,
   useAnimatedStyle,
   useSharedValue,
   withSequence,
   withTiming,
 } from "react-native-reanimated";
 
-import { useTheme } from "@/contexts/theme-context";
+import { useAuth } from "@/contexts/auth-context";
+import { prefetchOffering } from "@/lib/onboarding-v11/offering-cache";
 
+import { Body, Card, FunnelHeader, Heading, IconTile, LightScreen, PROGRESS, PrimaryButton, RippleAppIcon, V11 } from "../_v11/ui";
 import {
-  CoralScreen,
-  FunnelCta,
-  FunnelProgress,
-  RippleWordmark,
-  coralLabel,
-  coralWhiteCard,
-} from "./_ui";
-import { makeAcuityTokens } from "@/lib/theme/tokens";
-import {
-  V10_BRANCHES,
   resolveObservationFallback,
   type V10Branch,
 } from "@/lib/onboarding-v10/branches";
@@ -34,6 +27,10 @@ import {
 import { trackV10 } from "@/lib/onboarding-v10/analytics";
 import { getV10Branch } from "@/lib/onboarding-v10/state";
 import { getStoredTryExtraction } from "@/lib/try-session";
+import { GradientCheckbox } from "@/components/acuity";
+import { SwipeRow } from "@/components/swipe-row";
+import { api } from "@/lib/api";
+import { cachedGet, setCached } from "@/lib/cache";
 
 /**
  * Screen 5 — Reveal + what compounds (light; the Ripple wordmark appears
@@ -46,9 +43,12 @@ import { getStoredTryExtraction } from "@/lib/try-session";
  * nothing — an empty section is honest, a filled-in one is not.
  *
  * Three specific rules:
- *   - Tasks are never auto-added. They render UNCHECKED, and the user opts
- *     in. An uncertain task silently added to someone's list is the fastest
- *     way to lose their trust in everything else here.
+ *   - Tasks: the claim (right after processing) puts every extracted task on
+ *     the user's real list. 1.9.1 shows them as exactly that — their real
+ *     to-dos, checkable, swipe to edit/delete — instead of the old
+ *     "Add / Dismiss" buttons, which never wrote anything and so misstated
+ *     what had happened. Falls back to the extraction (read-only) if the
+ *     claim hasn't landed.
  *   - The observation is HEDGED ("sounds like / seems / may"), and when the
  *     extraction gives us nothing worth hedging about, it falls back to the
  *     branch line — which claims nothing about the transcript at all.
@@ -64,17 +64,30 @@ interface RevealTask {
 
 interface RevealData {
   pullQuote: string | null;
+  /** The extraction's own summary (shown once, under "What it was about"). */
+  summary: string | null;
   themes: string[];
   tasks: RevealTask[];
 }
 
-const MAX_TASKS = 3;
+const MAX_TASKS = 5;
+
+/** A real task row from /api/tasks (claimed from this debrief). */
+interface ListTask {
+  id: string;
+  title: string | null;
+  text: string | null;
+  status: string;
+  entryId?: string | null;
+}
+
+const TASKS_CACHE_KEY = "/api/tasks?all=1";
 
 /** Words that make a sentence a hedge rather than a claim. */
 const HEDGES = ["sounds like", "seems", "may", "might", "looks like"];
 
 function normalize(raw: Record<string, unknown> | null): RevealData {
-  if (!raw) return { pullQuote: null, themes: [], tasks: [] };
+  if (!raw) return { pullQuote: null, summary: null, themes: [], tasks: [] };
 
   const themes = Array.isArray(raw.themes)
     ? raw.themes.filter((t): t is string => typeof t === "string" && t.length > 0)
@@ -92,27 +105,98 @@ function normalize(raw: Record<string, unknown> | null): RevealData {
         .slice(0, MAX_TASKS)
     : [];
 
-  const summary = typeof raw.summary === "string" ? raw.summary : null;
+  const summary =
+    typeof raw.summary === "string" && raw.summary.trim().length > 0
+      ? raw.summary.trim()
+      : null;
+  // Only a REAL pull quote — never the summary again. The old fallback made
+  // "What seems to matter" and "Ripple noticed" print the same paragraph.
   const pullQuote =
-    typeof raw.pullQuote === "string" && raw.pullQuote.length > 0
-      ? raw.pullQuote
-      : summary;
+    typeof raw.pullQuote === "string" &&
+    raw.pullQuote.trim().length > 0 &&
+    raw.pullQuote.trim() !== summary
+      ? raw.pullQuote.trim()
+      : null;
 
-  return { pullQuote, themes, tasks };
+  return { pullQuote, summary, themes, tasks };
 }
 
 export default function V10Reveal() {
-  const { palette } = useTheme();
-  const tokens = makeAcuityTokens({ dark: false, accent: palette });
+  const { user } = useAuth();
+  // Warm the paywall's store request while she reads her results.
+  useEffect(() => {
+    void prefetchOffering();
+  }, []);
+  const firstName = user?.name?.trim().split(/\s+/)[0] || null;
 
   const [branch, setBranch] = useState<V10Branch>("open");
   const [data, setData] = useState<RevealData>({
     pullQuote: null,
+    summary: null,
     themes: [],
     tasks: [],
   });
-  const [dismissed, setDismissed] = useState<Set<number>>(new Set());
-  const [added, setAdded] = useState<Set<number>>(new Set());
+  const params = useLocalSearchParams<{ entryId?: string }>();
+  const entryId = typeof params.entryId === "string" ? params.entryId : null;
+  // Real tasks the claim created for this debrief (null = not loaded / none).
+  const [listTasks, setListTasks] = useState<ListTask[] | null>(null);
+
+  useEffect(() => {
+    if (!entryId) return;
+    let cancelled = false;
+    void cachedGet<{ tasks: ListTask[] }>(TASKS_CACHE_KEY, { force: true })
+      .then((res) => {
+        if (cancelled) return;
+        const mine = (res.tasks ?? []).filter((t) => t.entryId === entryId);
+        if (mine.length > 0) setListTasks(mine);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [entryId]);
+
+  const updateList = (fn: (prev: ListTask[]) => ListTask[]) => {
+    setListTasks((prev) => {
+      const next = fn(prev ?? []);
+      return next;
+    });
+    // Keep the shared cache honest for Tasks / Home TODAY.
+    void cachedGet<{ tasks: ListTask[] }>(TASKS_CACHE_KEY)
+      .then((res) => setCached(TASKS_CACHE_KEY, { tasks: fn(res.tasks ?? []) }))
+      .catch(() => {});
+  };
+
+  const toggleDone = (t: ListTask) => {
+    const done = t.status === "DONE";
+    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+    updateList((prev) =>
+      prev.map((x) => (x.id === t.id ? { ...x, status: done ? "OPEN" : "DONE" } : x))
+    );
+    api.patch("/api/tasks", { id: t.id, action: done ? "reopen" : "complete" }).catch(() => {
+      updateList((prev) =>
+        prev.map((x) => (x.id === t.id ? { ...x, status: t.status } : x))
+      );
+    });
+  };
+
+  const confirmDelete = (t: ListTask) => {
+    const label = t.title ?? t.text ?? "this to-do";
+    Alert.alert("Delete to-do?", `"${label}" will be removed from your Tasks.`, [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "Delete",
+        style: "destructive",
+        onPress: () => {
+          updateList((prev) => prev.filter((x) => x.id !== t.id));
+          api.patch("/api/tasks", { id: t.id, action: "dismiss" }).catch(() => {
+            updateList((prev) => [...prev, t]);
+            Alert.alert("Couldn't delete", "Please try again.");
+          });
+        },
+      },
+    ]);
+  };
 
   const pulse = useSharedValue(1);
   const pulseStyle = useAnimatedStyle(() => ({ transform: [{ scale: pulse.value }] }));
@@ -158,268 +242,182 @@ export default function V10Reveal() {
     [data, branch]
   );
 
-  const visibleTasks = data.tasks
-    .map((t, i) => ({ task: t, index: i }))
-    .filter(({ index }) => !dismissed.has(index));
+  // Rows to show: the real claimed tasks when we have them, otherwise the
+  // extraction's titles (read-only).
+  const rows: { key: string; label: string; real: ListTask | null }[] =
+    listTasks && listTasks.length > 0
+      ? listTasks.slice(0, MAX_TASKS).map((t) => ({
+          key: t.id,
+          label: t.title ?? t.text ?? "Untitled",
+          real: t,
+        }))
+      : data.tasks.map((t, i) => ({ key: `x-${i}`, label: t.title, real: null }));
+  const totalTodos = listTasks && listTasks.length > 0 ? listTasks.length : data.tasks.length;
+  const onList = !!(listTasks && listTasks.length > 0);
 
   return (
-    <CoralScreen tokens={tokens}>
-      <SafeAreaView style={{ flex: 1 }}>
-      <FunnelProgress step={5} total={5} tokens={tokens} />
-      <ScrollView
-        contentContainerStyle={{ paddingHorizontal: 24, paddingTop: 20, paddingBottom: 40 }}
-        showsVerticalScrollIndicator={false}
+    <LightScreen>
+      <FunnelHeader progress={PROGRESS.reveal} />
+      <Body
+        footer={
+          <PrimaryButton
+            label={user ? "Keep building my Ripple" : "Save my results"}
+            onPress={() => {
+              trackV10("v10_keep_building_tapped", { branch, signed_in: !!user });
+              // Account comes here (2026-10-15): save the results, then the
+              // paywall. A signed-in user (resumed funnel) goes straight on.
+              router.push(user ? "/onboarding-new/paywall" : "/onboarding-new/account");
+            }}
+          />
+        }
       >
-        {/* First appearance of the wordmark in the entire flow. */}
-        <View style={{ marginBottom: 14 }}>
-          <RippleWordmark height={22} />
-        </View>
+        <Animated.View style={[{ alignSelf: "center", marginBottom: 14 }, pulseStyle]}>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 8, backgroundColor: "#ffffff", borderRadius: 999, borderWidth: 1, borderColor: V11.lineStrong, paddingHorizontal: 12, paddingVertical: 6 }}>
+            <CircleCheck size={15} color={V11.good} />
+            <Text style={{ fontSize: 13, fontWeight: "700", color: V11.ink }}>First debrief complete</Text>
+          </View>
+        </Animated.View>
+        <Heading eyebrow="Your results" title={firstName ? `Here's what Ripple heard, ${firstName}.` : "Here's what Ripple heard."} />
 
-        <Text
-          accessibilityRole="header"
-          style={{
-            fontFamily: tokens.fontDisplay,
-            fontSize: 26,
-            lineHeight: 34,
-            color: "#ffffff",
-            marginBottom: 18,
-          }}
-        >
-          Here's what Ripple heard.
-        </Text>
-
-        {/* ── TASKS — never auto-added ─────────────────────────────── */}
-        {visibleTasks.length > 0 && (
-          <Section title="A few things to do" tokens={tokens}>
-            {visibleTasks.map(({ task, index }) => (
-              <View
-                key={`${task.title}-${index}`}
-                style={[coralWhiteCard(tokens, { padding: 14 }), { marginBottom: 10 }]}
-              >
-                <Text
-                  style={{
-                    fontFamily: tokens.fontSans,
-                    fontSize: 16,
-                    lineHeight: 23,
-                    color: tokens.text,
-                  }}
-                >
-                  {task.title}
-                </Text>
-
-                <View style={{ flexDirection: "row", gap: 16, marginTop: 12 }}>
-                  <Pressable
-                    onPress={() => {
-                      const next = new Set(added);
-                      // Explicit opt-in, and reversible. Nothing reaches the
-                      // user's real task list until they say so.
-                      next.has(index) ? next.delete(index) : next.add(index);
-                      setAdded(next);
-                    }}
-                    accessibilityRole="button"
-                  >
-                    <Text
-                      style={{
-                        fontFamily: tokens.fontDisplay,
-                        fontSize: 14,
-                        color: added.has(index) ? tokens.good : tokens.primaryLo,
-                      }}
-                    >
-                      {added.has(index) ? "✓ Added" : "Add"}
+        {/* ── YOUR TO-DOS — real tasks on their list (1.9.1) ────────── */}
+        {rows.length > 0 && (
+          <Animated.View entering={FadeInDown.delay(80).duration(420)}>
+            <Card style={{ marginBottom: 14, overflow: "hidden" }}>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 12, paddingHorizontal: 16, paddingTop: 16, paddingBottom: 12 }}>
+                <IconTile name="list" on size={42} radius={12} />
+                <View style={{ flex: 1 }}>
+                  <Text style={{ fontFamily: V11.display, fontSize: 17, color: V11.ink }}>
+                    {totalTodos} {totalTodos === 1 ? "to-do" : "to-dos"} from what you said
+                  </Text>
+                  <View style={{ flexDirection: "row", alignItems: "center", gap: 4, marginTop: 2 }}>
+                    {onList ? <CircleCheck size={13} color={V11.good} /> : null}
+                    <Text style={{ fontSize: 13, fontWeight: "600", color: onList ? V11.good : V11.sec }}>
+                      {onList ? "Already on your Tasks list" : user ? "Going on your Tasks list" : "Saved to your Tasks when you create your account"}
                     </Text>
-                  </Pressable>
-
-                  <Pressable
-                    onPress={() => setDismissed(new Set(dismissed).add(index))}
-                    accessibilityRole="button"
-                  >
-                    <Text
-                      style={{
-                        fontFamily: tokens.fontSans,
-                        fontSize: 14,
-                        color: tokens.textSec,
-                      }}
-                    >
-                      Dismiss
-                    </Text>
-                  </Pressable>
+                  </View>
                 </View>
               </View>
-            ))}
-          </Section>
+
+              {rows.map((row) => {
+                const t = row.real;
+                const done = t?.status === "DONE";
+                const line = (
+                  <View
+                    style={{
+                      flexDirection: "row",
+                      alignItems: "center",
+                      gap: 12,
+                      paddingHorizontal: 16,
+                      paddingVertical: 14,
+                      backgroundColor: "#ffffff",
+                      borderTopWidth: 1,
+                      borderTopColor: V11.line,
+                    }}
+                  >
+                    {t ? (
+                      <GradientCheckbox checked={done} onPress={() => toggleDone(t)} />
+                    ) : (
+                      <View style={{ width: 22, height: 22, borderRadius: 11, borderWidth: 1.5, borderColor: V11.quiet }} />
+                    )}
+                    <Text
+                      style={{
+                        flex: 1,
+                        fontSize: 16,
+                        lineHeight: 22,
+                        fontWeight: "500",
+                        color: done ? V11.ter : V11.ink,
+                        textDecorationLine: done ? "line-through" : "none",
+                      }}
+                    >
+                      {row.label}
+                    </Text>
+                  </View>
+                );
+                return t ? (
+                  <SwipeRow
+                    key={row.key}
+                    variant="flush"
+                    itemName={row.label}
+                    onEdit={() => router.push(`/task/${t.id}`)}
+                    onDelete={() => confirmDelete(t)}
+                  >
+                    {line}
+                  </SwipeRow>
+                ) : (
+                  <View key={row.key}>{line}</View>
+                );
+              })}
+
+              {onList ? (
+                <Text style={{ fontSize: 12, color: V11.ter, paddingHorizontal: 16, paddingVertical: 10, borderTopWidth: 1, borderTopColor: V11.line }}>
+                  {totalTodos > rows.length ? `+${totalTodos - rows.length} more in Tasks · ` : ""}
+                  Tap to check off · swipe left to edit or delete
+                </Text>
+              ) : null}
+            </Card>
+          </Animated.View>
         )}
 
-        {/* ── WHAT SEEMS TO MATTER — echoes the transcript ─────────── */}
-        {(data.pullQuote || data.themes.length > 0) && (
-          <Section title="What seems to matter" tokens={tokens}>
-            <View style={coralWhiteCard(tokens)}>
-              {data.pullQuote && (
-                <Text
-                  style={{
-                    fontFamily: tokens.fontSans,
-                    fontSize: 16,
-                    lineHeight: 24,
-                    color: tokens.textSec,
-                    marginBottom: data.themes.length > 0 ? 12 : 0,
-                  }}
-                >
-                  {data.pullQuote}
+        {/* ── WHAT IT WAS ABOUT — the summary once + theme chips ─────── */}
+        {(data.summary || data.themes.length > 0) && (
+          <Animated.View entering={FadeInDown.delay(160).duration(420)}>
+            <Card style={{ padding: 18, marginBottom: 14 }}>
+              <Text style={{ fontSize: 12, fontWeight: "800", letterSpacing: 0.8, color: V11.coral, marginBottom: 8 }}>WHAT IT WAS ABOUT</Text>
+              {data.summary ? (
+                <Text style={{ fontSize: 16, lineHeight: 24, color: V11.ink, marginBottom: data.themes.length > 0 ? 14 : 0 }}>
+                  {data.summary}
                 </Text>
-              )}
-              {data.themes.length > 0 && (
-                <Text
-                  style={{
-                    fontFamily: tokens.fontSans,
-                    fontSize: 15,
-                    lineHeight: 22,
-                    color: tokens.textSec,
-                  }}
-                >
-                  {data.themes.slice(0, 3).join(" · ")}
-                </Text>
-              )}
-            </View>
-          </Section>
+              ) : null}
+              {data.themes.length > 0 ? (
+                <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+                  {data.themes.slice(0, 4).map((theme) => (
+                    <View key={theme} style={{ borderRadius: 999, paddingHorizontal: 12, paddingVertical: 6, backgroundColor: V11.coralSoft }}>
+                      <Text style={{ fontSize: 13, fontWeight: "600", color: V11.coralDeep }}>{theme}</Text>
+                    </View>
+                  ))}
+                </View>
+              ) : null}
+            </Card>
+          </Animated.View>
         )}
 
-        {/* ── SOMETHING WORTH NOTICING — hedged, or branch fallback ── */}
-        <View style={[coralWhiteCard(tokens), { marginBottom: 16 }]}>
-          <Text
-            style={{
-              fontFamily: tokens.fontSans,
-              fontWeight: "700",
-              fontSize: 11,
-              letterSpacing: 0.6,
-              textTransform: "uppercase",
-              color: tokens.primaryLo,
-              marginBottom: 8,
-            }}
-          >
-            Ripple noticed
-          </Text>
-          <Text
-            style={{
-              fontFamily: tokens.fontSans,
-              fontSize: 16,
-              lineHeight: 24,
-              color: tokens.text,
-            }}
-          >
-            {observation}
-          </Text>
-        </View>
-
-        {/* ── First debrief complete — pulse + haptic, no confetti ─── */}
-        <View
-          style={{
-            flexDirection: "row",
-            alignItems: "center",
-            gap: 10,
-            marginBottom: 18,
-          }}
-        >
-          <Animated.View
-            style={[
-              {
-                width: 10,
-                height: 10,
-                borderRadius: 5,
-                backgroundColor: "#ffffff",
-              },
-              pulseStyle,
-            ]}
-          />
-          <Text
-            style={{
-              fontFamily: tokens.fontSans,
-              fontSize: 15,
-              color: "#ffffff",
-              opacity: 0.92,
-            }}
-          >
-            First debrief complete
-          </Text>
-        </View>
+        {/* ── RIPPLE NOTICED — only a real, distinct observation, or the
+            branch fallback when there's nothing else to show. ──────────── */}
+        {(data.pullQuote || !data.summary) && (
+          <Animated.View entering={FadeInDown.delay(240).duration(420)}>
+            <Card selected style={{ padding: 18, marginBottom: 14, flexDirection: "row", gap: 12 }}>
+              <RippleAppIcon size={34} />
+              <View style={{ flex: 1 }}>
+                <Text style={{ fontSize: 12, fontWeight: "800", letterSpacing: 0.8, color: V11.coral, marginBottom: 6 }}>RIPPLE NOTICED</Text>
+                <Text style={{ fontSize: 16, lineHeight: 24, color: V11.ink }}>{observation}</Text>
+              </View>
+            </Card>
+          </Animated.View>
+        )}
 
         {/* ── WHAT RIPPLE CAN SEE FROM MORE ───────────────────────── */}
-        <Text style={[coralLabel(tokens), { marginBottom: 12 }]}>
+        <Text style={{ marginTop: 10, marginBottom: 10, fontFamily: V11.heading, fontSize: 20, letterSpacing: -0.4, color: V11.ink }}>
           {V10_COMPOUNDING_HEADING}
         </Text>
-
-        <View style={{ gap: 10, marginBottom: 16 }}>
-          {V10_COMPOUNDING_CARDS.map((card) => (
-            <View key={card.key} style={coralWhiteCard(tokens, { padding: 14 })}>
-              <Text
-                style={{
-                  fontFamily: tokens.fontDisplay,
-                  fontSize: 16,
-                  color: tokens.text,
-                  marginBottom: 4,
-                }}
-              >
-                {card.title}
-              </Text>
-              {/* Subline comes straight from the verified-threshold config.
-                  Life Matrix says "already here" because it exists at zero
-                  entries; claiming a gate would be a fabricated lock. */}
-              <Text
-                style={{
-                  fontFamily: tokens.fontSans,
-                  fontSize: 14,
-                  lineHeight: 20,
-                  color: tokens.textSec,
-                }}
-              >
-                {card.subline}
-              </Text>
+        <Card style={{ padding: 16, gap: 14, marginBottom: 12 }}>
+          {V10_COMPOUNDING_CARDS.map((card, i) => (
+            <View key={card.key} style={{ flexDirection: "row", gap: 12 }}>
+              <IconTile name={COMPOUND_ICONS[i % COMPOUND_ICONS.length]} on={false} size={38} radius={12} />
+              <View style={{ flex: 1 }}>
+                <Text style={{ fontFamily: V11.display, fontSize: 16, color: V11.ink }}>{card.title}</Text>
+                {/* Subline comes straight from the verified-threshold config. */}
+                <Text style={{ marginTop: 2, fontSize: 14, lineHeight: 20, color: V11.sec }}>{card.subline}</Text>
+              </View>
             </View>
           ))}
-        </View>
-
-        <Text
-          style={{
-            fontFamily: tokens.fontSans,
-            fontSize: 14,
-            lineHeight: 21,
-            color: "#ffffff",
-            opacity: 0.9,
-            marginBottom: 18,
-          }}
-        >
-          {V10_COMPOUNDING_FOOTER}
-        </Text>
-
-        <FunnelCta
-          label="Keep building my Ripple"
-          onPress={() => {
-            trackV10("v10_keep_building_tapped", { branch });
-            router.push("/onboarding-new/paywall");
-          }}
-          tokens={tokens}
-          onCoral
-        />
-      </ScrollView>
-      </SafeAreaView>
-    </CoralScreen>
+        </Card>
+        <Text style={{ fontSize: 14, lineHeight: 21, color: V11.sec, textAlign: "center" }}>{V10_COMPOUNDING_FOOTER}</Text>
+      </Body>
+    </LightScreen>
   );
 }
 
-function Section({
-  title,
-  tokens,
-  children,
-}: {
-  title: string;
-  tokens: ReturnType<typeof makeAcuityTokens>;
-  children: React.ReactNode;
-}) {
-  return (
-    <View style={{ marginBottom: 18 }}>
-      <Text style={[coralLabel(tokens), { marginBottom: 8 }]}>{title}</Text>
-      {children}
-    </View>
-  );
-}
+const COMPOUND_ICONS = ["eye", "target", "waves", "sprout"] as const;
 
 /**
  * Which kind of observation we ended up showing — reported so we can measure

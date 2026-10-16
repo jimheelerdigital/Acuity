@@ -163,12 +163,12 @@ export function SaveWallProvider({ children }: { children: React.ReactNode }) {
             <Pressable
               onPress={onSave}
               accessibilityRole="button"
-              style={({ pressed }) => ({
+              style={({
                 backgroundColor: tokens.primary,
                 borderRadius: 999,
                 paddingVertical: 16,
                 alignItems: "center",
-                transform: [{ scale: pressed ? 0.99 : 1 }],
+                transform: [{ scale: 1 }],
               })}
             >
               <Text

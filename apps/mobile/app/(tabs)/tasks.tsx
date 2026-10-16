@@ -5,6 +5,7 @@ import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActionSheetIOS,
   ActivityIndicator,
+  Alert,
   Platform,
   Pressable,
   RefreshControl,
@@ -13,18 +14,22 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { AttachStep } from "react-native-spotlight-tour";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
 import { GradientCheckbox } from "@/components/acuity";
 import { ProLockedCard } from "@/components/pro-locked-card";
 import { Skeleton, SkeletonCard } from "@/components/skeleton";
+import { SwipeRow } from "@/components/swipe-row";
+import { WHATS_NEW_STEP_INDEX } from "@/components/tour/steps";
 import { Confetti } from "@/components/tasks/confetti";
 import { useAuth } from "@/contexts/auth-context";
 import { useTheme } from "@/contexts/theme-context";
 import { api } from "@/lib/api";
-import { cachedGet, getCached } from "@/lib/cache";
+import { cachedGet, getCached, setCached } from "@/lib/cache";
 import { isFreeTierUser } from "@/lib/free-tier";
 import { dueDateToneColor, priorityToneColor } from "@/lib/tone-colors";
+import { publishTodayToWidget } from "@/lib/widget-data";
 
 // Q8 — finish-day confetti throttle. AsyncStorage stores YYYY-MM-DD;
 // burst only fires when the stored value !== today.
@@ -131,6 +136,10 @@ export default function TasksTab() {
   // Tracks pending mutations so focus-driven refetches don't clobber
   // optimistic UI before the server has acknowledged the write.
   const pendingMutationsRef = useRef<Set<string>>(new Set());
+  // True once `tasks` holds real data (hydrated from cache or a fetch
+  // succeeded) — a failed first fetch must not write an empty list to the
+  // shared cache or the widget.
+  const hasDataRef = useRef(!!getCached<{ tasks: Task[] }>(TASKS_CACHE_KEY));
 
   const fetchAll = useCallback(async (silent: boolean, force = false) => {
     if (!silent) setLoading(true);
@@ -156,6 +165,7 @@ export default function TasksTab() {
         );
       });
       setGroups(groupsData.groups ?? []);
+      hasDataRef.current = true;
     } catch {
       // silent
     } finally {
@@ -196,6 +206,15 @@ export default function TasksTab() {
     }
   }, [tasks, loading, visitSnapshot]);
 
+  // Write what this screen shows (server data + optimistic edits) back to
+  // the shared cache so Home's TODAY card never shows a task you just
+  // completed or deleted here, and refresh the "Today" widget.
+  useEffect(() => {
+    if (loading || !hasDataRef.current) return;
+    setCached(TASKS_CACHE_KEY, { tasks });
+    publishTodayToWidget(tasks);
+  }, [tasks, loading]);
+
   const onRefresh = useCallback(() => {
     setRefreshing(true);
     fetchAll(true, true);
@@ -219,6 +238,18 @@ export default function TasksTab() {
           )
         );
       } else {
+        if (action === "dismiss") {
+          setTasks((prev) => prev.filter((t) => t.id !== id));
+        } else if (action === "snooze") {
+          // Mirror the server (24h snooze) so the row moves to Snoozed and
+          // drops off Home's TODAY card right away.
+          const until = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+          setTasks((prev) =>
+            prev.map((t) =>
+              t.id === id ? { ...t, status: "SNOOZED", snoozedUntil: until } : t
+            )
+          );
+        }
         setVisitSnapshot((prev) => {
           if (!prev) return prev;
           if (
@@ -264,6 +295,23 @@ export default function TasksTab() {
       router.push(`/task/${task.id}`);
     },
     [router]
+  );
+
+  // Delete is permanent (PATCH action "dismiss" hard-deletes), so it
+  // always confirms — from the swipe button and from the long-press menu.
+  const confirmDeleteTask = useCallback(
+    (task: Task) => {
+      const label = task.title ?? task.text ?? "this task";
+      Alert.alert("Delete task?", `"${label}" will be deleted.`, [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Delete",
+          style: "destructive",
+          onPress: () => act(task.id, "dismiss"),
+        },
+      ]);
+    },
+    [act]
   );
 
   const openMoveSheet = useCallback(
@@ -323,7 +371,7 @@ export default function TasksTab() {
       actions.push({
         label: "Delete",
         destructive: true,
-        run: () => act(task.id, "dismiss"),
+        run: () => confirmDeleteTask(task),
       });
       actions.push({ label: "Cancel", run: () => {} });
 
@@ -340,7 +388,7 @@ export default function TasksTab() {
         }
       );
     },
-    [act, openMoveSheet]
+    [act, openMoveSheet, confirmDeleteTask]
   );
 
   // Snapshot grouping once per tasks/snapshot change. The previous
@@ -475,6 +523,20 @@ export default function TasksTab() {
     );
   }
 
+  // What's New tour (1.9.1): the first visible row is the one spotlit and
+  // slid open to demo the swipe.
+  const demoTaskId = (() => {
+    for (const g of sortedGroups) {
+      if (collapsedGroups.has(g.id)) continue;
+      const first = tasksByGroup.get(g.id)?.[0];
+      if (first) return first.id;
+    }
+    if (!collapsedGroups.has(UNGROUPED_KEY)) {
+      return tasksByGroup.get(UNGROUPED_KEY)?.[0]?.id ?? null;
+    }
+    return null;
+  })();
+
   return (
     <SafeAreaView
       className="flex-1"
@@ -576,6 +638,8 @@ export default function TasksTab() {
                   onOpenEditor={openTaskEditor}
                   onToggleComplete={handleToggleComplete}
                   onLongPress={openRowMenu}
+                  onDelete={confirmDeleteTask}
+                  demoTaskId={demoTaskId}
                 />
               );
             })}
@@ -595,6 +659,8 @@ export default function TasksTab() {
                   onOpenEditor={openTaskEditor}
                   onToggleComplete={handleToggleComplete}
                   onLongPress={openRowMenu}
+                  onDelete={confirmDeleteTask}
+                  demoTaskId={demoTaskId}
                 />
               );
             })()}
@@ -635,6 +701,8 @@ const GroupSection = memo(function GroupSection({
   onToggleComplete,
   onLongPress,
   onOpenEditor,
+  onDelete,
+  demoTaskId,
 }: {
   group: TaskGroup;
   tasks: Task[];
@@ -644,6 +712,8 @@ const GroupSection = memo(function GroupSection({
   onToggleComplete: (task: Task) => void;
   onLongPress: (task: Task) => void;
   onOpenEditor: (task: Task) => void;
+  onDelete: (task: Task) => void;
+  demoTaskId: string | null;
 }) {
   const { tokens } = useTheme();
   return (
@@ -731,6 +801,8 @@ const GroupSection = memo(function GroupSection({
               onToggle={onToggleComplete}
               onLongPress={onLongPress}
               onOpenEditor={onOpenEditor}
+              onDelete={onDelete}
+              isDemo={task.id === demoTaskId}
             />
           </View>
         ))}
@@ -745,12 +817,17 @@ const TaskRow = memo(
     onToggle,
     onLongPress,
     onOpenEditor,
+    onDelete,
+    isDemo = false,
   }: {
     task: Task;
     tab: Tab;
     onToggle: (task: Task) => void;
     onLongPress: (task: Task) => void;
     onOpenEditor: (task: Task) => void;
+    onDelete: (task: Task) => void;
+    /** First visible row: the What's New tour spotlights + demos it. */
+    isDemo?: boolean;
   }) {
     const { tokens } = useTheme();
     const label = task.title ?? task.text ?? "Untitled task";
@@ -782,8 +859,18 @@ const TaskRow = memo(
       () => onOpenEditor(task),
       [onOpenEditor, task]
     );
+    const handleDelete = useCallback(() => onDelete(task), [onDelete, task]);
 
-    return (
+    const row = (
+      <SwipeRow
+        variant="flush"
+        itemName={label}
+        onEdit={handleOpenEditor}
+        onDelete={handleDelete}
+        tourDemo={isDemo}
+      >
+      {/* Opaque background so the swipe buttons stay hidden until revealed. */}
+      <View style={{ backgroundColor: tokens.bg }}>
       <View
         style={{
           flexDirection: "row",
@@ -847,6 +934,15 @@ const TaskRow = memo(
           )}
         </Pressable>
       </View>
+      </View>
+      </SwipeRow>
+    );
+    return isDemo ? (
+      <AttachStep index={WHATS_NEW_STEP_INDEX.swipe} fill>
+        {row}
+      </AttachStep>
+    ) : (
+      row
     );
   },
   (prev, next) =>
@@ -854,7 +950,9 @@ const TaskRow = memo(
     prev.tab === next.tab &&
     prev.onToggle === next.onToggle &&
     prev.onLongPress === next.onLongPress &&
-    prev.onOpenEditor === next.onOpenEditor
+    prev.onOpenEditor === next.onOpenEditor &&
+    prev.onDelete === next.onDelete &&
+    prev.isDemo === next.isDemo
 );
 
 // Local <Checkbox> removed in Slice Q8 — see <GradientCheckbox> in

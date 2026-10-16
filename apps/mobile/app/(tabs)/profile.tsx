@@ -22,6 +22,7 @@ import { TrialStatusCard } from "@/components/TrialStatusCard";
 import { HapticsRow } from "@/components/appearance/haptics-row";
 import { DeleteAccountModal } from "@/components/delete-account-modal";
 import { FeedbackModal } from "@/components/feedback-modal";
+import { requestReview } from "@/lib/review";
 import { RestorePurchasesButton } from "@/components/restore-purchases-button";
 import { useAuth } from "@/contexts/auth-context";
 import { useTheme } from "@/contexts/theme-context";
@@ -31,7 +32,10 @@ import {
 } from "@/lib/app-lock";
 import { TOUR_FORCE_REPLAY_KEY } from "@/hooks/use-tour-trigger";
 import { isObsidianExportEnabled } from "@/lib/feature-flags";
+import { showProfileDot, useWhatsNewState } from "@/lib/whats-new-state";
 import { isIapEnabled } from "@/lib/iap-config";
+import { rcFlags } from "@/lib/revenuecat/flags";
+import { showManageSubscriptions } from "@/lib/revenuecat";
 import { exportAll } from "@/lib/obsidian/export";
 import { openSubscriptionPortal } from "@/lib/subscription";
 
@@ -89,7 +93,7 @@ export default function ProfileTab() {
       }
       if (out.reason === "cancelled") return;
       if (out.reason === "unsupported") {
-        Alert.alert("Not available yet", "Markdown export is iOS-only for now.");
+        Alert.alert("Sharing unavailable", "This device has no app to share the file to.");
         return;
       }
       Alert.alert("Export failed", out.message ?? "Please try again.");
@@ -207,19 +211,27 @@ export default function ProfileTab() {
   // 400 NoSubscription, surfacing as a confusing dead-end Alert.
   const canManageStripeSubscription =
     canManageSubscription && isStripeSub && user?.hasStripeCustomer === true;
-  // Phase 3a — show in-app Subscribe entry point for FREE users on
-  // iOS when the build-time IAP flag is on. Falls back to the web
-  // "Manage plan on web" link when the flag is off OR on Android.
+  // Show the in-app Subscribe entry point for FREE users. Rail-aware and
+  // identical to the subscribe screen: the RC rail shows it on iOS +
+  // Android; the legacy StoreKit path is iOS-only and stays gated on
+  // isIapEnabled(). Falls back to "Manage plan on web" when neither is on.
   const showInAppSubscribe =
-    !isPro && Platform.OS === "ios" && isIapEnabled();
+    !isPro &&
+    (rcFlags().RC_SDK_PURCHASES
+      ? Platform.OS === "ios" || Platform.OS === "android"
+      : Platform.OS === "ios" && isIapEnabled());
   // For Apple-source users, route Manage to iOS Settings (Apple's deep
   // link). For Stripe-source users, the existing openSubscriptionPortal
   // flow handles it. Use the itms-apps:// scheme rather than the https
   // universal link so iOS jumps straight into the App Store account's
   // Subscriptions screen reliably (the https link can bounce through
   // Safari first on some iOS versions).
-  const handleManageAppleSubscription = () => {
-    void Linking.openURL("itms-apps://apps.apple.com/account/subscriptions");
+  const handleManageAppleSubscription = async () => {
+    // Apple's own manage-subscriptions sheet, in-app (works in TestFlight
+    // sandbox too). Falls back to the App Store account link when RevenueCat
+    // isn't configured.
+    if (await showManageSubscriptions()) return;
+    void Linking.openURL("https://apps.apple.com/account/subscriptions");
   };
 
   // Days remaining on the current paid period — used by the delete
@@ -394,6 +406,21 @@ export default function ProfileTab() {
             sublabel="Reminders, nudges, tone & quiet hours"
             onPress={() => router.push("/notification-preferences" as never)}
           />
+          {/* What's New (1.9.1) — this version's changes + the guided
+              tour, any time. Dot until everything's been explored. */}
+          <WhatsNewMenuItem onPress={() => router.push("/whats-new" as never)} />
+          {/* Set up Ripple everywhere (1.7) — Action Button, Siri,
+              widgets, and the mic/notification permission jumps. */}
+          <MenuItem
+            icon="apps-outline"
+            label="Set up Ripple everywhere"
+            sublabel={
+              Platform.OS === "android"
+                ? "Widget, app shortcuts & permissions"
+                : "Action Button, Siri, widgets & permissions"
+            }
+            onPress={() => router.push("/setup" as never)}
+          />
           {/* Replay product tour — clears User.tourCompletedAt + the
               local AsyncStorage marker, then bounces to home so the
               tour fires on the next mount. Keeps the guided_start
@@ -477,6 +504,12 @@ export default function ProfileTab() {
               picker modal; submits to /api/feedback/submit which
               forwards a Block-Kit message to the #acuity-feedback
               Slack channel; Make.com → Monday from there. */}
+          <MenuItem
+            icon="star-outline"
+            label="Rate Ripple"
+            sublabel="Enjoying the app? A rating helps others find it"
+            onPress={() => void requestReview()}
+          />
           <MenuItem
             icon="chatbox-ellipses-outline"
             label="Send feedback"
@@ -576,12 +609,15 @@ function MenuItem({
   label,
   sublabel,
   destructive = false,
+  dot = false,
   onPress,
 }: {
   icon: React.ComponentProps<typeof Ionicons>["name"];
   label: string;
   sublabel?: string;
   destructive?: boolean;
+  /** Small primary dot after the label (e.g. unexplored What's New). */
+  dot?: boolean;
   onPress?: () => void;
 }) {
   const { tokens } = useTheme();
@@ -614,6 +650,7 @@ function MenuItem({
           }}
         >
           {label}
+          {dot ? <Text style={{ color: tokens.primary }}>{"  ●"}</Text> : null}
         </Text>
         {sublabel && (
           <Text
@@ -676,6 +713,23 @@ function AchievementsRow() {
       // expo-env.d.ts. `as never` is the established escape hatch
       // used elsewhere in the codebase for the same situation.
       onPress={() => router.push("/achievements" as never)}
+    />
+  );
+}
+
+function WhatsNewMenuItem({ onPress }: { onPress: () => void }) {
+  const wn = useWhatsNewState();
+  return (
+    <MenuItem
+      icon="sparkles-outline"
+      label="What's New"
+      sublabel={
+        wn.release
+          ? `What changed in Ripple ${wn.release.version}, with a quick tour`
+          : "Recent changes to Ripple"
+      }
+      dot={showProfileDot(wn)}
+      onPress={onPress}
     />
   );
 }

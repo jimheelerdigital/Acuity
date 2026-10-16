@@ -221,6 +221,50 @@ export async function registerPushTokenForReminderSlot(): Promise<
   }
 }
 
+const READY_OFFER_KEY = "acuity.push.ready_offer_shown_at";
+
+/**
+ * "Tell me when it's ready" (1.9.1, Keenan). The completion push already
+ * exists server-side (process-entry → lib/entry-push), but most people
+ * never had a push token: permission was only asked at exactly the 2nd
+ * recording, and only if they waited on the record screen (prod check
+ * 2026-10-15: 90 of 111 users with a debrief had no token).
+ *
+ * Call right after a debrief upload, while it processes:
+ *   - permission already granted → make sure the token is registered,
+ *     silently ("registered");
+ *   - never asked, never declined, primer not yet shown → "offer": the
+ *     caller shows our own primer, then calls registerPushTokenForReminderSlot
+ *     only if they say yes (the OS dialog is a one-shot);
+ *   - anything else → "skip".
+ */
+export async function readyPushAction(): Promise<"registered" | "offer" | "skip"> {
+  const platform = currentPlatform();
+  if (!platform) return "skip";
+  try {
+    const current = await Notifications.getPermissionsAsync();
+    if (current.granted) {
+      if (!(await AsyncStorage.getItem(REGISTERED_KEY))) {
+        const token = await fetchExpoPushToken();
+        if (token && (await postPushToken(token, platform))) {
+          await AsyncStorage.setItem(REGISTERED_KEY, String(Date.now()));
+        }
+      }
+      return "registered";
+    }
+    if (current.status !== "undetermined") return "skip";
+    const [denied, offered] = await Promise.all([
+      AsyncStorage.getItem(DENIED_KEY),
+      AsyncStorage.getItem(READY_OFFER_KEY),
+    ]);
+    if (denied || offered) return "skip";
+    await AsyncStorage.setItem(READY_OFFER_KEY, String(Date.now()));
+    return "offer";
+  } catch {
+    return "skip";
+  }
+}
+
 /**
  * Launch-time freshness check. Re-POSTs the current Expo token so a
  * rotated token doesn't go stale silently. No-op when we've never

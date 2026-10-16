@@ -16,6 +16,7 @@
 //
 // See docs/AUTH_HARDENING.md for the full test checklist.
 
+import { logCompletedRegistration } from "@/lib/meta-sdk";
 import * as AppleAuthentication from "expo-apple-authentication";
 import * as SecureStore from "expo-secure-store";
 
@@ -182,6 +183,7 @@ export async function signInWithApple(): Promise<AppleSignInResult> {
   const body = (await res.json().catch(() => null)) as {
     sessionToken?: string;
     user?: User;
+    isNewUser?: boolean;
   } | null;
   if (!body?.sessionToken || !body?.user) {
     return {
@@ -193,6 +195,8 @@ export async function signInWithApple(): Promise<AppleSignInResult> {
 
   await setToken(body.sessionToken);
   await setStoredUser(body.user);
+  // Real signups only (server says whether it created the account).
+  if (body.isNewUser) logCompletedRegistration("apple");
 
   return { ok: true, user: body.user, sessionToken: body.sessionToken };
 }

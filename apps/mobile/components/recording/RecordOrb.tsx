@@ -102,6 +102,8 @@ export interface RecordOrbProps {
   active: boolean;
   onPress: () => void;
   accessibilityLabel?: string;
+  /** Onboarding funnel (coral background): white halo + glow. */
+  onCoral?: boolean;
 }
 
 export function RecordOrb({
@@ -109,8 +111,10 @@ export function RecordOrb({
   active,
   onPress,
   accessibilityLabel,
+  onCoral = false,
 }: RecordOrbProps) {
   const { tokens } = useTheme();
+  const haloColor = onCoral ? "#ffffff" : tokens.primary;
   const elapsed = useSharedValue(0);
   const reactive = useSharedValue(0);
   // 0 → idle params, 1 → active params. Interpolated via withTiming
@@ -225,7 +229,7 @@ export function RecordOrb({
           // Glow per design § "Glow rule" — orb is one of the four
           // sanctioned glow surfaces. Approximates the design's
           // `0 8px 24px primary/0.45` for the radial-fill orb.
-          shadowColor: tokens.primary,
+          shadowColor: onCoral ? "#ffffff" : tokens.primary,
           shadowOffset: { width: 0, height: 8 },
           shadowRadius: 24,
           shadowOpacity: Platform.OS === "ios" ? 0.45 : 0,
@@ -252,12 +256,12 @@ export function RecordOrb({
             >
               <Stop
                 offset="0"
-                stopColor={tokens.primary}
-                stopOpacity="0.18"
+                stopColor={haloColor}
+                stopOpacity={onCoral ? "0.45" : "0.18"}
               />
               <Stop
                 offset="1"
-                stopColor={tokens.primary}
+                stopColor={haloColor}
                 stopOpacity="0"
               />
             </SvgRadialGradient>
