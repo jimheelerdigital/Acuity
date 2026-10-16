@@ -59,6 +59,11 @@ export async function POST(req: NextRequest) {
   }
 
   if (trySession.claimed) {
+    // This account already has it (a parallel or replayed claim): success,
+    // so the app clears its stored token instead of retrying forever.
+    if (trySession.claimedByUserId === userId) {
+      return NextResponse.json({ ok: true, alreadyClaimed: true }, { status: 200 });
+    }
     return NextResponse.json(
       { error: "Try session already claimed" },
       { status: 409 }
@@ -71,6 +76,53 @@ export async function POST(req: NextRequest) {
       { status: 410 }
     );
   }
+
+  // ── 3b. Claim atomically ─────────────────────────────────────────
+  // The check above is not enough on its own: the app fires two claims at
+  // the same moment after sign-up (auth-context's recovery retry + the
+  // account set-up), both read claimed=false, and both created an Entry
+  // + Tasks — every new 1.9.3 account got its first debrief twice
+  // (2026-10-15, 4/4 TestFlight runs, ~0.2s apart). Flipping the flag with a
+  // conditional update first means exactly one request does the work.
+  const won = await prisma.trySession.updateMany({
+    where: { id: trySession.id, claimed: false },
+    data: { claimed: true, claimedByUserId: userId },
+  });
+  if (won.count === 0) {
+    const current = await prisma.trySession.findUnique({
+      where: { id: trySession.id },
+      select: { claimedByUserId: true },
+    });
+    // Same account's parallel/replayed claim: it already landed (or is
+    // landing) — report success so the client clears its token.
+    if (current?.claimedByUserId === userId) {
+      return NextResponse.json({ ok: true, alreadyClaimed: true }, { status: 200 });
+    }
+    return NextResponse.json({ error: "Try session already claimed" }, { status: 409 });
+  }
+
+  try {
+    return await moveAndCreate(trySession, userId);
+  } catch (err) {
+    // Never lose the debrief: release the claim so the client's retry
+    // (token is kept until a confirmed success) can try again.
+    console.error("[try-claim] Claim failed after taking the session:", err);
+    await prisma.trySession
+      .updateMany({
+        where: { id: trySession.id, claimedByUserId: userId },
+        data: { claimed: false, claimedByUserId: null },
+      })
+      .catch(() => {});
+    return NextResponse.json({ error: "Claim failed" }, { status: 500 });
+  }
+}
+
+type TrySessionRow = NonNullable<
+  Awaited<ReturnType<Awaited<typeof import("@/lib/prisma")>["prisma"]["trySession"]["findUnique"]>>
+>;
+
+async function moveAndCreate(trySession: TrySessionRow, userId: string): Promise<NextResponse> {
+  const { prisma } = await import("@/lib/prisma");
 
   // ── 4. Move audio from try bucket to user's folder ─────────────────
   const { supabase } = await import("@/lib/supabase.server");
@@ -185,14 +237,6 @@ export async function POST(req: NextRequest) {
       },
     });
 
-    // ── 7. Mark TrySession as claimed ────────────────────────────────
-    await prisma.trySession.update({
-      where: { id: trySession.id },
-      data: {
-        claimed: true,
-        claimedByUserId: userId,
-      },
-    });
 
     // ── 8. Clean up try audio ────────────────────────────────────────
     // Nothing to remove for a typed debrief.
@@ -284,10 +328,6 @@ export async function POST(req: NextRequest) {
     },
   });
 
-  await prisma.trySession.update({
-    where: { id: trySession.id },
-    data: { claimed: true, claimedByUserId: userId },
-  });
 
   const response = NextResponse.json(
     { ok: true, entryId: entry.id },

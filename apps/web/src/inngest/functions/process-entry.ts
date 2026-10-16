@@ -3,6 +3,7 @@ import OpenAI from "openai";
 import { toFile } from "openai/uploads";
 
 import { WHISPER_LANGUAGE, WHISPER_MODEL } from "@acuity/shared";
+import { filterWhisperVerbose, type WhisperVerbose } from "@/lib/whisper-speech-filter";
 
 import { inngest } from "@/inngest/client";
 import {
@@ -311,7 +312,9 @@ export const processEntryFn = inngest.createFunction(
             file,
             model: WHISPER_MODEL,
             language: WHISPER_LANGUAGE,
-            response_format: "text",
+            // verbose_json → drop segments Whisper invented from silence
+            // (lib/whisper-speech-filter.ts) before the "too short" check.
+            response_format: "verbose_json",
           });
         } catch (err) {
           // P0: classify OpenAI APIConnectionError ("Connection error.") as
@@ -323,7 +326,15 @@ export const processEntryFn = inngest.createFunction(
           }
           throw err;
         }
-        const transcript = (res as string).trim();
+        const filtered = filterWhisperVerbose(res as WhisperVerbose);
+        if (filtered.dropped > 0) {
+          console.warn("[process-entry] whisper.dropped_nonspeech", {
+            dropped: filtered.dropped,
+            total: filtered.total,
+            duration: filtered.duration,
+          });
+        }
+        const transcript = filtered.text;
 
         if (transcript.length < 10) {
           // Genuine silence — non-retryable (retrying silent audio is
