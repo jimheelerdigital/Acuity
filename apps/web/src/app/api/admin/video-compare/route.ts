@@ -7,7 +7,7 @@
  *   returns [{ model, id }].
  * Body { check: [{ id, model }] } → returns each job's status + video URL.
  *
- * Auth: admin session.
+ * Auth: admin session or `Authorization: Bearer ${CRON_SECRET}`.
  */
 
 import { NextRequest, NextResponse } from "next/server";
@@ -18,8 +18,14 @@ export const dynamic = "force-dynamic";
 export const maxDuration = 60;
 
 export async function POST(req: NextRequest) {
-  const guard = await requireAdmin();
-  if (!guard.ok) return guard.response;
+  // Cron-secret bearer too (2026-10-16), so one-off scripts can render clips
+  // through the production Higgsfield keys (Vercel-sensitive, unpullable).
+  const bearer = req.headers.get("authorization");
+  const cronSecret = process.env.CRON_SECRET;
+  if (!(cronSecret && bearer === `Bearer ${cronSecret}`)) {
+    const guard = await requireAdmin();
+    if (!guard.ok) return guard.response;
+  }
   const body = (await req.json().catch(() => ({}))) as {
     imageUrl?: string;
     prompt?: string;
