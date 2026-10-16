@@ -27,11 +27,15 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { rcCredentials, rcFlags } from "@/lib/revenuecat/flags";
 import { fetchRcEntitlementState } from "@/lib/revenuecat/client";
+import type { EntitlementState } from "@/lib/entitlements/resolve";
 import {
   candidateUserIds,
   decideRcWebhookAction,
   decideTransferResync,
+  isRcBillingStore,
   rcDecisionToUpdateData,
+  redemptionEffectEvent,
+  redemptionUserIds,
   transferUserIds,
   type RcWebhookBody,
   type RcWebhookEvent,
@@ -182,6 +186,18 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     return applyTransferResync(event);
   }
 
+  // PURCHASE_REDEEMED: a RevenueCat Web Billing purchase (Purchase Link /
+  // Funnel / our own checkout) linked to an app user via a redemption link.
+  // No app_user_id on the event — re-sync the redeemer + purchaser from RC.
+  // Scoped to RC_BILLING so other stores' redemptions keep today's handling
+  // (logged and ignored below: no app_user_id → no User row).
+  if (
+    (event.type ?? "").trim().toUpperCase() === "PURCHASE_REDEEMED" &&
+    isRcBillingStore(event)
+  ) {
+    return applyRedemption(event);
+  }
+
   const user = await loadUser(event);
   const decision = decideRcWebhookAction(event, user);
 
@@ -317,63 +333,178 @@ async function loadUser(event: RcWebhookEvent) {
 }
 
 /**
- * Apply a TRANSFER by re-syncing every affected account from RC's current
- * state. Decision per user lives in `decideTransferResync` (pure, tested).
+ * Re-sync a set of User rows from RC's CURRENT state (TRANSFER and
+ * PURCHASE_REDEEMED). Ids that match no User row — $RCAnonymousID purchasers
+ * are already dropped, and a Purchase Link / Funnel id that isn't ours just
+ * finds nothing — are skipped, never guessed at. Decision per user lives in
+ * `decideTransferResync` (pure, tested).
+ *
+ * Throws on a DB / RC failure so the caller can 500 (RC retries).
  */
-async function applyTransferResync(event: RcWebhookEvent): Promise<NextResponse> {
+async function resyncUsersFromRc(
+  ids: string[],
+  ctx: { rcBillingMove: boolean }
+): Promise<{
+  results: Array<Record<string, unknown>>;
+  synced: Array<{ id: string; before: string; rc: EntitlementState | null }>;
+}> {
   const { prisma } = await import("@/lib/prisma");
-  const ids = transferUserIds(event);
   const users =
     ids.length === 0
       ? []
       : await prisma.user.findMany({
           where: { id: { in: ids } },
-          select: { id: true, subscriptionStatus: true, subscriptionSource: true },
+          select: {
+            id: true,
+            subscriptionStatus: true,
+            subscriptionSource: true,
+            stripeSubscriptionId: true,
+          },
         });
 
   const results: Array<Record<string, unknown>> = [];
-  try {
-    for (const u of users) {
-      const rc = await fetchRcEntitlementState(u.id);
-      const d = decideTransferResync(u, rc);
-      if (d.action !== "set-status") {
-        results.push({ userId: u.id, action: d.action, reason: d.reason });
-        continue;
-      }
-      const res = await prisma.user.updateMany({
-        where:
-          d.nextStatus === "FREE"
-            ? { id: u.id, subscriptionSource: { not: "comp" } }
-            : { id: u.id },
-        data: rcDecisionToUpdateData(d),
-      });
-      results.push({
-        userId: u.id,
-        action: res.count > 0 ? "set-status" : "guarded-noop",
-        nextStatus: d.nextStatus,
-        reason: d.reason,
-      });
+  const synced: Array<{ id: string; before: string; rc: EntitlementState | null }> = [];
+  for (const u of users) {
+    const rc = await fetchRcEntitlementState(u.id);
+    const stripeDirectLive =
+      ctx.rcBillingMove && u.subscriptionSource === "stripe"
+        ? await hasLiveStripeDirectSub(u.stripeSubscriptionId)
+        : undefined;
+    const d = decideTransferResync(u, rc, { rcBillingMove: ctx.rcBillingMove, stripeDirectLive });
+    synced.push({ id: u.id, before: u.subscriptionStatus, rc });
+    if (d.action !== "set-status") {
+      results.push({ userId: u.id, action: d.action, reason: d.reason });
+      continue;
     }
+    const res = await prisma.user.updateMany({
+      where:
+        d.nextStatus === "FREE"
+          ? { id: u.id, subscriptionSource: { not: "comp" } }
+          : { id: u.id },
+      data: rcDecisionToUpdateData(d),
+    });
+    results.push({
+      userId: u.id,
+      action: res.count > 0 ? "set-status" : "guarded-noop",
+      nextStatus: d.nextStatus,
+      reason: d.reason,
+    });
+  }
+  return { results, synced };
+}
+
+/**
+ * Does this row still have a live Stripe-direct subscription? Only asked for
+ * a "stripe" row when RC moved a Web Billing purchase. No id → false. Stripe
+ * unreachable → undefined, which the decision treats as live (never demote a
+ * possible Stripe payer on a guess). `stripeSubscriptionId` alone is not
+ * enough: production has FREE rows with stale ids (2026-10-16: 19 of them).
+ */
+async function hasLiveStripeDirectSub(
+  stripeSubscriptionId: string | null
+): Promise<boolean | undefined> {
+  if (!stripeSubscriptionId) return false;
+  try {
+    const { stripe } = await import("@/lib/stripe");
+    const sub = await stripe.subscriptions.retrieve(stripeSubscriptionId);
+    return ["trialing", "active", "past_due", "unpaid"].includes(sub.status);
+  } catch (err) {
+    safeLog.warn("revenuecat.webhook.stripe-liveness-unknown", {
+      err: err instanceof Error ? err.message : String(err),
+    });
+    return undefined;
+  }
+}
+
+/** Drop the dedup row so RC's retry of a failed event isn't swallowed. */
+async function releaseDedup(event: RcWebhookEvent): Promise<void> {
+  if (!event.id) return;
+  try {
+    const { prisma } = await import("@/lib/prisma");
+    await prisma.revenueCatEvent.delete({ where: { id: event.id } });
+  } catch {
+    /* best effort — a stuck dedup row is visible in the logs */
+  }
+}
+
+/** Apply a TRANSFER by re-syncing every affected account from RC. */
+async function applyTransferResync(event: RcWebhookEvent): Promise<NextResponse> {
+  const ids = transferUserIds(event);
+  let out: Awaited<ReturnType<typeof resyncUsersFromRc>>;
+  try {
+    out = await resyncUsersFromRc(ids, { rcBillingMove: isRcBillingStore(event) });
   } catch (err) {
     safeLog.error("revenuecat.webhook.transfer-resync-failed", err, {
       eventId: event.id ?? null,
     });
-    // 500 so RC retries; drop the dedup row first or the retry is swallowed.
-    if (event.id) {
-      try {
-        await prisma.revenueCatEvent.delete({ where: { id: event.id } });
-      } catch {
-        /* best effort */
-      }
-    }
+    await releaseDedup(event);
     return NextResponse.json({ error: "transfer-resync-failed" }, { status: 500 });
   }
 
   safeLog.info("revenuecat.webhook.transfer-resynced", {
     eventId: event.id ?? null,
     ids,
-    matched: users.length,
-    results,
+    matched: out.synced.length,
+    results: out.results,
   });
-  return NextResponse.json({ received: true, action: "transfer-resync", results });
+  return NextResponse.json({ received: true, action: "transfer-resync", results: out.results });
+}
+
+/**
+ * Apply a PURCHASE_REDEEMED: a web purchase was linked to an app user via a
+ * RevenueCat redemption link (outcome alias / transfer / redeemer_owns).
+ *
+ *  1. Re-sync the redeemer and the purchaser from RC, so the DB (which SSR
+ *     pages read directly) matches RC's entitlement right away instead of
+ *     at the next renewal. For outcome "transfer", RC also sends a TRANSFER
+ *     event; both re-syncs are idempotent.
+ *  2. First attribution: a Web Billing purchase made while the purchaser was
+ *     NOT one of our users (RevenueCat Purchase Link / Funnel, anonymous
+ *     $RCAnonymousID) never ran the new-subscription side effects — its
+ *     INITIAL_PURCHASE matched no User row. Run them now, once (the event's
+ *     dedup row), for the redeemer RC now entitles. If the purchaser WAS one
+ *     of our users, its INITIAL_PURCHASE already ran them: skip.
+ */
+async function applyRedemption(event: RcWebhookEvent): Promise<NextResponse> {
+  const { redeemers, purchasers, all } = redemptionUserIds(event);
+  const outcome = (event.redemption_outcome ?? "").trim().toLowerCase();
+  const rcBilling = isRcBillingStore(event);
+
+  let out: Awaited<ReturnType<typeof resyncUsersFromRc>>;
+  try {
+    out = await resyncUsersFromRc(all, { rcBillingMove: rcBilling && outcome === "transfer" });
+  } catch (err) {
+    safeLog.error("revenuecat.webhook.redemption-resync-failed", err, {
+      eventId: event.id ?? null,
+    });
+    await releaseDedup(event);
+    return NextResponse.json({ error: "redemption-resync-failed" }, { status: 500 });
+  }
+
+  let attributedTo: string | null = null;
+  const purchaserWasOurs = out.synced.some((s) => purchasers.includes(s.id));
+  if (rcBilling && (outcome === "alias" || outcome === "transfer") && !purchaserWasOurs) {
+    const redeemer = out.synced.find((s) => redeemers.includes(s.id));
+    const effectEvent = redeemer ? redemptionEffectEvent(event, redeemer.rc) : null;
+    if (redeemer && effectEvent) {
+      await webBillingEffects(effectEvent, redeemer.id);
+      attributedTo = redeemer.id;
+    }
+  }
+
+  safeLog.info("revenuecat.webhook.redemption-resynced", {
+    eventId: event.id ?? null,
+    outcome: outcome || null,
+    store: event.store ?? null,
+    ids: all,
+    matched: out.synced.length,
+    attributedTo,
+    results: out.results,
+  });
+  return NextResponse.json({
+    received: true,
+    action: "redemption-resync",
+    attributed: attributedTo !== null,
+    results: out.results,
+  });
 }

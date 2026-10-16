@@ -182,6 +182,27 @@ export function rcHasProEntitlement(
   return mapRcSubscriberToState(sub, now).subscriptionStatus !== "FREE";
 }
 
+/**
+ * RevenueCat's customer-portal link, ONLY when the customer has a live
+ * RevenueCat Web Billing subscription. `management_url` alone is not enough:
+ * for an App Store / Play subscriber RC returns the store's page, and the
+ * "Manage subscription" routes must keep today's behavior for those users
+ * (and for every Stripe-direct customer). https links only. PURE.
+ */
+export function rcBillingManagementUrl(
+  sub: RcSubscriber,
+  now: Date = new Date()
+): string | null {
+  const url = sub.management_url;
+  if (typeof url !== "string" || !url.startsWith("https://")) return null;
+  const liveWebBilling = Object.values(sub.subscriptions ?? {}).some(
+    (s) =>
+      (s.store ?? "").trim().toUpperCase() === "RC_BILLING" &&
+      (parseDate(s.expires_date)?.getTime() ?? 0) > now.getTime()
+  );
+  return liveWebBilling ? url : null;
+}
+
 // ─── HTTP ────────────────────────────────────────────────────────────
 
 export type RcFetchResult =
@@ -276,4 +297,24 @@ export async function fetchRcEntitlementState(
     return null;
   }
   return mapRcSubscriberToState(res.subscriber);
+}
+
+/**
+ * RevenueCat's customer-portal link for a user with a live Web Billing
+ * subscription, else null (see `rcBillingManagementUrl`). Capped at 3s and
+ * never throws: any RC problem means "no RC portal", and the caller keeps
+ * its existing Stripe / upgrade behavior.
+ */
+export async function fetchRcBillingManagementUrl(
+  appUserId: string,
+  fetchImpl: typeof fetch = fetch
+): Promise<string | null> {
+  try {
+    const timed: typeof fetch = (input, init) =>
+      fetchImpl(input, { ...init, signal: AbortSignal.timeout(3000) });
+    const res = await fetchRcSubscriber(appUserId, timed);
+    return res.ok ? rcBillingManagementUrl(res.subscriber) : null;
+  } catch {
+    return null;
+  }
 }

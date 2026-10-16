@@ -70,6 +70,7 @@ export const rcTrialReminderFn = inngest.createFunction(
         name: user.name,
         trialEnd: new Date(exp),
         priceText,
+        billing: "rc_billing",
       });
       return { sent: true };
     });

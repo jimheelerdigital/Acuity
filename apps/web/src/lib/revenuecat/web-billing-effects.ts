@@ -61,6 +61,10 @@ export function rcWebPurchaseSource(
 ): string {
   if (surface === "funnel") return "onboarding_funnel";
   if (surface === "upgrade") return "in_app_upgrade";
+  // Bought outside goripple.io's checkout, linked at redemption (webhook
+  // PURCHASE_REDEEMED → redemptionEffectEvent).
+  if (surface === "rc_funnel") return "rc_funnel";
+  if (surface === "redemption") return "web_redemption";
   if (presentedOfferingId === WEB_OFFERINGS.funnel) return "onboarding_funnel";
   if (
     presentedOfferingId === WEB_OFFERINGS.upgrade ||
@@ -120,7 +124,13 @@ export async function runRcWebBillingEffects(
     safeLog.warn("revenuecat.effects.subscription-started-failed", { err: msg(err) });
   }
 
-  if (!sandbox) {
+  // Meta CAPI only for goripple.io's own checkout. A purchase made on a
+  // RevenueCat Purchase Link / Funnel page and redeemed later has no
+  // goripple.io ad click behind it, and a RevenueCat-side ad integration
+  // could already have reported it — sending ours risks double-counting.
+  const offSiteCheckout = isOffSiteCheckout(event.metadata?.surface ?? null);
+
+  if (!sandbox && !offSiteCheckout) {
     try {
       const { generateEventId, sendConversionEvent } = await import("@/lib/meta-capi");
       const { planValueDollars } = await import("@/lib/pricing");
@@ -201,6 +211,11 @@ export async function runRcWebBillingEffects(
       safeLog.warn("revenuecat.effects.trial-reminder-schedule-failed", { err: msg(err) });
     }
   }
+}
+
+/** Purchase checked out off goripple.io (RC Purchase Link / Funnel). PURE. */
+export function isOffSiteCheckout(surface: string | null | undefined): boolean {
+  return surface === "rc_funnel" || surface === "redemption";
 }
 
 function msg(err: unknown): string {

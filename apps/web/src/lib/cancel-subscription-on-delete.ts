@@ -1,5 +1,7 @@
 import type Stripe from "stripe";
 
+import { isRcWebBillingOnServer } from "@/lib/billing/web-manage";
+
 /**
  * Best-effort subscription cancellation at account-deletion time.
  *
@@ -21,11 +23,14 @@ import type Stripe from "stripe";
  * settings. We return "not_applicable" for those.
  *
  * RevenueCat Web Billing (2026-10-14): those subscribers are stripe-sourced
- * but have NO local Stripe ids — RevenueCat bills them, not Stripe
- * Subscriptions. When the row has that shape and the caller passes
- * `rcCancel`, we also cancel through RevenueCat. (Production check on
- * 2026-10-14: every live stripe-sourced row has a stripeCustomerId, so this
- * shape does not catch existing Stripe subscribers.)
+ * (RC_BILLING → "stripe") but billed by RevenueCat, not Stripe
+ * Subscriptions. Usually they have no local Stripe ids, but a returning
+ * Stripe customer who re-subscribed through RevenueCat keeps their old ones,
+ * so row shape can't tell the two apart. When the caller passes `rcCancel`,
+ * every live stripe-sourced row is ALSO cancelled through RevenueCat, which
+ * only touches live rc_billing subscriptions and reports "not_applicable"
+ * when there are none — so for a Stripe-direct subscriber the result is the
+ * Stripe result, as before.
  *
  * NEVER throws: the user's right to delete trumps our ability to cancel
  * cleanly. All Stripe errors are caught and surfaced as "failed" so the
@@ -51,28 +56,38 @@ const LIVE_SUB_STATUS = new Set(["trialing", "active", "past_due", "unpaid"]);
 
 export type RcCancelFn = (appUserId: string) => Promise<CancellationStatus>;
 
-/** Live stripe-sourced row with no local Stripe ids = RevenueCat Web Billing. */
-export function looksLikeRcWebBilling(user: DeletionUser): boolean {
-  return (
-    BILLABLE_STATUS.has(user.subscriptionStatus) &&
-    user.subscriptionSource === "stripe" &&
-    !user.stripeSubscriptionId &&
-    !user.stripeCustomerId
-  );
+/**
+ * Could this row hold a RevenueCat Web Billing subscription?
+ *
+ * Live and stripe-sourced (RC_BILLING writes subscriptionSource "stripe"),
+ * AND either:
+ *   - no local Stripe ids (the usual Web Billing shape), or
+ *   - web checkout runs on RevenueCat (`webBillingOn`): then a returning
+ *     Stripe customer can have re-subscribed through RevenueCat while
+ *     keeping their old Stripe ids, so the ids prove nothing.
+ * With web billing off, every existing Stripe subscriber has a customer id
+ * (production check 2026-10-16), so deletion behaves exactly as before.
+ */
+export function looksLikeRcWebBilling(user: DeletionUser, webBillingOn = false): boolean {
+  if (!BILLABLE_STATUS.has(user.subscriptionStatus)) return false;
+  if (user.subscriptionSource !== "stripe") return false;
+  if (webBillingOn) return true;
+  return !user.stripeSubscriptionId && !user.stripeCustomerId;
 }
+
 
 export async function cancelSubscriptionOnDelete(
   stripe: Stripe,
   user: DeletionUser,
-  opts: { rcCancel?: RcCancelFn } = {}
+  opts: { rcCancel?: RcCancelFn; webBillingOn?: boolean } = {}
 ): Promise<CancellationStatus> {
   // No live plan → nothing to cancel.
   if (!BILLABLE_STATUS.has(user.subscriptionStatus)) return "not_applicable";
 
-  // RevenueCat Web Billing subscriber → cancel through RevenueCat. Still run
-  // the Stripe email sweep afterwards (it's a no-op for them) so a row that
-  // merely LOOKS like this can't skip a real Stripe cancel.
-  if (looksLikeRcWebBilling(user) && user.id && opts.rcCancel) {
+  // Possible RevenueCat Web Billing subscriber → cancel through RevenueCat
+  // AND run the unchanged Stripe path, so neither billing system can keep
+  // charging a deleted account.
+  if (looksLikeRcWebBilling(user, opts.webBillingOn ?? isRcWebBillingOnServer()) && user.id && opts.rcCancel) {
     let rc: CancellationStatus = "failed";
     try {
       rc = await opts.rcCancel(user.id);

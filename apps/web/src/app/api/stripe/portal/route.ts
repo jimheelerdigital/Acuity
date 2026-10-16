@@ -10,17 +10,22 @@
  * Only users with an existing stripeCustomerId can access this. Users
  * who never subscribed hit /upgrade instead.
  *
- * RevenueCat Web Billing subscribers (2026-10-14) have no stripeCustomerId
- * — RevenueCat owns that billing relationship. For them we return RC's
- * customer-portal link (subscriber.management_url), where they can update
- * their card or cancel. Same response shape, so web /account, the mobile
- * profile row and the past-due banner all work unchanged.
+ * RevenueCat Web Billing subscribers (2026-10-14) are billed by RevenueCat,
+ * not Stripe — usually no stripeCustomerId, but a returning Stripe customer
+ * who re-subscribed through RevenueCat keeps their old one. For anyone RC
+ * reports with a LIVE Web Billing subscription we return RC's customer-portal
+ * link instead (where they can update their card or cancel). Same response
+ * shape, so web /account, the mobile profile row and the past-due banner all
+ * work unchanged. Everyone else (Stripe-direct, store, no subscription) gets
+ * exactly the previous behavior: `rcBillingManagementUrl` only answers for a
+ * live RC_BILLING subscription.
  */
 
 import { NextRequest, NextResponse } from "next/server";
 
 import { getAnySessionUserId } from "@/lib/mobile-auth";
-import { fetchRcSubscriber } from "@/lib/revenuecat/client";
+import { mayHaveRcWebBilling } from "@/lib/billing/web-manage";
+import { fetchRcBillingManagementUrl } from "@/lib/revenuecat/client";
 import { stripe } from "@/lib/stripe";
 
 export const dynamic = "force-dynamic";
@@ -35,13 +40,16 @@ export async function POST(req: NextRequest) {
   const { prisma } = await import("@/lib/prisma");
   const user = await prisma.user.findUnique({
     where: { id: userId },
-    select: { stripeCustomerId: true },
+    select: { stripeCustomerId: true, subscriptionSource: true, subscriptionStatus: true },
   });
-  if (!user?.stripeCustomerId) {
-    // RevenueCat Web Billing subscriber → RC's customer portal.
-    const rcUrl = await rcManagementUrl(userId);
-    if (rcUrl) return NextResponse.json({ url: rcUrl });
 
+  // RevenueCat Web Billing subscriber → RC's customer portal.
+  if (user && mayHaveRcWebBilling(user)) {
+    const rcUrl = await fetchRcBillingManagementUrl(userId);
+    if (rcUrl) return NextResponse.json({ url: rcUrl });
+  }
+
+  if (!user?.stripeCustomerId) {
     // User has no Stripe customer yet — route them to the upgrade
     // flow instead of dead-ending with a blank portal.
     return NextResponse.json(
@@ -68,23 +76,6 @@ export async function POST(req: NextRequest) {
       { error: "PortalError", detail: err instanceof Error ? err.message : "unknown" },
       { status: 500 }
     );
-  }
-}
-
-/**
- * RevenueCat's management link for this user's active subscription, or
- * null. Only https links are passed through. Never throws — a failed RC read
- * falls back to the existing "start a subscription" response.
- */
-async function rcManagementUrl(userId: string): Promise<string | null> {
-  try {
-    const rc = await fetchRcSubscriber(userId);
-    if (!rc.ok) return null;
-    const url = rc.subscriber.management_url;
-    if (typeof url !== "string" || !url.startsWith("https://")) return null;
-    return url;
-  } catch {
-    return null;
   }
 }
 

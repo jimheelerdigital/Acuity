@@ -23,12 +23,15 @@ export async function sendTrialReminderEmail({
   name,
   trialEnd,
   priceText,
+  billing = "stripe",
 }: {
   to: string;
   name: string | null;
   trialEnd: Date;
   /** What Stripe will charge, e.g. "$9.99/month". */
   priceText: string;
+  /** Who bills the card. RevenueCat Web Billing trials pass "rc_billing". */
+  billing?: "stripe" | "rc_billing";
 }) {
   const firstName = name?.split(" ")[0] ?? "there";
   const when = trialEnd.toLocaleDateString("en-US", {
@@ -46,7 +49,9 @@ export async function sendTrialReminderEmail({
     ctaLabel: "Manage or cancel",
     ctaUrl: portalUrl,
     footnote:
-      "The button opens your billing page, where you can cancel in a couple of taps. Your debriefs stay yours either way.",
+      billing === "rc_billing"
+        ? "The button opens your billing page, where you can cancel in a couple of taps. Your debriefs stay yours either way."
+        : "The button opens your Stripe billing page, where you can cancel in a couple of taps. Your debriefs stay yours either way.",
   });
 
   await sendEmailOrThrow({

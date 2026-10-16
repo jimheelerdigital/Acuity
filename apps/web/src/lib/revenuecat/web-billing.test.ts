@@ -4,7 +4,8 @@ vi.mock("@/lib/safe-log", () => ({
   safeLog: { info: vi.fn(), warn: vi.fn(), error: vi.fn() },
 }));
 
-import { canManageWebSubscription } from "@/lib/billing/web-manage";
+import { canManageWebSubscription, mayHaveRcWebBilling } from "@/lib/billing/web-manage";
+import { rcBillingManagementUrl } from "./client";
 import {
   cancelSubscriptionOnDelete,
   looksLikeRcWebBilling,
@@ -15,6 +16,7 @@ import {
   rcBillingSubWillCharge,
 } from "./web-billing-admin";
 import {
+  isOffSiteCheckout,
   rcWebBillingEffectFor,
   rcWebInterval,
   rcWebPurchaseSource,
@@ -130,33 +132,98 @@ function fakeStripe(customers: string[] = []) {
 }
 
 describe("cancelSubscriptionOnDelete — RevenueCat Web Billing", () => {
-  it("recognizes the RC Web Billing row shape only", () => {
+  it("web billing OFF: only the no-Stripe-ids shape goes to RevenueCat (existing subscribers unchanged)", () => {
     expect(looksLikeRcWebBilling(rcUser)).toBe(true);
     expect(looksLikeRcWebBilling({ ...rcUser, stripeCustomerId: "cus_1" })).toBe(false);
     expect(looksLikeRcWebBilling({ ...rcUser, subscriptionSource: "apple" })).toBe(false);
     expect(looksLikeRcWebBilling({ ...rcUser, subscriptionStatus: "FREE" })).toBe(false);
   });
 
+  it("web billing ON: a returning Stripe customer (old Stripe ids) is also cancelled in RevenueCat", () => {
+    expect(looksLikeRcWebBilling({ ...rcUser, stripeCustomerId: "cus_1", stripeSubscriptionId: "sub_old" }, true)).toBe(true);
+    expect(looksLikeRcWebBilling({ ...rcUser, subscriptionSource: "apple" }, true)).toBe(false);
+    expect(looksLikeRcWebBilling({ ...rcUser, subscriptionStatus: "FREE" }, true)).toBe(false);
+  });
+
   it("cancels through RevenueCat and reports success", async () => {
     const rcCancel = vi.fn(async () => "success" as const);
-    expect(await cancelSubscriptionOnDelete(fakeStripe(), rcUser, { rcCancel })).toBe("success");
+    expect(await cancelSubscriptionOnDelete(fakeStripe(), rcUser, { rcCancel, webBillingOn: false })).toBe("success");
     expect(rcCancel).toHaveBeenCalledWith("u1");
   });
 
   it("reports failed when RevenueCat cancel fails", async () => {
     const rcCancel = vi.fn(async () => "failed" as const);
-    expect(await cancelSubscriptionOnDelete(fakeStripe(), rcUser, { rcCancel })).toBe("failed");
+    expect(await cancelSubscriptionOnDelete(fakeStripe(), rcUser, { rcCancel, webBillingOn: false })).toBe("failed");
   });
 
-  it("never calls RevenueCat for a Stripe-direct subscriber", async () => {
+  it("web billing OFF: never calls RevenueCat for a Stripe-direct subscriber", async () => {
     const rcCancel = vi.fn(async () => "success" as const);
     const stripe = {
       subscriptions: { cancel: vi.fn(async () => ({})) },
     } as never;
     expect(
-      await cancelSubscriptionOnDelete(stripe, { ...rcUser, stripeSubscriptionId: "sub_1", stripeCustomerId: "cus_1" }, { rcCancel })
+      await cancelSubscriptionOnDelete(stripe, { ...rcUser, stripeSubscriptionId: "sub_1", stripeCustomerId: "cus_1" }, { rcCancel, webBillingOn: false })
     ).toBe("success");
     expect(rcCancel).not.toHaveBeenCalled();
+  });
+
+  it("web billing ON: cancels in BOTH systems; a Stripe-direct result is unchanged when RC has nothing", async () => {
+    const rcCancel = vi.fn(async () => "not_applicable" as const);
+    const cancel = vi.fn(async () => ({}));
+    const stripe = { subscriptions: { cancel } } as never;
+    expect(
+      await cancelSubscriptionOnDelete(stripe, { ...rcUser, stripeSubscriptionId: "sub_1", stripeCustomerId: "cus_1" }, { rcCancel, webBillingOn: true })
+    ).toBe("success");
+    expect(rcCancel).toHaveBeenCalledWith("u1");
+    expect(cancel).toHaveBeenCalledWith("sub_1");
+  });
+});
+
+// ─── manage / portal routing ─────────────────────────────────────────
+
+describe("mayHaveRcWebBilling", () => {
+  const base = { stripeCustomerId: null, subscriptionSource: "stripe", subscriptionStatus: "PRO" };
+  it("live stripe-sourced rows without a Stripe customer, always", () => {
+    expect(mayHaveRcWebBilling(base, false)).toBe(true);
+    expect(mayHaveRcWebBilling({ ...base, subscriptionStatus: "TRIAL" }, false)).toBe(true);
+  });
+  it("rows WITH a Stripe customer only while web billing is on", () => {
+    expect(mayHaveRcWebBilling({ ...base, stripeCustomerId: "cus_1" }, false)).toBe(false);
+    expect(mayHaveRcWebBilling({ ...base, stripeCustomerId: "cus_1" }, true)).toBe(true);
+  });
+  it("never store, comp or lapsed rows", () => {
+    expect(mayHaveRcWebBilling({ ...base, subscriptionSource: "apple" }, true)).toBe(false);
+    expect(mayHaveRcWebBilling({ ...base, subscriptionSource: "comp" }, true)).toBe(false);
+    expect(mayHaveRcWebBilling({ ...base, subscriptionStatus: "FREE" }, true)).toBe(false);
+  });
+});
+
+describe("rcBillingManagementUrl", () => {
+  const now = new Date("2026-10-16T12:00:00Z");
+  const future = "2026-11-16T12:00:00Z";
+  const past = "2026-09-16T12:00:00Z";
+  it("RC's portal link for a live RC_BILLING subscription", () => {
+    expect(
+      rcBillingManagementUrl(
+        { management_url: "https://billing.revenuecat.com/manage/x", subscriptions: { ripple_pro_monthly_web: { store: "rc_billing", expires_date: future } } },
+        now
+      )
+    ).toBe("https://billing.revenuecat.com/manage/x");
+  });
+  it("null for store subscribers — their management_url is the App Store / Play page", () => {
+    expect(
+      rcBillingManagementUrl(
+        { management_url: "https://apps.apple.com/account/subscriptions", subscriptions: { "com.x.monthly": { store: "app_store", expires_date: future } } },
+        now
+      )
+    ).toBeNull();
+  });
+  it("null for an expired Web Billing sub, a missing link, or a non-https link", () => {
+    const subs = { ripple_pro_monthly_web: { store: "RC_BILLING", expires_date: past } };
+    expect(rcBillingManagementUrl({ management_url: "https://x", subscriptions: subs }, now)).toBeNull();
+    const live = { ripple_pro_monthly_web: { store: "RC_BILLING", expires_date: future } };
+    expect(rcBillingManagementUrl({ management_url: null, subscriptions: live }, now)).toBeNull();
+    expect(rcBillingManagementUrl({ management_url: "http://x", subscriptions: live }, now)).toBeNull();
   });
 });
 
@@ -186,6 +253,15 @@ describe("rcWebInterval / rcWebPurchaseSource", () => {
     expect(rcWebPurchaseSource("web_upgrade_legacy")).toBe("in_app_upgrade");
     expect(rcWebPurchaseSource(null)).toBe("direct");
     expect(rcWebPurchaseSource("default", "upgrade")).toBe("in_app_upgrade");
+    expect(rcWebPurchaseSource(null, "rc_funnel")).toBe("rc_funnel");
+    expect(rcWebPurchaseSource(null, "redemption")).toBe("web_redemption");
+  });
+  it("Meta CAPI is skipped only for purchases checked out off goripple.io", () => {
+    expect(isOffSiteCheckout("rc_funnel")).toBe(true);
+    expect(isOffSiteCheckout("redemption")).toBe(true);
+    expect(isOffSiteCheckout("funnel")).toBe(false);
+    expect(isOffSiteCheckout("upgrade")).toBe(false);
+    expect(isOffSiteCheckout(null)).toBe(false);
   });
 });
 

@@ -27,3 +27,35 @@ export function canManageWebSubscription(user: {
     LIVE_STATUSES.has(user.subscriptionStatus ?? "")
   );
 }
+
+/**
+ * Could this row be a RevenueCat Web Billing subscriber? (RC_BILLING writes
+ * subscriptionSource "stripe".) Gates the RevenueCat lookup in the manage /
+ * portal routes; the lookup itself decides (it only answers for a live
+ * RC_BILLING subscription).
+ *
+ * A row WITH a Stripe customer is only looked up while web checkout runs on
+ * RevenueCat (`webBillingOn`) — that's when a returning Stripe customer can
+ * have re-subscribed through RevenueCat. With it off, Stripe customers go
+ * straight to the Stripe portal exactly as before (no extra RC call). PURE.
+ */
+export function mayHaveRcWebBilling(
+  user: {
+    stripeCustomerId: string | null | undefined;
+    subscriptionSource: string | null | undefined;
+    subscriptionStatus: string | null | undefined;
+  },
+  webBillingOn: boolean = isRcWebBillingOnServer()
+): boolean {
+  if (user.subscriptionSource !== "stripe") return false;
+  if (!LIVE_STATUSES.has(user.subscriptionStatus ?? "")) return false;
+  return webBillingOn || !user.stripeCustomerId;
+}
+
+/** Server read of the same switch the browser checkout uses. */
+export function isRcWebBillingOnServer(): boolean {
+  return (
+    process.env.NEXT_PUBLIC_RC_WEB_BILLING === "1" &&
+    !!process.env.NEXT_PUBLIC_RC_WEB_BILLING_KEY
+  );
+}
