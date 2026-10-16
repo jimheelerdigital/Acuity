@@ -259,7 +259,8 @@ export const carouselDailyCronFn = inngest.createFunction(
         await inngest.send(
           lanes.map((lane) => ({
             name: "content-factory/daily.generate" as const,
-            data: { bucket: lane },
+            // hourUtc: lanes with two slots (ripple-list 05 + 07) pick their format by it.
+            data: { bucket: lane, hourUtc: hour },
           }))
         );
       });
@@ -1587,8 +1588,19 @@ export const carouselDailyCronFn = inngest.createFunction(
     const listEv = (event.data ?? {}) as { story?: boolean; listFormat?: string };
     if (bucket === "ripple-list" || (bucket === "selfie" && !listEv.story)) {
       const ev = (event.data ?? {}) as { rippleMention?: boolean; world?: string };
+      // 2026-10-16: ripple-list owns both slots (05 + 07 UTC; the "selfie"
+      // ContentLane is retired, its empty slot was holding the daily emails
+      // until the 13:00 deadline). The 05 UTC run is the avatar format.
+      const runHour =
+        typeof (event.data as { hourUtc?: number }).hourUtc === "number"
+          ? (event.data as { hourUtc: number }).hourUtc
+          : new Date(typeof event.ts === "number" ? event.ts : Date.now()).getUTCHours();
       const listFormat: "scenic" | "avatar" =
-        listEv.listFormat === "avatar" || listEv.listFormat === "scenic" ? listEv.listFormat : bucket === "selfie" ? "avatar" : "scenic";
+        listEv.listFormat === "avatar" || listEv.listFormat === "scenic"
+          ? listEv.listFormat
+          : bucket === "selfie" || runHour === 5
+            ? "avatar"
+            : "scenic";
       const list = await step.run("generate-list-topic", async () => {
         const { prisma } = await import("@/lib/prisma");
         const { generateRippleListTopic } = await import("@/lib/content-factory/ripple-list");

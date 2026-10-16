@@ -112,9 +112,12 @@ export async function getDigestState(brand: SocialAccountKey, date: string): Pro
       videoUrl: head?.ok ? url : null,
     });
   }
-  const withPosts = new Set(posts.map((p) => p.lane));
+  // A lane owes one post per scheduled hour (2026-10-16: ripple-list runs at
+  // 05 and 07 UTC; presence alone would call the day complete after 05).
+  const postCount = new Map<string, number>();
+  for (const p of posts) postCount.set(p.lane, (postCount.get(p.lane) ?? 0) + 1);
   const missingLanes = lanes
-    .filter((l) => l.hoursUtc.length > 0 && !withPosts.has(l.key))
+    .filter((l) => l.hoursUtc.length > 0 && (postCount.get(l.key) ?? 0) < l.hoursUtc.length)
     .map((l) => l.name);
 
   const { data: claim } = await supabase.storage.from(BUCKET).download(claimPath(brand, date));

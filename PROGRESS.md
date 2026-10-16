@@ -7,6 +7,31 @@
 
 ---
 
+## [2026-10-16] — Fix: daily post emails were held until 8am Central
+
+- **Requested by:** Keenan
+- **Committed by:** Claude Code
+- **Commit hash:** (see git log: "fix: Stop the retired selfie slot from holding the daily emails")
+
+### In plain English (for Keenan)
+On 10-16 the Ripple and Mythicals emails arrived at 8am Central instead of right after the videos finished (normally around 3:30am Central). Yesterday's switch from story posts to list posts left the old story slot looking like it never ran, and the emails wait until every slot is done or 8am Central, whichever comes first. The 05 and 07 UTC list posts now count as two posts from one lane, so the emails go out as soon as the day's videos are ready.
+
+### Technical changes (for Jimmy)
+- `apps/web/src/lib/content-factory/daily-digest.ts`: `getDigestState` marks a lane missing when its post count is below `hoursUtc.length`. It used to check only that one post existed, which would have released the batch after the 05 UTC post.
+- `apps/web/src/inngest/functions/carousel-daily.ts`:
+  - The cron dispatch passes `hourUtc` in each lane's event.
+  - The list branch picks the avatar format for hour 5 (or `bucket === "selfie"`) and scenic otherwise; an explicit `listFormat` still wins.
+- DB (script, after deploy): ContentLane `ripple-list` hoursUtc [7] → [5, 7]; ContentLane `selfie` → RETIRED.
+
+### Manual steps needed
+- [ ] None
+
+### Notes
+- Root cause: the 2026-10-15 change saved 05 UTC posts as lane `ripple-list` while the `selfie` ContentLane row stayed ACTIVE at hour 5 with no posts. `digestBlocker` reported "lanes not generated yet: Selfie Slideshow" until the 13:00 UTC deadline. Mythicals emails go after Ripple, so they waited too.
+- Checked every active lane: Mythicals (3 hours, 3 posts) and the how-to guide (1 hour, 1 post) already match the new count rule.
+
+---
+
 ## [2026-10-15] — How-to guides come in two sizes: Instagram and TikTok
 
 - **Requested by:** Keenan
