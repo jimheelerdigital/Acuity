@@ -198,6 +198,9 @@ export async function POST(req: NextRequest) {
       userId,
       originalTransactionId: apple.info.originalTransactionId,
     });
+    // Also covers customers whose purchase predates the RC mirror: their
+    // app re-verifies on launch/restore, which now lands them in RC.
+    await mirrorToRevenueCat(userId, apple.info.signedTransactionInfo);
     return NextResponse.json({
       ok: true,
       subscriptionStatus: "PRO",
@@ -237,6 +240,8 @@ export async function POST(req: NextRequest) {
     expiresDate: apple.info.expiresDate,
   });
 
+  await mirrorToRevenueCat(userId, apple.info.signedTransactionInfo);
+
   // Founder notification — only on a genuine NEW paid purchase (this
   // "write" branch; a repeat verify of the same transaction returns
   // "idempotent-noop" above and never reaches here, so this is
@@ -262,6 +267,30 @@ export async function POST(req: NextRequest) {
     subscriptionStatus: "PRO",
     expiresDate: apple.info.expiresDate,
   });
+}
+
+/**
+ * Mirror a verified Apple purchase into RevenueCat under this account.
+ * Pre-1.9 builds buy outside the RC SDK, and RC is the entitlement source
+ * of truth for Apple — without this the customer resolves as FREE. See
+ * lib/revenuecat/import-apple.ts. Never fails the request.
+ */
+async function mirrorToRevenueCat(userId: string, signedTransactionJws: string): Promise<void> {
+  try {
+    const { importAppleTransactionToRc } = await import("@/lib/revenuecat/import-apple");
+    const r = await importAppleTransactionToRc({ userId, signedTransactionJws });
+    if (r.ok) {
+      safeLog.info("iap.verify-receipt.rc-imported", { userId, hasPro: r.hasPro });
+      if (!r.hasPro) safeLog.warn("iap.verify-receipt.rc-imported-without-pro", { userId });
+    } else {
+      safeLog.warn("iap.verify-receipt.rc-import-failed", { userId, code: r.code, detail: r.detail });
+    }
+  } catch (err) {
+    safeLog.warn("iap.verify-receipt.rc-import-threw", {
+      userId,
+      err: err instanceof Error ? err.message : String(err),
+    });
+  }
 }
 
 // ─── Google Play Billing verify (Android IAP parity) ──────────────────────
