@@ -7,6 +7,29 @@
 
 ---
 
+## [2026-10-16] — Mythicals: swings and strikes are back, weapons keep their shape, no ground smashes
+
+- **Requested by:** Keenan
+- **Committed by:** Claude Code
+- **Commit hash:** (see git log: "fix: Allow Mythicals weapon swings but ban ground smashes")
+
+### In plain English (for Keenan)
+Correction to the entry below: heroes can swing and strike with their weapons again. The rule is now that the weapon has to keep the exact same shape the whole time, and a weapon is never smashed into the ground. Throwing or spinning a weapon is also out, since that's where it changes shape or leaves the hero's hands.
+
+### Technical changes (for Jimmy)
+- `apps/web/src/lib/content-factory/choice-lane.ts`:
+  - The WEAPONS KEEP THEIR SHAPE rule replaces "only moves slowly".
+  - `safeWeaponMotion()` now replaces only ground impacts (slam/smash/drive/plunge/pound + ground/floor/rock/stone/ice/...) and throw/spin/twirl/toss/flip, turning them into a swing through the air.
+- `apps/web/src/lib/content-factory/living-reel.ts`: the action prompt allows swings and strikes through the air, while weapons stay rigid and never hit the ground.
+
+### Manual steps needed
+- [ ] None
+
+### Notes
+- Tested: "slams it into the ground" and "hurls the spear" are replaced; "swings the sword in a wide arc and strikes at the air" and dragon fire are kept.
+
+---
+
 ## [2026-10-16] — Ripple posts stop repeating each other; Mythicals go silent with music and weapons stay solid
 
 - **Requested by:** Keenan
