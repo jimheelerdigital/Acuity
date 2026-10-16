@@ -7,6 +7,46 @@
 
 ---
 
+## [2026-10-16] — Ripple posts stop repeating each other; Mythicals go silent with music and weapons stay solid
+
+- **Requested by:** Keenan
+- **Committed by:** Claude Code
+- **Commit hash:** (see git log: "fix: Stop same-day Ripple repeats; mute Mythicals clips and lock weapons")
+
+### In plain English (for Keenan)
+- **Ripple:** on 10-16 the how-to guide and the 07 UTC list post both used "the bake sale" and "can you do pickup thursday?" on the same morning. Each Ripple writer now reads everything already written for Ripple that day, must use a different situation, and any repeated example gets rewritten before the post goes out.
+- **Mythicals:** the AI sound effects are off. Every Mythicals reel now plays a track from our music library instead (Instagram uses its original-songs copy).
+- **Mythicals weapons:** weapons are only ever moved slowly. Fast swings and slams were making the video model warp the weapon itself (an axe head flipped sides mid-slam).
+
+### Technical changes (for Jimmy)
+- New `apps/web/src/lib/content-factory/same-day.ts`:
+  - `sameDayRippleText(generatedFor)`: today's guide plus non-APPROVED ripple-list posts, as title, slide lines and DETAIL lines.
+  - `sameDayPromptBlock()`.
+  - `sameDayRepeat()`: a 3-word phrase with at least 2 content words shared with today's posts.
+- `apps/web/src/lib/content-factory/ripple-list.ts` and `how-to-guide.ts`:
+  - Take `sameDay`, inject the block into every draft prompt.
+  - The sense check returns a repeat as a problem, so the draft goes to repair rather than being dropped.
+- `apps/web/src/inngest/functions/carousel-daily.ts`:
+  - Passes `sameDayRippleText(today)` to both writers.
+  - List slides store `DETAIL: <detail>` on the imagePrompt, because the detail line was only baked into the image.
+- `apps/web/src/inngest/functions/carousel-post-video.ts`:
+  - New `kling3` flag drives Mythicals clip timing (6s cap).
+  - `soundOn` (Kling sound, segment audio, music-free main reel, -yt copy) now requires `MYTHICALS_CLIP_SOUND=1`. Default off means the normal music path: main reel music/, -ig copy music-ig/, FB/YT fall back to the main reel.
+- `apps/web/src/lib/content-factory/choice-lane.ts`:
+  - New WEAPONS NEVER CHANGE rule; the 10-12 "may swing and strike" permission is removed.
+  - `withMotion()` runs `safeWeaponMotion()`, which replaces any weapon + swing/slam/strike/throw/spin motion with a slow turn-and-glow.
+- `apps/web/src/lib/content-factory/living-reel.ts`: the Mythicals action prompt says weapons are rigid, unchanging objects that only move slowly.
+
+### Manual steps needed
+- [ ] None. To bring Kling clip sound back later, set `MYTHICALS_CLIP_SOUND=1` in Vercel and redeploy (Keenan/Jimmy).
+
+### Notes
+- Tested `sameDayRepeat` on the real 10-16 text: it flags "the bake sale" and "do pickup thursday" and doesn't flag the unrelated lines.
+- Tested `safeWeaponMotion`: "raises the axe and slams it into the ground" is replaced; "slowly turns the sword", dragon fire and a glowing staff are kept.
+- Today's three Mythicals videos were built before this change and still carry clip sound under the music.
+
+---
+
 ## [2026-10-16] — Fix: daily post emails were held until 8am Central
 
 - **Requested by:** Keenan

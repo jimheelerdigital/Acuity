@@ -612,7 +612,8 @@ export const carouselDailyCronFn = inngest.createFunction(
           select: { headline: true },
           take: 80,
         });
-        return generateHowToGuide({ recentTitles: recent.map((p) => p.headline) });
+        const { sameDayRippleText } = await import("@/lib/content-factory/same-day");
+        return generateHowToGuide({ recentTitles: recent.map((p) => p.headline), sameDay: await sameDayRippleText(today) });
       });
       logger.info(
         `[carousel-cron] How-to guide (${laneKey}): "${guide.title}" (${guide.slides.length} steps, ${guide.area}) — ${guide.candidateLog ?? ""}${guide.held ? ` HELD: ${guide.held}` : ""}`
@@ -1630,6 +1631,8 @@ export const carouselDailyCronFn = inngest.createFunction(
           forceRipple: typeof ev.rippleMention === "boolean" ? ev.rippleMention : undefined,
           forceWorld: ev.world,
           format: listFormat,
+          // Full slides of today's earlier Ripple posts (2026-10-16).
+          sameDay: await (await import("@/lib/content-factory/same-day")).sameDayRippleText(today),
         });
       });
       logger.info(
@@ -1712,8 +1715,14 @@ export const carouselDailyCronFn = inngest.createFunction(
         const imageUrl = await uploadImage(composed, `carousels/${dateStr}/${slug}/${name}.jpg`);
         await uploadTextLayer(await buildTextLayer(raw, overlay, { scrim: false }), `carousels/${dateStr}/${slug}/${name}.jpg`);
         const motion = cover ? list.coverMotion : item!.motion;
-        // MOTION line feeds the animator (living-reel "scenic" mode).
-        return { imageUrl, rawImageUrl, overlayText, imagePrompt: `${prompt}\nMOTION: ${motion}` };
+        // MOTION line feeds the animator (living-reel "scenic" mode). DETAIL
+        // keeps the small line under the header readable for same-day.ts.
+        return {
+          imageUrl,
+          rawImageUrl,
+          overlayText,
+          imagePrompt: `${prompt}\nMOTION: ${motion}${item?.detail ? `\nDETAIL: ${item.detail}` : ""}`,
+        };
       };
 
       const listCover = await step.run("generate-list-cover", () => renderListSlide(-1));

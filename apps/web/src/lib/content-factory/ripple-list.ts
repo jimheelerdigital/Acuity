@@ -179,6 +179,7 @@ async function draftOnce(opts: {
   recent: string[];
   brief: string;
   model: string;
+  sameDay: string;
 }): Promise<RippleListTopic> {
   const { prisma } = await import("@/lib/prisma");
   const start = Date.now();
@@ -196,6 +197,7 @@ async function draftOnce(opts: {
       : `THIS POST'S SCENIC WORLD (every slide): ${opts.world}`,
     opts.mentionsRipple ? rippleBlock() : "\n\nTHIS POST DOES NOT MENTION RIPPLE OR ANY APP: pure, useful advice.",
     opts.brief ? `\n\n${opts.brief}` : "",
+    opts.sameDay,
     opts.recent.length ? `\n\nRECENT TITLES (don't repeat or lightly reword these):\n${opts.recent.map((t) => `- ${t}`).join("\n")}` : "",
     "\n\nReturn ONLY valid JSON.",
   ].join("\n");
@@ -268,7 +270,7 @@ async function repairListLine(t: RippleListTopic, problem: string): Promise<Ripp
     messages: [
       {
         role: "user",
-        content: `An editor flagged this finished list post: ${problem}\n\nFix ONLY the line(s) that problem names (name the person instead of a bare he/she, make a detail match its line, or replace a repeated item with a genuinely different one). Keep the title, every other item, scenes, motions and caption exactly as they are, and keep every line within its length limits. Return the full post as JSON in the same shape.\n\n${JSON.stringify({ title: t.title, items: t.items, captionQuestion: t.captionQuestion })}`,
+        content: `An editor flagged this finished list post: ${problem}\n\nFix ONLY the line(s) that problem names (name the person instead of a bare he/she, make a detail match its line, replace a repeated item with a genuinely different one, or swap an example that another post today already used for a different one). Keep the title, every other item, scenes, motions and caption exactly as they are, and keep every line within its length limits. Return the full post as JSON in the same shape.\n\n${JSON.stringify({ title: t.title, items: t.items, captionQuestion: t.captionQuestion })}`,
       },
     ],
   });
@@ -341,11 +343,15 @@ export async function generateRippleListTopic(opts: {
   forceWorld?: string;
   /** Picture format (default scenic). */
   format?: ListFormat;
+  /** The day's earlier Ripple posts (same-day.ts): no reused examples. */
+  sameDay?: import("./same-day").SameDayPost[];
 }): Promise<RippleListTopic> {
   const { CANDIDATE_COUNT, CANDIDATE_WRITER_MODEL, rankCandidates } = await import("./candidate-pipeline");
   const { readBriefBlock } = await import("./weekly-brief");
   const { isRecentHeadline, nearDuplicateOf, noteHeadlineUsed } = await import("./headline-history");
   const brief = await readBriefBlock("ripple");
+  const { sameDayPromptBlock, sameDayRepeat } = await import("./same-day");
+  const sameDay = opts.sameDay ?? [];
   const mentionsRipple = opts.forceRipple ?? Math.random() < 0.35;
   // No scenic world from the last two list posts (variety, 2026-10-13).
   const recentWorlds = (opts.recentWorlds ?? []).map((w) => w.toLowerCase());
@@ -382,7 +388,7 @@ export async function generateRippleListTopic(opts: {
   const settled = await Promise.allSettled(
     Array.from({ length: CANDIDATE_COUNT }, (_, i) =>
       within(
-        draftOnce({ shape: shapes[i % shapes.length], area: plan[i % plan.length].area, kind: plan[i % plan.length].kind, world, format: opts.format ?? "scenic", mentionsRipple, recent: opts.recentTitles.slice(0, 60), brief, model: CANDIDATE_WRITER_MODEL }),
+        draftOnce({ shape: shapes[i % shapes.length], area: plan[i % plan.length].area, kind: plan[i % plan.length].kind, world, format: opts.format ?? "scenic", mentionsRipple, recent: opts.recentTitles.slice(0, 60), brief, model: CANDIDATE_WRITER_MODEL, sameDay: sameDayPromptBlock(sameDay) }),
         150_000
       )
     )
@@ -414,7 +420,13 @@ export async function generateRippleListTopic(opts: {
       const near = await nearDuplicateOf(t.title);
       return near ? `too close to recent title "${near}"` : null;
     },
-    senseCheck: listSenseProblem,
+    // A phrase reused from today's other Ripple posts goes to repair like a
+    // sense failure (2026-10-16), then the full sense check runs on the fix.
+    senseCheck: async (t) => {
+      const rep = sameDayRepeat(`${t.title}\n${t.items.map((it) => `${it.line}\n${it.detail}`).join("\n")}`, sameDay);
+      if (rep) return `a line reuses "${rep}" from another post going out today; replace that example with a different situation`;
+      return listSenseProblem(t);
+    },
     repair: repairListLine,
   });
   const candidateLog = `${drafts.length} drafted; ${ranked ? `${ranked.survivors} survived, ranked by ${ranked.rankedBy}` : "none survived"}`;

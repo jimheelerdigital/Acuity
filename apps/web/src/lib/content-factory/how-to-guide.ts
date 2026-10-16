@@ -98,11 +98,12 @@ async function logCall(purpose: string, model: string, usage: { input_tokens: nu
     .catch(() => {});
 }
 
-async function draftOnce(area: string, recent: string[], brief: string, model: string): Promise<HowToGuide> {
+async function draftOnce(area: string, recent: string[], brief: string, model: string, sameDay: string): Promise<HowToGuide> {
   const start = Date.now();
   const user = [
     `THIS GUIDE'S LIFE AREA (other drafts take other areas, so stay in this one): ${area}`,
     brief ? `\n${brief}` : "",
+    sameDay,
     recent.length ? `\nRECENT TITLES ACROSS ALL OUR POSTS (don't repeat or lightly reword these):\n${recent.map((t) => `- ${t}`).join("\n")}` : "",
     "\nReturn ONLY valid JSON.",
   ].join("\n");
@@ -181,18 +182,25 @@ async function repairGuide(g: HowToGuide, problem: string): Promise<HowToGuide |
 }
 
 /** Write the day's guide: 5 Opus drafts (different life areas), cut, rank. */
-export async function generateHowToGuide(opts: { recentTitles: string[]; lastArea?: string }): Promise<HowToGuide> {
+export async function generateHowToGuide(opts: {
+  recentTitles: string[];
+  lastArea?: string;
+  /** The day's earlier Ripple posts (same-day.ts): no reused examples. */
+  sameDay?: import("./same-day").SameDayPost[];
+}): Promise<HowToGuide> {
   const { CANDIDATE_COUNT, CANDIDATE_WRITER_MODEL, rankCandidates } = await import("./candidate-pipeline");
   const { readBriefBlock } = await import("./weekly-brief");
   const { isRecentHeadline, nearDuplicateOf, noteHeadlineUsed } = await import("./headline-history");
   const brief = await readBriefBlock("ripple");
+  const { sameDayPromptBlock, sameDayRepeat } = await import("./same-day");
+  const sameDay = opts.sameDay ?? [];
   const areas = HOWTO_AREAS.filter((a) => a !== opts.lastArea)
     .sort(() => Math.random() - 0.5)
     .slice(0, CANDIDATE_COUNT);
   const within = <T,>(p: Promise<T>, ms: number) =>
     Promise.race([p, new Promise<never>((_, rej) => setTimeout(() => rej(new Error(`draft timed out after ${ms}ms`)), ms))]);
   const settled = await Promise.allSettled(
-    areas.map((area) => within(draftOnce(area, opts.recentTitles.slice(0, 60), brief, CANDIDATE_WRITER_MODEL), 150_000))
+    areas.map((area) => within(draftOnce(area, opts.recentTitles.slice(0, 60), brief, CANDIDATE_WRITER_MODEL, sameDayPromptBlock(sameDay)), 150_000))
   );
   const drafts = settled.filter((r): r is PromiseFulfilledResult<HowToGuide> => r.status === "fulfilled").map((r) => r.value);
   if (drafts.length === 0) {
@@ -220,7 +228,12 @@ export async function generateHowToGuide(opts: { recentTitles: string[]; lastAre
       const near = await nearDuplicateOf(g.title);
       return near ? `too close to recent title "${near}"` : null;
     },
-    senseCheck: howToSenseProblem,
+    // Reused phrase from today's other Ripple posts → repair (2026-10-16).
+    senseCheck: async (g) => {
+      const rep = sameDayRepeat(renderGuide(g), sameDay);
+      if (rep) return `a line reuses "${rep}" from another post going out today; replace that example with a different situation`;
+      return howToSenseProblem(g);
+    },
     repair: repairGuide,
   });
   const candidateLog = `${drafts.length} drafted; ${ranked ? `${ranked.survivors} survived, ranked by ${ranked.rankedBy}` : "none survived"}`;

@@ -496,15 +496,20 @@ export const carouselPostVideoFn = inngest.createFunction(
     // plays in real time, and the reel keeps it instead of adding music.
     const { MYTHICALS_VIDEO_MODEL, MYTHICALS_SOUND_LINE } = await import("@/lib/content-factory/post-video");
     const brandModel = plan.brand === "mythicals" && MYTHICALS_VIDEO_MODEL ? MYTHICALS_VIDEO_MODEL : null;
-    const soundOn = plan.brand === "mythicals" && (forcedModel || brandModel || "").startsWith("kling-video/v3.0/");
+    const kling3 = plan.brand === "mythicals" && (forcedModel || brandModel || "").startsWith("kling-video/v3.0/");
+    // Clip sound OFF (2026-10-16, per Keenan: "for mythical, eliminate the
+    // sounds"): Kling 3 still renders the picture, silently, and every copy
+    // gets library music like the other lanes (main reel music/, Instagram
+    // music-ig/). MYTHICALS_CLIP_SOUND=1 brings the Kling sound back.
+    const soundOn = kling3 && process.env.MYTHICALS_CLIP_SOUND === "1";
     const { LIVING_CLIP_SEC } = await import("@/lib/content-factory/living-reel");
     // Capped at 6s a clip (2026-10-09, per Keenan: "cap everything at 6
     // seconds per video on kling 3 max"); the slide's screen time is capped
     // with it so the sound still lines up with the picture.
     const KLING3_MAX_SEC = 6;
-    const slideSec = (i: number) => (soundOn ? Math.min(KLING3_MAX_SEC, plan.slides[i].seconds) : plan.slides[i].seconds);
+    const slideSec = (i: number) => (kling3 ? Math.min(KLING3_MAX_SEC, plan.slides[i].seconds) : plan.slides[i].seconds);
     const clipSec = (i: number) =>
-      soundOn
+      kling3
         ? Math.min(KLING3_MAX_SEC, Math.max(3, Math.ceil(slideSec(i))))
         : // Ripple slides are 4.5-6s (2026-10-13): 5s clips play at about real
           // speed (a 10s clip would be sped up to fit a 6s slide).
