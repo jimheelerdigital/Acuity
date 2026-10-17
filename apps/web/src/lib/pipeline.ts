@@ -10,7 +10,7 @@ import { toFile } from "openai/uploads";
 import { filterWhisperVerbose, type WhisperVerbose } from "@/lib/whisper-speech-filter";
 
 import {
-  CLAUDE_MAX_TOKENS,
+  CLAUDE_EXTRACTION_MAX_TOKENS,
   CLAUDE_MODEL,
   WHISPER_LANGUAGE,
   WHISPER_MODEL,
@@ -38,7 +38,7 @@ const openai = new OpenAI({
   timeout: SDK_TIMEOUT_MS,
 });
 // Claude gets longer (2026-10-04): a long debrief (~3,300 chars) produces a
-// full extraction (up to CLAUDE_MAX_TOKENS of JSON) that can take more than
+// full extraction (up to CLAUDE_EXTRACTION_MAX_TOKENS of JSON) that can take more than
 // 30s to generate, so it timed out on every retry and the entry was left
 // PARTIAL "Processing took too long" (Keenan's 09-29 entry). The Inngest
 // function allows 300s, so 120s per call still leaves room for a retry.
@@ -363,7 +363,7 @@ export async function extractFromTranscript(
 
   const message = await anthropic.messages.create({
     model: CLAUDE_MODEL,
-    max_tokens: CLAUDE_MAX_TOKENS,
+    max_tokens: CLAUDE_EXTRACTION_MAX_TOKENS,
     system: systemPrompt,
     messages: [
       {
@@ -392,10 +392,17 @@ export async function extractFromTranscript(
     parsed = JSON.parse(jsonText) as ExtractionResult;
   } catch (err) {
     const preview = jsonText.slice(0, 500);
+    // Name the cause when the model simply ran out of room, so the next
+    // person reading the log raises the cap instead of hunting for a
+    // prompt bug.
+    const cutOff =
+      message.stop_reason === "max_tokens"
+        ? ` Output hit max_tokens=${CLAUDE_EXTRACTION_MAX_TOKENS} (stop_reason=max_tokens).`
+        : "";
     throw new Error(
       `Claude returned malformed JSON (${
         err instanceof Error ? err.message : "parse error"
-      }). Preview: ${preview}`
+      }).${cutOff} Preview: ${preview}`
     );
   }
 
