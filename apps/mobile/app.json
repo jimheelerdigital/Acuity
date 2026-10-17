@@ -2,7 +2,7 @@
   "expo": {
     "name": "Ripple",
     "slug": "acuity",
-    "version": "1.9.3",
+    "version": "1.9.4",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "scheme": "acuity",
@@ -171,6 +171,10 @@
       "entitlements": {
         "com.apple.security.application-groups": [
           "group.com.heelerdigital.acuity"
+        ],
+        "keychain-access-groups": [
+          "$(AppIdentifierPrefix)com.heelerdigital.acuity",
+          "$(AppIdentifierPrefix)com.heelerdigital.acuity.shared"
         ]
       }
     },

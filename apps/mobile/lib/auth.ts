@@ -165,6 +165,80 @@ const KEYCHAIN_OPTIONS: SecureStore.SecureStoreOptions = {
   keychainAccessible: SecureStore.AFTER_FIRST_UNLOCK,
 };
 
+// ─── Shared Keychain copy for the widget extension (1.9.4) ──────────
+//
+// The Siri App Intents run inside the app bundle, so they read TOKEN_KEY
+// from the app's own (default) keychain access group. The WidgetKit
+// extension is a SEPARATE process/bundle and cannot see that group, so
+// its tap-to-check intent (targets/widget/index.swift CompleteTaskIntent)
+// reads a second copy of the session bearer from a shared keychain access
+// group both bundles are entitled to:
+//
+//   app.json ios.entitlements["keychain-access-groups"]
+//   targets/widget/expo-target.config.js entitlements["keychain-access-groups"]
+//     -> "$(AppIdentifierPrefix)com.heelerdigital.acuity.shared"
+//
+// expo-secure-store (ios/SecureStoreModule.swift `query(with:options:)`)
+// stores the item as kSecClassGenericPassword with
+//   kSecAttrService     = "app:no-auth"  (default keychainService + ":no-auth")
+//   kSecAttrAccount     = UTF-8 bytes of the key
+//   kSecAttrGeneric     = UTF-8 bytes of the key
+//   kSecAttrAccessGroup = options.accessGroup
+// The Swift side queries with exactly those attributes. The credential
+// stays in the Keychain — nothing secret is ever written to the App Group.
+//
+// Migration: the copy is written on every setToken() (sign-in / refresh)
+// and back-filled on the cold-launch getToken() path when it is missing,
+// so users already signed in before 1.9.4 get it on first launch.
+const SHARED_TOKEN_KEY = "acuity_session_token_shared";
+const SHARED_KEYCHAIN_GROUP_SUFFIX = "com.heelerdigital.acuity.shared";
+
+function sharedKeychainOptions(): SecureStore.SecureStoreOptions | null {
+  if (Platform.OS !== "ios") return null;
+  const teamId =
+    (Constants.expoConfig?.ios as { appleTeamId?: string } | undefined)
+      ?.appleTeamId ?? "ZNF9ZJ4NVX";
+  return {
+    keychainAccessible: SecureStore.AFTER_FIRST_UNLOCK,
+    accessGroup: `${teamId}.${SHARED_KEYCHAIN_GROUP_SUFFIX}`,
+  };
+}
+
+async function writeSharedToken(token: string): Promise<void> {
+  const opts = sharedKeychainOptions();
+  if (!opts) return;
+  try {
+    await SecureStore.setItemAsync(SHARED_TOKEN_KEY, token, opts);
+  } catch (err) {
+    // Missing entitlement (older provisioning) or locked keychain: the app
+    // itself is unaffected; only the widget's check-off falls back to
+    // "Open Ripple to sign in".
+    if (__DEV__) console.warn("[secure-store] shared token write failed:", err);
+  }
+}
+
+async function ensureSharedToken(token: string): Promise<void> {
+  const opts = sharedKeychainOptions();
+  if (!opts) return;
+  try {
+    const existing = await SecureStore.getItemAsync(SHARED_TOKEN_KEY, opts);
+    if (existing === token) return;
+  } catch {
+    // fall through and (re)write
+  }
+  await writeSharedToken(token);
+}
+
+async function clearSharedToken(): Promise<void> {
+  const opts = sharedKeychainOptions();
+  if (!opts) return;
+  try {
+    await SecureStore.deleteItemAsync(SHARED_TOKEN_KEY, opts);
+  } catch (err) {
+    if (__DEV__) console.warn("[secure-store] shared token delete failed:", err);
+  }
+}
+
 /**
  * Defensive wrapper around SecureStore.getItemAsync. Returns null on
  * any error (locked keychain, missing entitlements, simulator quirks)
@@ -224,6 +298,9 @@ export async function getToken(): Promise<string | null> {
     // use is read directly from this same Keychain item — nothing secret is
     // written to the App Group.
     publishSiriConfig(apiBaseUrl());
+    // Back-fill the widget's shared-keychain copy for sessions that
+    // pre-date 1.9.4 (fire-and-forget; never delays the caller).
+    void ensureSharedToken(stored);
   }
   return stored;
 }
@@ -236,6 +313,9 @@ export async function setToken(token: string): Promise<void> {
   // Publish the (non-secret) API base for the Siri intents. The intents read
   // this very token from the Keychain; nothing secret goes to the App Group.
   publishSiriConfig(apiBaseUrl());
+  // Second copy in the shared keychain access group for the widget
+  // extension's tap-to-check intent (see SHARED_TOKEN_KEY above).
+  await writeSharedToken(token);
 }
 
 export async function clearToken(): Promise<void> {
@@ -243,6 +323,9 @@ export async function clearToken(): Promise<void> {
   // Deletes the Keychain item the Siri intents read, so a signed-out device
   // can no longer act via Siri. No App Group cleanup needed (no secret there).
   await safeDeleteItem(TOKEN_KEY);
+  // ...and the widget's shared-group copy, so a signed-out device's widget
+  // can no longer complete tasks either.
+  await clearSharedToken();
 }
 
 export async function getStoredUser(): Promise<User | null> {

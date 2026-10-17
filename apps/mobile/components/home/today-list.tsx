@@ -16,7 +16,10 @@ import {
   type TodayTaskInput,
 } from "@/lib/today-tasks";
 import { WARN_AMBER } from "@/lib/tone-colors";
-import { publishTodayToWidget } from "@/lib/widget-data";
+import {
+  applyPendingWidgetCompletions,
+  publishTodayToWidget,
+} from "@/lib/widget-data";
 
 /**
  * Home "TODAY" card (1.9.1, Keenan's list). The most pressing open tasks:
@@ -52,21 +55,24 @@ function shortDate(ymd: string): string {
 export function TodayList() {
   const router = useRouter();
   const { tokens } = useTheme();
-  const [tasks, setTasks] = useState<Task[] | null>(
-    () => getCached<{ tasks: Task[] }>(TASKS_CACHE_KEY)?.tasks ?? null
-  );
+  // Widget check-offs still queued in `pendingDone` overlay as DONE so the
+  // card never shows a task the user already ticked on the home screen.
+  const [tasks, setTasks] = useState<Task[] | null>(() => {
+    const cached = getCached<{ tasks: Task[] }>(TASKS_CACHE_KEY)?.tasks;
+    return cached ? applyPendingWidgetCompletions(cached) : null;
+  });
 
   useFocusEffect(
     useCallback(() => {
       // Pick up whatever the Tasks tab / editor left in the cache first,
       // then revalidate if stale (cachedGet is a no-op when fresh).
       const cached = getCached<{ tasks: Task[] }>(TASKS_CACHE_KEY)?.tasks;
-      if (cached) setTasks(cached);
+      if (cached) setTasks(applyPendingWidgetCompletions(cached));
       let cancelled = false;
       cachedGet<{ tasks: Task[] }>(TASKS_CACHE_KEY)
         .then((res) => {
           if (cancelled) return;
-          const list = res.tasks ?? [];
+          const list = applyPendingWidgetCompletions(res.tasks ?? []);
           setTasks(list);
           publishTodayToWidget(list);
         })

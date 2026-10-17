@@ -29,7 +29,11 @@ import { api } from "@/lib/api";
 import { cachedGet, getCached, setCached } from "@/lib/cache";
 import { isFreeTierUser } from "@/lib/free-tier";
 import { dueDateToneColor, priorityToneColor } from "@/lib/tone-colors";
-import { publishTodayToWidget } from "@/lib/widget-data";
+import {
+  applyPendingWidgetCompletions,
+  flushWidgetCompletions,
+  publishTodayToWidget,
+} from "@/lib/widget-data";
 
 // Q8 — finish-day confetti throttle. AsyncStorage stores YYYY-MM-DD;
 // burst only fires when the stored value !== today.
@@ -112,8 +116,10 @@ export default function TasksTab() {
   const { user } = useAuth();
   const { tokens } = useTheme();
   const isLocked = isFreeTierUser(user);
-  const [tasks, setTasks] = useState<Task[]>(
-    () => getCached<{ tasks: Task[] }>(TASKS_CACHE_KEY)?.tasks ?? []
+  const [tasks, setTasks] = useState<Task[]>(() =>
+    applyPendingWidgetCompletions(
+      getCached<{ tasks: Task[] }>(TASKS_CACHE_KEY)?.tasks ?? []
+    )
   );
   const [groups, setGroups] = useState<TaskGroup[]>(
     () => getCached<{ groups: TaskGroup[] }>(GROUPS_CACHE_KEY)?.groups ?? []
@@ -155,7 +161,9 @@ export default function TasksTab() {
       // overrides. Without this, a focus-driven refetch that returns
       // mid-mutation would revert the user's just-toggled task.
       setTasks((prev) => {
-        const server = tasksData.tasks ?? [];
+        // Widget check-offs that haven't reached the server yet render as
+        // DONE here too (flushWidgetCompletions retries them on focus).
+        const server = applyPendingWidgetCompletions(tasksData.tasks ?? []);
         if (pendingMutationsRef.current.size === 0) return server;
         const byId = new Map(prev.map((t) => [t.id, t]));
         return server.map((t) =>
@@ -188,6 +196,11 @@ export default function TasksTab() {
       }
       // Silent revalidation on focus. Cached UI stays visible.
       fetchAll(true);
+      // Push any widget check-offs to the server; if some went through,
+      // pull fresh truth so the list reflects the server, not the overlay.
+      void flushWidgetCompletions().then((n) => {
+        if (n > 0) fetchAll(true, true);
+      });
       return () => {
         isFocusedRef.current = false;
         setVisitSnapshot(null);
