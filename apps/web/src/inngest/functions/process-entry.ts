@@ -26,6 +26,11 @@ type ProcessEntryEventData = {
   // path is left untouched so a future re-edit / true reprocess
   // can still re-transcribe if needed.
   skipTranscribe?: boolean;
+  // Typed entry (2026-10-17). The Entry was created with its transcript
+  // already set and has NO audio, so download+Whisper is skipped — but
+  // unlike `skipTranscribe` this is a brand-new entry, so every first-run
+  // behaviour (calendar auto-link, people counting, pushes) applies.
+  transcriptProvided?: boolean;
   // ISO timestamp of the edit that triggered this run. The function
   // checks it against Entry.lastEditedAt at the top — when a second
   // edit has landed mid-flight, the older run short-circuits as
@@ -111,6 +116,7 @@ export const processEntryFn = inngest.createFunction(
       entryId,
       userId,
       skipTranscribe,
+      transcriptProvided,
       triggeredByEditAt,
     } = event.data as ProcessEntryEventData;
     const { prisma } = await import("@/lib/prisma");
@@ -215,7 +221,10 @@ export const processEntryFn = inngest.createFunction(
         // /api/entries/:id with a new transcript. We don't want to
         // re-run Whisper and stomp their corrections. Return early
         // with the existing transcript length as the marker.
-        if (skipTranscribe) {
+        // Typed entries (transcriptProvided) take the same shortcut:
+        // the transcript was written at create time and there is no
+        // audio to download.
+        if (skipTranscribe || transcriptProvided) {
           const editedEntry = await prisma.entry.findUniqueOrThrow({
             where: { id: entryId },
             select: { userId: true, transcript: true },

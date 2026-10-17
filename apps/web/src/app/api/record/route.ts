@@ -4,6 +4,10 @@
  * Accepts multipart/form-data with:
  *   audio           — Blob | File (required)
  *   durationSeconds — string (optional)
+ * or JSON { storagePath, mimeType, durationSeconds, goalId?, dimensionContext? }
+ * (direct-to-storage), or JSON { text, goalId?, dimensionContext? } for a
+ * TYPED entry (2026-10-17): no audio, `text` becomes Entry.transcript,
+ * Entry.inputMode="typed", and the async pipeline skips Whisper.
  *
  * Dual-path behavior (INNGEST_MIGRATION_PLAN.md §11 PR 2):
  *   - ENABLE_INNGEST_PIPELINE !== "1" (default): legacy sync path.
@@ -43,6 +47,12 @@ export const runtime = "nodejs";
 // production and prove stability, the sync path is removed and this
 // maxDuration drops (Inngest PR 4). Hobby ignores values >10 anyway.
 export const maxDuration = 120;
+
+// Typed entries. Floor keeps "ok" / "test" from burning an extraction;
+// ceiling (~5k words) is well under the extractor's context budget and
+// past anything a person types on a phone in one sitting.
+const TYPED_MIN_CHARS = 12;
+const TYPED_MAX_CHARS = 30_000;
 
 export async function POST(req: NextRequest) {
   // ── 1. Auth ──────────────────────────────────────────────────────────────
@@ -119,6 +129,7 @@ export async function POST(req: NextRequest) {
   let formData: FormData | null = null;
   let audioFile: Blob | null = null;
   let storagePath: string | null = null;
+  let typedText: string | null = null;
   let jsonBody: Record<string, unknown> = {};
 
   if (isJsonUpload) {
@@ -127,14 +138,42 @@ export async function POST(req: NextRequest) {
     } catch {
       return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
     }
+    // Typed entry (2026-10-17): `{ text }` instead of `{ storagePath }`.
+    // No audio exists, so the words ARE the transcript — the Entry is
+    // created with transcript set and the pipeline skips Whisper
+    // (process-entry `transcriptProvided`). Always goes through the
+    // async pipeline; the legacy sync path is audio-only.
+    const rawText = jsonBody.text;
+    if (typeof rawText === "string") {
+      typedText = rawText.replace(/\r\n/g, "\n").trim();
+      if (typedText.length < TYPED_MIN_CHARS) {
+        return NextResponse.json(
+          { error: "Write a little more before saving — a sentence or two is plenty." },
+          { status: 400 }
+        );
+      }
+      if (typedText.length > TYPED_MAX_CHARS) {
+        return NextResponse.json(
+          { error: `That's longer than we can process in one entry (${TYPED_MAX_CHARS.toLocaleString()} characters max).` },
+          { status: 413 }
+        );
+      }
+    }
+
     const rawPath = jsonBody.storagePath;
     storagePath =
       typeof rawPath === "string" && rawPath.trim().length > 0
         ? rawPath.trim()
         : null;
-    if (!storagePath) {
+    if (!storagePath && !typedText) {
       return NextResponse.json(
-        { error: "Missing required field: storagePath" },
+        { error: "Missing required field: storagePath (or text)" },
+        { status: 400 }
+      );
+    }
+    if (storagePath && typedText) {
+      return NextResponse.json(
+        { error: "Send either storagePath or text, not both" },
         { status: 400 }
       );
     }
@@ -142,7 +181,7 @@ export async function POST(req: NextRequest) {
     // here stops a caller referencing an object under someone else's folder
     // — one they could never have written to, but could otherwise read
     // through the Entry we'd create.
-    if (!storagePath.startsWith(`${userId}/`)) {
+    if (storagePath && !storagePath.startsWith(`${userId}/`)) {
       return NextResponse.json(
         { error: "storagePath does not belong to this user" },
         { status: 403 }
@@ -195,6 +234,8 @@ export async function POST(req: NextRequest) {
   const rawMime =
     (isJsonUpload ? field("mimeType") : audioFile?.type) || "audio/webm";
   const mimeType = normalizeAudioMimeType(rawMime);
+  // (Typed entries send no mimeType; the "audio/webm" default normalizes
+  // fine and is simply never used for them.)
   if (!mimeType) {
     return NextResponse.json(
       { error: `Unsupported audio type: ${rawMime}` },
@@ -254,6 +295,38 @@ export async function POST(req: NextRequest) {
     KNOWN_DIMENSIONS.has(rawDimensionContext)
       ? rawDimensionContext
       : null;
+
+  // ── 3-typed. Typed entry — no audio, transcript is the text ────────────
+  // Always async: the Entry is created already holding its transcript and
+  // the pipeline starts at extraction (`transcriptProvided` tells
+  // process-entry to skip download+Whisper without inheriting the
+  // edit-reprocess semantics of `skipTranscribe`). Same rate limits and
+  // paywall as voice — the expensive part (Claude) is identical.
+  if (typedText) {
+    const { prisma } = await import("@/lib/prisma");
+    const entry = await prisma.entry.create({
+      data: {
+        userId,
+        status: "QUEUED",
+        goalId,
+        dimensionContext,
+        transcript: typedText,
+        inputMode: "typed",
+      },
+    });
+    await inngest.send({
+      name: "entry/process.requested",
+      data: { entryId: entry.id, userId, transcriptProvided: true },
+    });
+    return NextResponse.json(
+      {
+        entryId: entry.id,
+        status: "QUEUED",
+        ...(freeCapState !== "ok" ? { freeCapState } : {}),
+      },
+      { status: 202 }
+    );
+  }
 
   // Direct-to-storage requests carry no bytes at all — the object is
   // already in the bucket. Confirm it landed before creating a row that

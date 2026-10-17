@@ -844,6 +844,12 @@ model Entry {
   // "other") so the extraction pipeline can splice the human-readable
   // area name into the Claude prompt without a DB join. Nullable.
   dimensionContext      String?
+  // How the words got here (2026-10-17, typed entries). "voice" = recorded
+  // audio → Whisper (the default and every pre-existing row); "typed" =
+  // the user wrote the entry on the keyboard, so there is no audio and
+  // the pipeline skips transcription (process-entry transcriptProvided).
+  // Nullable rather than defaulted so the migration is a pure column add.
+  inputMode             String?
   tasks                 Task[]
   themeMentions         ThemeMention[]
   entityMentions        EntityMention[]

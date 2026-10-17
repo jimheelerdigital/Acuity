@@ -12,8 +12,11 @@ import {
   Alert,
   AppState,
   type AppStateStatus,
+  KeyboardAvoidingView,
+  Platform,
   Pressable,
   Text,
+  TextInput,
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -89,8 +92,15 @@ import { noteWelcomeDebrief } from "@/lib/welcome/flow";
 const MAX_SECONDS = 300;
 const UPLOAD_RETRY_SCHEDULE_MS = [2000, 4000, 8000];
 
+// Typed entries (2026-10-17): mirror the server's bounds in
+// apps/web/src/app/api/record/route.ts (TYPED_MIN_CHARS / TYPED_MAX_CHARS)
+// so the Save button disables before a request that would 400/413.
+const TYPED_MIN_CHARS = 12;
+const TYPED_MAX_CHARS = 30_000;
+
 type State =
   | "idle"
+  | "typing" // keyboard instead of the mic (2026-10-17); submits as a typed entry
   | "recording"
   | "uploading"
   | "saved" // async fire-and-forget (v1.3.3): brief confirmation, then leave
@@ -173,6 +183,11 @@ export default function RecordScreen() {
   // screen lock) despite the wake lock — drives the "interrupted"
   // recovery copy instead of a silent stop.
   const [interrupted, setInterrupted] = useState(false);
+  // Typed entry draft. Kept across an error so "Try again" returns the
+  // user to their words, not an empty box.
+  const [typedDraft, setTypedDraft] = useState("");
+  const [typedSubmitting, setTypedSubmitting] = useState(false);
+  const lastModeRef = useRef<"voice" | "typed">("voice");
 
   const recordingRef = useRef<Audio.Recording | null>(null);
   const peakLevelRef = useRef(0); // P1: loudest normalized level this recording
@@ -830,14 +845,123 @@ export default function RecordScreen() {
   }, [params.autostart]);
 
   const handlePress = () => {
-    if (state === "idle") startRecording();
-    else if (state === "recording") stopRecording();
+    if (state === "idle") {
+      lastModeRef.current = "voice";
+      startRecording();
+    } else if (state === "recording") stopRecording();
     else if (state === "error") {
       setError(null);
       setInterrupted(false);
-      setState("idle");
+      // A failed typed submit goes back to the draft, not the mic.
+      setState(lastModeRef.current === "typed" ? "typing" : "idle");
     }
   };
+
+  /**
+   * Typed entry (2026-10-17). POST /api/record { text } — the server
+   * creates the Entry with the text as its transcript and runs the
+   * extraction pipeline without Whisper. Always the async (202) path,
+   * so this mirrors the voice "saved" branch: brief confirmation,
+   * register with the processing notifier, leave.
+   */
+  const submitTyped = useCallback(async () => {
+    const text = typedDraft.replace(/\r\n/g, "\n").trim();
+    if (text.length < TYPED_MIN_CHARS || typedSubmitting) return;
+    lastModeRef.current = "typed";
+    setTypedSubmitting(true);
+    setError(null);
+    try {
+      const token = await getToken();
+      const headers: Record<string, string> = {
+        "Content-Type": "application/json",
+      };
+      if (token) headers.Authorization = `Bearer ${token}`;
+      const res = await fetch(`${api.baseUrl()}/api/record`, {
+        method: "POST",
+        headers,
+        body: JSON.stringify({
+          text,
+          ...(goalId ? { goalId } : {}),
+          ...(dimensionKey ? { dimensionContext: dimensionKey } : {}),
+        }),
+      });
+
+      if (res.status === 402) {
+        router.replace("/paywall");
+        return;
+      }
+      if (res.status === 429) {
+        const body = (await res.json().catch(() => ({}))) as {
+          retryAfter?: number;
+        };
+        const retry = Number(body.retryAfter ?? 60);
+        Alert.alert(
+          "Saving too frequently",
+          `Try again in ${Math.ceil(retry / 60)} minute${retry > 60 ? "s" : ""}.`
+        );
+        return;
+      }
+      if (!res.ok) {
+        const body = (await res.json().catch(() => ({}))) as {
+          error?: string;
+        };
+        throw new Error(body.error ?? `HTTP ${res.status}`);
+      }
+
+      const body = (await res.json()) as UploadResponse;
+      if (!body.entryId) throw new Error("Unexpected response shape");
+
+      if (body.freeCapState === "grace") {
+        await new Promise<void>((resolve) => {
+          Alert.alert(
+            "30 of 30 — this one is on us",
+            "You've used your free entries for this month. Continue on web → for unlimited reflection.",
+            [{ text: "OK", onPress: () => resolve() }],
+            { cancelable: false }
+          );
+        });
+      }
+
+      setTypedDraft("");
+      trackV10("v10_typed_entry_saved", { chars: text.length });
+      // Same as the voice 202 branch: the app-wide notifier owns
+      // completion (cache invalidation, "brief ready" banner, review ask).
+      trackEntry(body.entryId, { silent: fromWelcome });
+      if (fromWelcome) {
+        await noteWelcomeDebrief(body.entryId);
+        router.back();
+        return;
+      }
+      setState("saved");
+      void (async () => {
+        try {
+          const meRes = await api.get<{
+            user?: { totalRecordings?: number };
+          }>("/api/user/me");
+          await registerPushTokenAfterRecording(
+            meRes.user?.totalRecordings ?? 0
+          );
+        } catch {
+          // non-fatal
+        }
+      })();
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : "We couldn't save that entry."
+      );
+      setState("error");
+    } finally {
+      setTypedSubmitting(false);
+    }
+  }, [
+    typedDraft,
+    typedSubmitting,
+    goalId,
+    dimensionKey,
+    router,
+    trackEntry,
+    fromWelcome,
+  ]);
 
   /**
    * Discard the in-progress recording — stop mic, drop the captured
@@ -883,6 +1007,12 @@ export default function RecordScreen() {
           },
         ]
       );
+      return;
+    }
+    if (state === "typing") {
+      // Back from the keyboard returns to the mic; the draft survives in
+      // state so flipping back and forth never loses words.
+      setState("idle");
       return;
     }
     router.back();
@@ -1024,14 +1154,19 @@ export default function RecordScreen() {
   // be backed out of mid-flight). Returning `null` from headerLeft
   // removes the slot entirely.
   useEffect(() => {
-    const showBack = state === "idle" || state === "recording";
+    const showBack =
+      state === "idle" || state === "recording" || state === "typing";
     navigation.setOptions({
       headerLeft: () =>
         showBack ? (
           <Pressable
             accessibilityRole="button"
             accessibilityLabel={
-              state === "recording" ? "Discard recording" : "Back"
+              state === "recording"
+                ? "Discard recording"
+                : state === "typing"
+                  ? "Back to recording"
+                  : "Back"
             }
             onPress={handleBackPress}
             hitSlop={12}
@@ -1164,17 +1299,133 @@ export default function RecordScreen() {
               </Text>
             </Pressable>
           </View>
+        ) : state === "typing" ? (
+          <TypedComposer
+            value={typedDraft}
+            onChange={setTypedDraft}
+            onSubmit={() => void submitTyped()}
+            submitting={typedSubmitting}
+            tokens={tokens}
+          />
         ) : (
           <RecordSurface
             state={state}
             elapsed={elapsed}
             levels={levels}
             onPress={handlePress}
+            onTypeInstead={() => {
+              lastModeRef.current = "typed";
+              setState("typing");
+            }}
             tokens={tokens}
           />
         )}
       </View>
     </SafeAreaView>
+  );
+}
+
+/**
+ * TypedComposer — keyboard alternative to the mic (2026-10-17, Miro
+ * "Type out a 'recording'"). Same pipeline downstream: the text becomes
+ * the transcript and extraction runs exactly as for a voice entry.
+ * Plain multiline input, live character count, one primary action.
+ */
+function TypedComposer({
+  value,
+  onChange,
+  onSubmit,
+  submitting,
+  tokens,
+}: {
+  value: string;
+  onChange: (text: string) => void;
+  onSubmit: () => void;
+  submitting: boolean;
+  tokens: ReturnType<typeof useTheme>["tokens"];
+}) {
+  const trimmedLength = value.trim().length;
+  const tooShort = trimmedLength < TYPED_MIN_CHARS;
+  const tooLong = trimmedLength > TYPED_MAX_CHARS;
+  const canSubmit = !tooShort && !tooLong && !submitting;
+  return (
+    <KeyboardAvoidingView
+      behavior={Platform.OS === "ios" ? "padding" : undefined}
+      keyboardVerticalOffset={Platform.OS === "ios" ? 96 : 0}
+      style={{ flex: 1, width: "100%" }}
+    >
+      <View style={{ flex: 1, width: "100%", paddingTop: 8, gap: 12 }}>
+        <Text
+          style={{
+            fontFamily: tokens.fontSans,
+            fontSize: 14,
+            color: tokens.textTer,
+          }}
+        >
+          What&rsquo;s on your mind? Write it the way you&rsquo;d say it.
+        </Text>
+        <TextInput
+          value={value}
+          onChangeText={onChange}
+          multiline
+          autoFocus
+          textAlignVertical="top"
+          placeholder="Today I…"
+          placeholderTextColor={tokens.textTer}
+          editable={!submitting}
+          maxLength={TYPED_MAX_CHARS + 500}
+          accessibilityLabel="Entry text"
+          style={{
+            flex: 1,
+            minHeight: 180,
+            borderRadius: 16,
+            borderWidth: 1,
+            borderColor: tokens.cardBorder,
+            backgroundColor: tokens.cardBg,
+            color: tokens.text,
+            fontFamily: tokens.fontSans,
+            fontSize: 17,
+            lineHeight: 25,
+            padding: 16,
+          }}
+        />
+        <View
+          style={{
+            flexDirection: "row",
+            alignItems: "center",
+            justifyContent: "space-between",
+            paddingBottom: 8,
+          }}
+        >
+          <Text
+            style={{
+              fontFamily: tokens.fontSans,
+              fontSize: 12,
+              color: tooLong ? tokens.bad : tokens.textTer,
+              fontVariant: ["tabular-nums"],
+            }}
+          >
+            {tooLong
+              ? `${(trimmedLength - TYPED_MAX_CHARS).toLocaleString()} over the limit`
+              : tooShort && trimmedLength > 0
+                ? "A sentence or two is plenty"
+                : `${trimmedLength.toLocaleString()} characters`}
+          </Text>
+          <Pressable
+            onPress={onSubmit}
+            disabled={!canSubmit}
+            accessibilityRole="button"
+            accessibilityState={{ disabled: !canSubmit }}
+            className="rounded-2xl bg-violet-600 px-6 py-3"
+            style={{ opacity: canSubmit ? 1 : 0.45 }}
+          >
+            <Text className="text-sm font-semibold text-white">
+              {submitting ? "Saving…" : "Save entry"}
+            </Text>
+          </Pressable>
+        </View>
+      </View>
+    </KeyboardAvoidingView>
   );
 }
 
@@ -1206,12 +1457,14 @@ function RecordSurface({
   elapsed,
   levels,
   onPress,
+  onTypeInstead,
   tokens,
 }: {
   state: State;
   elapsed: number;
   levels: number[];
   onPress: () => void;
+  onTypeInstead: () => void;
   tokens: ReturnType<typeof useTheme>["tokens"];
 }) {
   const isRecording = state === "recording";
@@ -1266,6 +1519,40 @@ function RecordSurface({
             : "Tap the orb to stop"
           : "Tap the orb to start your recording"}
       </Text>
+
+      {/* Typed alternative (2026-10-17). Idle only — once the mic is
+          live, switching modes would mean discarding audio, and the
+          back button already covers that path. */}
+      {!isRecording ? (
+        <Pressable
+          onPress={onTypeInstead}
+          accessibilityRole="button"
+          accessibilityLabel="Type your entry instead"
+          hitSlop={10}
+          style={{
+            flexDirection: "row",
+            alignItems: "center",
+            gap: 6,
+            paddingHorizontal: 14,
+            paddingVertical: 8,
+            borderRadius: 999,
+            borderWidth: 1,
+            borderColor: tokens.cardBorder,
+          }}
+        >
+          <Ionicons name="create-outline" size={16} color={tokens.textSec} />
+          <Text
+            style={{
+              fontFamily: tokens.fontSans,
+              fontSize: 13,
+              fontWeight: "600",
+              color: tokens.textSec,
+            }}
+          >
+            Type it instead
+          </Text>
+        </Pressable>
+      ) : null}
     </View>
   );
 }
