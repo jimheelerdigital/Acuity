@@ -244,19 +244,32 @@ struct RippleWidget: Widget {
 // widget was empty for most people.
 //
 // Tap-to-check (1.9.4): the row's circle is an interactive Button running
-// CompleteTaskIntent. It is optimistic — the id goes into the App Group
-// key `pendingDone` (JSON string array) first, then PATCH /api/tasks
-// {id, action:"complete"} with the session bearer read from the SHARED
-// keychain access group (see sharedSessionToken()). On 2xx the id leaves
-// `pendingDone` and the item leaves `todayTasks`; on failure it stays in
-// `pendingDone`, renders checked, and the app flushes it on next
-// foreground (lib/widget-data.ts flushWidgetCompletions).
+// CompleteTaskIntent, which TOGGLES:
+//   • unchecked → checked: the id goes into the App Group key `pendingDone`
+//     (JSON string array) first, then PATCH /api/tasks {id, action:"complete"}
+//     with the session bearer read from the SHARED keychain access group
+//     (see sharedSessionToken()). On 2xx the id leaves `pendingDone`, the
+//     item leaves `todayTasks`, and a snapshot of it goes into `recentDone`
+//     so the row STAYS on the widget, struck through, for RECENT_DONE_LINGER
+//     seconds (Jimmy: "they should stick for a few so I can uncheck"). On
+//     failure it stays in `pendingDone`, renders checked, and the app flushes
+//     it on next foreground (lib/widget-data.ts flushWidgetCompletions).
+//   • checked → unchecked (within the linger window): the id leaves
+//     `pendingDone`/`recentDone`, the snapshot goes back into `todayTasks`,
+//     and PATCH {action:"reopen"} is sent. If reopen fails the row goes back
+//     to checked so the widget never lies about server state.
+// Struck rows drop off on their own when the linger expires (timeline
+// entries are scheduled at each expiry), so the app needn't be running.
 
 private let TASKS_URL = URL(string: "acuity://tasks")!
 private let TODAY_LIMIT = 5
 private let PENDING_DONE_KEY = "pendingDone"
+private let RECENT_DONE_KEY = "recentDone"
 private let TODAY_TASKS_KEY = "todayTasks"
 private let TODAY_WIDGET_KIND = "RippleTodayWidget"
+/// How long a checked-off task stays visible (struck through) before it
+/// drops off the widget. Long enough to notice a mis-tap and undo it.
+private let RECENT_DONE_LINGER: Int = 10 * 60
 
 // Shared keychain access group. Declared in app.json ios.entitlements and
 // targets/widget/expo-target.config.js as
@@ -296,10 +309,18 @@ struct TodayTaskItem: Codable {
 
 enum TodayBucket: Int { case overdue = 0, today = 1, priority = 2, open = 3 }
 
+/// A task checked off on the widget, kept (struck through) for
+/// RECENT_DONE_LINGER seconds so a mis-tap can be undone. Carries the full
+/// item because the app's next publish drops DONE tasks from `todayTasks`.
+struct RecentDone: Codable {
+    let item: TodayTaskItem
+    let doneAt: Int  // epoch seconds
+}
+
 struct TodayRow {
     let item: TodayTaskItem
     let bucket: TodayBucket
-    let pendingDone: Bool  // checked on the widget, not yet confirmed by the server
+    let done: Bool  // checked on the widget (pending server confirm, or recently confirmed)
 }
 
 struct TodayEntry: TimelineEntry {
@@ -344,18 +365,50 @@ private func writePendingDone(_ ids: [String]) {
     UserDefaults(suiteName: APP_GROUP)?.set(raw, forKey: PENDING_DONE_KEY)
 }
 
-func selectToday(_ items: [TodayTaskItem], at date: Date, pending: Set<String> = []) -> [TodayRow] {
+/// `recentDone` is a JSON-encoded [RecentDone] stored as a String (same
+/// convention as `pendingDone`). Expired entries are dropped on read.
+private func readRecentDone(at date: Date = Date()) -> [RecentDone] {
+    guard let raw = UserDefaults(suiteName: APP_GROUP)?.string(forKey: RECENT_DONE_KEY),
+          let data = raw.data(using: .utf8),
+          let list = try? JSONDecoder().decode([RecentDone].self, from: data)
+    else { return [] }
+    let nowSec = Int(date.timeIntervalSince1970)
+    return list.filter { $0.doneAt + RECENT_DONE_LINGER > nowSec }
+}
+
+private func writeRecentDone(_ list: [RecentDone]) {
+    guard let data = try? JSONEncoder().encode(list),
+          let raw = String(data: data, encoding: .utf8) else { return }
+    UserDefaults(suiteName: APP_GROUP)?.set(raw, forKey: RECENT_DONE_KEY)
+}
+
+private func bucketFor(_ it: TodayTaskItem, today: String) -> TodayBucket {
+    if !it.due.isEmpty && it.due < today { return .overdue }
+    if it.due == today { return .today }
+    if it.due.isEmpty && it.high == 1 { return .priority }
+    return .open
+}
+
+func selectToday(_ items: [TodayTaskItem], at date: Date, pending: Set<String> = [], recent: [RecentDone] = []) -> [TodayRow] {
     let today = ymd(date)
     let nowSec = Int(date.timeIntervalSince1970)
+    // Only linger entries still inside their window AT THIS ENTRY'S DATE —
+    // getTimeline builds future entries, and a struck row must drop off there.
+    let live = recent.filter { $0.doneAt + RECENT_DONE_LINGER > nowSec }
+    let recentIds = Set(live.map { $0.item.id })
     var rows: [TodayRow] = []
+    var seen = Set<String>()
     for it in items {
         if it.snoozedUntil > nowSec { continue }
-        let bucket: TodayBucket
-        if !it.due.isEmpty && it.due < today { bucket = .overdue }
-        else if it.due == today { bucket = .today }
-        else if it.due.isEmpty && it.high == 1 { bucket = .priority }
-        else { bucket = .open }
-        rows.append(TodayRow(item: it, bucket: bucket, pendingDone: pending.contains(it.id)))
+        seen.insert(it.id)
+        let done = pending.contains(it.id) || recentIds.contains(it.id)
+        rows.append(TodayRow(item: it, bucket: bucketFor(it, today: today), done: done))
+    }
+    // Checked-off tasks the app has already dropped from `todayTasks`: keep
+    // them in place, struck through, until the linger expires.
+    for r in live where !seen.contains(r.item.id) {
+        seen.insert(r.item.id)
+        rows.append(TodayRow(item: r.item, bucket: bucketFor(r.item, today: today), done: true))
     }
     rows.sort { a, b in
         if a.bucket != b.bucket { return a.bucket.rawValue < b.bucket.rawValue }
@@ -427,50 +480,108 @@ struct CompleteTaskIntent: AppIntent {
     init() {}
     init(taskId: String) { self.taskId = taskId }
 
+    /// PATCH /api/tasks { id, action } — same call the Tasks tab / Home card
+    /// make (apps/web/src/app/api/tasks/route.ts). Returns the HTTP status,
+    /// or nil when there is no token / no network.
+    private func patchTask(_ action: String) async -> Int? {
+        guard let token = sharedSessionToken(),
+              let url = URL(string: apiBase() + "/api/tasks") else { return nil }
+        var req = URLRequest(url: url)
+        req.httpMethod = "PATCH"
+        req.timeoutInterval = 10
+        req.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        req.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        req.setValue("ios", forHTTPHeaderField: "X-Platform")
+        req.setValue(extensionVersion(), forHTTPHeaderField: "X-App-Version")
+        req.httpBody = try? JSONSerialization.data(withJSONObject: ["id": taskId, "action": action])
+        let config = URLSessionConfiguration.ephemeral
+        config.timeoutIntervalForRequest = 10
+        config.timeoutIntervalForResource = 10
+        let session = URLSession(configuration: config)
+        guard let result = try? await session.data(for: req) else { return nil }
+        return (result.1 as? HTTPURLResponse)?.statusCode
+    }
+
     func perform() async throws -> some IntentResult {
+        let pending = readPendingDone()
+        let recent = readRecentDone()
+        let isChecked = pending.contains(taskId) || recent.contains { $0.item.id == taskId }
+        if isChecked {
+            await uncheck(pending: pending, recent: recent)
+        } else {
+            await check(pending: pending, recent: recent)
+        }
+        WidgetCenter.shared.reloadTimelines(ofKind: TODAY_WIDGET_KIND)
+        return .result()
+    }
+
+    /// unchecked → checked
+    private func check(pending: [String], recent: [RecentDone]) async {
         // (a) Optimistic: mark pending so the row renders checked right away
         //     and survives timeline reloads until the server confirms.
-        var pending = readPendingDone()
-        if !pending.contains(taskId) {
-            pending.append(taskId)
-            writePendingDone(pending)
+        writePendingDone(pending + [taskId])
+        WidgetCenter.shared.reloadTimelines(ofKind: TODAY_WIDGET_KIND)
+
+        // (b) Confirm with the server. 404 = already gone (deleted elsewhere).
+        let code = await patchTask("complete")
+        let ok = code.map { (200..<300).contains($0) || $0 == 404 } ?? false
+        guard ok else {
+            // Stays in `pendingDone`; the app retries it on next foreground and
+            // keeps rendering it as done meanwhile.
+            return
+        }
+
+        // Unchecked again while the request was in flight? Their undo ran
+        // before our complete landed on the server — honour the undo.
+        guard readPendingDone().contains(taskId) else {
+            _ = await patchTask("reopen")
+            return
+        }
+
+        // (c) Confirmed: leave `pendingDone`, leave `todayTasks`, but keep a
+        //     snapshot in `recentDone` so the row lingers struck-through and
+        //     can be unchecked.
+        writePendingDone(readPendingDone().filter { $0 != taskId })
+        if let items = readTodayItems() {
+            if let item = items.first(where: { $0.id == taskId }) {
+                let nowSec = Int(Date().timeIntervalSince1970)
+                var list = readRecentDone().filter { $0.item.id != taskId }
+                list.append(RecentDone(item: item, doneAt: nowSec))
+                writeRecentDone(list)
+            }
+            writeTodayItems(items.filter { $0.id != taskId })
+        }
+    }
+
+    /// checked → unchecked (undo within the linger window)
+    private func uncheck(pending: [String], recent: [RecentDone]) async {
+        let snapshot = recent.first(where: { $0.item.id == taskId })
+        let wasPendingOnly = snapshot == nil
+
+        // (a) Optimistic: clear local checked state and put the row back.
+        writePendingDone(pending.filter { $0 != taskId })
+        writeRecentDone(recent.filter { $0.item.id != taskId })
+        if let item = snapshot?.item {
+            var items = readTodayItems() ?? []
+            if !items.contains(where: { $0.id == item.id }) {
+                items.append(item)
+                writeTodayItems(items)
+            }
         }
         WidgetCenter.shared.reloadTimelines(ofKind: TODAY_WIDGET_KIND)
 
-        // (b) PATCH /api/tasks { id, action: "complete" } — same call the
-        //     Tasks tab / Home card make (apps/web/src/app/api/tasks/route.ts).
-        var ok = false
-        if let token = sharedSessionToken(),
-           let url = URL(string: apiBase() + "/api/tasks") {
-            var req = URLRequest(url: url)
-            req.httpMethod = "PATCH"
-            req.timeoutInterval = 10
-            req.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
-            req.setValue("application/json", forHTTPHeaderField: "Content-Type")
-            req.setValue("ios", forHTTPHeaderField: "X-Platform")
-            req.setValue(extensionVersion(), forHTTPHeaderField: "X-App-Version")
-            req.httpBody = try? JSONSerialization.data(withJSONObject: ["id": taskId, "action": "complete"])
-            let config = URLSessionConfiguration.ephemeral
-            config.timeoutIntervalForRequest = 10
-            config.timeoutIntervalForResource = 10
-            let session = URLSession(configuration: config)
-            if let result = try? await session.data(for: req),
-               let code = (result.1 as? HTTPURLResponse)?.statusCode {
-                // 404 = already gone (deleted elsewhere): nothing left to do.
-                ok = (200..<300).contains(code) || code == 404
-            }
-        }
-
-        if ok {
-            writePendingDone(readPendingDone().filter { $0 != taskId })
+        // (b) Reopen on the server. If the original complete never reached the
+        //     server (pending only) there may be nothing to reopen, but a
+        //     reopen is idempotent, so send it anyway in case it did.
+        let code = await patchTask("reopen")
+        let ok = code.map { (200..<300).contains($0) || $0 == 404 } ?? false
+        if !ok && !wasPendingOnly, let snap = snapshot {
+            // Server still has it DONE: don't lie — restore the checked state.
+            writeRecentDone(readRecentDone().filter { $0.item.id != taskId } + [snap])
             if let items = readTodayItems() {
                 writeTodayItems(items.filter { $0.id != taskId })
             }
         }
-        // On failure the id stays in `pendingDone`; the app retries it on
-        // next foreground and keeps rendering it as done meanwhile.
-        WidgetCenter.shared.reloadTimelines(ofKind: TODAY_WIDGET_KIND)
-        return .result()
     }
 }
 
@@ -492,7 +603,8 @@ struct TodayProvider: TimelineProvider {
         }
         let items = readTodayItems()
         let pending = Set(readPendingDone())
-        completion(TodayEntry(date: Date(), rows: selectToday(items ?? [], at: Date(), pending: pending), hasData: items != nil))
+        let recent = readRecentDone()
+        completion(TodayEntry(date: Date(), rows: selectToday(items ?? [], at: Date(), pending: pending, recent: recent), hasData: items != nil))
     }
 
     func getTimeline(in context: Context, completion: @escaping (Timeline<TodayEntry>) -> Void) {
@@ -501,9 +613,15 @@ struct TodayProvider: TimelineProvider {
         let items = readTodayItems()
         let list = items ?? []
         let pending = Set(readPendingDone())
-        // Re-evaluate at midnight (overdue/today roll over) and whenever a
-        // snooze ends in the next day. The app also reloads us on changes.
+        let recent = readRecentDone(at: now)
+        // Re-evaluate at midnight (overdue/today roll over), whenever a
+        // snooze ends in the next day, and when each struck-through row's
+        // linger window closes. The app also reloads us on changes.
         var dates: [Date] = [now]
+        for r in recent {
+            let d = Date(timeIntervalSince1970: TimeInterval(r.doneAt + RECENT_DONE_LINGER + 1))
+            if d > now { dates.append(d) }
+        }
         let cal = Calendar.current
         if let midnight = cal.nextDate(after: now, matching: DateComponents(hour: 0, minute: 0, second: 5), matchingPolicy: .nextTime) {
             dates.append(midnight)
@@ -514,7 +632,7 @@ struct TodayProvider: TimelineProvider {
             if d > now && d < horizon { dates.append(d) }
         }
         dates.sort()
-        let entries = dates.map { TodayEntry(date: $0, rows: selectToday(list, at: $0, pending: pending), hasData: items != nil) }
+        let entries = dates.map { TodayEntry(date: $0, rows: selectToday(list, at: $0, pending: pending, recent: recent), hasData: items != nil) }
         completion(Timeline(entries: entries, policy: .atEnd))
     }
 }
@@ -544,23 +662,23 @@ struct TodayRowView: View {
             // Interactive check-off (iOS 17 widget button). Runs in-process in
             // the extension; the title next to it still deep-links to the task.
             Button(intent: CompleteTaskIntent(taskId: row.item.id)) {
-                Image(systemName: row.pendingDone ? "checkmark.circle.fill" : "circle")
-                    .foregroundColor(row.pendingDone ? accent : .secondary)
+                Image(systemName: row.done ? "checkmark.circle.fill" : "circle")
+                    .foregroundColor(row.done ? accent : .secondary)
                     .font(.system(size: 15))
                     .frame(width: 22, height: 22)
                     .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
-            .accessibilityLabel(row.pendingDone ? "Completed" : "Mark \(row.item.title) complete")
+            .accessibilityLabel(row.done ? "Undo complete \(row.item.title)" : "Mark \(row.item.title) complete")
             Link(destination: URL(string: "acuity://task/\(row.item.id)") ?? TASKS_URL) {
                 HStack(spacing: 8) {
                     Text(row.item.title).font(.system(size: 14)).lineLimit(1)
-                        .strikethrough(row.pendingDone, color: .secondary)
-                        .foregroundColor(row.pendingDone ? .secondary : .primary)
+                        .strikethrough(row.done, color: .secondary)
+                        .foregroundColor(row.done ? .secondary : .primary)
                     Spacer(minLength: 4)
-                    Text(bucketLabel(row))
+                    Text(row.done ? "Done" : bucketLabel(row))
                         .font(.system(size: 11, weight: .semibold))
-                        .foregroundColor(bucketColor(row))
+                        .foregroundColor(row.done ? .secondary : bucketColor(row))
                 }
             }
         }
@@ -602,7 +720,7 @@ struct TodayRectangularView: View {
     let entry: TodayEntry
     var body: some View {
         // Lock Screen: no tap targets, so show what's left to do.
-        let open = entry.rows.filter { !$0.pendingDone }
+        let open = entry.rows.filter { !$0.done }
         VStack(alignment: .leading, spacing: 1) {
             Label(open.isEmpty ? "Today: clear" : "Today: \(open.count)", systemImage: "checklist")
                 .font(.headline)

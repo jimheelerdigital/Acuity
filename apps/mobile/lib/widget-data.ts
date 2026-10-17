@@ -110,6 +110,8 @@ export async function clearWidgetData(): Promise<void> {
     // Drop any widget check-offs that never reached the server: they
     // belong to the signed-out user and must not be flushed as the next one.
     storage.remove("pendingDone");
+    // Struck-through "just completed" rows the widget keeps for undo.
+    storage.remove("recentDone");
     storage.set("updatedAt", Date.now());
     ExtensionStorage.reloadWidget();
   } catch {
