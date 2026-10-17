@@ -238,6 +238,10 @@ export const processEntryFn = inngest.createFunction(
             where: { id: entryId },
             data: { status: "EXTRACTING" },
           });
+          if (transcriptProvided) {
+            const { markPhase } = await import("@/lib/processing-timeline");
+            await markPhase(prisma, entryId, "transcript_provided");
+          }
           return { transcriptLength: editedEntry.transcript?.length ?? 0 };
         }
         const entry = await prisma.entry.findUniqueOrThrow({
@@ -257,6 +261,8 @@ export const processEntryFn = inngest.createFunction(
           where: { id: entryId },
           data: { status: "TRANSCRIBING" },
         });
+        const { markPhase } = await import("@/lib/processing-timeline");
+        await markPhase(prisma, entryId, "transcribe_start");
 
         const { data, error } = await supabase.storage
           .from("voice-entries")
@@ -355,6 +361,7 @@ export const processEntryFn = inngest.createFunction(
           where: { id: entryId },
           data: { transcript, status: "EXTRACTING" },
         });
+        await markPhase(prisma, entryId, "transcribe_done");
 
         return { transcriptLength: transcript.length };
       }
@@ -404,6 +411,9 @@ export const processEntryFn = inngest.createFunction(
           where: { id: entryId },
           data: { summary, status: "COMPLETE" },
         });
+        // FREE branch ends here; mark it so totals compare across tiers.
+        const { markPhase } = await import("@/lib/processing-timeline");
+        await markPhase(prisma, entryId, "finished");
       });
 
       await step.run("update-recording-stats-free", async () => {
@@ -619,6 +629,8 @@ export const processEntryFn = inngest.createFunction(
     // fetch the goal and splice its title/description into the prompt
     // so the extractor anchors the entry to it.
     const extraction = await step.run("extract", async () => {
+      const { markPhase } = await import("@/lib/processing-timeline");
+      await markPhase(prisma, entryId, "extract_start");
       const entry = await prisma.entry.findUniqueOrThrow({
         where: { id: entryId },
         select: {
@@ -659,7 +671,7 @@ export const processEntryFn = inngest.createFunction(
 
       const { extractFromTranscript } = await import("@/lib/pipeline");
       const todayISO = new Date().toISOString().split("T")[0];
-      return extractFromTranscript(
+      const result = await extractFromTranscript(
         transcript,
         todayISO,
         memoryContext || undefined,
@@ -670,6 +682,8 @@ export const processEntryFn = inngest.createFunction(
         calendarContext.promptBlock,
         activeHabits.map((h) => ({ name: h.name, description: h.description }))
       );
+      await markPhase(prisma, entryId, "extract_done");
+      return result;
     });
 
     // Cancellation gate before persist-extraction (Slice C Stage 3,
@@ -835,6 +849,8 @@ export const processEntryFn = inngest.createFunction(
           );
         }
       });
+      const { markPhase } = await import("@/lib/processing-timeline");
+      await markPhase(prisma, entryId, "persist_done");
     });
 
     // ── Debrief → habit auto-check-off (fail-soft) ────────────────────────
@@ -1301,6 +1317,11 @@ export const processEntryFn = inngest.createFunction(
     // back to the in-app toast + Entries badge. Fail-soft.
     await step
       .run("send-completion-push", async () => {
+        // Last step of the pipeline — the "finished" mark lands here so the
+        // tail (people, embed, memory, lifemap, streak, achievements) is
+        // measurable as one bucket.
+        const { markPhase } = await import("@/lib/processing-timeline");
+        await markPhase(prisma, entryId, "finished");
         const entryRow = await prisma.entry.findUnique({
           where: { id: entryId },
           select: { status: true, createdAt: true },

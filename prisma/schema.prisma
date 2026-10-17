@@ -850,6 +850,13 @@ model Entry {
   // the pipeline skips transcription (process-entry transcriptProvided).
   // Nullable rather than defaulted so the migration is a pure column add.
   inputMode             String?
+  // Processing phase marks (2026-10-17, "speed up processing" measurement).
+  // JSON array of { p: <phase>, at: <epoch ms> } appended by
+  // lib/processing-timeline.ts markPhase() from inside existing pipeline
+  // steps (no new step boundaries). Phases: transcribe_start,
+  // transcribe_done | transcript_provided, extract_start, extract_done,
+  // persist_done, finished. Query: see docs/processing-timeline.md.
+  processingTimeline    Json?
   tasks                 Task[]
   themeMentions         ThemeMention[]
   entityMentions        EntityMention[]
