@@ -1,12 +1,12 @@
 import { useFocusEffect, useRouter } from "expo-router";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Alert, Pressable, Text, View } from "react-native";
 
 import { GradientCheckbox } from "@/components/acuity";
 import { SwipeRow } from "@/components/swipe-row";
 import { useTheme } from "@/contexts/theme-context";
 import { api } from "@/lib/api";
-import { cachedGet, getCached, setCached } from "@/lib/cache";
+import { cachedGet, getCached, setCached, subscribeCached } from "@/lib/cache";
 import { fireHaptic } from "@/lib/haptics";
 import {
   TODAY_LIMIT,
@@ -62,6 +62,16 @@ export function TodayList() {
     return cached ? applyPendingWidgetCompletions(cached) : null;
   });
 
+  // Follow cache writes from other screens (optimistic create, Tasks tab).
+  useEffect(
+    () =>
+      subscribeCached(TASKS_CACHE_KEY, () => {
+        const next = getCached<{ tasks: Task[] }>(TASKS_CACHE_KEY)?.tasks;
+        if (next) setTasks(applyPendingWidgetCompletions(next));
+      }),
+    []
+  );
+
   useFocusEffect(
     useCallback(() => {
       // Pick up whatever the Tasks tab / editor left in the cache first,
@@ -87,13 +97,17 @@ export function TodayList() {
 
   // Apply a local change everywhere it shows: this card, the shared cache
   // (Tasks tab), and the widget.
+  // Computed from a ref, not inside the setState updater: setCached now
+  // notifies subscribers (this card included), and firing setState from
+  // within another component's updater is a React violation.
+  const tasksRef = useRef<Task[] | null>(tasks);
+  tasksRef.current = tasks;
   const applyLocal = useCallback((update: (prev: Task[]) => Task[]) => {
-    setTasks((prev) => {
-      const next = update(prev ?? []);
-      setCached(TASKS_CACHE_KEY, { tasks: next });
-      publishTodayToWidget(next);
-      return next;
-    });
+    const next = update(tasksRef.current ?? []);
+    tasksRef.current = next;
+    setTasks(next);
+    setCached(TASKS_CACHE_KEY, { tasks: next });
+    publishTodayToWidget(next);
   }, []);
 
   const complete = useCallback(

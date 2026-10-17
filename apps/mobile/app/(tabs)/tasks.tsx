@@ -26,7 +26,7 @@ import { Confetti } from "@/components/tasks/confetti";
 import { useAuth } from "@/contexts/auth-context";
 import { useTheme } from "@/contexts/theme-context";
 import { api } from "@/lib/api";
-import { cachedGet, getCached, setCached } from "@/lib/cache";
+import { cachedGet, getCached, setCached, subscribeCached } from "@/lib/cache";
 import { isFreeTierUser } from "@/lib/free-tier";
 import { dueDateToneColor, priorityToneColor } from "@/lib/tone-colors";
 import {
@@ -146,6 +146,8 @@ export default function TasksTab() {
   // succeeded) — a failed first fetch must not write an empty list to the
   // shared cache or the widget.
   const hasDataRef = useRef(!!getCached<{ tasks: Task[] }>(TASKS_CACHE_KEY));
+  // The exact array this screen last wrote to the cache (see the sync effect).
+  const selfWriteRef = useRef<Task[] | null>(null);
 
   const fetchAll = useCallback(async (silent: boolean, force = false) => {
     if (!silent) setLoading(true);
@@ -188,6 +190,25 @@ export default function TasksTab() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Follow writes to the shared tasks cache made by other screens (the
+  // create sheet's optimistic insert and its server swap, Home's Today card)
+  // so this list updates the moment they happen, not on the next focus.
+  useEffect(
+    () =>
+      subscribeCached(TASKS_CACHE_KEY, () => {
+        const next = getCached<{ tasks: Task[] }>(TASKS_CACHE_KEY)?.tasks;
+        if (!next || next === selfWriteRef.current) return;
+        hasDataRef.current = true;
+        setTasks((prev) => {
+          const list = applyPendingWidgetCompletions(next);
+          if (pendingMutationsRef.current.size === 0) return list;
+          const byId = new Map(prev.map((t) => [t.id, t]));
+          return list.map((t) => (pendingMutationsRef.current.has(t.id) ? (byId.get(t.id) ?? t) : t));
+        });
+      }),
+    []
+  );
+
   useFocusEffect(
     useCallback(() => {
       isFocusedRef.current = true;
@@ -224,6 +245,9 @@ export default function TasksTab() {
   // completed or deleted here, and refresh the "Today" widget.
   useEffect(() => {
     if (loading || !hasDataRef.current) return;
+    // Mark this write as ours so the cache subscriber below ignores it;
+    // otherwise write → notify → setTasks → write would loop forever.
+    selfWriteRef.current = tasks;
     setCached(TASKS_CACHE_KEY, { tasks });
     publishTodayToWidget(tasks);
   }, [tasks, loading]);
