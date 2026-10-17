@@ -3,6 +3,7 @@ import { ExtensionStorage } from "@bacons/apple-targets";
 
 import { currentStreak, isExpectedOn } from "@acuity/shared";
 import { api } from "@/lib/api";
+import { trackV10 } from "@/lib/onboarding-v10/analytics";
 import { getCached, setCached } from "@/lib/cache";
 import {
   checksByHabit,
@@ -228,9 +229,41 @@ export function publishTodayToWidget(tasks: readonly TodayTaskInput[]): void {
     storage.set("todayTasks", items);
     storage.set("todayUpdatedAt", Date.now());
     ExtensionStorage.reloadWidget("RippleTodayWidget");
-  } catch {
-    // Widget data is best-effort; never let it break the app.
+    reportWidgetPublish(items.length, pressing.length);
+  } catch (err) {
+    // Widget data is best-effort; never let it break the app — but do say
+    // so, or an empty widget is undiagnosable from the outside.
+    trackV10("v10_widget_published", {
+      ok: false,
+      error: err instanceof Error ? err.message : String(err),
+    });
   }
+}
+
+/**
+ * Diagnostic (1.9.4): after writing `todayTasks`, read it back through the
+ * same native module the widget's container is served from and report what
+ * landed. The 1.9.3 widget looked "broken" for weeks because its extension
+ * had no App Group entitlement and nothing on the server could tell us
+ * whether the app had written anything. Throttled to one event per minute
+ * per process; the payload is counts only, never task text.
+ */
+let lastWidgetReportAt = 0;
+function reportWidgetPublish(written: number, pressing: number): void {
+  const now = Date.now();
+  if (now - lastWidgetReportAt < 60_000) return;
+  lastWidgetReportAt = now;
+  let readBack: number | null = null;
+  try {
+    const raw = storage?.get("todayTasks");
+    if (typeof raw === "string") {
+      const parsed = JSON.parse(raw) as unknown;
+      readBack = Array.isArray(parsed) ? parsed.length : -1;
+    }
+  } catch {
+    readBack = -2;
+  }
+  trackV10("v10_widget_published", { ok: true, written, pressing, read_back: readBack });
 }
 
 // ─── Widget tap-to-check reconciliation (1.9.4) ─────────────────────

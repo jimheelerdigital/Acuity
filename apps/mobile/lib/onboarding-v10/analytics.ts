@@ -29,6 +29,8 @@ export type V10Event =
   | "v10_mic_result"
   | "v10_recording_started"
   | "v10_recording_start_failed"
+  // 1.9.4 widget diagnostics: what the app wrote to the App Group, read back.
+  | "v10_widget_published"
   | "v10_processing_failed"
   | "v10_recording_silent"
   | "v10_recording_interrupted"
