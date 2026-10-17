@@ -672,9 +672,20 @@ struct TodayRowView: View {
             .accessibilityLabel(row.done ? "Undo complete \(row.item.title)" : "Mark \(row.item.title) complete")
             Link(destination: URL(string: "acuity://task/\(row.item.id)") ?? TASKS_URL) {
                 HStack(spacing: 8) {
+                    // Strikethrough drawn explicitly: WidgetKit dropped
+                    // Text.strikethrough on device (row only greyed — Jimmy,
+                    // 10/17 on build 181). An overlaid rule can't be skipped.
                     Text(row.item.title).font(.system(size: 14)).lineLimit(1)
                         .strikethrough(row.done, color: .secondary)
                         .foregroundColor(row.done ? .secondary : .primary)
+                        .overlay {
+                            if row.done {
+                                Rectangle()
+                                    .fill(Color.secondary)
+                                    .frame(height: 1.5)
+                                    .offset(y: 0.5)
+                            }
+                        }
                     Spacer(minLength: 4)
                     Text(row.done ? "Done" : bucketLabel(row))
                         .font(.system(size: 11, weight: .semibold))
