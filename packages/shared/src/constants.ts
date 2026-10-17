@@ -398,6 +398,13 @@ export const WHISPER_LANGUAGE = "en"; // set to undefined for auto-detect
 // CLAUDE_FLAGSHIP_MODEL constant when those land.
 export const CLAUDE_MODEL = "claude-sonnet-4-6";
 export const CLAUDE_MAX_TOKENS = 2048;
+// Debrief extraction returns one JSON object holding every task, theme,
+// goal and habit the user mentioned. A long debrief (2026-10-16: 2,800
+// chars, 9+ tasks) needs more than 2,048 output tokens; at the cap the
+// JSON is cut off, the parse fails and the entry lands PARTIAL with no
+// summary and no tasks. 8,192 covers a 10-minute debrief with room to
+// spare; Sonnet's output ceiling is far higher, so this is pure headroom.
+export const CLAUDE_EXTRACTION_MAX_TOKENS = 8192;
 
 // Free-trial length (days) for NEW signups. 2026-06-17: 14 → 7. Single source
 // of truth — imported by the bootstrap trial grant + Stripe checkout. Existing
