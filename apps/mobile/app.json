@@ -246,6 +246,14 @@
         }
       ],
       "expo-router",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Ripple uses your photo library so you can add a picture of a handwritten journal page and turn it into an entry.",
+          "cameraPermission": "Ripple uses your camera so you can snap a handwritten journal page and turn it into an entry.",
+          "microphonePermission": false
+        }
+      ],
       "expo-secure-store",
       "@react-native-community/datetimepicker",
       [

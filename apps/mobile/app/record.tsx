@@ -9,6 +9,7 @@ import {
   NO_SOUND_CAPTURED_MESSAGE,
 } from "@acuity/shared";
 import {
+  ActivityIndicator,
   Alert,
   AppState,
   type AppStateStatus,
@@ -39,6 +40,11 @@ import { useSaveWall } from "@/components/onboarding/v10-save-wall";
 import { shouldAutostartRecording } from "@/lib/record-deeplink";
 import { getToken } from "@/lib/auth";
 import { invalidate } from "@/lib/cache";
+import {
+  captureHandwrittenPage,
+  HandwritingError,
+  type CaptureSource,
+} from "@/lib/handwriting-capture";
 import {
   readyPushAction,
   registerPushTokenAfterRecording,
@@ -187,6 +193,9 @@ export default function RecordScreen() {
   // user to their words, not an empty box.
   const [typedDraft, setTypedDraft] = useState("");
   const [typedSubmitting, setTypedSubmitting] = useState(false);
+  // Photo → text in flight (handwritten page). Blocks the composer's
+  // controls so a second tap can't double-bill a vision call.
+  const [photoReading, setPhotoReading] = useState(false);
   const lastModeRef = useRef<"voice" | "typed">("voice");
 
   const recordingRef = useRef<Audio.Recording | null>(null);
@@ -964,6 +973,59 @@ export default function RecordScreen() {
   ]);
 
   /**
+   * Handwritten page → text (2026-10-17). Camera or library, the page is
+   * transcribed server-side and APPENDED to the draft (a second photo
+   * continues the entry; nothing the user already typed is lost). They
+   * review, then Save like any typed entry.
+   */
+  const addPageFromPhoto = useCallback(
+    async (source: CaptureSource) => {
+      if (photoReading || typedSubmitting) return;
+      setPhotoReading(true);
+      try {
+        const text = await captureHandwrittenPage(source);
+        if (text == null) return; // user backed out of the picker
+        trackV10("v10_handwriting_transcribed", { chars: text.length, source });
+        setTypedDraft((prev) => {
+          const base = prev.trim();
+          return base ? `${base}\n\n${text}` : text;
+        });
+      } catch (err) {
+        if (err instanceof HandwritingError) {
+          if (err.code === "permission") return; // already prompted
+          if (err.code === "paywall") {
+            router.replace("/paywall");
+            return;
+          }
+          Alert.alert(
+            err.code === "no_text" ? "No writing found" : "Couldn't read that page",
+            err.message
+          );
+          return;
+        }
+        Alert.alert(
+          "Couldn't read that page",
+          "Something went wrong. Please try again."
+        );
+      } finally {
+        setPhotoReading(false);
+      }
+    },
+    [photoReading, typedSubmitting, router]
+  );
+
+  const promptPhotoSource = useCallback(() => {
+    Alert.alert("Add a handwritten page", undefined, [
+      { text: "Take photo", onPress: () => void addPageFromPhoto("camera") },
+      {
+        text: "Choose from library",
+        onPress: () => void addPageFromPhoto("library"),
+      },
+      { text: "Cancel", style: "cancel" },
+    ]);
+  }, [addPageFromPhoto]);
+
+  /**
    * Discard the in-progress recording — stop mic, drop the captured
    * audio without uploading, return to idle. Used by the top-left
    * back button's "Discard" branch (Slice Q5 polish 3, 2026-05-20).
@@ -1304,7 +1366,9 @@ export default function RecordScreen() {
             value={typedDraft}
             onChange={setTypedDraft}
             onSubmit={() => void submitTyped()}
+            onAddPhoto={promptPhotoSource}
             submitting={typedSubmitting}
+            photoReading={photoReading}
             tokens={tokens}
           />
         ) : (
@@ -1335,19 +1399,24 @@ function TypedComposer({
   value,
   onChange,
   onSubmit,
+  onAddPhoto,
   submitting,
+  photoReading,
   tokens,
 }: {
   value: string;
   onChange: (text: string) => void;
   onSubmit: () => void;
+  onAddPhoto: () => void;
   submitting: boolean;
+  photoReading: boolean;
   tokens: ReturnType<typeof useTheme>["tokens"];
 }) {
   const trimmedLength = value.trim().length;
   const tooShort = trimmedLength < TYPED_MIN_CHARS;
   const tooLong = trimmedLength > TYPED_MAX_CHARS;
-  const canSubmit = !tooShort && !tooLong && !submitting;
+  const busy = submitting || photoReading;
+  const canSubmit = !tooShort && !tooLong && !busy;
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === "ios" ? "padding" : undefined}
@@ -1372,7 +1441,7 @@ function TypedComposer({
           textAlignVertical="top"
           placeholder="Today I…"
           placeholderTextColor={tokens.textTer}
-          editable={!submitting}
+          editable={!busy}
           maxLength={TYPED_MAX_CHARS + 500}
           accessibilityLabel="Entry text"
           style={{
@@ -1397,20 +1466,50 @@ function TypedComposer({
             paddingBottom: 8,
           }}
         >
-          <Text
-            style={{
-              fontFamily: tokens.fontSans,
-              fontSize: 12,
-              color: tooLong ? tokens.bad : tokens.textTer,
-              fontVariant: ["tabular-nums"],
-            }}
-          >
-            {tooLong
-              ? `${(trimmedLength - TYPED_MAX_CHARS).toLocaleString()} over the limit`
-              : tooShort && trimmedLength > 0
-                ? "A sentence or two is plenty"
-                : `${trimmedLength.toLocaleString()} characters`}
-          </Text>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 10, flexShrink: 1 }}>
+            {/* Handwritten page → text (2026-10-17). Appends to the draft. */}
+            <Pressable
+              onPress={onAddPhoto}
+              disabled={busy}
+              accessibilityRole="button"
+              accessibilityLabel="Add a handwritten page from a photo"
+              hitSlop={8}
+              style={{
+                width: 40,
+                height: 40,
+                borderRadius: 20,
+                borderWidth: 1,
+                borderColor: tokens.cardBorder,
+                alignItems: "center",
+                justifyContent: "center",
+                opacity: busy ? 0.45 : 1,
+              }}
+            >
+              {photoReading ? (
+                <ActivityIndicator size="small" color={tokens.textSec} />
+              ) : (
+                <Ionicons name="camera-outline" size={20} color={tokens.textSec} />
+              )}
+            </Pressable>
+            <Text
+              numberOfLines={1}
+              style={{
+                fontFamily: tokens.fontSans,
+                fontSize: 12,
+                color: tooLong ? tokens.bad : tokens.textTer,
+                fontVariant: ["tabular-nums"],
+                flexShrink: 1,
+              }}
+            >
+              {photoReading
+                ? "Reading your page…"
+                : tooLong
+                  ? `${(trimmedLength - TYPED_MAX_CHARS).toLocaleString()} over the limit`
+                  : tooShort && trimmedLength > 0
+                    ? "A sentence or two is plenty"
+                    : `${trimmedLength.toLocaleString()} characters`}
+            </Text>
+          </View>
           <Pressable
             onPress={onSubmit}
             disabled={!canSubmit}
