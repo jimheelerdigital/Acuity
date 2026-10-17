@@ -57,11 +57,15 @@ export async function POST(req: NextRequest) {
   }
 
   const entry = await prisma.entry.create({
-    data: { userId, status: "QUEUED", transcript: text },
+    data: { userId, status: "QUEUED", transcript: text, inputMode: "typed" },
   });
+  // 2026-10-17: `transcriptProvided`, not `skipTranscribe`. Both skip
+  // Whisper, but skipTranscribe also means "edit reprocess" and suppresses
+  // first-run work (calendar auto-link, people counting). This is a brand
+  // new entry — same flag the app's typed entries use (POST /api/record).
   await inngest.send({
     name: "entry/process.requested",
-    data: { entryId: entry.id, userId, skipTranscribe: true },
+    data: { entryId: entry.id, userId, transcriptProvided: true },
   });
 
   return NextResponse.json({ entryId: entry.id, status: "QUEUED" }, { status: 202 });
