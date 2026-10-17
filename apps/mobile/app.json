@@ -237,6 +237,14 @@
       ]
     },
     "plugins": [
+      [
+        "expo-build-properties",
+        {
+          "ios": {
+            "deploymentTarget": "16.4"
+          }
+        }
+      ],
       "expo-router",
       "expo-secure-store",
       "@react-native-community/datetimepicker",
