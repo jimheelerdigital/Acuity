@@ -23,6 +23,7 @@ import {
   configureRevenueCat,
   identifyRevenueCatUser,
   logOutRevenueCatUser,
+  revenueCatIdentityAttributes,
   syncRevenueCatAttributes,
 } from "@/lib/revenuecat";
 import { flushPendingWithdrawalAck } from "@/lib/paywall-consent";
@@ -107,6 +108,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // transiently" (warm refresh fired by AppState change). See the
   // gated !token branch in refresh() for the rationale.
   const initialRefreshDone = useRef(false);
+  // Latest user, readable from inside async effects keyed on user.id only.
+  const latestUser = useRef<User | null>(null);
+  latestUser.current = user;
+  // The RevenueCat identity attributes ($email / $displayName) last sent
+  // for this user id. Set by the sign-in sync below; lets the change effect
+  // re-send only when the user's email or name actually changes.
+  const rcIdentitySent = useRef<{ userId: string; key: string } | null>(null);
 
   /**
    * Refresh the current user state. Three cases:
@@ -371,18 +379,53 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // Attributes RevenueCat Targeting / Experiments / charts key on:
       // pricing_tier routes legacy customers to the grandfathered offering;
       // $mediaSource / $campaign break the funnel down by channel.
+      // $email / $displayName: RevenueCat Win-back campaigns email churned
+      // subscribers, and Customer Center / support lookups use them. Only
+      // keys with values are sent (a null would delete the attribute).
       const profile = await fetchCustomerRcProfile();
       if (cancelled) return;
+      const current = latestUser.current;
+      const identity =
+        current?.id === user.id
+          ? revenueCatIdentityAttributes({
+              email: current.email,
+              name: current.name,
+            })
+          : {};
       await syncRevenueCatAttributes({
         pricing_tier: profile.tier,
         ...(profile.mediaSource ? { $mediaSource: profile.mediaSource } : {}),
         ...(profile.campaign ? { $campaign: profile.campaign } : {}),
+        ...identity,
       });
+      if (cancelled) return;
+      rcIdentitySent.current = {
+        userId: user.id,
+        key: JSON.stringify(identity),
+      };
     })();
     return () => {
       cancelled = true;
     };
   }, [user?.id]);
+
+  // Re-send $email / $displayName when the signed-in user's email or name
+  // changes (profile edit → refresh() / setAuthenticatedUser). Waits for the
+  // sign-in sync above (which already sends the current values) so the
+  // attributes land on the identified RC customer, not the anonymous one.
+  useEffect(() => {
+    if (!user?.id) return;
+    const sent = rcIdentitySent.current;
+    if (!sent || sent.userId !== user.id) return;
+    const identity = revenueCatIdentityAttributes({
+      email: user.email,
+      name: user.name,
+    });
+    const key = JSON.stringify(identity);
+    if (key === sent.key || Object.keys(identity).length === 0) return;
+    rcIdentitySent.current = { userId: user.id, key };
+    void syncRevenueCatAttributes(identity);
+  }, [user?.id, user?.email, user?.name]);
 
   // Foreground-refresh pattern (docs/APPLE_IAP_DECISION.md §5):
   // when the user returns from Safari-based upgrade checkout, the
