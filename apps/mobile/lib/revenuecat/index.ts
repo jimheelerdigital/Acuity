@@ -479,6 +479,42 @@ export async function linkRevenueCatAdIdentifiers(
   }
 }
 
+let adServicesEnabled = false;
+
+/**
+ * Apple Search Ads attribution through RevenueCat (Miro roadmap "Apple Ads
+ * attribution", 2026-10-17). RC's SDK reads the AdServices attribution token
+ * (iOS 14.3+) and posts it to RevenueCat, which asks Apple for the campaign
+ * / ad group / keyword within 24h and attaches it to the customer — so
+ * Search Ads spend shows up against trials and subscriptions in RC charts
+ * and flows to the Meta/analytics integrations like any other attribution.
+ *
+ * Call AFTER the ATT prompt has resolved: with tracking granted Apple
+ * returns the Detailed payload (click/impression dates); before or without
+ * it, Standard. The SDK posts the token once per install, so this is safe
+ * to call on every launch.
+ *
+ * Dashboard side (Jimmy): RevenueCat → project 65cc450f → Integrations →
+ * Apple AdServices → "Add Apple Search Ads integration" (Basic, or Advanced
+ * + Sign in with Apple for full campaign names).
+ */
+export async function enableAppleSearchAdsAttribution(): Promise<void> {
+  if (Platform.OS !== "ios" || adServicesEnabled) return;
+  for (let i = 0; i < 20 && !configured; i++) {
+    await new Promise((r) => setTimeout(r, 500));
+  }
+  if (!configured) return;
+  const mod = await loadPurchases();
+  if (!mod) return;
+  try {
+    await mod.default.enableAdServicesAttributionTokenCollection();
+    adServicesEnabled = true;
+    log("AdServices attribution token collection enabled");
+  } catch (err) {
+    log("enableAdServicesAttributionTokenCollection failed", err);
+  }
+}
+
 /**
  * Country code of the customer's App Store / Play Store account, via
  * RevenueCat. Apple returns ISO alpha-3 ("USA", "GBR"); Google may return
