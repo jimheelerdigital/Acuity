@@ -45,6 +45,7 @@ import { useAchievementQueue } from "@/hooks/use-achievement-queue";
 import { initMetaSdk, setMetaUserId } from "@/lib/meta-sdk";
 import { reapplyRemindersIfNeeded } from "@/lib/notifications-boot";
 import { refreshPushTokenOnLaunch } from "@/lib/push-token";
+import { flushWidgetCompletions } from "@/lib/widget-data";
 import {
   handleColdStartNotificationTap,
   registerNotificationTapRouting,
@@ -181,9 +182,14 @@ function AuthGate() {
     if (user.onboardingCompleted) {
       void initMetaSdk();
     }
+    // 1.9.4: push any home-screen-widget check-offs (App Group
+    // `pendingDone`) to the server now that we're signed in, and again on
+    // every return to the foreground. The Tasks tab also flushes on focus.
+    void flushWidgetCompletions();
     const sub = AppState.addEventListener("change", (next) => {
       if (next === "active") {
         void reapplyRemindersIfNeeded(userId);
+        void flushWidgetCompletions();
       }
     });
     return () => {
@@ -447,6 +453,7 @@ function ThemedApp() {
           name="achievements"
           options={{ headerShown: true }}
         />
+        <Stack.Screen name="roadmap" options={{ headerShown: true }} />
         <Stack.Screen
           name="privacy"
           options={{

@@ -1,12 +1,12 @@
 import { useFocusEffect, useRouter } from "expo-router";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Alert, Pressable, Text, View } from "react-native";
 
 import { GradientCheckbox } from "@/components/acuity";
 import { SwipeRow } from "@/components/swipe-row";
 import { useTheme } from "@/contexts/theme-context";
 import { api } from "@/lib/api";
-import { cachedGet, getCached, setCached } from "@/lib/cache";
+import { cachedGet, getCached, setCached, subscribeCached } from "@/lib/cache";
 import { fireHaptic } from "@/lib/haptics";
 import {
   TODAY_LIMIT,
@@ -16,7 +16,10 @@ import {
   type TodayTaskInput,
 } from "@/lib/today-tasks";
 import { WARN_AMBER } from "@/lib/tone-colors";
-import { publishTodayToWidget } from "@/lib/widget-data";
+import {
+  applyPendingWidgetCompletions,
+  publishTodayToWidget,
+} from "@/lib/widget-data";
 
 /**
  * Home "TODAY" card (1.9.1, Keenan's list). The most pressing open tasks:
@@ -52,8 +55,21 @@ function shortDate(ymd: string): string {
 export function TodayList() {
   const router = useRouter();
   const { tokens } = useTheme();
-  const [tasks, setTasks] = useState<Task[] | null>(
-    () => getCached<{ tasks: Task[] }>(TASKS_CACHE_KEY)?.tasks ?? null
+  // Widget check-offs still queued in `pendingDone` overlay as DONE so the
+  // card never shows a task the user already ticked on the home screen.
+  const [tasks, setTasks] = useState<Task[] | null>(() => {
+    const cached = getCached<{ tasks: Task[] }>(TASKS_CACHE_KEY)?.tasks;
+    return cached ? applyPendingWidgetCompletions(cached) : null;
+  });
+
+  // Follow cache writes from other screens (optimistic create, Tasks tab).
+  useEffect(
+    () =>
+      subscribeCached(TASKS_CACHE_KEY, () => {
+        const next = getCached<{ tasks: Task[] }>(TASKS_CACHE_KEY)?.tasks;
+        if (next) setTasks(applyPendingWidgetCompletions(next));
+      }),
+    []
   );
 
   useFocusEffect(
@@ -61,12 +77,12 @@ export function TodayList() {
       // Pick up whatever the Tasks tab / editor left in the cache first,
       // then revalidate if stale (cachedGet is a no-op when fresh).
       const cached = getCached<{ tasks: Task[] }>(TASKS_CACHE_KEY)?.tasks;
-      if (cached) setTasks(cached);
+      if (cached) setTasks(applyPendingWidgetCompletions(cached));
       let cancelled = false;
       cachedGet<{ tasks: Task[] }>(TASKS_CACHE_KEY)
         .then((res) => {
           if (cancelled) return;
-          const list = res.tasks ?? [];
+          const list = applyPendingWidgetCompletions(res.tasks ?? []);
           setTasks(list);
           publishTodayToWidget(list);
         })
@@ -81,13 +97,17 @@ export function TodayList() {
 
   // Apply a local change everywhere it shows: this card, the shared cache
   // (Tasks tab), and the widget.
+  // Computed from a ref, not inside the setState updater: setCached now
+  // notifies subscribers (this card included), and firing setState from
+  // within another component's updater is a React violation.
+  const tasksRef = useRef<Task[] | null>(tasks);
+  tasksRef.current = tasks;
   const applyLocal = useCallback((update: (prev: Task[]) => Task[]) => {
-    setTasks((prev) => {
-      const next = update(prev ?? []);
-      setCached(TASKS_CACHE_KEY, { tasks: next });
-      publishTodayToWidget(next);
-      return next;
-    });
+    const next = update(tasksRef.current ?? []);
+    tasksRef.current = next;
+    setTasks(next);
+    setCached(TASKS_CACHE_KEY, { tasks: next });
+    publishTodayToWidget(next);
   }, []);
 
   const complete = useCallback(

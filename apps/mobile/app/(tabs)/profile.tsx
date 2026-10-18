@@ -35,7 +35,10 @@ import { isObsidianExportEnabled } from "@/lib/feature-flags";
 import { showProfileDot, useWhatsNewState } from "@/lib/whats-new-state";
 import { isIapEnabled } from "@/lib/iap-config";
 import { rcFlags } from "@/lib/revenuecat/flags";
-import { showManageSubscriptions } from "@/lib/revenuecat";
+import {
+  presentCustomerCenter,
+  showManageSubscriptions,
+} from "@/lib/revenuecat";
 import { exportAll } from "@/lib/obsidian/export";
 import { openSubscriptionPortal } from "@/lib/subscription";
 
@@ -220,18 +223,28 @@ export default function ProfileTab() {
     (rcFlags().RC_SDK_PURCHASES
       ? Platform.OS === "ios" || Platform.OS === "android"
       : Platform.OS === "ios" && isIapEnabled());
-  // For Apple-source users, route Manage to iOS Settings (Apple's deep
-  // link). For Stripe-source users, the existing openSubscriptionPortal
-  // flow handles it. Use the itms-apps:// scheme rather than the https
-  // universal link so iOS jumps straight into the App Store account's
-  // Subscriptions screen reliably (the https link can bounce through
-  // Safari first on some iOS versions).
-  const handleManageAppleSubscription = async () => {
-    // Apple's own manage-subscriptions sheet, in-app (works in TestFlight
-    // sandbox too). Falls back to the App Store account link when RevenueCat
-    // isn't configured.
-    if (await showManageSubscriptions()) return;
-    void Linking.openURL("https://apps.apple.com/account/subscriptions");
+  const isPlaySub = subSource === "google_play";
+  // Store-billed (App Store / Google Play) subscriptions are managed in
+  // RevenueCat's Customer Center: cancel, change plan, restore, refund
+  // request (iOS), support, plus the cancellation survey / retention offers
+  // configured in the RC dashboard. Stripe-source users keep the Stripe
+  // Customer Portal row below. Anything Customer Center changes refreshes
+  // the server-backed subscription state via refresh() — the same path the
+  // Restore button uses.
+  //
+  // Fallbacks when Customer Center can't be shown (RC not configured, native
+  // module missing, present fails): Apple's in-app Manage Subscriptions sheet
+  // (via RC), then the store's account subscriptions page.
+  const handleManageStoreSubscription = async () => {
+    if (await presentCustomerCenter(() => void refresh())) return;
+    if (isAppleSub && Platform.OS === "ios" && (await showManageSubscriptions())) {
+      return;
+    }
+    void Linking.openURL(
+      isPlaySub
+        ? "https://play.google.com/store/account/subscriptions?package=com.heelerdigital.acuity"
+        : "https://apps.apple.com/account/subscriptions"
+    );
   };
 
   // Days remaining on the current paid period — used by the delete
@@ -346,16 +359,19 @@ export default function ProfileTab() {
             />
           )}
 
-          {/* Phase 3a — Apple-source users get the iOS Settings deep-link
-              instead of the Stripe Portal. Apple's only supported
-              subscription-management surface for IAP. Shown for TRIAL too
-              so a user can cancel before their intro/trial converts. */}
-          {canManageSubscription && isAppleSub && (
+          {/* App Store / Google Play subscribers get RevenueCat's Customer
+              Center (falls back to Apple's manage sheet / the store's
+              subscriptions page) instead of the Stripe Portal. Shown for
+              TRIAL too so a user can cancel before their intro/trial
+              converts. */}
+          {canManageSubscription && (isAppleSub || isPlaySub) && (
             <MenuItem
               icon="settings-outline"
-              label="Manage in iOS Settings"
-              sublabel="Cancel, change plan, view in Apple ID"
-              onPress={handleManageAppleSubscription}
+              label="Manage subscription"
+              sublabel="Cancel, change plan, restore, get help"
+              onPress={() => {
+                void handleManageStoreSubscription();
+              }}
             />
           )}
 
@@ -515,6 +531,14 @@ export default function ProfileTab() {
             label="Send feedback"
             sublabel="Bugs, feature ideas, or anything else"
             onPress={() => setShowFeedbackModal(true)}
+          />
+          {/* Public roadmap (2026-10-18) — vote on what we build next.
+              Same data as goripple.io/roadmap. */}
+          <MenuItem
+            icon="map-outline"
+            label="Roadmap"
+            sublabel="See what's coming and vote on what matters to you"
+            onPress={() => router.push("/roadmap" as never)}
           />
         </SettingsGroup>
 

@@ -413,6 +413,25 @@ export async function syncRevenueCatAttributes(
 }
 
 /**
+ * RevenueCat reserved identity attributes — `$email` (Win-back campaigns
+ * email churned subscribers; Customer Center / support lookups) and
+ * `$displayName`. Only keys with a real value are returned: setAttributes
+ * with null DELETES an attribute, so a missing name must never wipe one
+ * set elsewhere (e.g. from the dashboard or another device).
+ */
+export function revenueCatIdentityAttributes(user: {
+  email?: string | null;
+  name?: string | null;
+}): Record<string, string> {
+  const out: Record<string, string> = {};
+  const email = user.email?.trim();
+  if (email && email.includes("@")) out.$email = email;
+  const name = user.name?.trim();
+  if (name) out.$displayName = name;
+  return out;
+}
+
+/**
  * The raw offering for a RevenueCat Paywall (RevenueCatUI.Paywall renders
  * the paywall attached to it in the dashboard). Same selection rule as
  * pickOffering.
@@ -435,12 +454,6 @@ export async function getPaywallOffering(
   }
 }
 
-/**
- * Apple's in-app "Manage subscriptions" sheet (StoreKit, via RevenueCat).
- * Returns false when RC isn't configured so the caller can fall back to a
- * link. Preferred over the itms-apps:// deep link, which didn't open for
- * Jimmy on build 146 and never shows sandbox/TestFlight subscriptions.
- */
 /**
  * Meta Ads integration support: hand RevenueCat the Meta anonymous id and
  * let it collect device identifiers (IDFA/IDFV/GAID, per ATT) so the
@@ -466,6 +479,42 @@ export async function linkRevenueCatAdIdentifiers(
   }
 }
 
+let adServicesEnabled = false;
+
+/**
+ * Apple Search Ads attribution through RevenueCat (Miro roadmap "Apple Ads
+ * attribution", 2026-10-17). RC's SDK reads the AdServices attribution token
+ * (iOS 14.3+) and posts it to RevenueCat, which asks Apple for the campaign
+ * / ad group / keyword within 24h and attaches it to the customer — so
+ * Search Ads spend shows up against trials and subscriptions in RC charts
+ * and flows to the Meta/analytics integrations like any other attribution.
+ *
+ * Call AFTER the ATT prompt has resolved: with tracking granted Apple
+ * returns the Detailed payload (click/impression dates); before or without
+ * it, Standard. The SDK posts the token once per install, so this is safe
+ * to call on every launch.
+ *
+ * Dashboard side (Jimmy): RevenueCat → project 65cc450f → Integrations →
+ * Apple AdServices → "Add Apple Search Ads integration" (Basic, or Advanced
+ * + Sign in with Apple for full campaign names).
+ */
+export async function enableAppleSearchAdsAttribution(): Promise<void> {
+  if (Platform.OS !== "ios" || adServicesEnabled) return;
+  for (let i = 0; i < 20 && !configured; i++) {
+    await new Promise((r) => setTimeout(r, 500));
+  }
+  if (!configured) return;
+  const mod = await loadPurchases();
+  if (!mod) return;
+  try {
+    await mod.default.enableAdServicesAttributionTokenCollection();
+    adServicesEnabled = true;
+    log("AdServices attribution token collection enabled");
+  } catch (err) {
+    log("enableAdServicesAttributionTokenCollection failed", err);
+  }
+}
+
 /**
  * Country code of the customer's App Store / Play Store account, via
  * RevenueCat. Apple returns ISO alpha-3 ("USA", "GBR"); Google may return
@@ -488,6 +537,82 @@ export async function getStorefrontCountryCode(): Promise<string | null> {
   }
 }
 
+// ─── Subscription management (Customer Center) ───────────────────────
+
+type PurchasesUiModule = typeof import("react-native-purchases-ui");
+
+let purchasesUiModule: PurchasesUiModule | null = null;
+
+async function loadPurchasesUi(): Promise<PurchasesUiModule | null> {
+  if (purchasesUiModule) return purchasesUiModule;
+  try {
+    purchasesUiModule = await import("react-native-purchases-ui");
+    return purchasesUiModule;
+  } catch (err) {
+    log("purchases-ui module unavailable", err);
+    return null;
+  }
+}
+
+/**
+ * RevenueCat Customer Center — RC's in-app subscription management screen
+ * (cancel / change plan / restore / refund request on iOS / support, plus
+ * the cancellation survey and retention offers configured in the RC
+ * dashboard). Presented modally; the native promise resolves when the user
+ * DISMISSES it (iOS: presentWithResultHandler; Android: onActivityResult —
+ * verified in react-native-purchases-ui@10.7.1 ios/RNCustomerCenter.m and
+ * android/.../RNCustomerCenterModule.kt).
+ *
+ * `onChanged` fires when something inside may have changed the customer's
+ * entitlement (restore completed, promotional offer accepted, refund
+ * request completed) and once more on dismissal, so the caller can refresh
+ * the server-backed subscription state the same way it does after Restore.
+ *
+ * Returns false — without throwing — when RC isn't configured or the native
+ * Customer Center is unavailable / fails to present, so the caller can fall
+ * back to `showManageSubscriptions()` or a store link.
+ */
+export async function presentCustomerCenter(
+  onChanged?: () => void
+): Promise<boolean> {
+  if (!configured) return false;
+  const ui = await loadPurchasesUi();
+  if (!ui) return false;
+  const changed = () => {
+    try {
+      onChanged?.();
+    } catch (err) {
+      log("customer center onChanged threw", err);
+    }
+  };
+  try {
+    await ui.default.presentCustomerCenter({
+      callbacks: {
+        onRestoreCompleted: () => changed(),
+        onPromotionalOfferSucceeded: () => changed(),
+        onRefundRequestCompleted: () => changed(),
+        onRestoreFailed: ({ error }) =>
+          log("customer center restore failed", error),
+      },
+    });
+    // Dismissed. A cancel / plan change made in Apple's or Google's own
+    // sheet from inside Customer Center has no dedicated callback, so
+    // refresh once on the way out too.
+    changed();
+    return true;
+  } catch (err) {
+    log("presentCustomerCenter failed", err);
+    return false;
+  }
+}
+
+/**
+ * Apple's in-app "Manage subscriptions" sheet (StoreKit, via RevenueCat).
+ * Returns false when RC isn't configured so the caller can fall back to a
+ * link. Preferred over the itms-apps:// deep link, which didn't open for
+ * Jimmy on build 146 and never shows sandbox/TestFlight subscriptions.
+ * Now the fallback behind presentCustomerCenter().
+ */
 export async function showManageSubscriptions(): Promise<boolean> {
   if (!configured) return false;
   const mod = await loadPurchases();

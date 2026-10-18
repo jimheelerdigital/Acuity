@@ -2,7 +2,7 @@
   "expo": {
     "name": "Ripple",
     "slug": "acuity",
-    "version": "1.9.3",
+    "version": "1.9.4",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "scheme": "acuity",
@@ -171,6 +171,10 @@
       "entitlements": {
         "com.apple.security.application-groups": [
           "group.com.heelerdigital.acuity"
+        ],
+        "keychain-access-groups": [
+          "$(AppIdentifierPrefix)com.heelerdigital.acuity",
+          "$(AppIdentifierPrefix)com.heelerdigital.acuity.shared"
         ]
       }
     },
@@ -233,7 +237,23 @@
       ]
     },
     "plugins": [
+      [
+        "expo-build-properties",
+        {
+          "ios": {
+            "deploymentTarget": "16.4"
+          }
+        }
+      ],
       "expo-router",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Ripple uses your photo library so you can add a picture of a handwritten journal page and turn it into an entry.",
+          "cameraPermission": "Ripple uses your camera so you can snap a handwritten journal page and turn it into an entry.",
+          "microphonePermission": false
+        }
+      ],
       "expo-secure-store",
       "@react-native-community/datetimepicker",
       [

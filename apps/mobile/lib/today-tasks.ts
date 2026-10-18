@@ -24,6 +24,9 @@ export type TodayTaskInput = {
   priority: string;
   dueDate: string | null;
   snoozedUntil: string | null;
+  /** ISO timestamp. Optional: only the widget publisher uses it (newest-first
+   *  ordering of the non-pressing "Open" rows, lib/widget-data.ts). */
+  createdAt?: string | null;
 };
 
 export type TodayBucket = "overdue" | "today" | "priority";

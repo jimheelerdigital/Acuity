@@ -3708,9 +3708,6 @@ model UgcMailbox {
 // Ideas are NOT stored here — "Suggest an idea" goes through the existing
 // feedback funnel (POST /api/feedback/submit → Slack → Make → Monday) and
 // admins promote the good ones into `considering` by hand.
-// Declared on main ahead of the feature branch (feat/typed-entry) because
-// the tables already exist in prod and the destructive-diff guard would
-// otherwise see main's schema as wanting to DROP them.
 model RoadmapItem {
   id             String        @id @default(cuid())
   title          String

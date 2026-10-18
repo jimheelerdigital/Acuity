@@ -110,6 +110,7 @@ const TOOL_LINKS: { href: string; label: string }[] = [
   { href: "/admin/content-factory/metrics", label: "Social metrics" },
   { href: "/admin/content-factory/niche", label: "Niche lab" },
   { href: "/admin/blog-pruner-log", label: "Blog pruner log" },
+  { href: "/admin/roadmap", label: "Public roadmap" },
 ];
 
 const TAB_LABELS: Record<TabKey, string> = Object.fromEntries(

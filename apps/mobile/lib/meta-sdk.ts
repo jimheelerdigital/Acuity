@@ -5,7 +5,10 @@ import {
   Settings,
 } from "react-native-fbsdk-next";
 
-import { linkRevenueCatAdIdentifiers } from "@/lib/revenuecat";
+import {
+  enableAppleSearchAdsAttribution,
+  linkRevenueCatAdIdentifiers,
+} from "@/lib/revenuecat";
 
 /**
  * Meta SDK (Facebook App Events) integration for mobile ad
@@ -142,6 +145,13 @@ export async function initMetaSdk(): Promise<void> {
       // eslint-disable-next-line no-console
       console.log("[meta-sdk] init failed:", err);
     }
+  } finally {
+    // Apple Search Ads → RevenueCat attribution. Same timing rule as the
+    // Meta identifiers: after the ATT decision so a granted user yields
+    // Apple's Detailed payload. Independent of the Meta SDK succeeding and
+    // of the RC purchases flag (attribution works in observer mode too).
+    // iOS-only and idempotent inside.
+    void enableAppleSearchAdsAttribution().catch(() => {});
   }
 }
 
