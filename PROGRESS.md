@@ -7,6 +7,35 @@
 
 ---
 
+## [2026-10-18] — Day-2 come-back nudge: push when we can, one email when we can't (audit 2026-10-17, R-3)
+
+- **Requested by:** Keenan (business cofounder) via the weekly audit, Prompt 3
+- **Committed by:** Claude (Cowork)
+- **Branch:** `feat/day2-nudge` off main (d9d50c7c) — NOT on main yet; Jimmy merges. No app build needed.
+
+### In plain English (for Keenan)
+Two days after someone signs up, Ripple now reaches out once to ask "Anything still taking up space?". If they turned on notifications in the app, it's the push that was already built. If they didn't (that's most people — 94 of the last 108 signups have no device registered), they get one short email instead, with a single button that opens the recorder. Nobody gets both, nobody gets it twice, and anyone who already came back and recorded after their first day is left alone. It all stays switched off until the flag below is set, so it can go live on a Monday.
+
+### Technical changes (for Jimmy)
+- `lib/day2-nudge.ts` (new): `runDay2Nudge(deps)` — the cohort loop, I/O injected. Push path unchanged (`sendDay2Push`, claim-first on `User.v10Day2PushSentAt`). Email path: skip internal mailboxes, skip if any `Entry.createdAt >= signup + 24h` (came back), skip if ANY `TrialEmailLog` in the last 24h (same throttle as the recovery orchestrator — `never_recorded_48h`, `app_first_record_2`, `first_debrief_followup` all live in this window and we don't stack), then `sendTrialEmail(userId, "day2_nudge")` which handles unsubscribe + `isEmailEnabled` + TrialEmailLog dedupe. Never stamps `v10Day2PushSentAt`.
+- `inngest/functions/v10-day2-push-cron.ts`: same id/hour cron, now loads the whole 2–3-day band (no `pushToken` filter, confirmed no v10/flowVersion filter existed), `concurrency: 1`, wires prisma + senders into the runner. Still `ENABLE_V10_DAY2_PUSH === "1"` fail-closed — the one flag now gates both channels.
+- `emails/trial/day2-nudge.ts` (new, key `day2_nudge`, registered in `types.ts` / `registry.ts` / `EMAIL_ENABLED` = true): subject "Anything still taking up space?", one line, one button "Do a debrief". Button = one-tap signed-in app link for users with an `app_signed_in` event, else `/home#record`.
+- Recorder deep link for the app button: `createAppSignInUrl(email, { next: "record" })` → `/auth/mobile-complete?token=…&next=record` → page forwards `acuity://auth-callback?token=…&next=record` → `apps/mobile/app/auth-callback.tsx` lands on `/record` when `next === "record"`. The shipped app (1.9.4) ignores the extra param and lands on Home; the recorder landing rides in the next build/OTA. No other link type changed.
+- `OnboardingEvent day2_nudge_sent` value `push | email` on every real send; added to `scripts/audit/collect-metrics.ts` KEY_EVENTS.
+- Tests: `lib/day2-nudge.test.ts` (13: band, local hour, channel split, came-back skip, throttle, internal, dedupe-on-second-run, unsubscribed/disabled surfaced), `inngest/functions/v10-day2-push-cron.test.ts` (7: flag unset / wrong values → cohort never loaded; "1" → runs). tsc = 151 (main baseline).
+
+### Manual steps needed
+- [ ] Jimmy: merge `feat/day2-nudge` (PR link in chat) — safe to merge any day; nothing sends until the flag is on.
+- [ ] Keenan, **on a Monday**: https://vercel.com/heelerdigital/acuity-web/settings/environment-variables → Add → key `ENABLE_V10_DAY2_PUSH`, value `1`, environment Production → Save → Deployments → ⋯ on the latest production deployment → Redeploy. Then `curl -X PUT https://goripple.io/api/inngest` to resync. Inngest app: the function is "Day-2 nudge (push + email)".
+- [ ] After the first week: `select value, count(*) from "OnboardingEvent" where event='day2_nudge_sent' group by 1` and D1 in the next audit (target > 8%).
+
+### Notes / things I did not decide for you
+- 81 of the last 108 signups still have the DEFAULT slot (`timezone` America/Chicago, `notificationTime` 21:00) — the web funnel never captures a timezone, so for most email users "their local hour" is 9pm Central wherever they are. Fine for the US; worth capturing `Intl` timezone at web signup as a follow-up.
+- Push users who already came back still get the push (the audit asked for the came-back skip on the email only, and the v10 spec is "one, ever"). One-line change in `lib/day2-nudge.ts` if you want parity.
+- 4 of the 94 no-push users are unsubscribed; they're skipped by `sendTrialEmail`, not by us.
+
+---
+
 ## [2026-10-18] — Close the signup account-takeover hole (audit 2026-10-17, R-1)
 
 - **Requested by:** Jimmy (security, critical — audit section 2)

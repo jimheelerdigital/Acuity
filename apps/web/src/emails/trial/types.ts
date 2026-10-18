@@ -113,4 +113,5 @@ export type TrialEmailKey =
   | "app_first_record_1"
   | "app_first_record_2"
   | "free_week_offer"
-  | "free_week_followup";
+  | "free_week_followup"
+  | "day2_nudge";

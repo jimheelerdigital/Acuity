@@ -33,7 +33,7 @@ export default function AuthCallbackScreen() {
   const router = useRouter();
   const { refresh } = useAuth();
   const { tokens } = useTheme();
-  const params = useLocalSearchParams<{ token?: string }>();
+  const params = useLocalSearchParams<{ token?: string; next?: string }>();
   const [status, setStatus] = useState<"working" | "error">("working");
   const [errorMessage, setErrorMessage] = useState<string>("");
 
@@ -72,12 +72,19 @@ export default function AuthCallbackScreen() {
       // AuthGate in the root _layout.tsx will route to (tabs) once
       // user becomes non-null. Nudge to /(tabs) explicitly in case
       // we're still mounted when the auth state resolves.
-      router.replace("/(tabs)");
+      // `next=record` (2026-10-18): email buttons that promise the
+      // recorder land on it. Exact match only; anything else is home.
+      if (params.next === "record") {
+        router.replace("/(tabs)");
+        router.push("/record");
+      } else {
+        router.replace("/(tabs)");
+      }
     })();
     return () => {
       cancelled = true;
     };
-  }, [params.token, refresh, router]);
+  }, [params.token, params.next, refresh, router]);
 
   return (
     <SafeAreaView

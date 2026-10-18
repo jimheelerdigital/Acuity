@@ -39,6 +39,10 @@ function isMobile(): boolean {
 function MobileCompleteInner() {
   const params = useSearchParams();
   const token = params.get("token") ?? "";
+  // Optional landing screen inside the app (2026-10-18, day-2 nudge email).
+  // Allow-listed here and again in the app's auth-callback; the shipped app
+  // reads only `token`, so an unknown extra param is harmless.
+  const next = params?.get("next") === "record" ? "record" : null;
 
   const [phase, setPhase] = useState<Phase>("init");
   const [deepLink, setDeepLink] = useState<string | null>(null);
@@ -48,7 +52,7 @@ function MobileCompleteInner() {
       setPhase("invalid");
       return;
     }
-    const url = `acuity://auth-callback?token=${encodeURIComponent(token)}`;
+    const url = `acuity://auth-callback?token=${encodeURIComponent(token)}${next ? `&next=${next}` : ""}`;
     setDeepLink(url);
 
     if (!isMobile()) {
@@ -67,7 +71,7 @@ function MobileCompleteInner() {
       if (document.visibilityState === "visible") setPhase("noapp");
     }, 1600);
     return () => window.clearTimeout(t);
-  }, [token]);
+  }, [token, next]);
 
   return (
     <div className="flex min-h-screen items-center justify-center px-6">
