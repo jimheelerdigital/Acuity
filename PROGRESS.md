@@ -7,6 +7,29 @@
 
 ---
 
+## [2026-10-18] — The shipped app's code (1.9.1 → 1.9.4 + typed entry + RC Web Billing) lands on main in one PR
+
+- **Requested by:** Jimmy
+- **Committed by:** Claude (Cowork)
+- **Branch:** `chore/land-1.9.4-on-main`. NOT on main; Jimmy merges. **Supersedes** `chore/land-1.9.3-on-main`, `feat/widget-1.9.4`, `feat/typed-entry` and `feat/rc-web-billing-v2` — don't merge those separately after this. No schema change (main already matches prod), no app build.
+
+### In plain English (for Keenan)
+The code inside the app people have on their phones (1.9.1 through 1.9.4, the widget, typing an entry, the roadmap, Apple Ads tracking) was living on side branches, not on the main line the website deploys from. This puts it all on main in one go, so the next app update and the next website change start from the same place. While checking it, I found and fixed one thing that would have broken the recorder for people on the current App Store build if we'd pushed the typing/handwriting update over the air.
+
+### Technical changes (for Jimmy)
+- Built from `origin/chore/land-1.9.3-on-main` (it already held the reviewed 10/15 merge of feat/1.9.1 into main + `6b992e09`, the evidence-test fix), then: `merge origin/main` (10/15 → 10/18, #83–#90: clean); `merge origin/feat/typed-entry` (widget 1.9.4, typed entry, handwriting, processing timeline, roadmap, Apple Ads — 2 conflicts: `lib/rate-limit.ts` kept both new limiters `emailCodeVerifyByEmail` + `roadmapVote`; `schema.prisma` dropped my now-stale "declared ahead of feat/typed-entry" comment, models identical); `merge origin/feat/rc-web-billing-v2` (clean). Real merges, so `git log` keeps every original commit.
+- **OTA safety fix (new commit `1c5612e0`):** `apps/mobile/lib/handwriting-capture.ts` statically imported `expo-image-picker` / `expo-image-manipulator`, native modules added after build 183. runtimeVersion = `appVersion` ("1.9.4"), so an OTA reaches 183, where those packages throw in `requireNativeModule()` on first evaluation → record screen down. Now: no native import at load, `handwritingCaptureAvailable()` via `requireOptionalNativeModule` (from `expo`, no new dep), `import()` on first use, camera button rendered only when the binary has both modules. New `lib/evidence/ota-native-safety.test.ts` fails on any static import of a package newer than the oldest live binary (verified red on the old file).
+- Verified on the final tree: `prisma validate` OK, no duplicate models; RLS coverage OK (110 models); **destructive-diff vs prod: "Schema and database agree — nothing to apply"**; lockfile consistent (`npm install --package-lock-only` = no change); no node_modules / prebuild artifacts / symlinks tracked; web tsc 151 = main baseline, zero new (14 apparent new ones were a stale generated Prisma client — regenerated, gone); **web tests 1385/1385 pass** (the 6 `lib/evidence` failures main has had all day are fixed by `6b992e09`); mobile tsc = identical 13-error set to shipped `feat/typed-entry`.
+- Deps added to main: mobile `@bacons/apple-targets`, `expo-build-properties`, `expo-image-picker`, `expo-image-manipulator`, `expo-sharing`, `expo-store-review`, `react-native-android-widget`; web `@revenuecat/purchases-js`. All already in the shipped app / branch.
+
+### Manual steps needed
+- [ ] Jimmy: merge `chore/land-1.9.4-on-main` (one PR; Vercel preview build is the Next.js build check).
+- [ ] After merge, the old branches can be deleted on GitHub (they're fully contained): `chore/land-1.9.3-on-main`, `feat/widget-1.9.4`, `feat/typed-entry`, `feat/rc-web-billing-v2`, `feat/1.9.1`.
+- [ ] OTA to 1.9.4 (typed entry, roadmap screen, Apple Ads attribution, `next=record`, email-code screen from main) becomes possible from main after merge — a separate, deliberate step: `eas update --branch production --message "…"` from a clean checkout of main. I'll prep it on your go; it is production-affecting.
+- [ ] RC Web Billing stays behind its flag (unchanged).
+
+---
+
 ## [2026-10-18] — Every per-user Claude call now writes ClaudeCallLog with the user and the real price (audit 2026-10-17 "Unlogged AI cost")
 
 - **Requested by:** Jimmy (audit 2026-10-17 §6 item 6 + backlog "Log pipeline.ts and Opus 5.5 calls")
