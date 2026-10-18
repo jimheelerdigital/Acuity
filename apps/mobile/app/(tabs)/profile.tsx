@@ -532,6 +532,14 @@ export default function ProfileTab() {
             sublabel="Bugs, feature ideas, or anything else"
             onPress={() => setShowFeedbackModal(true)}
           />
+          {/* Public roadmap (2026-10-18) — vote on what we build next.
+              Same data as goripple.io/roadmap. */}
+          <MenuItem
+            icon="map-outline"
+            label="Roadmap"
+            sublabel="See what's coming and vote on what matters to you"
+            onPress={() => router.push("/roadmap" as never)}
+          />
         </SettingsGroup>
 
         {/* ACCOUNT group — sign-out + danger-tinted delete. The

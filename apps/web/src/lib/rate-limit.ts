@@ -171,6 +171,12 @@ export const limiters = {
    */
   feedbackSubmit: buildLimiter("feedback-submit", 10, "1 h"),
   /**
+   * Public roadmap upvote toggles (2026-10-18). A person browsing the
+   * page might vote a dozen things; 60/hr stops a script from churning
+   * counts. Key: user:<userId>.
+   */
+  roadmapVote: buildLimiter("roadmap-vote", 60, "1 h"),
+  /**
    * "Try it now" unauthenticated recording — IP-scoped. 5/hr per IP
    * prevents casual abuse. Combined with a daily global cap (constant
    * in the route handler, default 100/day) and a per-session cookie.

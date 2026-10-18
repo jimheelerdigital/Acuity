@@ -321,6 +321,7 @@ model User {
   sessions                      Session[]
   entries                       Entry[]
   tasks                         Task[]
+  roadmapVotes                  RoadmapVote[]
   taskGroups                    TaskGroup[]
   goals                         Goal[]
   weeklyReports                 WeeklyReport[]
@@ -3677,4 +3678,38 @@ model UgcMailbox {
   refreshTokenEnc String
   scopes          String
   connectedAt     DateTime @default(now())
+}
+
+// ─── Public roadmap (2026-10-18) ──────────────────────────────────────
+// goripple.io/roadmap + Profile → Roadmap. Curated by admins (/admin/roadmap);
+// signed-in users upvote. Status is a String enforced in app code:
+//   considering | building | shipped
+// Shipped rows carry shippedVersion so the page doubles as a changelog.
+// Ideas are NOT stored here — "Suggest an idea" goes through the existing
+// feedback funnel (POST /api/feedback/submit → Slack → Make → Monday) and
+// admins promote the good ones into `considering` by hand.
+model RoadmapItem {
+  id             String        @id @default(cuid())
+  title          String
+  summary        String
+  status         String        @default("considering")
+  sortOrder      Int           @default(0)
+  shippedVersion String?
+  shippedAt      DateTime?
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+  votes          RoadmapVote[]
+
+  @@index([status, sortOrder])
+}
+
+model RoadmapVote {
+  itemId    String
+  item      RoadmapItem @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime    @default(now())
+
+  @@id([itemId, userId])
+  @@index([userId])
 }

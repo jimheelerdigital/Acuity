@@ -453,6 +453,7 @@ function ThemedApp() {
           name="achievements"
           options={{ headerShown: true }}
         />
+        <Stack.Screen name="roadmap" options={{ headerShown: true }} />
         <Stack.Screen
           name="privacy"
           options={{
