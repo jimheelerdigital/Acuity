@@ -7,6 +7,34 @@
 
 ---
 
+## [2026-10-18] — Close the signup account-takeover hole (audit 2026-10-17, R-1)
+
+- **Requested by:** Jimmy (security, critical — audit section 2)
+- **Committed by:** Claude (Cowork)
+- **Branch / commit:** `fix/signup-account-takeover` @ 4dc9cb00 — NOT on main yet; Jimmy merges.
+
+### In plain English (for Keenan)
+Anyone who knew a Google / Apple / email-code user's address could "sign up" with it, and the server quietly set their password on that account. Signup now refuses to touch an existing account of any kind. The other direction (someone pre-registers your email with a password before you sign in with Google) is closed too: an unverified password account loses its password and every session the moment the real owner signs in through Google or Apple. Sign-in itself is unchanged — no new verification wall.
+
+### Technical changes (for Jimmy)
+- `signup` + `mobile-signup`: any existing user → 409 `AlreadyRegistered` (+ `next`), never writes `passwordHash`; new password accounts no longer get `emailVerified` at create.
+- `lib/oauth-link.ts` `secureOAuthLink()` used by the NextAuth `signIn` callback (also rejects Google `email_verified=false`), `mobile-callback`, `mobile-callback-apple`: unverified password account → `passwordHash=null` + `revokeAllSessions()` + `emailVerified` stamped.
+- `mobile-callback-apple`: link/create only on the token's attested email; client-cached email can no longer choose the account.
+- `lib/session-revocation.ts`: `User.sessionsInvalidBefore` (column **already added to prod**, `docs/migrations/2026-10-18-user-sessions-invalid-before.sql`); checked in `getAnySessionUserId` (bearer) and the `jwt` callback (cookie), 60s per-user cache; revocation also ends MCP connections/tokens.
+- `email-code`: atomic attempt counter; per-email verify limiter 10/hr (`limiters.emailCodeVerifyByEmail`).
+- `forgot-password` now covers passwordless accounts (the proof-of-inbox way to ADD a password). `password_set` OnboardingEvents (`proof:reset-token` / `proof:session`) and `password_superseded_by_oauth`.
+- Tests: `app/api/auth/signup/takeover.test.ts`, `lib/oauth-link.test.ts`, `lib/session-revocation.test.ts`, `lib/email-code.test.ts` (parallel-guess cap).
+
+### Manual steps needed
+- [ ] Jimmy: open https://github.com/jimheelerdigital/Acuity/pull/new/fix/signup-account-takeover → Create pull request → wait for the green check → Merge. Vercel deploys main.
+- [ ] After deploy, the 7-day check from the audit: POST /api/auth/signup with a Google-only test account's email → expect 409 and an unchanged `passwordHash`.
+- [ ] `apps/web/src/app/api/admin/backfill-email-verified` (one-time admin tool) would mark every unverified account verified — do NOT run it again; it would re-arm the pre-registration case.
+
+### Notes
+- Trade-off accepted: a web-funnel user (random password, unverified) who later signs into the app with Google gets their web session ended once and signs in again with Google.
+
+---
+
 ## [2026-10-16] — Mythicals: swings and strikes are back, weapons keep their shape, no ground smashes
 
 - **Requested by:** Keenan
