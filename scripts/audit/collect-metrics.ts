@@ -309,6 +309,7 @@ async function collectSupabase(db: pg.Client, cur: Win, history: Win[]) {
       "app_signed_in", "funnel_payment_completed", "funnel_v9_magic_link_sent", "funnel_app_link_sent",
       "funnel_first_debrief_viewed", "funnel_first_debrief_submitted", "funnel_first_debrief_skipped",
       "funnel_first_debrief_mic_denied", "apple_dupe_flagged", "email_variant_sent",
+      "day2_nudge_sent", // 2026-10-18 (R-3): value = push | email
     ];
     const keyEvents = async (w: Win) => q(db, `
       SELECT event, count(*)::int events, count(DISTINCT COALESCE("sessionToken", "userId"))::int uniques

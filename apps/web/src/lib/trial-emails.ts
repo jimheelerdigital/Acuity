@@ -267,6 +267,21 @@ export async function sendTrialEmail(
     }
   }
 
+  // Day-2 nudge (2026-10-18): the button is the recorder. App users get a
+  // one-tap signed-in link that lands on it; web-only users get /home#record
+  // from the template. Not in APP_ACCESS_EMAIL_KEYS on purpose — that block
+  // also sells the install, and this email has exactly one button.
+  if (emailKey === "day2_nudge") {
+    try {
+      const { createAppSignInUrl, hasSignedIntoApp } = await import("@/lib/app-access");
+      if (await hasSignedIntoApp(user.id)) {
+        vars.signInUrl = await createAppSignInUrl(user.email, { next: "record" });
+      }
+    } catch (err) {
+      safeLog.error("trial-email.sign_in_link_failed", err as Error, { emailKey, userId: user.id });
+    }
+  }
+
   if (emailKey === "free_week_offer" || emailKey === "free_week_followup") {
     const { freeWeekUrl } = await import("@/lib/free-week");
     vars.freeWeekUrl = freeWeekUrl(user.id, emailKey);
