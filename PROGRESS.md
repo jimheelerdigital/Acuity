@@ -7,6 +7,35 @@
 
 ---
 
+## [2026-10-18] — First debrief after payment opens on her own answers, not a blank box (audit 2026-10-10 R-2)
+
+- **Requested by:** Keenan (business cofounder) via the 2026-10-10 audit, Prompt 2
+- **Committed by:** Claude (Cowork)
+- **Branch:** `feat/first-debrief-prefill` off main. NOT on main; Jimmy merges. Web only (both funnels); no build, no schema, no flag.
+
+### In plain English (for Keenan)
+Right after someone pays, we ask for a first debrief. It used to open on an empty box with a "Skip" button as big as the real one, and 11 of 13 buyers skipped it. It now opens with what she just told the funnel ("You said kids and a demanding job is on your plate.") and asks her to name the three things she'd most like off her mind, with the three lines already filled from the list items she tapped a minute earlier (Work / Home / Me, all editable). Typing those in creates her first entry the same way as before. Skip is still there, but as a small "Not now" at the bottom. The thank-you screen now says her first tasks will be waiting when she opens the app.
+
+### Technical changes (for Jimmy)
+- `lib/first-debrief-prefill.ts` (new, pure): `FirstDebriefPrefill {said, saidKind: "plate"|"quote", lines}`, `saidLine`, `initialLines` (always 3), `isPrefilled`, `composeDebriefText(lines, extra)` → "The three things I'd most like off my mind are sign the school form, book Mom's appointment, and block an hour for yourself." (+ optional free text, capped 2000), `canSubmitLines` (≥1 line, clears the route's 10-char minimum).
+- `components/funnel-first-debrief.tsx`: new `prefill` prop; header shows the said-line + "Name the three things you'd most like off your mind."; voice mode shows her picks as chips above the mic; text mode = three labelled inputs (Work / Home / Me) + "+ Add anything else" textarea; submit posts `composeDebriefText(...)` to the existing `/api/onboarding/first-debrief-text`; Skip → `mt-12 text-[13px]` "Not now"; saved screen copy updated. Events `funnel_first_debrief_viewed|submitted|skipped` values now end in `:prefilled:true|false`.
+- `components/funnel-v9.tsx`: `firstDebriefPrefill(C, answers)` — plate labels (`answers.multi.plate` → option labels, sentence-cased, joined) + first three `weekTasks(C, answers)`; passed from `DownloadScreen`.
+- `components/onboarding-funnel.tsx` (v8): `DownloadScreen` now receives `answers`; prefill = the entry answer she tapped, rendered as a quote ("You said: “My head's too full…”"). v8 has no concrete task picks, so its lines start empty.
+- Admin: the Funnel tab already shows "Offered first debrief" → "Did first debrief in funnel" with the rate (metrics route milestone `fd_done`, base `fd_offered`); nothing to add. The `prefilled:` suffix lets the next audit split rates by arm.
+- `vitest.config.ts`: `oxc: { jsx: { runtime: "automatic" } }` so `.tsx` smoke tests compile (tsconfig keeps `jsx: preserve` for Next).
+- Tests: `lib/first-debrief-prefill.test.ts` (6), `components/funnel-first-debrief.test.tsx` (4, react-dom/server render: said line, chips, "Not now" last, no "Skip, I'll", copy rules, no escape links). Full suite 1306 pass; the 6 failures are the pre-existing `rc-observer-build.test.ts` set that main already has. tsc = 151.
+
+### Manual steps needed
+- [ ] Jimmy: merge `feat/first-debrief-prefill`.
+- [ ] Jimmy or Keenan, after deploy, on a phone at 390 wide: run `/start` through to payment with a test card and confirm the step opens with the "You said …" line and three filled lines; tap "Not now" once on a second run to confirm it still reaches the app-download screen. I could not drive a paid funnel session end-to-end from here (it needs a real Stripe return), so the device check in the audit's step 8 is on you.
+- [ ] Next audit: compare `funnel_first_debrief_submitted` / `_viewed` before and after 10/18 (values carry `prefilled:true|false`). Baseline: 2 of 13.
+
+### Notes
+- "Three things" is the whole ask; the free-text box is folded under "+ Add anything else" so the default path is three taps and Save.
+- Facebook/Messenger webview still starts in typing mode (mic blocked there); the three pre-filled lines make that path a Save instead of a blank box.
+
+---
+
 ## [2026-10-18] — MCP OAuth hardening: rate limits, revoke on refresh replay, honest consent screen (audit 2026-10-17 §6.2)
 
 - **Requested by:** Jimmy (security; audit 2026-10-17 top issue #2 and backlog "MCP hardening")

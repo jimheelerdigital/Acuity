@@ -29,6 +29,7 @@ import { FunnelEntryIntro } from "@/components/funnel-entry-intro";
 import { PayInBrowserButton, PaywallTrustLine } from "@/components/pay-in-browser";
 import { PasswordStep, passwordStepDone } from "@/components/funnel-password-step";
 import { FunnelFirstDebrief, firstDebriefOutcome, type FirstDebriefOutcome } from "@/components/funnel-first-debrief";
+import { joinNatural, sentenceCase, type FirstDebriefPrefill } from "@/lib/first-debrief-prefill";
 import type { AdMatch } from "@/lib/funnel-ad-match";
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
@@ -781,6 +782,21 @@ function weekPicks(C: V9Config, answers: Answers) {
   return step.items.filter((it) => picked.includes(it.id));
 }
 const weekTasks = (C: V9Config, answers: Answers) => weekPicks(C, answers).map((it) => it.task);
+
+/** Her plate answer + up to three week-list picks, for the first debrief
+ *  (2026-10-18, lib/first-debrief-prefill.ts). */
+function firstDebriefPrefill(C: V9Config, answers: Answers): FirstDebriefPrefill {
+  const plateStep = C.steps.find((s) => s.id === "plate" && s.kind === "multi") as Extract<V9Step, { kind: "multi" }> | undefined;
+  const picked = answers.multi["plate"] ?? [];
+  const labels = plateStep
+    ? picked.map((id) => plateStep.options.find((o) => o.id === id)?.label).filter((l): l is string => !!l)
+    : [];
+  return {
+    said: joinNatural(labels.map(sentenceCase)) || null,
+    saidKind: "plate",
+    lines: weekTasks(C, answers).slice(0, 3),
+  };
+}
 const weekChips = (C: V9Config, answers: Answers) => weekPicks(C, answers).map((it) => it.chip);
 
 const statementSteps = (C: V9Config) => C.steps.filter((s): s is Extract<V9Step, { kind: "statement" }> => s.kind === "statement");
@@ -1882,7 +1898,15 @@ function DownloadScreen({ answers, firstName, paid, track }: ViewProps) {
     );
   }
   if (paid && !debrief) {
-    return <FunnelFirstDebrief brand={C.brand === "bwk" ? "bwk" : "ripple"} firstName={firstName} track={track} onDone={setDebrief} />;
+    return (
+      <FunnelFirstDebrief
+        brand={C.brand === "bwk" ? "bwk" : "ripple"}
+        firstName={firstName}
+        prefill={firstDebriefPrefill(C, answers)}
+        track={track}
+        onDone={setDebrief}
+      />
+    );
   }
   if (!pwDone) return <PasswordStep onDone={() => setPwDone(true)} track={track} />;
   return <GetTheApp answers={answers} firstName={firstName} paid={paid} track={track} debriefSaved={debrief === "voice" || debrief === "text"} />;
