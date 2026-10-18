@@ -201,10 +201,11 @@ export const generateStateOfMeFn = inngest.createFunction(
         goalLines,
       ].join("\n");
 
-      const res = await anthropic.messages.create(flagshipRequest({
+      const { loggedMessagesCreate } = await import("@/lib/claude-call-log");
+      const res = await loggedMessagesCreate(anthropic, flagshipRequest({
         system: SYSTEM_PROMPT,
         messages: [{ role: "user", content: userMessage }],
-      }));
+      }), { purpose: "state_of_me", userId });
 
       const rawText = flagshipText(res);
       const jsonText = rawText

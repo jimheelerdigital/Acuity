@@ -150,7 +150,8 @@ export async function POST(req: NextRequest) {
 
   let answer: string;
   try {
-    const msg = await anthropic.messages.create(flagshipRequest({
+    const { loggedMessagesCreate } = await import("@/lib/claude-call-log");
+    const msg = await loggedMessagesCreate(anthropic, flagshipRequest({
       system: SYSTEM_PROMPT,
       messages: [
         {
@@ -158,7 +159,7 @@ export async function POST(req: NextRequest) {
           content: `Here are the most relevant entries from your journal:\n\n${contextBlock}\n\nQuestion: ${question}`,
         },
       ],
-    }));
+    }), { purpose: "ask_past", userId });
     answer = flagshipText(msg).trim();
     if (!answer) throw new Error("empty Claude response");
   } catch (err) {
