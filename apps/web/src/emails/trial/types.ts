@@ -31,6 +31,12 @@ export interface TrialVars {
   /** Signed /free-week claim link (lib/free-week.ts). Set only for the
    *  free_week_offer / free_week_followup emails. */
   freeWeekUrl?: string | null;
+  /** Failed-payment follow-ups only (2026-10-18): Stripe's hosted page for
+   *  the open invoice, the amount formatted, and whether it was the first
+   *  charge after the trial. Set by sendTrialEmail from a live Stripe read. */
+  hostedInvoiceUrl?: string | null;
+  invoiceAmount?: string | null;
+  paymentFirstCharge?: boolean;
 }
 
 /**
@@ -114,4 +120,6 @@ export type TrialEmailKey =
   | "app_first_record_2"
   | "free_week_offer"
   | "free_week_followup"
-  | "day2_nudge";
+  | "day2_nudge"
+  | "payment_failed_2d"
+  | "payment_failed_5d";

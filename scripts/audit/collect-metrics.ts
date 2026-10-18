@@ -593,8 +593,12 @@ async function collectStripe(cur: Win, prev: Win) {
     const trialConv = (days: number) => {
       const from = cur.end.getTime() - days * DAY;
       const ended = subs.filter((s) => s.trial_end && s.trial_end * 1000 >= from && s.trial_end * 1000 < Math.min(cur.end.getTime(), Date.now()));
-      const converted = ended.filter((s) => ["active", "past_due"].includes(s.status) || (s.status === "canceled" && s.ended_at && s.ended_at > s.trial_end + 86400));
-      return { trials_ended: ended.length, converted: converted.length, pct: pct(converted.length, ended.length) };
+      // Converted = the first post-trial charge actually went through. past_due
+      // is a DECLINED card still inside Stripe's retries (2026-10-18, audit
+      // R-2026-10-10-1: counting it inflated 4 real payers to 9).
+      const converted = ended.filter((s) => s.status === "active" || (s.status === "canceled" && s.ended_at && s.ended_at > s.trial_end + 86400));
+      const declined = ended.filter((s) => s.status === "past_due" || s.status === "unpaid");
+      return { trials_ended: ended.length, converted: converted.length, declined: declined.length, pct: pct(converted.length, ended.length) };
     };
     out.subscriptions = {
       mrr_usd: round(mrrCents / 100, 2),
@@ -607,6 +611,9 @@ async function collectStripe(cur: Win, prev: Win) {
       new_paid_no_trial_this_week: subs.filter((s) => !s.trial_start && inWin(s.created, cur)).length,
       trial_to_paid_7d: trialConv(7),
       trial_to_paid_30d: trialConv(30),
+      // Trials that ended in the last 7 days whose first charge was declined
+      // and is still unpaid (past_due / unpaid). Not converted.
+      trial_declined_7d: trialConv(7).declined,
       canceled_this_week: subs.filter((s) => inWin(s.canceled_at, cur)).length,
       canceled_last_week: subs.filter((s) => inWin(s.canceled_at, prev)).length,
       set_to_cancel_at_period_end: paying.filter((s) => s.cancel_at_period_end).length,

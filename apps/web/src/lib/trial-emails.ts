@@ -150,9 +150,17 @@ export async function buildTrialVars(
 
 export interface SendResult {
   sent: boolean;
-  reason?: "already_sent" | "unsubscribed" | "send_failed" | "disabled";
+  reason?: "already_sent" | "unsubscribed" | "send_failed" | "disabled" | "not_applicable";
   resendId?: string;
 }
+
+/**
+ * Billing notices (2026-10-18). A marketing unsubscribe
+ * (onboardingUnsubscribed) does not silence a "your card was declined"
+ * email — the user has an open invoice and a paused plan either way. They
+ * still go through dedupe, the kill-switch and the footer link.
+ */
+export const TRANSACTIONAL_EMAIL_KEYS = new Set<string>(["payment_failed_2d", "payment_failed_5d"]);
 
 /**
  * Send a single trial email to a user. Idempotent on
@@ -218,7 +226,7 @@ export async function sendTrialEmail(
     return { sent: false, reason: "send_failed" };
   }
 
-  if (user.onboardingUnsubscribed) {
+  if (user.onboardingUnsubscribed && !TRANSACTIONAL_EMAIL_KEYS.has(emailKey)) {
     return { sent: false, reason: "unsubscribed" };
   }
 
@@ -280,6 +288,32 @@ export async function sendTrialEmail(
     } catch (err) {
       safeLog.error("trial-email.sign_in_link_failed", err as Error, { emailKey, userId: user.id });
     }
+  }
+
+  // Failed-payment follow-ups (2026-10-18): only while Stripe still has an
+  // open invoice for this customer. Paid / voided / canceled → nothing to
+  // say, and no TrialEmailLog row so a later, separate failure can still
+  // get its own follow-ups once the anchor is re-stamped.
+  if (TRANSACTIONAL_EMAIL_KEYS.has(emailKey)) {
+    const billing = await prisma.user.findUnique({
+      where: { id: user.id },
+      select: { stripeCustomerId: true, stripeFirstFailureAt: true },
+    });
+    if (!billing?.stripeCustomerId || !billing.stripeFirstFailureAt) {
+      return { sent: false, reason: "not_applicable" };
+    }
+    const { stripe } = await import("@/lib/stripe");
+    const { findOpenInvoice, detectFirstPostTrialCharge } = await import("@/lib/payment-failure");
+    const open = await findOpenInvoice(stripe, billing.stripeCustomerId);
+    if (!open) return { sent: false, reason: "not_applicable" };
+    const { formatAmount } = await import("@/emails/payment-failed");
+    vars.hostedInvoiceUrl = open.hostedInvoiceUrl;
+    vars.invoiceAmount = formatAmount(open.amountDue, open.currency);
+    vars.paymentFirstCharge = await detectFirstPostTrialCharge(
+      stripe,
+      { id: open.id, billing_reason: open.billingReason as never, subscription: open.subscription },
+      billing.stripeFirstFailureAt
+    );
   }
 
   if (emailKey === "free_week_offer" || emailKey === "free_week_followup") {

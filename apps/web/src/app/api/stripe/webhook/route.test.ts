@@ -175,6 +175,9 @@ vi.mock("@/lib/prisma", () => ({ prisma: prismaMock }));
 
 const customersRetrieve = vi.fn();
 const paymentIntentsRetrieve = vi.fn();
+// First-charge detection on invoice.payment_failed (2026-10-18).
+const subscriptionsRetrieve = vi.fn();
+const invoicesList = vi.fn();
 
 vi.mock("@/lib/stripe", () => ({
   stripe: {
@@ -182,6 +185,8 @@ vi.mock("@/lib/stripe", () => ({
     webhooks: { constructEvent: (body: string) => JSON.parse(body) },
     customers: { retrieve: (...a: unknown[]) => customersRetrieve(...a) },
     paymentIntents: { retrieve: (...a: unknown[]) => paymentIntentsRetrieve(...a) },
+    subscriptions: { retrieve: (...a: unknown[]) => subscriptionsRetrieve(...a) },
+    invoices: { list: (...a: unknown[]) => invoicesList(...a) },
   },
 }));
 
@@ -282,6 +287,11 @@ beforeEach(() => {
   paymentIntentsRetrieve.mockResolvedValue({
     last_payment_error: { decline_code: "insufficient_funds", code: "card_declined" },
   });
+  // Default: a renewal (trial long over, an earlier paid invoice exists).
+  subscriptionsRetrieve.mockReset();
+  subscriptionsRetrieve.mockResolvedValue({ id: "sub_1", trial_end: 1_600_000_000 });
+  invoicesList.mockReset();
+  invoicesList.mockResolvedValue({ data: [{ id: "in_0", amount_paid: 999 }] });
 });
 
 // Convenience: the funnel_payment_completed / funnel_payment_failed row the
@@ -577,7 +587,7 @@ describe("Task 2: decline-code telemetry", () => {
 
     const ev = paymentEvent("funnel_payment_failed");
     expect(ev).toBeTruthy();
-    expect(ev!.value).toBe("decline:insufficient_funds");
+    expect(ev!.value).toBe("decline:insufficient_funds;first_charge:false");
     expect(ev!.userId).toBe("u1");
     // The downgrade still happened (decline logging is additive, best-effort).
     expect(users[0].subscriptionStatus).toBe("FREE");
@@ -591,7 +601,72 @@ describe("Task 2: decline-code telemetry", () => {
 
     const ev = paymentEvent("funnel_payment_failed");
     expect(ev).toBeTruthy();
-    expect(ev!.value).toBe("decline:unknown");
+    expect(ev!.value).toBe("decline:unknown;first_charge:false");
+  });
+});
+
+// ─── Failed first charge after the trial (2026-10-18, R-2026-10-10-1) ─────
+
+describe("payment_failed email: first charge vs renewal", () => {
+  const openInvoice = (over: Record<string, unknown> = {}) =>
+    invoice({
+      billing_reason: "subscription_cycle",
+      hosted_invoice_url: "https://invoice.stripe.com/i/acct_1/test_x",
+      amount_due: 999,
+      currency: "usd",
+      payment_intent: "pi_1",
+      ...over,
+    });
+
+  it("first post-trial charge: first-charge variant with the hosted URL; user FREE, anchor stamped, event split", async () => {
+    users = [user({ subscriptionStatus: "PRO", stripeFirstFailureAt: null })];
+    onboardingEvents = [funnelSeed()];
+    // Trial ended an hour ago, nothing paid before.
+    subscriptionsRetrieve.mockResolvedValue({ id: "sub_1", trial_end: Math.floor(Date.now() / 1000) - 3600 });
+    invoicesList.mockResolvedValue({ data: [] });
+
+    await send("invoice.payment_failed", openInvoice());
+
+    expect(sendPaymentFailedEmail).toHaveBeenCalledTimes(1);
+    expect(sendPaymentFailedEmail).toHaveBeenCalledWith({
+      to: "a@b.com",
+      name: "A",
+      hostedInvoiceUrl: "https://invoice.stripe.com/i/acct_1/test_x",
+      amountDue: 999,
+      currency: "usd",
+      firstCharge: true,
+    });
+    expect(users[0].subscriptionStatus).toBe("FREE");
+    expect(users[0].stripeFirstFailureAt).toBeInstanceOf(Date);
+    expect(paymentEvent("funnel_payment_failed")!.value).toBe("decline:insufficient_funds;first_charge:true");
+  });
+
+  it("renewal: same email path with firstCharge=false", async () => {
+    users = [user({ subscriptionStatus: "PRO" })];
+    onboardingEvents = [funnelSeed()];
+
+    await send("invoice.payment_failed", openInvoice());
+
+    expect(sendPaymentFailedEmail).toHaveBeenCalledWith(expect.objectContaining({ firstCharge: false, hostedInvoiceUrl: "https://invoice.stripe.com/i/acct_1/test_x" }));
+  });
+
+  it("Stripe lookups failing never block the downgrade or the email (reads as renewal)", async () => {
+    users = [user({ subscriptionStatus: "PRO" })];
+    subscriptionsRetrieve.mockRejectedValue(new Error("stripe down"));
+
+    await send("invoice.payment_failed", openInvoice());
+
+    expect(users[0].subscriptionStatus).toBe("FREE");
+    expect(sendPaymentFailedEmail).toHaveBeenCalledWith(expect.objectContaining({ firstCharge: false }));
+  });
+
+  it("a retry failure for an already-FREE user sends nothing and asks Stripe nothing", async () => {
+    users = [user({ subscriptionStatus: "FREE", stripeFirstFailureAt: new Date("2026-10-10") })];
+
+    await send("invoice.payment_failed", openInvoice());
+
+    expect(sendPaymentFailedEmail).not.toHaveBeenCalled();
+    expect(subscriptionsRetrieve).not.toHaveBeenCalled();
   });
 });
 
