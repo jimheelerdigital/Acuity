@@ -6,13 +6,14 @@
  * actual account — account-existence probing is a pre-auth
  * reconnaissance target.
  *
- * Side effect (only for real accounts that have a passwordHash):
+ * Side effect (for any real account, 2026-10-18):
  *   - Generates a random reset token, stores it + a 1-hour expiry
- *     on the User row, sends a reset email.
+ *     on the User row, sends a reset/set-password email.
  *
- * OAuth-only users (no passwordHash) intentionally get no email —
- * there's nothing to reset. They'll see the same "check your inbox"
- * confirmation but can still sign in with Google.
+ * Passwordless accounts (Google / Apple / email-code) get it too: with
+ * signup no longer writing a password onto an existing account, this
+ * emailed token is how such a user ADDS a password, and it proves
+ * mailbox ownership the way signup never did.
  *
  * Rate-limited 5/hour per email to prevent the endpoint from being
  * used as a spam cannon against a victim's inbox.
@@ -51,7 +52,12 @@ export async function POST(req: NextRequest) {
     select: { id: true, passwordHash: true },
   });
 
-  if (user?.passwordHash) {
+  // 2026-10-18: passwordless accounts (Google / Apple / email-code) get the
+  // reset email too. Since signup no longer writes a password onto an
+  // existing account, this emailed token — proof of inbox ownership — is
+  // the ONLY way to add a password to such an account. The email copy
+  // reads fine for both cases ("set your password").
+  if (user) {
     const token = randomToken();
     const expires = new Date(Date.now() + RESET_TTL_MS);
 

@@ -6,16 +6,19 @@
  * route:
  *   1. Validates email format + password (≥12 chars).
  *   2. Rate-limits per email (5/hour).
- *   3. Creates or links a user row (OAuth-only users can add a
- *      password here — we treat it as account linking, not an
- *      error).
+ *   3. Creates a user row. Never links: an existing account (any
+ *      sign-in method) is a 409. Adding a password to an existing
+ *      account requires email proof — Forgot password → reset-password.
  *   4. Sends a verification email via Resend. The user cannot sign
  *      in until they click the link.
  *
  * Response shape:
  *   200 { ok: true, requiresVerification: true }
  *   400 { error: "InvalidEmail" | "WeakPassword" }
- *   409 { error: "AlreadyRegistered" }  ← only when user has a passwordHash
+ *   409 { error: "AlreadyRegistered", next: "signin" }  ← ANY existing account
+ *       (2026-10-18: previously only when a passwordHash existed; a
+ *       passwordless account silently got the caller's password — a
+ *       takeover with nothing but an email address)
  *   429 { error: "RateLimited" }
  */
 
@@ -101,15 +104,22 @@ export async function POST(req: NextRequest) {
     select: { id: true, passwordHash: true, emailVerified: true },
   });
 
-  if (existing?.passwordHash) {
-    // Already has an email/password account — send them to sign-in
-    // instead of silently overwriting. Don't leak which step
-    // (wrong password vs already-registered) for pre-auth probing;
-    // but the error code here is fine because the user had to
-    // supply a valid password to get this far (we hashed it, and
-    // a login attempt with that password would succeed separately).
+  if (existing) {
+    // Any existing account — with OR without a password — is a 409.
+    //
+    // 2026-10-18 (account-takeover fix): this route used to write the new
+    // password onto an existing Google / Apple / email-code account with
+    // no proof the caller owns the mailbox, which let anyone who knew an
+    // email sign in as that person. Setting a password on an existing
+    // account now goes through the email-proof paths only: Forgot
+    // password (emailed token → /api/auth/reset-password) or a signed-in
+    // session. Same response whether or not a password exists, so this
+    // leaks nothing beyond what it already did.
     console.warn("[SIGNUP_FAIL]", JSON.stringify({ reason: "AlreadyRegistered", method: "email", timestamp: new Date().toISOString() }));
-    return NextResponse.json({ error: "AlreadyRegistered" }, { status: 409 });
+    return NextResponse.json(
+      { error: "AlreadyRegistered", next: "signin" },
+      { status: 409 }
+    );
   }
 
   const passwordHash = await hashPassword(password);
@@ -119,16 +129,7 @@ export async function POST(req: NextRequest) {
   let userId: string;
   let wasCreated = false;
 
-  if (existing) {
-    // OAuth-only user linking a password. Keep their existing
-    // emailVerified if present (Google already verified it) —
-    // no need to force a re-verify on account linking.
-    await prisma.user.update({
-      where: { id: existing.id },
-      data: { passwordHash, ...(name ? { name } : {}) },
-    });
-    userId = existing.id;
-  } else {
+  {
     // Single source of truth for trial length: trialDaysForEmail (14
     // standard, 3 for re-signups within 90d — anti-abuse). bootstrapNewUser
     // re-derives the same base below + adds founding/referral bonuses.
@@ -143,11 +144,15 @@ export async function POST(req: NextRequest) {
         passwordHash,
         subscriptionStatus: "TRIAL",
         trialEndsAt: defaultTrialEnd,
-        // Mark as verified immediately so user can sign in right away.
-        // Verification email still sent for security, but doesn't block access.
-        // This removes the biggest mobile conversion killer — users from ads
-        // sign up, get told to check email, leave, and never come back.
-        emailVerified: new Date(),
+        // NOT auto-verified (2026-10-18). Sign-in still doesn't gate on
+        // verification (Keenan, 2026-09-28) — nothing about the user's
+        // own experience changes. What "unverified" now controls is the
+        // other direction: if Google/Apple later sign in with this email,
+        // lib/auth.ts signIn treats an unverified password account as
+        // unproven and clears the password + sessions before linking, so
+        // pre-registering someone else's address buys an attacker nothing.
+        // emailVerified is set by the verify link, a sign-in code, or an
+        // OAuth link.
         signupMethod: "email",
       },
       select: { id: true },
@@ -203,11 +208,9 @@ export async function POST(req: NextRequest) {
     },
   });
 
-  // If the user already had a verified email (OAuth linking case),
-  // we don't need to re-send a verification email — but for
-  // consistency we still generate the token and could use it for
-  // a welcome email later. Skipping send keeps inbox noise down.
-  if (!existing || !existing.emailVerified) {
+  // Always a brand-new, unverified account at this point — the welcome
+  // email carries the verify link.
+  {
     const userRow = await prisma.user.findUnique({
       where: { id: userId },
       select: { name: true, foundingMemberNumber: true },

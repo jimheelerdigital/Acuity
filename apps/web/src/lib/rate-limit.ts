@@ -171,6 +171,14 @@ export const limiters = {
    */
   feedbackSubmit: buildLimiter("feedback-submit", 10, "1 h"),
   /**
+   * 6-digit sign-in code VERIFY attempts per email (2026-10-18). The
+   * per-IP `auth` limiter doesn't stop a rotating-IP guesser, and
+   * re-requesting a code resets its 5-try counter; 10/hr per address
+   * caps total guesses regardless of how many codes get issued.
+   * Key: email-code-verify:<email>.
+   */
+  emailCodeVerifyByEmail: buildLimiter("email-code-verify-by-email", 10, "1 h"),
+  /**
    * "Try it now" unauthenticated recording — IP-scoped. 5/hr per IP
    * prevents casual abuse. Combined with a daily global cap (constant
    * in the route handler, default 100/day) and a per-session cookie.

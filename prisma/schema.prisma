@@ -223,6 +223,11 @@ model User {
   // Granted manually via direct DB update (UPDATE "User" SET "isAdmin" = true WHERE email = '...').
   // Not self-service. Gates /admin/dashboard + /api/admin/*.
   isAdmin                    Boolean   @default(false)
+  // Session revocation (2026-10-18, signup account-takeover fix). Every
+  // web JWT and mobile bearer issued BEFORE this instant is rejected
+  // (lib/session-revocation.ts). Set when an OAuth sign-in supersedes an
+  // unverified password account, and available for "sign out everywhere".
+  sessionsInvalidBefore      DateTime?
   // Color-scheme preference. Null (default) → follow system / localStorage
   // whatever next-themes picks up. Set to "light" or "dark" when the
   // user explicitly picks via the toggle; we persist to the DB so the
