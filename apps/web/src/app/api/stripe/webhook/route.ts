@@ -800,14 +800,28 @@ export async function POST(req: NextRequest) {
           data: { subscriptionStatus: "FREE" },
         });
 
-        // Best-effort email nudge so the user knows to update their
-        // payment method before Stripe's dunning period ends. Only
-        // sent to users we actually downgraded — canceled users
-        // were filtered out by the findMany above.
+        // First charge after the free trial, or a renewal? Decides the email
+        // copy and splits admin's decline counts (2026-10-18, R-2026-10-10-1).
+        // Best-effort; errors read as "renewal", the copy that claims least.
+        const { detectFirstPostTrialCharge, paymentFailedEventValue } = await import("@/lib/payment-failure");
+        const firstCharge = users.length > 0 ? await detectFirstPostTrialCharge(stripe, invoice) : false;
+
+        // Best-effort email so the user knows Pro is paused and can pay the
+        // open invoice on Stripe's hosted page (no sign-in). Only sent to
+        // users we actually downgraded — canceled users were filtered out
+        // by the findMany above. +2d / +5d follow-ups: recovery orchestrator.
         try {
           const { sendPaymentFailedEmail } = await import("@/emails/payment-failed");
           for (const u of users) {
-            if (u.email) await sendPaymentFailedEmail({ to: u.email, name: u.name });
+            if (u.email)
+              await sendPaymentFailedEmail({
+                to: u.email,
+                name: u.name,
+                hostedInvoiceUrl: invoice.hosted_invoice_url ?? null,
+                amountDue: invoice.amount_due ?? null,
+                currency: invoice.currency ?? null,
+                firstCharge,
+              });
           }
         } catch (err) {
           safeLog.warn("stripe-webhook.payment-failed-email-failed", {
@@ -837,7 +851,7 @@ export async function POST(req: NextRequest) {
             await logServerFunnelEvent(prisma, {
               userId: u.id,
               event: "funnel_payment_failed",
-              value: `decline:${declineCode}`,
+              value: paymentFailedEventValue(declineCode, firstCharge),
               context: "invoice.payment_failed",
             });
           }

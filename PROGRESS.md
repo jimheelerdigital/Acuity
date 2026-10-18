@@ -7,6 +7,36 @@
 
 ---
 
+## [2026-10-18] — Declined-card email tells the truth, links to the invoice, and follows up twice (audit R-2026-10-10-1)
+
+- **Requested by:** Keenan (business cofounder) via the 2026-10-10 audit, Prompt 1; re-flagged 2026-10-17 as "false billing email"
+- **Committed by:** Claude (Cowork)
+- **Branch:** `fix/payment-failed-email`, stacked on `feat/day2-nudge` (merge that first). NOT on main; Jimmy merges. No app build, no schema change, no flag — live on merge.
+
+### In plain English (for Keenan)
+When a card was declined at the end of the free week, the email said "your account is still active" while the code had already switched the person to Free, and the button sent them to a sign-in page. Now the email says what actually happened — Pro is paused until a payment goes through, debriefs are safe — and the button opens Stripe's own invoice page, which takes any card with no sign-in. Two reminders follow at day 2 and day 5 while Stripe is still retrying, and they stop by themselves the moment the invoice is paid or the subscription is cancelled. The admin Funnel tab's Paid card now shows how many cards were declined at trial end and why, and the weekly audit no longer counts a declined card as a paying customer.
+
+### Technical changes (for Jimmy)
+- `emails/payment-failed.ts`: rewritten. `paymentFailedCopy(input)` → first-charge variant ("Your free week ended and your card didn't go through", CTA = `hosted_invoice_url`) or renewal variant ("Couldn't charge your card — Pro is paused"). Falls back to `/api/stripe/manage` only when Stripe gave no hosted URL. Amount via `formatAmount`.
+- `lib/payment-failure.ts` (new): `isFirstPostTrialCharge` (pure: `billing_reason === "subscription_cycle"` AND (no earlier paid invoice OR `trial_end` within 3 days)), `detectFirstPostTrialCharge(stripe, invoice)` (best-effort, errors → renewal), `findOpenInvoice(stripe, customerId)`, `paymentFailedEventValue` / `parsePaymentFailedEventValue` (`decline:<code>;first_charge:true|false`).
+- `stripe/webhook/route.ts` `invoice.payment_failed`: unchanged entitlement logic (anchor first, then FREE — no-grace spec untouched, see manual steps); passes `hosted_invoice_url`, `amount_due`, `currency`, `firstCharge` into the email; `funnel_payment_failed` value now carries `first_charge`.
+- Follow-ups: `emails/trial/payment-failed-followup.ts` (`payment_failed_2d` "Pro is still paused", `payment_failed_5d` "Last chance to keep Ripple Pro"); `lib/payment-failed-followups.ts` `followUpKeyFor(hours)` (44–116h → 2d, 116–240h → 5d); recovery orchestrator block keyed on `stripeFirstFailureAt` (NOT status — user is already FREE), `skipThrottle` (billing notice). `sendTrialEmail` for these keys: re-reads Stripe for an **open** invoice — none → `not_applicable`, no TrialEmailLog row; `TRANSACTIONAL_EMAIL_KEYS` bypass the marketing unsubscribe (footer link stays). Both keys `EMAIL_ENABLED` = true.
+- Admin: `GET /api/admin/metrics` funnel analytics returns `declines {users, trialEnd, renewal, unknown, codes}`; `FunnelAnalyticsTab` PaidCard shows "Declined at trial end: N · codes".
+- Collector: `trial_to_paid_*` no longer counts `past_due` as converted; adds `declined` and `stripe.subscriptions.trial_declined_7d`. `lib/adlab/trial-quality.ts` already required PRO + no failure anchor — left as is.
+- Tests: `lib/payment-failure.test.ts` (15), webhook `route.test.ts` (+4: first-charge args, renewal, Stripe failure, already-FREE retry sends nothing), `lib/trial-emails.payment-failed.test.ts` (5: open invoice → send, none → not_applicable, anchor cleared, unsubscribe bypass, dedupe). tsc = 151 (baseline).
+
+### Manual steps needed
+- [ ] Jimmy: merge `feat/day2-nudge`, then `fix/payment-failed-email`.
+- [ ] **Keenan decision (asked by the audit, not changed here):** should a FIRST-charge failure keep Pro for Stripe's ~5-day retry window instead of dropping to Free at once? Today's rule (no-grace, 2026-06-12) is unchanged; the email now describes it honestly. If yes, that's a webhook change + a small entitlements review.
+- [ ] Keenan: Stripe → Radar → Risk controls → review the free-trial-abuse backtest (audit 2026-10-10 §2). Dashboard only.
+- [ ] Week 1: `select "emailKey", count(*) from "TrialEmailLog" where "emailKey" like 'payment_failed_%' group by 1` and `stripe.subscriptions.past_due` in the next audit.
+
+### Notes
+- Stripe's retry schedule and what happens after the last retry (cancel vs leave unpaid) are dashboard settings I could not read from the repo; the copy avoids promising either ("you don't need to do anything").
+- Follow-ups only ever fire while Stripe reports an open invoice for the customer, so a user who paid by card update, paid the invoice, or cancelled gets nothing more even if the anchor somehow stayed set.
+
+---
+
 ## [2026-10-18] — Day-2 come-back nudge: push when we can, one email when we can't (audit 2026-10-17, R-3)
 
 - **Requested by:** Keenan (business cofounder) via the weekly audit, Prompt 3

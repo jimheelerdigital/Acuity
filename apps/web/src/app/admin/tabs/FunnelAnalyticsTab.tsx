@@ -188,7 +188,7 @@ const FLOW_TO_KEY: Record<string, keyof typeof FUNNELS> = { v8: "ripple", "v9-te
 
 /** Paid subscribers from the subscription records themselves, so this can
  *  never read zero while real people are paying (2026-09-28). */
-function PaidCard({ paid }: { paid: any[] }) {
+function PaidCard({ paid, declines }: { paid: any[]; declines?: { users: number; trialEnd: number; renewal: number; unknown: number; codes: Record<string, number> } }) {
   const byFunnel = (Object.keys(FUNNELS) as (keyof typeof FUNNELS)[]).map((fk) => ({ fk, n: paid.filter((p) => FLOW_TO_KEY[p.flow] === fk).length }));
   const other = paid.filter((p) => !FLOW_TO_KEY[p.flow]).length;
   const yearly = paid.filter((p) => p.plan === "yearly").length;
@@ -199,6 +199,16 @@ function PaidCard({ paid }: { paid: any[] }) {
           <div style={H}>Paid subscribers (card on file)</div>
           <div style={{ fontSize: 40, fontWeight: 800, lineHeight: 1, color: "var(--acuity-text)" }}>{paid.length}</div>
           <div style={{ fontSize: 11, color: "rgba(255,255,255,0.4)", marginTop: 4 }}>{yearly} yearly · {paid.length - yearly} monthly or unknown</div>
+          {declines && declines.users > 0 && (
+            <div style={{ fontSize: 11, color: "var(--acuity-bad, #f87171)", marginTop: 6 }} title="Cards Stripe declined in the date range (latest attempt per user). Pro is paused for these until the open invoice is paid.">
+              Declined at trial end: <strong>{declines.trialEnd}</strong>
+              {declines.renewal > 0 && <> · renewals: {declines.renewal}</>}
+              {declines.unknown > 0 && <> · before 10/18 (unsplit): {declines.unknown}</>}
+              {Object.keys(declines.codes).length > 0 && (
+                <span style={{ color: "rgba(255,255,255,0.4)" }}> · {Object.entries(declines.codes).sort((a, b) => b[1] - a[1]).map(([c, n]) => `${c} ${n}`).join(", ")}</span>
+              )}
+            </div>
+          )}
         </div>
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginLeft: "auto" }}>
           {byFunnel.map(({ fk, n }) => (
@@ -409,7 +419,7 @@ function CompareView({ start, end, traffic, mode }: { start: string; end: string
         </label>
       </div>
 
-      <PaidCard paid={data.paid ?? []} />
+      <PaidCard paid={data.paid ?? []} declines={data.declines} />
       <AppStoreCard a={data.appStore} />
       <MilestoneChart funnels={Object.fromEntries(cols.map((fk) => [fk, funnel(fk)]))} cols={cols} />
       {splitOn && (

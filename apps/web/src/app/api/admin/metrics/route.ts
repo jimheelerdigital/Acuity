@@ -2256,12 +2256,34 @@ async function getFunnelCompare(
     appPaid: appUsers.filter((u: { subscriptionStatus: string }) => u.subscriptionStatus === "PRO").length,
   };
 
+  // Declined cards (2026-10-18, R-2026-10-10-1): funnel_payment_failed rows
+  // in range, one per user (latest), split trial-end vs renewal with the
+  // decline-code breakdown. Value format: lib/payment-failure.ts.
+  const { parsePaymentFailedEventValue } = await import("@/lib/payment-failure");
+  const declineRows = await prisma.onboardingEvent.findMany({
+    where: { event: "funnel_payment_failed", userId: { not: null }, createdAt: { gte: start, lte: end } },
+    select: { userId: true, value: true },
+    orderBy: { createdAt: "asc" },
+  });
+  const latestDecline = new Map<string, string | null>();
+  for (const r of declineRows) if (r.userId) latestDecline.set(r.userId, r.value);
+  const declines = { users: 0, trialEnd: 0, renewal: 0, unknown: 0, codes: {} as Record<string, number> };
+  for (const v of latestDecline.values()) {
+    const p = parsePaymentFailedEventValue(v);
+    declines.users += 1;
+    if (p.firstCharge === true) declines.trialEnd += 1;
+    else if (p.firstCharge === false) declines.renewal += 1;
+    else declines.unknown += 1;
+    declines.codes[p.declineCode] = (declines.codes[p.declineCode] ?? 0) + 1;
+  }
+
   return {
     flag,
     splitOnly,
     traffic,
     targetPerArm: 350,
     paid,
+    declines,
     appStore,
     funnels,
     tests: { ripple: pairTests("v8", "v9-test"), bwk: pairTests("v8-bwk", "v9-test-bwk") },
