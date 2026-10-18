@@ -7,6 +7,37 @@
 
 ---
 
+## [2026-10-18] — MCP OAuth hardening: rate limits, revoke on refresh replay, honest consent screen (audit 2026-10-17 §6.2)
+
+- **Requested by:** Jimmy (security; audit 2026-10-17 top issue #2 and backlog "MCP hardening")
+- **Committed by:** Claude (Cowork)
+- **Branch:** `sec/mcp-oauth-hardening` off main. NOT on main; Jimmy merges. No build, no schema, no flag — live on merge. Upstash is configured in Production, so the limiters are real there (they fail open where it isn't, by design of `lib/rate-limit.ts`).
+
+### In plain English (for Keenan)
+The "Sign in with Ripple" door that lets Claude read a journal had three gaps: anyone could hammer its three endpoints as fast as they liked, a stolen refresh token that got replayed was only logged, and the consent screen trusted whatever name an app typed for itself (anyone can call an app "Claude"). Now each endpoint has a per-address ceiling and the paid search tool has a per-user one; a replayed refresh token disconnects the whole connection on the spot (the real app just reconnects, the thief is out); and the consent screen says plainly when Ripple can't vouch for the app and shows exactly where the user's journal access will be sent.
+
+### Technical changes (for Jimmy)
+- `lib/rate-limit.ts`: `oauthRegisterByIp` 5/h, `oauthTokenByIp` 30/min, `mcpByIp` 120/min, `mcpSearchByUser` 60/h.
+- `api/oauth/register`, `api/oauth/token`: IP limiter before any parsing → 429 `temporarily_unavailable` + `Retry-After` (CORS headers kept).
+- `api/mcp/route.ts`: `rateLimitedHandler` wraps `withMcpAuth` (IP cap in front of auth, JSON-RPC-shaped 429); `search_journal` checks `mcpSearchByUser` and returns a tool error with the retry time.
+- `lib/mcp-oauth/server.ts`: `refreshAccessToken` — a token matching `previousRefreshTokenHash` now calls `revokeConnectionById(id, "refresh-replay")` (connection + all access tokens) and logs `mcp-oauth.refresh-token-replayed-revoked`. `ResolvedClient` carries `kind` + `createdAt`.
+- `lib/mcp-oauth/core.ts`: `classifyRedirectHost(uri)` → `known` (claude.ai/.com, anthropic.com, chatgpt.com, openai.com, cursor.com and subdomains) | `loopback` | `unknown`.
+- `app/oauth/authorize/page.tsx`: `unknown` → amber `role="alert"` box ("Ripple can't verify who "X" is… access goes to **host**, an app registered N minutes ago"); `loopback` → quieter "app on this computer" note; `known` unchanged.
+- Collector: `out.mcp` (OAuth clients total/dcr/new, active connections + users, revoked this week, tokens used this week). Verified the SQL against prod (1 client, 1 connection today).
+- Tests: `lib/mcp-oauth/server.test.ts` (+2: replay revokes rotated refresh AND live access token; resolved client metadata), `core.test.ts` (+1 classifier), `app/api/oauth/rate-limit.test.ts` (4: 429 + Retry-After before any work, pass-through). tsc = 151.
+
+### Manual steps needed
+- [ ] Jimmy: merge `sec/mcp-oauth-hardening`.
+- [ ] After merge, sanity check from a terminal: `for i in $(seq 1 7); do curl -s -o /dev/null -w "%{http_code}\n" -X POST https://goripple.io/api/oauth/register -H 'content-type: application/json' -d '{}'; done` → six `400`s then `429` (the limiter counts attempts, bad bodies included).
+- [ ] Jimmy: if Claude ever presents an old refresh token, the new rule disconnects on replay instead of ignoring it — just reconnect from Claude's connector settings.
+- [ ] Still open from the audit, not code: privacy policy + App Store label should disclose the MCP connector (shares journal data with third-party AI clients on the user's request).
+
+### Notes
+- Not done: switching dynamic registration off in favour of Client ID Metadata Documents only. Claude's "Register automatically" needs DCR today; the rate limit is the proportionate fix.
+- Access tokens still live 1h and refresh 90 days sliding; unchanged — Jimmy's call if that should shorten.
+
+---
+
 ## [2026-10-18] — Declined-card email tells the truth, links to the invoice, and follows up twice (audit R-2026-10-10-1)
 
 - **Requested by:** Keenan (business cofounder) via the 2026-10-10 audit, Prompt 1; re-flagged 2026-10-17 as "false billing email"

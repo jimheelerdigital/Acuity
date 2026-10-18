@@ -21,7 +21,7 @@ vi.mock("@/lib/prisma", () => ({
   prisma: {
     oAuthClient: {
       findUnique: async ({ where }: any) => db.clients.find((c) => c.clientId === where.clientId) ?? null,
-      create: async ({ data }: any) => (db.clients.push({ id: id(), updatedAt: new Date(), ...data }), data),
+      create: async ({ data }: any) => (db.clients.push({ id: id(), updatedAt: new Date(), createdAt: new Date(), ...data }), data),
       upsert: async () => ({}),
     },
     oAuthAuthCode: {
@@ -166,6 +166,28 @@ describe("code → tokens → refresh → revoke", () => {
     expect((await verifyMcpToken(second.body.access_token))?.userId).toBe("user1");
     const replay = await refreshAccessToken({ refreshToken: first.body.refresh_token, clientId });
     expect(replay.ok).toBe(false);
+  });
+
+  it("a replayed refresh token revokes the whole connection (2026-10-18): the rotated token and the live access token die too", async () => {
+    const clientId = await register();
+    const first = await exchangeAuthCode({ code: await codeFor(clientId), clientId, redirectUri: REDIRECT, codeVerifier: verifier, resource: null });
+    if (!first.ok) throw new Error("exchange failed");
+    const second = await refreshAccessToken({ refreshToken: first.body.refresh_token, clientId });
+    if (!second.ok) throw new Error("refresh failed");
+    expect((await verifyMcpToken(second.body.access_token))?.userId).toBe("user1"); // precondition
+
+    // Someone presents the OLD token: we can't tell thief from client, so cut both off.
+    expect((await refreshAccessToken({ refreshToken: first.body.refresh_token, clientId })).ok).toBe(false);
+    expect(db.conns[0].revokedAt).toBeInstanceOf(Date);
+    expect((await refreshAccessToken({ refreshToken: second.body.refresh_token, clientId })).ok).toBe(false);
+    expect(await verifyMcpToken(second.body.access_token)).toBeNull();
+  });
+
+  it("resolved clients carry kind + createdAt for the consent page", async () => {
+    const clientId = await register();
+    const c = await checkClientAndRedirect(clientId, REDIRECT);
+    expect(c?.kind).toBe("dcr");
+    expect(c?.createdAt).toBeInstanceOf(Date);
   });
 
   it("disconnect kills access and refresh", async () => {
