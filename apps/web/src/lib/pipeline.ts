@@ -280,7 +280,10 @@ export async function extractFromTranscript(
   // no habits, and the habitCompletions field simply comes back empty. The
   // description lets a habit be caught by the activities it names, not just
   // its title.
-  habits: Array<{ name: string; description?: string | null }> = []
+  habits: Array<{ name: string; description?: string | null }> = [],
+  // ClaudeCallLog attribution (2026-10-18). Optional so older callers and
+  // tests keep working; the two production callers pass it.
+  userId: string | null = null
 ): Promise<ExtractionResult> {
   const contextBlock = memoryContext
     ? `Here is what you know about this user from their entire history with Ripple:\n${memoryContext}\n\nUse these historical patterns to enrich your extraction — for example, if a goal has been mentioned multiple times before, note it as recurring rather than new.\n\n`
@@ -361,7 +364,8 @@ export async function extractFromTranscript(
     ? DISPOSITIONAL_EXTRACTION_SYSTEM_PROMPT
     : LEGACY_EXTRACTION_SYSTEM_PROMPT;
 
-  const message = await anthropic.messages.create({
+  const { loggedMessagesCreate } = await import("@/lib/claude-call-log");
+  const message = await loggedMessagesCreate(anthropic, {
     model: CLAUDE_MODEL,
     max_tokens: CLAUDE_EXTRACTION_MAX_TOKENS,
     system: systemPrompt,
@@ -371,7 +375,7 @@ export async function extractFromTranscript(
         content: `${contextBlock}${goalBlock}${dimensionBlock}${taskGroupsBlock}${habitsBlock}${calendarContextBlock}Today's date: ${todayISO}\n\nDaily debrief transcript:\n\n${transcript}`,
       },
     ],
-  });
+  }, { purpose: "entry_extraction", userId });
 
   const rawText =
     message.content[0].type === "text" ? message.content[0].text : "";
@@ -671,7 +675,7 @@ export async function processEntry({
     if (!ent.canExtractEntries) {
       // FREE branch — Haiku summary, recording stats, streak, return.
       const { summarizeForFreeTier } = await import("@/lib/free-summary");
-      const summary = await summarizeForFreeTier(transcript);
+      const summary = await summarizeForFreeTier(transcript, userId);
       const entryRow = await prisma.entry.update({
         where: { id: entryId },
         data: {
@@ -799,7 +803,8 @@ export async function processEntry({
       dimensionContext ?? null,
       false,
       "",
-      activeHabits.map((h) => ({ name: h.name, description: h.description }))
+      activeHabits.map((h) => ({ name: h.name, description: h.description })),
+      userId
     );
 
     // ── Persist everything in one transaction ─────────────────────────────

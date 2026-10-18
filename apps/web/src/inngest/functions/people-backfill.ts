@@ -129,12 +129,12 @@ export const peopleBackfillFn = inngest.createFunction(
           try {
             const entry = await prisma.entry.findUnique({
               where: { id: entryId },
-              select: { transcript: true, peopleExtractedAt: true },
+              select: { transcript: true, peopleExtractedAt: true, userId: true },
             });
             if (!entry?.transcript) continue;
             if (entry.peopleExtractedAt) continue; // double-check guard
 
-            const candidates = await detectNamedPeople(entry.transcript);
+            const candidates = await detectNamedPeople(entry.transcript, entry.userId);
             const mentions = locateMentions(entry.transcript, candidates);
 
             for (const m of mentions) {

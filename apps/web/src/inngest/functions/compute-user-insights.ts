@@ -232,6 +232,7 @@ export const computeUserInsightsFn = inngest.createFunction(
         signals,
         digest,
         evidenceMode: evidenceOn,
+        userId,
       }).catch((err) => {
         logger.warn(`[compute-user-insights] Claude failed for ${userId}: ${String(err)}`);
         return null;
@@ -701,6 +702,8 @@ export async function synthesizeWithClaude(params: {
    * request is byte-identical to what it was before this feature existed.
    */
   evidenceMode?: boolean;
+  /** ClaudeCallLog attribution (2026-10-18). */
+  userId?: string | null;
 }): Promise<Array<{
   text: string;
   severity: Severity;
@@ -720,12 +723,13 @@ export async function synthesizeWithClaude(params: {
 
   const userMessage = `${params.digest}\n\nNumeric signals from this week:\n${signalBlock}`;
 
-  const res = await anthropic.messages.create(flagshipRequest({
+  const { loggedMessagesCreate } = await import("@/lib/claude-call-log");
+  const res = await loggedMessagesCreate(anthropic, flagshipRequest({
     system: params.evidenceMode
       ? EVIDENCE_SYSTEM_PROMPT
       : OBSERVATION_SYSTEM_PROMPT,
     messages: [{ role: "user", content: userMessage }],
-  }));
+  }), { purpose: "user_insights_weekly", userId: params.userId ?? null });
 
   const rawText = flagshipText(res);
   const jsonText = rawText

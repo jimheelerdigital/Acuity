@@ -7,6 +7,30 @@
 
 ---
 
+## [2026-10-18] — Every per-user Claude call now writes ClaudeCallLog with the user and the real price (audit 2026-10-17 "Unlogged AI cost")
+
+- **Requested by:** Jimmy (audit 2026-10-17 §6 item 6 + backlog "Log pipeline.ts and Opus 5.5 calls")
+- **Committed by:** Claude (Cowork)
+- **Branch:** `chore/claude-call-log-coverage` off main. NOT on main; Jimmy merges. No build, no schema, no flag.
+
+### In plain English (for Keenan)
+We could see what the content factory and ads tools spent on AI, but not what each customer costs us: the debrief analysis, memory, free-tier summaries, the weekly report and the four Opus 5.5 features (Ask your past, weekly insights, Life Audit, State of Me) weren't recorded, so "cost per user" read $0. Every one of those calls now writes a log row tagged with the user and priced from Anthropic's official price list.
+
+### Technical changes (for Jimmy)
+- `lib/claude-call-log.ts` (new): `loggedMessagesCreate(client, params, {purpose, userId})` wraps a non-streaming `messages.create`, writes one `ClaudeCallLog` row on success or failure (failure: 0 tokens, error message, rethrows unchanged); a failed log write never breaks the caller. `costCentsFor(model, usage)` prices input, output, 5-min cache writes (1.25x) and cache reads (0.1x, or 0.05x for Opus 5.5 / Sonnet 5.5), rounded up to whole cents. Price table copied from https://platform.claude.com/docs/en/about-claude/pricing (read 2026-10-18); unknown models price as Sonnet 4.6 and log `claude-call-log.unknown-model-price`.
+- Wired (purpose → file): `entry_extraction` → `lib/pipeline.ts extractFromTranscript` (new trailing `userId` arg, passed by `process-entry.ts` and the legacy `processEntry`); `memory_compression`, `life_map_insights` → `lib/memory.ts`; `free_tier_summary` → `lib/free-summary.ts` (+ `userId` arg at both callers); `people_ner` → `lib/people-ner.ts` (+ `userId`; `people-backfill.ts` now selects `entry.userId`); `weekly_report` → `generate-weekly-report.ts`; `user_insights_weekly` → `compute-user-insights.ts synthesizeWithClaude` (+ `userId` param); `life_audit`, `state_of_me`, `ask_past` → their functions/route.
+- Tests: `lib/claude-call-log.test.ts` (5: official prices incl. Opus 4.x tiers, cache maths, success row fields, failure row + rethrow, log-write failure is swallowed). tsc = 151. Full suite: only the 6 pre-existing `lib/evidence/*` failures that main already has.
+
+### Manual steps needed
+- [ ] Jimmy: merge `chore/claude-call-log-coverage`.
+- [ ] After a few days: `select purpose, count(*), sum("costCents")/100.0 usd, count(distinct "userId") users from "ClaudeCallLog" where "createdAt" > now() - interval '7 days' and "userId" is not null group by 1 order by 3 desc;` — that's the first real per-user COGS number, and the next audit's `user_attributed_usd` stops reading $0.
+
+### Notes / not done (deliberately)
+- **Batch API for weekly insights: deferred, on purpose.** Prod today: 69 eligible users, 27 with a debrief in 14 days, 156 insights from 1 Claude call per active user last Sunday. That's roughly 30–50 Opus 5.5 calls a week; Batch saves 50% of a bill that is likely a few dollars a week, at the cost of an async submit/poll/collect flow. Once a week of these logs shows the real `user_insights_weekly` spend, it's a measured decision instead of a guess. The sequential per-user loop with no `step.run` boundaries is the thing that will hurt first as users grow (one long invocation, retries redo everyone) — fixing that and moving to Batch are the same piece of work when it's time.
+- System-level calls that already logged (content factory, AdLab, MRI) are untouched; their hard-coded $3/$15 rates are a separate, smaller inaccuracy.
+
+---
+
 ## [2026-10-18] — First debrief after payment opens on her own answers, not a blank box (audit 2026-10-10 R-2)
 
 - **Requested by:** Keenan (business cofounder) via the 2026-10-10 audit, Prompt 2

@@ -174,12 +174,13 @@ export const generateWeeklyReportFn = inngest.createFunction(
         `${entries.entries.length} entries | ${entries.tasksOpened} tasks opened | ${entries.tasksClosed} tasks closed\n\n` +
         summaryLines;
 
-      const message = await anthropic.messages.create({
+      const { loggedMessagesCreate } = await import("@/lib/claude-call-log");
+      const message = await loggedMessagesCreate(anthropic, {
         model: CLAUDE_MODEL,
         max_tokens: CLAUDE_MAX_TOKENS,
         system: WEEKLY_SYSTEM_PROMPT,
         messages: [{ role: "user", content: userContent }],
-      });
+      }, { purpose: "weekly_report", userId });
 
       const rawText =
         message.content[0].type === "text" ? message.content[0].text : "";
