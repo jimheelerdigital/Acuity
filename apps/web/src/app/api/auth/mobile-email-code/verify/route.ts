@@ -44,6 +44,10 @@ export async function POST(req: NextRequest) {
 
   const rl = await checkRateLimit(limiters.auth, identifierFromRequest(req, "email-code-verify"));
   if (!rl.success) return rateLimitedResponse(rl);
+  // Per-email cap too (2026-10-18): IP limits don't stop a rotating
+  // guesser, and each re-requested code starts at 0 tries.
+  const byEmail = await checkRateLimit(limiters.emailCodeVerifyByEmail, `email-code-verify:${email}`);
+  if (!byEmail.success) return rateLimitedResponse(byEmail);
 
   const result = await checkCode(email, code);
   if (!result.ok) return NextResponse.json({ error: result.error }, { status: 400 });

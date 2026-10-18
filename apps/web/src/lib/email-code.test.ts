@@ -10,9 +10,17 @@ vi.mock("@/lib/prisma", () => ({
     emailSignInCode: {
       updateMany: async ({ where, data }: any) => {
         const hit = rows.filter(
-          (r) => r.email === (where.email ?? r.email) && (where.id ? r.id === where.id : true) && r.consumedAt === null
+          (r) =>
+            r.email === (where.email ?? r.email) &&
+            (where.id ? r.id === where.id : true) &&
+            (where.consumedAt === null ? r.consumedAt === null : true) &&
+            (where.attempts?.lt !== undefined ? r.attempts < where.attempts.lt : true)
         );
-        hit.forEach((r) => Object.assign(r, data));
+        hit.forEach((r) => {
+          const { attempts, ...rest } = data;
+          Object.assign(r, rest);
+          if (attempts?.increment) r.attempts += attempts.increment;
+        });
         return { count: hit.length };
       },
       create: async ({ data }: any) => {
@@ -82,6 +90,16 @@ describe("issue + check", () => {
     const wrong = code === "000000" ? "111111" : "000000";
     for (let i = 0; i < 4; i++) expect(await checkCode("a@b.co", wrong)).toEqual({ ok: false, error: "InvalidCode" });
     expect(await checkCode("a@b.co", wrong)).toEqual({ ok: false, error: "TooManyAttempts" });
+    expect(await checkCode("a@b.co", code)).toEqual({ ok: false, error: "TooManyAttempts" });
+  });
+  it("parallel wrong guesses can never exceed the cap (atomic increment)", async () => {
+    const code = await issueCode("a@b.co");
+    const wrong = code === "000000" ? "111111" : "000000";
+    // 8 guesses race on the same (stale) read of attempts=0. The WHERE
+    // attempts < MAX clause means only 5 writes land.
+    const results = await Promise.all(Array.from({ length: 8 }, () => checkCode("a@b.co", wrong)));
+    expect(rows[0].attempts).toBe(5);
+    expect(results.every((r) => !r.ok)).toBe(true);
     expect(await checkCode("a@b.co", code)).toEqual({ ok: false, error: "TooManyAttempts" });
   });
   it("rejects expired codes", async () => {

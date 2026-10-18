@@ -151,6 +151,21 @@ export async function POST(req: NextRequest) {
   }
   const email = tokenEmail ?? cachedEmail;
 
+  // 2026-10-18 (takeover fix): only an email Apple itself put in the token
+  // — and attested — may be used to LINK TO or CREATE an account. The
+  // client-cached email is a convenience for the appleSubject-known path
+  // only; letting it pick which existing account to attach to would let
+  // any Apple ID claim any mailbox. Apple includes `email` in every
+  // identity token for a user who granted the email scope, so this does
+  // not break repeat sign-ins (those resolve by appleSubject first anyway).
+  const appleAttestedEmail =
+    tokenEmail &&
+    (claims.email_verified === undefined ||
+      claims.email_verified === true ||
+      claims.email_verified === "true")
+      ? tokenEmail
+      : null;
+
   // ── Find or create the user ────────────────────────────────────
   // Lookup priority:
   //   1. By appleSubject (definitive — same Apple ID = same row)
@@ -184,11 +199,11 @@ export async function POST(req: NextRequest) {
   let wasCreated = false;
   let wasLinked = false;
 
-  if (!user && email) {
+  if (!user && appleAttestedEmail) {
     // Account-link path: a User already exists with this email (e.g.,
     // signed up via Google or password); attach Apple to it.
     const existing = await prisma.user.findUnique({
-      where: { email },
+      where: { email: appleAttestedEmail },
       select: {
         id: true,
         email: true,
@@ -197,9 +212,15 @@ export async function POST(req: NextRequest) {
         subscriptionStatus: true,
         trialEndsAt: true,
         appleSubject: true,
+        passwordHash: true,
+        emailVerified: true,
       },
     });
     if (existing) {
+      // 2026-10-18 takeover fix: an unverified password account loses its
+      // password + sessions before Apple is attached (lib/oauth-link.ts).
+      const { secureOAuthLink } = await import("@/lib/oauth-link");
+      await secureOAuthLink(prisma, existing, "apple");
       user = await prisma.user.update({
         where: { id: existing.id },
         data: {
@@ -223,14 +244,14 @@ export async function POST(req: NextRequest) {
   }
 
   if (!user) {
-    if (!email) {
-      // First-ever Apple sign-in for this user, but the token didn't
-      // carry email AND the client didn't cache one. We can't safely
-      // create a User row without an email — there are too many
-      // downstream code paths that key off email (Stripe, weekly
-      // digests, account delete confirm). Refuse and ask the client
-      // to retry with the cached email it should have stashed on
-      // first auth.
+    if (!appleAttestedEmail) {
+      // First-ever Apple sign-in for this Apple ID but the token carried
+      // no (verified) email. We won't create or link on a client-supplied
+      // email (2026-10-18) — that would let any Apple ID claim any
+      // mailbox. Ask the user to sign in again; Apple re-sends the
+      // email claim when the app is removed from Sign in with Apple
+      // settings, which the message points them at.
+      void email; // the cached value is deliberately unused here
       return NextResponse.json(
         {
           error:
@@ -245,11 +266,11 @@ export async function POST(req: NextRequest) {
     // at create; bootstrapNewUser re-derives the same base + bonuses below.
     const { trialDaysForEmail } = await import("@/lib/bootstrap-user");
     const defaultTrialEnd = new Date(
-      Date.now() + (await trialDaysForEmail(email)) * 24 * 60 * 60 * 1000
+      Date.now() + (await trialDaysForEmail(appleAttestedEmail)) * 24 * 60 * 60 * 1000
     );
     user = await prisma.user.create({
       data: {
-        email,
+        email: appleAttestedEmail,
         name: cachedFullName,
         emailVerified: new Date(), // Apple verifies before issuing the token
         appleSubject: claims.sub,

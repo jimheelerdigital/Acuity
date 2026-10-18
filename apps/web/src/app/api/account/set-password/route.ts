@@ -44,6 +44,14 @@ export async function POST(req: NextRequest) {
   }
 
   await prisma.user.update({ where: { id: user.id }, data: { passwordHash: await hashPassword(password) } });
+  // Audit trail (2026-10-18): proof = an authenticated session.
+  try {
+    await prisma.onboardingEvent.create({
+      data: { userId: user.id, event: "password_set", value: "proof:session" },
+    });
+  } catch {
+    // analytics only
+  }
 
   // No confirmation step (2026-09-28, per Keenan): the password works at once.
   return NextResponse.json({ ok: true, needsVerification: false });
