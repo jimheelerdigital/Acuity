@@ -1,5 +1,5 @@
-import * as ImageManipulator from "expo-image-manipulator";
-import * as ImagePicker from "expo-image-picker";
+import { requireOptionalNativeModule } from "expo";
+import type * as ImagePickerTypes from "expo-image-picker";
 import { Alert, Linking } from "react-native";
 
 import { api } from "@/lib/api";
@@ -15,7 +15,47 @@ import { getToken } from "@/lib/auth";
  *
  * Shrinking on-device matters twice: Vercel's 4.5 MB body cap, and the
  * vision model doesn't read a 12 MP photo any better than a 1600px one.
+ *
+ * ── Native modules are optional (2026-10-18) ─────────────────────────
+ * expo-image-picker and expo-image-manipulator are NATIVE. Build 183
+ * (1.9.4, runtimeVersion "1.9.4" via the appVersion policy) doesn't
+ * contain them, and an OTA to 1.9.4 ships this JS to it. Both packages
+ * call requireNativeModule() when their JS is first evaluated, which
+ * THROWS on a binary without them — so a static import here would take
+ * the record screen down on 183. Instead: nothing native is touched at
+ * import time, `handwritingCaptureAvailable()` asks the binary
+ * (requireOptionalNativeModule returns null instead of throwing), the
+ * record screen only shows the camera button when it's true, and the
+ * modules are loaded with import() on first use. Same JS: no button on
+ * 183, working button on 1.9.5+.
  */
+
+const PICKER_NATIVE = "ExponentImagePicker";
+const MANIPULATOR_NATIVE = "ExpoImageManipulator";
+
+let availability: boolean | null = null;
+
+/** True only when this binary contains both native modules. Cached. */
+export function handwritingCaptureAvailable(): boolean {
+  if (availability === null) {
+    try {
+      availability =
+        requireOptionalNativeModule(PICKER_NATIVE) != null &&
+        requireOptionalNativeModule(MANIPULATOR_NATIVE) != null;
+    } catch {
+      availability = false;
+    }
+  }
+  return availability;
+}
+
+async function loadPicker() {
+  return import("expo-image-picker");
+}
+
+async function loadManipulator() {
+  return import("expo-image-manipulator");
+}
 
 const MAX_EDGE = 1600;
 const JPEG_QUALITY = 0.7;
@@ -34,12 +74,14 @@ export class HandwritingError extends Error {
       | "rate_limited"
       | "network"
       | "server"
+      | "unavailable"
   ) {
     super(message);
   }
 }
 
 async function ensurePermission(source: CaptureSource): Promise<boolean> {
+  const ImagePicker = await loadPicker();
   const res =
     source === "camera"
       ? await ImagePicker.requestCameraPermissionsAsync()
@@ -63,7 +105,8 @@ export async function pickPage(source: CaptureSource): Promise<string | null> {
   if (!(await ensurePermission(source))) {
     throw new HandwritingError("Permission not granted", "permission");
   }
-  const opts: ImagePicker.ImagePickerOptions = {
+  const ImagePicker = await loadPicker();
+  const opts: ImagePickerTypes.ImagePickerOptions = {
     mediaTypes: ["images"],
     allowsEditing: false,
     quality: 1, // we re-encode below; avoid double compression artefacts
@@ -79,6 +122,7 @@ export async function pickPage(source: CaptureSource): Promise<string | null> {
 
 /** Downscale + JPEG-encode; returns base64 (no data: prefix). */
 export async function shrinkToBase64(uri: string): Promise<string> {
+  const ImageManipulator = await loadManipulator();
   const ctx = ImageManipulator.ImageManipulator.manipulate(uri);
   // Resize by the longer edge only when it exceeds MAX_EDGE; the API
   // keeps aspect ratio when one dimension is given, but we don't know the
@@ -104,6 +148,12 @@ export async function shrinkToBase64(uri: string): Promise<string> {
 export async function captureHandwrittenPage(
   source: CaptureSource
 ): Promise<string | null> {
+  if (!handwritingCaptureAvailable()) {
+    throw new HandwritingError(
+      "Adding a page from a photo needs the latest version of Ripple.",
+      "unavailable"
+    );
+  }
   const uri = await pickPage(source);
   if (!uri) return null;
   const image = await shrinkToBase64(uri);

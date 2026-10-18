@@ -42,6 +42,7 @@ import { getToken } from "@/lib/auth";
 import { invalidate } from "@/lib/cache";
 import {
   captureHandwrittenPage,
+  handwritingCaptureAvailable,
   HandwritingError,
   type CaptureSource,
 } from "@/lib/handwriting-capture";
@@ -1366,7 +1367,7 @@ export default function RecordScreen() {
             value={typedDraft}
             onChange={setTypedDraft}
             onSubmit={() => void submitTyped()}
-            onAddPhoto={promptPhotoSource}
+            onAddPhoto={handwritingCaptureAvailable() ? promptPhotoSource : undefined}
             submitting={typedSubmitting}
             photoReading={photoReading}
             tokens={tokens}
@@ -1407,7 +1408,9 @@ function TypedComposer({
   value: string;
   onChange: (text: string) => void;
   onSubmit: () => void;
-  onAddPhoto: () => void;
+  /** Undefined when this binary lacks the image modules (build 183):
+   *  the camera button isn't shown. See lib/handwriting-capture.ts. */
+  onAddPhoto?: () => void;
   submitting: boolean;
   photoReading: boolean;
   tokens: ReturnType<typeof useTheme>["tokens"];
@@ -1467,7 +1470,9 @@ function TypedComposer({
           }}
         >
           <View style={{ flexDirection: "row", alignItems: "center", gap: 10, flexShrink: 1 }}>
-            {/* Handwritten page → text (2026-10-17). Appends to the draft. */}
+            {/* Handwritten page → text (2026-10-17). Appends to the draft.
+                Only when the binary has the image modules (2026-10-18). */}
+            {onAddPhoto ? (
             <Pressable
               onPress={onAddPhoto}
               disabled={busy}
@@ -1491,6 +1496,7 @@ function TypedComposer({
                 <Ionicons name="camera-outline" size={20} color={tokens.textSec} />
               )}
             </Pressable>
+            ) : null}
             <Text
               numberOfLines={1}
               style={{
