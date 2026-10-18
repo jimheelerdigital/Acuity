@@ -32,6 +32,9 @@ Anyone who knew a Google / Apple / email-code user's address could "sign up" wit
 
 ### Notes
 - Trade-off accepted: a web-funnel user (random password, unverified) who later signs into the app with Google gets their web session ended once and signs in again with Google.
+- PR #85 CI fallout (2026-10-18, two follow-up commits on the branch, no prod changes):
+  - `rls-coverage` failed with 15 models missing from `prisma/rls-allowlist.txt`. None were added here — they landed on main over the past month (MCP OAuth #79, EmailSignInCode, content-factory, AdLab competitor tables) and this was the first schema.prisma change since. Verified in prod that all 15 already have RLS enabled with zero policies; declared them `rls` (commit 456e2be5).
+  - `destructive-diff` then correctly reported main's schema would DROP `Entry.inputMode`, `Entry.processingTimeline`, `RoadmapItem`, `RoadmapVote` — applied to prod from the unmerged `feat/typed-entry` branch. Fixed the way the guard says to: back-declared those models/fields on this branch plus their `docs/migrations/*.sql`, so main == prod (`Schema and database agree`). Byte-identical to feat/typed-entry's hunks, so that merge stays clean (commit 04a733b8).
 
 ---
 
