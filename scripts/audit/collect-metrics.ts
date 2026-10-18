@@ -325,6 +325,26 @@ async function collectSupabase(db: pg.Client, cur: Win, history: Win[]) {
     };
   });
 
+  // MCP connector usage (2026-10-18, audit 2026-10-17 "not collected").
+  out.mcp = await safe("supabase.mcp", async () => {
+    const [clients] = await q(db, `
+      SELECT count(*)::int total, count(*) FILTER (WHERE kind = 'dcr')::int dcr,
+             count(*) FILTER (WHERE "createdAt" >= $1)::int new_this_week
+      FROM "OAuthClient"`, [cur.start]);
+    const [conns] = await q(db, `
+      SELECT count(*)::int active_connections, count(DISTINCT "userId")::int users_connected,
+             count(*) FILTER (WHERE "createdAt" >= $1)::int new_this_week
+      FROM "McpConnection" WHERE "revokedAt" IS NULL AND "refreshExpiresAt" > now()`, [cur.start]);
+    const [revoked] = await q(db, `
+      SELECT count(*)::int revoked_this_week FROM "McpConnection" WHERE "revokedAt" >= $1`, [cur.start]);
+    const [tokens] = await q(db, `
+      SELECT count(*)::int used_this_week FROM "McpAccessToken" WHERE "lastUsedAt" >= $1`, [cur.start]);
+    return {
+      note: "OAuth clients registered against the Ripple MCP server, live user↔client connections (refresh not expired/revoked), and access tokens used this week.",
+      oauth_clients: clients, connections: { ...conns, ...revoked }, access_tokens: tokens,
+    };
+  });
+
   out.subscriptions_db = await safe("supabase.subscriptions", async () => {
     const byStatusSource = await q(db, `
       SELECT u."subscriptionStatus" status, COALESCE(u."subscriptionSource", '(none)') source, count(*)::int n

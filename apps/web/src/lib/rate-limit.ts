@@ -197,6 +197,34 @@ export const limiters = {
    * Key: literal "global" string.
    */
   tryRecordingDaily: buildLimiter("try-recording-daily", 100, "1 d"),
+
+  // ── MCP OAuth server (2026-10-18, audit 2026-10-17 §6.2) ───────────
+  /**
+   * POST /api/oauth/register — RFC 7591 dynamic client registration is
+   * open to anyone by design (Claude's "Register automatically"). 5/hr per
+   * IP: a real client registers once, a script making look-alike
+   * "Claude" clients for consent phishing does not get unlimited rows.
+   * Key: ip:oauth-register:<ip>.
+   */
+  oauthRegisterByIp: buildLimiter("oauth-register-ip", 5, "1 h"),
+  /**
+   * POST /api/oauth/token — code exchange + refresh. Codes are single-use
+   * and PKCE-bound, refresh tokens rotate, so brute force is already
+   * hopeless; this caps the DB cost of trying. 30/min per IP.
+   * Key: ip:oauth-token:<ip>.
+   */
+  oauthTokenByIp: buildLimiter("oauth-token-ip", 30, "1 m"),
+  /**
+   * /api/mcp — every request, before auth. 120/min per IP covers a chatty
+   * client (tools/list + a few calls a turn) and stops 401 spam against
+   * the token table. Key: ip:mcp:<ip>.
+   */
+  mcpByIp: buildLimiter("mcp-ip", 120, "1 m"),
+  /**
+   * search_journal — the one MCP tool that runs a paid embedding per call.
+   * 60/hr per user. Key: user:<userId>.
+   */
+  mcpSearchByUser: buildLimiter("mcp-search-user", 60, "1 h"),
 } as const;
 
 export type LimiterName = keyof typeof limiters;
