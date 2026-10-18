@@ -223,6 +223,11 @@ model User {
   // Granted manually via direct DB update (UPDATE "User" SET "isAdmin" = true WHERE email = '...').
   // Not self-service. Gates /admin/dashboard + /api/admin/*.
   isAdmin                    Boolean   @default(false)
+  // Session revocation (2026-10-18, signup account-takeover fix). Every
+  // web JWT and mobile bearer issued BEFORE this instant is rejected
+  // (lib/session-revocation.ts). Set when an OAuth sign-in supersedes an
+  // unverified password account, and available for "sign out everywhere".
+  sessionsInvalidBefore      DateTime?
   // Color-scheme preference. Null (default) → follow system / localStorage
   // whatever next-themes picks up. Set to "light" or "dark" when the
   // user explicitly picks via the toggle; we persist to the DB so the
@@ -336,6 +341,7 @@ model User {
   sessions                      Session[]
   entries                       Entry[]
   tasks                         Task[]
+  roadmapVotes                  RoadmapVote[]
   taskGroups                    TaskGroup[]
   goals                         Goal[]
   weeklyReports                 WeeklyReport[]
@@ -859,6 +865,19 @@ model Entry {
   // "other") so the extraction pipeline can splice the human-readable
   // area name into the Claude prompt without a DB join. Nullable.
   dimensionContext      String?
+  // How the words got here (2026-10-17, typed entries). "voice" = recorded
+  // audio → Whisper (the default and every pre-existing row); "typed" =
+  // the user wrote the entry on the keyboard, so there is no audio and
+  // the pipeline skips transcription (process-entry transcriptProvided).
+  // Nullable rather than defaulted so the migration is a pure column add.
+  inputMode             String?
+  // Processing phase marks (2026-10-17, "speed up processing" measurement).
+  // JSON array of { p: <phase>, at: <epoch ms> } appended by
+  // lib/processing-timeline.ts markPhase() from inside existing pipeline
+  // steps (no new step boundaries). Phases: transcribe_start,
+  // transcribe_done | transcript_provided, extract_start, extract_done,
+  // persist_done, finished. Query: see docs/processing-timeline.md.
+  processingTimeline    Json?
   tasks                 Task[]
   themeMentions         ThemeMention[]
   entityMentions        EntityMention[]
@@ -3679,4 +3698,41 @@ model UgcMailbox {
   refreshTokenEnc String
   scopes          String
   connectedAt     DateTime @default(now())
+}
+
+// ─── Public roadmap (2026-10-18) ──────────────────────────────────────
+// goripple.io/roadmap + Profile → Roadmap. Curated by admins (/admin/roadmap);
+// signed-in users upvote. Status is a String enforced in app code:
+//   considering | building | shipped
+// Shipped rows carry shippedVersion so the page doubles as a changelog.
+// Ideas are NOT stored here — "Suggest an idea" goes through the existing
+// feedback funnel (POST /api/feedback/submit → Slack → Make → Monday) and
+// admins promote the good ones into `considering` by hand.
+// Declared on main ahead of the feature branch (feat/typed-entry) because
+// the tables already exist in prod and the destructive-diff guard would
+// otherwise see main's schema as wanting to DROP them.
+model RoadmapItem {
+  id             String        @id @default(cuid())
+  title          String
+  summary        String
+  status         String        @default("considering")
+  sortOrder      Int           @default(0)
+  shippedVersion String?
+  shippedAt      DateTime?
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+  votes          RoadmapVote[]
+
+  @@index([status, sortOrder])
+}
+
+model RoadmapVote {
+  itemId    String
+  item      RoadmapItem @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime    @default(now())
+
+  @@id([itemId, userId])
+  @@index([userId])
 }

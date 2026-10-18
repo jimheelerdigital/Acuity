@@ -17,12 +17,17 @@ import { getAuthOptions } from "@/lib/auth";
 import { resolveEntitlement } from "@/lib/entitlements/resolve";
 import {
   buildClientRedirect,
+  classifyRedirectHost,
   mcpResourceUrl,
   oauthIssuer,
   parseAuthorizeRequest,
   signConsentTicket,
 } from "@/lib/mcp-oauth/core";
 import { checkClientAndRedirect } from "@/lib/mcp-oauth/server";
+
+function minutesAgo(d: Date): number {
+  return Math.max(0, Math.floor((Date.now() - d.getTime()) / 60_000));
+}
 
 import { ConsentButtons } from "./consent-buttons";
 
@@ -111,6 +116,11 @@ export default async function AuthorizePage({
   } catch {
     /* keep raw */
   }
+  // Consent phishing guard (2026-10-18): the name is self-declared, the
+  // redirect host is the only verifiable fact. Say so, loudly, when the
+  // host isn't one we recognise.
+  const trust = classifyRedirectHost(redirectUri);
+  const registeredAgo = client.createdAt ? minutesAgo(client.createdAt) : null;
 
   return (
     <Shell>
@@ -124,6 +134,32 @@ export default async function AuthorizePage({
         <p className="mt-1 text-sm text-acuity-text-sec">
           Signed in as {session.user.email ?? "your account"}
         </p>
+
+        {trust === "unknown" && (
+          <div
+            role="alert"
+            className="mt-4 rounded-acuity-lg border border-amber-500/60 bg-amber-500/10 p-4 text-sm text-acuity-text"
+          >
+            <p className="font-semibold">Ripple can&apos;t verify who &ldquo;{appName}&rdquo; is.</p>
+            <p className="mt-1">
+              The name was typed by whoever set this app up — anyone can call an app
+              &ldquo;Claude&rdquo;. What we do know: after you approve, your journal access
+              goes to <span className="font-mono font-semibold">{returnHost}</span>
+              {registeredAgo !== null && registeredAgo < 24 * 60 ? (
+                <>, an app registered {registeredAgo < 2 ? "just now" : `${registeredAgo} minutes ago`}</>
+              ) : null}
+              . Only continue if you started this from an app you trust and that address is
+              where you expect to land.
+            </p>
+          </div>
+        )}
+        {trust === "loopback" && (
+          <p className="mt-4 rounded-acuity-lg border border-acuity-line bg-acuity-bg-sub p-3 text-xs text-acuity-text-sec">
+            This request comes from an app running on this computer (it will return to{" "}
+            <span className="font-mono">{returnHost}</span>). Ripple can&apos;t verify the app&apos;s
+            name; only approve if you just asked an app on this device to connect.
+          </p>
+        )}
 
         {isPro ? (
           <>

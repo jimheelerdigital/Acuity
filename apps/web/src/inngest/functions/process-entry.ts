@@ -390,7 +390,7 @@ export const processEntryFn = inngest.createFunction(
         });
         const transcript = entry.transcript ?? "";
         const { summarizeForFreeTier } = await import("@/lib/free-summary");
-        const summary = await summarizeForFreeTier(transcript);
+        const summary = await summarizeForFreeTier(transcript, userId);
         await prisma.entry.update({
           where: { id: entryId },
           data: { summary, status: "COMPLETE" },
@@ -659,7 +659,8 @@ export const processEntryFn = inngest.createFunction(
         entry.dimensionContext ?? null,
         useDispositional,
         calendarContext.promptBlock,
-        activeHabits.map((h) => ({ name: h.name, description: h.description }))
+        activeHabits.map((h) => ({ name: h.name, description: h.description })),
+        userId
       );
     });
 
@@ -974,7 +975,7 @@ export const processEntryFn = inngest.createFunction(
           "@/lib/people-resolver"
         );
 
-        const candidates = await detectNamedPeople(entry.transcript);
+        const candidates = await detectNamedPeople(entry.transcript, userId);
         const mentions = locateMentions(entry.transcript, candidates);
 
         if (mentions.length > 0) {

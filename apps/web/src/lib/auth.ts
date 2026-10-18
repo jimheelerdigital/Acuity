@@ -256,16 +256,69 @@ export function getAuthOptions(): NextAuthOptions {
     },
 
     callbacks: {
+      /**
+       * OAuth account-linking safety (2026-10-18 takeover fix).
+       *
+       * allowDangerousEmailAccountLinking lets Google/Apple attach to an
+       * existing row by email. That is fine when the row is one the
+       * mailbox owner made — and dangerous when someone else pre-registered
+       * the victim's email with a password (new password signups are no
+       * longer auto-verified for exactly this reason). So, BEFORE the
+       * adapter links: if the existing user has a password but never
+       * proved the email, drop the password and end every session and
+       * connector grant it has. The OAuth sign-in (which did prove the
+       * email) then proceeds and the account is theirs alone.
+       */
+      async signIn({ user, account, profile }) {
+        const provider = account?.provider;
+        if (provider !== "google" && provider !== "apple") return true;
+        const email = user?.email?.toLowerCase().trim();
+        if (!email) return false;
+        // Google tells us whether the address is verified; refuse unverified.
+        if (
+          provider === "google" &&
+          profile &&
+          (profile as { email_verified?: boolean }).email_verified === false
+        ) {
+          return false;
+        }
+        const existing = await prisma.user.findUnique({
+          where: { email },
+          select: { id: true, passwordHash: true, emailVerified: true },
+        });
+        if (!existing) return true;
+        const { secureOAuthLink } = await import("@/lib/oauth-link");
+        await secureOAuthLink(prisma, existing, provider);
+        return true;
+      },
       async jwt({ token, user }) {
         // On initial sign-in, user is the DB record from the adapter
         if (user) {
           token.id = user.id;
+        }
+        // Revocation watermark (lib/session-revocation.ts): a token issued
+        // before User.sessionsInvalidBefore loses its id, which the session
+        // callback below turns into "signed out". Cached per user/minute.
+        if (token.id && typeof token.id === "string") {
+          try {
+            const { isTokenRevoked } = await import("@/lib/session-revocation");
+            const iat = typeof token.iat === "number" ? token.iat : undefined;
+            if (await isTokenRevoked(prisma, token.id, iat)) {
+              delete token.id;
+            }
+          } catch {
+            // never let the check itself sign people out
+          }
         }
         return token;
       },
       async session({ session, token }) {
         if (session.user && token.id) {
           session.user.id = token.id as string;
+        } else if (session.user) {
+          // Revoked: hand back a session with no id so every per-user
+          // guard (`session?.user?.id`) treats it as signed out.
+          return { ...session, user: { ...session.user, id: undefined as unknown as string } };
         }
         return session;
       },
@@ -302,7 +355,13 @@ export function getAuthOptions(): NextAuthOptions {
           const method = account?.provider === "apple" ? "apple" : account?.provider === "google" ? "google" : "email";
           await p.user.update({
             where: { id: user.id },
-            data: { signupMethod: method },
+            // Google/Apple attested the address (the signIn callback refuses
+            // unverified Google profiles), so a fresh OAuth account is
+            // verified from birth — the adapter itself leaves it null.
+            data: {
+              signupMethod: method,
+              ...(method !== "email" ? { emailVerified: new Date() } : {}),
+            },
           });
 
           const { bootstrapNewUser } = await import("@/lib/bootstrap-user");

@@ -18,7 +18,14 @@ export const APP_STORE_URL = "https://apps.apple.com/us/app/acuity-daily/id67626
 export const PLAY_STORE_URL = "https://play.google.com/store/apps/details?id=com.heelerdigital.acuity";
 const TTL_HOURS = 72;
 
-export async function createAppSignInUrl(email: string): Promise<string> {
+/** Where the app should land after the one-tap sign-in. Only values the
+ *  app's auth-callback screen knows; anything else is ignored there. */
+export type AppSignInNext = "record";
+
+export async function createAppSignInUrl(
+  email: string,
+  opts: { next?: AppSignInNext } = {}
+): Promise<string> {
   const { prisma } = await import("@/lib/prisma");
   const token = randomToken();
   await prisma.verificationToken.create({
@@ -29,7 +36,8 @@ export async function createAppSignInUrl(email: string): Promise<string> {
     },
   });
   const origin = process.env.NEXTAUTH_URL ?? "https://goripple.io";
-  return `${origin}/auth/mobile-complete?token=${encodeURIComponent(token)}`;
+  const next = opts.next ? `&next=${encodeURIComponent(opts.next)}` : "";
+  return `${origin}/auth/mobile-complete?token=${encodeURIComponent(token)}${next}`;
 }
 
 /** Has this user ever signed into the app? (lib/mobile-session.ts logs it.) */

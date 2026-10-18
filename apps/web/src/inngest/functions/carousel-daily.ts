@@ -259,7 +259,8 @@ export const carouselDailyCronFn = inngest.createFunction(
         await inngest.send(
           lanes.map((lane) => ({
             name: "content-factory/daily.generate" as const,
-            data: { bucket: lane },
+            // hourUtc: lanes with two slots (ripple-list 05 + 07) pick their format by it.
+            data: { bucket: lane, hourUtc: hour },
           }))
         );
       });
@@ -611,7 +612,8 @@ export const carouselDailyCronFn = inngest.createFunction(
           select: { headline: true },
           take: 80,
         });
-        return generateHowToGuide({ recentTitles: recent.map((p) => p.headline) });
+        const { sameDayRippleText } = await import("@/lib/content-factory/same-day");
+        return generateHowToGuide({ recentTitles: recent.map((p) => p.headline), sameDay: await sameDayRippleText(today) });
       });
       logger.info(
         `[carousel-cron] How-to guide (${laneKey}): "${guide.title}" (${guide.slides.length} steps, ${guide.area}) — ${guide.candidateLog ?? ""}${guide.held ? ` HELD: ${guide.held}` : ""}`
@@ -1587,8 +1589,19 @@ export const carouselDailyCronFn = inngest.createFunction(
     const listEv = (event.data ?? {}) as { story?: boolean; listFormat?: string };
     if (bucket === "ripple-list" || (bucket === "selfie" && !listEv.story)) {
       const ev = (event.data ?? {}) as { rippleMention?: boolean; world?: string };
+      // 2026-10-16: ripple-list owns both slots (05 + 07 UTC; the "selfie"
+      // ContentLane is retired, its empty slot was holding the daily emails
+      // until the 13:00 deadline). The 05 UTC run is the avatar format.
+      const runHour =
+        typeof (event.data as { hourUtc?: number }).hourUtc === "number"
+          ? (event.data as { hourUtc: number }).hourUtc
+          : new Date(typeof event.ts === "number" ? event.ts : Date.now()).getUTCHours();
       const listFormat: "scenic" | "avatar" =
-        listEv.listFormat === "avatar" || listEv.listFormat === "scenic" ? listEv.listFormat : bucket === "selfie" ? "avatar" : "scenic";
+        listEv.listFormat === "avatar" || listEv.listFormat === "scenic"
+          ? listEv.listFormat
+          : bucket === "selfie" || runHour === 5
+            ? "avatar"
+            : "scenic";
       const list = await step.run("generate-list-topic", async () => {
         const { prisma } = await import("@/lib/prisma");
         const { generateRippleListTopic } = await import("@/lib/content-factory/ripple-list");
@@ -1618,6 +1631,8 @@ export const carouselDailyCronFn = inngest.createFunction(
           forceRipple: typeof ev.rippleMention === "boolean" ? ev.rippleMention : undefined,
           forceWorld: ev.world,
           format: listFormat,
+          // Full slides of today's earlier Ripple posts (2026-10-16).
+          sameDay: await (await import("@/lib/content-factory/same-day")).sameDayRippleText(today),
         });
       });
       logger.info(
@@ -1700,8 +1715,14 @@ export const carouselDailyCronFn = inngest.createFunction(
         const imageUrl = await uploadImage(composed, `carousels/${dateStr}/${slug}/${name}.jpg`);
         await uploadTextLayer(await buildTextLayer(raw, overlay, { scrim: false }), `carousels/${dateStr}/${slug}/${name}.jpg`);
         const motion = cover ? list.coverMotion : item!.motion;
-        // MOTION line feeds the animator (living-reel "scenic" mode).
-        return { imageUrl, rawImageUrl, overlayText, imagePrompt: `${prompt}\nMOTION: ${motion}` };
+        // MOTION line feeds the animator (living-reel "scenic" mode). DETAIL
+        // keeps the small line under the header readable for same-day.ts.
+        return {
+          imageUrl,
+          rawImageUrl,
+          overlayText,
+          imagePrompt: `${prompt}\nMOTION: ${motion}${item?.detail ? `\nDETAIL: ${item.detail}` : ""}`,
+        };
       };
 
       const listCover = await step.run("generate-list-cover", () => renderListSlide(-1));

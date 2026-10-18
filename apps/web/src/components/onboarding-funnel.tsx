@@ -1031,7 +1031,7 @@ export function OnboardingFunnel() {
           returning/authenticated users landing on download. */}
       {step === "download" && !paymentConfirmed && <TrackCompleteRegistration />}
       {step === "download" && (
-        <DownloadScreen key="download" track={track} paymentConfirmed={paymentConfirmed} selectedPlan={selectedPlan} />
+        <DownloadScreen key="download" track={track} paymentConfirmed={paymentConfirmed} selectedPlan={selectedPlan} answers={answers} />
       )}
     </div>
   );
@@ -2529,10 +2529,12 @@ function CheckoutScreen({ plan, funnel, track, onChangePlan, onFallback, fallbac
 
 // ─── Download Screen (Screen 18) ────────────────────────────────────────────
 
-function DownloadScreen({ track, paymentConfirmed, selectedPlan }: {
+function DownloadScreen({ track, paymentConfirmed, selectedPlan, answers }: {
   track: (event: string, props?: Record<string, unknown>) => void;
   paymentConfirmed: boolean;
   selectedPlan: "monthly" | "yearly";
+  /** Quiz answers (labels), for the pre-filled first debrief (2026-10-18). */
+  answers?: Record<string, string | string[]>;
 }) {
   const { data: session, status: authStatus } = useSession();
   const [testimonialIdx, setTestimonialIdx] = useState(0);
@@ -2632,6 +2634,7 @@ function DownloadScreen({ track, paymentConfirmed, selectedPlan }: {
       <FunnelFirstDebrief
         brand={typeof window !== "undefined" && window.location.pathname.includes("bwk") ? "bwk" : "ripple"}
         firstName={session?.user?.name?.split(/\s+/)[0] ?? null}
+        prefill={{ said: typeof answers?.entry === "string" ? answers.entry : null, saidKind: "quote" }}
         track={(e, v) => track(e, v ? { value: v } : undefined)}
         onDone={setDebrief}
       />

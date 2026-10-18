@@ -10,6 +10,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 
 import { exchangeAuthCode, refreshAccessToken } from "@/lib/mcp-oauth/server";
+import { checkRateLimit, identifierFromRequest, limiters } from "@/lib/rate-limit";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -40,6 +41,15 @@ async function readParams(req: NextRequest): Promise<URLSearchParams> {
 }
 
 export async function POST(req: NextRequest) {
+  // 30/min per IP (2026-10-18). Codes are single-use + PKCE and refresh
+  // tokens rotate, so this is a cost cap on guessing, not the defence.
+  const rl = await checkRateLimit(limiters.oauthTokenByIp, identifierFromRequest(req, "oauth-token"));
+  if (!rl.success) {
+    return NextResponse.json(
+      { error: "temporarily_unavailable", error_description: "Too many token requests. Try again later." },
+      { status: 429, headers: { ...HEADERS, "Retry-After": String(rl.retryAfterSeconds) } }
+    );
+  }
   const p = await readParams(req);
   const grant = p.get("grant_type");
 

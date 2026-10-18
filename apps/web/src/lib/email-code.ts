@@ -102,11 +102,15 @@ export async function checkCode(email: string, code: string): Promise<VerifyResu
   if (row.attempts >= MAX_ATTEMPTS) return { ok: false, error: "TooManyAttempts" };
 
   if (!sameHash(hashCode(email, code), row.codeHash)) {
-    await prisma.emailSignInCode.update({
-      where: { id: row.id },
+    // Atomic: the attempts cap lives in the WHERE clause, so N parallel
+    // wrong guesses can never count as one (2026-10-18). count === 0 means
+    // the cap was already reached by a racing request.
+    const counted = await prisma.emailSignInCode.updateMany({
+      where: { id: row.id, attempts: { lt: MAX_ATTEMPTS } },
       data: { attempts: { increment: 1 } },
     });
-    return { ok: false, error: row.attempts + 1 >= MAX_ATTEMPTS ? "TooManyAttempts" : "InvalidCode" };
+    const exhausted = counted.count === 0 || row.attempts + 1 >= MAX_ATTEMPTS;
+    return { ok: false, error: exhausted ? "TooManyAttempts" : "InvalidCode" };
   }
 
   // Single use, race-safe.

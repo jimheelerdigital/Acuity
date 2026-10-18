@@ -90,6 +90,15 @@ export async function POST(req: NextRequest) {
       emailVerified: user.emailVerified ?? new Date(),
     },
   });
+  // Audit trail (2026-10-18): every password write on an existing account
+  // should carry proof. This is the emailed-token path.
+  try {
+    await prisma.onboardingEvent.create({
+      data: { userId: user.id, event: "password_set", value: "proof:reset-token" },
+    });
+  } catch {
+    // analytics only
+  }
 
   return NextResponse.json({ ok: true });
 }

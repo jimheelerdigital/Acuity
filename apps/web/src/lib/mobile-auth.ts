@@ -114,7 +114,23 @@ export async function getAnySessionUserId(
   // Try mobile bearer first — it's a single header read, no cookie
   // parsing, no adapter DB hit. If present, it's the answer.
   const mobile = await getMobileSessionFromBearer(req);
-  if (mobile?.id && typeof mobile.id === "string") return mobile.id;
+  if (mobile?.id && typeof mobile.id === "string") {
+    // Revocation watermark (lib/session-revocation.ts). Cached per user
+    // per minute, so this is not a DB read on every call.
+    try {
+      const { isTokenRevoked } = await import("@/lib/session-revocation");
+      const { prisma } = await import("@/lib/prisma");
+      const iat = typeof mobile.iat === "number" ? mobile.iat : undefined;
+      if (await isTokenRevoked(prisma, mobile.id, iat)) {
+        safeLog.warn("mobile-auth.revoked-token", { userId: mobile.id });
+        return null;
+      }
+    } catch {
+      // A revocation-check failure must not take the API down; fall
+      // through to accepting the token (status quo ante).
+    }
+    return mobile.id;
+  }
 
   // Fall back to NextAuth cookie session. Import lazily so this
   // module stays importable from edge / middleware contexts that

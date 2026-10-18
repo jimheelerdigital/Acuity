@@ -80,8 +80,16 @@ export async function POST(req: NextRequest) {
     select: { id: true, passwordHash: true, emailVerified: true },
   });
 
-  if (existing?.passwordHash) {
-    return NextResponse.json({ error: "AlreadyRegistered" }, { status: 409 });
+  if (existing) {
+    // Any existing account is a 409 — never write a password onto an
+    // account the caller hasn't proven they own (2026-10-18 takeover fix;
+    // see signup/route.ts). The app routes `next: "email-code"` to the
+    // 6-digit code sign-in for this email, which both proves ownership
+    // and signs them in; a password can be set later via Forgot password.
+    return NextResponse.json(
+      { error: "AlreadyRegistered", next: "email-code" },
+      { status: 409 }
+    );
   }
 
   const passwordHash = await hashPassword(password);
@@ -89,13 +97,7 @@ export async function POST(req: NextRequest) {
   const verifyExpires = new Date(Date.now() + VERIFY_TTL_HOURS * 60 * 60 * 1000);
 
   let userId: string;
-  if (existing) {
-    await prisma.user.update({
-      where: { id: existing.id },
-      data: { passwordHash, ...(name ? { name } : {}) },
-    });
-    userId = existing.id;
-  } else {
+  {
     // Single source of truth for trial length: trialDaysForEmail (14
     // standard, 3 for re-signups within 90d — anti-abuse). bootstrapNewUser
     // re-derives the same base below + adds founding/referral bonuses.
@@ -104,7 +106,10 @@ export async function POST(req: NextRequest) {
       Date.now() + (await trialDaysForEmail(email)) * 24 * 60 * 60 * 1000
     );
     const created = await prisma.user.create({
-      data: { email, name, passwordHash, subscriptionStatus: "TRIAL", trialEndsAt: defaultTrialEnd, emailVerified: new Date(), signupMethod: "mobile-email" },
+      // Not auto-verified (2026-10-18) — see signup/route.ts for why.
+      // Sign-in is unaffected; verification is set by the verify link,
+      // a sign-in code, or an OAuth link.
+      data: { email, name, passwordHash, subscriptionStatus: "TRIAL", trialEndsAt: defaultTrialEnd, signupMethod: "mobile-email" },
       select: { id: true },
     });
     userId = created.id;
@@ -130,7 +135,7 @@ export async function POST(req: NextRequest) {
     },
   });
 
-  if (!existing || !existing.emailVerified) {
+  {
     // Re-read foundingMemberNumber + name from the user row — bootstrap
     // set the founding rank above (first 100 signups). The combined
     // welcome+verify email surfaces it in the P.S. for inbox social

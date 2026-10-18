@@ -237,10 +237,19 @@ export async function POST(req: NextRequest) {
       subscriptionStatus: true,
       trialEndsAt: true,
       onboarding: { select: { completedAt: true, currentStep: true } },
+      passwordHash: true,
+      emailVerified: true,
     },
   });
 
   let wasCreated = false;
+  if (user) {
+    // Linking Google to an existing row by email (2026-10-18 takeover
+    // fix): an unverified password account loses its password + sessions
+    // first — see lib/oauth-link.ts. Google verified this address above.
+    const { secureOAuthLink } = await import("@/lib/oauth-link");
+    await secureOAuthLink(prisma, user, "google");
+  }
   if (!user) {
     // Single source of truth for trial length: trialDaysForEmail (14
     // standard, 3 for re-signups within 90d — anti-abuse). Safety-net value
@@ -267,6 +276,8 @@ export async function POST(req: NextRequest) {
         subscriptionStatus: true,
         trialEndsAt: true,
         onboarding: { select: { completedAt: true, currentStep: true } },
+        passwordHash: true,
+        emailVerified: true,
       },
     });
     wasCreated = true;
@@ -287,6 +298,8 @@ export async function POST(req: NextRequest) {
         subscriptionStatus: true,
         trialEndsAt: true,
         onboarding: { select: { completedAt: true, currentStep: true } },
+        passwordHash: true,
+        emailVerified: true,
       },
     });
     if (refreshed) user = refreshed;

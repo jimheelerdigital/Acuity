@@ -142,3 +142,19 @@ describe("client redirect + CIMD guards", () => {
     expect(isFetchableMetadataHost("metadata.internal")).toBe(false);
   });
 });
+
+describe("classifyRedirectHost (consent trust signal)", () => {
+  it("known hosted clients, loopback apps, everything else", async () => {
+    const { classifyRedirectHost } = await import("./core");
+    expect(classifyRedirectHost("https://claude.ai/api/mcp/auth_callback")).toBe("known");
+    expect(classifyRedirectHost("https://claude.com/api/mcp/auth_callback")).toBe("known");
+    expect(classifyRedirectHost("https://chatgpt.com/connector_platform_oauth_redirect")).toBe("known");
+    expect(classifyRedirectHost("http://localhost:52341/callback")).toBe("loopback");
+    expect(classifyRedirectHost("http://127.0.0.1:8000/cb")).toBe("loopback");
+    expect(classifyRedirectHost("https://claude.ai.evil.com/cb")).toBe("unknown");
+    expect(classifyRedirectHost("https://notclaude.ai/cb")).toBe("unknown");
+    expect(classifyRedirectHost("https://example.com/cb")).toBe("unknown");
+    expect(classifyRedirectHost("myapp://callback")).toBe("unknown");
+    expect(classifyRedirectHost("not a url")).toBe("unknown");
+  });
+});

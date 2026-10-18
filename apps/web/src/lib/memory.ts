@@ -223,12 +223,13 @@ export async function compressMemory(userId: string): Promise<void> {
   );
 
   const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
-  const message = await anthropic.messages.create({
+  const { loggedMessagesCreate } = await import("@/lib/claude-call-log");
+  const message = await loggedMessagesCreate(anthropic, {
     model: CLAUDE_MODEL,
     max_tokens: CLAUDE_MAX_TOKENS,
     system,
     messages: [{ role: "user", content: user }],
-  });
+  }, { purpose: "memory_compression", userId });
 
   const rawText =
     message.content[0].type === "text" ? message.content[0].text : "";
@@ -442,12 +443,13 @@ export async function generateLifeMapInsights(
   );
 
   const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
-  const message = await anthropic.messages.create({
+  const { loggedMessagesCreate: loggedCreate } = await import("@/lib/claude-call-log");
+  const message = await loggedCreate(anthropic, {
     model: CLAUDE_MODEL,
     max_tokens: CLAUDE_MAX_TOKENS,
     system,
     messages: [{ role: "user", content: user }],
-  });
+  }, { purpose: "life_map_insights", userId });
 
   const rawText =
     message.content[0].type === "text" ? message.content[0].text : "";
