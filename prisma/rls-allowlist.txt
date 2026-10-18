@@ -187,3 +187,9 @@ HashtagVideo rls
 AdLabCompetitorAd rls
 AdLabCompetitorBrief rls
 AdLabLearning rls
+
+# ─── Public roadmap (2026-10-18) — docs/migrations/2026-10-18-roadmap.sql ──
+# RoadmapItem is admin-curated public content; RoadmapVote has userId.
+# Both service-role only; RLS enabled in prod by the migration (verified).
+RoadmapItem rls
+RoadmapVote rls
