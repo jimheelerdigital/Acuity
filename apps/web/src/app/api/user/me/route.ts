@@ -17,6 +17,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 
+import { canManageWebSubscription } from "@/lib/billing/web-manage";
 import { getAnySessionUserId } from "@/lib/mobile-auth";
 import { appOnboardingCompleted } from "@/lib/app-onboarding";
 import { loadWelcomeFields } from "@/lib/welcome-eligibility";
@@ -224,7 +225,13 @@ export async function GET(req: NextRequest) {
     // PRO and web-trial users count as onboarded so the app stops bouncing them off /record (lib/app-onboarding.ts).
     onboardingCompleted: appOnboardingCompleted(effectiveCompletedAt, user.subscriptionStatus, user.subscriptionSource),
     onboardingStep: user.onboarding?.currentStep ?? 1,
-    hasStripeCustomer: Boolean(stripeCustomerId),
+    // True for Stripe customers AND RevenueCat Web Billing subscribers —
+    // both are managed via POST /api/stripe/portal. See lib/billing/web-manage.
+    hasStripeCustomer: canManageWebSubscription({
+      stripeCustomerId,
+      subscriptionSource: user.subscriptionSource,
+      subscriptionStatus: user.subscriptionStatus,
+    }),
     // True when the user is FREE due to a recent failed payment → drives the
     // source-aware recovery banner (web + mobile).
     paymentFailed,

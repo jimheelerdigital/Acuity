@@ -148,6 +148,12 @@ function describePaymentSource(source: string): {
         label: "Mobile IAP (Google Play)",
         headline: "Mobile IAP upgrade",
       };
+    // RevenueCat Web Billing purchases made off goripple.io, attributed when
+    // the buyer redeemed them in the app (RC webhook PURCHASE_REDEEMED).
+    case "rc_funnel":
+      return { label: "RevenueCat Funnel (redeemed in app)", headline: "Funnel conversion" };
+    case "web_redemption":
+      return { label: "Web purchase link (redeemed in app)", headline: "New payment" };
     default:
       return { label: "Direct", headline: "New payment" };
   }

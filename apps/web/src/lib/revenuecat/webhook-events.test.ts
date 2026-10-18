@@ -5,7 +5,10 @@ import {
   decideRcWebhookAction,
   decideTransferResync,
   isRcAnonymousId,
+  isRcBillingStore,
   rcDecisionToUpdateData,
+  redemptionEffectEvent,
+  redemptionUserIds,
   transferUserIds,
   type RcWebhookDecision,
   type RcWebhookEvent,
@@ -557,5 +560,88 @@ describe("decideTransferResync", () => {
     );
     expect(d.nextStatus).toBe("TRIAL");
     expect(d.trialEndsAt).toEqual(ends);
+  });
+});
+
+// ─── Web Billing purchases linked later (Purchase Links / Funnels) ─────
+
+describe("redemptionUserIds", () => {
+  it("redeemers first, then purchasers; anonymous ids dropped; no duplicates", () => {
+    expect(
+      redemptionUserIds(ev({ type: "PURCHASE_REDEEMED", redeemed_from: [ANON, "u0"], redeemed_by: ["u1", ANON] }))
+    ).toEqual({ redeemers: ["u1"], purchasers: ["u0"], all: ["u1", "u0"] });
+    expect(redemptionUserIds(ev({ type: "PURCHASE_REDEEMED", redeemed_from: ["u1"], redeemed_by: ["u1"] })).all).toEqual(["u1"]);
+    expect(redemptionUserIds(ev({ type: "PURCHASE_REDEEMED", redeemed_from: null, redeemed_by: null })).all).toEqual([]);
+  });
+});
+
+describe("isRcBillingStore", () => {
+  it("matches RC_BILLING only, case-insensitively", () => {
+    expect(isRcBillingStore(ev({ store: "RC_BILLING" }))).toBe(true);
+    expect(isRcBillingStore(ev({ store: "rc_billing" }))).toBe(true);
+    expect(isRcBillingStore(ev({ store: "STRIPE" }))).toBe(false);
+    expect(isRcBillingStore(ev({ store: null }))).toBe(false);
+  });
+});
+
+describe("decideRcWebhookAction — PURCHASE_REDEEMED / unknown ids", () => {
+  it("is never applied through the app_user_id path (it has none)", () => {
+    expect(decideRcWebhookAction(ev({ type: "PURCHASE_REDEEMED", app_user_id: null }), null).action).toBe("ignore");
+    expect(decideRcWebhookAction(ev({ type: "PURCHASE_REDEEMED" }), user()).action).toBe("log-only");
+  });
+  it("a Purchase Link id that isn't one of our users is just a candidate the lookup won't find", () => {
+    expect(candidateUserIds(ev({ app_user_id: "buyer@example.com", aliases: [ANON] }))).toEqual(["buyer@example.com"]);
+    expect(decideRcWebhookAction(ev({ type: "INITIAL_PURCHASE", store: "RC_BILLING" }), null).action).toBe("ignore");
+  });
+});
+
+describe("decideTransferResync — RevenueCat Web Billing moves", () => {
+  const rcFree = { subscriptionStatus: "FREE", trialEndsAt: null, stripeFirstFailureAt: null, subscriptionSource: null };
+  const stripeRow = user({ id: "old1", subscriptionStatus: "PRO", subscriptionSource: "stripe" });
+
+  it("demotes a stripe row RC moved a Web Billing purchase away from (no live Stripe sub)", () => {
+    const d = expectSetStatus(decideTransferResync(stripeRow, rcFree, { rcBillingMove: true, stripeDirectLive: false }));
+    expect(d.nextStatus).toBe("FREE");
+  });
+  it("keeps a stripe row with a live (or unknown) Stripe-direct sub", () => {
+    expect(decideTransferResync(stripeRow, rcFree, { rcBillingMove: true, stripeDirectLive: true }).action).toBe("log-only");
+    expect(decideTransferResync(stripeRow, rcFree, { rcBillingMove: true }).action).toBe("log-only");
+  });
+  it("keeps a stripe row when the move wasn't Web Billing", () => {
+    expect(decideTransferResync(stripeRow, rcFree, { rcBillingMove: false, stripeDirectLive: false }).action).toBe("log-only");
+  });
+  it("still never touches comp", () => {
+    expect(
+      decideTransferResync(user({ subscriptionSource: "comp" }), rcFree, { rcBillingMove: true, stripeDirectLive: false }).action
+    ).toBe("skip-comp");
+  });
+});
+
+describe("redemptionEffectEvent", () => {
+  const redeemed = (over: Partial<RcWebhookEvent> = {}) =>
+    ev({
+      id: "evt_r", type: "PURCHASE_REDEEMED", app_user_id: null, store: "RC_BILLING",
+      product_id: "ripple_pro_annual_web", entitlement_ids: ["pro"], redemption_outcome: "alias", ...over,
+    });
+  const state = (status: string, trialEndsAt: Date | null = null) => ({
+    subscriptionStatus: status, trialEndsAt, stripeFirstFailureAt: null, subscriptionSource: "stripe",
+  });
+
+  it("trial → INITIAL_PURCHASE with the trial end from RC", () => {
+    const end = new Date("2026-10-23T00:00:00Z");
+    expect(redemptionEffectEvent(redeemed(), state("TRIAL", end))).toMatchObject({
+      id: "evt_r", type: "INITIAL_PURCHASE", store: "RC_BILLING", period_type: "TRIAL",
+      expiration_at_ms: end.getTime(), product_id: "ripple_pro_annual_web", metadata: { surface: "redemption" },
+    });
+  });
+  it("paid → NORMAL; Funnel purchases are marked rc_funnel", () => {
+    expect(redemptionEffectEvent(redeemed({ workflow_id: "wf" }), state("PRO"))).toMatchObject({
+      period_type: "NORMAL", expiration_at_ms: null, metadata: { surface: "rc_funnel" },
+    });
+  });
+  it("null when RC doesn't entitle the redeemer, can't answer, or the purchase isn't `pro`", () => {
+    expect(redemptionEffectEvent(redeemed(), state("FREE"))).toBeNull();
+    expect(redemptionEffectEvent(redeemed(), null)).toBeNull();
+    expect(redemptionEffectEvent(redeemed({ entitlement_ids: ["other"] }), state("PRO"))).toBeNull();
   });
 });
