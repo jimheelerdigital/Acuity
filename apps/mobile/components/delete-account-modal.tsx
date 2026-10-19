@@ -2,11 +2,8 @@ import { Ionicons } from "@expo/vector-icons";
 import { useEffect, useState } from "react";
 import {
   ActivityIndicator,
-  KeyboardAvoidingView,
   Modal,
-  Platform,
   Pressable,
-  ScrollView,
   Text,
   TextInput,
   View,
@@ -15,6 +12,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 import { useTheme } from "@/contexts/theme-context";
 import { WARN_AMBER } from "@/lib/tone-colors";
+import { KeyboardScroll } from "@/components/keyboard/keyboard-scroll";
 
 /**
  * Type-to-confirm account deletion modal. The destructive button only
@@ -147,16 +145,12 @@ export function DeleteAccountModal({
           <View style={{ width: 50 }} />
         </View>
 
-        <KeyboardAvoidingView
-          style={{ flex: 1 }}
-          behavior={Platform.OS === "ios" ? "padding" : undefined}
-        >
-        <ScrollView
+        {/* KeyboardScroll (1.9.5) keeps the DELETE confirmation field and
+            the button under it above the keyboard (was RN
+            KeyboardAvoidingView around a ScrollView). */}
+        <KeyboardScroll
           contentContainerStyle={{ padding: 20, paddingBottom: 40 }}
-          keyboardShouldPersistTaps="handled"
-          keyboardDismissMode={
-            Platform.OS === "ios" ? "interactive" : "on-drag"
-          }
+          bottomOffset={120}
         >
           {/* Warning icon + headline */}
           <View style={{ alignItems: "center", marginTop: 20, marginBottom: 24 }}>
@@ -422,8 +416,7 @@ export function DeleteAccountModal({
               {submitting ? "Deleting…" : "Delete my account"}
             </Text>
           </Pressable>
-        </ScrollView>
-        </KeyboardAvoidingView>
+        </KeyboardScroll>
       </SafeAreaView>
     </Modal>
   );

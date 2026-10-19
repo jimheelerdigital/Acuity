@@ -32,6 +32,7 @@ import {
 import { isOnboardingV10Enabled } from "@/lib/feature-flags";
 import V10Save from "./_v10/save";
 import { V10Switch } from "./_v10/route-switch";
+import { KeyboardSafeView } from "@/components/keyboard/keyboard-safe-view";
 
 /**
  * Screen 13 — Account creation. Slice 11 (2026-05-26).
@@ -347,6 +348,11 @@ function AccountScreen() {
     <View style={{ flex: 1, backgroundColor: tokens.bg }}>
       <StatusBar style="dark" />
       <SafeAreaView style={{ flex: 1 }} edges={["top", "bottom"]}>
+        {/* OAuth host: no keyboard-aware ScrollView (2026-04-28 regression,
+            see components/auth/social-auth-buttons.tsx). Padding-only
+            KeyboardSafeView — the same pattern sign-in uses — so the email
+            fields aren't left under the keyboard (1.9.5). */}
+        <KeyboardSafeView extraSpace={0}>
         <ScrollView
           contentContainerStyle={{
             paddingHorizontal: 24,
@@ -595,6 +601,7 @@ function AccountScreen() {
             .
           </Text>
         </ScrollView>
+        </KeyboardSafeView>
       </SafeAreaView>
     </View>
   );

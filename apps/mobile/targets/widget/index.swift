@@ -263,6 +263,7 @@ struct RippleWidget: Widget {
 
 private let TASKS_URL = URL(string: "acuity://tasks")!
 private let TODAY_LIMIT = 5
+private let MEDIUM_LIMIT = 3
 private let PENDING_DONE_KEY = "pendingDone"
 private let RECENT_DONE_KEY = "recentDone"
 private let TODAY_TASKS_KEY = "todayTasks"
@@ -657,15 +658,22 @@ private func bucketColor(_ row: TodayRow) -> Color {
 
 struct TodayRowView: View {
     let row: TodayRow
+    /// Title lines. Medium keeps one; Large has room for two.
+    var titleLines: Int = 1
     var body: some View {
-        HStack(spacing: 8) {
+        // Each row is a filled card that STRETCHES to share the widget's
+        // height (Jimmy, 10/19 on build 183: rows were "too small" and hard
+        // to hit; with only 3 shown they should take up the widget). The
+        // check button gets the full row height and a 48pt-wide column.
+        HStack(spacing: 6) {
             // Interactive check-off (iOS 17 widget button). Runs in-process in
             // the extension; the title next to it still deep-links to the task.
             Button(intent: CompleteTaskIntent(taskId: row.item.id)) {
                 Image(systemName: row.done ? "checkmark.circle.fill" : "circle")
                     .foregroundColor(row.done ? accent : .secondary)
-                    .font(.system(size: 15))
-                    .frame(width: 22, height: 22)
+                    .font(.system(size: 24, weight: .regular))
+                    .frame(width: 48)
+                    .frame(maxHeight: .infinity)
                     .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
@@ -675,7 +683,7 @@ struct TodayRowView: View {
                     // Strikethrough drawn explicitly: WidgetKit dropped
                     // Text.strikethrough on device (row only greyed — Jimmy,
                     // 10/17 on build 181). An overlaid rule can't be skipped.
-                    Text(row.item.title).font(.system(size: 14)).lineLimit(1)
+                    Text(row.item.title).font(.system(size: 16, weight: .medium)).lineLimit(titleLines)
                         .strikethrough(row.done, color: .secondary)
                         .foregroundColor(row.done ? .secondary : .primary)
                         .overlay {
@@ -688,21 +696,30 @@ struct TodayRowView: View {
                         }
                     Spacer(minLength: 4)
                     Text(row.done ? "Done" : bucketLabel(row))
-                        .font(.system(size: 11, weight: .semibold))
+                        .font(.system(size: 12, weight: .semibold))
                         .foregroundColor(row.done ? .secondary : bucketColor(row))
                 }
+                .padding(.trailing, 12)
+                .frame(maxHeight: .infinity)
+                .contentShape(Rectangle())
             }
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                .fill(Color.secondary.opacity(0.10))
+        )
     }
 }
 
 struct TodayListView: View {
     let entry: TodayEntry
     let limit: Int
+    var titleLines: Int = 1
     var body: some View {
         let shown = Array(entry.rows.prefix(limit))
         let more = entry.rows.count - shown.count
-        VStack(alignment: .leading, spacing: 7) {
+        VStack(alignment: .leading, spacing: 6) {
             HStack {
                 Text("TODAY").font(.system(size: 11, weight: .bold)).foregroundColor(accent)
                 Spacer()
@@ -716,14 +733,21 @@ struct TodayListView: View {
                 Text("No open tasks. Nice.")
                     .font(.system(size: 14, weight: .medium)).foregroundColor(.secondary)
             } else {
+                // Rows share the remaining height, so 3 rows fill a Medium
+                // widget. layoutPriority(1) gives them first claim over the
+                // Spacer below (otherwise the Spacer takes an equal share);
+                // the 64pt cap stops 1-2 tasks ballooning into giant bars,
+                // and then the Spacer takes what's left.
                 ForEach(Array(shown.enumerated()), id: \.offset) { _, row in
-                    TodayRowView(row: row)
+                    TodayRowView(row: row, titleLines: titleLines)
+                        .frame(maxHeight: 64)
+                        .layoutPriority(1)
                 }
             }
             Spacer(minLength: 0)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-        .padding(16)
+        .padding(12)
     }
 }
 
@@ -755,11 +779,12 @@ struct RippleTodayWidgetEntryView: View {
                 .widgetURL(TASKS_URL)
                 .containerBackground(for: .widget) { Color.clear }
         case .systemLarge:
-            TodayListView(entry: entry, limit: TODAY_LIMIT)
+            TodayListView(entry: entry, limit: TODAY_LIMIT, titleLines: 2)
                 .widgetURL(TASKS_URL)
                 .containerBackground(for: .widget) { Color(.systemBackground) }
         default:
-            TodayListView(entry: entry, limit: 4)
+            // Medium: 3 big rows (Jimmy, 10/19). "+N more" covers the rest.
+            TodayListView(entry: entry, limit: MEDIUM_LIMIT)
                 .widgetURL(TASKS_URL)
                 .containerBackground(for: .widget) { Color(.systemBackground) }
         }

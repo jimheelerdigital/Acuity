@@ -51,6 +51,13 @@ export type DeleteAccountResult =
 type AuthState = {
   user: User | null;
   loading: boolean;
+  /**
+   * True once the user has tapped Sign out during this app session. Read
+   * by AuthGate (decideColdStartRoute) so a deliberate sign-out goes
+   * straight to sign-in instead of flashing the funnel. Only consulted
+   * while signed out, so it never needs resetting on the next sign-in.
+   */
+  signedOutThisSession: boolean;
   signOut: () => Promise<void>;
   refresh: () => Promise<void>;
   /**
@@ -92,6 +99,7 @@ type AuthState = {
 const AuthContext = createContext<AuthState>({
   user: null,
   loading: true,
+  signedOutThisSession: false,
   signOut: async () => {},
   refresh: async () => {},
   setAuthenticatedUser: () => {},
@@ -101,6 +109,7 @@ const AuthContext = createContext<AuthState>({
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const [signedOutThisSession, setSignedOutThisSession] = useState(false);
   const appState = useRef(AppState.currentState);
   // Tracks whether the very first refresh after AuthProvider mount
   // has completed. Used to discriminate "user is genuinely signed
@@ -453,6 +462,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // signOut() for rationale).
     await clearSession();
     tokenBridge.set(null);
+    // Same render as user=null (React batches these), so AuthGate never
+    // sees "signed out" without also seeing "deliberately".
+    setSignedOutThisSession(true);
     setUser(null);
     // Home-screen widget shows habit names — don't leave them up for
     // whoever uses this device next.
@@ -557,6 +569,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       value={{
         user,
         loading,
+        signedOutThisSession,
         signOut,
         refresh,
         setAuthenticatedUser,

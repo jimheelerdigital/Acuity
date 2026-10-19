@@ -4,7 +4,6 @@ import {
   Alert,
   Platform,
   Pressable,
-  ScrollView,
   Text,
   TextInput,
   View,
@@ -15,6 +14,7 @@ import { api } from "@/lib/api";
 import { getCached, invalidate, setCached } from "@/lib/cache";
 import { useTheme } from "@/contexts/theme-context";
 import { DueDateField } from "@/components/due-date-field";
+import { KeyboardScroll } from "@/components/keyboard/keyboard-scroll";
 
 const TASKS_CACHE_KEY = "/api/tasks?all=1";
 const GROUPS_CACHE_KEY = "/api/task-groups";
@@ -170,12 +170,9 @@ export default function TaskCreateScreen() {
         </Pressable>
       </View>
 
-      <ScrollView
+      <KeyboardScroll
         style={{ flex: 1 }}
         contentContainerStyle={{ padding: 20, paddingBottom: 60 }}
-        automaticallyAdjustKeyboardInsets
-        keyboardShouldPersistTaps="handled"
-        keyboardDismissMode={Platform.OS === "ios" ? "interactive" : "on-drag"}
       >
           {/* Title */}
           <Text
@@ -326,7 +323,7 @@ export default function TaskCreateScreen() {
               );
             })}
           </View>
-        </ScrollView>
+        </KeyboardScroll>
     </SafeAreaView>
   );
 }

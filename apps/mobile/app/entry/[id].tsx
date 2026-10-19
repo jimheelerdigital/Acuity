@@ -6,9 +6,7 @@ import {
   ActivityIndicator,
   Alert,
   Modal,
-  Platform,
   Pressable,
-  ScrollView,
   Text,
   View,
 } from "react-native";
@@ -34,6 +32,7 @@ import { getCached, invalidate, isStale, setCached } from "@/lib/cache";
 
 import { isObsidianExportEnabled } from "@/lib/feature-flags";
 import { exportEntry } from "@/lib/obsidian/export";
+import { KeyboardScroll } from "@/components/keyboard/keyboard-scroll";
 
 type EntryDetail = EntryDTO & { tasks: TaskDTO[] };
 type EntryDetailResponse = { entry: EntryDetail };
@@ -309,25 +308,16 @@ export default function EntryDetailScreen() {
     : null;
 
   return (
-    <ScrollView
+    <KeyboardScroll
       style={{ flex: 1, backgroundColor: tokens.bg }}
       contentContainerStyle={{ padding: 20, paddingBottom: 48, gap: 20 }}
       // Keyboard handling for the inline transcript editor (Jennifer
-      // Snodgrass report, 2026-07-01). Without these, the iOS keyboard
-      // overlapped the transcript TextInput + "Save changes" button at the
-      // bottom of this scroll, and a tap on Save with the keyboard up was
-      // eaten by the dismiss gesture.
-      //   - automaticallyAdjustKeyboardInsets (iOS): auto-insets the scroll
-      //     content by the keyboard height and scrolls the focused input
-      //     into view. Handles the native Stack header offset for free —
-      //     no keyboardVerticalOffset guesswork. No-op on Android, which
-      //     resizes the window via adjustResize (parity preserved).
-      //   - keyboardShouldPersistTaps="handled": Save is tappable while the
-      //     keyboard is up instead of dismissing it first.
-      //   - keyboardDismissMode: interactive drag-to-dismiss on iOS.
-      automaticallyAdjustKeyboardInsets
-      keyboardShouldPersistTaps="handled"
-      keyboardDismissMode={Platform.OS === "ios" ? "interactive" : "on-drag"}
+      // Snodgrass report, 2026-07-01): keeps the transcript TextInput and
+      // its "Save changes" button above the keyboard, and Save tappable
+      // while the keyboard is up. KeyboardScroll (1.9.5) replaced the
+      // iOS-only automaticallyAdjustKeyboardInsets; bottomOffset leaves
+      // room for the Save row under the field.
+      bottomOffset={96}
     >
       <Stack.Screen options={{ headerRight }} />
 
@@ -799,7 +789,7 @@ export default function EntryDetailScreen() {
           </View>
         </Pressable>
       </Modal>
-    </ScrollView>
+    </KeyboardScroll>
   );
 }
 

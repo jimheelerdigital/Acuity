@@ -3,7 +3,6 @@ import { useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Pressable,
-  ScrollView,
   Text,
   TextInput,
   View,
@@ -13,6 +12,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { Avatar } from "@/components/acuity";
 import { useTheme } from "@/contexts/theme-context";
 import { api } from "@/lib/api";
+import { KeyboardScroll } from "@/components/keyboard/keyboard-scroll";
 
 /**
  * /insights/people — mobile parity for the web directory. Slice 8.
@@ -90,11 +90,8 @@ export default function PeopleDirectoryScreen() {
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: tokens.bg }} edges={["top"]}>
-      <ScrollView
+      <KeyboardScroll
         contentContainerStyle={{ padding: 20, paddingBottom: 40 }}
-        automaticallyAdjustKeyboardInsets
-        keyboardShouldPersistTaps="handled"
-        keyboardDismissMode="on-drag"
       >
         <Text
           style={{
@@ -229,7 +226,7 @@ export default function PeopleDirectoryScreen() {
             ))}
           </View>
         )}
-      </ScrollView>
+      </KeyboardScroll>
     </SafeAreaView>
   );
 }
