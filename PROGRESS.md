@@ -7,6 +7,43 @@
 
 ---
 
+## [2026-10-19] — Two more @therapyandthingss UGC ads set up at $20/day each (paused until approved)
+
+- **Requested by:** Keenan
+- **Committed by:** Claude Code
+- **Commit hash:** (see git log: "docs: Log two new therapyandthingss UGC ads")
+
+### In plain English (for Keenan)
+@therapyandthingss's two new videos are set up on Meta, each as its own ad with its own $20/day budget, full length and not cut:
+- "Planners": stop buying paper planners you won't use, just talk into Ripple.
+- "Yap": talk your way into a plan.
+
+Both point at her tracking link, each with its own tag, so the admin shows which video every signup came from. They stay paused until Keenan says go.
+
+### Technical changes (for Jimmy)
+- No code. Created via `/api/admin/adlab/ugc-ad` (`create`) on prod, in the women's evergreen campaign 120254810968320581.
+- **Video 3 (planners, 56.7s):**
+  - Ad set 120255234402850581 ("… | therapyandthingss video 3 planners", $20/day, PAUSED)
+  - Ad 120255234408570581, creative 2310109629837097, Meta video 28631084509897375
+  - Link `goripple.io/u/therapyandthings?utm_content=video3`
+  - Headline "Stop buying planners you won't use"
+- **Video 4 (yap, 23.9s):**
+  - Ad set 120255234409150581 ("… | therapyandthingss video 4 yap", $20/day, PAUSED)
+  - Ad 120255234413870581, creative 1591462148772101, Meta video 4426038317708726
+  - Link `…?utm_content=video4`
+  - Headline "Talk your way to a plan"
+- Both: description "Free for 7 days", CTA "learn more" (the route default).
+- Assets: H.264 transcodes of the creator's HEVC files (uncut) plus 1s thumbnails at `content-factory/ugc/therapyandthings/video-3.mp4`, `video-3-thumb.jpg`, `video-4.mp4`, `video-4-thumb.jpg`. Video 4's script came from a Whisper transcript.
+
+### Manual steps needed
+- [ ] Keenan: approve going live. Then `action: "activate"` with each `adsetId` + `adId`.
+
+### Notes
+- `CRON_SECRET` contains "=", so `awk -F=` truncates it and the route returns Unauthorized. Parse `.env` lines with a split on the first "=" only.
+- Like the earlier UGC ads, these sit outside the AdLab kill engine. Judge them by hand on cost per paid trial; the admin Source column now shows "UGC Meta ad · @therapyandthings · video3/video4".
+
+---
+
 ## [2026-10-19] — Admin shows UGC ad signups vs the creator's own Instagram
 
 - **Requested by:** Keenan
