@@ -3,7 +3,6 @@ import {
   ActivityIndicator,
   Keyboard,
   Pressable,
-  ScrollView,
   Text,
   TextInput,
   View,
@@ -14,6 +13,7 @@ import { useRouter } from "expo-router";
 import { StickyBackButton } from "@/components/back-button";
 import { useTheme } from "@/contexts/theme-context";
 import { api } from "@/lib/api";
+import { KeyboardScroll } from "@/components/keyboard/keyboard-scroll";
 
 /**
  * Ask Your Past Self — native screen (Ripple 1.8, workstream 3).
@@ -118,9 +118,8 @@ export default function AskPastSelfScreen() {
   return (
     <SafeAreaView edges={["top"]} style={{ flex: 1, backgroundColor: tokens.bg }}>
       <StickyBackButton onPress={() => router.back()} />
-      <ScrollView
+      <KeyboardScroll
         contentContainerStyle={{ padding: 20, paddingTop: 8, paddingBottom: 48 }}
-        keyboardShouldPersistTaps="handled"
       >
         <Text
           style={{
@@ -353,7 +352,7 @@ export default function AskPastSelfScreen() {
             ))}
           </View>
         )}
-      </ScrollView>
+      </KeyboardScroll>
     </SafeAreaView>
   );
 }

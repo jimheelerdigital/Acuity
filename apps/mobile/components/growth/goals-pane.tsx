@@ -5,7 +5,6 @@ import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
-  KeyboardAvoidingView,
   Modal,
   Platform,
   Pressable,
@@ -52,6 +51,8 @@ import { cachedGet, getCached, isStale } from "@/lib/cache";
 import { isFreeTierUser } from "@/lib/free-tier";
 import { toneColor, type StatusTone } from "@/lib/tone-colors";
 import { fetchUserProgression } from "@/lib/userProgression";
+import { KeyboardScroll } from "@/components/keyboard/keyboard-scroll";
+import { KeyboardSafeView } from "@/components/keyboard/keyboard-safe-view";
 
 const GOALS_TREE_KEY = "/api/goals/tree";
 const GOALS_TREE_ARCHIVED_KEY = "/api/goals/tree?includeArchived=1";
@@ -1123,9 +1124,7 @@ function AddSubgoalSheet({
   return (
     <Modal transparent animationType="fade" onRequestClose={onClose}>
       <Pressable onPress={onClose} className="flex-1 bg-black/50 justify-end">
-        <KeyboardAvoidingView
-          behavior={Platform.OS === "ios" ? "padding" : undefined}
-        >
+        <KeyboardSafeView fill={false} extraSpace={0}>
           <Pressable onPress={() => {}}>
             <View
               className="rounded-t-2xl p-5 pb-10"
@@ -1193,7 +1192,7 @@ function AddSubgoalSheet({
               </View>
             </View>
           </Pressable>
-        </KeyboardAvoidingView>
+        </KeyboardSafeView>
       </Pressable>
     </Modal>
   );
@@ -1377,11 +1376,8 @@ function SuggestionsSheet({
               <Ionicons name="close" size={20} color={tokens.textTer} />
             </Pressable>
           </View>
-          <ScrollView
+          <KeyboardScroll
             contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 40 }}
-            automaticallyAdjustKeyboardInsets
-            keyboardShouldPersistTaps="handled"
-            keyboardDismissMode={Platform.OS === "ios" ? "interactive" : "on-drag"}
           >
             {items === null ? (
               <View className="py-12 items-center">
@@ -1537,7 +1533,7 @@ function SuggestionsSheet({
                 })}
               </View>
             )}
-          </ScrollView>
+          </KeyboardScroll>
         </View>
       </View>
     </Modal>

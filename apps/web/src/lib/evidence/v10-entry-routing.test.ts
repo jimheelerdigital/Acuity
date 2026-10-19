@@ -315,3 +315,26 @@ describe("web subscriber (PRO) with onboarding unfinished", () => {
     });
   });
 });
+
+describe("deliberate sign-out (Jimmy, 10/19: sign-out flashed the funnel)", () => {
+  it("goes straight to sign-in even while the funnel markers are still set", () => {
+    // The race: user=null renders before AsyncStorage clears v10Offered.
+    expect(at({ v10Offered: true })).toBe("v10"); // the bug, without the flag
+    expect(at({ v10Offered: true, signedOutThisSession: true })).toBe("signin");
+    expect(at({ signedOutThisSession: true })).toBe("signin");
+  });
+
+  it("still lets them start the funnel or sign in after signing out", () => {
+    expect(at({ signedOutThisSession: true, segment: "onboarding-new" })).toBe("stay");
+    expect(at({ signedOutThisSession: true, segment: "(auth)" })).toBe("stay");
+    expect(at({ signedOutThisSession: true, segment: "auth-callback" })).toBe("stay");
+  });
+
+  it("is ignored once they are signed in again", () => {
+    expect(
+      at({ signedIn: true, onboardingCompleted: true, subscriptionStatus: "PRO", signedOutThisSession: true, segment: "(tabs)" }),
+    ).toBe(
+      at({ signedIn: true, onboardingCompleted: true, subscriptionStatus: "PRO", segment: "(tabs)" }),
+    );
+  });
+});

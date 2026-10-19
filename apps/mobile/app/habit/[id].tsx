@@ -5,7 +5,6 @@ import {
   ActivityIndicator,
   Alert,
   Pressable,
-  ScrollView,
   Text,
   TextInput,
   View,
@@ -44,6 +43,7 @@ import {
   requestNotificationPermission,
 } from "@/lib/notifications";
 import { resyncAllReminders } from "@/lib/habit-reminders-sync";
+import { KeyboardScroll } from "@/components/keyboard/keyboard-scroll";
 
 const DAY_LABELS = [
   { i: 0, label: "S" },
@@ -354,7 +354,7 @@ export default function HabitDetailScreen() {
       style={{ backgroundColor: tokens.bg }}
     >
       <StickyBackButton accessibilityLabel="Back to Growth" />
-      <ScrollView
+      <KeyboardScroll
         contentContainerStyle={{ padding: 20, paddingTop: 60, paddingBottom: 80 }}
       >
         {/* Title */}
@@ -608,7 +608,7 @@ export default function HabitDetailScreen() {
             <Text style={{ color: tokens.bad, fontSize: 14, fontWeight: "500" }}>Delete habit</Text>
           </Pressable>
         </View>
-      </ScrollView>
+      </KeyboardScroll>
     </SafeAreaView>
   );
 }

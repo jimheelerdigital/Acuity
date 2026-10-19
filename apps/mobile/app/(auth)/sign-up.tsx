@@ -14,7 +14,7 @@
 import * as AppleAuthentication from "expo-apple-authentication";
 import { Link } from "expo-router";
 import { useState } from "react";
-import { KeyboardAvoidingView, Platform, Pressable, Text, View } from "react-native";
+import { Pressable, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { EmailCodeForm } from "@/components/auth/email-code-form";
@@ -25,6 +25,7 @@ import {
 import { useAuth } from "@/contexts/auth-context";
 import { useTheme } from "@/contexts/theme-context";
 import { WARN_AMBER } from "@/lib/tone-colors";
+import { KeyboardSafeView } from "@/components/keyboard/keyboard-safe-view";
 
 /**
  * Create account (1.9.1 — passwordless). Apple, Google, or email → 6-digit
@@ -39,7 +40,7 @@ export default function SignUpScreen() {
 
   return (
     <SafeAreaView className="flex-1 px-6" style={{ backgroundColor: tokens.bg }}>
-      <KeyboardAvoidingView className="flex-1" behavior={Platform.OS === "ios" ? "padding" : undefined}>
+      <KeyboardSafeView extraSpace={16}>
         <View className="flex-1 justify-center">
           <Text className="text-2xl font-bold mb-1 text-center" style={{ color: tokens.text }}>
             Create your account
@@ -92,7 +93,7 @@ export default function SignUpScreen() {
             </Pressable>
           </Link>
         </View>
-      </KeyboardAvoidingView>
+      </KeyboardSafeView>
     </SafeAreaView>
   );
 }

@@ -7,6 +7,42 @@
 
 ---
 
+## [2026-10-19] — 1.9.5: keyboard never covers buttons, bigger widget tasks, Settings fixes
+
+- **Requested by:** Jimmy (TestFlight 183 feedback, 10/19)
+- **Committed by:** Claude Code
+- **Commit hash:** (see git log: "feat(mobile): 1.9.5 keyboard, widget, settings and sign-out fixes")
+
+### In plain English (for Keenan)
+Fixes from Jimmy's testing of build 183, all going into one new build, version 1.9.5:
+- The keyboard no longer covers buttons. The typing screen's Save button now sits just above the keyboard, and the same system covers every screen with a text box (tasks, goals, habits, Ask, feedback, delete account, sign-in, funnel name/consent/account).
+- The Today widget shows 3 tasks that fill the medium widget, with larger text and check circles that are easier to hit. The large widget shows 5.
+- Settings always has a Subscription section showing your plan (for example "Ripple Pro, complimentary"). Before, comped accounts saw no subscription option at all.
+- Signing out goes straight to the sign-in screen. Before, it briefly flashed the signup funnel.
+- The settings button on Home is bigger, with an orange outline and an orange icon.
+- The camera button for photographing a handwritten page appears on this build (build 183 doesn't have the camera parts).
+
+### Technical changes (for Jimmy)
+- New native dep `react-native-keyboard-controller@1.18.5` (Expo SDK 54's bundled version). `<KeyboardProvider>` sits in `app/_layout.tsx`. Because it's native, the app version is bumped to **1.9.5**, so this JS gets its own runtime and can never be OTA'd onto build 183. `ota-native-safety.test.ts` is now keyed by app version, and it fails if this code is set to 1.9.4 (verified red).
+- `components/keyboard/keyboard-safe-view.tsx`: measures itself in window coordinates (`measureInWindow`) and pads by the exact keyboard overlap, so there's no `keyboardVerticalOffset` to guess. `fill={false}` is for bottom sheets.
+- `components/keyboard/keyboard-scroll.tsx`: KeyboardAwareScrollView with the app's defaults. It replaces iOS-only `automaticallyAdjustKeyboardInsets`.
+- Converted: record.tsx TypedComposer (was RN KAV, 96pt guess), `KeyboardAwareScreen`, goal/[id], goal/new, task/[id], task/new, habit/[id], habits, Growth tab, insights/ask, insights/people, entry/[id], welcome, v10 mirror, v11 `Body` (pinned footer now rides the keyboard), sign-in, sign-up, onboarding account (padding-only; OAuth host), feedback modal, delete-account modal, goals-pane add sheet.
+- Guard: `evidence/keyboard-handling.test.ts` covers: no RN KeyboardAvoidingView, no keyboardVerticalOffset, no automaticallyAdjustKeyboardInsets except v10 save.tsx (OAuth host, left alone on purpose), KeyboardProvider mounted.
+- Widget (`targets/widget/index.swift`): medium limit 4 → 3. Rows are filled cards that share the height (layoutPriority, max 64pt). Check column is 48pt wide × full row height, 24pt icon, 16pt title; large shows 2-line titles. Typechecked with `swiftc -typecheck` (iOS 17 SDK) and rendered offscreen for medium/large with 1–6 tasks.
+- Settings: `lib/subscription-plan.ts` `describePlan()` drives an always-visible plan row in a new "Subscription" group (tests in `subscription-plan-row.test.ts`). PAST_DUE now gets the Manage row and no longer gets "Subscribe".
+- Sign-out: `auth-context` sets `signedOutThisSession` in the same render as `user=null`, and `decideColdStartRoute` sends a deliberate sign-out to sign-in before any funnel marker is read. Root cause: user went null before AsyncStorage cleared `ripple.v10.offered`, so one AuthGate tick routed to the funnel. Profile's extra `router.replace` was removed. Tests added in `v10-entry-routing.test.ts`.
+- Home settings gear: 44 → 52pt, 2pt `tokens.primary` border, 26pt primary icon.
+- Checks: web tests 1413/1413. Mobile tsc has the same 13 pre-existing errors as main.
+
+### Manual steps needed
+- [ ] EAS production build of 1.9.5 (Claude runs it after Jimmy's go). Then test on device: typing screen Save above keyboard, widget, Settings → Subscription, sign-out, camera permission prompt, Meta test events (Jimmy)
+- [ ] Android: Android's next build needs a keyboard pass. KeyboardProvider turns on edge-to-edge, and RN `<Modal>` screens on Android aren't verified (Jimmy)
+
+### Notes
+- Android hasn't shipped since 1.9.0, so all testing so far is iOS.
+
+---
+
 ## [2026-10-19] — All ad traffic goes to the test funnels (/start-test, /start-test-bwk)
 
 - **Requested by:** Keenan

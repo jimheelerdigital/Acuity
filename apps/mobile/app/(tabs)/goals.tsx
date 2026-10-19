@@ -7,6 +7,7 @@ import { GoalsPane } from "@/components/growth/goals-pane";
 import { HabitsPane } from "@/components/growth/habits-pane";
 import { useTheme } from "@/contexts/theme-context";
 import { isHabitsEnabled } from "@/lib/feature-flags";
+import { KeyboardScroll } from "@/components/keyboard/keyboard-scroll";
 
 /**
  * Growth — the combined forward-looking surface. When habits are enabled, a
@@ -62,9 +63,9 @@ export default function GrowthTab() {
       </View>
 
       {showHabits ? (
-        <ScrollView contentContainerStyle={{ paddingBottom: 40 }}>
+        <KeyboardScroll contentContainerStyle={{ paddingBottom: 40 }}>
           <HabitsPane />
-        </ScrollView>
+        </KeyboardScroll>
       ) : (
         <GoalsPane />
       )}

@@ -2,7 +2,6 @@ import { Ionicons } from "@expo/vector-icons";
 import { useState } from "react";
 import {
   Alert,
-  KeyboardAvoidingView,
   Modal,
   Platform,
   Pressable,
@@ -14,6 +13,7 @@ import {
 
 import { useTheme } from "@/contexts/theme-context";
 import { submitFeedback, type FeedbackType } from "@/lib/feedback";
+import { KeyboardSafeView } from "@/components/keyboard/keyboard-safe-view";
 
 /**
  * Slice O (2026-05-18). User-facing feedback modal. Surfaced from
@@ -93,15 +93,11 @@ export function FeedbackModal({ visible, onClose, initialType }: Props) {
       onRequestClose={handleClose}
     >
       <View className="flex-1" style={{ backgroundColor: tokens.bg }}>
-        <KeyboardAvoidingView
-          behavior={Platform.OS === "ios" ? "padding" : undefined}
-          // pageSheet presentation has a top inset (~10pt) that
-          // KeyboardAvoidingView doesn't auto-account for. Without
-          // this offset the Send button stays buried under the
-          // keyboard on iOS even though padding fires correctly.
-          keyboardVerticalOffset={Platform.OS === "ios" ? 12 : 0}
-          className="flex-1"
-        >
+        {/* KeyboardSafeView (1.9.5) measures itself in the window, so the
+            pageSheet's top inset no longer needs a hand-tuned
+            keyboardVerticalOffset (was 12) to keep Send above the
+            keyboard. */}
+        <KeyboardSafeView>
           {/* Header */}
           <View
             className="flex-row items-center justify-between px-5 py-4 border-b"
@@ -243,7 +239,7 @@ export function FeedbackModal({ visible, onClose, initialType }: Props) {
               </Text>
             </Pressable>
           </View>
-        </KeyboardAvoidingView>
+        </KeyboardSafeView>
       </View>
     </Modal>
   );

@@ -7,6 +7,7 @@ import { StickyBackButton } from "@/components/back-button";
 import { HabitsPane } from "@/components/growth/habits-pane";
 import { useTheme } from "@/contexts/theme-context";
 import { isHabitsEnabled } from "@/lib/feature-flags";
+import { KeyboardScroll } from "@/components/keyboard/keyboard-scroll";
 
 /**
  * Habits — standalone screen (home-screen quick action "Habits" opens
@@ -33,9 +34,8 @@ export default function HabitsScreen() {
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: tokens.bg }} edges={["top"]}>
       <StickyBackButton onPress={() => router.back()} />
-      <ScrollView
+      <KeyboardScroll
         contentContainerStyle={{ paddingTop: 56, paddingBottom: 40 }}
-        keyboardShouldPersistTaps="handled"
       >
         <Text
           style={{
@@ -49,7 +49,7 @@ export default function HabitsScreen() {
           Habits
         </Text>
         <HabitsPane />
-      </ScrollView>
+      </KeyboardScroll>
     </SafeAreaView>
   );
 }

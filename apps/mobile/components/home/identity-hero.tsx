@@ -110,21 +110,23 @@ export function IdentityHero({
               accessibilityLabel="Open settings"
               onPress={onSettingsPress}
               hitSlop={12}
+              // Bigger + accent-outlined (Jimmy, 10/19: "it's so hidden").
+              // tokens.primary is the theme accent — orange by default.
               style={{
-                width: 44,
-                height: 44,
+                width: 52,
+                height: 52,
                 alignItems: "center",
                 justifyContent: "center",
-                borderRadius: 22,
-                borderWidth: 0.5,
-                borderColor: tokens.line,
+                borderRadius: 26,
+                borderWidth: 2,
+                borderColor: tokens.primary,
                 backgroundColor: tokens.cardBg,
               }}
             >
               <Ionicons
                 name="settings-outline"
-                size={18}
-                color={tokens.textSec}
+                size={26}
+                color={tokens.primary}
               />
             </Pressable>
           </TourTarget>

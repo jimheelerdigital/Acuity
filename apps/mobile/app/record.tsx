@@ -13,7 +13,6 @@ import {
   Alert,
   AppState,
   type AppStateStatus,
-  KeyboardAvoidingView,
   Platform,
   Pressable,
   Text,
@@ -22,6 +21,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
+import { KeyboardSafeView } from "@/components/keyboard/keyboard-safe-view";
 import { ProcessingProgressBar } from "@/components/processing-progress-bar";
 import {
   RecordOrb,
@@ -1421,11 +1421,10 @@ function TypedComposer({
   const busy = submitting || photoReading;
   const canSubmit = !tooShort && !tooLong && !busy;
   return (
-    <KeyboardAvoidingView
-      behavior={Platform.OS === "ios" ? "padding" : undefined}
-      keyboardVerticalOffset={Platform.OS === "ios" ? 96 : 0}
-      style={{ flex: 1, width: "100%" }}
-    >
+    // KeyboardSafeView measures itself, so the Save row always sits just
+    // above the keyboard. The old RN KeyboardAvoidingView used a guessed
+    // 96pt offset and left Save under the keyboard (Jimmy, 10/19).
+    <KeyboardSafeView style={{ width: "100%" }}>
       <View style={{ flex: 1, width: "100%", paddingTop: 8, gap: 12 }}>
         <Text
           style={{
@@ -1530,7 +1529,7 @@ function TypedComposer({
           </Pressable>
         </View>
       </View>
-    </KeyboardAvoidingView>
+    </KeyboardSafeView>
   );
 }
 

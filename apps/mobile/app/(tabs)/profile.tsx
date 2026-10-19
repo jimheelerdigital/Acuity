@@ -41,6 +41,7 @@ import {
 } from "@/lib/revenuecat";
 import { exportAll } from "@/lib/obsidian/export";
 import { openSubscriptionPortal } from "@/lib/subscription";
+import { describePlan } from "@/lib/subscription-plan";
 
 export default function ProfileTab() {
 
@@ -167,8 +168,11 @@ export default function ProfileTab() {
         style: "destructive",
         onPress: async () => {
           setSigningOut(true);
+          // AuthGate routes to sign-in in the same render that user goes
+          // null (signedOutThisSession). A second replace here used to
+          // land after the gate's, re-mounting sign-in (part of the
+          // "flash" Jimmy saw on 10/19).
           await signOut();
-          router.replace("/(auth)/sign-in");
         },
       },
     ]);
@@ -207,7 +211,16 @@ export default function ProfileTab() {
   // them). The source/customer guards below still prevent a dead-end for
   // app-side trials that have no sub to manage.
   const isTrial = subStatus === "TRIAL";
-  const canManageSubscription = isPro || isTrial;
+  // PAST_DUE: a failed renewal still has a live store/Stripe sub, and the
+  // manage row is exactly where they fix the card (or cancel).
+  const isPastDue = subStatus === "PAST_DUE";
+  const canManageSubscription = isPro || isTrial || isPastDue;
+  const plan = describePlan({
+    status: subStatus,
+    source: subSource,
+    trialEndsAt: user?.trialEndsAt ?? null,
+    periodEnd: user?.stripeCurrentPeriodEnd ?? null,
+  });
   // Only show Stripe "Manage subscription" when the user actually
   // has a Stripe customer behind their status. Comped / reviewer
   // accounts are PRO without a Stripe row — the portal call would
@@ -220,6 +233,7 @@ export default function ProfileTab() {
   // isIapEnabled(). Falls back to "Manage plan on web" when neither is on.
   const showInAppSubscribe =
     !isPro &&
+    !isPastDue &&
     (rcFlags().RC_SDK_PURCHASES
       ? Platform.OS === "ios" || Platform.OS === "android"
       : Platform.OS === "ios" && isIapEnabled());
@@ -328,11 +342,16 @@ export default function ProfileTab() {
           trialExpiredAt={user?.trialExpiredAt ?? null}
         />
 
-        {/* Subscription block — stays at top, not grouped under a
-            settings label. The visual refresh's full Subscription
-            card ships in a later slice; for Q2 we keep the existing
-            row-based rendering with the same conditional rules. */}
-        <View className="gap-2">
+        {/* Subscription section. The plan row is ALWAYS shown (Jimmy,
+            10/19: a comped Pro account saw no subscription option at
+            all, because every row below is conditional). The action
+            rows keep their existing rules. */}
+        <SettingsGroup label="Subscription">
+          <MenuItem
+            icon={plan.title === "Free plan" ? "person-outline" : "sparkles-outline"}
+            label={plan.title}
+            sublabel={plan.detail}
+          />
           {/* Phase 3a — FREE users see "Subscribe" (in-app, iOS only,
               flag-on) AND "Manage plan on web" (3.1.3(b) requires the
               external link to remain alongside any IAP entry point). */}
@@ -397,7 +416,7 @@ export default function ProfileTab() {
               on every screen that presents subscription state. The
               button self-hides on Android + flag-off builds. */}
           <RestorePurchasesButton onRestored={refresh} />
-        </View>
+        </SettingsGroup>
 
         {/* ACTIVITY group — v1.3 achievements entry point. The summary
             row reads count + total points from /api/achievements so

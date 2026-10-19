@@ -11,6 +11,7 @@ import { useColdStartFacts } from "@/lib/onboarding-v10/use-cold-start-facts";
 import { StatusBar } from "expo-status-bar";
 import { useEffect, useRef } from "react";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
+import { KeyboardProvider } from "react-native-keyboard-controller";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { AppState, Text as RNText } from "react-native";
 import * as Sentry from "@sentry/react-native";
@@ -80,7 +81,7 @@ initSentry();
 SplashScreen.preventAutoHideAsync().catch(() => {});
 
 function AuthGate() {
-  const { user, loading } = useAuth();
+  const { user, loading, signedOutThisSession } = useAuth();
   const segments = useSegments();
   const router = useRouter();
   const { facts, ready: factsReady } = useColdStartFacts();
@@ -232,6 +233,7 @@ function AuthGate() {
       funnelWelcomeEnabled: isFunnelWelcomeEnabled(),
       welcomeEligible: user?.welcomeEligible,
       hasRecorded: user ? (user.totalRecordings ?? 0) > 0 : undefined,
+      signedOutThisSession,
     });
 
     switch (route) {
@@ -284,7 +286,7 @@ function AuthGate() {
         return;
 
     }
-  }, [user, loading, segments, router, facts, factsReady]);
+  }, [user, loading, segments, router, facts, factsReady, signedOutThisSession]);
 
   return null;
 }
@@ -317,6 +319,12 @@ function RootLayout() {
     // that uses GestureDetector / PanGestureHandler picks up the
     // required root context.
     <GestureHandlerRootView style={{ flex: 1 }}>
+      {/* App-wide keyboard tracking (1.9.5, Jimmy 10/19: "keyboard over
+          buttons"). Powers components/keyboard/* — KeyboardSafeView and
+          KeyboardScroll — which every text-input screen uses instead of
+          per-screen KeyboardAvoidingView offsets. Guarded by
+          evidence/keyboard-handling.test.ts. */}
+      <KeyboardProvider>
       <SafeAreaProvider>
         <ThemeProvider>
           <AuthProvider>
@@ -341,6 +349,7 @@ function RootLayout() {
           </AuthProvider>
         </ThemeProvider>
       </SafeAreaProvider>
+      </KeyboardProvider>
     </GestureHandlerRootView>
   );
 }
