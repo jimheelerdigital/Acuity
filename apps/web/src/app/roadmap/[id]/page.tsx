@@ -7,7 +7,8 @@ import { ROADMAP_STATUS_META, roadmapVotingOpen } from "@acuity/shared";
 import { getAuthOptions } from "@/lib/auth";
 import { getRoadmapItem, type RoadmapItemDetailDTO } from "@/lib/roadmap";
 
-import { CategoryBanner, StatusPill, VoteButton, categoryLabel, contextLine } from "../roadmap-ui";
+import { categoryLabel, contextLine } from "../roadmap-format";
+import { CategoryBanner, StatusPill, VoteButton } from "../roadmap-ui";
 
 export const dynamic = "force-dynamic";
 

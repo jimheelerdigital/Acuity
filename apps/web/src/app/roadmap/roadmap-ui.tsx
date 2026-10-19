@@ -73,30 +73,6 @@ export function StatusPill({ status }: { status: RoadmapStatus }) {
   );
 }
 
-export function categoryLabel(category: RoadmapCategory | null): string | null {
-  return category ? ROADMAP_CATEGORY_META[category].label : null;
-}
-
-/** "Shipped in 1.9.4 · Oct 18, 2026" / "Q4 2026" — the one-line context under a title. */
-export function contextLine(item: {
-  status: RoadmapStatus;
-  shippedVersion: string | null;
-  shippedAt: string | null;
-  timeframe: string | null;
-}): string | null {
-  if (item.status === "shipped") {
-    const parts: string[] = [];
-    if (item.shippedVersion) parts.push(`Shipped in ${item.shippedVersion}`);
-    if (item.shippedAt) {
-      parts.push(
-        new Date(item.shippedAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
-      );
-    }
-    return parts.length ? parts.join(" · ") : "Shipped";
-  }
-  return item.timeframe;
-}
-
 type VoteState = { id: string; title: string; votes: number; votedByMe: boolean };
 
 /**

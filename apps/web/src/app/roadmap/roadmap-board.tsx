@@ -7,7 +7,8 @@ import { ROADMAP_STATUS_META, roadmapVotingOpen, type RoadmapStatus } from "@acu
 
 import type { RoadmapItemDTO } from "@/lib/roadmap";
 
-import { CategoryBanner, StatusPill, VoteButton, categoryLabel, contextLine } from "./roadmap-ui";
+import { categoryLabel, contextLine } from "./roadmap-format";
+import { CategoryBanner, StatusPill, VoteButton } from "./roadmap-ui";
 
 /**
  * Tabbed roadmap board (2026-10-19, modelled on the LeanIX roadmap Jimmy
