@@ -3717,6 +3717,15 @@ model RoadmapItem {
   sortOrder      Int           @default(0)
   shippedVersion String?
   shippedAt      DateTime?
+  // Detail page content (2026-10-19, Jimmy: "I want things that are
+  // shipped to have detail pages... same for upcoming things"). All
+  // optional — an item without them still renders from title + summary.
+  category       String?
+  timeframe      String?
+  problem        String?
+  solution       String?
+  highlights     String[]      @default([])
+  howTo          String?
   createdAt      DateTime      @default(now())
   updatedAt      DateTime      @updatedAt
   votes          RoadmapVote[]
