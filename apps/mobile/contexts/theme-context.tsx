@@ -13,6 +13,7 @@ import { useColorScheme as useNativewindColorScheme } from "nativewind";
 
 import { api } from "@/lib/api";
 import { getStoredUser, getToken } from "@/lib/auth";
+import { publishThemeToWatch } from "@/lib/widget-data";
 import {
   ACUITY_ACCENT_PRESETS,
   makeAcuityTokens,
@@ -247,6 +248,18 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     () => makeAcuityTokens({ dark: resolved === "dark", accent: palette }),
     [resolved, palette]
   );
+
+  // Mirror the brand colors to the Apple Watch (via the App Group the
+  // WatchConnectivity sender reads). Keeps the watch's accent + record orb in
+  // sync with the user's palette. iOS-only + best-effort inside the helper.
+  useEffect(() => {
+    publishThemeToWatch({
+      primary: tokens.primary,
+      primaryHi: tokens.primaryHi,
+      secondary: tokens.secondary,
+      accent: palette,
+    });
+  }, [tokens, palette]);
 
   return (
     <ThemeContext.Provider

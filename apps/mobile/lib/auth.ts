@@ -19,6 +19,7 @@
 //
 // See docs/AUTH_HARDENING.md for the full test checklist.
 
+import { logCompletedRegistration } from "@/lib/meta-sdk";
 import * as AuthSession from "expo-auth-session";
 import * as Google from "expo-auth-session/providers/google";
 import Constants from "expo-constants";
@@ -26,6 +27,8 @@ import * as SecureStore from "expo-secure-store";
 import * as WebBrowser from "expo-web-browser";
 import { useMemo } from "react";
 import { Platform } from "react-native";
+
+import { publishSiriConfig } from "@/lib/siri-shortcuts-data";
 
 // Required for expo-auth-session on web + some Expo Go edge cases.
 // No-op on native iOS but safe to call anywhere.
@@ -85,6 +88,15 @@ export type User = {
   // states route the user into the onboarding flow. `true` lets the
   // AuthGate land the user on /(tabs) directly.
   onboardingCompleted?: boolean;
+  // Funnel welcome flow (1.9+, apps/web/src/lib/welcome-eligibility.ts).
+  // Needed because the server reports PRO / Stripe-trial users as
+  // onboardingCompleted even when they never were (2026-10-04 hotfix).
+  welcomeEligible?: boolean;
+  // Their web first-debrief entry: the welcome flow skips its record step
+  // and shows this one's results.
+  webDebriefEntryId?: string | null;
+  // Latest Art. 9 (special_category_processing) ledger row is a grant.
+  hasAiConsent?: boolean;
   // 1..10. When the user relaunches mid-flow we resume at this step.
   onboardingStep?: number;
   notificationTime?: string;
@@ -153,6 +165,80 @@ const KEYCHAIN_OPTIONS: SecureStore.SecureStoreOptions = {
   keychainAccessible: SecureStore.AFTER_FIRST_UNLOCK,
 };
 
+// ─── Shared Keychain copy for the widget extension (1.9.4) ──────────
+//
+// The Siri App Intents run inside the app bundle, so they read TOKEN_KEY
+// from the app's own (default) keychain access group. The WidgetKit
+// extension is a SEPARATE process/bundle and cannot see that group, so
+// its tap-to-check intent (targets/widget/index.swift CompleteTaskIntent)
+// reads a second copy of the session bearer from a shared keychain access
+// group both bundles are entitled to:
+//
+//   app.json ios.entitlements["keychain-access-groups"]
+//   targets/widget/expo-target.config.js entitlements["keychain-access-groups"]
+//     -> "$(AppIdentifierPrefix)com.heelerdigital.acuity.shared"
+//
+// expo-secure-store (ios/SecureStoreModule.swift `query(with:options:)`)
+// stores the item as kSecClassGenericPassword with
+//   kSecAttrService     = "app:no-auth"  (default keychainService + ":no-auth")
+//   kSecAttrAccount     = UTF-8 bytes of the key
+//   kSecAttrGeneric     = UTF-8 bytes of the key
+//   kSecAttrAccessGroup = options.accessGroup
+// The Swift side queries with exactly those attributes. The credential
+// stays in the Keychain — nothing secret is ever written to the App Group.
+//
+// Migration: the copy is written on every setToken() (sign-in / refresh)
+// and back-filled on the cold-launch getToken() path when it is missing,
+// so users already signed in before 1.9.4 get it on first launch.
+const SHARED_TOKEN_KEY = "acuity_session_token_shared";
+const SHARED_KEYCHAIN_GROUP_SUFFIX = "com.heelerdigital.acuity.shared";
+
+function sharedKeychainOptions(): SecureStore.SecureStoreOptions | null {
+  if (Platform.OS !== "ios") return null;
+  const teamId =
+    (Constants.expoConfig?.ios as { appleTeamId?: string } | undefined)
+      ?.appleTeamId ?? "ZNF9ZJ4NVX";
+  return {
+    keychainAccessible: SecureStore.AFTER_FIRST_UNLOCK,
+    accessGroup: `${teamId}.${SHARED_KEYCHAIN_GROUP_SUFFIX}`,
+  };
+}
+
+async function writeSharedToken(token: string): Promise<void> {
+  const opts = sharedKeychainOptions();
+  if (!opts) return;
+  try {
+    await SecureStore.setItemAsync(SHARED_TOKEN_KEY, token, opts);
+  } catch (err) {
+    // Missing entitlement (older provisioning) or locked keychain: the app
+    // itself is unaffected; only the widget's check-off falls back to
+    // "Open Ripple to sign in".
+    if (__DEV__) console.warn("[secure-store] shared token write failed:", err);
+  }
+}
+
+async function ensureSharedToken(token: string): Promise<void> {
+  const opts = sharedKeychainOptions();
+  if (!opts) return;
+  try {
+    const existing = await SecureStore.getItemAsync(SHARED_TOKEN_KEY, opts);
+    if (existing === token) return;
+  } catch {
+    // fall through and (re)write
+  }
+  await writeSharedToken(token);
+}
+
+async function clearSharedToken(): Promise<void> {
+  const opts = sharedKeychainOptions();
+  if (!opts) return;
+  try {
+    await SecureStore.deleteItemAsync(SHARED_TOKEN_KEY, opts);
+  } catch (err) {
+    if (__DEV__) console.warn("[secure-store] shared token delete failed:", err);
+  }
+}
+
 /**
  * Defensive wrapper around SecureStore.getItemAsync. Returns null on
  * any error (locked keychain, missing entitlements, simulator quirks)
@@ -206,7 +292,16 @@ export async function getToken(): Promise<string | null> {
   // if a value is present, cache it so subsequent calls skip the
   // keychain entirely.
   const stored = await safeGetItem(TOKEN_KEY);
-  if (stored) memoryToken = stored;
+  if (stored) {
+    memoryToken = stored;
+    // Publish the (non-secret) API base for the Siri intents. The bearer they
+    // use is read directly from this same Keychain item — nothing secret is
+    // written to the App Group.
+    publishSiriConfig(apiBaseUrl());
+    // Back-fill the widget's shared-keychain copy for sessions that
+    // pre-date 1.9.4 (fire-and-forget; never delays the caller).
+    void ensureSharedToken(stored);
+  }
   return stored;
 }
 
@@ -215,11 +310,22 @@ export async function setToken(token: string): Promise<void> {
   // the new value even if the keychain write is still committing.
   memoryToken = token;
   await safeSetItem(TOKEN_KEY, token);
+  // Publish the (non-secret) API base for the Siri intents. The intents read
+  // this very token from the Keychain; nothing secret goes to the App Group.
+  publishSiriConfig(apiBaseUrl());
+  // Second copy in the shared keychain access group for the widget
+  // extension's tap-to-check intent (see SHARED_TOKEN_KEY above).
+  await writeSharedToken(token);
 }
 
 export async function clearToken(): Promise<void> {
   memoryToken = null;
+  // Deletes the Keychain item the Siri intents read, so a signed-out device
+  // can no longer act via Siri. No App Group cleanup needed (no secret there).
   await safeDeleteItem(TOKEN_KEY);
+  // ...and the widget's shared-group copy, so a signed-out device's widget
+  // can no longer complete tasks either.
+  await clearSharedToken();
 }
 
 export async function getStoredUser(): Promise<User | null> {
@@ -357,6 +463,83 @@ export async function requestMagicLink(
       return { ok: false, reason: "NetworkError" };
     }
     return { ok: true };
+  } catch {
+    return { ok: false, reason: "NetworkError" };
+  }
+}
+
+// ─── Email one-time code (1.9.1 passwordless) ───────────────────
+
+export type EmailCodeRequestResult =
+  | { ok: true }
+  | { ok: false; reason: "RateLimited" | "InvalidEmail" | "SendFailed" | "NetworkError" };
+
+/**
+ * Email a 6-digit sign-in code (POST /api/auth/mobile-email-code/request).
+ * Never reveals whether the account exists; the account is created when the
+ * code is verified.
+ */
+export async function requestEmailCode(email: string): Promise<EmailCodeRequestResult> {
+  try {
+    const res = await fetch(`${apiBaseUrl()}/api/auth/mobile-email-code/request`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email: email.trim() }),
+    });
+    if (res.ok) return { ok: true };
+    if (res.status === 429) return { ok: false, reason: "RateLimited" };
+    if (res.status === 400) return { ok: false, reason: "InvalidEmail" };
+    if (res.status === 502) return { ok: false, reason: "SendFailed" };
+    return { ok: false, reason: "NetworkError" };
+  } catch {
+    return { ok: false, reason: "NetworkError" };
+  }
+}
+
+export type EmailCodeVerifyResult =
+  | { ok: true; user: User; sessionToken: string; isNewUser: boolean }
+  | {
+      ok: false;
+      reason: "InvalidCode" | "ExpiredCode" | "TooManyAttempts" | "RateLimited" | "NetworkError";
+    };
+
+/**
+ * Exchange email + 6-digit code for a session (creates the account on first
+ * use). Stores the session exactly like the other sign-in paths; callers
+ * then hand the user to AuthContext.setAuthenticatedUser.
+ */
+export async function verifyEmailCode(
+  email: string,
+  code: string
+): Promise<EmailCodeVerifyResult> {
+  try {
+    const res = await fetch(`${apiBaseUrl()}/api/auth/mobile-email-code/verify`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email: email.trim(), code: code.replace(/\D/g, "") }),
+    });
+    const body = (await res.json().catch(() => ({}))) as {
+      error?: string;
+      sessionToken?: string;
+      user?: User;
+      isNewUser?: boolean;
+    };
+    if (!res.ok || !body.sessionToken || !body.user) {
+      if (res.status === 429) return { ok: false, reason: "RateLimited" };
+      const reason =
+        body.error === "ExpiredCode"
+          ? "ExpiredCode"
+          : body.error === "TooManyAttempts"
+          ? "TooManyAttempts"
+          : body.error === "InvalidCode" || res.status === 400
+          ? "InvalidCode"
+          : "NetworkError";
+      return { ok: false, reason };
+    }
+    await setToken(body.sessionToken);
+    await setStoredUser(body.user);
+    if (body.isNewUser) logCompletedRegistration("email");
+    return { ok: true, user: body.user, sessionToken: body.sessionToken, isNewUser: !!body.isNewUser };
   } catch {
     return { ok: false, reason: "NetworkError" };
   }
@@ -758,9 +941,12 @@ export function useGoogleSignIn() {
       const body = (await res.json()) as {
         sessionToken: string;
         user: User;
+        isNewUser?: boolean;
       };
       await setToken(body.sessionToken);
       await setStoredUser(body.user);
+      // Real signups only (server says whether it created the account).
+      if (body.isNewUser) logCompletedRegistration("google");
       return { ok: true, user: body.user, sessionToken: body.sessionToken };
     } catch (err) {
       debug.callbackError =

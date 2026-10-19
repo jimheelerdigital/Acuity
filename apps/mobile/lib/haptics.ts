@@ -23,6 +23,42 @@ import { useCallback, useEffect, useState } from "react";
 
 const HAPTICS_KEY = "acuity.haptics";
 
+/**
+ * Module-level copy of the preference for places that fire haptics from
+ * many list rows (swipe rows). A hook per row would read AsyncStorage
+ * once per row; this reads it once per app launch. Kept in sync by
+ * useHaptics().setEnabled.
+ */
+let cachedEnabled: boolean | null = null;
+let loading: Promise<void> | null = null;
+
+function ensureLoaded(): void {
+  if (cachedEnabled !== null || loading) return;
+  loading = AsyncStorage.getItem(HAPTICS_KEY)
+    .then((stored) => {
+      if (cachedEnabled === null) cachedEnabled = stored !== "false";
+    })
+    .catch(() => {
+      if (cachedEnabled === null) cachedEnabled = true;
+    });
+}
+
+/** Fire-and-forget haptic that respects the Appearance → Haptics toggle. */
+export function fireHaptic(kind: "light" | "medium" | "warning" = "light"): void {
+  ensureLoaded();
+  // Before the first read resolves, default ON (matches useHaptics).
+  if (cachedEnabled === false) return;
+  if (kind === "warning") {
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning).catch(() => {});
+    return;
+  }
+  Haptics.impactAsync(
+    kind === "medium"
+      ? Haptics.ImpactFeedbackStyle.Medium
+      : Haptics.ImpactFeedbackStyle.Light
+  ).catch(() => {});
+}
+
 interface UseHapticsValue {
   enabled: boolean;
   setEnabled: (v: boolean) => void;
@@ -58,6 +94,7 @@ export function useHaptics(): UseHapticsValue {
 
   const setEnabled = useCallback((v: boolean) => {
     setEnabledState(v);
+    cachedEnabled = v;
     AsyncStorage.setItem(HAPTICS_KEY, v ? "true" : "false").catch(() => {});
     if (v) {
       // Confirm the toggle ON with a small tap so the user feels what

@@ -35,6 +35,34 @@ const SAVE_WALL_HITS_KEY = "ripple.v10.save_wall_hits";
  * storage failure must not block the auto-advance, since the flow degrades
  * gracefully to the `open` branch rather than breaking.
  */
+
+// ─── Change notifications (1.9.1) ─────────────────────────────────────
+// AuthGate's routing facts (guest / offered / dismissed) used to be read
+// once per launch, so a flag written mid-session (e.g. "Log in" dismissing
+// the funnel, sign-out clearing it) left routing working from a stale
+// snapshot and could send people back into the funnel. Every writer below
+// now notifies, and useColdStartFacts re-reads on notify.
+type Listener = () => void;
+const listeners = new Set<Listener>();
+
+export function onV10StateChanged(listener: Listener): () => void {
+  listeners.add(listener);
+  return () => {
+    listeners.delete(listener);
+  };
+}
+
+/** Call after writing any routing flag outside this module (e.g. sign-out). */
+export function notifyV10StateChanged(): void {
+  for (const l of Array.from(listeners)) {
+    try {
+      l();
+    } catch {
+      /* a listener must never break a writer */
+    }
+  }
+}
+
 export async function setV10Branch(branch: V10Branch): Promise<void> {
   try {
     await AsyncStorage.setItem(BRANCH_KEY, branch);
@@ -133,6 +161,7 @@ export async function setV10Guest(isGuest: boolean): Promise<void> {
   try {
     if (isGuest) await AsyncStorage.setItem(GUEST_KEY, "true");
     else await AsyncStorage.removeItem(GUEST_KEY);
+    notifyV10StateChanged();
   } catch {
     // Best-effort. Failing to SET means they get bounced to sign-in, which
     // is recoverable; failing to CLEAR is handled by the signed-in branch
@@ -160,6 +189,7 @@ export async function isV10Guest(): Promise<boolean> {
 export async function markV10Offered(): Promise<void> {
   try {
     await AsyncStorage.setItem(OFFERED_KEY, "true");
+    notifyV10StateChanged();
   } catch {
     /* best-effort */
   }
@@ -183,6 +213,7 @@ export async function wasV10Offered(): Promise<boolean> {
 export async function dismissV10(): Promise<void> {
   try {
     await AsyncStorage.setItem(DISMISSED_KEY, "true");
+    notifyV10StateChanged();
   } catch {
     /* best-effort */
   }
@@ -234,6 +265,7 @@ export async function clearV10State(): Promise<void> {
       DISMISSED_KEY,
       SAVE_WALL_HITS_KEY,
     ]);
+    notifyV10StateChanged();
   } catch {
     /* non-fatal */
   }

@@ -16,7 +16,7 @@ import { trackOnboardingEvent } from "@/lib/onboarding-events";
 import { makeAcuityTokens } from "@/lib/theme/tokens";
 
 import { ScreenTestimonial } from "./_components/screen-testimonial";
-import V10Recognition from "./_v10/recognition";
+import { V11Redirect } from "./_v11/redirect";
 import { V10Switch } from "./_v10/route-switch";
 
 const TESTIMONIAL = {
@@ -210,9 +210,9 @@ function PainScreen() {
             disabled={!ready}
             accessibilityRole="button"
             accessibilityLabel="Continue"
-            style={({ pressed }) => ({
+            style={({
               alignSelf: "flex-start",
-              opacity: pressed ? 0.7 : 1,
+              opacity: 1,
               paddingVertical: 12,
             })}
           >
@@ -241,5 +241,5 @@ function PainScreen() {
  * same route, so the live Meta-ad deep links keep working either way.
  */
 export default function PainRoute() {
-  return <V10Switch v10={<V10Recognition />} legacy={<PainScreen />} />;
+  return <V10Switch v10={<V11Redirect to="/onboarding-new/name" />} legacy={<PainScreen />} />;
 }

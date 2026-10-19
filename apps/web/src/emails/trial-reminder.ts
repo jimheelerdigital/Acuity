@@ -1,5 +1,7 @@
 /**
- * Card-trial reminder. Sent on Stripe `customer.subscription.trial_will_end`,
+ * Card-trial reminder. Sent on Stripe `customer.subscription.trial_will_end`
+ * (and, for RevenueCat Web Billing trials, by inngest/functions/
+ * rc-trial-reminder.ts at the same moment),
  * which Stripe fires 3 days before a trial ends (day 4 of the 7-day web
  * trial). The funnel paywall promises this email ("Day 4: we email you a
  * reminder"), so it must keep firing. Stripe only sends the event if the
@@ -21,12 +23,15 @@ export async function sendTrialReminderEmail({
   name,
   trialEnd,
   priceText,
+  billing = "stripe",
 }: {
   to: string;
   name: string | null;
   trialEnd: Date;
   /** What Stripe will charge, e.g. "$9.99/month". */
   priceText: string;
+  /** Who bills the card. RevenueCat Web Billing trials pass "rc_billing". */
+  billing?: "stripe" | "rc_billing";
 }) {
   const firstName = name?.split(" ")[0] ?? "there";
   const when = trialEnd.toLocaleDateString("en-US", {
@@ -44,7 +49,9 @@ export async function sendTrialReminderEmail({
     ctaLabel: "Manage or cancel",
     ctaUrl: portalUrl,
     footnote:
-      "The button opens your Stripe billing page, where you can cancel in a couple of taps. Your debriefs stay yours either way.",
+      billing === "rc_billing"
+        ? "The button opens your billing page, where you can cancel in a couple of taps. Your debriefs stay yours either way."
+        : "The button opens your Stripe billing page, where you can cancel in a couple of taps. Your debriefs stay yours either way.",
   });
 
   await sendEmailOrThrow({

@@ -7,6 +7,29 @@
 
 ---
 
+## [2026-10-18] — The shipped app's code (1.9.1 → 1.9.4 + typed entry + RC Web Billing) lands on main in one PR
+
+- **Requested by:** Jimmy
+- **Committed by:** Claude (Cowork)
+- **Branch:** `chore/land-1.9.4-on-main`. NOT on main; Jimmy merges. **Supersedes** `chore/land-1.9.3-on-main`, `feat/widget-1.9.4`, `feat/typed-entry` and `feat/rc-web-billing-v2` — don't merge those separately after this. No schema change (main already matches prod), no app build.
+
+### In plain English (for Keenan)
+The code inside the app people have on their phones (1.9.1 through 1.9.4, the widget, typing an entry, the roadmap, Apple Ads tracking) was living on side branches, not on the main line the website deploys from. This puts it all on main in one go, so the next app update and the next website change start from the same place. While checking it, I found and fixed one thing that would have broken the recorder for people on the current App Store build if we'd pushed the typing/handwriting update over the air.
+
+### Technical changes (for Jimmy)
+- Built from `origin/chore/land-1.9.3-on-main` (it already held the reviewed 10/15 merge of feat/1.9.1 into main + `6b992e09`, the evidence-test fix), then: `merge origin/main` (10/15 → 10/18, #83–#90: clean); `merge origin/feat/typed-entry` (widget 1.9.4, typed entry, handwriting, processing timeline, roadmap, Apple Ads — 2 conflicts: `lib/rate-limit.ts` kept both new limiters `emailCodeVerifyByEmail` + `roadmapVote`; `schema.prisma` dropped my now-stale "declared ahead of feat/typed-entry" comment, models identical); `merge origin/feat/rc-web-billing-v2` (clean). Real merges, so `git log` keeps every original commit.
+- **OTA safety fix (new commit `1c5612e0`):** `apps/mobile/lib/handwriting-capture.ts` statically imported `expo-image-picker` / `expo-image-manipulator`, native modules added after build 183. runtimeVersion = `appVersion` ("1.9.4"), so an OTA reaches 183, where those packages throw in `requireNativeModule()` on first evaluation → record screen down. Now: no native import at load, `handwritingCaptureAvailable()` via `requireOptionalNativeModule` (from `expo`, no new dep), `import()` on first use, camera button rendered only when the binary has both modules. New `lib/evidence/ota-native-safety.test.ts` fails on any static import of a package newer than the oldest live binary (verified red on the old file).
+- Verified on the final tree: `prisma validate` OK, no duplicate models; RLS coverage OK (110 models); **destructive-diff vs prod: "Schema and database agree — nothing to apply"**; lockfile consistent (`npm install --package-lock-only` = no change); no node_modules / prebuild artifacts / symlinks tracked; web tsc 151 = main baseline, zero new (14 apparent new ones were a stale generated Prisma client — regenerated, gone); **web tests 1385/1385 pass** (the 6 `lib/evidence` failures main has had all day are fixed by `6b992e09`); mobile tsc = identical 13-error set to shipped `feat/typed-entry`.
+- Deps added to main: mobile `@bacons/apple-targets`, `expo-build-properties`, `expo-image-picker`, `expo-image-manipulator`, `expo-sharing`, `expo-store-review`, `react-native-android-widget`; web `@revenuecat/purchases-js`. All already in the shipped app / branch.
+
+### Manual steps needed
+- [ ] Jimmy: merge `chore/land-1.9.4-on-main` (one PR; Vercel preview build is the Next.js build check).
+- [ ] After merge, the old branches can be deleted on GitHub (they're fully contained): `chore/land-1.9.3-on-main`, `feat/widget-1.9.4`, `feat/typed-entry`, `feat/rc-web-billing-v2`, `feat/1.9.1`.
+- [ ] OTA to 1.9.4 (typed entry, roadmap screen, Apple Ads attribution, `next=record`, email-code screen from main) becomes possible from main after merge — a separate, deliberate step: `eas update --branch production --message "…"` from a clean checkout of main. I'll prep it on your go; it is production-affecting.
+- [ ] RC Web Billing stays behind its flag (unchanged).
+
+---
+
 ## [2026-10-18] — Every per-user Claude call now writes ClaudeCallLog with the user and the real price (audit 2026-10-17 "Unlogged AI cost")
 
 - **Requested by:** Jimmy (audit 2026-10-17 §6 item 6 + backlog "Log pipeline.ts and Opus 5.5 calls")
@@ -7529,6 +7552,7 @@ The /start-bwk paywall now quotes a real 5-star App Store review, "The task mana
 ---
 
 ## [2026-09-24] — Weekly audit system: reviewed against spec, verified on real data, fixed failure-email crash
+## [2026-09-24] — Siri voice actions (1.7): add habit/task, check off a habit, start a check-in — all by voice
 
 **Requested by:** Jimmy
 **Committed by:** Claude Code
@@ -7757,6 +7781,22 @@ The first two-size batch had flaws: the Stories versions cut letters off headlin
 
 ### Notes
 - The 2:3 source render isn't stored, so any re-cut means a regen (about 20 image calls). Worth storing the source if cropping gets tuned again
+You can now talk to Ripple through Siri without opening the app. "Hey Siri, add a habit," "add a task," "I did my stretching today" (checks off a habit), "start a Ripple check-in," and "what's my streak." The add/check-off ones happen in the background and Siri just talks back to confirm — no tapping. Needs a new TestFlight build and a quick test on a real phone before it's live.
+
+### Technical changes (for Jimmy)
+- `apps/mobile/plugins/RippleShortcuts.swift`: expanded from the single StartDebrief intent to a full set. New background App Intents (openAppWhenRun=false, speak a result): `AddHabitIntent` → POST /api/habits, `AddTaskIntent` → POST /api/tasks, `CompleteHabitIntent` (HabitEntity param + EntityStringQuery so Siri matches the spoken habit name) → POST /api/habits/{id}/check with the local date, `CurrentStreakIntent` (reads streak from the App Group). Open-app intents kept. "Start a Ripple check-in" phrases added to StartDebrief. All call the API as the user with the bearer read from the Keychain; graceful "open Ripple and sign in" when no token. 8 shortcuts registered (under the iOS 10 cap).
+- Token is read from the **Keychain**, not the App Group. `RippleShortcuts.swift` reads the app's existing `expo-secure-store` session-token item directly via `SecItemCopyMatching` (service `app:no-auth`, account = UTF-8 data of `acuity_session_token`, matching expo-secure-store's exact schema). The App Intent runs as the app's own bundle, so it shares the app's default keychain access group — no shared-access-group entitlement, no provisioning change.
+- `apps/mobile/lib/siri-shortcuts-data.ts` (new): publishes only NON-secrets into the App Group — `apiBase` and `habitsForSiri` [{id,name}] (same sensitivity as the habit names the widget already shows). No credential ever touches the App Group.
+- `apps/mobile/lib/auth.ts`: publishes the non-secret `apiBase` on setToken / cold-launch hydration; clearToken deletes the Keychain token the intents read (so a signed-out device can't act via Siri).
+- `apps/mobile/lib/widget-data.ts`: also publish the active-habit list for the check-off entity resolver.
+
+### Manual steps needed
+- **Jimmy:** EAS build from `feat/siri-actions` (no new provisioning — App Intents compile into the main target, App Group already entitled), then on-device test the phrases (see the chat handoff for the exact list). If Siri phrase-matching on habit names needs tuning, that's iterable in the Swift.
+
+### Notes
+- **Security:** the session bearer stays in the Keychain only — the intents read the app's existing SecureStore item directly. Nothing secret is written to the App Group (only the API base and habit names, the latter already exposed by the widget). No new entitlement or provisioning change.
+- Branch `feat/siri-actions` off `feat/ios-widgets` (the real 1.7 stack). Not pushed — waiting on "push it".
+- TypeScript clean on the three edited/added TS files; Swift is structurally verified (balanced, all intents registered) but only a real Xcode/EAS build + on-device Siri test confirms it — same loop as builds 129–131.
 
 ---
 

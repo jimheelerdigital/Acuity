@@ -132,9 +132,9 @@ export function CelebrationModal({
             onPress={onContinue}
             accessibilityRole="button"
             accessibilityLabel="Continue"
-            style={({ pressed }) => [
+            style={[
               styles.continueWrap,
-              pressed && { transform: [{ scale: 0.97 }] },
+              false && { transform: [{ scale: 0.97 }] },
             ]}
           >
             <LinearGradient

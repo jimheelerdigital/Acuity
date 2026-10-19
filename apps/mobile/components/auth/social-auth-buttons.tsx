@@ -58,6 +58,7 @@ export type AuthLoading =
   | "apple"
   | "password"
   | "magic"
+  | "code"
   | null;
 
 export interface SocialAuthButtonsProps {
@@ -84,6 +85,12 @@ export interface SocialAuthButtonsProps {
   appleButtonType: AppleAuthentication.AppleAuthenticationButtonType;
   /** Copy shown beside the spinner while Apple is mid-flight. */
   appleBusyLabel?: string;
+  /**
+   * Small line directly under the Apple button (1.9.1): "Paid on the
+   * website? Use the same email." — Apple's Hide My Email otherwise creates
+   * a second, empty account for web buyers.
+   */
+  appleFootnote?: string;
 }
 
 export function SocialAuthButtons({
@@ -93,6 +100,7 @@ export function SocialAuthButtons({
   tokens,
   appleButtonType,
   appleBusyLabel = "Signing in…",
+  appleFootnote,
 }: SocialAuthButtonsProps) {
   // Whether Google is configured for THIS platform. A plain check, not a
   // hook, so we can gate MOUNTING the Google hook: mounting
@@ -178,6 +186,15 @@ export function SocialAuthButtons({
               }}
             />
           )}
+          {appleFootnote ? (
+            <Text
+              className="text-xs text-center mt-2"
+              style={{ color: tokens.textSec }}
+              maxFontSizeMultiplier={1.3}
+            >
+              {appleFootnote}
+            </Text>
+          ) : null}
         </View>
       )}
 

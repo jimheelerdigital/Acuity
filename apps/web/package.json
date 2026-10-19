@@ -20,6 +20,7 @@
     "@google-analytics/data": "^5.2.1",
     "@modelcontextprotocol/sdk": "^1.26.0",
     "@prisma/client": "^5.16.0",
+    "@revenuecat/purchases-js": "^1.67.1",
     "@sentry/nextjs": "10.50.0",
     "@supabase/supabase-js": "^2.44.0",
     "@types/bcryptjs": "^2.4.6",

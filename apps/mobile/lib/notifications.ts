@@ -141,12 +141,27 @@ function weekOfYearNow(): number {
  * still visible.
  */
 Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldShowBanner: true,
-    shouldShowList: true,
-    shouldPlaySound: true,
-    shouldSetBadge: false,
-  }),
+  handleNotification: async (notification) => {
+    // 1.9.1: "your debrief is ready" is for people who LEFT the app. If it
+    // arrives while Ripple is open, the in-app "brief ready" toast / the
+    // entry screen already covers it — don't also drop a banner on them.
+    // (This handler only runs while the app is in the foreground.)
+    const type = (notification.request.content.data as { type?: unknown } | undefined)?.type;
+    if (type === "completion") {
+      return {
+        shouldShowBanner: false,
+        shouldShowList: false,
+        shouldPlaySound: false,
+        shouldSetBadge: false,
+      };
+    }
+    return {
+      shouldShowBanner: true,
+      shouldShowList: true,
+      shouldPlaySound: true,
+      shouldSetBadge: false,
+    };
+  },
 });
 
 // Android (v1.3.3 baseline): a notification channel is required for remote

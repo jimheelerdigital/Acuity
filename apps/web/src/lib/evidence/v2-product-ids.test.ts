@@ -186,20 +186,17 @@ describe("with newPricingEnabled OFF, everything still resolves LEGACY", () => {
     vi.unstubAllEnvs();
   });
 
-  it("the receipt allow-lists have NOT been widened to the V2 products", async () => {
-    // Verification gates are a separate decision from the catalog. They
-    // open at cutover, not now — otherwise a forged v2 receipt would be
-    // honoured before the products are supposed to be purchasable.
+  it("the receipt allow-lists ACCEPT the V2 products (opened at cutover)", async () => {
+    // This gate was held shut until the V2 products went on sale, then
+    // opened with the RevenueCat cutover (1.9.0). Live customers on
+    // pre-1.9 builds buy monthly.v2 through /api/iap/verify-receipt today;
+    // closing it again would reject their real purchases.
     const { ALLOWED_PRODUCT_IDS } = await import("@/lib/apple-iap");
     const { GOOGLE_ALLOWED_PRODUCT_IDS } = await import("@/lib/google-iap");
-    expect(ALLOWED_PRODUCT_IDS.has(V2_TIER.products.monthly.apple)).toBe(false);
-    expect(ALLOWED_PRODUCT_IDS.has(V2_TIER.products.annual.apple)).toBe(false);
-    expect(GOOGLE_ALLOWED_PRODUCT_IDS.has(V2_TIER.products.monthly.google)).toBe(
-      false
-    );
-    expect(GOOGLE_ALLOWED_PRODUCT_IDS.has(V2_TIER.products.annual.google)).toBe(
-      false
-    );
+    expect(ALLOWED_PRODUCT_IDS.has(V2_TIER.products.monthly.apple)).toBe(true);
+    expect(ALLOWED_PRODUCT_IDS.has(V2_TIER.products.annual.apple)).toBe(true);
+    expect(GOOGLE_ALLOWED_PRODUCT_IDS.has(V2_TIER.products.monthly.google)).toBe(true);
+    expect(GOOGLE_ALLOWED_PRODUCT_IDS.has(V2_TIER.products.annual.google)).toBe(true);
   });
 
   it("allProductIds() still lists all four SKUs for server-side allow-lists", () => {

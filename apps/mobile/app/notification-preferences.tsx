@@ -1,4 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
+import { AttachStep } from "react-native-spotlight-tour";
+import { WHATS_NEW_STEP_INDEX } from "@/components/tour/steps";
 import {
   NOTIFICATION_CATEGORIES,
   NOTIFICATION_TONES,
@@ -341,15 +343,17 @@ export default function NotificationCenterScreen() {
           Tailor what Ripple sends, and when.
         </Text>
 
-        {/* All notifications on/off. */}
-        <SwitchRow
-          tokens={tokens}
-          label="All notifications"
-          description="Turn everything off at once."
-          value={masterEnabled}
-          onToggle={() => void toggleMaster()}
-          style={{ marginTop: 28 }}
-        />
+        {/* All notifications on/off. Spotlit by the 1.9.1 What's New tour
+            ("know when your debrief is ready"). */}
+        <AttachStep index={WHATS_NEW_STEP_INDEX.notifications} fill style={{ marginTop: 28 }}>
+          <SwitchRow
+            tokens={tokens}
+            label="All notifications"
+            description="Turn everything off at once."
+            value={masterEnabled}
+            onToggle={() => void toggleMaster()}
+          />
+        </AttachStep>
 
         {masterEnabled && permission !== "granted" ? (
           <Pressable

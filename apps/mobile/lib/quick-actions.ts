@@ -9,28 +9,37 @@
  * the long-press icon menu all offer the same first actions.
  *
  * Best-effort: quick actions are a convenience, never load-bearing.
+ *
+ * Icons: iOS takes SF Symbols ("symbol:…"). Android needs real image
+ * resources — the qa_* adaptive icons generated from assets/quick-actions by
+ * the expo-quick-actions config plugin (app.json). Without them Android
+ * shows the shortcuts with no icon.
  */
+import { Platform } from "react-native";
 import * as QuickActions from "expo-quick-actions";
 import type { RouterAction } from "expo-quick-actions/router";
+
+const icon = (ios: string, android: string) =>
+  Platform.OS === "android" ? android : `symbol:${ios}`;
 
 export const RIPPLE_QUICK_ACTIONS: RouterAction[] = [
   {
     id: "new-debrief",
     title: "New Debrief",
     subtitle: "Record today's reflection",
-    icon: "symbol:mic.fill",
+    icon: icon("mic.fill", "qa_record"),
     params: { href: "/record?autostart=1" },
   },
   {
     id: "ask-ripple",
     title: "Ask Ripple",
-    icon: "symbol:sparkles",
+    icon: icon("sparkles", "qa_ask"),
     params: { href: "/insights/ask" },
   },
   {
     id: "habits",
     title: "Habits",
-    icon: "symbol:checkmark.circle.fill",
+    icon: icon("checkmark.circle.fill", "qa_habits"),
     params: { href: "/habits" },
   },
 ];

@@ -13,6 +13,7 @@ import {
   type Habit,
   type HabitCheckRow,
 } from "@/lib/habits-api";
+import { publishHabitsToWidget } from "@/lib/widget-data";
 import { habitsForToday } from "@acuity/shared";
 
 /**
@@ -33,6 +34,9 @@ export function TodayHabits() {
   const [habits, setHabits] = useState<Habit[]>([]);
   const [checks, setChecks] = useState<HabitCheckRow[]>([]);
   const [loaded, setLoaded] = useState(false);
+  // True only after a successful fetch — so the widget is never overwritten
+  // with an empty list just because Home mounted before the data arrived.
+  const [fetched, setFetched] = useState(false);
   const today = todayLocalDate();
 
   useEffect(() => {
@@ -44,6 +48,7 @@ export function TodayHabits() {
         if (cancelled) return;
         setHabits(res.habits);
         setChecks(res.checks);
+        setFetched(true);
       } catch {
         // Non-fatal: Home must render without habits. A failed fetch shows
         // nothing rather than an error card competing with the day's real
@@ -56,6 +61,12 @@ export function TodayHabits() {
       cancelled = true;
     };
   }, []);
+
+  // Check-offs here should show on the home-screen widget right away, the
+  // same as on the Habits screen (both platforms).
+  useEffect(() => {
+    if (fetched) publishHabitsToWidget(habits, checks);
+  }, [fetched, habits, checks]);
 
   const byHabit = useMemo(() => checksByHabit(checks), [checks]);
   const due = useMemo(() => habitsForToday(habits, today), [habits, today]);
@@ -115,7 +126,7 @@ export function TodayHabits() {
               accessibilityRole="checkbox"
               accessibilityState={{ checked: done }}
               accessibilityLabel={habit.name}
-              style={({ pressed }) => ({
+              style={({
                 flexDirection: "row",
                 alignItems: "center",
                 gap: 12,
@@ -124,7 +135,7 @@ export function TodayHabits() {
                 borderRadius: 12,
                 paddingVertical: 14,
                 paddingHorizontal: 14,
-                backgroundColor: pressed ? tokens.bgInset : "transparent",
+                backgroundColor: "transparent",
               })}
             >
               <View

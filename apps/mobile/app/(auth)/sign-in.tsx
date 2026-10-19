@@ -25,7 +25,6 @@
 
 import { Ionicons } from "@expo/vector-icons";
 import * as AppleAuthentication from "expo-apple-authentication";
-import { WebSignupCallout } from "@/components/auth/web-signup-callout";
 import { Link } from "expo-router";
 import { useState } from "react";
 import {
@@ -41,11 +40,8 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 import { useAuth } from "@/contexts/auth-context";
 import { useTheme } from "@/contexts/theme-context";
-import {
-  googlePlatformClientId,
-  requestMagicLink,
-  signInWithPassword,
-} from "@/lib/auth";
+import { googlePlatformClientId, signInWithPassword } from "@/lib/auth";
+import { EmailCodeForm } from "@/components/auth/email-code-form";
 import {
   SocialAuthButtons,
   type AuthLoading as Loading,
@@ -53,29 +49,32 @@ import {
 import { WARN_AMBER } from "@/lib/tone-colors";
 
 /**
- * Mobile sign-in. Three paths, all of which end with a session JWT
- * in SecureStore and AuthContext.refresh() routing to the (tabs) layout:
+ * Mobile Log in (1.9.1 — passwordless). Every path ends with a session JWT
+ * in SecureStore handed to AuthContext.setAuthenticatedUser:
  *
- *   1. Continue with Google — PKCE flow via expo-auth-session.
- *   2. Email + password — POST /api/auth/mobile-login.
- *   3. Email me a link — POST /api/auth/mobile-magic-link, user taps
- *      email link on this device → acuity://auth-callback?token=X →
- *      app/auth-callback.tsx exchanges for a JWT.
+ *   1. Sign in with Apple / Google.
+ *   2. Email → 6-digit code (POST /api/auth/mobile-email-code/*). Creates
+ *      the account if it doesn't exist yet, so nobody gets stuck.
+ *   3. "Use password instead" — TEMPORARY fallback for existing password
+ *      users. Remove after 2026-12-15 (~60 days after 1.9.1).
+ *
+ * Magic links from emails still work (app/auth-callback.tsx); there's just
+ * no button to request one here any more — the code replaces it.
  */
 export default function SignInScreen() {
   const { setAuthenticatedUser } = useAuth();
   const { tokens } = useTheme();
+  const [loading, setLoading] = useState<Loading>(null);
+  const [showPasswordForm, setShowPasswordForm] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
-  const [loading, setLoading] = useState<Loading>(null);
-  const [magicSent, setMagicSent] = useState(false);
+
   async function handlePassword() {
     if (!email.trim() || !password) return;
     setLoading("password");
     const result = await signInWithPassword(email.trim(), password);
     setLoading(null);
-
     if (!result.ok) {
       Alert.alert(
         "Sign-in failed",
@@ -83,276 +82,149 @@ export default function SignInScreen() {
           ? "Please verify your email first. Check your inbox for the link."
           : result.reason === "RateLimited"
           ? "Too many attempts. Wait an hour before trying again."
-          : "Incorrect email or password."
+          : "Incorrect email or password. You can also sign in with a code instead."
       );
       return;
     }
     // Same SecureStore race avoidance as the social paths — see the
     // onAuthenticated docs in components/auth/social-auth-buttons.tsx.
-    // Applies uniformly to all sign-in paths even though the bug
-    // was first reported on Google + Apple; the password path uses
-    // the same setToken→refresh sequence and is exposed to the
-    // same race. Build-29 tokenBridge hand-off applies here too.
     setAuthenticatedUser(result.user, result.sessionToken);
   }
 
-  async function handleMagic() {
-    if (!email.trim()) {
-      Alert.alert("Enter your email", "We need somewhere to send the link.");
-      return;
-    }
-    setLoading("magic");
-    const result = await requestMagicLink(email.trim());
-    setLoading(null);
-
-    if (!result.ok) {
-      Alert.alert(
-        "Couldn't send link",
-        result.reason === "RateLimited"
-          ? "Too many attempts. Wait an hour before trying again."
-          : "Please check your email address and try again."
-      );
-      return;
-    }
-    setMagicSent(true);
-  }
-
-  if (magicSent) {
-    return (
-      <SafeAreaView
-        className="flex-1 items-center justify-center px-6"
-        style={{ backgroundColor: tokens.bg }}
-      >
-        <Text className="text-4xl mb-4">📬</Text>
-        <Text
-          className="text-xl font-bold mb-2"
-          style={{ color: tokens.text }}
-        >
-          Check your inbox
-        </Text>
-        <Text
-          className="text-sm text-center leading-relaxed mb-6"
-          style={{ color: tokens.textSec }}
-        >
-          We sent a sign-in link to {email}. Open it on this device — it&apos;ll hand off to Ripple automatically.
-        </Text>
-        <Pressable
-          onPress={() => {
-            setMagicSent(false);
-            setLoading(null);
-          }}
-          className="px-4 py-2"
-        >
-          <Text className="text-sm" style={{ color: tokens.primary }}>
-            Use a different email
-          </Text>
-        </Pressable>
-      </SafeAreaView>
-    );
-  }
-
   return (
-    // Sign-in screen intentionally does NOT use KeyboardAwareScreen.
-    // The expo-auth-session Google flow opens a SFAuthenticationSession
-    // browser modal via promptAsync(); on TestFlight Build 21 with the
-    // KeyboardAwareScreen wrapper (commit f4297d1, OTA shipped 2026-04-28)
-    // the parent ScrollView destabilized the auth-session promise so
-    // the user was bounced back to sign-in with no token. Reverting to
-    // the pre-wrapper layout for the ScrollView-based KeyboardAwareScreen.
-    // 2026-09-19: on smaller devices the centered layout DID leave the
-    // password field behind the keyboard, so we now use a plain
-    // KeyboardAvoidingView (behavior="padding" on iOS, NO ScrollView).
-    // It is inert while no keyboard is shown — the Apple/Google OAuth taps
-    // happen with the keyboard down — so it does NOT reintroduce the
-    // f4297d1 promptAsync() regression, which was caused specifically by a
-    // parent ScrollView re-layout dismissing SFAuthenticationSession.
-    // Do NOT swap this back to a ScrollView / KeyboardAwareScreen.
-    // Onboarding / sign-up / forgot-password / delete-modal keep their own
-    // wrapper since they have more inputs.
-    <SafeAreaView
-      className="flex-1 px-6"
-      style={{ backgroundColor: tokens.bg }}
-    >
+    // Deliberately NO ScrollView (see the 2026-04-28 regression at the top:
+    // a parent ScrollView re-layout dismissed Google's auth session). Plain
+    // KeyboardAvoidingView, as on 2026-09-19. The code step is no taller
+    // than the old password form, so it fits the same way.
+    <SafeAreaView className="flex-1 px-6" style={{ backgroundColor: tokens.bg }}>
       <KeyboardAvoidingView
         className="flex-1"
         behavior={Platform.OS === "ios" ? "padding" : undefined}
       >
-      <View className="flex-1 justify-center">
-        <View
-          className="h-16 w-16 rounded-2xl items-center justify-center mb-8 self-center"
-          style={{ backgroundColor: tokens.primary }}
-        >
-          <Text className="text-3xl" style={{ color: "#FFFFFF" }}>
-            A
+        <View className="flex-1 justify-center">
+          <Text className="text-2xl font-bold mb-1 text-center" style={{ color: tokens.text }}>
+            Log in to Ripple
           </Text>
-        </View>
-
-        <Text
-          className="text-2xl font-bold mb-1 text-center"
-          style={{ color: tokens.text }}
-        >
-          Sign in to Ripple
-        </Text>
-        <Text
-          className="text-sm mb-8 text-center"
-          style={{ color: tokens.textTer }}
-        >
-          Talk it out. Ripple turns it into your to-dos, habits and patterns.
-        </Text>
-
-        <WebSignupCallout tokens={tokens} />
-
-        {/* Apple + Google. Shared with sign-up so the two screens cannot
-            drift again — see components/auth/social-auth-buttons.tsx. */}
-        <SocialAuthButtons
-          loading={loading}
-          setLoading={setLoading}
-          onAuthenticated={setAuthenticatedUser}
-          tokens={tokens}
-          appleButtonType={
-            AppleAuthentication.AppleAuthenticationButtonType.SIGN_IN
-          }
-        />
-
-        {/* Divider */}
-        <View className="flex-row items-center gap-3 my-3">
-          <View
-            className="h-px flex-1"
-            style={{ backgroundColor: tokens.line }}
-          />
-          <Text
-            className="text-xs"
-            style={{ color: tokens.textTer }}
-          >
-            or
+          <Text className="text-sm mb-8 text-center" style={{ color: tokens.textTer }}>
+            Talk it out. Ripple turns it into your to-dos, habits and patterns.
           </Text>
-          <View
-            className="h-px flex-1"
-            style={{ backgroundColor: tokens.line }}
-          />
-        </View>
 
-        {/* Email + password */}
-        <TextInput
-          value={email}
-          onChangeText={setEmail}
-          placeholder="you@example.com"
-          placeholderTextColor={tokens.textTer}
-          autoCapitalize="none"
-          autoComplete="email"
-          keyboardType="email-address"
-          className="w-full rounded-xl border px-4 py-3 mb-3"
-          style={{
-            borderColor: tokens.line,
-            backgroundColor: tokens.cardBg,
-            color: tokens.text,
-          }}
-        />
-        <View className="relative w-full mb-3">
-          <TextInput
-            value={password}
-            onChangeText={setPassword}
-            placeholder="Password"
-            placeholderTextColor={tokens.textTer}
-            secureTextEntry={!showPassword}
-            autoComplete="password"
-            className="w-full rounded-xl border pl-4 pr-12 py-3"
-            style={{
-              borderColor: tokens.line,
-              backgroundColor: tokens.cardBg,
-              color: tokens.text,
-            }}
+          <SocialAuthButtons
+            loading={loading}
+            setLoading={setLoading}
+            onAuthenticated={setAuthenticatedUser}
+            tokens={tokens}
+            appleButtonType={AppleAuthentication.AppleAuthenticationButtonType.SIGN_IN}
+            appleFootnote="Paid on the website? Use the same email below."
           />
-          <Pressable
-            onPress={() => setShowPassword((v) => !v)}
-            hitSlop={8}
-            accessibilityRole="button"
-            accessibilityLabel={
-              showPassword ? "Hide password" : "Show password"
-            }
-            className="absolute right-3 top-0 bottom-0 justify-center"
-          >
-            <Ionicons
-              name={showPassword ? "eye-off-outline" : "eye-outline"}
-              size={20}
-              color={tokens.textTer}
+
+          <View className="flex-row items-center gap-3 my-3">
+            <View className="h-px flex-1" style={{ backgroundColor: tokens.line }} />
+            <Text className="text-xs" style={{ color: tokens.textTer }}>
+              or
+            </Text>
+            <View className="h-px flex-1" style={{ backgroundColor: tokens.line }} />
+          </View>
+
+          {!showPasswordForm ? (
+            <EmailCodeForm
+              colors={{
+                text: tokens.text,
+                textSec: tokens.textSec,
+                placeholder: tokens.textTer,
+                border: tokens.line,
+                inputBg: tokens.cardBg,
+                buttonBg: tokens.text,
+                buttonText: tokens.bg,
+                link: tokens.primary,
+                error: WARN_AMBER,
+              }}
+              loading={loading}
+              setLoading={setLoading}
+              onAuthenticated={(user, sessionToken) => setAuthenticatedUser(user, sessionToken)}
             />
+          ) : (
+            <View className="w-full">
+              <TextInput
+                value={email}
+                onChangeText={setEmail}
+                placeholder="you@example.com"
+                placeholderTextColor={tokens.textTer}
+                autoCapitalize="none"
+                autoComplete="email"
+                keyboardType="email-address"
+                className="w-full rounded-xl border px-4 py-3 mb-3"
+                style={{ borderColor: tokens.line, backgroundColor: tokens.cardBg, color: tokens.text }}
+              />
+              <View className="relative w-full mb-3">
+                <TextInput
+                  value={password}
+                  onChangeText={setPassword}
+                  placeholder="Password"
+                  placeholderTextColor={tokens.textTer}
+                  secureTextEntry={!showPassword}
+                  autoComplete="password"
+                  className="w-full rounded-xl border pl-4 pr-12 py-3"
+                  style={{ borderColor: tokens.line, backgroundColor: tokens.cardBg, color: tokens.text }}
+                />
+                <Pressable
+                  onPress={() => setShowPassword((v) => !v)}
+                  hitSlop={8}
+                  accessibilityRole="button"
+                  accessibilityLabel={showPassword ? "Hide password" : "Show password"}
+                  className="absolute right-3 top-0 bottom-0 justify-center"
+                >
+                  <Ionicons name={showPassword ? "eye-off-outline" : "eye-outline"} size={20} color={tokens.textTer} />
+                </Pressable>
+              </View>
+              <Pressable
+                onPress={handlePassword}
+                disabled={loading !== null || !email.trim() || !password}
+                className="w-full rounded-xl px-4 py-3.5 items-center"
+                style={{
+                  backgroundColor: tokens.text,
+                  opacity: loading !== null || !email.trim() || !password ? 0.5 : 1,
+                }}
+              >
+                <Text className="text-sm font-semibold" style={{ color: tokens.bg }}>
+                  {loading === "password" ? "Signing in…" : "Log in"}
+                </Text>
+              </Pressable>
+              <Link href="/(auth)/forgot-password" asChild>
+                <Pressable className="mt-3 self-center">
+                  <Text className="text-xs" style={{ color: tokens.textSec }}>
+                    Forgot password?
+                  </Text>
+                </Pressable>
+              </Link>
+            </View>
+          )}
+
+          <Pressable
+            onPress={() => setShowPasswordForm((v) => !v)}
+            disabled={loading !== null}
+            className="mt-5 self-center"
+            hitSlop={8}
+          >
+            <Text className="text-xs" style={{ color: tokens.textSec }}>
+              {showPasswordForm ? "Use an email code instead" : "Use password instead"}
+            </Text>
           </Pressable>
-        </View>
-        <Pressable
-          onPress={handlePassword}
-          disabled={loading !== null || !email.trim() || !password}
-          className="w-full rounded-xl px-4 py-3.5 items-center"
-          style={{
-            backgroundColor: tokens.text,
-            opacity:
-              loading !== null || !email.trim() || !password
-                ? 0.5
-                : 1,
-          }}
-        >
-          <Text
-            className="text-sm font-semibold"
-            style={{ color: tokens.bg }}
-          >
-            {loading === "password" ? "Signing in…" : "Sign in"}
-          </Text>
-        </Pressable>
 
-        {/* Magic link */}
-        <Pressable
-          onPress={handleMagic}
-          disabled={loading !== null}
-          className="w-full rounded-xl border px-4 py-3 mt-3 items-center"
-          style={{
-            borderColor: tokens.line,
-            opacity: loading !== null ? 0.5 : 1,
-          }}
-        >
-          <Text
-            className="text-sm font-medium"
-            style={{ color: tokens.textSec }}
-          >
-            {loading === "magic" ? "Sending link…" : "Email me a sign-in link"}
-          </Text>
-        </Pressable>
-
-        <View className="flex-row justify-between items-center mt-5">
-          <Link href="/(auth)/forgot-password" asChild>
-            <Pressable>
-              <Text
-                className="text-xs"
-                style={{ color: tokens.textSec }}
-              >
-                Forgot password?
-              </Text>
-            </Pressable>
-          </Link>
           <Link href="/(auth)/sign-up" asChild>
-            <Pressable>
-              <Text
-                className="text-xs font-semibold"
-                style={{ color: tokens.primary }}
-              >
-                Create account →
+            <Pressable className="mt-4 self-center">
+              <Text className="text-xs font-semibold" style={{ color: tokens.primary }}>
+                New to Ripple? Create an account →
               </Text>
             </Pressable>
           </Link>
-        </View>
 
-        {__DEV__ && !googlePlatformClientId() && (
-          // WARN_AMBER from lib/tone-colors — single source of truth
-          // for the warning-amber accent (palette has no warning token).
-          // Dev-only: in production a missing platform client id (e.g. Android)
-          // just hides the Google button; no user-facing note.
-          <Text
-            className="text-xs mt-6 text-center leading-relaxed"
-            style={{ color: WARN_AMBER }}
-          >
-            Google client ID not set. Development build only.
-          </Text>
-        )}
-      </View>
+          {__DEV__ && !googlePlatformClientId() && (
+            <Text className="text-xs mt-6 text-center leading-relaxed" style={{ color: WARN_AMBER }}>
+              Google client ID not set. Development build only.
+            </Text>
+          )}
+        </View>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );

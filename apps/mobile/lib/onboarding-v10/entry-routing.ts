@@ -30,7 +30,9 @@ export type ColdStartRoute =
   | "home"
   | "signin"
   | "v10"
-  | "legacy-onboarding";
+  | "v10-resume"
+  | "v10-paywall"
+  | "welcome";
 
 export interface ColdStartFacts {
   /** EXPO_PUBLIC_ONBOARDING_V10. Off ⇒ behaviour is exactly as before. */
@@ -69,7 +71,43 @@ export interface ColdStartFacts {
   hasAppHistory: boolean;
   /** First path segment, e.g. "(auth)", "onboarding-new", "(tabs)". */
   segment: string;
+  /**
+   * EXPO_PUBLIC_FUNNEL_WELCOME. The first-run welcome flow for people who
+   * already paid on the web funnel (app/welcome.tsx). Optional so callers
+   * and tests written before it existed keep their exact behaviour.
+   */
+  funnelWelcomeEnabled?: boolean;
+  /**
+   * Server `welcomeEligible` (apps/web/src/lib/welcome-eligibility.ts): a
+   * web subscriber whose onboarding was never actually completed, with no
+   * entries or only their web first debrief. Its own flag because the
+   * server reports every PRO / Stripe-trial user as onboardingCompleted
+   * (2026-10-04 hotfix), so onboardingCompleted can't spot them. Only an
+   * explicit `true` counts: a missing field (older server) never traps an
+   * active user in the flow.
+   */
+  welcomeEligible?: boolean;
+  /**
+   * 1.9.1: has this account recorded at least one debrief (server
+   * totalRecordings > 0)? Account-first means an account can now exist
+   * BEFORE the first recording — e.g. someone who quits mid-funnel and
+   * relaunches, or reinstalls (iOS keeps the sign-in in the Keychain while
+   * the device flags are wiped). Optional: undefined keeps the old rules.
+   */
+  hasRecorded?: boolean;
 }
+
+/**
+ * Segments a signed-in user can be redirected AWAY from. Everything else is
+ * a real in-app screen (record, entry detail, goal, settings...) and must
+ * never be yanked out from under them.
+ *
+ * Why this exists (2026-10-10): the Pro-bypass used to return "home" for a
+ * web subscriber with onboarding unfinished on EVERY segment. AuthGate runs
+ * on every navigation, so tapping the mic pushed /record and the next tick
+ * replaced it with /(tabs) — the recorder could not stay open for that user.
+ */
+const ENTRY_POINT_SEGMENTS = new Set(["", "index", "(auth)", "(tabs)", "onboarding"]);
 
 /**
  * Where a launch should land. `"stay"` means leave the user where they are.
@@ -82,6 +120,7 @@ export function decideColdStartRoute(f: ColdStartFacts): ColdStartRoute {
   const inAuthCallback = f.segment === "auth-callback";
   const inOnboarding = f.segment === "onboarding";
   const inOnboardingNew = f.segment === "onboarding-new";
+  const inWelcome = f.segment === "welcome";
 
   // ── Signed out ────────────────────────────────────────────────────
   if (!f.signedIn) {
@@ -114,18 +153,61 @@ export function decideColdStartRoute(f: ColdStartFacts): ColdStartRoute {
   }
 
   // ── Signed in ─────────────────────────────────────────────────────
-  if (!f.onboardingCompleted && !inOnboarding && !inOnboardingNew && !inAuthCallback) {
-    // Pro-bypass: a user who already paid (typically web/Stripe) is not
-    // routed through mobile onboarding — Apple Guideline 3.1.3(b).
-    if (f.subscriptionStatus === "PRO") return "home";
+  // The welcome flow owns its own route; never redirect out of it.
+  if (inWelcome) return "stay";
 
-    // v10 arrivals must NOT be handed to the legacy post-signup flow. They
-    // have already recorded, seen a reveal, made a paywall decision and
-    // picked a reminder slot; sending them to /onboarding?step=N is a
-    // second onboarding covering the same ground.
-    if (f.v10Enabled && f.v10Offered) return "home";
+  // First run for a web subscriber: the welcome flow (no paywall, so
+  // Apple Guideline 3.1.3(b) is respected — they are never asked to pay
+  // again). Only from an entry point, so the recorder it opens isn't
+  // yanked away. Deliberately NOT gated on onboardingCompleted (see the
+  // welcomeEligible doc above).
+  if (
+    f.funnelWelcomeEnabled &&
+    f.welcomeEligible === true &&
+    !inAuthCallback &&
+    ENTRY_POINT_SEGMENTS.has(f.segment)
+  ) {
+    return "welcome";
+  }
 
-    return "legacy-onboarding";
+  // Already paid (typically web/Stripe). Checked BEFORE the generic
+  // onboarding branch so the in-onboarding exemptions below can't route a
+  // subscriber into the legacy flow.
+  if (!f.onboardingCompleted && f.subscriptionStatus === "PRO" && !inAuthCallback) {
+    // Pro-bypass: never routed through mobile onboarding. Send them home
+    // only from sign-in or the bare root. Everywhere else, leave them be —
+    // including onboarding-new, where a v10 user who just bought on the
+    // paywall becomes PRO mid-funnel and still has account + reminders to
+    // finish.
+    if (inAuth || f.segment === "" || f.segment === "index") return "home";
+    return "stay";
+  }
+
+  // 1.9.1: the legacy post-signup onboarding (/onboarding) is gone (Jimmy,
+  // 2026-10-15: "the old funnel shouldn't even exist"). It used to catch
+  // any signed-in account with unfinished onboarding — which, with
+  // account-first + iOS keeping the Keychain sign-in across a reinstall,
+  // meant every re-download landed in it. Now:
+  //   - no debrief yet → finish the new funnel (after the account step);
+  //   - has recorded   → Home. Never a second onboarding.
+  // Being ON /onboarding (stale link / old state) is treated like an entry
+  // point, not a place to stay.
+  if (!f.onboardingCompleted && !inOnboardingNew && !inAuthCallback) {
+    if (f.hasRecorded === true) {
+      // v11 (2026-10-15): the funnel's paywall requires a trial. Someone
+      // who reached it on THIS install (v10Offered) and quit before
+      // starting the trial goes back to it, not Home. Gated on v10Offered
+      // so an older account that never saw the v11 funnel is never trapped
+      // behind a paywall it didn't come through.
+      // TRIAL is the server's automatic no-card trial (every new account),
+      // not a purchase — only PRO counts as paying here. A real App Store
+      // trial is caught on the paywall itself (RevenueCat entitlement) and
+      // finishOnboarding then marks onboarding complete, so this branch
+      // never sees them again.
+      if (f.v10Offered && f.subscriptionStatus !== "PRO") return "v10-paywall";
+      return "home";
+    }
+    return "v10-resume";
   }
 
   if (f.onboardingCompleted && (inAuth || inOnboarding)) return "home";

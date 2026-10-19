@@ -122,12 +122,24 @@ export const api = {
   get: <T>(path: string, opts?: RequestInit) =>
     request<T>(path, { method: "GET", ...opts }, { hasBody: false }),
 
-  post: <T>(path: string, body: unknown, opts?: RequestInit) =>
-    request<T>(path, {
-      method: "POST",
-      body: JSON.stringify(body),
-      ...opts,
-    }),
+  post: <T>(
+    path: string,
+    body: unknown,
+    opts?: RequestInit,
+    // Optional per-call config. `timeoutMs` overrides the 10s default for
+    // slow endpoints (e.g. ask-past's embedding + Claude round-trip, which
+    // can take 20-30s). Backward-compatible: existing callers omit it.
+    cfg?: { timeoutMs?: number }
+  ) =>
+    request<T>(
+      path,
+      {
+        method: "POST",
+        body: JSON.stringify(body),
+        ...opts,
+      },
+      cfg
+    ),
 
   patch: <T>(path: string, body: unknown, opts?: RequestInit) =>
     request<T>(path, {

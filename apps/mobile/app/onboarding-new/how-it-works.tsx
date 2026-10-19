@@ -455,10 +455,10 @@ function HowItWorksScreen() {
                 onPress={onContinue}
                 accessibilityRole="button"
                 accessibilityLabel="Continue"
-                style={({ pressed }) => ({
+                style={({
                   alignSelf: "stretch", backgroundColor: PURPLE,
                   borderRadius: tokens.radius.pill, paddingVertical: 14,
-                  alignItems: "center", opacity: pressed ? 0.85 : 1,
+                  alignItems: "center", opacity: 1,
                 })}
               >
                 <Text style={{

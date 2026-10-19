@@ -4,6 +4,8 @@ import { useFocusEffect } from "expo-router";
 import { useCallback, useEffect, useRef } from "react";
 import { useSpotlightTour } from "react-native-spotlight-tour";
 
+import { useTourMode } from "@/components/tour/TourProvider";
+import { WELCOME_TOUR_KEY, parseWelcomeTourRequest } from "@/components/tour/welcome-tour";
 import { useAuth } from "@/contexts/auth-context";
 import { trackOnboardingEvent } from "@/lib/onboarding-events";
 
@@ -41,7 +43,7 @@ const POST_MOUNT_DELAY_MS = 500;
  * analytics + instrumentation. start() is wrapped so a throw is captured
  * rather than swallowed.
  */
-function fireTourStart(path: "auto" | "replay", start: () => void): void {
+function fireTourStart(path: "auto" | "replay" | "welcome", start: () => void): void {
   void trackOnboardingEvent("tour_started", { value: path });
   Sentry.captureMessage(`tour.start.called path=${path}`, "info");
   try {
@@ -59,6 +61,7 @@ interface Options {
 export function useTourTrigger({ queueHasItem = false }: Options = {}) {
   const { user } = useAuth();
   const { start } = useSpotlightTour();
+  const { prepareWelcomeTour } = useTourMode();
   // Prevents a re-render churn loop from re-triggering within a mount.
   const firedRef = useRef<boolean>(false);
 
@@ -91,7 +94,8 @@ export function useTourTrigger({ queueHasItem = false }: Options = {}) {
       // 500ms after mount so a celebration modal wins the race if one was
       // going to fire.
       await new Promise((r) => setTimeout(r, POST_MOUNT_DELAY_MS));
-      if (cancelled) return;
+      // The welcome tour (focus trigger) may have claimed it meanwhile.
+      if (cancelled || firedRef.current) return;
       firedRef.current = true;
       fireTourStart("auto", start);
     })();
@@ -110,6 +114,22 @@ export function useTourTrigger({ queueHasItem = false }: Options = {}) {
     useCallback(() => {
       let cancelled = false;
       void (async () => {
+        // The funnel welcome flow's last step (app/welcome.tsx writes the
+        // request on finish): run the tour in welcome mode — coral cards,
+        // its own stops, progress continuing from the welcome screens.
+        const welcome = parseWelcomeTourRequest(await AsyncStorage.getItem(WELCOME_TOUR_KEY));
+        if (cancelled) return;
+        if (welcome) {
+          firedRef.current = true;
+          await new Promise((r) => setTimeout(r, POST_MOUNT_DELAY_MS));
+          if (cancelled) return;
+          // Consumed only once it's really starting, so a quick tab switch
+          // can't lose it.
+          await AsyncStorage.removeItem(WELCOME_TOUR_KEY);
+          prepareWelcomeTour(welcome);
+          fireTourStart("welcome", start);
+          return;
+        }
         const flag = await AsyncStorage.getItem(TOUR_FORCE_REPLAY_KEY);
         if (cancelled || !flag) return;
         await AsyncStorage.removeItem(TOUR_FORCE_REPLAY_KEY);
@@ -123,6 +143,6 @@ export function useTourTrigger({ queueHasItem = false }: Options = {}) {
       return () => {
         cancelled = true;
       };
-    }, [start])
+    }, [start, prepareWelcomeTour])
   );
 }

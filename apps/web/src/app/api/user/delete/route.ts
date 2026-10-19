@@ -124,13 +124,17 @@ export async function POST(req: NextRequest) {
   // Google Play subs are store-owned (can't cancel server-side); the delete
   // UI warns the user to cancel in iOS / Play settings. Never throws — the
   // deletion proceeds regardless; we record the outcome on the tombstone.
+  const { cancelRcBillingSubscriptions } = await import(
+    "@/lib/revenuecat/web-billing-admin"
+  );
   const stripeCancellationStatus = await cancelSubscriptionOnDelete(stripe, {
+    id: user.id,
     email: user.email,
     subscriptionStatus: user.subscriptionStatus,
     subscriptionSource: user.subscriptionSource,
     stripeSubscriptionId: user.stripeSubscriptionId,
     stripeCustomerId: user.stripeCustomerId,
-  });
+  }, { rcCancel: cancelRcBillingSubscriptions });
 
   // ── 4. DB delete (transactional) ────────────────────────────────────────
   // VerificationToken has no FK to User — it's keyed on identifier (email)

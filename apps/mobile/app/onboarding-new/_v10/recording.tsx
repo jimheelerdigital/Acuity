@@ -1,23 +1,16 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Pressable, Text, View } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { AppState, Pressable, Text, View } from "react-native";
 import { Audio } from "expo-av";
 import * as Haptics from "expo-haptics";
 import { router } from "expo-router";
-import { LinearGradient } from "expo-linear-gradient";
-import Svg, { Path, Rect } from "react-native-svg";
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
   withTiming,
 } from "react-native-reanimated";
 
-import { useTheme } from "@/contexts/theme-context";
-
-import { CoralScreen, FunnelCta, FunnelProgress, coralChipStyle } from "./_ui";
-import { makeAcuityTokens } from "@/lib/theme/tokens";
+import { FunnelHeader, LightScreen, PROGRESS, PrimaryButton, V11 } from "../_v11/ui";
 import {
-  V10_BRANCHES,
   V10_RECORDING_CHIPS,
   V10_RECORDING_GUIDANCE,
   V10_RECORDING_PROMPT,
@@ -28,7 +21,8 @@ import {
 } from "@/lib/onboarding-v10/branches";
 import { trackV10 } from "@/lib/onboarding-v10/analytics";
 import { getV10Branch } from "@/lib/onboarding-v10/state";
-import { SPEECH_RECORDING_OPTIONS } from "@/lib/audio-recording-options";
+import { startSpeechRecording } from "@/lib/start-speech-recording";
+import { RecordOrb, RecordWaveform } from "@/components/recording";
 import { V10_MAX_RECORDING_MS as MAX_MS } from "@/lib/onboarding-v10/limits";
 
 /**
@@ -54,12 +48,14 @@ import { V10_MAX_RECORDING_MS as MAX_MS } from "@/lib/onboarding-v10/limits";
 
 // 🔒 Capped centrally — see V10_MAX_RECORDING_MS. Do not inline a number here.
 const TICK_MS = 100;
+/**
+ * A take shorter than this isn't sent. Whisper invents plausible sentences
+ * for near-empty audio — a ~2s take on 2026-10-15 came back as a sentence
+ * Keenan never said. "I'm done" stays disabled until here.
+ */
+const MIN_TAKE_MS = 5_000;
 
 export default function V10Recording() {
-  const { palette } = useTheme();
-  // Light from Screen 3 onward (spec §1).
-  const tokens = makeAcuityTokens({ dark: false, accent: palette });
-
   const [branch, setBranch] = useState<V10Branch>("open");
   const [elapsedMs, setElapsedMs] = useState(0);
   const [level, setLevel] = useState(0);
@@ -77,58 +73,118 @@ export default function V10Recording() {
   }));
 
   // ── Start recording immediately on mount ───────────────────────────
-  useEffect(() => {
-    let cancelled = false;
+  const mountedRef = useRef(true);
+  const branchRef = useRef<V10Branch>("open");
+  const [starting, setStarting] = useState(false);
+  // Drives the orb's live/idle morph + the waveform scroll (same
+  // components as the main recorder).
+  const [isRecording, setIsRecording] = useState(false);
+  // Loudest metering seen this take (dBFS). Digital silence (-160) for a
+  // whole take means the mic never connected — don't upload nothing.
+  const peakDbRef = useRef(-Infinity);
 
-    void (async () => {
-      const b = (await getV10Branch()) ?? "open";
-      if (!cancelled) setBranch(b);
-
-      try {
-        await Audio.setAudioModeAsync({
-          allowsRecordingIOS: true,
-          playsInSilentModeIOS: true,
-        });
-
-        const recording = new Audio.Recording();
-        // Same 64 kbps mono spec as every other recorder in the app —
-        // speech for Whisper, not music. See lib/audio-recording-options.
-        await recording.prepareToRecordAsync(SPEECH_RECORDING_OPTIONS);
+  const beginRecording = useCallback(async () => {
+    setError(null);
+    setStarting(true);
+    try {
+      // Shared starter (lib/start-speech-recording): waits for the app to
+      // be active after the mic prompt closes, awaits the audio mode,
+      // retries once. This screen opens right after the permission alert,
+      // which is exactly when a bare start failed (1.9.1 fix).
+      const recording = await startSpeechRecording({
+        source: "onboarding_v10",
+        progressIntervalMs: TICK_MS,
         // Same normalization the legacy recorder uses: metering is dBFS,
         // roughly -60 (silence) to 0 (peak).
-        recording.setOnRecordingStatusUpdate((status) => {
+        onStatus: (status) => {
           if (!status.isRecording) return;
+          if (typeof status.metering === "number") {
+            peakDbRef.current = Math.max(peakDbRef.current, status.metering);
+          }
           const db = status.metering ?? -60;
           setLevel(Math.max(0, Math.min(1, (db + 60) / 60)));
-        });
-        recording.setProgressUpdateInterval(TICK_MS);
-
-        await recording.startAsync();
-        if (cancelled) {
-          void recording.stopAndUnloadAsync().catch(() => {});
-          return;
-        }
-
-        recordingRef.current = recording;
-        startedAtRef.current = Date.now();
-        listeningOpacity.value = withTiming(1, { duration: 1000 });
-        trackV10("v10_recording_started", { input: "voice", branch: b });
-      } catch {
-        if (!cancelled) {
-          setError("Ripple couldn't start recording. Try again in a moment.");
-        }
+        },
+      });
+      if (!mountedRef.current) {
+        void recording.stopAndUnloadAsync().catch(() => {});
+        return;
       }
+      recordingRef.current = recording;
+      peakDbRef.current = -Infinity;
+      startedAtRef.current = Date.now();
+      setElapsedMs(0);
+      setIsRecording(true);
+      listeningOpacity.value = withTiming(1, { duration: 1000 });
+      trackV10("v10_recording_started", { input: "voice", branch: branchRef.current });
+    } catch (err) {
+      // Record the native reason (this used to be swallowed, so the cause of
+      // the 2026-10-15 failures couldn't be read from the data).
+      trackV10("v10_recording_start_failed", {
+        branch: branchRef.current,
+        error: (err instanceof Error ? err.message : String(err)).slice(0, 200),
+        code:
+          err && typeof err === "object" && "code" in err
+            ? String((err as { code?: unknown }).code)
+            : null,
+      });
+      if (mountedRef.current) {
+        // Not a dead end: the main button becomes "Try again".
+        setError("Ripple couldn't start recording. Tap Try again.");
+      }
+    } finally {
+      if (mountedRef.current) setStarting(false);
+    }
+  }, [listeningOpacity]);
+
+  useEffect(() => {
+    mountedRef.current = true;
+    void (async () => {
+      const b = (await getV10Branch()) ?? "open";
+      branchRef.current = b;
+      if (mountedRef.current) setBranch(b);
+      // No auto-start (Keenan, 2026-10-15: people started talking before
+      // they realised it was recording, or didn't realise it was). The
+      // screen opens ready; tapping the orb or "Start recording" begins.
     })();
 
     return () => {
-      cancelled = true;
+      mountedRef.current = false;
       // Stop cleanly if the screen is torn down mid-recording so the mic is
       // released and no orphan file is left behind.
       const r = recordingRef.current;
       recordingRef.current = null;
       if (r) void r.stopAndUnloadAsync().catch(() => {});
     };
-  }, [listeningOpacity]);
+  }, [beginRecording]);
+
+  // ── System interruptions ───────────────────────────────────────────
+  // Any system alert / call / Siri / app switch makes the app inactive and
+  // iOS cuts the mic. The take keeps "recording" but captures silence, so
+  // coming back would upload nothing usable. Start a fresh take instead and
+  // say why.
+  const interruptedRef = useRef(false);
+  useEffect(() => {
+    const sub = AppState.addEventListener("change", (next) => {
+      if (next !== "active") {
+        if (recordingRef.current) interruptedRef.current = true;
+        return;
+      }
+      if (!interruptedRef.current) return;
+      interruptedRef.current = false;
+      const r = recordingRef.current;
+      recordingRef.current = null;
+      setIsRecording(false);
+      void (async () => {
+        if (r) await r.stopAndUnloadAsync().catch(() => {});
+        trackV10("v10_recording_interrupted", { branch: branchRef.current });
+        await beginRecording();
+        if (mountedRef.current) {
+          setError("Something interrupted the recording, so we started a fresh one.");
+        }
+      })();
+    });
+    return () => sub.remove();
+  }, [beginRecording]);
 
   // ── Elapsed clock ──────────────────────────────────────────────────
   useEffect(() => {
@@ -154,10 +210,23 @@ export default function V10Recording() {
 
     const durationS = Math.round((Date.now() - startedAtRef.current) / 1000);
 
+    setIsRecording(false);
+    setLevel(0);
     try {
       await recording.stopAndUnloadAsync();
       const uri = recording.getURI();
       if (!uri) throw new Error("no recording uri");
+
+      // Whole take was digital silence: the mic never connected. Uploading
+      // would only come back "too short or unclear" — restart instead.
+      if (peakDbRef.current !== -Infinity && peakDbRef.current <= -120) {
+        trackV10("v10_recording_silent", { duration_s: durationS, branch });
+        setStopping(false);
+        void beginRecording().then(() =>
+          setError("Ripple didn't pick up any sound, so we restarted. Check your mic isn't blocked, then talk."),
+        );
+        return;
+      }
 
       trackV10("v10_recording_completed", {
         duration_s: durationS,
@@ -178,7 +247,7 @@ export default function V10Recording() {
       setStopping(false);
       setError("That didn't save. Tap stop again and Ripple will retry.");
     }
-  }, [activeChip, branch, stopping]);
+  }, [activeChip, branch, stopping, beginRecording]);
 
   const seconds = Math.floor(elapsedMs / 1000);
   const mmss = `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")}`;
@@ -190,160 +259,79 @@ export default function V10Recording() {
     : V10_RECORDING_PROMPT;
 
   return (
-    <CoralScreen tokens={tokens}>
-      <SafeAreaView style={{ flex: 1 }}>
-      <FunnelProgress step={3} total={5} tokens={tokens} />
-      <View style={{ flex: 1, paddingHorizontal: 24, paddingTop: 20, paddingBottom: 28 }}>
-        <Animated.View style={listeningStyle}>
-          <Text
-            style={{
-              fontFamily: tokens.fontSans,
-              fontWeight: "700",
-              fontSize: 12,
-              letterSpacing: 1.4,
-              textTransform: "uppercase",
-              color: "#ffffff",
-              opacity: 0.82,
-              marginBottom: 16,
-            }}
-          >
-            Listening…
-          </Text>
+    <LightScreen>
+      <FunnelHeader progress={PROGRESS.record} />
+      <View style={{ flex: 1, paddingHorizontal: 20, paddingTop: 14, paddingBottom: 10 }}>
+        {!isRecording && !stopping ? (
+          <View style={{ alignItems: "center" }}>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 8, backgroundColor: "#ffffff", borderWidth: 1, borderColor: V11.lineStrong, borderRadius: 999, paddingHorizontal: 14, paddingVertical: 6, marginBottom: 14 }}>
+              <Text style={{ fontFamily: V11.display, fontSize: 13, color: V11.sec }}>Ready when you are</Text>
+            </View>
+          </View>
+        ) : null}
+        <Animated.View style={[{ alignItems: "center", display: isRecording || stopping ? "flex" : "none" }, listeningStyle]}>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 8, backgroundColor: V11.coralSoft, borderRadius: 999, paddingHorizontal: 14, paddingVertical: 6, marginBottom: 14 }}>
+            <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: V11.coral }} />
+            <Text style={{ fontFamily: V11.display, fontSize: 13, color: V11.coral }}>Listening</Text>
+          </View>
         </Animated.View>
 
         <Text
           accessibilityRole="header"
-          style={{
-            fontFamily: tokens.fontDisplay,
-            fontSize: 24,
-            lineHeight: 32,
-            color: "#ffffff",
-          }}
+          style={{ textAlign: "center", fontFamily: V11.heading, fontSize: 26, lineHeight: 31, letterSpacing: -0.6, color: V11.ink }}
         >
           {topPrompt}
         </Text>
-
-        {/* Branch sub-prompt sits under the top prompt. */}
-        <Text
-          style={{
-            fontFamily: tokens.fontSans,
-            fontSize: 15,
-            lineHeight: 22,
-            color: "#ffffff",
-            opacity: 0.9,
-            marginTop: 8,
-          }}
-        >
-          {V10_BRANCHES[branch].support}
-        </Text>
-
-        <Text
-          style={{
-            fontFamily: tokens.fontSans,
-            fontSize: 14,
-            lineHeight: 21,
-            color: "#ffffff",
-            opacity: 0.82,
-            marginTop: 16,
-          }}
-        >
+        <Text style={{ textAlign: "center", marginTop: 10, fontSize: 16, lineHeight: 23, color: V11.sec }}>
           {V10_RECORDING_GUIDANCE}
         </Text>
 
         <View style={{ flex: 1, justifyContent: "center" }}>
-          {/* Orb — coral core + mic, scaled by REAL mic level (never a
-              decorative loop). The ring is a soft white bloom on the coral. */}
-          <View style={{ alignItems: "center", marginBottom: 4 }}>
-            <View
-              style={{
-                width: 150,
-                height: 150,
-                borderRadius: 75,
-                alignItems: "center",
-                justifyContent: "center",
-                backgroundColor: "rgba(255,255,255,0.14)",
-                shadowColor: "#ffffff",
-                shadowOffset: { width: 0, height: 0 },
-                shadowRadius: 26,
-                shadowOpacity: 0.5,
-                transform: [{ scale: 1 + Math.min(level, 1) * 0.06 }],
+          {/* Same voice-reactive orb + scrolling waveform as the main
+              recorder (1.9.1, Jimmy: the funnel must match the real
+              recording). Tapping the orb stops, like the main recorder. */}
+          <View style={{ alignItems: "center", marginBottom: 8 }}>
+            <RecordOrb
+              amplitude={level}
+              active={isRecording}
+              onPress={() => {
+                if (!isRecording) {
+                  if (!starting && !stopping) void beginRecording();
+                  return;
+                }
+                if (elapsedMs >= MIN_TAKE_MS) void handleStop();
               }}
-            >
-              <LinearGradient
-                colors={[tokens.primaryHi, tokens.primaryLo]}
-                start={{ x: 0.2, y: 0 }}
-                end={{ x: 0.8, y: 1 }}
-                style={{
-                  width: 98,
-                  height: 98,
-                  borderRadius: 49,
-                  alignItems: "center",
-                  justifyContent: "center",
-                }}
-              >
-                <Svg width={34} height={34} viewBox="0 0 24 24" fill="none">
-                  <Rect x={9} y={3} width={6} height={12} rx={3} stroke="#ffffff" strokeWidth={1.8} />
-                  <Path
-                    d="M6 11a6 6 0 0 0 12 0M12 17v4"
-                    stroke="#ffffff"
-                    strokeWidth={1.8}
-                    strokeLinecap="round"
-                  />
-                </Svg>
-              </LinearGradient>
-            </View>
+            />
           </View>
-
-          <Waveform level={level} />
-
+          <RecordWaveform levels={[level]} active={isRecording} height={64} />
           <Text
             style={{
-              fontFamily: tokens.fontDisplay,
-              fontSize: 30,
-              color: "#ffffff",
+              fontFamily: V11.heading,
+              fontSize: isRecording || stopping ? 32 : 20,
+              color: isRecording || stopping ? V11.ink : V11.coral,
               textAlign: "center",
-              marginTop: 20,
+              marginTop: 16,
               fontVariant: ["tabular-nums"],
             }}
           >
-            {mmss}
+            {isRecording || stopping ? mmss : "Tap the orb to start"}
           </Text>
-
           {/* Appears at ~20s and STAYS. Not a threshold — reassurance. */}
           {pastSoftFloor && (
-            <Text
-              style={{
-                fontFamily: tokens.fontSans,
-                fontSize: 14,
-                lineHeight: 21,
-                color: "#ffffff",
-                opacity: 0.9,
-                textAlign: "center",
-                marginTop: 12,
-                paddingHorizontal: 16,
-              }}
-            >
+            <Text style={{ fontSize: 15, lineHeight: 21, color: V11.sec, textAlign: "center", marginTop: 8, paddingHorizontal: 16 }}>
               {V10_SOFT_FLOOR_LINE}
             </Text>
           )}
-
           {error && (
-            <Text
-              style={{
-                fontFamily: tokens.fontDisplay,
-                fontSize: 14,
-                color: "#ffffff",
-                textAlign: "center",
-                marginTop: 16,
-              }}
-            >
+            <Text style={{ fontFamily: V11.display, fontSize: 15, lineHeight: 21, color: "#C2412D", textAlign: "center", marginTop: 14, paddingHorizontal: 12 }}>
               {error}
             </Text>
           )}
         </View>
 
         {/* Optional prompts. Tapping one swaps the heading; nothing pauses. */}
-        <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8, marginBottom: 20 }}>
+        <Text style={{ textAlign: "center", fontSize: 13, color: V11.ter, marginBottom: 8 }}>Stuck? Tap a prompt</Text>
+        <View style={{ flexDirection: "row", flexWrap: "wrap", justifyContent: "center", gap: 8, marginBottom: 16 }}>
           {V10_RECORDING_CHIPS.map((chip) => {
             const active = activeChip === chip.key;
             return (
@@ -354,78 +342,53 @@ export default function V10Recording() {
                   trackV10("v10_chip_tapped", { chip: chip.key, branch });
                 }}
                 accessibilityRole="button"
-                style={coralChipStyle({ selected: active })}
+                accessibilityState={{ selected: active }}
+                style={{
+                  borderRadius: 999,
+                  paddingHorizontal: 14,
+                  paddingVertical: 9,
+                  borderWidth: 1.5,
+                  borderColor: active ? V11.coral : V11.lineStrong,
+                  backgroundColor: active ? V11.tint : "#ffffff",
+                }}
               >
-                <Text
-                  style={{
-                    fontFamily: tokens.fontSans,
-                    fontSize: 14,
-                    fontWeight: active ? "700" : "500",
-                    color: active ? tokens.primaryLo : "#ffffff",
-                  }}
-                >
-                  {chip.label}
-                </Text>
+                <Text style={{ fontSize: 14, fontWeight: active ? "700" : "500", color: active ? V11.coral : V11.sec }}>{chip.label}</Text>
               </Pressable>
             );
           })}
         </View>
 
-        <FunnelCta
-          label="Stop"
-          busyLabel="Saving…"
-          busy={stopping}
-          onPress={() => void handleStop()}
-          tokens={tokens}
-          size="lg"
-          onCoral
-          accessibilityLabel="Stop recording"
-        />
-      </View>
-      </SafeAreaView>
-    </CoralScreen>
-  );
-}
-
-/**
- * Waveform driven by REAL microphone metering — never a decorative
- * animation. Spec §1 bans invented feedback, and a fake waveform that moves
- * while the mic is muted is exactly that: it would tell her she's being
- * heard when she isn't.
- */
-function Waveform({ level }: { level: number }) {
-  const BARS = 24;
-  return (
-    <View
-      style={{
-        flexDirection: "row",
-        alignItems: "center",
-        justifyContent: "center",
-        height: 96,
-        gap: 4,
-      }}
-      accessibilityElementsHidden
-      importantForAccessibility="no-hide-descendants"
-    >
-      {Array.from({ length: BARS }).map((_, i) => {
-        // Centre bars react most, edges least — a simple envelope so the
-        // shape reads as a voice rather than a bar chart.
-        const distance = Math.abs(i - (BARS - 1) / 2) / ((BARS - 1) / 2);
-        const envelope = 1 - distance * 0.75;
-        const h = 6 + level * envelope * 84;
-        return (
-          <View
-            key={i}
-            style={{
-              width: 3,
-              height: h,
-              borderRadius: 2,
-              backgroundColor: "#ffffff",
-              opacity: 0.4 + envelope * 0.55,
-            }}
+        {/* If the start failed, the main button retries instead of being a
+            Stop with nothing to stop. */}
+        {error && !recordingRef.current && !stopping ? (
+          <PrimaryButton
+            label="Try again"
+            icon="none"
+            busy={starting}
+            onPress={() => void beginRecording()}
+            accessibilityLabel="Try recording again"
           />
-        );
-      })}
-    </View>
+        ) : (
+          !isRecording && !stopping ? (
+            <PrimaryButton
+              label="Start recording"
+              icon="none"
+              busy={starting}
+              onPress={() => void beginRecording()}
+              accessibilityLabel="Start recording"
+            />
+          ) : (
+            <PrimaryButton
+              label={elapsedMs >= MIN_TAKE_MS ? "I'm done" : "Keep going…"}
+              icon={elapsedMs >= MIN_TAKE_MS ? "check" : "none"}
+              busy={stopping}
+              disabled={elapsedMs < MIN_TAKE_MS}
+              onPress={() => void handleStop()}
+              accessibilityLabel="Stop recording"
+            />
+          )
+        )}
+      </View>
+    </LightScreen>
   );
 }

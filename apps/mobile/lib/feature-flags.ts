@@ -39,6 +39,16 @@ export function isOnboardingV10Enabled(): boolean {
 }
 
 /**
+ * First-run welcome flow for people who already paid on the web funnel
+ * (app/welcome.tsx). OFF ⇒ those users go straight to Home, exactly as
+ * before. Same static-read rule as above: Metro only inlines static
+ * `process.env.EXPO_PUBLIC_*` property access.
+ */
+export function isFunnelWelcomeEnabled(): boolean {
+  return process.env.EXPO_PUBLIC_FUNNEL_WELCOME === "true";
+}
+
+/**
  * New ($9.99 / $89.99) pricing — the V2_TIER values in
  * packages/shared/src/pricing-plans.ts.
  *

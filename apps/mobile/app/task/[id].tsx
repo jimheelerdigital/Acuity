@@ -13,7 +13,8 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { api } from "@/lib/api";
-import { getCached, isStale, setCached } from "@/lib/cache";
+import { getCached, invalidate, isStale, setCached } from "@/lib/cache";
+import { useAuth } from "@/contexts/auth-context";
 import { useTheme } from "@/contexts/theme-context";
 import { DueDateField } from "@/components/due-date-field";
 
@@ -69,6 +70,15 @@ export default function TaskEditScreen() {
   );
   const [loading, setLoading] = useState(() => !cachedTask);
   const [saving, setSaving] = useState(false);
+  // 1.9.4: load failures used to be an unhandled rejection (the effect had
+  // only a `finally`), leaving the spinner forever. Now: in-screen error +
+  // Retry. `retryNonce` re-runs the load effect.
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [retryNonce, setRetryNonce] = useState(0);
+  // Opened by a cold launch from the widget (acuity://task/<id>) the request
+  // can fire before the session token has hydrated and 401. Wait for the
+  // auth context to finish loading before the first fetch.
+  const { loading: authLoading } = useAuth();
 
   const [title, setTitle] = useState(
     () => cachedTask?.title ?? cachedTask?.text ?? ""
@@ -93,14 +103,31 @@ export default function TaskEditScreen() {
     // If we hydrated from fresh cache, skip the fetch entirely. The
     // user just came from the Tasks tab which revalidated on focus.
     if (cachedTask && !isStale(TASKS_CACHE_KEY)) return;
+    // Auth still hydrating (cold launch): wait; this effect re-runs when
+    // `authLoading` flips to false.
+    if (authLoading) return;
 
     let cancelled = false;
     (async () => {
-      try {
-        const [tasksRes, groupsRes] = await Promise.all([
+      const load = () =>
+        Promise.all([
           api.get<{ tasks: Task[] }>(TASKS_CACHE_KEY),
           api.get<{ groups: TaskGroup[] }>(GROUPS_CACHE_KEY),
         ]);
+      try {
+        setLoadError(null);
+        let tasksRes: { tasks: Task[] };
+        let groupsRes: { groups: TaskGroup[] };
+        try {
+          [tasksRes, groupsRes] = await load();
+        } catch (err) {
+          // One retry on 401: the bearer can land a beat after the auth
+          // context reports loaded (token-bridge vs. keychain hydrate).
+          if ((err as { status?: number })?.status !== 401) throw err;
+          await new Promise((r) => setTimeout(r, 600));
+          if (cancelled) return;
+          [tasksRes, groupsRes] = await load();
+        }
         if (cancelled) return;
         setCached(TASKS_CACHE_KEY, tasksRes);
         setCached(GROUPS_CACHE_KEY, groupsRes);
@@ -143,6 +170,16 @@ export default function TaskEditScreen() {
           prev === (cachedTask?.groupId ?? null) ? found.groupId : prev
         );
         setGroups(groupsRes.groups ?? []);
+      } catch {
+        if (cancelled) return;
+        // With a cached copy on screen, keep it and stay quiet — the
+        // background refresh just didn't land. With nothing to show, the
+        // body becomes an error state with Retry.
+        if (!cachedTask) {
+          setLoadError(
+            "Couldn't load this task. Check your connection and try again."
+          );
+        }
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -151,7 +188,13 @@ export default function TaskEditScreen() {
       cancelled = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [id]);
+  }, [id, authLoading, retryNonce]);
+
+  const retryLoad = () => {
+    setLoadError(null);
+    setLoading(true);
+    setRetryNonce((n) => n + 1);
+  };
 
   const save = async () => {
     if (!task) return;
@@ -180,6 +223,9 @@ export default function TaskEditScreen() {
           groupId: groupId ?? null,
         });
       }
+      // Drop the cached list so Tasks + Home's TODAY card refetch the
+      // saved version instead of showing the pre-edit one for up to 30s.
+      invalidate(TASKS_CACHE_KEY);
       router.back();
     } catch (err) {
       Alert.alert(
@@ -227,6 +273,27 @@ export default function TaskEditScreen() {
       {loading ? (
         <View className="flex-1 items-center justify-center">
           <ActivityIndicator color={tokens.primary} />
+        </View>
+      ) : loadError && !task ? (
+        <View className="flex-1 items-center justify-center px-8">
+          <Text
+            className="text-sm text-center mb-4"
+            style={{ color: tokens.textSec }}
+          >
+            {loadError}
+          </Text>
+          <Pressable
+            onPress={retryLoad}
+            accessibilityRole="button"
+            accessibilityLabel="Retry loading this task"
+            hitSlop={8}
+            className="rounded-full px-5 py-2.5"
+            style={{ backgroundColor: tokens.primary }}
+          >
+            <Text className="text-sm font-semibold" style={{ color: "#fff" }}>
+              Retry
+            </Text>
+          </Pressable>
         </View>
       ) : (
         <ScrollView
@@ -412,6 +479,7 @@ export default function TaskEditScreen() {
                             id: task.id,
                             action: "dismiss",
                           });
+                          invalidate(TASKS_CACHE_KEY);
                           router.back();
                         } catch {
                           Alert.alert("Couldn't delete — try again.");

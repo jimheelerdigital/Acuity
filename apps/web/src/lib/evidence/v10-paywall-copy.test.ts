@@ -26,7 +26,10 @@ describe("v10 paywall copy", () => {
 
   it("computes the annual saving rather than hardcoding it", () => {
     // $9.99 x 12 = $119.88 vs $89.99 → 24.9%, rounds to 25.
-    expect(buildPaywallCopy(V2_TIER, "B").annual.note).toBe("Save 25%");
+    // The trial terms now lead the same line (eyebrow is "Best value").
+    expect(buildPaywallCopy(V2_TIER, "B").annual.note).toBe(
+      "7 days free, then $89.99/yr · Save 25%"
+    );
   });
 
   it("still renders correctly on the legacy tier", () => {
@@ -55,8 +58,8 @@ describe("v10 paywall copy", () => {
   it("uses a trial only on annual, and only 7 days", () => {
     const c = buildPaywallCopy(V2_TIER, "B");
     expect(TRIAL_DAYS).toBe(7);
-    expect(c.annual.eyebrow).toContain("7 days");
-    expect(c.monthly.eyebrow).not.toContain("day");
+    expect(c.annual.note).toContain("7 days free");
+    expect(c.monthly.note).not.toContain("free");
     expect(c.timeline("monthly")).toHaveLength(1);
     expect(c.timeline("annual")).toHaveLength(3);
   });

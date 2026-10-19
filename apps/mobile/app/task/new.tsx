@@ -79,19 +79,58 @@ export default function TaskCreateScreen() {
       return;
     }
     setSaving(true);
+    const body = {
+      title: trimmed,
+      description: description.trim() || null,
+      priority,
+      dueDate: due || null,
+      groupId,
+    };
+    // Optimistic (Jimmy, 2026-10-17: "There's a delay when I add a task
+    // before it shows up"). The task goes into the shared list the moment
+    // Save is tapped and the sheet closes; the POST runs behind it. Before
+    // this the sheet waited for the POST, then the Tasks tab waited for a
+    // second round-trip to refetch — two network hops before anything
+    // appeared.
+    const tempId = `local-${Date.now()}`;
+    const optimistic = {
+      id: tempId,
+      userId: "",
+      entryId: null,
+      goalId: null,
+      text: trimmed,
+      title: trimmed,
+      description: body.description,
+      status: "OPEN",
+      priority,
+      dueDate: due ? new Date(`${due}T12:00:00`).toISOString() : null,
+      snoozedUntil: null,
+      completedAt: null,
+      groupId,
+      createdAt: new Date().toISOString(),
+    };
+    const cached = getCached<{ tasks: unknown[] }>(TASKS_CACHE_KEY);
+    setCached(TASKS_CACHE_KEY, { tasks: [optimistic, ...(cached?.tasks ?? [])] });
+    router.back();
     try {
-      await api.post("/api/tasks", {
-        title: trimmed,
-        description: description.trim() || null,
-        priority,
-        dueDate: due || null,
-        groupId,
-      });
-      // Bust the tasks cache so the Tasks tab refetches and shows the
-      // new task when this modal closes.
-      invalidate(TASKS_CACHE_KEY);
-      router.back();
+      const res = await api.post<{ task?: { id: string } & Record<string, unknown> }>(
+        "/api/tasks",
+        body
+      );
+      // Swap the placeholder for the server's row (real id, server times)
+      // so a later edit or check-off targets the right record.
+      const now = getCached<{ tasks: Array<{ id: string }> }>(TASKS_CACHE_KEY);
+      if (now && res?.task) {
+        setCached(TASKS_CACHE_KEY, {
+          tasks: now.tasks.map((t) => (t.id === tempId ? res.task : t)),
+        });
+      } else {
+        invalidate(TASKS_CACHE_KEY);
+      }
     } catch (err) {
+      // Roll the placeholder back and say so.
+      const now = getCached<{ tasks: Array<{ id: string }> }>(TASKS_CACHE_KEY);
+      if (now) setCached(TASKS_CACHE_KEY, { tasks: now.tasks.filter((t) => t.id !== tempId) });
       Alert.alert(
         "Couldn't add task",
         err instanceof Error ? err.message : "Try again."

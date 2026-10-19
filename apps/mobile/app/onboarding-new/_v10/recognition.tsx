@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Pressable, ScrollView, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import * as Haptics from "expo-haptics";
@@ -14,11 +14,7 @@ import {
   type V10Branch,
 } from "@/lib/onboarding-v10/branches";
 import { trackV10 } from "@/lib/onboarding-v10/analytics";
-import {
-  dismissV10,
-  markV10Started,
-  setV10Branch,
-} from "@/lib/onboarding-v10/state";
+import { markV10Started, setV10Branch } from "@/lib/onboarding-v10/state";
 
 /**
  * Plain-language card labels, replacing the one-word titles ("The loop",
@@ -86,14 +82,6 @@ export default function V10Recognition() {
     setTimeout(() => router.push("/onboarding-new/promise"), 240);
   };
 
-  const onSignIn = useCallback(async () => {
-    // Sticky: a returning user who found this must not be dropped back
-    // into the funnel on the next cold launch. Written BEFORE navigating
-    // so AuthGate reads the new value, not a race.
-    trackV10("v10_signin_from_funnel", {});
-    await dismissV10();
-    router.replace("/(auth)/sign-in");
-  }, []);
 
   return (
     <CoralScreen tokens={tokens}>
@@ -167,27 +155,6 @@ export default function V10Recognition() {
           })}
         </View>
 
-        {/* ── Escape hatch for returning users ──────────────────────
-            Now that a cold launch can land here, someone who already has
-            an account — a reinstalling subscriber whose token was
-            rejected, say — could otherwise be trapped in a signup funnel
-            with no way to reach sign-in. Screen 7's Apple/Google buttons
-            do sign existing accounts in, but email there is signup-only
-            and would fail with AlreadyRegistered, so the funnel is not a
-            reliable route back to an existing account.
-
-            Low emphasis on purpose: this is a safety valve, not a
-            competing call to action for the new users the screen is for. */}
-        <Pressable
-          onPress={onSignIn}
-          accessibilityRole="button"
-          style={{ paddingVertical: 18, alignItems: "center" }}
-        >
-          <Text style={ct.muted}>
-            Already have an account?{" "}
-            <Text style={{ textDecorationLine: "underline" }}>Sign in</Text>
-          </Text>
-        </Pressable>
       </ScrollView>
       </SafeAreaView>
     </CoralScreen>
