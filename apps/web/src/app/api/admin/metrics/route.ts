@@ -1,4 +1,5 @@
 import { V9_CONFIGS } from "@/lib/funnel-v9-config";
+import { acquisitionLabel } from "@/lib/acquisition-label";
 import { Prisma } from "@prisma/client";
 import { getServerSession } from "next-auth";
 import { NextRequest, NextResponse } from "next/server";
@@ -1858,7 +1859,7 @@ export async function getWebOnboardingFunnel(prisma: P, start: Date, end: Date, 
           timeInFunnel: Math.round((new Date(last.createdAt).getTime() - new Date(first.createdAt).getTime()) / 60000),
           events: sorted.map((e) => ({ event: e.event, value: e.value, createdAt: e.createdAt })),
           diagnosticAnswers,
-          source: source && medium ? `${source} / ${medium}` : source ?? "direct",
+          source: acquisitionLabel({ source, medium, campaign, content: creative }),
           campaign: campaign ?? null,
           creative: creative ?? null,
         };
@@ -2802,7 +2803,7 @@ async function getFunnelAnalytics(prisma: PrismaClient, start: Date, end: Date, 
       currentStep: maxStepLabel,
       stepNumber: maxStep,
       timeInFunnelSec: Math.round((new Date(last.createdAt).getTime() - new Date(first.createdAt).getTime()) / 1000),
-      source: source && medium ? `${source} / ${medium}` : source ?? "direct",
+      source: acquisitionLabel({ source, medium, campaign, content: creative }),
       campaign,
       creative,
       diagnosticAnswers,

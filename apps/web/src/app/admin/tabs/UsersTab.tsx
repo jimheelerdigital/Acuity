@@ -10,6 +10,8 @@ type ListUser = {
   createdAt: string;
   signupUtmSource: string | null;
   signupUtmMedium: string | null;
+  /** acquisition-label.ts: splits UGC Meta ads from the creator's own Instagram. */
+  signupSourceLabel?: string;
   signupLandingPath: string | null;
   signupMethod: string | null;
   subscriptionStatus: string;
@@ -320,7 +322,7 @@ export default function UsersTab() {
 
                   {/* Source */}
                   <td className="px-3 py-2.5 text-[11px] text-acuity-text-ter">
-                    {u.signupUtmSource ? `${u.signupUtmSource}${u.signupUtmMedium ? ` / ${u.signupUtmMedium}` : ""}` : "direct"}
+                    {u.signupSourceLabel ?? (u.signupUtmSource ? `${u.signupUtmSource}${u.signupUtmMedium ? ` / ${u.signupUtmMedium}` : ""}` : "direct")}
                   </td>
 
                   {/* Signup Method */}

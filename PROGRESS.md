@@ -7,6 +7,36 @@
 
 ---
 
+## [2026-10-19] — Admin shows UGC ad signups vs the creator's own Instagram
+
+- **Requested by:** Keenan
+- **Committed by:** Claude Code
+- **Commit hash:** (see git log: "feat: Label UGC signups as Meta ad or creator's Instagram in admin")
+
+### In plain English (for Keenan)
+Signups that came through a creator used to all show as "ugc / creator", so you couldn't tell whether the person clicked our paid Meta ad running the creator's video or the creator's own Instagram post. The admin now says which: "UGC Meta ad · @therapyandthings · video1" or "UGC organic · @therapyandthings's Instagram". Checking the data: all 7 creator signups so far came from the Meta ads (6 on the original video, 1 on the shorter cut). The creator's own link brought 4 visits and no signups.
+
+### Technical changes (for Jimmy)
+- New `apps/web/src/lib/acquisition-label.ts`:
+  - `acquisitionLabel({ source, medium, campaign, content })`
+  - For `utm_source=ugc`: `utm_content` present means the Meta UGC ad. The ad links add it, e.g. `goripple.io/u/therapyandthings?utm_content=video1`; the creator's own `/u/` link has none.
+  - Everything else keeps "source / medium".
+- `apps/web/src/app/api/admin/users/route.ts`:
+  - Selects `signupUtmCampaign` and `signupUtmContent`.
+  - Returns `signupSourceLabel`.
+- `apps/web/src/app/admin/tabs/UsersTab.tsx`: the Source column renders `signupSourceLabel`, falling back to the old label.
+- `apps/web/src/app/api/admin/metrics/route.ts`: both funnel-session `source` fields use `acquisitionLabel`.
+- New `acquisition-label.test.ts`.
+
+### Manual steps needed
+- None
+
+### Notes
+- This relies on every UGC Meta ad link carrying `utm_content`, which `/api/admin/adlab/ugc-ad` already does. Never share a `/u/<creator>` link with `utm_content` on it organically, or it will read as an ad.
+- Meta adds `fbclid` to organic Instagram link clicks too, so `fbclid` can't separate the two. `utm_content` can.
+
+---
+
 ## [2026-10-19] — All ad traffic goes to the test funnels (/start-test, /start-test-bwk)
 
 - **Requested by:** Keenan

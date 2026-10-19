@@ -14,6 +14,7 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
+import { acquisitionLabel } from "@/lib/acquisition-label";
 
 import { requireAdmin } from "@/lib/admin-guard";
 import { prisma } from "@/lib/prisma";
@@ -380,6 +381,8 @@ export async function GET(req: NextRequest) {
         downloadReminderSentAt: true,
         signupUtmSource: true,
         signupUtmMedium: true,
+        signupUtmCampaign: true,
+        signupUtmContent: true,
         signupLandingPath: true,
         signupMethod: true,
         currentStreak: true,
@@ -422,6 +425,8 @@ export async function GET(req: NextRequest) {
         appFirstOpenedAt: true,
         signupUtmSource: true,
         signupUtmMedium: true,
+        signupUtmCampaign: true,
+        signupUtmContent: true,
         signupLandingPath: true,
         signupMethod: true,
         currentStreak: true,
@@ -507,6 +512,7 @@ export async function GET(req: NextRequest) {
       createdAt: u.createdAt,
       signupUtmSource: u.signupUtmSource,
       signupUtmMedium: u.signupUtmMedium,
+      signupSourceLabel: acquisitionLabel({ source: u.signupUtmSource, medium: u.signupUtmMedium, campaign: u.signupUtmCampaign, content: u.signupUtmContent }),
       signupLandingPath: u.signupLandingPath,
       signupMethod: (u as Record<string, unknown>).signupMethod as string | null ?? null,
       subscriptionStatus: u.subscriptionStatus,
