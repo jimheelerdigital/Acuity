@@ -43,7 +43,7 @@ export async function POST(req: NextRequest) {
   const meta = await import("@/lib/adlab/meta");
   const acct = meta.adAccountPath();
   const body = (await req.json().catch(() => ({}))) as {
-    action?: "apps" | "create" | "add" | "fix-os" | "delete" | "activate";
+    action?: "apps" | "diag" | "create" | "add" | "fix-os" | "delete" | "activate";
     /** "add": existing app ad set per group. */
     adsets?: Partial<Record<Group, string>>;
     appId?: string;
@@ -52,6 +52,23 @@ export async function POST(req: NextRequest) {
     campaignId?: string;
   };
   const err = (e: unknown) => meta.redactAccessToken(String(e)).slice(0, 500);
+
+  // Read-only: how Meta registered a campaign and the app (2026-10-19 debug).
+  if (body.action === "diag") {
+    const out: Record<string, unknown> = {};
+    for (const [k, path, fields] of [
+      ["campaign", body.campaignId, "name,objective,status,is_skadnetwork_attribution,special_ad_categories,buying_type"],
+      ["app", body.appId, "name,supported_platforms,object_store_urls,ios_skadnetwork_conversion_config,ios_bundle_id,itunes_app_store_country"],
+    ] as const) {
+      if (!path) continue;
+      try {
+        out[k] = await meta.metaGraph(path, "GET", { fields });
+      } catch (e) {
+        out[k] = { error: err(e) };
+      }
+    }
+    return NextResponse.json(out);
+  }
 
   if (body.action === "apps") {
     try {
