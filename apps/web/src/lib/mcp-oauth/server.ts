@@ -43,6 +43,10 @@ export interface ResolvedClient {
   clientId: string;
   clientName: string | null;
   redirectUris: string[];
+  /** How we know this client (consent page shows it). */
+  kind?: "dcr" | "cimd";
+  /** When it was registered / first seen. */
+  createdAt?: Date;
 }
 
 export type RegisterResult =
@@ -87,21 +91,29 @@ const CIMD_MAX_BYTES = 64 * 1024;
 export async function resolveClient(clientId: string): Promise<ResolvedClient | null> {
   const row = await prisma.oAuthClient.findUnique({ where: { clientId } });
   if (row && (row.kind === "dcr" || Date.now() - row.updatedAt.getTime() < CIMD_CACHE_MS)) {
-    return { clientId: row.clientId, clientName: row.clientName, redirectUris: row.redirectUris };
+    return {
+      clientId: row.clientId,
+      clientName: row.clientName,
+      redirectUris: row.redirectUris,
+      kind: row.kind === "cimd" ? "cimd" : "dcr",
+      createdAt: row.createdAt,
+    };
   }
   if (!isCimdClientId(clientId)) return null;
 
   const fetched = await fetchClientMetadata(clientId);
   if (!fetched) {
     // Serve a stale cached copy rather than fail a sign-in on a blip.
-    return row ? { clientId: row.clientId, clientName: row.clientName, redirectUris: row.redirectUris } : null;
+    return row
+      ? { clientId: row.clientId, clientName: row.clientName, redirectUris: row.redirectUris, kind: "cimd", createdAt: row.createdAt }
+      : null;
   }
-  await prisma.oAuthClient.upsert({
+  const saved = await prisma.oAuthClient.upsert({
     where: { clientId },
     create: { clientId, clientName: fetched.clientName, redirectUris: fetched.redirectUris, kind: "cimd" },
     update: { clientName: fetched.clientName, redirectUris: fetched.redirectUris },
   });
-  return fetched;
+  return { ...fetched, kind: "cimd", createdAt: saved.createdAt };
 }
 
 async function fetchClientMetadata(url: string): Promise<ResolvedClient | null> {
@@ -258,10 +270,20 @@ export async function refreshAccessToken(input: {
   if (!conn) {
     const replayed = await prisma.mcpConnection.findUnique({
       where: { previousRefreshTokenHash: oldHash },
-      select: { id: true },
+      select: { id: true, userId: true, revokedAt: true },
     });
     if (replayed) {
-      safeLog.warn("mcp-oauth.refresh-token-replayed", { connectionId: replayed.id });
+      // Replay of a rotated refresh token (OAuth 2.1 §6.1): either the
+      // legitimate client lost the rotation response, or the old token was
+      // stolen and is now being used by a second party. We can't tell which,
+      // so the whole connection is revoked (refresh + every access token).
+      // The real client re-runs the consent flow; the thief is cut off.
+      // Before 2026-10-18 this only logged.
+      if (!replayed.revokedAt) await revokeConnectionById(replayed.id, "refresh-replay");
+      safeLog.warn("mcp-oauth.refresh-token-replayed-revoked", {
+        connectionId: replayed.id,
+        userId: replayed.userId,
+      });
     }
     return fail("invalid_grant", "Refresh token is invalid or has been rotated.");
   }
@@ -359,6 +381,17 @@ export async function revokeConnection(userId: string, id: string): Promise<bool
     data: { revokedAt: now },
   });
   return true;
+}
+
+/** Server-initiated revoke (no user in hand) — refresh-token replay. */
+async function revokeConnectionById(id: string, reason: string): Promise<void> {
+  const now = new Date();
+  await prisma.mcpConnection.updateMany({ where: { id, revokedAt: null }, data: { revokedAt: now } });
+  await prisma.mcpAccessToken.updateMany({
+    where: { connectionId: id, revokedAt: null },
+    data: { revokedAt: now },
+  });
+  safeLog.info("mcp-oauth.connection-revoked", { connectionId: id, reason });
 }
 
 export { MCP_SCOPE };

@@ -2,6 +2,11 @@ import path from "node:path";
 import { defineConfig } from "vitest/config";
 
 export default defineConfig({
+  // tsconfig has jsx: "preserve" for Next; vitest needs the transform to
+  // compile the few .tsx smoke tests (react-dom/server renders, no jsdom).
+  // Vite 8 transforms with oxc; the automatic runtime overrides tsconfig's
+  // jsx: "preserve".
+  oxc: { jsx: { runtime: "automatic" } },
   resolve: {
     alias: {
       // `server-only` throws by design when imported outside a server

@@ -25,7 +25,7 @@ export function GoogleSignInButton({
   onAuthenticated,
   tokens,
 }: {
-  loading: "google" | "apple" | "password" | "magic" | null;
+  loading: "google" | "apple" | "password" | "magic" | "code" | null;
   setLoading: (v: "google" | null) => void;
   onAuthenticated: (user: User, sessionToken: string) => void;
   tokens: AcuityTokens;

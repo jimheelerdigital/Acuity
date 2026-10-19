@@ -28,6 +28,8 @@ import { submitFeedback, type FeedbackType } from "@/lib/feedback";
 interface Props {
   visible: boolean;
   onClose: () => void;
+  /** Pre-select a type (Roadmap → "Have an idea?" opens on `feature`). */
+  initialType?: FeedbackType;
 }
 
 const TYPES: Array<{
@@ -43,9 +45,9 @@ const TYPES: Array<{
 
 const MAX_CHARS = 4000;
 
-export function FeedbackModal({ visible, onClose }: Props) {
+export function FeedbackModal({ visible, onClose, initialType }: Props) {
   const { tokens } = useTheme();
-  const [type, setType] = useState<FeedbackType | null>(null);
+  const [type, setType] = useState<FeedbackType | null>(initialType ?? null);
   const [content, setContent] = useState("");
   const [sending, setSending] = useState(false);
 
@@ -53,7 +55,7 @@ export function FeedbackModal({ visible, onClose }: Props) {
   const charsLeft = MAX_CHARS - content.length;
 
   const reset = () => {
-    setType(null);
+    setType(initialType ?? null);
     setContent("");
     setSending(false);
   };

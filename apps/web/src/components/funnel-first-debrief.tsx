@@ -21,6 +21,14 @@
  * Saving: voice → direct upload + POST /api/record; typed →
  * POST /api/onboarding/first-debrief-text. Both run the normal pipeline.
  *
+ * Pre-filled (2026-10-18, audit 2026-10-10 R-2, per Keenan): week one was
+ * 2 submitted / 11 skipped from a blank box, right after the funnel had
+ * asked what's on her plate and what's on her list. The step now opens
+ * with her own answer ("You said kids and a demanding job are on your
+ * plate.") and three editable lines pre-filled with the week-list items
+ * she tapped; text mode submits them as one sentence through the same
+ * route. Skip stays, but as a small "Not now" under everything.
+ *
  * Consent (2026-10-11): the debrief is transcribed and analysed by AI and
  * can contain special-category data, so the Art. 9 checkbox (same wording
  * and version as the app, lib/consent.ts) must be ticked and recorded in
@@ -31,6 +39,16 @@ import { Keyboard, Mic } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
 import { ART9_CONSENT_TEXT, ART9_WORDING_VERSION } from "@/lib/consent";
+import {
+  canSubmitLines,
+  composeDebriefText,
+  FIRST_DEBRIEF_MAX_CHARS,
+  initialLines,
+  isPrefilled,
+  PREFILL_LINE_LABELS,
+  saidLine,
+  type FirstDebriefPrefill,
+} from "@/lib/first-debrief-prefill";
 
 const DONE_KEY = "acuity_first_debrief_done";
 
@@ -63,18 +81,29 @@ function inFacebookBrowser(): boolean {
 export function FunnelFirstDebrief({
   brand,
   firstName,
+  prefill,
   track,
   onDone,
 }: {
   brand: "ripple" | "bwk";
   firstName?: string | null;
+  /** Her funnel answers (lib/first-debrief-prefill.ts). Optional: a direct
+   *  visit with no answers gets the blank version. */
+  prefill?: FirstDebriefPrefill | null;
   track: (event: string, value?: string) => void;
   onDone: (outcome: FirstDebriefOutcome) => void;
 }) {
   const [mode, setMode] = useState<"idle" | "recording" | "sending" | "typing" | "saved">("idle");
   const [savedHow, setSavedHow] = useState<FirstDebriefOutcome>("voice");
   const [elapsed, setElapsed] = useState(0);
+  // Three editable lines (Work / Home / Me), pre-filled from her week-list
+  // picks when the funnel has them, plus an optional free-text tail.
+  const [lines, setLines] = useState<string[]>(() => initialLines(prefill));
   const [text, setText] = useState("");
+  const [showMore, setShowMore] = useState(false);
+  const prefilled = isPrefilled(prefill);
+  const prefilledTag = `prefilled:${prefilled ? "true" : "false"}`;
+  const said = saidLine(prefill, brand);
   const [error, setError] = useState<string | null>(null);
   const [savingText, setSavingText] = useState(false);
   const recRef = useRef<MediaRecorder | null>(null);
@@ -85,16 +114,17 @@ export function FunnelFirstDebrief({
   // The in-flight (or finished) consent write. Started when the box is
   // ticked, so it's normally done by the time they tap record or save.
   const consentRef = useRef<Promise<boolean> | null>(null);
-  const prompt = brand === "bwk" ? "What's on your plate this week?" : "What's on your mind this week?";
-  const placeholder =
+  const ask = "Name the three things you'd most like off your mind.";
+  const linePlaceholders =
     brand === "bwk"
-      ? "Gym Monday and Thursday, I keep putting off the car insurance call, and I want to put my phone down earlier…"
-      : "The permission slip is due Friday, I still haven't called the dentist, and I want to walk three times this week…";
+      ? ["The call I keep putting off", "The thing at home that's waiting", "Gym this week"]
+      : ["The deadline that's looming", "The permission slip, the dentist…", "A walk, an hour that's mine"];
+  const morePlaceholder = "Anything else on your mind? Say it however it comes out.";
 
   useEffect(() => {
     const fb = inFacebookBrowser();
     if (fb) setMode("typing");
-    track("funnel_first_debrief_viewed", fb ? "facebook_typing" : "record");
+    track("funnel_first_debrief_viewed", `${fb ? "facebook_typing" : "record"}:${prefilledTag}`);
     return () => {
       if (timerRef.current) window.clearInterval(timerRef.current);
       recRef.current?.stream.getTracks().forEach((t) => t.stop());
@@ -106,7 +136,7 @@ export function FunnelFirstDebrief({
     markDone(how);
     setSavedHow(how);
     setMode("saved");
-    track("funnel_first_debrief_submitted", how);
+    track("funnel_first_debrief_submitted", `${how}:${prefilledTag}`);
   };
 
   const recordConsent = (): Promise<boolean> =>
@@ -221,7 +251,7 @@ export function FunnelFirstDebrief({
       const res = await fetch("/api/onboarding/first-debrief-text", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text }),
+        body: JSON.stringify({ text: composeDebriefText(lines, text) }),
       });
       const body = await res.json().catch(() => ({}));
       if (res.status === 409) {
@@ -242,7 +272,7 @@ export function FunnelFirstDebrief({
 
   const skip = () => {
     markDone("skipped");
-    track("funnel_first_debrief_skipped", mode);
+    track("funnel_first_debrief_skipped", `${mode}:${prefilledTag}`);
     onDone("skipped");
   };
 
@@ -252,7 +282,7 @@ export function FunnelFirstDebrief({
         <div className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-full bg-acuity-primary/15 text-[30px]">&#10003;</div>
         <h2 className="text-[26px] font-bold leading-tight tracking-tight">Saved to your Ripple</h2>
         <p className="mt-3 text-[16px] leading-relaxed text-acuity-text-sec">
-          Ripple is pulling out your tasks and habits now. They&rsquo;ll be waiting for you in the app.
+          Ripple is pulling out your tasks and habits now. Your first tasks will be waiting when you open the app.
         </p>
         <button
           onClick={() => onDone(savedHow)}
@@ -270,8 +300,10 @@ export function FunnelFirstDebrief({
         {firstName ? `You're in, ${firstName}` : "You're in"}
       </p>
       <h2 className="mt-2 text-center text-[26px] font-bold leading-tight tracking-tight">Do your first debrief</h2>
-      <p className="mt-2 text-center text-[15px] leading-snug text-acuity-text-sec">
-        {prompt} {mode === "typing" ? "Write it however it comes out." : "Say it however it comes out."} Ripple sorts it into your list.
+      {said && <p className="mt-3 text-center text-[15px] leading-snug text-acuity-text">{said}</p>}
+      <p className={`${said ? "mt-1" : "mt-2"} text-center text-[15px] leading-snug text-acuity-text-sec`}>
+        {ask}{" "}
+        {mode === "typing" ? "Change the lines to whatever fits." : "Say them however they come out."} Ripple sorts them into your list.
       </p>
 
       {(mode === "idle" || mode === "typing") && (
@@ -299,6 +331,15 @@ export function FunnelFirstDebrief({
 
       {mode !== "typing" ? (
         <div className="mt-7 text-center">
+          {lines.some((l) => l.trim()) && mode !== "sending" && (
+            <ul className="mx-auto mb-6 flex max-w-xs flex-wrap justify-center gap-2" aria-label="From your list this week">
+              {lines.filter((l) => l.trim()).map((l) => (
+                <li key={l} className="rounded-full border border-acuity-line-strong bg-acuity-bg-inset px-3 py-1 text-[13px] text-acuity-text">
+                  {l}
+                </li>
+              ))}
+            </ul>
+          )}
           <button
             onClick={mode === "recording" ? stop : start}
             disabled={mode === "sending" || (mode === "idle" && !consent)}
@@ -320,16 +361,41 @@ export function FunnelFirstDebrief({
         </div>
       ) : (
         <div className="mt-6">
-          <textarea
-            value={text}
-            onChange={(e) => setText(e.target.value.slice(0, 2000))}
-            rows={6}
-            placeholder={placeholder}
-            className="w-full resize-none rounded-2xl border border-acuity-line-strong bg-acuity-bg-inset p-4 text-[16px] leading-relaxed text-acuity-text outline-none placeholder:text-acuity-text-ter focus:border-acuity-primary"
-          />
+          <div className="space-y-3">
+            {lines.map((value, i) => (
+              <label key={PREFILL_LINE_LABELS[i]} className="block">
+                <span className="mb-1 block text-[12px] font-semibold uppercase tracking-wide text-acuity-text-sec">
+                  {PREFILL_LINE_LABELS[i]}
+                </span>
+                <input
+                  type="text"
+                  value={value}
+                  onChange={(e) =>
+                    setLines((prev) => prev.map((l, j) => (j === i ? e.target.value.slice(0, 200) : l)))
+                  }
+                  placeholder={linePlaceholders[i]}
+                  autoComplete="off"
+                  className="w-full rounded-2xl border border-acuity-line-strong bg-acuity-bg-inset px-4 py-3 text-[16px] leading-relaxed text-acuity-text outline-none placeholder:text-acuity-text-ter focus:border-acuity-primary"
+                />
+              </label>
+            ))}
+          </div>
+          {showMore ? (
+            <textarea
+              value={text}
+              onChange={(e) => setText(e.target.value.slice(0, FIRST_DEBRIEF_MAX_CHARS))}
+              rows={4}
+              placeholder={morePlaceholder}
+              className="mt-3 w-full resize-none rounded-2xl border border-acuity-line-strong bg-acuity-bg-inset p-4 text-[16px] leading-relaxed text-acuity-text outline-none placeholder:text-acuity-text-ter focus:border-acuity-primary"
+            />
+          ) : (
+            <button onClick={() => setShowMore(true)} className="mt-3 text-[14px] font-semibold text-acuity-primary">
+              + Add anything else
+            </button>
+          )}
           <button
             onClick={submitText}
-            disabled={!consent || text.trim().length < 10 || savingText}
+            disabled={!consent || !canSubmitLines(lines, text) || savingText}
             className="mt-4 w-full rounded-full bg-acuity-primary py-4 text-[17px] font-semibold text-white transition active:scale-[0.98] disabled:opacity-50"
           >
             {savingText ? "Saving…" : "Save my first debrief"}
@@ -338,8 +404,10 @@ export function FunnelFirstDebrief({
       )}
 
       {error && <p className="mt-4 text-center text-[14px] text-acuity-text-sec">{error}</p>}
-      <button onClick={skip} className="mt-6 block w-full text-center text-[14px] text-acuity-text-sec underline-offset-4 hover:underline">
-        Skip, I&rsquo;ll do it in the app
+      {/* Skip stays (never block a buyer), but as a quiet text link under
+          everything rather than a second, equal-weight button. */}
+      <button onClick={skip} className="mt-12 block w-full text-center text-[13px] text-acuity-text-ter underline-offset-4 hover:underline">
+        Not now
       </button>
     </div>
   );

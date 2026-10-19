@@ -23,17 +23,26 @@ import {
   configureRevenueCat,
   identifyRevenueCatUser,
   logOutRevenueCatUser,
+  revenueCatIdentityAttributes,
+  syncRevenueCatAttributes,
 } from "@/lib/revenuecat";
+import { flushPendingWithdrawalAck } from "@/lib/paywall-consent";
+import { claimAnonymousDebrief } from "@/lib/onboarding-v10/claim";
+import { fetchCustomerRcProfile } from "@/lib/pricing-tier";
 import {
   IDLE_EXPIRY_MS,
   decideSessionGate,
   getLastActiveMs,
   isFirstLaunchSeen,
   markFirstLaunchSeen,
+  markSessionGateSettled,
   recordActive,
 } from "@/lib/session-expiry";
 import { tokenBridge } from "@/lib/token-bridge";
 import { isQaForceV10, warnIfQaForceV10Active } from "@/lib/qa/force-v10";
+import { clearWidgetData } from "@/lib/widget-data";
+import { notifyV10StateChanged } from "@/lib/onboarding-v10/state";
+import { primeWhatsNewInstallState } from "@/lib/whats-new";
 
 export type DeleteAccountResult =
   | { ok: true }
@@ -99,6 +108,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // transiently" (warm refresh fired by AppState change). See the
   // gated !token branch in refresh() for the rationale.
   const initialRefreshDone = useRef(false);
+  // Latest user, readable from inside async effects keyed on user.id only.
+  const latestUser = useRef<User | null>(null);
+  latestUser.current = user;
+  // The RevenueCat identity attributes ($email / $displayName) last sent
+  // for this user id. Set by the sign-in sync below; lets the change effect
+  // re-send only when the user's email or name actually changes.
+  const rcIdentitySent = useRef<{ userId: string; key: string } | null>(null);
 
   /**
    * Refresh the current user state. Three cases:
@@ -244,6 +260,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         ]);
         const token = await getToken();
         if (cancelled) return;
+        // Before this launch marks itself: lets What's New tell an update
+        // from a fresh install.
+        await primeWhatsNewInstallState(hasLaunchedBefore);
 
         const decision = decideSessionGate({
           hasLaunchedBefore,
@@ -257,7 +276,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         // SecureStore. Under the QA override the session must be ignored
         // but NOT destroyed, so the idle-expiry branch is skipped. On a
         // normal build this is unreachable and behaviour is unchanged.
-        if (decision.action === "clear-stale" && !isQaForceV10()) {
+        if (
+          (decision.action === "clear-stale" ||
+            decision.action === "clear-uninstalled") &&
+          !isQaForceV10()
+        ) {
           // Idle expiry — keychain token is older than the threshold.
           // clearSession() wipes SecureStore + memoryToken; refresh()
           // below will then route to sign-in.
@@ -276,6 +299,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         // leave a user signed in than to crash the app start path.
         console.warn("[session-gate] failed:", err);
       }
+      // Routing facts wait for this (see sessionGateSettled).
+      markSessionGateSettled();
       if (!cancelled) {
         void refresh();
       }
@@ -330,6 +355,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // the native module is even imported. Deliberately does NOT call
   // refresh() — while RC_SOURCE_OF_TRUTH is off, RC's opinion is
   // observation only and must not drive app state.
+  // v10 first-debrief recovery. The funnel records a debrief BEFORE the
+  // account exists and claims it at signup. If that claim didn't land
+  // (network, or a sign-in path that finished elsewhere), the token stays on
+  // the device; retry on every sign-in. Idempotent server-side and a no-op
+  // when there's nothing to claim, so it's safe on every auth path.
+  useEffect(() => {
+    if (!user?.id) return;
+    void claimAnonymousDebrief();
+  }, [user?.id]);
+
   useEffect(() => {
     if (!user?.id) return;
     let cancelled = false;
@@ -337,11 +372,60 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const mode = await configureRevenueCat(user.id);
       if (cancelled || mode === "disabled") return;
       await identifyRevenueCatUser(user.id);
+      if (cancelled) return;
+      // A 14-day-withdrawal acknowledgement captured before the account
+      // existed (onboarding purchase) is written to the ledger now.
+      await flushPendingWithdrawalAck();
+      // Attributes RevenueCat Targeting / Experiments / charts key on:
+      // pricing_tier routes legacy customers to the grandfathered offering;
+      // $mediaSource / $campaign break the funnel down by channel.
+      // $email / $displayName: RevenueCat Win-back campaigns email churned
+      // subscribers, and Customer Center / support lookups use them. Only
+      // keys with values are sent (a null would delete the attribute).
+      const profile = await fetchCustomerRcProfile();
+      if (cancelled) return;
+      const current = latestUser.current;
+      const identity =
+        current?.id === user.id
+          ? revenueCatIdentityAttributes({
+              email: current.email,
+              name: current.name,
+            })
+          : {};
+      await syncRevenueCatAttributes({
+        pricing_tier: profile.tier,
+        ...(profile.mediaSource ? { $mediaSource: profile.mediaSource } : {}),
+        ...(profile.campaign ? { $campaign: profile.campaign } : {}),
+        ...identity,
+      });
+      if (cancelled) return;
+      rcIdentitySent.current = {
+        userId: user.id,
+        key: JSON.stringify(identity),
+      };
     })();
     return () => {
       cancelled = true;
     };
   }, [user?.id]);
+
+  // Re-send $email / $displayName when the signed-in user's email or name
+  // changes (profile edit → refresh() / setAuthenticatedUser). Waits for the
+  // sign-in sync above (which already sends the current values) so the
+  // attributes land on the identified RC customer, not the anonymous one.
+  useEffect(() => {
+    if (!user?.id) return;
+    const sent = rcIdentitySent.current;
+    if (!sent || sent.userId !== user.id) return;
+    const identity = revenueCatIdentityAttributes({
+      email: user.email,
+      name: user.name,
+    });
+    const key = JSON.stringify(identity);
+    if (key === sent.key || Object.keys(identity).length === 0) return;
+    rcIdentitySent.current = { userId: user.id, key };
+    void syncRevenueCatAttributes(identity);
+  }, [user?.id, user?.email, user?.name]);
 
   // Foreground-refresh pattern (docs/APPLE_IAP_DECISION.md §5):
   // when the user returns from Safari-based upgrade checkout, the
@@ -370,6 +454,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await clearSession();
     tokenBridge.set(null);
     setUser(null);
+    // Home-screen widget shows habit names — don't leave them up for
+    // whoever uses this device next.
+    await clearWidgetData();
     // Clear device-local product-tour markers so a DIFFERENT user
     // signing in on the same device gets a clean first-login auto-fire.
     // The completion marker is device-scoped (not user-scoped); it was
@@ -392,6 +479,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       "ripple.v10.offered",
       "ripple.v10.dismissed",
     ]).catch(() => {});
+    // Routing reads these flags; tell it they changed (1.9.1).
+    notifyV10StateChanged();
     // Reset IAP recovery debounce so a subsequent sign-in (possibly
     // by a different user on the same device) gets a fresh recovery
     // pass. Without this, the same-session sign-out → sign-in cycle

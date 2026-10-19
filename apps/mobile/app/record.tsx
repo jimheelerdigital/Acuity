@@ -9,11 +9,15 @@ import {
   NO_SOUND_CAPTURED_MESSAGE,
 } from "@acuity/shared";
 import {
+  ActivityIndicator,
   Alert,
   AppState,
   type AppStateStatus,
+  KeyboardAvoidingView,
+  Platform,
   Pressable,
   Text,
+  TextInput,
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -36,8 +40,21 @@ import { useSaveWall } from "@/components/onboarding/v10-save-wall";
 import { shouldAutostartRecording } from "@/lib/record-deeplink";
 import { getToken } from "@/lib/auth";
 import { invalidate } from "@/lib/cache";
-import { registerPushTokenAfterRecording } from "@/lib/push-token";
-import { SPEECH_RECORDING_OPTIONS } from "@/lib/audio-recording-options";
+import {
+  captureHandwrittenPage,
+  handwritingCaptureAvailable,
+  HandwritingError,
+  type CaptureSource,
+} from "@/lib/handwriting-capture";
+import {
+  readyPushAction,
+  registerPushTokenAfterRecording,
+  registerPushTokenForReminderSlot,
+} from "@/lib/push-token";
+import { bumpDebriefSignal, maybeAskForReviewAfterDebrief } from "@/lib/review";
+import { startSpeechRecording } from "@/lib/start-speech-recording";
+import { trackV10 } from "@/lib/onboarding-v10/analytics";
+import { noteWelcomeDebrief } from "@/lib/welcome/flow";
 
 /**
  * Recording modal. One screen, one state machine. Consolidates the
@@ -82,8 +99,15 @@ import { SPEECH_RECORDING_OPTIONS } from "@/lib/audio-recording-options";
 const MAX_SECONDS = 300;
 const UPLOAD_RETRY_SCHEDULE_MS = [2000, 4000, 8000];
 
+// Typed entries (2026-10-17): mirror the server's bounds in
+// apps/web/src/app/api/record/route.ts (TYPED_MIN_CHARS / TYPED_MAX_CHARS)
+// so the Save button disables before a request that would 400/413.
+const TYPED_MIN_CHARS = 12;
+const TYPED_MAX_CHARS = 30_000;
+
 type State =
   | "idle"
+  | "typing" // keyboard instead of the mic (2026-10-17); submits as a typed entry
   | "recording"
   | "uploading"
   | "saved" // async fire-and-forget (v1.3.3): brief confirmation, then leave
@@ -126,7 +150,15 @@ export default function RecordScreen() {
      * recording without a clear act of consent.
      */
     autostart?: string;
+    /**
+     * `welcome` — opened by the funnel welcome flow (app/welcome.tsx) for a
+     * web subscriber's first debrief. On a successful send the entry id is
+     * handed back to that flow and we pop to it, instead of the normal
+     * "saved" state / entry detail.
+     */
+    from?: string;
   }>();
+  const fromWelcome = params.from === "welcome";
   const goalId =
     typeof params.goalId === "string" && params.goalId.length > 0
       ? params.goalId
@@ -158,6 +190,14 @@ export default function RecordScreen() {
   // screen lock) despite the wake lock — drives the "interrupted"
   // recovery copy instead of a silent stop.
   const [interrupted, setInterrupted] = useState(false);
+  // Typed entry draft. Kept across an error so "Try again" returns the
+  // user to their words, not an empty box.
+  const [typedDraft, setTypedDraft] = useState("");
+  const [typedSubmitting, setTypedSubmitting] = useState(false);
+  // Photo → text in flight (handwritten page). Blocks the composer's
+  // controls so a second tap can't double-bill a vision call.
+  const [photoReading, setPhotoReading] = useState(false);
+  const lastModeRef = useRef<"voice" | "typed">("voice");
 
   const recordingRef = useRef<Audio.Recording | null>(null);
   const peakLevelRef = useRef(0); // P1: loudest normalized level this recording
@@ -190,6 +230,25 @@ export default function RecordScreen() {
   useEffect(() => {
     if (polledEntryId) trackEntry(polledEntryId);
   }, [polledEntryId, trackEntry]);
+
+  // 1.9.1: while it processes, offer a "ready" notification so leaving the
+  // app is fine (the server already sends it when there's a push token).
+  // Our own primer first; the one-shot OS dialog only if they say yes.
+  useEffect(() => {
+    if (!polledEntryId) return;
+    void (async () => {
+      const action = await readyPushAction();
+      if (action !== "offer") return;
+      Alert.alert(
+        "Want a heads-up when it's ready?",
+        "Ripple can send you a notification when your debrief is processed, so you don't have to wait here.",
+        [
+          { text: "Not now", style: "cancel" },
+          { text: "Notify me", onPress: () => void registerPushTokenForReminderSlot() },
+        ]
+      );
+    })();
+  }, [polledEntryId]);
 
   // Bridge polling terminal states → nav or error surface.
   useEffect(() => {
@@ -231,10 +290,15 @@ export default function RecordScreen() {
       void (async () => {
         try {
           const meRes = await api.get<{
-            user?: { totalRecordings?: number };
+            user?: { id?: string; totalRecordings?: number };
           }>("/api/user/me");
           const total = meRes.user?.totalRecordings ?? 0;
           await registerPushTokenAfterRecording(total);
+          // This path takes the entry off the global notifier (above), so
+          // the review ask must run here too — in 1.9 it didn't, which is
+          // why the 2nd-debrief rating prompt never appeared.
+          await bumpDebriefSignal();
+          await maybeAskForReviewAfterDebrief({ id: meRes.user?.id, totalRecordings: total });
         } catch {
           // Non-fatal — registration will retry on the next
           // qualifying record completion.
@@ -253,19 +317,8 @@ export default function RecordScreen() {
   // session. allowsRecordingIOS makes the OS grant foreground audio.
   useEffect(() => {
     Audio.requestPermissionsAsync();
-    Audio.setAudioModeAsync({
-      allowsRecordingIOS: true,
-      playsInSilentModeIOS: true,
-      interruptionModeIOS: InterruptionModeIOS.DoNotMix,
-      // Android (v1.3.3 baseline): explicit interruption handling so a
-      // call/alarm pauses cleanly instead of the OS deciding ad hoc.
-      interruptionModeAndroid: InterruptionModeAndroid.DoNotMix,
-      shouldDuckAndroid: false,
-    }).catch(() => {
-      // Some older iOS versions + Expo Go can reject the mode; not
-      // fatal, recording will still start, just without clean
-      // interruption handling.
-    });
+    void ensureAudioSession();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // If the user backgrounds the app while polling, we just keep
@@ -335,7 +388,39 @@ export default function RecordScreen() {
     };
   }, []);
 
-  const startRecording = async () => {
+  /**
+   * Put the audio session in record mode and WAIT for it.
+   *
+   * 1.9.1 fix for "Recording unavailable — your phone is in use by another
+   * app or a call" when recording from the Action Button / widget / Siri
+   * (acuity://record?autostart=1). The mount effect used to fire
+   * setAudioModeAsync without awaiting it, and the autostart effect ran in
+   * the same commit — so prepareToRecordAsync ran before
+   * allowsRecordingIOS was applied, threw, and we reported it as "phone in
+   * use". Tapping record by hand worked only because by then the mode had
+   * landed.
+   */
+  const audioModeRef = useRef<Promise<void> | null>(null);
+  const ensureAudioSession = (force = false): Promise<void> => {
+    if (!audioModeRef.current || force) {
+      audioModeRef.current = Audio.setAudioModeAsync({
+        allowsRecordingIOS: true,
+        playsInSilentModeIOS: true,
+        interruptionModeIOS: InterruptionModeIOS.DoNotMix,
+        // Android (v1.3.3 baseline): explicit interruption handling so a
+        // call/alarm pauses cleanly instead of the OS deciding ad hoc.
+        interruptionModeAndroid: InterruptionModeAndroid.DoNotMix,
+        shouldDuckAndroid: false,
+      }).catch(() => {
+        // Some older iOS versions + Expo Go can reject the mode; not
+        // fatal, recording will still start, just without clean
+        // interruption handling.
+      });
+    }
+    return audioModeRef.current;
+  };
+
+  const startRecording = async (): Promise<void> => {
     setError(null);
     setInterrupted(false);
     setPolledEntryId(null);
@@ -353,19 +438,14 @@ export default function RecordScreen() {
     }
 
     try {
-      const recording = new Audio.Recording();
-      // 64 kbps MONO, not HIGH_QUALITY's 128 kbps stereo — see
-      // lib/audio-recording-options.ts. A 5-min entry was ~4.8MB and hit
-      // Vercel's non-configurable 4.5MB body cap; this brings it to ~2.4MB.
-      await recording.prepareToRecordAsync(SPEECH_RECORDING_OPTIONS);
-      // expo-av's default metering cadence is 500ms (2 Hz). Bumping
-      // to 1000ms (1 Hz) halves the JS-thread setLevels churn with
-      // zero visible impact on the level-bar animation — each status
-      // callback forces a re-render cascade, so cutting them in half
-      // is free perf.
-      recording.setProgressUpdateInterval(1000);
-      // Subscribe to metering updates for the level-bar visualization.
-      recording.setOnRecordingStatusUpdate((status) => {
+      peakLevelRef.current = 0; // P1: reset peak for this recording
+      // Shared starter (lib/start-speech-recording): waits for "active",
+      // awaits the audio mode, unloads + retries once on failure. 1000ms
+      // metering cadence halves setLevels churn vs the 500ms default.
+      const recording = await startSpeechRecording({
+        source: "main",
+        progressIntervalMs: 1000,
+        onStatus: (status) => {
         if (!status.isRecording) return;
         const meteringDb = status.metering ?? -60;
         // Map -60..0 dB → 0..1. Apple's dB range is roughly -60 silent
@@ -382,9 +462,8 @@ export default function RecordScreen() {
           next.push(Math.max(0.05, normalized));
           return next;
         });
+        },
       });
-      peakLevelRef.current = 0; // P1: reset peak for this recording
-      await recording.startAsync();
       recordingRef.current = recording;
       setElapsed(0);
       setState("recording");
@@ -422,6 +501,7 @@ export default function RecordScreen() {
         data: { nativeMessage, nativeCode },
       });
 
+      // (The automatic retry now lives in startSpeechRecording.)
       const fresh = await Audio.getPermissionsAsync().catch(() => null);
       if (fresh && !fresh.granted) {
         Alert.alert(
@@ -431,9 +511,22 @@ export default function RecordScreen() {
         );
         return;
       }
+      // Record the native reason where we can read it (Sentry breadcrumbs
+      // only surface with a later error; the 2026-10-15 user report could
+      // not be diagnosed from data). Reuses the funnel's event name — the
+      // server accepts only the ^v10_ prefix — with source "main".
+      trackV10("v10_recording_start_failed", {
+        source: "main",
+        error: nativeMessage.slice(0, 200),
+        code: nativeCode,
+      });
+      // Don't blame "another app": this catch fires for ANY start failure
+      // (audio-mode race, app not yet active after a system prompt, …), and
+      // telling someone with no other app open that one is using the mic
+      // reads as a broken app (user report 2026-10-15).
       Alert.alert(
-        "Recording unavailable",
-        "Your phone is in use by another app or a call. End the call or close the other app, then try again."
+        "Couldn't start recording",
+        "Ripple couldn't get the microphone. Tap record to try again. If you're on a call or using another audio app, end it first."
       );
     }
   };
@@ -629,7 +722,12 @@ export default function RecordScreen() {
             // are. (This path doesn't poll, so the polledEntryId hook
             // never covered it — this is the real fix for the missing
             // banner.)
-            trackEntry(responseEntryId);
+            trackEntry(responseEntryId, { silent: fromWelcome });
+            if (fromWelcome) {
+              await noteWelcomeDebrief(responseEntryId);
+              router.back();
+              return;
+            }
             void (async () => {
               try {
                 const meRes = await api.get<{
@@ -647,6 +745,13 @@ export default function RecordScreen() {
 
           // Sync path — the server returned an inline RecordResponse
           // with the extraction already done. Nav straight to detail.
+          if (responseEntryId && fromWelcome) {
+            // Sync pipeline: the extraction is already done, so the welcome
+            // flow's poll resolves on its first request.
+            await noteWelcomeDebrief(responseEntryId);
+            router.back();
+            return;
+          }
           if (responseEntryId) {
             router.replace(`/entry/${responseEntryId}`);
             // Slice 9b — same post-second-recording trigger as the
@@ -687,7 +792,7 @@ export default function RecordScreen() {
         }
       }
     },
-    [router, goalId, dimensionKey, trackEntry]
+    [router, goalId, dimensionKey, trackEntry, fromWelcome]
   );
 
   /**
@@ -750,14 +855,176 @@ export default function RecordScreen() {
   }, [params.autostart]);
 
   const handlePress = () => {
-    if (state === "idle") startRecording();
-    else if (state === "recording") stopRecording();
+    if (state === "idle") {
+      lastModeRef.current = "voice";
+      startRecording();
+    } else if (state === "recording") stopRecording();
     else if (state === "error") {
       setError(null);
       setInterrupted(false);
-      setState("idle");
+      // A failed typed submit goes back to the draft, not the mic.
+      setState(lastModeRef.current === "typed" ? "typing" : "idle");
     }
   };
+
+  /**
+   * Typed entry (2026-10-17). POST /api/record { text } — the server
+   * creates the Entry with the text as its transcript and runs the
+   * extraction pipeline without Whisper. Always the async (202) path,
+   * so this mirrors the voice "saved" branch: brief confirmation,
+   * register with the processing notifier, leave.
+   */
+  const submitTyped = useCallback(async () => {
+    const text = typedDraft.replace(/\r\n/g, "\n").trim();
+    if (text.length < TYPED_MIN_CHARS || typedSubmitting) return;
+    lastModeRef.current = "typed";
+    setTypedSubmitting(true);
+    setError(null);
+    try {
+      const token = await getToken();
+      const headers: Record<string, string> = {
+        "Content-Type": "application/json",
+      };
+      if (token) headers.Authorization = `Bearer ${token}`;
+      const res = await fetch(`${api.baseUrl()}/api/record`, {
+        method: "POST",
+        headers,
+        body: JSON.stringify({
+          text,
+          ...(goalId ? { goalId } : {}),
+          ...(dimensionKey ? { dimensionContext: dimensionKey } : {}),
+        }),
+      });
+
+      if (res.status === 402) {
+        router.replace("/paywall");
+        return;
+      }
+      if (res.status === 429) {
+        const body = (await res.json().catch(() => ({}))) as {
+          retryAfter?: number;
+        };
+        const retry = Number(body.retryAfter ?? 60);
+        Alert.alert(
+          "Saving too frequently",
+          `Try again in ${Math.ceil(retry / 60)} minute${retry > 60 ? "s" : ""}.`
+        );
+        return;
+      }
+      if (!res.ok) {
+        const body = (await res.json().catch(() => ({}))) as {
+          error?: string;
+        };
+        throw new Error(body.error ?? `HTTP ${res.status}`);
+      }
+
+      const body = (await res.json()) as UploadResponse;
+      if (!body.entryId) throw new Error("Unexpected response shape");
+
+      if (body.freeCapState === "grace") {
+        await new Promise<void>((resolve) => {
+          Alert.alert(
+            "30 of 30 — this one is on us",
+            "You've used your free entries for this month. Continue on web → for unlimited reflection.",
+            [{ text: "OK", onPress: () => resolve() }],
+            { cancelable: false }
+          );
+        });
+      }
+
+      setTypedDraft("");
+      trackV10("v10_typed_entry_saved", { chars: text.length });
+      // Same as the voice 202 branch: the app-wide notifier owns
+      // completion (cache invalidation, "brief ready" banner, review ask).
+      trackEntry(body.entryId, { silent: fromWelcome });
+      if (fromWelcome) {
+        await noteWelcomeDebrief(body.entryId);
+        router.back();
+        return;
+      }
+      setState("saved");
+      void (async () => {
+        try {
+          const meRes = await api.get<{
+            user?: { totalRecordings?: number };
+          }>("/api/user/me");
+          await registerPushTokenAfterRecording(
+            meRes.user?.totalRecordings ?? 0
+          );
+        } catch {
+          // non-fatal
+        }
+      })();
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : "We couldn't save that entry."
+      );
+      setState("error");
+    } finally {
+      setTypedSubmitting(false);
+    }
+  }, [
+    typedDraft,
+    typedSubmitting,
+    goalId,
+    dimensionKey,
+    router,
+    trackEntry,
+    fromWelcome,
+  ]);
+
+  /**
+   * Handwritten page → text (2026-10-17). Camera or library, the page is
+   * transcribed server-side and APPENDED to the draft (a second photo
+   * continues the entry; nothing the user already typed is lost). They
+   * review, then Save like any typed entry.
+   */
+  const addPageFromPhoto = useCallback(
+    async (source: CaptureSource) => {
+      if (photoReading || typedSubmitting) return;
+      setPhotoReading(true);
+      try {
+        const text = await captureHandwrittenPage(source);
+        if (text == null) return; // user backed out of the picker
+        trackV10("v10_handwriting_transcribed", { chars: text.length, source });
+        setTypedDraft((prev) => {
+          const base = prev.trim();
+          return base ? `${base}\n\n${text}` : text;
+        });
+      } catch (err) {
+        if (err instanceof HandwritingError) {
+          if (err.code === "permission") return; // already prompted
+          if (err.code === "paywall") {
+            router.replace("/paywall");
+            return;
+          }
+          Alert.alert(
+            err.code === "no_text" ? "No writing found" : "Couldn't read that page",
+            err.message
+          );
+          return;
+        }
+        Alert.alert(
+          "Couldn't read that page",
+          "Something went wrong. Please try again."
+        );
+      } finally {
+        setPhotoReading(false);
+      }
+    },
+    [photoReading, typedSubmitting, router]
+  );
+
+  const promptPhotoSource = useCallback(() => {
+    Alert.alert("Add a handwritten page", undefined, [
+      { text: "Take photo", onPress: () => void addPageFromPhoto("camera") },
+      {
+        text: "Choose from library",
+        onPress: () => void addPageFromPhoto("library"),
+      },
+      { text: "Cancel", style: "cancel" },
+    ]);
+  }, [addPageFromPhoto]);
 
   /**
    * Discard the in-progress recording — stop mic, drop the captured
@@ -803,6 +1070,12 @@ export default function RecordScreen() {
           },
         ]
       );
+      return;
+    }
+    if (state === "typing") {
+      // Back from the keyboard returns to the mic; the draft survives in
+      // state so flipping back and forth never loses words.
+      setState("idle");
       return;
     }
     router.back();
@@ -944,14 +1217,19 @@ export default function RecordScreen() {
   // be backed out of mid-flight). Returning `null` from headerLeft
   // removes the slot entirely.
   useEffect(() => {
-    const showBack = state === "idle" || state === "recording";
+    const showBack =
+      state === "idle" || state === "recording" || state === "typing";
     navigation.setOptions({
       headerLeft: () =>
         showBack ? (
           <Pressable
             accessibilityRole="button"
             accessibilityLabel={
-              state === "recording" ? "Discard recording" : "Back"
+              state === "recording"
+                ? "Discard recording"
+                : state === "typing"
+                  ? "Back to recording"
+                  : "Back"
             }
             onPress={handleBackPress}
             hitSlop={12}
@@ -1084,17 +1362,175 @@ export default function RecordScreen() {
               </Text>
             </Pressable>
           </View>
+        ) : state === "typing" ? (
+          <TypedComposer
+            value={typedDraft}
+            onChange={setTypedDraft}
+            onSubmit={() => void submitTyped()}
+            onAddPhoto={handwritingCaptureAvailable() ? promptPhotoSource : undefined}
+            submitting={typedSubmitting}
+            photoReading={photoReading}
+            tokens={tokens}
+          />
         ) : (
           <RecordSurface
             state={state}
             elapsed={elapsed}
             levels={levels}
             onPress={handlePress}
+            onTypeInstead={() => {
+              lastModeRef.current = "typed";
+              setState("typing");
+            }}
             tokens={tokens}
           />
         )}
       </View>
     </SafeAreaView>
+  );
+}
+
+/**
+ * TypedComposer — keyboard alternative to the mic (2026-10-17, Miro
+ * "Type out a 'recording'"). Same pipeline downstream: the text becomes
+ * the transcript and extraction runs exactly as for a voice entry.
+ * Plain multiline input, live character count, one primary action.
+ */
+function TypedComposer({
+  value,
+  onChange,
+  onSubmit,
+  onAddPhoto,
+  submitting,
+  photoReading,
+  tokens,
+}: {
+  value: string;
+  onChange: (text: string) => void;
+  onSubmit: () => void;
+  /** Undefined when this binary lacks the image modules (build 183):
+   *  the camera button isn't shown. See lib/handwriting-capture.ts. */
+  onAddPhoto?: () => void;
+  submitting: boolean;
+  photoReading: boolean;
+  tokens: ReturnType<typeof useTheme>["tokens"];
+}) {
+  const trimmedLength = value.trim().length;
+  const tooShort = trimmedLength < TYPED_MIN_CHARS;
+  const tooLong = trimmedLength > TYPED_MAX_CHARS;
+  const busy = submitting || photoReading;
+  const canSubmit = !tooShort && !tooLong && !busy;
+  return (
+    <KeyboardAvoidingView
+      behavior={Platform.OS === "ios" ? "padding" : undefined}
+      keyboardVerticalOffset={Platform.OS === "ios" ? 96 : 0}
+      style={{ flex: 1, width: "100%" }}
+    >
+      <View style={{ flex: 1, width: "100%", paddingTop: 8, gap: 12 }}>
+        <Text
+          style={{
+            fontFamily: tokens.fontSans,
+            fontSize: 14,
+            color: tokens.textTer,
+          }}
+        >
+          What&rsquo;s on your mind? Write it the way you&rsquo;d say it.
+        </Text>
+        <TextInput
+          value={value}
+          onChangeText={onChange}
+          multiline
+          autoFocus
+          textAlignVertical="top"
+          placeholder="Today I…"
+          placeholderTextColor={tokens.textTer}
+          editable={!busy}
+          maxLength={TYPED_MAX_CHARS + 500}
+          accessibilityLabel="Entry text"
+          style={{
+            flex: 1,
+            minHeight: 180,
+            borderRadius: 16,
+            borderWidth: 1,
+            borderColor: tokens.cardBorder,
+            backgroundColor: tokens.cardBg,
+            color: tokens.text,
+            fontFamily: tokens.fontSans,
+            fontSize: 17,
+            lineHeight: 25,
+            padding: 16,
+          }}
+        />
+        <View
+          style={{
+            flexDirection: "row",
+            alignItems: "center",
+            justifyContent: "space-between",
+            paddingBottom: 8,
+          }}
+        >
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 10, flexShrink: 1 }}>
+            {/* Handwritten page → text (2026-10-17). Appends to the draft.
+                Only when the binary has the image modules (2026-10-18). */}
+            {onAddPhoto ? (
+            <Pressable
+              onPress={onAddPhoto}
+              disabled={busy}
+              accessibilityRole="button"
+              accessibilityLabel="Add a handwritten page from a photo"
+              hitSlop={8}
+              style={{
+                width: 40,
+                height: 40,
+                borderRadius: 20,
+                borderWidth: 1,
+                borderColor: tokens.cardBorder,
+                alignItems: "center",
+                justifyContent: "center",
+                opacity: busy ? 0.45 : 1,
+              }}
+            >
+              {photoReading ? (
+                <ActivityIndicator size="small" color={tokens.textSec} />
+              ) : (
+                <Ionicons name="camera-outline" size={20} color={tokens.textSec} />
+              )}
+            </Pressable>
+            ) : null}
+            <Text
+              numberOfLines={1}
+              style={{
+                fontFamily: tokens.fontSans,
+                fontSize: 12,
+                color: tooLong ? tokens.bad : tokens.textTer,
+                fontVariant: ["tabular-nums"],
+                flexShrink: 1,
+              }}
+            >
+              {photoReading
+                ? "Reading your page…"
+                : tooLong
+                  ? `${(trimmedLength - TYPED_MAX_CHARS).toLocaleString()} over the limit`
+                  : tooShort && trimmedLength > 0
+                    ? "A sentence or two is plenty"
+                    : `${trimmedLength.toLocaleString()} characters`}
+            </Text>
+          </View>
+          <Pressable
+            onPress={onSubmit}
+            disabled={!canSubmit}
+            accessibilityRole="button"
+            accessibilityState={{ disabled: !canSubmit }}
+            className="rounded-2xl bg-violet-600 px-6 py-3"
+            style={{ opacity: canSubmit ? 1 : 0.45 }}
+          >
+            <Text className="text-sm font-semibold text-white">
+              {submitting ? "Saving…" : "Save entry"}
+            </Text>
+          </Pressable>
+        </View>
+      </View>
+    </KeyboardAvoidingView>
   );
 }
 
@@ -1126,12 +1562,14 @@ function RecordSurface({
   elapsed,
   levels,
   onPress,
+  onTypeInstead,
   tokens,
 }: {
   state: State;
   elapsed: number;
   levels: number[];
   onPress: () => void;
+  onTypeInstead: () => void;
   tokens: ReturnType<typeof useTheme>["tokens"];
 }) {
   const isRecording = state === "recording";
@@ -1186,6 +1624,40 @@ function RecordSurface({
             : "Tap the orb to stop"
           : "Tap the orb to start your recording"}
       </Text>
+
+      {/* Typed alternative (2026-10-17). Idle only — once the mic is
+          live, switching modes would mean discarding audio, and the
+          back button already covers that path. */}
+      {!isRecording ? (
+        <Pressable
+          onPress={onTypeInstead}
+          accessibilityRole="button"
+          accessibilityLabel="Type your entry instead"
+          hitSlop={10}
+          style={{
+            flexDirection: "row",
+            alignItems: "center",
+            gap: 6,
+            paddingHorizontal: 14,
+            paddingVertical: 8,
+            borderRadius: 999,
+            borderWidth: 1,
+            borderColor: tokens.cardBorder,
+          }}
+        >
+          <Ionicons name="create-outline" size={16} color={tokens.textSec} />
+          <Text
+            style={{
+              fontFamily: tokens.fontSans,
+              fontSize: 13,
+              fontWeight: "600",
+              color: tokens.textSec,
+            }}
+          >
+            Type it instead
+          </Text>
+        </Pressable>
+      ) : null}
     </View>
   );
 }

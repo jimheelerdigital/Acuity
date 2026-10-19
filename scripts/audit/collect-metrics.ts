@@ -309,6 +309,7 @@ async function collectSupabase(db: pg.Client, cur: Win, history: Win[]) {
       "app_signed_in", "funnel_payment_completed", "funnel_v9_magic_link_sent", "funnel_app_link_sent",
       "funnel_first_debrief_viewed", "funnel_first_debrief_submitted", "funnel_first_debrief_skipped",
       "funnel_first_debrief_mic_denied", "apple_dupe_flagged", "email_variant_sent",
+      "day2_nudge_sent", // 2026-10-18 (R-3): value = push | email
     ];
     const keyEvents = async (w: Win) => q(db, `
       SELECT event, count(*)::int events, count(DISTINCT COALESCE("sessionToken", "userId"))::int uniques
@@ -321,6 +322,26 @@ async function collectSupabase(db: pg.Client, cur: Win, history: Win[]) {
       app_onboarding_steps_last_30d: appSteps,
       web_funnel_events_this_week: await webFunnel(cur),
       web_funnel_events_last_week: await webFunnel(history[0]),
+    };
+  });
+
+  // MCP connector usage (2026-10-18, audit 2026-10-17 "not collected").
+  out.mcp = await safe("supabase.mcp", async () => {
+    const [clients] = await q(db, `
+      SELECT count(*)::int total, count(*) FILTER (WHERE kind = 'dcr')::int dcr,
+             count(*) FILTER (WHERE "createdAt" >= $1)::int new_this_week
+      FROM "OAuthClient"`, [cur.start]);
+    const [conns] = await q(db, `
+      SELECT count(*)::int active_connections, count(DISTINCT "userId")::int users_connected,
+             count(*) FILTER (WHERE "createdAt" >= $1)::int new_this_week
+      FROM "McpConnection" WHERE "revokedAt" IS NULL AND "refreshExpiresAt" > now()`, [cur.start]);
+    const [revoked] = await q(db, `
+      SELECT count(*)::int revoked_this_week FROM "McpConnection" WHERE "revokedAt" >= $1`, [cur.start]);
+    const [tokens] = await q(db, `
+      SELECT count(*)::int used_this_week FROM "McpAccessToken" WHERE "lastUsedAt" >= $1`, [cur.start]);
+    return {
+      note: "OAuth clients registered against the Ripple MCP server, live user↔client connections (refresh not expired/revoked), and access tokens used this week.",
+      oauth_clients: clients, connections: { ...conns, ...revoked }, access_tokens: tokens,
     };
   });
 
@@ -592,8 +613,12 @@ async function collectStripe(cur: Win, prev: Win) {
     const trialConv = (days: number) => {
       const from = cur.end.getTime() - days * DAY;
       const ended = subs.filter((s) => s.trial_end && s.trial_end * 1000 >= from && s.trial_end * 1000 < Math.min(cur.end.getTime(), Date.now()));
-      const converted = ended.filter((s) => ["active", "past_due"].includes(s.status) || (s.status === "canceled" && s.ended_at && s.ended_at > s.trial_end + 86400));
-      return { trials_ended: ended.length, converted: converted.length, pct: pct(converted.length, ended.length) };
+      // Converted = the first post-trial charge actually went through. past_due
+      // is a DECLINED card still inside Stripe's retries (2026-10-18, audit
+      // R-2026-10-10-1: counting it inflated 4 real payers to 9).
+      const converted = ended.filter((s) => s.status === "active" || (s.status === "canceled" && s.ended_at && s.ended_at > s.trial_end + 86400));
+      const declined = ended.filter((s) => s.status === "past_due" || s.status === "unpaid");
+      return { trials_ended: ended.length, converted: converted.length, declined: declined.length, pct: pct(converted.length, ended.length) };
     };
     out.subscriptions = {
       mrr_usd: round(mrrCents / 100, 2),
@@ -606,6 +631,9 @@ async function collectStripe(cur: Win, prev: Win) {
       new_paid_no_trial_this_week: subs.filter((s) => !s.trial_start && inWin(s.created, cur)).length,
       trial_to_paid_7d: trialConv(7),
       trial_to_paid_30d: trialConv(30),
+      // Trials that ended in the last 7 days whose first charge was declined
+      // and is still unpaid (past_due / unpaid). Not converted.
+      trial_declined_7d: trialConv(7).declined,
       canceled_this_week: subs.filter((s) => inWin(s.canceled_at, cur)).length,
       canceled_last_week: subs.filter((s) => inWin(s.canceled_at, prev)).length,
       set_to_cancel_at_period_end: paying.filter((s) => s.cancel_at_period_end).length,

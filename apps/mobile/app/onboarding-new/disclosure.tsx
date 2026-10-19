@@ -142,7 +142,7 @@ function DisclosureScreen() {
             onPress={onContinue}
             accessibilityRole="button"
             accessibilityLabel="Continue"
-            style={({ pressed }) => [
+            style={[
               {
                 marginTop: 36,
                 borderRadius: 999,
@@ -150,7 +150,7 @@ function DisclosureScreen() {
                 paddingVertical: 16,
                 alignItems: "center",
               },
-              pressed && { opacity: 0.85 },
+              false && { opacity: 0.85 },
             ]}
           >
             <Text

@@ -203,9 +203,9 @@ function BridgeScreen() {
             disabled={!ready}
             accessibilityRole="button"
             accessibilityLabel="Continue"
-            style={({ pressed }) => ({
+            style={({
               alignSelf: "flex-start",
-              opacity: pressed ? 0.7 : 1,
+              opacity: 1,
               paddingVertical: 12,
             })}
           >

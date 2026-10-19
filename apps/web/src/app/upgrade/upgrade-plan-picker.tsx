@@ -4,6 +4,7 @@ import posthog from "posthog-js";
 import { useEffect, useState } from "react";
 
 import { displayAnnual, displayAnnualAsMonthly, displayMonthly, displaySavingsDollars, displaySavingsPct } from "@/lib/pricing";
+import { isRcWebBillingEnabled, startRcWebPurchase } from "@/lib/revenuecat/web-billing-client";
 
 type Interval = "monthly" | "yearly";
 
@@ -95,6 +96,34 @@ export function UpgradePlanPicker() {
       setError("Couldn't record your acknowledgement. Check your connection and try again.");
       setLoading(false);
       return;
+    }
+    // RevenueCat Web Billing (NEXT_PUBLIC_RC_WEB_BILLING=1). RevenueCat's
+    // checkout opens over this page; the consent grant above is re-checked
+    // server-side by /api/revenuecat/web-checkout before it opens. With the
+    // flag off we fall through to the Stripe Checkout redirect below.
+    if (isRcWebBillingEnabled()) {
+      const outcome = await startRcWebPurchase({ surface: "upgrade", interval });
+      switch (outcome.status) {
+        case "purchased":
+          // Same landing as the Stripe success_url — /account polls until
+          // the RevenueCat webhook has flipped the row to PRO.
+          window.location.href = "/account?upgrade=success";
+          return;
+        case "cancelled":
+          setLoading(false);
+          return;
+        case "unauthorized":
+          window.location.href = `/auth/signin?callbackUrl=${encodeURIComponent("/upgrade")}`;
+          return;
+        case "consent_required":
+          setError("Couldn't record your acknowledgement. Try again in a moment.");
+          setLoading(false);
+          return;
+        default:
+          setError(outcome.message);
+          setLoading(false);
+          return;
+      }
     }
     try {
       const res = await fetch("/api/stripe/checkout", {

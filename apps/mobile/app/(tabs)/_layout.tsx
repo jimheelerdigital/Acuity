@@ -4,6 +4,8 @@ import type { BottomTabBarProps } from "@react-navigation/bottom-tabs";
 import { useQuickActionRouting } from "expo-quick-actions/router";
 
 import { setupQuickActions } from "@/lib/quick-actions";
+import { maybeAskForReviewAfterDebrief } from "@/lib/review";
+import { useAuth } from "@/contexts/auth-context";
 import { isHabitsEnabled } from "@/lib/feature-flags";
 import { forwardRef, useEffect, useRef, useState } from "react";
 import * as Haptics from "expo-haptics";
@@ -13,6 +15,7 @@ import { AttachStep } from "react-native-spotlight-tour";
 import { TOUR_STEP_INDEX } from "@/components/tour/steps";
 import { TourTarget } from "@/components/tour/TourTarget";
 import { PastDueBanner } from "@/components/past-due-banner";
+import { AnonymousSubscriberPrompt } from "@/components/anonymous-subscriber-prompt";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 
@@ -70,6 +73,18 @@ export default function TabsLayout() {
     void setupQuickActions();
   }, []);
 
+  // App Store rating ask, driven by the signed-in user the auth context
+  // already loads (and re-fetches on foreground) — no extra network call.
+  // Runs only when the user id or their recording count changes, so it can
+  // catch a debrief that finished while the app was in the background.
+  // Rules (once per app version, 14-day gap, after a completed debrief) live
+  // in lib/review.ts shouldAutoAsk.
+  const { user } = useAuth();
+  useEffect(() => {
+    if (!user?.id || user.totalRecordings == null) return;
+    void maybeAskForReviewAfterDebrief({ id: user.id, totalRecordings: user.totalRecordings });
+  }, [user?.id, user?.totalRecordings]);
+
   return (
     <View style={{ flex: 1 }}>
       {/* Persistent PAST_DUE banner above all tabs — self-gates (renders
@@ -94,6 +109,15 @@ export default function TabsLayout() {
           <Tabs.Screen name="profile" options={{ href: null }} />
         </Tabs>
       </View>
+      {/* 1.9.1: subscribed-without-an-account guests → create an account
+          (attaches the anonymous RevenueCat purchase). Self-gates. */}
+      <AnonymousSubscriberPrompt />
+      {/* Compliant "Enjoying Ripple?" review nudge — self-gates (arms only
+          after completed debriefs, frequency-capped, dismissible). */}
+      {/* The custom "Enjoying Ripple?" nudge is retired: the automatic ask is
+          now Apple's native prompt after the 2nd debrief
+          (lib/review.ts maybeAskForReviewAfterDebrief). Settings keeps an
+          explicit "Rate Ripple". Component left in-tree. */}
     </View>
   );
 }
@@ -117,8 +141,8 @@ const TAB_META: Record<
     // the visible mic button is overlaid above the tab bar. Label "Home"
     // renders identically to siblings so it shares their baseline.
     label: "Home",
-    iconOn: "mic",
-    iconOff: "mic-outline",
+    iconOn: "home",
+    iconOff: "home-outline",
   },
   insights: { label: "Insights", iconOn: "bulb", iconOff: "bulb-outline" },
   entries: { label: "Entries", iconOn: "journal", iconOff: "journal-outline" },
@@ -411,7 +435,7 @@ const RecordOverlayButton = forwardRef<
       >
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel="Record an entry. Long-press to start now, or tap to open Home."
+          accessibilityLabel="Home. Long-press to start recording right away."
           onPress={onPress}
           onLongPress={onLongPress}
           onPressIn={() => setPressed(true)}
@@ -425,7 +449,7 @@ const RecordOverlayButton = forwardRef<
             justifyContent: "center",
           }}
         >
-          <Ionicons name="mic" size={28} color="#FFFFFF" />
+          <Ionicons name="home" size={26} color="#FFFFFF" />
         </Pressable>
       </Animated.View>
     </View>

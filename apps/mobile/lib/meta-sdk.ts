@@ -5,6 +5,11 @@ import {
   Settings,
 } from "react-native-fbsdk-next";
 
+import {
+  enableAppleSearchAdsAttribution,
+  linkRevenueCatAdIdentifiers,
+} from "@/lib/revenuecat";
+
 /**
  * Meta SDK (Facebook App Events) integration for mobile ad
  * attribution. 2026-05-25 — Keenan-requested install.
@@ -64,6 +69,31 @@ let attStatus: "unrequested" | "granted" | "denied" | "unknown" =
  * authenticated app render satisfies that better than firing it
  * at splash time before any UI has loaded.
  */
+// Events logged before the SDK is initialized (initMetaSdk waits on the ATT
+// prompt, and sign-up fires its registration event right away) are queued
+// and flushed once it's ready, instead of being dropped.
+const pending: Array<() => void> = [];
+function logOrQueue(fn: () => void): void {
+  if (sdkInitialized) {
+    try {
+      fn();
+    } catch {
+      /* analytics only */
+    }
+  } else if (pending.length < 20) {
+    pending.push(fn);
+  }
+}
+function flushPending(): void {
+  for (const fn of pending.splice(0)) {
+    try {
+      fn();
+    } catch {
+      /* analytics only */
+    }
+  }
+}
+
 export async function initMetaSdk(): Promise<void> {
   if (sdkInitialized) return;
 
@@ -98,6 +128,15 @@ export async function initMetaSdk(): Promise<void> {
     // equivalent — we just init.
     Settings.initializeSDK();
     sdkInitialized = true;
+    flushPending();
+    // RevenueCat → Meta Ads (Conversions API) matching. RC sends
+    // StartTrial / Subscribe / renewals to Meta server-side; it needs the
+    // Meta anonymous id + device identifiers to attribute them to the ad
+    // click. Runs after the ATT decision above, so the IDFA RC collects
+    // reflects the user's choice. Fire-and-forget; never blocks init.
+    void AppEventsLogger.getAnonymousID()
+      .then((anonId) => linkRevenueCatAdIdentifiers(anonId))
+      .catch(() => {});
   } catch (err) {
     // Non-fatal. The SDK has known init-time crashes on edge cases
     // (missing client token, network at init, etc.); we'd rather lose
@@ -106,6 +145,13 @@ export async function initMetaSdk(): Promise<void> {
       // eslint-disable-next-line no-console
       console.log("[meta-sdk] init failed:", err);
     }
+  } finally {
+    // Apple Search Ads → RevenueCat attribution. Same timing rule as the
+    // Meta identifiers: after the ATT decision so a granted user yields
+    // Apple's Detailed payload. Independent of the Meta SDK succeeding and
+    // of the RC purchases flag (attribution works in observer mode too).
+    // iOS-only and idempotent inside.
+    void enableAppleSearchAdsAttribution().catch(() => {});
   }
 }
 
@@ -160,9 +206,11 @@ export function logRecordingCompleted(): void {
  */
 export function logCompletedRegistration(method: "apple" | "google" | "email"): void {
   try {
-    AppEventsLogger.logEvent("fb_mobile_complete_registration", {
-      fb_registration_method: method,
-    });
+    logOrQueue(() =>
+      AppEventsLogger.logEvent("fb_mobile_complete_registration", {
+        fb_registration_method: method,
+      })
+    );
   } catch {
     // ignore
   }

@@ -72,6 +72,9 @@ export const EMAIL_ENABLED: Record<string, boolean> = {
   apple_duplicate_linked: true, // 2026-10-07: the auto-linked version of the rescue ("you're all set")
   apple_duplicate_rescue: true, // 2026-10-01: URGENT — paid on web, then Sign in with Apple made a 2nd account (lib/apple-duplicate-catch.ts)
   app_access_rescue: true, // 2026-09-28 one-off: web signups who never got into the app, one-tap signed-in link
+  payment_failed_2d: true, // 2026-10-18 (R-2026-10-10-1): +2d after a declined charge while the invoice is still open; transactional
+  payment_failed_5d: true, // 2026-10-18: +5d, same conditions
+  day2_nudge: true, // 2026-10-18 (audit R-3): day-2 come-back nudge for users with no pushToken; the cron is ALSO gated by ENABLE_V10_DAY2_PUSH (lib/day2-nudge.ts)
 
   // ── PAUSED — duplicate-welcome cleanup (2026-06-24) ─────────────
   // The two OLD user-facing welcomes stay off: new signups used to get

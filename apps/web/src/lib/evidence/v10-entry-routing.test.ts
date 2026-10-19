@@ -92,19 +92,80 @@ describe("signed in", () => {
     // They already recorded, saw a reveal, made a paywall decision and set
     // a reminder. /onboarding?step=N would be a second onboarding.
     expect(
-      at({ signedIn: true, onboardingCompleted: false, v10Offered: true })
+      at({ signedIn: true, onboardingCompleted: true, v10Offered: true, hasRecorded: true, subscriptionStatus: "TRIAL" })
+    ).toBe("stay");
+  });
+
+  it("1.9.1: resumes the funnel for a signed-in account with no debrief yet", () => {
+    // Account-first: the account exists before the first recording. A
+    // relaunch or reinstall mid-funnel must not land in the legacy flow
+    // (or on Home without ever recording).
+    expect(
+      at({ signedIn: true, onboardingCompleted: false, hasRecorded: false })
+    ).toBe("v10-resume");
+    expect(
+      at({ signedIn: true, onboardingCompleted: false, hasRecorded: false, v10Offered: true })
+    ).toBe("v10-resume");
+  });
+
+  it("1.9.1: keeps Home for v10 arrivals who recorded and are paying", () => {
+    // TRIAL is the server's automatic no-card trial, not a purchase: it
+    // still goes to the required-trial paywall (see the v11 test below).
+    expect(
+      at({ signedIn: true, onboardingCompleted: false, hasRecorded: true, v10Offered: true, subscriptionStatus: "TRIAL" })
+    ).toBe("v10-paywall");
+    expect(
+      at({ signedIn: true, onboardingCompleted: false, hasRecorded: true, v10Offered: true, subscriptionStatus: "PRO" })
+    ).toBe("stay");
+  });
+
+  it("v11: back to the paywall (trial required) when they quit there on this install", () => {
+    expect(
+      at({ signedIn: true, onboardingCompleted: false, hasRecorded: true, v10Offered: true, subscriptionStatus: "FREE" })
+    ).toBe("v10-paywall");
+    expect(
+      at({ signedIn: true, onboardingCompleted: false, hasRecorded: true, v10Offered: true })
+    ).toBe("v10-paywall");
+  });
+
+  it("v11: never traps an older account that didn't come through the v11 funnel", () => {
+    expect(
+      at({ signedIn: true, onboardingCompleted: false, hasRecorded: true, v10Offered: false, subscriptionStatus: "FREE" })
     ).toBe("home");
   });
 
-  it("still runs the legacy flow for non-v10 signups", () => {
-    expect(at({ signedIn: true, onboardingCompleted: false })).toBe(
-      "legacy-onboarding"
-    );
+  it("1.9.1: the legacy onboarding is gone — never routed to", () => {
+    // Jimmy 2026-10-15: "the old funnel shouldn't even exist".
+    expect(
+      at({ v10Enabled: false, signedIn: true, onboardingCompleted: false, hasRecorded: false })
+    ).toBe("v10-resume");
+    // Sitting on /onboarding (stale state) is not a place to stay.
+    expect(
+      at({ signedIn: true, onboardingCompleted: false, hasRecorded: false, segment: "onboarding" })
+    ).toBe("v10-resume");
+    expect(
+      at({ signedIn: true, onboardingCompleted: false, hasRecorded: true, segment: "onboarding" })
+    ).toBe("home");
+  });
+
+  it("1.9.1: stays put while already inside the funnel", () => {
+    expect(
+      at({ signedIn: true, onboardingCompleted: false, hasRecorded: false, segment: "onboarding-new" })
+    ).toBe("stay");
+  });
+
+  it("1.9.1: a signup outside the funnel finishes the new funnel, not legacy", () => {
+    expect(at({ signedIn: true, onboardingCompleted: false })).toBe("v10-resume");
   });
 
   it("keeps the PRO bypass ahead of everything", () => {
+    // Already on Home: left alone (was a redundant replace to /(tabs)).
     expect(
       at({ signedIn: true, onboardingCompleted: false, subscriptionStatus: "PRO" })
+    ).toBe("stay");
+    // From sign-in: sent home, never into legacy onboarding.
+    expect(
+      at({ signedIn: true, onboardingCompleted: false, subscriptionStatus: "PRO", segment: "(auth)" })
     ).toBe("home");
   });
 
@@ -184,5 +245,73 @@ describe("returning signed-out subscriber — the churn case", () => {
     // Tapping "Sign in" on Screen 1 sets dismissed. If that were not
     // sticky, the next cold launch would drop them back into the funnel.
     expect(decideColdStartRoute({ ...base, v10Dismissed: true })).toBe("signin");
+  });
+});
+describe("web subscriber (PRO) with onboarding unfinished", () => {
+  const pro = { signedIn: true, subscriptionStatus: "PRO", onboardingCompleted: false };
+
+  it("never yanks them off an in-app screen like the recorder (2026-10-10 bug)", () => {
+    expect(at({ ...pro, segment: "record" })).toBe("stay");
+    expect(at({ ...pro, segment: "entry" })).toBe("stay");
+    expect(at({ ...pro, segment: "goal" })).toBe("stay");
+  });
+
+  it("still sends them home from sign-in and the bare root", () => {
+    expect(at({ ...pro, segment: "(auth)" })).toBe("home");
+    expect(at({ ...pro, segment: "" })).toBe("home");
+  });
+
+  it("leaves a v10 buyer finishing account + reminders alone", () => {
+    expect(at({ ...pro, segment: "onboarding-new" })).toBe("stay");
+  });
+
+  it("never routes them into legacy onboarding", () => {
+    expect(at({ ...pro, segment: "(tabs)", v10Offered: false })).toBe("stay");
+  });
+
+  describe("welcome flow", () => {
+    // welcomeEligible comes from the server (apps/web/src/lib/
+    // welcome-eligibility.ts). The server reports these users as
+    // onboardingCompleted: true (2026-10-04 hotfix), so routing must not
+    // depend on that flag.
+    const on = { ...pro, onboardingCompleted: true, funnelWelcomeEnabled: true, welcomeEligible: true };
+
+    it("routes an eligible subscriber into it from an entry point", () => {
+      expect(at({ ...on, segment: "(tabs)" })).toBe("welcome");
+      expect(at({ ...on, segment: "(auth)" })).toBe("welcome");
+      expect(at({ ...on, segment: "" })).toBe("welcome");
+    });
+
+    it("works whatever onboardingCompleted says (hotfixed server flag)", () => {
+      expect(at({ ...on, onboardingCompleted: false, segment: "(tabs)" })).toBe("welcome");
+      expect(at({ ...on, onboardingCompleted: true, segment: "(tabs)" })).toBe("welcome");
+    });
+
+    it("covers web trial users too (eligibility is the server's call)", () => {
+      expect(at({ ...on, subscriptionStatus: "TRIAL", segment: "(tabs)" })).toBe("welcome");
+    });
+
+    it("never redirects out of it, or out of the recorder it opens", () => {
+      expect(at({ ...on, segment: "welcome" })).toBe("stay");
+      expect(at({ ...on, segment: "record" })).toBe("stay");
+    });
+
+    it("never interrupts the auth callback", () => {
+      expect(at({ ...on, segment: "auth-callback" })).not.toBe("welcome");
+    });
+
+    it("needs an explicit true: false or missing (older server) means no", () => {
+      expect(at({ ...on, welcomeEligible: false, segment: "(tabs)" })).toBe("stay");
+      expect(at({ ...on, welcomeEligible: undefined, segment: "(tabs)" })).toBe("stay");
+    });
+
+    it("is inert when the flag is off", () => {
+      expect(at({ ...on, funnelWelcomeEnabled: false, segment: "(tabs)" })).toBe("stay");
+    });
+
+    it("an ineligible incomplete PRO user still gets the old bypass", () => {
+      expect(at({ ...pro, funnelWelcomeEnabled: true, welcomeEligible: false, segment: "(auth)" })).toBe("home");
+      expect(at({ ...pro, funnelWelcomeEnabled: true, welcomeEligible: false, segment: "(tabs)" })).toBe("stay");
+    });
   });
 });

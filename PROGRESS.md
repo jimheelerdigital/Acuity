@@ -61,6 +61,227 @@ A recreation of the viral victorianpoetry carousel, emailed to Keenan to post by
 - gpt-image-2 refused the first "exhausted woman lying flat on the floor" frame under its self-harm filter. Rephrased as "sprawled on the sofa after a long day."
 - Kling 3 never adds weather to an illustration that doesn't already show it. Draw the rain into the start frame.
 - Keenan chose the book quotes over original lines, with credit on screen.
+## [2026-10-18] — Feedback is now saved in the database, not only posted to Slack
+
+- **Requested by:** Jimmy
+- **Committed by:** Claude
+- **Branch:** `feat/feedback-table` off main. NOT on main; Jimmy merges. Schema change (additive, one new table). No app build, no flag.
+
+### In plain English (for Keenan)
+Every bug report, idea and roadmap suggestion users send is now saved in our own database first, and still pings #acuity-feedback in Slack. Before, Slack was the only copy, so a Slack outage meant lost feedback, and Ace (our AI operator) couldn't read any of it. Users also stop seeing "couldn't send" when only Slack is having a bad moment.
+
+### Technical changes (for Jimmy)
+- New Prisma model `Feedback` (id, userId → User cascade, source `in_app`|`roadmap`, type, content, appVersion, buildNumber, osName, osVersion, subscriptionStatus snapshot, slackDelivered, createdAt; indexes on createdAt, userId). `User.feedback` back-relation. No IP stored, on purpose.
+- `prisma/rls-allowlist.txt`: `Feedback rls`. RLS coverage OK (111 models).
+- `apps/web/src/app/api/feedback/submit/route.ts`: write the row first, then Slack (extracted `postToSlack`), then set `slackDelivered`. Store failure is logged and never blocks Slack, so the code is safe to deploy BEFORE the schema push. 502/503 only when nothing was stored AND Slack failed or is unset. Accepts optional `source` ("in_app" default, "roadmap").
+- `apps/web/src/app/roadmap/roadmap-board.tsx`: sends `source: "roadmap"`.
+- `apps/web/src/app/api/user/me/export/route.ts`: user data export now includes their `feedback` rows.
+- New `route.test.ts` (10 tests: every store × Slack outcome incl. network error and mark-delivered failure, exact stored columns, source handling, validation). Verified they fail against the old route. Web tests all pass; web tsc 151 = main baseline, none in touched files.
+
+### Manual steps needed
+- [x] Merged as PR #92 (squash `f76e068`) on 2026-10-18, by Claude at Jimmy's request.
+- [x] Table created in prod BEFORE the merge via Supabase migration `feedback_table_2026_10_18` (DDL mirrors the Prisma model; RLS enabled in the same transaction, so there was never an anon-readable window). Verified: RLS on, 0 policies, PK/FK/indexes named as Prisma names them. Main's destructive-diff check passed after merge. No `db:push` needed.
+- [ ] Then the Heeler Brain workspace for Ripple gets `metadata.raw_feedback_table = "Feedback"` (separate, prepared in heeler-brain).
+
+### Notes
+- Account deletion cascades the Feedback rows here, but copies the Heeler Brain already pulled into its `support_actions` / `feature_requests` are not deleted. Known gap; handle in the brain's delete path.
+- The Heeler Brain raw_feedback connector reads `createdAt`, `content`, `type`, `appVersion`, `osVersion`, `userId` by name — the column names here were chosen to match it.
+- `prisma generate` couldn't download engines in the build sandbox; types were generated with a placeholder engine purely for tsc. Nothing engine-related is committed.
+
+## [2026-10-18] — The shipped app's code (1.9.1 → 1.9.4 + typed entry + RC Web Billing) lands on main in one PR
+
+- **Requested by:** Jimmy
+- **Committed by:** Claude (Cowork)
+- **Branch:** `chore/land-1.9.4-on-main`. NOT on main; Jimmy merges. **Supersedes** `chore/land-1.9.3-on-main`, `feat/widget-1.9.4`, `feat/typed-entry` and `feat/rc-web-billing-v2` — don't merge those separately after this. No schema change (main already matches prod), no app build.
+
+### In plain English (for Keenan)
+The code inside the app people have on their phones (1.9.1 through 1.9.4, the widget, typing an entry, the roadmap, Apple Ads tracking) was living on side branches, not on the main line the website deploys from. This puts it all on main in one go, so the next app update and the next website change start from the same place. While checking it, I found and fixed one thing that would have broken the recorder for people on the current App Store build if we'd pushed the typing/handwriting update over the air.
+
+### Technical changes (for Jimmy)
+- Built from `origin/chore/land-1.9.3-on-main` (it already held the reviewed 10/15 merge of feat/1.9.1 into main + `6b992e09`, the evidence-test fix), then: `merge origin/main` (10/15 → 10/18, #83–#90: clean); `merge origin/feat/typed-entry` (widget 1.9.4, typed entry, handwriting, processing timeline, roadmap, Apple Ads — 2 conflicts: `lib/rate-limit.ts` kept both new limiters `emailCodeVerifyByEmail` + `roadmapVote`; `schema.prisma` dropped my now-stale "declared ahead of feat/typed-entry" comment, models identical); `merge origin/feat/rc-web-billing-v2` (clean). Real merges, so `git log` keeps every original commit.
+- **OTA safety fix (new commit `1c5612e0`):** `apps/mobile/lib/handwriting-capture.ts` statically imported `expo-image-picker` / `expo-image-manipulator`, native modules added after build 183. runtimeVersion = `appVersion` ("1.9.4"), so an OTA reaches 183, where those packages throw in `requireNativeModule()` on first evaluation → record screen down. Now: no native import at load, `handwritingCaptureAvailable()` via `requireOptionalNativeModule` (from `expo`, no new dep), `import()` on first use, camera button rendered only when the binary has both modules. New `lib/evidence/ota-native-safety.test.ts` fails on any static import of a package newer than the oldest live binary (verified red on the old file).
+- Verified on the final tree: `prisma validate` OK, no duplicate models; RLS coverage OK (110 models); **destructive-diff vs prod: "Schema and database agree — nothing to apply"**; lockfile consistent (`npm install --package-lock-only` = no change); no node_modules / prebuild artifacts / symlinks tracked; web tsc 151 = main baseline, zero new (14 apparent new ones were a stale generated Prisma client — regenerated, gone); **web tests 1385/1385 pass** (the 6 `lib/evidence` failures main has had all day are fixed by `6b992e09`); mobile tsc = identical 13-error set to shipped `feat/typed-entry`.
+- Deps added to main: mobile `@bacons/apple-targets`, `expo-build-properties`, `expo-image-picker`, `expo-image-manipulator`, `expo-sharing`, `expo-store-review`, `react-native-android-widget`; web `@revenuecat/purchases-js`. All already in the shipped app / branch.
+
+### Manual steps needed
+- [ ] Jimmy: merge `chore/land-1.9.4-on-main` (one PR; Vercel preview build is the Next.js build check).
+- [ ] After merge, the old branches can be deleted on GitHub (they're fully contained): `chore/land-1.9.3-on-main`, `feat/widget-1.9.4`, `feat/typed-entry`, `feat/rc-web-billing-v2`, `feat/1.9.1`.
+- [ ] OTA to 1.9.4 (typed entry, roadmap screen, Apple Ads attribution, `next=record`, email-code screen from main) becomes possible from main after merge — a separate, deliberate step: `eas update --branch production --message "…"` from a clean checkout of main. I'll prep it on your go; it is production-affecting.
+- [ ] RC Web Billing stays behind its flag (unchanged).
+
+---
+
+## [2026-10-18] — Every per-user Claude call now writes ClaudeCallLog with the user and the real price (audit 2026-10-17 "Unlogged AI cost")
+
+- **Requested by:** Jimmy (audit 2026-10-17 §6 item 6 + backlog "Log pipeline.ts and Opus 5.5 calls")
+- **Committed by:** Claude (Cowork)
+- **Branch:** `chore/claude-call-log-coverage` off main. NOT on main; Jimmy merges. No build, no schema, no flag.
+
+### In plain English (for Keenan)
+We could see what the content factory and ads tools spent on AI, but not what each customer costs us: the debrief analysis, memory, free-tier summaries, the weekly report and the four Opus 5.5 features (Ask your past, weekly insights, Life Audit, State of Me) weren't recorded, so "cost per user" read $0. Every one of those calls now writes a log row tagged with the user and priced from Anthropic's official price list.
+
+### Technical changes (for Jimmy)
+- `lib/claude-call-log.ts` (new): `loggedMessagesCreate(client, params, {purpose, userId})` wraps a non-streaming `messages.create`, writes one `ClaudeCallLog` row on success or failure (failure: 0 tokens, error message, rethrows unchanged); a failed log write never breaks the caller. `costCentsFor(model, usage)` prices input, output, 5-min cache writes (1.25x) and cache reads (0.1x, or 0.05x for Opus 5.5 / Sonnet 5.5), rounded up to whole cents. Price table copied from https://platform.claude.com/docs/en/about-claude/pricing (read 2026-10-18); unknown models price as Sonnet 4.6 and log `claude-call-log.unknown-model-price`.
+- Wired (purpose → file): `entry_extraction` → `lib/pipeline.ts extractFromTranscript` (new trailing `userId` arg, passed by `process-entry.ts` and the legacy `processEntry`); `memory_compression`, `life_map_insights` → `lib/memory.ts`; `free_tier_summary` → `lib/free-summary.ts` (+ `userId` arg at both callers); `people_ner` → `lib/people-ner.ts` (+ `userId`; `people-backfill.ts` now selects `entry.userId`); `weekly_report` → `generate-weekly-report.ts`; `user_insights_weekly` → `compute-user-insights.ts synthesizeWithClaude` (+ `userId` param); `life_audit`, `state_of_me`, `ask_past` → their functions/route.
+- Tests: `lib/claude-call-log.test.ts` (5: official prices incl. Opus 4.x tiers, cache maths, success row fields, failure row + rethrow, log-write failure is swallowed). tsc = 151. Full suite: only the 6 pre-existing `lib/evidence/*` failures that main already has.
+
+### Manual steps needed
+- [ ] Jimmy: merge `chore/claude-call-log-coverage`.
+- [ ] After a few days: `select purpose, count(*), sum("costCents")/100.0 usd, count(distinct "userId") users from "ClaudeCallLog" where "createdAt" > now() - interval '7 days' and "userId" is not null group by 1 order by 3 desc;` — that's the first real per-user COGS number, and the next audit's `user_attributed_usd` stops reading $0.
+
+### Notes / not done (deliberately)
+- **Batch API for weekly insights: deferred, on purpose.** Prod today: 69 eligible users, 27 with a debrief in 14 days, 156 insights from 1 Claude call per active user last Sunday. That's roughly 30–50 Opus 5.5 calls a week; Batch saves 50% of a bill that is likely a few dollars a week, at the cost of an async submit/poll/collect flow. Once a week of these logs shows the real `user_insights_weekly` spend, it's a measured decision instead of a guess. The sequential per-user loop with no `step.run` boundaries is the thing that will hurt first as users grow (one long invocation, retries redo everyone) — fixing that and moving to Batch are the same piece of work when it's time.
+- System-level calls that already logged (content factory, AdLab, MRI) are untouched; their hard-coded $3/$15 rates are a separate, smaller inaccuracy.
+
+---
+
+## [2026-10-18] — First debrief after payment opens on her own answers, not a blank box (audit 2026-10-10 R-2)
+
+- **Requested by:** Keenan (business cofounder) via the 2026-10-10 audit, Prompt 2
+- **Committed by:** Claude (Cowork)
+- **Branch:** `feat/first-debrief-prefill` off main. NOT on main; Jimmy merges. Web only (both funnels); no build, no schema, no flag.
+
+### In plain English (for Keenan)
+Right after someone pays, we ask for a first debrief. It used to open on an empty box with a "Skip" button as big as the real one, and 11 of 13 buyers skipped it. It now opens with what she just told the funnel ("You said kids and a demanding job is on your plate.") and asks her to name the three things she'd most like off her mind, with the three lines already filled from the list items she tapped a minute earlier (Work / Home / Me, all editable). Typing those in creates her first entry the same way as before. Skip is still there, but as a small "Not now" at the bottom. The thank-you screen now says her first tasks will be waiting when she opens the app.
+
+### Technical changes (for Jimmy)
+- `lib/first-debrief-prefill.ts` (new, pure): `FirstDebriefPrefill {said, saidKind: "plate"|"quote", lines}`, `saidLine`, `initialLines` (always 3), `isPrefilled`, `composeDebriefText(lines, extra)` → "The three things I'd most like off my mind are sign the school form, book Mom's appointment, and block an hour for yourself." (+ optional free text, capped 2000), `canSubmitLines` (≥1 line, clears the route's 10-char minimum).
+- `components/funnel-first-debrief.tsx`: new `prefill` prop; header shows the said-line + "Name the three things you'd most like off your mind."; voice mode shows her picks as chips above the mic; text mode = three labelled inputs (Work / Home / Me) + "+ Add anything else" textarea; submit posts `composeDebriefText(...)` to the existing `/api/onboarding/first-debrief-text`; Skip → `mt-12 text-[13px]` "Not now"; saved screen copy updated. Events `funnel_first_debrief_viewed|submitted|skipped` values now end in `:prefilled:true|false`.
+- `components/funnel-v9.tsx`: `firstDebriefPrefill(C, answers)` — plate labels (`answers.multi.plate` → option labels, sentence-cased, joined) + first three `weekTasks(C, answers)`; passed from `DownloadScreen`.
+- `components/onboarding-funnel.tsx` (v8): `DownloadScreen` now receives `answers`; prefill = the entry answer she tapped, rendered as a quote ("You said: “My head's too full…”"). v8 has no concrete task picks, so its lines start empty.
+- Admin: the Funnel tab already shows "Offered first debrief" → "Did first debrief in funnel" with the rate (metrics route milestone `fd_done`, base `fd_offered`); nothing to add. The `prefilled:` suffix lets the next audit split rates by arm.
+- `vitest.config.ts`: `oxc: { jsx: { runtime: "automatic" } }` so `.tsx` smoke tests compile (tsconfig keeps `jsx: preserve` for Next).
+- Tests: `lib/first-debrief-prefill.test.ts` (6), `components/funnel-first-debrief.test.tsx` (4, react-dom/server render: said line, chips, "Not now" last, no "Skip, I'll", copy rules, no escape links). Full suite 1306 pass; the 6 failures are the pre-existing `rc-observer-build.test.ts` set that main already has. tsc = 151.
+
+### Manual steps needed
+- [ ] Jimmy: merge `feat/first-debrief-prefill`.
+- [ ] Jimmy or Keenan, after deploy, on a phone at 390 wide: run `/start` through to payment with a test card and confirm the step opens with the "You said …" line and three filled lines; tap "Not now" once on a second run to confirm it still reaches the app-download screen. I could not drive a paid funnel session end-to-end from here (it needs a real Stripe return), so the device check in the audit's step 8 is on you.
+- [ ] Next audit: compare `funnel_first_debrief_submitted` / `_viewed` before and after 10/18 (values carry `prefilled:true|false`). Baseline: 2 of 13.
+
+### Notes
+- "Three things" is the whole ask; the free-text box is folded under "+ Add anything else" so the default path is three taps and Save.
+- Facebook/Messenger webview still starts in typing mode (mic blocked there); the three pre-filled lines make that path a Save instead of a blank box.
+
+---
+
+## [2026-10-18] — MCP OAuth hardening: rate limits, revoke on refresh replay, honest consent screen (audit 2026-10-17 §6.2)
+
+- **Requested by:** Jimmy (security; audit 2026-10-17 top issue #2 and backlog "MCP hardening")
+- **Committed by:** Claude (Cowork)
+- **Branch:** `sec/mcp-oauth-hardening` off main. NOT on main; Jimmy merges. No build, no schema, no flag — live on merge. Upstash is configured in Production, so the limiters are real there (they fail open where it isn't, by design of `lib/rate-limit.ts`).
+
+### In plain English (for Keenan)
+The "Sign in with Ripple" door that lets Claude read a journal had three gaps: anyone could hammer its three endpoints as fast as they liked, a stolen refresh token that got replayed was only logged, and the consent screen trusted whatever name an app typed for itself (anyone can call an app "Claude"). Now each endpoint has a per-address ceiling and the paid search tool has a per-user one; a replayed refresh token disconnects the whole connection on the spot (the real app just reconnects, the thief is out); and the consent screen says plainly when Ripple can't vouch for the app and shows exactly where the user's journal access will be sent.
+
+### Technical changes (for Jimmy)
+- `lib/rate-limit.ts`: `oauthRegisterByIp` 5/h, `oauthTokenByIp` 30/min, `mcpByIp` 120/min, `mcpSearchByUser` 60/h.
+- `api/oauth/register`, `api/oauth/token`: IP limiter before any parsing → 429 `temporarily_unavailable` + `Retry-After` (CORS headers kept).
+- `api/mcp/route.ts`: `rateLimitedHandler` wraps `withMcpAuth` (IP cap in front of auth, JSON-RPC-shaped 429); `search_journal` checks `mcpSearchByUser` and returns a tool error with the retry time.
+- `lib/mcp-oauth/server.ts`: `refreshAccessToken` — a token matching `previousRefreshTokenHash` now calls `revokeConnectionById(id, "refresh-replay")` (connection + all access tokens) and logs `mcp-oauth.refresh-token-replayed-revoked`. `ResolvedClient` carries `kind` + `createdAt`.
+- `lib/mcp-oauth/core.ts`: `classifyRedirectHost(uri)` → `known` (claude.ai/.com, anthropic.com, chatgpt.com, openai.com, cursor.com and subdomains) | `loopback` | `unknown`.
+- `app/oauth/authorize/page.tsx`: `unknown` → amber `role="alert"` box ("Ripple can't verify who "X" is… access goes to **host**, an app registered N minutes ago"); `loopback` → quieter "app on this computer" note; `known` unchanged.
+- Collector: `out.mcp` (OAuth clients total/dcr/new, active connections + users, revoked this week, tokens used this week). Verified the SQL against prod (1 client, 1 connection today).
+- Tests: `lib/mcp-oauth/server.test.ts` (+2: replay revokes rotated refresh AND live access token; resolved client metadata), `core.test.ts` (+1 classifier), `app/api/oauth/rate-limit.test.ts` (4: 429 + Retry-After before any work, pass-through). tsc = 151.
+
+### Manual steps needed
+- [ ] Jimmy: merge `sec/mcp-oauth-hardening`.
+- [ ] After merge, sanity check from a terminal: `for i in $(seq 1 7); do curl -s -o /dev/null -w "%{http_code}\n" -X POST https://goripple.io/api/oauth/register -H 'content-type: application/json' -d '{}'; done` → six `400`s then `429` (the limiter counts attempts, bad bodies included).
+- [ ] Jimmy: if Claude ever presents an old refresh token, the new rule disconnects on replay instead of ignoring it — just reconnect from Claude's connector settings.
+- [ ] Still open from the audit, not code: privacy policy + App Store label should disclose the MCP connector (shares journal data with third-party AI clients on the user's request).
+
+### Notes
+- Not done: switching dynamic registration off in favour of Client ID Metadata Documents only. Claude's "Register automatically" needs DCR today; the rate limit is the proportionate fix.
+- Access tokens still live 1h and refresh 90 days sliding; unchanged — Jimmy's call if that should shorten.
+
+---
+
+## [2026-10-18] — Declined-card email tells the truth, links to the invoice, and follows up twice (audit R-2026-10-10-1)
+
+- **Requested by:** Keenan (business cofounder) via the 2026-10-10 audit, Prompt 1; re-flagged 2026-10-17 as "false billing email"
+- **Committed by:** Claude (Cowork)
+- **Branch:** `fix/payment-failed-email`, stacked on `feat/day2-nudge` (merge that first). NOT on main; Jimmy merges. No app build, no schema change, no flag — live on merge.
+
+### In plain English (for Keenan)
+When a card was declined at the end of the free week, the email said "your account is still active" while the code had already switched the person to Free, and the button sent them to a sign-in page. Now the email says what actually happened — Pro is paused until a payment goes through, debriefs are safe — and the button opens Stripe's own invoice page, which takes any card with no sign-in. Two reminders follow at day 2 and day 5 while Stripe is still retrying, and they stop by themselves the moment the invoice is paid or the subscription is cancelled. The admin Funnel tab's Paid card now shows how many cards were declined at trial end and why, and the weekly audit no longer counts a declined card as a paying customer.
+
+### Technical changes (for Jimmy)
+- `emails/payment-failed.ts`: rewritten. `paymentFailedCopy(input)` → first-charge variant ("Your free week ended and your card didn't go through", CTA = `hosted_invoice_url`) or renewal variant ("Couldn't charge your card — Pro is paused"). Falls back to `/api/stripe/manage` only when Stripe gave no hosted URL. Amount via `formatAmount`.
+- `lib/payment-failure.ts` (new): `isFirstPostTrialCharge` (pure: `billing_reason === "subscription_cycle"` AND (no earlier paid invoice OR `trial_end` within 3 days)), `detectFirstPostTrialCharge(stripe, invoice)` (best-effort, errors → renewal), `findOpenInvoice(stripe, customerId)`, `paymentFailedEventValue` / `parsePaymentFailedEventValue` (`decline:<code>;first_charge:true|false`).
+- `stripe/webhook/route.ts` `invoice.payment_failed`: unchanged entitlement logic (anchor first, then FREE — no-grace spec untouched, see manual steps); passes `hosted_invoice_url`, `amount_due`, `currency`, `firstCharge` into the email; `funnel_payment_failed` value now carries `first_charge`.
+- Follow-ups: `emails/trial/payment-failed-followup.ts` (`payment_failed_2d` "Pro is still paused", `payment_failed_5d` "Last chance to keep Ripple Pro"); `lib/payment-failed-followups.ts` `followUpKeyFor(hours)` (44–116h → 2d, 116–240h → 5d); recovery orchestrator block keyed on `stripeFirstFailureAt` (NOT status — user is already FREE), `skipThrottle` (billing notice). `sendTrialEmail` for these keys: re-reads Stripe for an **open** invoice — none → `not_applicable`, no TrialEmailLog row; `TRANSACTIONAL_EMAIL_KEYS` bypass the marketing unsubscribe (footer link stays). Both keys `EMAIL_ENABLED` = true.
+- Admin: `GET /api/admin/metrics` funnel analytics returns `declines {users, trialEnd, renewal, unknown, codes}`; `FunnelAnalyticsTab` PaidCard shows "Declined at trial end: N · codes".
+- Collector: `trial_to_paid_*` no longer counts `past_due` as converted; adds `declined` and `stripe.subscriptions.trial_declined_7d`. `lib/adlab/trial-quality.ts` already required PRO + no failure anchor — left as is.
+- Tests: `lib/payment-failure.test.ts` (15), webhook `route.test.ts` (+4: first-charge args, renewal, Stripe failure, already-FREE retry sends nothing), `lib/trial-emails.payment-failed.test.ts` (5: open invoice → send, none → not_applicable, anchor cleared, unsubscribe bypass, dedupe). tsc = 151 (baseline).
+
+### Manual steps needed
+- [ ] Jimmy: merge `feat/day2-nudge`, then `fix/payment-failed-email`.
+- [ ] **Keenan decision (asked by the audit, not changed here):** should a FIRST-charge failure keep Pro for Stripe's ~5-day retry window instead of dropping to Free at once? Today's rule (no-grace, 2026-06-12) is unchanged; the email now describes it honestly. If yes, that's a webhook change + a small entitlements review.
+- [ ] Keenan: Stripe → Radar → Risk controls → review the free-trial-abuse backtest (audit 2026-10-10 §2). Dashboard only.
+- [ ] Week 1: `select "emailKey", count(*) from "TrialEmailLog" where "emailKey" like 'payment_failed_%' group by 1` and `stripe.subscriptions.past_due` in the next audit.
+
+### Notes
+- Stripe's retry schedule and what happens after the last retry (cancel vs leave unpaid) are dashboard settings I could not read from the repo; the copy avoids promising either ("you don't need to do anything").
+- Follow-ups only ever fire while Stripe reports an open invoice for the customer, so a user who paid by card update, paid the invoice, or cancelled gets nothing more even if the anchor somehow stayed set.
+
+---
+
+## [2026-10-18] — Day-2 come-back nudge: push when we can, one email when we can't (audit 2026-10-17, R-3)
+
+- **Requested by:** Keenan (business cofounder) via the weekly audit, Prompt 3
+- **Committed by:** Claude (Cowork)
+- **Branch:** `feat/day2-nudge` off main (d9d50c7c) — NOT on main yet; Jimmy merges. No app build needed.
+
+### In plain English (for Keenan)
+Two days after someone signs up, Ripple now reaches out once to ask "Anything still taking up space?". If they turned on notifications in the app, it's the push that was already built. If they didn't (that's most people — 94 of the last 108 signups have no device registered), they get one short email instead, with a single button that opens the recorder. Nobody gets both, nobody gets it twice, and anyone who already came back and recorded after their first day is left alone. It all stays switched off until the flag below is set, so it can go live on a Monday.
+
+### Technical changes (for Jimmy)
+- `lib/day2-nudge.ts` (new): `runDay2Nudge(deps)` — the cohort loop, I/O injected. Push path unchanged (`sendDay2Push`, claim-first on `User.v10Day2PushSentAt`). Email path: skip internal mailboxes, skip if any `Entry.createdAt >= signup + 24h` (came back), skip if ANY `TrialEmailLog` in the last 24h (same throttle as the recovery orchestrator — `never_recorded_48h`, `app_first_record_2`, `first_debrief_followup` all live in this window and we don't stack), then `sendTrialEmail(userId, "day2_nudge")` which handles unsubscribe + `isEmailEnabled` + TrialEmailLog dedupe. Never stamps `v10Day2PushSentAt`.
+- `inngest/functions/v10-day2-push-cron.ts`: same id/hour cron, now loads the whole 2–3-day band (no `pushToken` filter, confirmed no v10/flowVersion filter existed), `concurrency: 1`, wires prisma + senders into the runner. Still `ENABLE_V10_DAY2_PUSH === "1"` fail-closed — the one flag now gates both channels.
+- `emails/trial/day2-nudge.ts` (new, key `day2_nudge`, registered in `types.ts` / `registry.ts` / `EMAIL_ENABLED` = true): subject "Anything still taking up space?", one line, one button "Do a debrief". Button = one-tap signed-in app link for users with an `app_signed_in` event, else `/home#record`.
+- Recorder deep link for the app button: `createAppSignInUrl(email, { next: "record" })` → `/auth/mobile-complete?token=…&next=record` → page forwards `acuity://auth-callback?token=…&next=record` → `apps/mobile/app/auth-callback.tsx` lands on `/record` when `next === "record"`. The shipped app (1.9.4) ignores the extra param and lands on Home; the recorder landing rides in the next build/OTA. No other link type changed.
+- `OnboardingEvent day2_nudge_sent` value `push | email` on every real send; added to `scripts/audit/collect-metrics.ts` KEY_EVENTS.
+- Tests: `lib/day2-nudge.test.ts` (13: band, local hour, channel split, came-back skip, throttle, internal, dedupe-on-second-run, unsubscribed/disabled surfaced), `inngest/functions/v10-day2-push-cron.test.ts` (7: flag unset / wrong values → cohort never loaded; "1" → runs). tsc = 151 (main baseline).
+
+### Manual steps needed
+- [ ] Jimmy: merge `feat/day2-nudge` (PR link in chat) — safe to merge any day; nothing sends until the flag is on.
+- [ ] Keenan, **on a Monday**: https://vercel.com/heelerdigital/acuity-web/settings/environment-variables → Add → key `ENABLE_V10_DAY2_PUSH`, value `1`, environment Production → Save → Deployments → ⋯ on the latest production deployment → Redeploy. Then `curl -X PUT https://goripple.io/api/inngest` to resync. Inngest app: the function is "Day-2 nudge (push + email)".
+- [ ] After the first week: `select value, count(*) from "OnboardingEvent" where event='day2_nudge_sent' group by 1` and D1 in the next audit (target > 8%).
+
+### Notes / things I did not decide for you
+- 81 of the last 108 signups still have the DEFAULT slot (`timezone` America/Chicago, `notificationTime` 21:00) — the web funnel never captures a timezone, so for most email users "their local hour" is 9pm Central wherever they are. Fine for the US; worth capturing `Intl` timezone at web signup as a follow-up.
+- Push users who already came back still get the push (the audit asked for the came-back skip on the email only, and the v10 spec is "one, ever"). One-line change in `lib/day2-nudge.ts` if you want parity.
+- 4 of the 94 no-push users are unsubscribed; they're skipped by `sendTrialEmail`, not by us.
+
+---
+
+## [2026-10-18] — Close the signup account-takeover hole (audit 2026-10-17, R-1)
+
+- **Requested by:** Jimmy (security, critical — audit section 2)
+- **Committed by:** Claude (Cowork)
+- **Branch / commit:** `fix/signup-account-takeover` @ 4dc9cb00 — NOT on main yet; Jimmy merges.
+
+### In plain English (for Keenan)
+Anyone who knew a Google / Apple / email-code user's address could "sign up" with it, and the server quietly set their password on that account. Signup now refuses to touch an existing account of any kind. The other direction (someone pre-registers your email with a password before you sign in with Google) is closed too: an unverified password account loses its password and every session the moment the real owner signs in through Google or Apple. Sign-in itself is unchanged — no new verification wall.
+
+### Technical changes (for Jimmy)
+- `signup` + `mobile-signup`: any existing user → 409 `AlreadyRegistered` (+ `next`), never writes `passwordHash`; new password accounts no longer get `emailVerified` at create.
+- `lib/oauth-link.ts` `secureOAuthLink()` used by the NextAuth `signIn` callback (also rejects Google `email_verified=false`), `mobile-callback`, `mobile-callback-apple`: unverified password account → `passwordHash=null` + `revokeAllSessions()` + `emailVerified` stamped.
+- `mobile-callback-apple`: link/create only on the token's attested email; client-cached email can no longer choose the account.
+- `lib/session-revocation.ts`: `User.sessionsInvalidBefore` (column **already added to prod**, `docs/migrations/2026-10-18-user-sessions-invalid-before.sql`); checked in `getAnySessionUserId` (bearer) and the `jwt` callback (cookie), 60s per-user cache; revocation also ends MCP connections/tokens.
+- `email-code`: atomic attempt counter; per-email verify limiter 10/hr (`limiters.emailCodeVerifyByEmail`).
+- `forgot-password` now covers passwordless accounts (the proof-of-inbox way to ADD a password). `password_set` OnboardingEvents (`proof:reset-token` / `proof:session`) and `password_superseded_by_oauth`.
+- Tests: `app/api/auth/signup/takeover.test.ts`, `lib/oauth-link.test.ts`, `lib/session-revocation.test.ts`, `lib/email-code.test.ts` (parallel-guess cap).
+
+### Manual steps needed
+- [ ] Jimmy: open https://github.com/jimheelerdigital/Acuity/pull/new/fix/signup-account-takeover → Create pull request → wait for the green check → Merge. Vercel deploys main.
+- [ ] After deploy, the 7-day check from the audit: POST /api/auth/signup with a Google-only test account's email → expect 409 and an unchanged `passwordHash`.
+- [ ] `apps/web/src/app/api/admin/backfill-email-verified` (one-time admin tool) would mark every unverified account verified — do NOT run it again; it would re-arm the pre-registration case.
+
+### Notes
+- Trade-off accepted: a web-funnel user (random password, unverified) who later signs into the app with Google gets their web session ended once and signs in again with Google.
+- PR #85 CI fallout (2026-10-18, two follow-up commits on the branch, no prod changes):
+  - `rls-coverage` failed with 15 models missing from `prisma/rls-allowlist.txt`. None were added here — they landed on main over the past month (MCP OAuth #79, EmailSignInCode, content-factory, AdLab competitor tables) and this was the first schema.prisma change since. Verified in prod that all 15 already have RLS enabled with zero policies; declared them `rls` (commit 456e2be5).
+  - `destructive-diff` then correctly reported main's schema would DROP `Entry.inputMode`, `Entry.processingTimeline`, `RoadmapItem`, `RoadmapVote` — applied to prod from the unmerged `feat/typed-entry` branch. Fixed the way the guard says to: back-declared those models/fields on this branch plus their `docs/migrations/*.sql`, so main == prod (`Schema and database agree`). Byte-identical to feat/typed-entry's hunks, so that merge stays clean (commit 04a733b8).
 
 ---
 
@@ -7412,6 +7633,7 @@ The /start-bwk paywall now quotes a real 5-star App Store review, "The task mana
 ---
 
 ## [2026-09-24] — Weekly audit system: reviewed against spec, verified on real data, fixed failure-email crash
+## [2026-09-24] — Siri voice actions (1.7): add habit/task, check off a habit, start a check-in — all by voice
 
 **Requested by:** Jimmy
 **Committed by:** Claude Code
@@ -7640,6 +7862,22 @@ The first two-size batch had flaws: the Stories versions cut letters off headlin
 
 ### Notes
 - The 2:3 source render isn't stored, so any re-cut means a regen (about 20 image calls). Worth storing the source if cropping gets tuned again
+You can now talk to Ripple through Siri without opening the app. "Hey Siri, add a habit," "add a task," "I did my stretching today" (checks off a habit), "start a Ripple check-in," and "what's my streak." The add/check-off ones happen in the background and Siri just talks back to confirm — no tapping. Needs a new TestFlight build and a quick test on a real phone before it's live.
+
+### Technical changes (for Jimmy)
+- `apps/mobile/plugins/RippleShortcuts.swift`: expanded from the single StartDebrief intent to a full set. New background App Intents (openAppWhenRun=false, speak a result): `AddHabitIntent` → POST /api/habits, `AddTaskIntent` → POST /api/tasks, `CompleteHabitIntent` (HabitEntity param + EntityStringQuery so Siri matches the spoken habit name) → POST /api/habits/{id}/check with the local date, `CurrentStreakIntent` (reads streak from the App Group). Open-app intents kept. "Start a Ripple check-in" phrases added to StartDebrief. All call the API as the user with the bearer read from the Keychain; graceful "open Ripple and sign in" when no token. 8 shortcuts registered (under the iOS 10 cap).
+- Token is read from the **Keychain**, not the App Group. `RippleShortcuts.swift` reads the app's existing `expo-secure-store` session-token item directly via `SecItemCopyMatching` (service `app:no-auth`, account = UTF-8 data of `acuity_session_token`, matching expo-secure-store's exact schema). The App Intent runs as the app's own bundle, so it shares the app's default keychain access group — no shared-access-group entitlement, no provisioning change.
+- `apps/mobile/lib/siri-shortcuts-data.ts` (new): publishes only NON-secrets into the App Group — `apiBase` and `habitsForSiri` [{id,name}] (same sensitivity as the habit names the widget already shows). No credential ever touches the App Group.
+- `apps/mobile/lib/auth.ts`: publishes the non-secret `apiBase` on setToken / cold-launch hydration; clearToken deletes the Keychain token the intents read (so a signed-out device can't act via Siri).
+- `apps/mobile/lib/widget-data.ts`: also publish the active-habit list for the check-off entity resolver.
+
+### Manual steps needed
+- **Jimmy:** EAS build from `feat/siri-actions` (no new provisioning — App Intents compile into the main target, App Group already entitled), then on-device test the phrases (see the chat handoff for the exact list). If Siri phrase-matching on habit names needs tuning, that's iterable in the Swift.
+
+### Notes
+- **Security:** the session bearer stays in the Keychain only — the intents read the app's existing SecureStore item directly. Nothing secret is written to the App Group (only the API base and habit names, the latter already exposed by the widget). No new entitlement or provisioning change.
+- Branch `feat/siri-actions` off `feat/ios-widgets` (the real 1.7 stack). Not pushed — waiting on "push it".
+- TypeScript clean on the three edited/added TS files; Swift is structurally verified (balanced, all intents registered) but only a real Xcode/EAS build + on-device Siri test confirms it — same loop as builds 129–131.
 
 ---
 

@@ -1,6 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -10,8 +10,8 @@ import {
   TextInput,
   View,
 } from "react-native";
-import { Swipeable } from "react-native-gesture-handler";
 
+import { SwipeRow } from "@/components/swipe-row";
 import { useTheme } from "@/contexts/theme-context";
 import {
   addReflectionHabit,
@@ -28,6 +28,7 @@ import {
   type HabitCheckRow,
 } from "@/lib/habits-api";
 import type { AcuityTokens } from "@/lib/theme/tokens";
+import { publishHabitsToWidget } from "@/lib/widget-data";
 import { MAX_ACTIVE_HABITS, isExpectedOn, isPaused } from "@acuity/shared";
 
 const ALL_DAYS = [0, 1, 2, 3, 4, 5, 6];
@@ -48,6 +49,9 @@ export function HabitsPane() {
   const [habits, setHabits] = useState<Habit[]>([]);
   const [checks, setChecks] = useState<HabitCheckRow[]>([]);
   const [loading, setLoading] = useState(true);
+  // True once a fetch succeeded — a failed fetch must not publish an empty
+  // list to the widget.
+  const [fetched, setFetched] = useState(false);
   const [name, setName] = useState("");
   const [creating, setCreating] = useState(false);
   const today = todayLocalDate();
@@ -57,6 +61,7 @@ export function HabitsPane() {
       const res = await fetchHabits();
       setHabits(res.habits);
       setChecks(res.checks);
+      setFetched(true);
     } catch {
       // Leave the list as-is; the empty state reads better than an error.
     } finally {
@@ -69,6 +74,14 @@ export function HabitsPane() {
   }, [load]);
 
   const byHabit = useMemo(() => checksByHabit(checks), [checks]);
+
+  // Keep the home-screen widget (and Siri's habit list) in step with every
+  // check, create, rename and delete made here. Skipped until the first
+  // fetch succeeds so an empty or failed state never blanks the widget.
+  useEffect(() => {
+    if (!fetched) return;
+    publishHabitsToWidget(habits, checks);
+  }, [habits, checks, fetched]);
 
   const onCreate = useCallback(async () => {
     const trimmed = name.trim();
@@ -427,60 +440,8 @@ function HabitRow({
   onDelete: () => void;
   onLongPress: () => void;
 }) {
-  const swipeRef = useRef<Swipeable | null>(null);
-
-  const renderRightActions = () => (
-    <View style={{ flexDirection: "row", alignItems: "stretch" }}>
-      <Pressable
-        onPress={() => {
-          swipeRef.current?.close();
-          onOpen();
-        }}
-        style={{
-          width: 76,
-          alignItems: "center",
-          justifyContent: "center",
-          backgroundColor: tokens.bgInset,
-          borderRadius: 12,
-          marginLeft: 8,
-        }}
-        accessibilityLabel={`Edit ${habit.name}`}
-      >
-        <Ionicons name="pencil" size={18} color={tokens.textSec} />
-        <Text style={{ fontFamily: tokens.fontSans, fontSize: 12, color: tokens.textSec, marginTop: 4 }}>
-          Edit
-        </Text>
-      </Pressable>
-      <Pressable
-        onPress={() => {
-          swipeRef.current?.close();
-          onDelete();
-        }}
-        style={{
-          width: 76,
-          alignItems: "center",
-          justifyContent: "center",
-          backgroundColor: tokens.bad,
-          borderRadius: 12,
-          marginLeft: 8,
-        }}
-        accessibilityLabel={`Delete ${habit.name}`}
-      >
-        <Ionicons name="trash" size={18} color="#ffffff" />
-        <Text style={{ fontFamily: tokens.fontSans, fontSize: 12, color: "#ffffff", marginTop: 4 }}>
-          Delete
-        </Text>
-      </Pressable>
-    </View>
-  );
-
   return (
-    <Swipeable
-      ref={swipeRef}
-      renderRightActions={renderRightActions}
-      overshootRight={false}
-      rightThreshold={40}
-    >
+    <SwipeRow itemName={habit.name} onEdit={onOpen} onDelete={onDelete}>
       <Pressable
         onPress={dueToday ? onToggle : onOpen}
         onLongPress={onLongPress}
@@ -560,6 +521,6 @@ function HabitRow({
           <Ionicons name="chevron-forward" size={20} color={tokens.textTer} />
         </Pressable>
       </Pressable>
-    </Swipeable>
+    </SwipeRow>
   );
 }

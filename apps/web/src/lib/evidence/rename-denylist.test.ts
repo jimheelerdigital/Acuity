@@ -148,7 +148,12 @@ describe("rename denylist — identifiers that must NOT become 'ripple'", () => 
       .join("\n");
     const suspicious = [...corpus.matchAll(/"ripple[._][a-z0-9_.]+"/g)]
       .map((m) => m[0])
-      .filter((k) => !k.startsWith('"ripple.v10.'));
+      .filter((k) => !k.startsWith('"ripple.v10.'))
+      // New state, not a rename: the post-sign-in welcome flow's progress
+      // (lib/welcome/flow.ts, 1.9). Nothing older to migrate from, and it
+      // correctly counts as app history in entry-routing (written only
+      // after sign-in).
+      .filter((k) => k !== '"ripple.welcome.v1"');
     expect(suspicious, `unexpected ripple-namespaced keys: ${suspicious}`).toEqual(
       []
     );

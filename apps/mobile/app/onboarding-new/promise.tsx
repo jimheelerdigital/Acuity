@@ -17,7 +17,7 @@ import { makeAcuityTokens } from "@/lib/theme/tokens";
 
 import { ScreenTestimonial } from "./_components/screen-testimonial";
 import { getPersonalizedPromise } from "./_components/promise-lookup";
-import V10Mirror from "./_v10/mirror";
+import { V11Redirect } from "./_v11/redirect";
 import { V10Switch } from "./_v10/route-switch";
 
 /**
@@ -263,13 +263,13 @@ function PromiseScreen() {
             disabled={!showCta}
             accessibilityRole="button"
             accessibilityLabel="Continue"
-            style={({ pressed }) => ({
+            style={({
               alignSelf: "stretch",
               backgroundColor: CURSOR_COLOR,
               borderRadius: tokens.radius.pill,
               paddingVertical: 14,
               alignItems: "center",
-              opacity: pressed ? 0.85 : 1,
+              opacity: 1,
             })}
           >
             <Text
@@ -297,5 +297,5 @@ function PromiseScreen() {
  * same route, so the live Meta-ad deep links keep working either way.
  */
 export default function PromiseRoute() {
-  return <V10Switch v10={<V10Mirror />} legacy={<PromiseScreen />} />;
+  return <V10Switch v10={<V11Redirect to="/onboarding-new/consent" />} legacy={<PromiseScreen />} />;
 }

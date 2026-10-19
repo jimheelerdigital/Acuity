@@ -218,10 +218,11 @@ export const generateLifeAuditFn = inngest.createFunction(
         new Date(loaded.periodEnd)
       );
 
-      const message = await anthropic.messages.create(flagshipRequest({
+      const { loggedMessagesCreate } = await import("@/lib/claude-call-log");
+      const message = await loggedMessagesCreate(anthropic, flagshipRequest({
         system: LIFE_AUDIT_SYSTEM_PROMPT,
         messages: [{ role: "user", content: userContent }],
-      }));
+      }), { purpose: "life_audit", userId });
 
       const rawText = flagshipText(message);
       const jsonText = rawText

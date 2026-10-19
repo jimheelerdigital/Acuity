@@ -58,6 +58,7 @@ export type RcEventType =
   | "PRODUCT_CHANGE"
   | "TRANSFER"
   | "INVOICE_ISSUANCE"
+  | "PURCHASE_REDEEMED"
   | "TEST";
 
 export interface RcWebhookEvent {
@@ -83,6 +84,22 @@ export interface RcWebhookEvent {
   new_product_id?: string | null;
   transferred_from?: string[] | null;
   transferred_to?: string[] | null;
+  /** Offering the purchase was made from (null when unknown). */
+  presented_offering_id?: string | null;
+  /** RevenueCat Billing only: metadata we passed to purchases-js purchase(). */
+  metadata?: Record<string, string | null> | null;
+  /** RENEWAL only: the previous period was a free trial. */
+  is_trial_conversion?: boolean | null;
+  // ── PURCHASE_REDEEMED (web purchase linked to an app user via a
+  //    RevenueCat redemption link). Carries NO app_user_id / aliases. ──
+  /** App User ID(s) of the original web purchaser (often $RCAnonymousID). */
+  redeemed_from?: string[] | null;
+  /** App User ID(s) of the redeemer (the app's current user). */
+  redeemed_by?: string[] | null;
+  /** "alias" | "transfer" | "redeemer_owns" */
+  redemption_outcome?: string | null;
+  /** Set when the purchase came from a RevenueCat Funnel (signup.cat). */
+  workflow_id?: string | null;
 }
 
 export interface RcWebhookBody {
@@ -339,6 +356,12 @@ export function decideRcWebhookAction(
     case "INVOICE_ISSUANCE":
       return { action: "log-only", reason: "invoice issued (no entitlement change)" };
 
+    case "PURCHASE_REDEEMED":
+      // A web purchase linked to an app user through a redemption link. The
+      // event has no app_user_id, so the route re-syncs the redeemer (and
+      // purchaser) from RC instead — see `redemptionUserIds`.
+      return { action: "log-only", reason: "purchase redeemed; re-synced from RC by the route" };
+
     default:
       return { action: "log-only", reason: `unhandled RC event type: ${type || "(empty)"}` };
   }
@@ -434,20 +457,66 @@ export function transferUserIds(event: RcWebhookEvent): string[] {
 }
 
 /**
+ * PURCHASE_REDEEMED: the redeemer side (`redeemed_by`) first, then the web
+ * purchaser (`redeemed_from`), non-anonymous ids only. Purchases made through
+ * a RevenueCat Purchase Link / Funnel without one of our ids carry an
+ * `$RCAnonymousID` purchaser (dropped) or an id that matches no User row
+ * (the route's lookup simply finds nothing) — never an error, never a guess.
+ */
+export function redemptionUserIds(event: RcWebhookEvent): {
+  redeemers: string[];
+  purchasers: string[];
+  all: string[];
+} {
+  const redeemers = realIds(event.redeemed_by ?? []);
+  const purchasers = realIds(event.redeemed_from ?? []).filter((id) => !redeemers.includes(id));
+  return { redeemers, purchasers, all: [...redeemers, ...purchasers] };
+}
+
+/** True when this event concerns a RevenueCat Web Billing purchase. */
+export function isRcBillingStore(event: RcWebhookEvent): boolean {
+  return (event.store ?? "").trim().toUpperCase() === "RC_BILLING";
+}
+
+/**
+ * Extra facts the re-sync needs for a "stripe"-sourced row.
+ *
+ * RC_BILLING maps to subscriptionSource "stripe" (shared mapping), so a
+ * "stripe" row is EITHER a Stripe-direct subscriber (RC can't move or see
+ * that billing — never demote on RC's word) OR a RevenueCat Web Billing
+ * subscriber (RC owns it — RC's FREE is authoritative).
+ */
+export interface ResyncContext {
+  /** The event moved a RevenueCat Web Billing purchase (store RC_BILLING). */
+  rcBillingMove?: boolean;
+  /**
+   * The row still has a live Stripe-direct subscription (Stripe says so, or
+   * we couldn't tell). Only consulted for "stripe" rows; undefined = assume
+   * live (the safe direction — never demote a possible Stripe payer).
+   */
+  stripeDirectLive?: boolean;
+}
+
+/**
  * TRANSFER re-sync: map RC's CURRENT state for one affected user onto an action.
  *
  * A TRANSFER moves a store subscription between app accounts. The event does
  * not say what each side should end up as, but RC (the source of truth) does,
  * so we re-read RC per user and write that. Guards:
  *   - comp rows are never touched (app-owned, invisible to RC);
- *   - a Stripe row is never demoted — RC cannot see Stripe, so its FREE there
- *     is not evidence of anything (transfers only move store receipts anyway);
+ *   - a Stripe-direct row is never demoted — RC's FREE there is not evidence
+ *     of anything. EXCEPT when the moved purchase is RevenueCat Web Billing
+ *     and the row has no live Stripe-direct subscription: then the row's PRO
+ *     came from that RC purchase, RC moved it away, and leaving it PRO would
+ *     let one web purchase unlock two accounts (the resolver's RC-invisible
+ *     overlay trusts DB PRO for "stripe" rows);
  *   - RC unreachable → do nothing (an RC problem must never look like a
  *     downgrade).
  */
 export function decideTransferResync(
   user: UserStateForRcEvent,
-  rc: EntitlementState | null
+  rc: EntitlementState | null,
+  ctx: ResyncContext = {}
 ): RcWebhookDecision {
   if (user.subscriptionSource === "comp") {
     return { action: "skip-comp", reason: "transfer re-sync: comp row left untouched" };
@@ -459,7 +528,11 @@ export function decideTransferResync(
   if (next !== "PRO" && next !== "TRIAL" && next !== "FREE") {
     return { action: "log-only", reason: `transfer re-sync: unexpected RC status ${next}` };
   }
-  if (next === "FREE" && user.subscriptionSource === "stripe") {
+  if (
+    next === "FREE" &&
+    user.subscriptionSource === "stripe" &&
+    !(ctx.rcBillingMove === true && ctx.stripeDirectLive === false)
+  ) {
     return {
       action: "log-only",
       reason: "transfer re-sync: RC blind to Stripe; Stripe row left to Stripe webhooks",
@@ -495,5 +568,42 @@ export function decideTransferResync(
     stampBillingIssue: false,
     clearBillingIssue: false,
     reason: `transfer re-sync from RC (${user.subscriptionStatus} → ${next})`,
+  };
+}
+
+/**
+ * PURCHASE_REDEEMED → the synthetic INITIAL_PURCHASE that drives the Web
+ * Billing new-subscription side effects (web-billing-effects.ts) for a
+ * purchase first attributed to one of our users at redemption time.
+ *
+ * Built from RC's CURRENT state for the redeemer, not from the event alone:
+ * the redemption event has no period type or expiry, and RC is the truth
+ * for whether the redeemer is now entitled (trial vs paid). Returns null —
+ * no side effects — unless RC says the redeemer holds `pro` right now, or if
+ * the event names entitlements that don't include `pro`.
+ *
+ * `metadata.surface` marks the origin so the effects can label it and skip
+ * the ad-attribution ones that belong to goripple.io's own checkout.
+ */
+export function redemptionEffectEvent(
+  event: RcWebhookEvent,
+  rc: EntitlementState | null
+): RcWebhookEvent | null {
+  if (!rc) return null;
+  if (rc.subscriptionStatus !== "PRO" && rc.subscriptionStatus !== "TRIAL") return null;
+  const ents = event.entitlement_ids ?? [];
+  if (ents.length > 0 && !ents.includes(RC_ENTITLEMENT_PRO)) return null;
+  const trial = rc.subscriptionStatus === "TRIAL";
+  return {
+    id: event.id,
+    type: "INITIAL_PURCHASE",
+    store: "RC_BILLING",
+    environment: event.environment ?? null,
+    product_id: event.product_id ?? null,
+    period_type: trial ? "TRIAL" : "NORMAL",
+    expiration_at_ms: trial && rc.trialEndsAt ? rc.trialEndsAt.getTime() : null,
+    presented_offering_id: null,
+    entitlement_ids: event.entitlement_ids ?? null,
+    metadata: { surface: event.workflow_id ? "rc_funnel" : "redemption" },
   };
 }

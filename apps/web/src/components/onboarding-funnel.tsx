@@ -1,6 +1,7 @@
 "use client";
 
 import { mountEmbeddedCheckout } from "@/lib/stripe-embedded";
+import { isRcWebBillingEnabled, startRcWebPurchase } from "@/lib/revenuecat/web-billing-client";
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from "react";
 import { getProviders, signIn, useSession } from "next-auth/react";
 import { displayAnnual, displayAnnualAsMonthly, displayMonthly, displaySavingsPct, planValueDollars } from "@/lib/pricing";
@@ -977,6 +978,16 @@ export function OnboardingFunnel() {
           onChangePlan={() => setStep("savings")}
           onFallback={handleCheckout}
           fallbackError={apiError}
+          onRcPaid={(p) => {
+            // RevenueCat Web Billing finished in-page (no Stripe return URL),
+            // server-confirmed against RevenueCat. Same outcome + events as
+            // the verify-payment branch of the mount effect above.
+            setPaymentConfirmed(true);
+            setStep("download");
+            track("funnel_savings_locked_in", { value: p });
+            fireFbq("StartTrial", { value: planValueDollars(p), currency: "USD", predicted_ltv: planValueDollars("yearly") });
+            fireFbq("Purchase", { value: planValueDollars(p), currency: "USD", content_name: "Ripple Pro Subscription" });
+          }}
         />
       )}
 
@@ -1031,7 +1042,7 @@ export function OnboardingFunnel() {
           returning/authenticated users landing on download. */}
       {step === "download" && !paymentConfirmed && <TrackCompleteRegistration />}
       {step === "download" && (
-        <DownloadScreen key="download" track={track} paymentConfirmed={paymentConfirmed} selectedPlan={selectedPlan} />
+        <DownloadScreen key="download" track={track} paymentConfirmed={paymentConfirmed} selectedPlan={selectedPlan} answers={answers} />
       )}
     </div>
   );
@@ -2453,17 +2464,67 @@ function SavingsScreen({ branch, answers: _answers, track, selectedPlan, onPlanC
 // ?step=download&payment=success return URL as before. If the embed can't
 // load, fall back to the hosted redirect (onFallback = handleCheckout).
 
-function CheckoutScreen({ plan, funnel, track, onChangePlan, onFallback, fallbackError }: {
+function CheckoutScreen({ plan, funnel, track, onChangePlan, onFallback, fallbackError, onRcPaid }: {
   plan: "monthly" | "yearly";
   funnel: string;
   track: (event: string, props?: Record<string, unknown>) => void;
   onChangePlan: () => void;
   onFallback: () => void;
   fallbackError: string | null;
+  onRcPaid: (plan: "monthly" | "yearly") => void;
 }) {
   const mountRef = useRef<HTMLDivElement>(null);
-  const [state, setState] = useState<"loading" | "ready" | "fallback" | "expired">("loading");
+  const [state, setState] = useState<"loading" | "ready" | "fallback" | "expired" | "rc-error">("loading");
+  const [rcError, setRcError] = useState<string | null>(null);
+  const [rcAttempt, setRcAttempt] = useState(0);
+  const rcBilling = isRcWebBillingEnabled();
+
+  // ── RevenueCat Web Billing (NEXT_PUBLIC_RC_WEB_BILLING=1) ──
+  // RevenueCat's checkout renders into mountRef instead of Stripe's embed.
+  // Server picks the offering (default → v2 prices + 1-week trial).
   useEffect(() => {
+    if (!rcBilling) return;
+    let destroyed = false;
+    setState("loading");
+    (async () => {
+      const outcome = await startRcWebPurchase({
+        surface: "funnel",
+        interval: plan,
+        htmlTarget: mountRef.current ?? undefined,
+        onCheckoutShown: () => {
+          if (destroyed) return;
+          setState("ready");
+          track("funnel_checkout_started", { value: `${plan}|rc` });
+          fireFbq("InitiateCheckout", { content_name: "Start Free Trial", currency: "USD", value: planValueDollars(plan) });
+        },
+      });
+      if (destroyed) return;
+      switch (outcome.status) {
+        case "purchased":
+          onRcPaid(plan);
+          return;
+        case "cancelled":
+          onChangePlan();
+          return;
+        case "unauthorized":
+          setState("expired");
+          return;
+        default: {
+          const msg = outcome.status === "error" ? outcome.message : "Checkout failed. Try again.";
+          track("funnel_checkout_embed_failed", { value: `rc:${msg.slice(0, 110)}` });
+          setRcError(msg);
+          setState("rc-error");
+        }
+      }
+    })();
+    return () => {
+      destroyed = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rcBilling, rcAttempt, plan]);
+
+  useEffect(() => {
+    if (rcBilling) return;
     let destroyed = false;
     let instance: { destroy: () => void } | null = null;
     (async () => {
@@ -2513,6 +2574,13 @@ function CheckoutScreen({ plan, funnel, track, onChangePlan, onFallback, fallbac
             </p>
           </div>
         )}
+        {state === "rc-error" && (
+          <div className="rounded-[22px] f-card p-5 text-center">
+            <p className="text-[15px] text-acuity-text">{rcError}</p>
+            <button onClick={() => setRcAttempt((n) => n + 1)}
+              className="mt-4 rounded-full bg-acuity-primary px-6 py-3 text-white font-semibold">Try again</button>
+          </div>
+        )}
         {state === "expired" && (
           <div className="rounded-[22px] f-card p-5 text-center">
             <p className="text-[15px] text-acuity-text">Your session ended. Sign in again to start your free week.</p>
@@ -2521,7 +2589,7 @@ function CheckoutScreen({ plan, funnel, track, onChangePlan, onFallback, fallbac
           </div>
         )}
         <div ref={mountRef} className="rounded-[22px] overflow-hidden" />
-        <p className="mt-4 text-center text-[12px] text-acuity-text-ter">Secure checkout by Stripe. Cancel any time.</p>
+        <p className="mt-4 text-center text-[12px] text-acuity-text-ter">{rcBilling ? "Secure checkout. Cancel any time." : "Secure checkout by Stripe. Cancel any time."}</p>
       </div>
     </div>
   );
@@ -2529,10 +2597,12 @@ function CheckoutScreen({ plan, funnel, track, onChangePlan, onFallback, fallbac
 
 // ─── Download Screen (Screen 18) ────────────────────────────────────────────
 
-function DownloadScreen({ track, paymentConfirmed, selectedPlan }: {
+function DownloadScreen({ track, paymentConfirmed, selectedPlan, answers }: {
   track: (event: string, props?: Record<string, unknown>) => void;
   paymentConfirmed: boolean;
   selectedPlan: "monthly" | "yearly";
+  /** Quiz answers (labels), for the pre-filled first debrief (2026-10-18). */
+  answers?: Record<string, string | string[]>;
 }) {
   const { data: session, status: authStatus } = useSession();
   const [testimonialIdx, setTestimonialIdx] = useState(0);
@@ -2632,6 +2702,7 @@ function DownloadScreen({ track, paymentConfirmed, selectedPlan }: {
       <FunnelFirstDebrief
         brand={typeof window !== "undefined" && window.location.pathname.includes("bwk") ? "bwk" : "ripple"}
         firstName={session?.user?.name?.split(/\s+/)[0] ?? null}
+        prefill={{ said: typeof answers?.entry === "string" ? answers.entry : null, saidKind: "quote" }}
         track={(e, v) => track(e, v ? { value: v } : undefined)}
         onDone={setDebrief}
       />

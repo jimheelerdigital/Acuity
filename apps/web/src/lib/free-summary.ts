@@ -28,18 +28,19 @@ const SYSTEM_PROMPT =
   "You write one short, plain-English sentence summarizing a voice debrief. " +
   "No metadata, no analysis, no quotes. Just the sentence — under 25 words.";
 
-export async function summarizeForFreeTier(transcript: string): Promise<string> {
+export async function summarizeForFreeTier(transcript: string, userId: string | null = null): Promise<string> {
   const cleaned = transcript.trim();
   if (cleaned.length === 0) {
     throw new Error("summarizeForFreeTier: empty transcript");
   }
 
-  const res = await anthropic.messages.create({
+  const { loggedMessagesCreate } = await import("@/lib/claude-call-log");
+  const res = await loggedMessagesCreate(anthropic, {
     model: CLAUDE_HAIKU_MODEL,
     max_tokens: CLAUDE_HAIKU_MAX_TOKENS,
     system: SYSTEM_PROMPT,
     messages: [{ role: "user", content: cleaned }],
-  });
+  }, { purpose: "free_tier_summary", userId });
 
   const block = res.content[0];
   if (!block || block.type !== "text") {

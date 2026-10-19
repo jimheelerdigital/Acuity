@@ -70,16 +70,18 @@ function anthropic(): Anthropic {
  * from this layer because NER is fail-soft in the pipeline.
  */
 export async function detectNamedPeople(
-  transcript: string
+  transcript: string,
+  userId: string | null = null
 ): Promise<NerCandidate[]> {
   if (!transcript || transcript.length < MIN_TRANSCRIPT_CHARS) return [];
 
-  const msg = await anthropic().messages.create({
+  const { loggedMessagesCreate } = await import("@/lib/claude-call-log");
+  const msg = await loggedMessagesCreate(anthropic(), {
     model: CLAUDE_HAIKU_MODEL,
     max_tokens: 1024,
     system: SYSTEM_PROMPT,
     messages: [{ role: "user", content: transcript }],
-  });
+  }, { purpose: "people_ner", userId });
 
   const text = msg.content[0]?.type === "text" ? msg.content[0].text : "";
   const cleaned = text

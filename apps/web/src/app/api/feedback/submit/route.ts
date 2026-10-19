@@ -6,7 +6,14 @@
  * (user metadata, server timestamp) and forward as a Block-Kit-
  * formatted message to a Slack incoming webhook (#acuity-feedback).
  *
- * Architecture: Slack is the single funnel for ALL feedback sources
+ * 2026-10-18: every submission is first written to the `Feedback` table
+ * (the record of truth, read by the Heeler Brain support pipeline).
+ * Slack becomes the alert, not the record: if Slack is down or
+ * unconfigured, the feedback is still kept. If the table write fails
+ * (e.g. schema not yet pushed), Slack still gets it, so this can deploy
+ * before `db:push` without losing anything.
+ *
+ * Original architecture: Slack is the single funnel for ALL feedback sources
  * (in-app, Jim/Keenan pasting from email/text, future Sentry alerts,
  * future App Store reviews). One Make.com scenario watches the
  * channel and routes to Monday.com — keeps us inside Make's free-tier
@@ -37,6 +44,7 @@
  *     buildNumber?: string    // iOS build number
  *     osName?: string         // "iOS" | "Android"
  *     osVersion?: string      // e.g., "17.5"
+ *     source?: "in_app" | "roadmap"  // default "in_app"
  *   }
  *
  * Slack message shape (Block Kit):
@@ -49,16 +57,16 @@
  *     Slack's metadata feature which incoming webhooks don't expose).
  *
  * Response:
- *   200 { ok: true }              — Slack accepted the post
+ *   200 { ok: true }              — stored in Feedback, and/or Slack accepted it
  *   400 { error: ... }            — invalid request body
  *   401 { error: "Unauthorized" } — no session
  *   429                            — rate limited
- *   502 { error: "WebhookError" } — Slack returned non-2xx
- *   503 { error: "Disabled" }    — SLACK_FEEDBACK_WEBHOOK_URL not set
+ *   502 { error: "WebhookError" } — NOT stored, and Slack returned non-2xx
+ *   503 { error: "Disabled" }    — NOT stored, and SLACK_FEEDBACK_WEBHOOK_URL not set
  *
- * Failure mode (Slack unreachable / 5xx): return 502 + safeLog. Mobile
- * shows "couldn't send" alert; user can retry. No queue on our side.
- * Acceptable for v1 — Slack's webhook uptime is very high.
+ * Failure mode: the user only sees an error when the feedback was neither
+ * stored nor delivered to Slack. Slack failure after a successful store
+ * is logged and the row keeps slackDelivered = false.
  */
 
 import { NextRequest, NextResponse } from "next/server";
@@ -75,6 +83,7 @@ export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
 const VALID_TYPES = new Set(["bug", "feature", "ux", "other"]);
+const VALID_SOURCES = new Set(["in_app", "roadmap"]);
 const MAX_CONTENT_CHARS = 4000;
 
 interface MobileBody {
@@ -84,6 +93,7 @@ interface MobileBody {
   buildNumber?: unknown;
   osName?: unknown;
   osVersion?: unknown;
+  source?: unknown;
 }
 
 function ipFromRequest(req: NextRequest): string {
@@ -135,14 +145,10 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const webhookUrl = process.env.SLACK_FEEDBACK_WEBHOOK_URL;
-  if (!webhookUrl) {
-    // Feature not configured. Surface as 503 so the mobile UI can
-    // tell the user "feedback is temporarily unavailable" rather
-    // than failing silently.
-    safeLog.warn("feedback.submit.no-webhook-url", { userId });
-    return NextResponse.json({ error: "Disabled" }, { status: 503 });
-  }
+  const source =
+    typeof body.source === "string" && VALID_SOURCES.has(body.source)
+      ? body.source
+      : "in_app";
 
   const { prisma } = await import("@/lib/prisma");
   const user = await prisma.user.findUnique({
@@ -165,6 +171,32 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  const mobile = {
+    appVersion: stringOrNull(body.appVersion, 32),
+    buildNumber: stringOrNull(body.buildNumber, 16),
+    osName: stringOrNull(body.osName, 16),
+    osVersion: stringOrNull(body.osVersion, 32),
+  };
+
+  // 1. Record of truth. A failure here never blocks the Slack alert.
+  let feedbackId: string | null = null;
+  try {
+    const row = await prisma.feedback.create({
+      data: {
+        userId: user.id,
+        source,
+        type,
+        content,
+        ...mobile,
+        subscriptionStatus: user.subscriptionStatus ?? null,
+      },
+      select: { id: true },
+    });
+    feedbackId = row.id;
+  } catch (err) {
+    safeLog.error("feedback.submit.store-failed", err, { userId });
+  }
+
   const submittedAt = new Date().toISOString();
   const slackMessage = buildSlackMessage({
     content,
@@ -181,15 +213,42 @@ export async function POST(req: NextRequest) {
       totalRecordings: user.totalRecordings,
       accountCreatedAt: user.createdAt.toISOString(),
     },
-    mobile: {
-      appVersion: stringOrNull(body.appVersion, 32),
-      buildNumber: stringOrNull(body.buildNumber, 16),
-      osName: stringOrNull(body.osName, 16),
-      osVersion: stringOrNull(body.osVersion, 32),
-    },
+    mobile,
     network: { ip: ipFromRequest(req) },
   });
 
+  // 2. Alert. A missing webhook or a Slack failure is fine once stored.
+  const webhookUrl = process.env.SLACK_FEEDBACK_WEBHOOK_URL;
+  if (!webhookUrl) {
+    safeLog.warn("feedback.submit.no-webhook-url", { userId, stored: !!feedbackId });
+    if (feedbackId) return NextResponse.json({ ok: true });
+    return NextResponse.json({ error: "Disabled" }, { status: 503 });
+  }
+
+  const slackError = await postToSlack(webhookUrl, slackMessage, userId);
+  if (slackError) {
+    if (feedbackId) return NextResponse.json({ ok: true });
+    return NextResponse.json(slackError, { status: 502 });
+  }
+
+  if (feedbackId) {
+    await prisma.feedback
+      .update({ where: { id: feedbackId }, data: { slackDelivered: true } })
+      .catch((err: unknown) =>
+        safeLog.error("feedback.submit.mark-delivered-failed", err, { userId })
+      );
+  }
+
+  safeLog.info("feedback.submit.ok", { userId, type, source, stored: !!feedbackId });
+  return NextResponse.json({ ok: true });
+}
+
+/** null on success, otherwise the error body to return if nothing was stored. */
+async function postToSlack(
+  webhookUrl: string,
+  slackMessage: object,
+  userId: string
+): Promise<{ error: string; status?: number } | null> {
   try {
     const res = await fetch(webhookUrl, {
       method: "POST",
@@ -206,21 +265,13 @@ export async function POST(req: NextRequest) {
         status: res.status,
         body: errText.slice(0, 120),
       });
-      return NextResponse.json(
-        { error: "WebhookError", status: res.status },
-        { status: 502 }
-      );
+      return { error: "WebhookError", status: res.status };
     }
+    return null;
   } catch (err) {
     safeLog.error("feedback.submit.webhook-fetch-failed", err, { userId });
-    return NextResponse.json(
-      { error: "WebhookError" },
-      { status: 502 }
-    );
+    return { error: "WebhookError" };
   }
-
-  safeLog.info("feedback.submit.ok", { userId, type });
-  return NextResponse.json({ ok: true });
 }
 
 // ─── Slack Block Kit message construction ─────────────────────

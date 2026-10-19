@@ -223,11 +223,11 @@ export function UpdatePromptModal({
               onPress={onUpdate}
               accessibilityRole="button"
               accessibilityLabel={config.ctaText}
-              style={({ pressed }) => ({
+              style={({
                 marginTop: 24,
                 borderRadius: tokens.radius.pill,
                 overflow: "hidden",
-                transform: [{ scale: pressed ? 0.98 : 1 }],
+                transform: [{ scale: 1 }],
               })}
             >
               <LinearGradient

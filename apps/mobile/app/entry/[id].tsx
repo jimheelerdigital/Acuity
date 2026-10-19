@@ -144,8 +144,8 @@ export default function EntryDetailScreen() {
     if (res.reason === "cancelled") return; // Their choice, not an error.
     if (res.reason === "unsupported") {
       Alert.alert(
-        "Not available yet",
-        "Markdown export is iOS-only for now."
+        "Sharing unavailable",
+        "This device has no app to share the file to."
       );
       return;
     }
@@ -738,13 +738,13 @@ export default function EntryDetailScreen() {
                 }}
                 accessibilityRole="menuitem"
                 accessibilityLabel="Export as Markdown"
-                style={({ pressed }) => ({
+                style={({
                   flexDirection: "row",
                   alignItems: "center",
                   gap: 14,
                   paddingHorizontal: 20,
                   paddingVertical: 16,
-                  backgroundColor: pressed ? `${tokens.text}14` : "transparent",
+                  backgroundColor: "transparent",
                 })}
               >
                 <Ionicons
@@ -773,13 +773,13 @@ export default function EntryDetailScreen() {
               }}
               accessibilityRole="menuitem"
               accessibilityLabel="Delete entry"
-              style={({ pressed }) => ({
+              style={({
                 flexDirection: "row",
                 alignItems: "center",
                 gap: 14,
                 paddingHorizontal: 20,
                 paddingVertical: 16,
-                backgroundColor: pressed
+                backgroundColor: false
                   ? `${tokens.bad}1F`
                   : "transparent",
               })}

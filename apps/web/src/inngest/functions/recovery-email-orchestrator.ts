@@ -559,6 +559,37 @@ export const recoveryEmailOrchestratorFn = inngest.createFunction(
       }
 
       // ═══════════════════════════════════════════════════════════
+      // DECLINED CARD FOLLOW-UPS (2026-10-18, audit R-2026-10-10-1, per
+      // Keenan). The webhook sent the first notice at the decline; these
+      // are +2d and +5d while Stripe is still retrying. Keyed on
+      // stripeFirstFailureAt, NOT subscriptionStatus (the user is already
+      // FREE — no-grace spec). payment_succeeded and cancel both clear the
+      // anchor, and sendTrialEmail re-checks Stripe for an open invoice
+      // before every send, so this stops by itself. Billing notice:
+      // skips the 24h marketing throttle. Windows are the pure helper's
+      // (lib/payment-failed-followups.ts).
+      // ═══════════════════════════════════════════════════════════
+      if (hasGlobalBudget() || config.dryRun) {
+        const { NOT_IAP_SOURCE_WHERE } = await import("@/lib/entitlements");
+        const { followUpKeyFor, FOLLOWUP_MAX_HOURS } = await import("@/lib/payment-failed-followups");
+        const declined = await prisma.user.findMany({
+          where: {
+            stripeFirstFailureAt: { gte: new Date(now.getTime() - FOLLOWUP_MAX_HOURS * 3600_000) },
+            stripeCustomerId: { not: null },
+            isAdmin: false,
+            ...NOT_IAP_SOURCE_WHERE,
+          },
+          select: { id: true, stripeFirstFailureAt: true },
+        });
+        for (const u of declined) {
+          if (!hasGlobalBudget() && !config.dryRun) break;
+          if (!u.stripeFirstFailureAt) continue;
+          const key = followUpKeyFor((now.getTime() - u.stripeFirstFailureAt.getTime()) / 3600_000);
+          if (key) await trySend(u.id, key, { skipThrottle: true });
+        }
+      }
+
+      // ═══════════════════════════════════════════════════════════
       // IN THE APP, NOT RECORDING (2026-09-29, per Keenan). Keyed on the
       // first app sign-in (lib/mobile-session.ts logs app_signed_in), any
       // plan including paid. #1 ~30 min after sign-in (was 1h, 2026-10-01), #2 ~1 day after.

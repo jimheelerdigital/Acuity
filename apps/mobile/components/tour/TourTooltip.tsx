@@ -115,7 +115,7 @@ export function TourTooltip(
               onPress={() => previous()}
               accessibilityRole="button"
               accessibilityLabel="Previous step"
-              style={({ pressed }) => ({
+              style={({
                 minHeight: 50,
                 minWidth: 50,
                 paddingHorizontal: 14,
@@ -124,7 +124,7 @@ export function TourTooltip(
                 borderRadius: 999,
                 borderWidth: 1,
                 borderColor: tokens.line,
-                opacity: pressed ? 0.7 : 1,
+                opacity: 1,
               })}
             >
               <Ionicons name="chevron-back" size={18} color={tokens.textSec} />
@@ -135,7 +135,7 @@ export function TourTooltip(
             onPress={() => (isLast ? stop() : next())}
             accessibilityRole="button"
             accessibilityLabel={isLast ? "Finish tour" : "Next step"}
-            style={({ pressed }) => ({
+            style={({
               minHeight: 50,
               minWidth: 50,
               paddingHorizontal: 18,
@@ -143,7 +143,7 @@ export function TourTooltip(
               justifyContent: "center",
               borderRadius: 999,
               backgroundColor: tokens.primary,
-              opacity: pressed ? 0.85 : 1,
+              opacity: 1,
             })}
           >
             {isLast ? (

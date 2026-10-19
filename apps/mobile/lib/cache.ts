@@ -16,6 +16,40 @@ export function getCached<T>(key: string): T | undefined {
 
 export function setCached<T>(key: string, data: T): void {
   cache.set(key, { data, fetchedAt: Date.now() });
+  notify(key);
+}
+
+// ─── Change notifications ───────────────────────────────────────────
+// Screens that keep their own copy of a cached list (Tasks tab, Home's
+// Today card) can follow writes made elsewhere — e.g. the optimistic task
+// the create sheet inserts, and its later swap for the server row — so the
+// user never sees a stale placeholder until the next focus.
+type Listener = () => void;
+const listeners = new Map<string, Set<Listener>>();
+
+function notify(key: string): void {
+  const set = listeners.get(key);
+  if (!set) return;
+  for (const fn of set) {
+    try {
+      fn();
+    } catch {
+      // A broken subscriber must not break the writer.
+    }
+  }
+}
+
+/** Run `fn` whenever `key` is written with setCached. Returns unsubscribe. */
+export function subscribeCached(key: string, fn: Listener): () => void {
+  let set = listeners.get(key);
+  if (!set) {
+    set = new Set();
+    listeners.set(key, set);
+  }
+  set.add(fn);
+  return () => {
+    set?.delete(fn);
+  };
 }
 
 export function invalidate(key?: string): void {

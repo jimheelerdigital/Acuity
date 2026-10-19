@@ -9,6 +9,8 @@
 import { NextResponse, type NextRequest } from "next/server";
 
 import { registerDcrClient } from "@/lib/mcp-oauth/server";
+import { checkRateLimit, identifierFromRequest, limiters } from "@/lib/rate-limit";
+import { safeLog } from "@/lib/safe-log";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -20,6 +22,16 @@ const CORS = {
 };
 
 export async function POST(req: NextRequest) {
+  // 5/hr per IP (2026-10-18). Registration is open by design; this stops a
+  // script from minting unlimited look-alike clients for consent phishing.
+  const rl = await checkRateLimit(limiters.oauthRegisterByIp, identifierFromRequest(req, "oauth-register"));
+  if (!rl.success) {
+    safeLog.warn("mcp-oauth.register-rate-limited", { retryAfter: rl.retryAfterSeconds });
+    return NextResponse.json(
+      { error: "temporarily_unavailable", error_description: "Too many registrations from this address. Try again later." },
+      { status: 429, headers: { ...CORS, "Retry-After": String(rl.retryAfterSeconds) } }
+    );
+  }
   const raw = await req.text();
   if (raw.length > 16 * 1024) {
     return NextResponse.json(

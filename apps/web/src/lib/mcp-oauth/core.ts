@@ -74,6 +74,31 @@ export function isAllowedRedirectUri(uri: string): boolean {
 }
 
 /**
+ * Consent-screen trust signal (2026-10-18, audit §6.2 "consent phishing").
+ *
+ * A client's name is whatever it typed at registration — anyone can call
+ * themselves "Claude". The only thing we can vouch for is WHERE the browser
+ * goes after approval, so the consent page classifies the redirect host:
+ *
+ *   known    — the hosted callback of an MCP client we recognise
+ *   loopback — an app running on the user's own computer (Claude Desktop,
+ *              Claude Code, Cursor, …); the name is still unverified
+ *   unknown  — anything else: show the loud warning
+ */
+const KNOWN_CLIENT_HOSTS = ["claude.ai", "claude.com", "anthropic.com", "chatgpt.com", "openai.com", "cursor.com"];
+
+export type RedirectTrust = "known" | "loopback" | "unknown";
+
+export function classifyRedirectHost(redirectUri: string): RedirectTrust {
+  const u = parse(redirectUri);
+  if (!u) return "unknown";
+  if (u.protocol === "http:" && LOOPBACK_HOSTS.has(u.hostname)) return "loopback";
+  if (u.protocol !== "https:") return "unknown";
+  const h = u.hostname.toLowerCase();
+  return KNOWN_CLIENT_HOSTS.some((k) => h === k || h.endsWith(`.${k}`)) ? "known" : "unknown";
+}
+
+/**
  * Does the redirect_uri on a request match one the client registered?
  * Exact string match, except loopback http URIs match on any port (RFC 8252
  * §7.3 — Claude Code picks a fresh port every session).

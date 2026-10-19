@@ -35,6 +35,7 @@ EntityMention no-rls    # admin processing pipeline — internal extraction arti
 Entry rls
 ExperimentAssignment rls
 FeatureFlag rls
+Feedback rls    # in-app/roadmap feedback; has userId + free text, written only via service-role Prisma, read by Heeler Brain with service key
 FounderNotificationLog rls
 FreeCapAuditLog rls
 FreeCapEvaluation rls
@@ -151,3 +152,45 @@ UgcVideo rls
 UgcRun rls
 UgcDoNotContact rls
 UgcMailbox rls
+
+# ─── Backfill 2026-10-18: models that landed on main without an entry ──
+# Surfaced by PR #85's RLS check (the first schema.prisma change since
+# these shipped). Verified in prod on 2026-10-18 via pg_class: every table
+# below already has relrowsecurity = true and zero policies (deny-all for
+# anon/authenticated; service-role Prisma only). No prod change needed.
+
+# Passwordless email sign-in (PR 4106aa35, 2026-10-14). Hashed 6-digit
+# codes keyed by email — auth material, user PII.
+EmailSignInCode rls
+
+# MCP OAuth "Sign in with Ripple" (PR #79, 2026-10-14). Client registrations,
+# auth codes, access/refresh tokens, per-user connections — secrets + userId.
+OAuthClient rls
+OAuthAuthCode rls
+McpAccessToken rls
+McpConnection rls
+
+# Content factory / social research (88cbee2a, 2026-09-23). Public social
+# data + admin config; admin-only via service-role Prisma. RLS is already
+# on in prod, so declared "rls" to match reality (parity with Niche* would
+# be "no-rls" — flip only if you also intend to leave them exposed).
+TikTokVideo rls
+ContentLane rls
+RedditTrendDigest rls
+CompetitorAccount rls
+CompetitorPost rls
+HashtagWatch rls
+HashtagVideo rls
+
+# AdLab competitor research + learnings (tables adlab_competitor_ads,
+# adlab_competitor_briefs, adlab_learnings). Admin-only like the other
+# AdLab* rows above, but RLS is already enabled in prod → "rls".
+AdLabCompetitorAd rls
+AdLabCompetitorBrief rls
+AdLabLearning rls
+
+# ─── Public roadmap (2026-10-18) — docs/migrations/2026-10-18-roadmap.sql ──
+# RoadmapItem is admin-curated public content; RoadmapVote has userId.
+# Both service-role only; RLS enabled in prod by the migration (verified).
+RoadmapItem rls
+RoadmapVote rls

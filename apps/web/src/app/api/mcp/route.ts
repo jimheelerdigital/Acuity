@@ -49,6 +49,8 @@ import { retrieveRelevantEntries, toCitations } from "@/lib/journal-query";
 import { oauthIssuer } from "@/lib/mcp-oauth/core";
 import { verifyMcpToken } from "@/lib/mcp-token";
 import { prisma } from "@/lib/prisma";
+import { checkRateLimit, identifierFromRequest, limiters } from "@/lib/rate-limit";
+import { safeLog } from "@/lib/safe-log";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -123,6 +125,14 @@ const baseHandler = createMcpHandler(
       async ({ query, limit }, extra) => {
         try {
           const userId = userIdFrom(extra);
+          // Paid embedding per call → 60/hr per user (2026-10-18).
+          const rl = await checkRateLimit(limiters.mcpSearchByUser, `user:${userId}`);
+          if (!rl.success) {
+            safeLog.warn("mcp.search-rate-limited", { userId, retryAfter: rl.retryAfterSeconds });
+            return errorResult(
+              `search_journal is limited to 60 searches an hour. Try again in ${rl.retryAfterSeconds}s.`
+            );
+          }
           const topK = clampLimit(limit, 10, 25);
           const { ranked, totalEmbedded } = await retrieveRelevantEntries(
             userId,
@@ -591,4 +601,21 @@ const handler = withMcpAuth(baseHandler, verifyToken, {
   resourceUrl: oauthIssuer(),
 });
 
-export { handler as GET, handler as POST };
+/**
+ * Per-IP cap in front of auth (2026-10-18, audit §6.2): 120/min. Runs
+ * before withMcpAuth so unauthenticated 401 spam never reaches the token
+ * table. Per-user cost caps live on the paid tool (search_journal).
+ */
+async function rateLimitedHandler(req: Request): Promise<Response> {
+  const rl = await checkRateLimit(limiters.mcpByIp, identifierFromRequest(req, "mcp"));
+  if (!rl.success) {
+    safeLog.warn("mcp.rate-limited-ip", { retryAfter: rl.retryAfterSeconds });
+    return new Response(
+      JSON.stringify({ jsonrpc: "2.0", error: { code: -32000, message: "Rate limited. Try again shortly." }, id: null }),
+      { status: 429, headers: { "Content-Type": "application/json", "Retry-After": String(rl.retryAfterSeconds) } }
+    );
+  }
+  return handler(req);
+}
+
+export { rateLimitedHandler as GET, rateLimitedHandler as POST };

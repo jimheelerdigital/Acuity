@@ -10,7 +10,7 @@ import { toFile } from "openai/uploads";
 import { filterWhisperVerbose, type WhisperVerbose } from "@/lib/whisper-speech-filter";
 
 import {
-  CLAUDE_MAX_TOKENS,
+  CLAUDE_EXTRACTION_MAX_TOKENS,
   CLAUDE_MODEL,
   WHISPER_LANGUAGE,
   WHISPER_MODEL,
@@ -38,7 +38,7 @@ const openai = new OpenAI({
   timeout: SDK_TIMEOUT_MS,
 });
 // Claude gets longer (2026-10-04): a long debrief (~3,300 chars) produces a
-// full extraction (up to CLAUDE_MAX_TOKENS of JSON) that can take more than
+// full extraction (up to CLAUDE_EXTRACTION_MAX_TOKENS of JSON) that can take more than
 // 30s to generate, so it timed out on every retry and the entry was left
 // PARTIAL "Processing took too long" (Keenan's 09-29 entry). The Inngest
 // function allows 300s, so 120s per call still leaves room for a retry.
@@ -280,7 +280,10 @@ export async function extractFromTranscript(
   // no habits, and the habitCompletions field simply comes back empty. The
   // description lets a habit be caught by the activities it names, not just
   // its title.
-  habits: Array<{ name: string; description?: string | null }> = []
+  habits: Array<{ name: string; description?: string | null }> = [],
+  // ClaudeCallLog attribution (2026-10-18). Optional so older callers and
+  // tests keep working; the two production callers pass it.
+  userId: string | null = null
 ): Promise<ExtractionResult> {
   const contextBlock = memoryContext
     ? `Here is what you know about this user from their entire history with Ripple:\n${memoryContext}\n\nUse these historical patterns to enrich your extraction — for example, if a goal has been mentioned multiple times before, note it as recurring rather than new.\n\n`
@@ -361,9 +364,10 @@ export async function extractFromTranscript(
     ? DISPOSITIONAL_EXTRACTION_SYSTEM_PROMPT
     : LEGACY_EXTRACTION_SYSTEM_PROMPT;
 
-  const message = await anthropic.messages.create({
+  const { loggedMessagesCreate } = await import("@/lib/claude-call-log");
+  const message = await loggedMessagesCreate(anthropic, {
     model: CLAUDE_MODEL,
-    max_tokens: CLAUDE_MAX_TOKENS,
+    max_tokens: CLAUDE_EXTRACTION_MAX_TOKENS,
     system: systemPrompt,
     messages: [
       {
@@ -371,7 +375,7 @@ export async function extractFromTranscript(
         content: `${contextBlock}${goalBlock}${dimensionBlock}${taskGroupsBlock}${habitsBlock}${calendarContextBlock}Today's date: ${todayISO}\n\nDaily debrief transcript:\n\n${transcript}`,
       },
     ],
-  });
+  }, { purpose: "entry_extraction", userId });
 
   const rawText =
     message.content[0].type === "text" ? message.content[0].text : "";
@@ -392,10 +396,17 @@ export async function extractFromTranscript(
     parsed = JSON.parse(jsonText) as ExtractionResult;
   } catch (err) {
     const preview = jsonText.slice(0, 500);
+    // Name the cause when the model simply ran out of room, so the next
+    // person reading the log raises the cap instead of hunting for a
+    // prompt bug.
+    const cutOff =
+      message.stop_reason === "max_tokens"
+        ? ` Output hit max_tokens=${CLAUDE_EXTRACTION_MAX_TOKENS} (stop_reason=max_tokens).`
+        : "";
     throw new Error(
       `Claude returned malformed JSON (${
         err instanceof Error ? err.message : "parse error"
-      }). Preview: ${preview}`
+      }).${cutOff} Preview: ${preview}`
     );
   }
 
@@ -664,7 +675,7 @@ export async function processEntry({
     if (!ent.canExtractEntries) {
       // FREE branch — Haiku summary, recording stats, streak, return.
       const { summarizeForFreeTier } = await import("@/lib/free-summary");
-      const summary = await summarizeForFreeTier(transcript);
+      const summary = await summarizeForFreeTier(transcript, userId);
       const entryRow = await prisma.entry.update({
         where: { id: entryId },
         data: {
@@ -792,7 +803,8 @@ export async function processEntry({
       dimensionContext ?? null,
       false,
       "",
-      activeHabits.map((h) => ({ name: h.name, description: h.description }))
+      activeHabits.map((h) => ({ name: h.name, description: h.description })),
+      userId
     );
 
     // ── Persist everything in one transaction ─────────────────────────────

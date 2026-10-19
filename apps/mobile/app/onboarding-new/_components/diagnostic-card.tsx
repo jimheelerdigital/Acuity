@@ -32,13 +32,13 @@ export function DiagnosticCard({
       onPress={onPress}
       accessibilityRole="button"
       accessibilityState={{ selected }}
-      style={({ pressed }) => ({
+      style={({
         borderRadius: tokens.radius.lg,
         overflow: "hidden",
         borderWidth: selected ? 1 : 0.5,
         borderColor: selected ? tokens.primary : tokens.cardBorder,
         backgroundColor: selected ? "transparent" : tokens.cardBg,
-        opacity: pressed ? 0.85 : 1,
+        opacity: 1,
         minHeight: 60,
       })}
     >
