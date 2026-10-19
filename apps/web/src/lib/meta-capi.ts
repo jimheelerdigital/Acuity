@@ -53,6 +53,12 @@ interface UserData {
   fbp?: string;
   /** Facebook click ID cookie — from _fbc cookie */
   fbc?: string;
+  /** Our user id, sent hashed as external_id (2026-10-19: match quality). */
+  externalId?: string;
+  /** Two-letter country code (e.g. "us"), hashed. */
+  country?: string;
+  /** Postal / ZIP code, hashed (US: first 5 digits). */
+  zip?: string;
 }
 
 interface ConversionEvent {
@@ -117,6 +123,12 @@ export async function sendConversionEvent(event: ConversionEvent): Promise<void>
   if (event.userData.fbclid) userData.fbc = event.userData.fbc || `fb.1.${Date.now()}.${event.userData.fbclid}`;
   else if (event.userData.fbc) userData.fbc = event.userData.fbc;
   if (event.userData.fbp) userData.fbp = event.userData.fbp;
+  // Extra match keys (2026-10-19, Purchase match quality was 5.0/10).
+  if (event.userData.externalId) userData.external_id = [sha256(event.userData.externalId.trim())];
+  const country = event.userData.country?.toLowerCase().trim();
+  if (country && /^[a-z]{2}$/.test(country)) userData.country = [sha256(country)];
+  const zip = event.userData.zip?.toLowerCase().replace(/\s+/g, "");
+  if (zip) userData.zp = [sha256(country === "us" ? zip.slice(0, 5) : zip)];
 
   const payload = {
     data: [

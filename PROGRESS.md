@@ -7,6 +7,38 @@
 
 ---
 
+## [2026-10-19] — Better Purchase matching for Meta (match quality 5.0 → target 7–8)
+
+- **Requested by:** Keenan
+- **Committed by:** Claude Code
+- **Commit hash:** (see git log: "feat: Send full match keys with the Meta Purchase event")
+
+### In plain English (for Keenan)
+When someone starts a paid trial, we now tell Meta enough to recognize who it was: their browser, network, Meta cookies, country/ZIP and a scrambled version of our user ID, not just their email. Meta should then credit more trials to the ads that caused them and optimize better. Events Manager rated our Purchase matching 5.0/10; the target is 7–8. Nothing changes in how people pay. Checkout, prices and Stripe's payment page are untouched, and if the extra capture ever fails, checkout continues normally.
+
+### Technical changes (for Jimmy)
+- New `apps/web/src/lib/meta-match.ts`:
+  - `checkoutMatchMetadata(req)` captures IP, user agent, `_fbp`, `_fbc` and Vercel IP country as Checkout Session metadata (`meta_ip`, `meta_ua`, `meta_fbp`, `meta_fbc`, `meta_country`; values ≤480 chars; wrapped in try → `{}`).
+  - `matchKeysFromSession(session)` reads them back and adds `customer_details` name, card country and postal code.
+- `apps/web/src/app/api/onboarding/create-checkout/route.ts` and `api/stripe/checkout/route.ts`: spread the metadata into the session `metadata` only (not `subscription_data`).
+- `apps/web/src/app/api/stripe/webhook/route.ts`: the CAPI Purchase sends `externalId: userId` plus the session keys.
+- `apps/web/src/lib/meta-capi.ts`: `UserData` gains `externalId` (sha256 → `external_id`), `country` (sha256, 2-letter), `zip` (sha256, US first 5).
+- `api/auth/signup` and `api/capi/complete-registration`: CompleteRegistration also sends `externalId`.
+- Tests:
+  - `src/lib/meta-match.test.ts` (5 tests): capture, Stripe limits, no-throw, payload hashing.
+  - New webhook test: Purchase carries the keys.
+  - Full web suite: 1,421 passing.
+
+### Manual steps needed
+- [ ] **Jimmy review required (payment code)**: checkout session metadata + webhook CAPI path (Jimmy)
+- [ ] In 3–7 days, check Events Manager → Purchase → Event match quality (Keenan)
+
+### Notes
+- Stripe metadata limits: 50 keys, key ≤40 chars, value ≤500 chars. We add at most 5 keys, all clipped.
+- Sessions created before this deploy have no `meta_*` keys; the webhook handles that and falls back to email + fbclid as before.
+
+---
+
 ## [2026-10-19] — Admin funnel page now shows the live test funnels by default
 
 - **Requested by:** Keenan

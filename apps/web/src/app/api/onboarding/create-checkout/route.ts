@@ -76,6 +76,9 @@ export async function POST(req: NextRequest) {
   });
 
   const trialDays = TRIAL_DAYS;
+  // Meta match keys for the server-side Purchase (never throws; see lib/meta-match.ts).
+  const { checkoutMatchMetadata } = await import("@/lib/meta-match");
+  const matchMeta = checkoutMatchMetadata(req);
 
   try {
     console.log("[onboarding/create-checkout] Creating session:", {
@@ -120,7 +123,7 @@ export async function POST(req: NextRequest) {
         trial_period_days: trialDays,
         metadata: { userId: session.user.id, interval, source: "onboarding_funnel" },
       },
-      metadata: { userId: session.user.id, interval, source: "onboarding_funnel", ...(handoff ? { handoff: "browser" } : {}) },
+      metadata: { userId: session.user.id, interval, source: "onboarding_funnel", ...(handoff ? { handoff: "browser" } : {}), ...matchMeta },
     });
 
     if (embedded) {

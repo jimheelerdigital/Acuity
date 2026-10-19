@@ -67,6 +67,7 @@ export async function POST(req: NextRequest) {
     eventSourceUrl: "https://goripple.io/start",
     userData: {
       email: user.email ?? undefined,
+      externalId: session.user.id,
       firstName: nameParts[0] || undefined,
       lastName: nameParts.length > 1 ? nameParts[nameParts.length - 1] : undefined,
       ip: getClientIp(reqHeaders),

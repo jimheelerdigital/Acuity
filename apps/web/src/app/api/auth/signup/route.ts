@@ -266,6 +266,7 @@ export async function POST(req: NextRequest) {
       eventSourceUrl: `${req.nextUrl.origin}/auth/signup`,
       userData: {
         email,
+        externalId: userId,
         firstName: nameParts[0] || undefined,
         lastName: nameParts.length > 1 ? nameParts[nameParts.length - 1] : undefined,
         ip: getClientIp(reqHeaders),
