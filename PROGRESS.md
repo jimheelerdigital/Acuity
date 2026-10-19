@@ -7,6 +7,36 @@
 
 ---
 
+## [2026-10-19] — Mythicals: no beast, dragon or weapon type twice in a month
+
+- **Requested by:** Keenan
+- **Committed by:** Claude Code
+- **Commit hash:** (see git log: "feat: Ban repeating Mythicals beast and weapon types within 30 days")
+
+### In plain English (for Keenan)
+Mythicals kept showing the same dragons. Over the last 30 days "Frost Dragon" came up 13 times, fire dragons 17, storm 10, and some names were near-copies ("Vorrath" and "Vorath"). Now a dragon, beast, weapon or armor type can only be used once a month. "Frost dragon" counts the same as "ice wyrm" or "glacier drake", and an invented name can't come back either. When a draft repeats something, it gets rewritten. The writer is pushed past the usual fire/frost/storm/shadow/celestial lineup toward new ideas.
+
+### Technical changes (for Jimmy)
+- New `apps/web/src/lib/content-factory/mythic-variety.ts`:
+  - `optionKeys` turns an option name into type keys (element family + creature/weapon family, e.g. "frost dragon"; unlisted words key on themselves) and invented-name keys.
+  - `buildHistory`, `monthRepeats` (names count as the same at one edit apart) and `monthBanBlock` (the prompt block).
+- `apps/web/src/lib/content-factory/choice-lane.ts`:
+  - `generateChoiceTopicOnce`: the old "options used recently" hint (newest 60 names only, advisory) is replaced by the full 30-day ban block, placed AFTER the weekly brief so it overrides the brief's element examples.
+  - `writeChoiceScripts` (staged path, most posts): scripts that repeat are dropped and rewritten with the repeats named, up to 3 rounds. No new round starts after 150s, and each round's timeout shrinks to what's left (the Inngest step limit is 300s; a round takes ~45-60s, max seen 81s). If every script still repeats, the one with the fewest repeats ships, so a post is never dropped.
+  - `generateChoiceTopicChecked` (size/countdown/fixed-title path): repeats count as a soft problem, so they earn one rewrite.
+  - Hand-requested exact options (`forcedOptions`) skip the rule.
+- New `mythic-variety.test.ts` (5 tests). All content-factory tests pass (36).
+
+### Manual steps needed
+- [ ] Push to deploy (Keenan: "push it"). Today's 3 Mythicals posts were already written before this change.
+
+### Notes
+- History = every `mythic-picks` option generated in the last 30 days (drafts included), the same window `carousel-daily` already loaded as `recentNames`.
+- The ban block is ~7k characters (about 265 types and 226 names right now). That's fine for Opus, but trim it if it ever crowds the prompt.
+- The weekly brief itself still cites fire/frost/storm/shadow/celestial as its example of "clearly different" options. The ban block explicitly overrides it.
+
+---
+
 ## [2026-10-19] — Daily "how to" guide lane switched off
 
 - **Requested by:** Keenan

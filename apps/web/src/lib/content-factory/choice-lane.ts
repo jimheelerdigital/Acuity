@@ -25,6 +25,7 @@ import {
 } from "./claude-client";
 import { copyObjectives } from "./copy-objectives";
 import { humanizePass, HUMAN_VOICE_RULES, copyFlagFor } from "./humanizer";
+import { buildHistory, monthBanBlock, monthRepeats } from "./mythic-variety";
 
 export interface ChoiceOption {
   name: string;
@@ -540,15 +541,49 @@ export async function writeChoiceScripts(opts: ChoiceTopicOpts, cover: ChoiceCov
   const fixedCover = { title: cover.title, coverScene: cover.coverScene, coverMotion: cover.coverMotion };
   const within = <T,>(p: Promise<T>, ms: number) =>
     Promise.race([p, new Promise<never>((_, rej) => setTimeout(() => rej(new Error(`script timed out after ${ms}ms`)), ms))]);
-  const settled = await Promise.allSettled(
-    Array.from({ length: 3 }, () =>
-      within(generateChoiceTopicOnce({ ...opts, fixedCover, model: CANDIDATE_WRITER_MODEL, brief }), 200_000)
-    )
-  );
-  const scripts = settled.filter((r): r is PromiseFulfilledResult<ChoiceTopic> => r.status === "fulfilled").map((r) => r.value);
-  if (scripts.length === 0) {
-    const why = settled.find((r) => r.status === "rejected") as PromiseRejectedResult | undefined;
-    throw new Error(`[choice-lane] every script failed: ${why?.reason instanceof Error ? why.reason.message : why?.reason}`);
+  // 30-day variety rule (mythic-variety.ts): scripts that reuse a type or
+  // name from this month are dropped and rewritten with the repeats named,
+  // up to 3 rounds. If every script still repeats, the one with the fewest
+  // repeats ships (never drop the post).
+  const history = buildHistory(opts.recentNames);
+  const checkVariety = !opts.forcedOptions?.length;
+  let feedback = opts.feedback ?? "";
+  let scripts: ChoiceTopic[] = [];
+  let fallback: { topic: ChoiceTopic; repeats: string[] } | null = null;
+  // This runs as one Inngest step (300s cap). A round of 3 parallel scripts
+  // takes ~45-60s (max seen 81s), so no new round starts after 150s and each
+  // round's timeout shrinks to what's left.
+  const t0 = Date.now();
+  for (let round = 0; round < 3 && scripts.length === 0; round++) {
+    const elapsed = Date.now() - t0;
+    if (round > 0 && elapsed > 150_000) break;
+    const settled = await Promise.allSettled(
+      Array.from({ length: 3 }, () =>
+        within(
+          generateChoiceTopicOnce({ ...opts, feedback: feedback || null, fixedCover, model: CANDIDATE_WRITER_MODEL, brief }),
+          Math.min(200_000, 260_000 - elapsed)
+        )
+      )
+    );
+    const written = settled.filter((r): r is PromiseFulfilledResult<ChoiceTopic> => r.status === "fulfilled").map((r) => r.value);
+    if (written.length === 0) {
+      if (fallback) break;
+      const why = settled.find((r) => r.status === "rejected") as PromiseRejectedResult | undefined;
+      throw new Error(`[choice-lane] every script failed: ${why?.reason instanceof Error ? why.reason.message : why?.reason}`);
+    }
+    if (!checkVariety) { scripts = written; break; }
+    const checked = written.map((t) => ({ topic: t, repeats: monthRepeats(t.options.map((o) => o.name), history) }));
+    scripts = checked.filter((c) => c.repeats.length === 0).map((c) => c.topic);
+    for (const c of checked) if (!fallback || c.repeats.length < fallback.repeats.length) fallback = c;
+    if (scripts.length === 0) {
+      const repeats = [...new Set(checked.flatMap((c) => c.repeats))];
+      console.warn(`[choice-lane] round ${round + 1}: every script repeats this month: ${repeats.join("; ")}`);
+      feedback = `${opts.feedback ?? ""}\n\nREJECTED: these options were already used this month: ${repeats.join("; ")}. Every option must be a creature, weapon or armor type and a name that has NOT appeared on this account in the last 30 days.`;
+    }
+  }
+  if (scripts.length === 0 && fallback) {
+    console.warn(`[choice-lane] shipping the least-repetitive script for "${cover.title}": ${fallback.repeats.join("; ")}`);
+    scripts = [fallback.topic];
   }
   const ranked = await rankCandidates({
     brand: "mythicals",
@@ -744,6 +779,9 @@ async function generateChoiceTopicChecked(opts: ChoiceTopicOpts): Promise<Choice
   for (let attempt = 0; attempt < 4; attempt++) {
     const topic = await generateChoiceTopicOnce({ ...opts, feedback: feedback || null });
     const problems = await choiceTopicProblems(topic);
+    // 30-day variety rule: counts as a problem, so it earns a rewrite (soft:
+    // never the reason a post is dropped).
+    if (!opts.forcedOptions?.length) problems.push(...monthRepeats(topic.options.map((o) => o.name), buildHistory(opts.recentNames)));
     const hard = problems.filter((p) => HARD_PROBLEM.test(p));
     if (!best || hard.length < best.problems.filter((p) => HARD_PROBLEM.test(p)).length || (hard.length === 0 && problems.length < best.problems.length)) best = { topic, problems };
     if (problems.length === 0) return topic;
@@ -962,10 +1000,9 @@ async function generateChoiceTopicOnce(opts: ChoiceTopicOpts): Promise<ChoiceTop
     opts.recentTitles.length
       ? `Recent titles (don't repeat or lightly reword these):\n${opts.recentTitles.map((t) => `- ${t}`).join("\n")}`
       : "",
-    opts.recentNames.length
-      ? `Options used recently (pick different creatures and fighters):\n${opts.recentNames.slice(0, 60).join(", ")}`
-      : "",
     opts.brief ?? "",
+    // After the brief so the month ban wins over the brief's examples.
+    opts.forcedOptions?.length ? "" : monthBanBlock(buildHistory(opts.recentNames)),
     opts.feedback ?? "",
     optionCount(opts) !== 5
       ? `OPTION COUNT FOR THIS POST: exactly ${optionCount(opts)} options, not five. Everywhere the rules say five, use ${optionCount(opts)}.`
