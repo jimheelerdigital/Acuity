@@ -32,6 +32,8 @@ export async function generateMetadata({ params }: { params: { id: string } }) {
     title: `${item.title} · Ripple roadmap`,
     description: item.summary,
     robots: { index: true, follow: true },
+    // The root layout's canonical is the homepage; each item is its own page.
+    alternates: { canonical: `/roadmap/${item.id}` },
   };
 }
 

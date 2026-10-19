@@ -11,6 +11,7 @@ export const metadata = {
   description:
     "What Ripple is building next, what's being considered, and what just shipped. Vote on what matters to you.",
   robots: { index: true, follow: true },
+  alternates: { canonical: "/roadmap" },
 };
 
 export const dynamic = "force-dynamic";
