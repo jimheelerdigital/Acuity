@@ -23,8 +23,24 @@ import { describe, expect, it } from "vitest";
 const REPO = join(__dirname, "..", "..", "..", "..", "..");
 const MOBILE = join(REPO, "apps", "mobile");
 
-/** Native packages absent from build 183 (1.9.4). */
-const NOT_IN_OLDEST_BINARY = ["expo-image-picker", "expo-image-manipulator"];
+/**
+ * Native packages absent from the OLDEST live binary of each runtime
+ * (runtimeVersion = app version). Keyed by app.json `expo.version`, so the
+ * rule follows the version the next OTA would target.
+ *
+ *   1.9.4 — build 183 predates the handwriting modules and the app-wide
+ *           keyboard controller (2026-10-19). A JS bundle that statically
+ *           imports any of these must NOT ship as a 1.9.4 OTA; it needs a
+ *           new runtime, which is why the keyboard work bumped to 1.9.5.
+ *   1.9.5 — first built with all of them. Add a line here if a native
+ *           package is added after the first 1.9.5 binary.
+ */
+const MISSING_FROM_OLDEST_BINARY: Record<string, string[]> = {
+  "1.9.4": ["expo-image-picker", "expo-image-manipulator", "react-native-keyboard-controller"],
+  "1.9.5": [],
+};
+const APP_VERSION: string = JSON.parse(readFileSync(join(MOBILE, "app.json"), "utf8")).expo.version;
+const NOT_IN_OLDEST_BINARY = MISSING_FROM_OLDEST_BINARY[APP_VERSION] ?? [];
 
 const SKIP_DIRS = new Set(["node_modules", "ios", "android", ".expo", "dist", "build", "targets"]);
 
@@ -44,6 +60,11 @@ describe("OTA-safe native imports (apps/mobile)", () => {
 
   it("finds the mobile sources (guard against a silently empty scan)", () => {
     expect(files.length).toBeGreaterThan(50);
+  });
+
+  it("knows which native modules the current runtime's oldest binary lacks", () => {
+    // A version bump must be a deliberate decision about this table.
+    expect(Object.keys(MISSING_FROM_OLDEST_BINARY)).toContain(APP_VERSION);
   });
 
   for (const pkg of NOT_IN_OLDEST_BINARY) {

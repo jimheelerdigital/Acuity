@@ -29,8 +29,6 @@ import { Link } from "expo-router";
 import { useState } from "react";
 import {
   Alert,
-  KeyboardAvoidingView,
-  Platform,
   Pressable,
   Text,
   TextInput,
@@ -47,6 +45,7 @@ import {
   type AuthLoading as Loading,
 } from "@/components/auth/social-auth-buttons";
 import { WARN_AMBER } from "@/lib/tone-colors";
+import { KeyboardSafeView } from "@/components/keyboard/keyboard-safe-view";
 
 /**
  * Mobile Log in (1.9.1 — passwordless). Every path ends with a session JWT
@@ -93,14 +92,13 @@ export default function SignInScreen() {
 
   return (
     // Deliberately NO ScrollView (see the 2026-04-28 regression at the top:
-    // a parent ScrollView re-layout dismissed Google's auth session). Plain
-    // KeyboardAvoidingView, as on 2026-09-19. The code step is no taller
-    // than the old password form, so it fits the same way.
+    // a parent ScrollView re-layout dismissed Google's auth session).
+    // Padding-only KeyboardSafeView (1.9.5; was RN KeyboardAvoidingView, as
+    // on 2026-09-19) — same padding-on-keyboard behaviour, but measured,
+    // and it also works on Android edge-to-edge. The code step is no
+    // taller than the old password form, so it fits the same way.
     <SafeAreaView className="flex-1 px-6" style={{ backgroundColor: tokens.bg }}>
-      <KeyboardAvoidingView
-        className="flex-1"
-        behavior={Platform.OS === "ios" ? "padding" : undefined}
-      >
+      <KeyboardSafeView extraSpace={16}>
         <View className="flex-1 justify-center">
           <Text className="text-2xl font-bold mb-1 text-center" style={{ color: tokens.text }}>
             Log in to Ripple
@@ -225,7 +223,7 @@ export default function SignInScreen() {
             </Text>
           )}
         </View>
-      </KeyboardAvoidingView>
+      </KeyboardSafeView>
     </SafeAreaView>
   );
 }

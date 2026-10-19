@@ -26,6 +26,7 @@ import Animated, {
   withTiming,
 } from "react-native-reanimated";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { KeyboardSafeView } from "@/components/keyboard/keyboard-safe-view";
 import Svg, { Circle, Defs, Ellipse, LinearGradient as SvgLinearGradient, Path, Stop } from "react-native-svg";
 import {
   ArrowRight,
@@ -213,7 +214,12 @@ export function Body({
   center?: boolean;
 }) {
   return (
-    <View style={{ flex: 1 }}>
+    // KeyboardSafeView (1.9.5): the pinned CTA footer rides above the
+    // keyboard. Before, only the scroll content was inset
+    // (automaticallyAdjustKeyboardInsets) and the footer — the Continue
+    // button on Name/Consent — sat under the keyboard. The scroll view
+    // shrinks with the padding, so it needs no keyboard insets of its own.
+    <KeyboardSafeView extraSpace={0}>
       <ScrollView
         contentContainerStyle={{
           flexGrow: 1,
@@ -224,7 +230,6 @@ export function Body({
         }}
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode="interactive"
-        automaticallyAdjustKeyboardInsets
         showsVerticalScrollIndicator={false}
         // No rubber-band into blank space past the content (Keenan, build
         // 172: "lets you scroll down way too far").
@@ -247,7 +252,7 @@ export function Body({
           {footer}
         </View>
       ) : null}
-    </View>
+    </KeyboardSafeView>
   );
 }
 

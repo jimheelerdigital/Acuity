@@ -7,7 +7,6 @@ import {
   ActivityIndicator,
   Alert,
   Pressable,
-  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -52,6 +51,7 @@ import {
   type WelcomePhase,
 } from "@/lib/welcome/flow";
 import { WELCOME_CORAL as C } from "@/lib/welcome/look";
+import { KeyboardScroll } from "@/components/keyboard/keyboard-scroll";
 
 /**
  * Funnel welcome flow — first run for someone who already paid on the web.
@@ -311,14 +311,11 @@ function ProgressBar({ fraction }: { fraction: number }) {
 function StepBody({ children, footer }: { children: React.ReactNode; footer?: React.ReactNode }) {
   return (
     <View style={{ flex: 1 }}>
-      <ScrollView
+      <KeyboardScroll
         contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 26, paddingBottom: 24 }}
-        keyboardShouldPersistTaps="handled"
-        keyboardDismissMode="interactive"
-        automaticallyAdjustKeyboardInsets
       >
         {children}
-      </ScrollView>
+      </KeyboardScroll>
       {footer ? <View style={{ paddingHorizontal: 20, paddingBottom: 14, gap: 4 }}>{footer}</View> : null}
     </View>
   );

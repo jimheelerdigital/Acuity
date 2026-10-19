@@ -4,7 +4,6 @@ import {
   Alert,
   Platform,
   Pressable,
-  ScrollView,
   Text,
   TextInput,
   View,
@@ -17,6 +16,7 @@ import { api } from "@/lib/api";
 import { invalidate } from "@/lib/cache";
 import { useTheme } from "@/contexts/theme-context";
 import { DueDateField } from "@/components/due-date-field";
+import { KeyboardScroll } from "@/components/keyboard/keyboard-scroll";
 
 const GOALS_TREE_KEY = "/api/goals/tree";
 const GOALS_TREE_ARCHIVED_KEY = "/api/goals/tree?includeArchived=1";
@@ -107,12 +107,9 @@ export default function GoalCreateScreen() {
         </Pressable>
       </View>
 
-      <ScrollView
+      <KeyboardScroll
         style={{ flex: 1 }}
         contentContainerStyle={{ padding: 20, paddingBottom: 60 }}
-        automaticallyAdjustKeyboardInsets
-        keyboardShouldPersistTaps="handled"
-        keyboardDismissMode={Platform.OS === "ios" ? "interactive" : "on-drag"}
       >
           {/* Title */}
           <Text
@@ -209,7 +206,7 @@ export default function GoalCreateScreen() {
               );
             })}
           </View>
-        </ScrollView>
+        </KeyboardScroll>
     </SafeAreaView>
   );
 }

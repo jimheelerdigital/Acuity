@@ -3,7 +3,6 @@ import {
   ActivityIndicator,
   Modal,
   Pressable,
-  ScrollView,
   Text,
   TextInput,
   View,
@@ -26,6 +25,7 @@ import {
 import { trackV10 } from "@/lib/onboarding-v10/analytics";
 import { getV10Branch } from "@/lib/onboarding-v10/state";
 import { submitTryDebriefText } from "@/lib/try-session";
+import { KeyboardScroll } from "@/components/keyboard/keyboard-scroll";
 
 /**
  * Screen 2 — Mirror + Start (dark; the CTA is the first light element).
@@ -114,7 +114,7 @@ export default function V10Mirror() {
     <CoralScreen tokens={tokens}>
       <SafeAreaView style={{ flex: 1 }}>
       <FunnelProgress step={2} total={5} tokens={tokens} />
-      <ScrollView
+      <KeyboardScroll
         contentContainerStyle={{
           flexGrow: 1,
           paddingHorizontal: 24,
@@ -158,7 +158,7 @@ export default function V10Mirror() {
             onCoral
           />
         )}
-      </ScrollView>
+      </KeyboardScroll>
       </SafeAreaView>
 
       <AiDisclosureSheet

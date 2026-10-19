@@ -6,7 +6,6 @@ import {
   Alert,
   Platform,
   Pressable,
-  ScrollView,
   Text,
   TextInput,
   View,
@@ -23,6 +22,7 @@ import { api } from "@/lib/api";
 import { getCached, isStale, setCached } from "@/lib/cache";
 import { statusToneColor } from "@/lib/tone-colors";
 import type { StatusTone } from "@/lib/tone-colors";
+import { KeyboardScroll } from "@/components/keyboard/keyboard-scroll";
 
 type GoalDetailResponse = { goal: Goal; linkedEntries: LinkedEntry[] };
 
@@ -203,16 +203,13 @@ export default function GoalDetailScreen() {
       style={{ backgroundColor: tokens.bg }}
     >
       <StickyBackButton accessibilityLabel="Back to Goals" />
-      <ScrollView
+      <KeyboardScroll
         className="flex-1"
         contentContainerStyle={{
           padding: 20,
           paddingTop: 60,
           paddingBottom: 80,
         }}
-        automaticallyAdjustKeyboardInsets
-        keyboardShouldPersistTaps="handled"
-        keyboardDismissMode={Platform.OS === "ios" ? "interactive" : "on-drag"}
       >
           {/* Area label */}
           <Text
@@ -624,7 +621,7 @@ export default function GoalDetailScreen() {
               </Text>
             </Pressable>
           </View>
-        </ScrollView>
+        </KeyboardScroll>
     </SafeAreaView>
   );
 }

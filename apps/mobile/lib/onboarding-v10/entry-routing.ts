@@ -95,6 +95,18 @@ export interface ColdStartFacts {
    * the device flags are wiped). Optional: undefined keeps the old rules.
    */
   hasRecorded?: boolean;
+  /**
+   * The user tapped Sign out in this app session (auth-context). A
+   * deliberate sign-out always lands on sign-in, never the funnel.
+   *
+   * Why (Jimmy, 10/19 on build 183): sign-out flashed the funnel, then
+   * sign-in. auth-context sets user=null BEFORE it clears the funnel
+   * markers in AsyncStorage, so for one AuthGate tick the facts still said
+   * "v10Offered" and routed to /onboarding-new/start. An in-memory flag set
+   * in the same render as user=null removes the race at its source.
+   * Optional: undefined keeps the old rules.
+   */
+  signedOutThisSession?: boolean;
 }
 
 /**
@@ -135,6 +147,10 @@ export function decideColdStartRoute(f: ColdStartFacts): ColdStartRoute {
     // this, Screen 7's "Later" bounces straight back to sign-in and reads
     // to the user as a dead button.
     if (f.isGuest) return "stay";
+
+    // Deliberate sign-out in this session: sign-in, regardless of any
+    // funnel markers that haven't been cleared yet.
+    if (f.signedOutThisSession) return "signin";
 
     if (!f.v10Enabled) return "signin";
 
