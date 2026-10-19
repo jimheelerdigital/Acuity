@@ -7,6 +7,32 @@
 
 ---
 
+## [2026-10-19] — Admin funnel page now shows the live test funnels by default
+
+- **Requested by:** Keenan
+- **Committed by:** Claude Code
+- **Commit hash:** (see git log: "feat: Show only the live test funnels on the admin funnel tab")
+
+### In plain English (for Keenan)
+The Funnel tab in the admin dashboard now opens on the two funnels that get all the ad traffic: /start-test (Ripple) and /start-test-bwk (BWK). It counts every visitor, not just ones from the old 50/50 split, and the paid-subscriber card lists only those two. The old /start and /start-bwk funnels and the normal-vs-test comparison are still there under "Archive…" for history.
+
+### Technical changes (for Jimmy)
+- `apps/web/src/app/admin/tabs/FunnelAnalyticsTab.tsx`:
+  - New default view `live` (CompareView mode with columns test + testbwk). It requests `split=off` so direct and redirected visits all count, hides the split toggle and normal-vs-test verdicts, and shows a "test funnels only since Oct 19" status line.
+  - `PaidCard` takes `only` to list just the shown funnels.
+  - "Side by side" now pairs the two test funnels.
+  - Top row is "Live funnels: Both / Ripple /start-test / BWK /start-test-bwk / Side by side".
+  - The old comparisons and /start, /start-bwk views moved into the "Archive…" select, alongside V7–V1.
+- No API changes (`funnel-compare` / `funnel-analytics` already return the test flows).
+
+### Manual steps needed
+- [ ] None
+
+### Notes
+- Not visually checked in a logged-in admin session; it typechecks and uses the same components as before.
+
+---
+
 ## [2026-10-19] — @therapyandthingss video 5 ("remember it all") set up at $20/day (paused until approved)
 
 - **Requested by:** Keenan
