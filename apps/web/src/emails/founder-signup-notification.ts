@@ -32,6 +32,8 @@ export interface FounderNotificationVars {
   utmSource?: string | null;
   utmMedium?: string | null;
   utmCampaign?: string | null;
+  /** Plain-English origin, e.g. "Meta ad · UGC @therapyandthings · video5". */
+  cameFrom?: string | null;
 }
 
 export function founderNotificationSubject(v: FounderNotificationVars): string {
@@ -65,6 +67,7 @@ export function founderNotificationHtml(v: FounderNotificationVars): string {
           <table role="presentation" cellpadding="0" cellspacing="0" width="100%">
             ${row("Name", name)}
             ${row("Email", esc(v.email))}
+            ${v.cameFrom ? row("Came from", `<b>${esc(v.cameFrom)}</b>`) : ""}
             ${row("Signup method", esc(v.signupMethod))}
             ${row("Campaign", v.campaign ? esc(v.campaign) : "direct / organic")}
             ${row("Branch", v.branch ? esc(v.branch) : "unknown")}

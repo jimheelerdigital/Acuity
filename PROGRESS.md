@@ -7,6 +7,28 @@
 
 ---
 
+## [2026-10-19] — Signup emails say whether a UGC signup came from our Meta ad or the creator's own post
+
+- **Requested by:** Keenan
+- **Committed by:** Claude Code
+- **Commit hash:** (see git log: "feat: Show where each signup came from in the founder email")
+
+### In plain English (for Keenan)
+The "new user signed up" email now has a bold **Came from** line, for example "Meta ad · UGC @therapyandthings · video5 · ad set 1202…" or "Creator's own post (organic) · UGC @therapyandthings". Before, every visit through a creator's link said only "ugc", even when it came from our paid Meta ad, so the email couldn't tell paid from organic.
+
+### Technical changes (for Jimmy)
+- `apps/web/src/lib/founder-notifications.ts`: `notifyFoundersOfSignup` builds `cameFrom` from `User.signupUtm*` plus whether any OnboardingEvent for the user has an fbclid. A numeric `utm_term` (Meta's ad set id URL parameter) also counts as a Meta click. Wrapped in try; never blocks the email.
+- `apps/web/src/emails/founder-signup-notification.ts`: optional `cameFrom` var, rendered as the first row after Email.
+
+### Manual steps needed
+- [ ] None
+
+### Notes
+- Example: Jordan (10-19 7:54pm UTC) came from Meta ad set 120255234693830581, "therapyandthingss video 5 remember", created 10-19 16:06 UTC at $20/day outside this session.
+- Reporting that groups by `signupUtmSource` still lumps UGC paid and organic together; split with fbclid / numeric utm_term the same way.
+
+---
+
 ## [2026-10-19] — Better Purchase matching for Meta (match quality 5.0 → target 7–8)
 
 - **Requested by:** Keenan

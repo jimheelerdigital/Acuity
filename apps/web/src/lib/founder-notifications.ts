@@ -56,6 +56,31 @@ export async function notifyFoundersOfSignup(params: {
 
   const firstName = (name ?? "").trim().split(/\s+/)[0] || email.split("@")[0];
 
+  // Where they came from (2026-10-19, per Keenan: a UGC signup email couldn't
+  // say whether it was our paid Meta ad or the creator's own post). The /u/
+  // creator link stamps utm_source=ugc on both, so the Meta click id decides.
+  let cameFrom: string | null = null;
+  try {
+    const u = await prisma.user.findUnique({ where: { id: userId }, select: { signupUtmSource: true, signupUtmCampaign: true, signupUtmContent: true, signupUtmTerm: true } });
+    const click = await prisma.onboardingEvent.findFirst({ where: { userId, fbclid: { not: null } }, select: { id: true } });
+    const src = (u?.signupUtmSource ?? utmSource ?? "").toLowerCase();
+    // Meta's URL parameters put the ad set id in utm_term, so a numeric term
+    // also means a paid Meta click even before the fbclid is linked.
+    const metaTerm = !!u?.signupUtmTerm && /^\d{10,}$/.test(u.signupUtmTerm);
+    const viaMeta = !!click || metaTerm || ["meta", "facebook", "fb", "instagram", "ig"].includes(src);
+    const creator = src === "ugc" ? (u?.signupUtmCampaign ?? utmCampaign ?? "").replace(/^ugc-/, "") : "";
+    const parts: string[] = [];
+    if (creator) parts.push(viaMeta ? "Meta ad" : "Creator's own post (organic)", `UGC @${creator}`);
+    else if (viaMeta) parts.push("Meta ad");
+    else if (src) parts.push(src);
+    else parts.push("Direct / organic");
+    if (u?.signupUtmContent) parts.push(u.signupUtmContent);
+    if (viaMeta && metaTerm) parts.push(`ad set ${u!.signupUtmTerm}`);
+    cameFrom = parts.join(" · ");
+  } catch {
+    // The label is a nicety; never block the notification.
+  }
+
   const vars = {
     firstName,
     email,
@@ -65,6 +90,7 @@ export async function notifyFoundersOfSignup(params: {
     branch: branch ?? null,
     paymentStatus: paymentStatus ?? null,
     utmSource: utmSource ?? null,
+    cameFrom,
     utmMedium: utmMedium ?? null,
     utmCampaign: utmCampaign ?? null,
   };
