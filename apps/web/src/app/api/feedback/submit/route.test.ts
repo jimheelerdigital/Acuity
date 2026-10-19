@@ -10,6 +10,7 @@ type Row = Record<string, unknown> & { id: string };
 const h = vi.hoisted(() => {
   const db = { feedback: [] as Row[] };
   let failCreate = false;
+  let failUpdate = false;
   const prismaMock = {
     user: {
       findUnique: async () => ({
@@ -30,6 +31,7 @@ const h = vi.hoisted(() => {
         return { id: row.id };
       },
       update: async ({ where, data }: { where: { id: string }; data: Record<string, unknown> }) => {
+        if (failUpdate) throw new Error("db blip");
         const row = db.feedback.find((r) => r.id === where.id);
         if (row) Object.assign(row, data);
         return row;
@@ -37,7 +39,12 @@ const h = vi.hoisted(() => {
     },
   };
   (globalThis as unknown as { prisma: unknown }).prisma = prismaMock;
-  return { db, prismaMock, setFail: (v: boolean) => { failCreate = v; } };
+  return {
+    db,
+    prismaMock,
+    setFail: (v: boolean) => { failCreate = v; },
+    setFailUpdate: (v: boolean) => { failUpdate = v; },
+  };
 });
 
 vi.mock("@/lib/prisma", () => ({ prisma: h.prismaMock }));
@@ -70,6 +77,7 @@ beforeAll(async () => {
 beforeEach(() => {
   h.db.feedback.length = 0;
   h.setFail(false);
+  h.setFailUpdate(false);
   process.env.SLACK_FEEDBACK_WEBHOOK_URL = "https://hooks.example/x";
   fetchMock = vi.fn(async () => new Response("ok", { status: 200 }));
   vi.stubGlobal("fetch", fetchMock);
@@ -94,7 +102,10 @@ describe("POST /api/feedback/submit", () => {
       subscriptionStatus: "PRO",
       slackDelivered: true,
     });
-    expect(h.db.feedback[0]).not.toHaveProperty("networkIp");
+    // Exactly these columns, so nothing like an IP address sneaks in.
+    expect(Object.keys(h.db.feedback[0]).sort()).toEqual(
+      ["id", "slackDelivered", "userId", "source", "type", "content", "appVersion", "buildNumber", "osName", "osVersion", "subscriptionStatus"].sort()
+    );
   });
 
   it("keeps the feedback and returns ok when Slack fails", async () => {
@@ -102,6 +113,20 @@ describe("POST /api/feedback/submit", () => {
     const res = await call(valid);
     expect(res.status).toBe(200);
     expect(h.db.feedback[0]).toMatchObject({ slackDelivered: false });
+  });
+
+  it("keeps the feedback when Slack is unreachable (fetch throws)", async () => {
+    fetchMock.mockRejectedValueOnce(new Error("ECONNRESET"));
+    const res = await call(valid);
+    expect(res.status).toBe(200);
+    expect(h.db.feedback[0]).toMatchObject({ slackDelivered: false });
+  });
+
+  it("returns ok when marking delivered fails after Slack accepted it", async () => {
+    h.setFailUpdate(true);
+    const res = await call(valid);
+    expect(res.status).toBe(200);
+    expect(h.db.feedback).toHaveLength(1);
   });
 
   it("keeps the feedback and returns ok when the webhook is unset", async () => {

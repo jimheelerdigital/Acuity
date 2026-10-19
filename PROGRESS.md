@@ -21,15 +21,17 @@ Every bug report, idea and roadmap suggestion users send is now saved in our own
 - `prisma/rls-allowlist.txt`: `Feedback rls`. RLS coverage OK (111 models).
 - `apps/web/src/app/api/feedback/submit/route.ts`: write the row first, then Slack (extracted `postToSlack`), then set `slackDelivered`. Store failure is logged and never blocks Slack, so the code is safe to deploy BEFORE the schema push. 502/503 only when nothing was stored AND Slack failed or is unset. Accepts optional `source` ("in_app" default, "roadmap").
 - `apps/web/src/app/roadmap/roadmap-board.tsx`: sends `source: "roadmap"`.
-- New `route.test.ts` (8 tests: every store × Slack outcome, source handling, validation). Verified 4 of them fail against the old route. Web tests 1393/1393; web tsc 151 = main baseline, none in touched files.
+- `apps/web/src/app/api/user/me/export/route.ts`: user data export now includes their `feedback` rows.
+- New `route.test.ts` (10 tests: every store × Slack outcome incl. network error and mark-delivered failure, exact stored columns, source handling, validation). Verified they fail against the old route. Web tests all pass; web tsc 151 = main baseline, none in touched files.
 
 ### Manual steps needed
 - [ ] Jimmy: merge `feat/feedback-table`.
 - [ ] Jimmy: from `main`, `npm run db:push` (guarded; additive only — creates `Feedback`).
-- [ ] Jimmy: in Supabase SQL editor for project rohjfcenylmfnqoyoirn: `ALTER TABLE public."Feedback" ENABLE ROW LEVEL SECURITY;`
+- [ ] Jimmy: **IMMEDIATELY after the push, same sitting** (the live code starts writing rows the moment the table exists, and new `public` tables are readable via the anon key until RLS is on): Supabase SQL editor, project rohjfcenylmfnqoyoirn: `ALTER TABLE public."Feedback" ENABLE ROW LEVEL SECURITY;` then re-run `scripts/verify-rls.ts`.
 - [ ] Then the Heeler Brain workspace for Ripple gets `metadata.raw_feedback_table = "Feedback"` (separate, prepared in heeler-brain).
 
 ### Notes
+- Account deletion cascades the Feedback rows here, but copies the Heeler Brain already pulled into its `support_actions` / `feature_requests` are not deleted. Known gap; handle in the brain's delete path.
 - The Heeler Brain raw_feedback connector reads `createdAt`, `content`, `type`, `appVersion`, `osVersion`, `userId` by name — the column names here were chosen to match it.
 - `prisma generate` couldn't download engines in the build sandbox; types were generated with a placeholder engine purely for tsc. Nothing engine-related is committed.
 

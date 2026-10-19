@@ -77,6 +77,7 @@ interface ExportEnvelope {
   progressSuggestions?: Array<Record<string, unknown>>;
   generationJobs?: Array<Record<string, unknown>>;
   featureOverrides?: Array<Record<string, unknown>>;
+  feedback?: Array<Record<string, unknown>>;
   consentRecords?: Array<Record<string, unknown>>;
 }
 
@@ -129,6 +130,7 @@ export async function POST(req: NextRequest) {
     progressSuggestions,
     generationJobs,
     featureOverrides,
+    feedback,
   ] = await Promise.all([
     prisma.user.findUnique({
       where: { id: userId },
@@ -282,6 +284,11 @@ export async function POST(req: NextRequest) {
     prisma.userFeatureOverride
       .findMany({ where: { userId }, orderBy: { createdAt: "asc" } })
       .catch(() => []),
+    // Bug reports / ideas the user sent (2026-10-18). .catch covers the
+    // window before the Feedback table is pushed.
+    prisma.feedback
+      .findMany({ where: { userId }, orderBy: { createdAt: "asc" } })
+      .catch(() => []),
   ]);
 
   if (!user) {
@@ -346,6 +353,7 @@ export async function POST(req: NextRequest) {
       generationJobs as unknown as Array<Record<string, unknown>>,
     featureOverrides:
       featureOverrides as unknown as Array<Record<string, unknown>>,
+    feedback: feedback as unknown as Array<Record<string, unknown>>,
   };
 
   // Audit-trail row: stamp DataExport so subsequent exports can be
