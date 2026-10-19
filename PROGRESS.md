@@ -7,6 +7,34 @@
 
 ---
 
+## [2026-10-18] — Feedback is now saved in the database, not only posted to Slack
+
+- **Requested by:** Jimmy
+- **Committed by:** Claude
+- **Branch:** `feat/feedback-table` off main. NOT on main; Jimmy merges. Schema change (additive, one new table). No app build, no flag.
+
+### In plain English (for Keenan)
+Every bug report, idea and roadmap suggestion users send is now saved in our own database first, and still pings #acuity-feedback in Slack. Before, Slack was the only copy, so a Slack outage meant lost feedback, and Ace (our AI operator) couldn't read any of it. Users also stop seeing "couldn't send" when only Slack is having a bad moment.
+
+### Technical changes (for Jimmy)
+- New Prisma model `Feedback` (id, userId → User cascade, source `in_app`|`roadmap`, type, content, appVersion, buildNumber, osName, osVersion, subscriptionStatus snapshot, slackDelivered, createdAt; indexes on createdAt, userId). `User.feedback` back-relation. No IP stored, on purpose.
+- `prisma/rls-allowlist.txt`: `Feedback rls`. RLS coverage OK (111 models).
+- `apps/web/src/app/api/feedback/submit/route.ts`: write the row first, then Slack (extracted `postToSlack`), then set `slackDelivered`. Store failure is logged and never blocks Slack, so the code is safe to deploy BEFORE the schema push. 502/503 only when nothing was stored AND Slack failed or is unset. Accepts optional `source` ("in_app" default, "roadmap").
+- `apps/web/src/app/roadmap/roadmap-board.tsx`: sends `source: "roadmap"`.
+- `apps/web/src/app/api/user/me/export/route.ts`: user data export now includes their `feedback` rows.
+- New `route.test.ts` (10 tests: every store × Slack outcome incl. network error and mark-delivered failure, exact stored columns, source handling, validation). Verified they fail against the old route. Web tests all pass; web tsc 151 = main baseline, none in touched files.
+
+### Manual steps needed
+- [ ] Jimmy: merge `feat/feedback-table`.
+- [ ] Jimmy: from `main`, `npm run db:push` (guarded; additive only — creates `Feedback`).
+- [ ] Jimmy: **IMMEDIATELY after the push, same sitting** (the live code starts writing rows the moment the table exists, and new `public` tables are readable via the anon key until RLS is on): Supabase SQL editor, project rohjfcenylmfnqoyoirn: `ALTER TABLE public."Feedback" ENABLE ROW LEVEL SECURITY;` then re-run `scripts/verify-rls.ts`.
+- [ ] Then the Heeler Brain workspace for Ripple gets `metadata.raw_feedback_table = "Feedback"` (separate, prepared in heeler-brain).
+
+### Notes
+- Account deletion cascades the Feedback rows here, but copies the Heeler Brain already pulled into its `support_actions` / `feature_requests` are not deleted. Known gap; handle in the brain's delete path.
+- The Heeler Brain raw_feedback connector reads `createdAt`, `content`, `type`, `appVersion`, `osVersion`, `userId` by name — the column names here were chosen to match it.
+- `prisma generate` couldn't download engines in the build sandbox; types were generated with a placeholder engine purely for tsc. Nothing engine-related is committed.
+
 ## [2026-10-18] — The shipped app's code (1.9.1 → 1.9.4 + typed entry + RC Web Billing) lands on main in one PR
 
 - **Requested by:** Jimmy

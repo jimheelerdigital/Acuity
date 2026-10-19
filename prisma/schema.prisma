@@ -342,6 +342,7 @@ model User {
   entries                       Entry[]
   tasks                         Task[]
   roadmapVotes                  RoadmapVote[]
+  feedback                      Feedback[]
   taskGroups                    TaskGroup[]
   goals                         Goal[]
   weeklyReports                 WeeklyReport[]
@@ -3731,5 +3732,29 @@ model RoadmapVote {
   createdAt DateTime    @default(now())
 
   @@id([itemId, userId])
+  @@index([userId])
+}
+
+// In-app + roadmap feedback (2026-10-18). Source of truth for every
+// /api/feedback/submit post; Slack #acuity-feedback stays as the alert.
+// Read by the Heeler Brain support pipeline (workspace
+// metadata.raw_feedback_table = "Feedback"), which triages and de-dupes
+// into its own feature_requests. No IP stored on purpose.
+model Feedback {
+  id                 String   @id @default(cuid())
+  userId             String
+  user               User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  source             String   @default("in_app") // in_app | roadmap
+  type               String // bug | feature | ux | other
+  content            String   @db.Text
+  appVersion         String?
+  buildNumber        String?
+  osName             String?
+  osVersion          String?
+  subscriptionStatus String? // snapshot at submit time
+  slackDelivered     Boolean  @default(false)
+  createdAt          DateTime @default(now())
+
+  @@index([createdAt])
   @@index([userId])
 }
