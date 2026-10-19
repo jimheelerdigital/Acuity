@@ -1,0 +1,188 @@
+/**
+ * POST /api/admin/adlab/app-campaign — Meta App Store-install campaign for
+ * Ripple iOS (2026-10-19, per Keenan: "create new campaigns for all that are
+ * for app store downloads"; plan in the 10-16 step-by-step email).
+ *
+ * action "apps": read-only — the apps this ad account may advertise (an app
+ *   campaign is impossible until Ripple shows up here).
+ * action "create": { appId, budgets: { women, men } (cents), ads: [{ group,
+ *   sourceAdId }] } → one OUTCOME_APP_PROMOTION campaign, one ad set per
+ *   group (optimizes for APP_INSTALLS, iOS only, targeting copied from the
+ *   group's web evergreen ad set), and one ad per source ad reusing its
+ *   video/image + copy with an "Install now" button to the App Store.
+ *   EVERYTHING IS CREATED PAUSED (standing rule: never switch an ad live on
+ *   Meta unasked).
+ * action "activate": { campaignId } → campaign, its ad sets and ads ACTIVE.
+ *
+ * Auth: admin session OR `Authorization: Bearer ${CRON_SECRET}`.
+ */
+import { NextRequest, NextResponse } from "next/server";
+
+import { requireAdmin } from "@/lib/admin-guard";
+import { prisma } from "@/lib/prisma";
+
+export const dynamic = "force-dynamic";
+export const maxDuration = 300;
+
+/** Ripple: AI Voice Journal on the US App Store (iOS 1.9.0 live 2026-10-15). */
+const APP_STORE_URL = "https://apps.apple.com/app/id6762633410";
+
+type Group = "women" | "men";
+
+export async function POST(req: NextRequest) {
+  const bearer = req.headers.get("authorization");
+  const cronSecret = process.env.CRON_SECRET;
+  if (!(cronSecret && bearer === `Bearer ${cronSecret}`)) {
+    const guard = await requireAdmin();
+    if (!guard.ok) return guard.response;
+  }
+  const meta = await import("@/lib/adlab/meta");
+  const acct = meta.adAccountPath();
+  const body = (await req.json().catch(() => ({}))) as {
+    action?: "apps" | "create" | "activate";
+    appId?: string;
+    budgets?: Partial<Record<Group, number>>;
+    ads?: { group: Group; sourceAdId: string }[];
+    campaignId?: string;
+  };
+  const err = (e: unknown) => meta.redactAccessToken(String(e)).slice(0, 500);
+
+  if (body.action === "apps") {
+    try {
+      const apps = await meta.metaGraph(`${acct}/advertisable_applications`, "GET", {
+        fields: "id,name,object_store_urls,supported_platforms",
+        limit: "50",
+      });
+      return NextResponse.json({ ok: true, apps: apps.data });
+    } catch (e) {
+      return NextResponse.json({ error: err(e) }, { status: 500 });
+    }
+  }
+
+  if (body.action === "activate") {
+    if (!body.campaignId) return NextResponse.json({ error: "campaignId required" }, { status: 400 });
+    try {
+      await meta.setStatus(body.campaignId, "campaign", "ACTIVE");
+      const sets = await meta.metaGraph(`${body.campaignId}/adsets`, "GET", { fields: "id", limit: "20" });
+      for (const s of (sets.data as { id: string }[]) ?? []) {
+        await meta.setStatus(s.id, "adset", "ACTIVE");
+        const ads = await meta.metaGraph(`${s.id}/ads`, "GET", { fields: "id", limit: "20" });
+        for (const a of (ads.data as { id: string }[]) ?? []) await meta.setStatus(a.id, "ad", "ACTIVE");
+      }
+      const check = await meta.metaGraph(body.campaignId, "GET", { fields: "name,effective_status" });
+      return NextResponse.json({ ok: true, check });
+    } catch (e) {
+      return NextResponse.json({ error: err(e) }, { status: 500 });
+    }
+  }
+
+  // ── create ────────────────────────────────────────────────────────────
+  if (!body.appId || !body.ads?.length || !body.budgets) {
+    return NextResponse.json({ error: "appId, budgets and ads required" }, { status: 400 });
+  }
+  const steps: Record<string, unknown> = {};
+  try {
+    const campaign = await meta.metaGraph(`${acct}/campaigns`, "POST", {
+      name: "Ripple — iOS App Installs",
+      objective: "OUTCOME_APP_PROMOTION",
+      buying_type: "AUCTION",
+      special_ad_categories: [],
+      is_adset_budget_sharing_enabled: false,
+      status: "PAUSED",
+    });
+    const campaignId = campaign.id as string;
+    steps.campaignId = campaignId;
+
+    const adsets: Partial<Record<Group, string>> = {};
+    for (const group of ["women", "men"] as Group[]) {
+      const budget = Math.round(Number(body.budgets[group]));
+      if (!budget || !body.ads.some((a) => a.group === group)) continue;
+      const project = await prisma.adLabProject.findUniqueOrThrow({
+        where: { slug: group === "women" ? "ripple-women" : "ripple-men" },
+        select: { evergreenAdsetId: true },
+      });
+      if (!project.evergreenAdsetId) throw new Error(`${group}: no evergreen ad set to copy targeting from`);
+      const main = (await meta.metaGraph(project.evergreenAdsetId, "GET", { fields: "targeting" })) as { targeting: Record<string, unknown> };
+      // iOS only: Android is still on 1.5.0 (2026-10-19).
+      const targeting = { ...main.targeting, user_os: ["iOS"] };
+      delete (targeting as Record<string, unknown>).user_device;
+      const set = await meta.metaGraph(`${acct}/adsets`, "POST", {
+        name: `Ripple — iOS App Installs | ${group === "women" ? "Women" : "Men"}`,
+        campaign_id: campaignId,
+        daily_budget: String(budget),
+        billing_event: "IMPRESSIONS",
+        optimization_goal: "APP_INSTALLS",
+        bid_strategy: "LOWEST_COST_WITHOUT_CAP",
+        promoted_object: { application_id: body.appId, object_store_url: APP_STORE_URL },
+        targeting,
+        status: "PAUSED",
+      });
+      adsets[group] = set.id as string;
+    }
+    steps.adsets = adsets;
+
+    const ads: Record<string, unknown>[] = [];
+    for (const src of body.ads) {
+      const adsetId = adsets[src.group];
+      if (!adsetId) {
+        ads.push({ sourceAdId: src.sourceAdId, skipped: "no ad set for group" });
+        continue;
+      }
+      try {
+        // Meta's creative spec is loosely typed; read it as-is.
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const source = (await meta.metaGraph(src.sourceAdId, "GET", {
+          fields: "name,creative{object_story_spec,asset_feed_spec,body,title,thumbnail_url}",
+        })) as { name: string; creative: { object_story_spec?: Record<string, any>; asset_feed_spec?: Record<string, any>; body?: string; title?: string; thumbnail_url?: string } };
+        const oss = source.creative.object_story_spec ?? {};
+        const cta = { type: "INSTALL_MOBILE_APP", value: { link: APP_STORE_URL } };
+        let spec: Record<string, unknown>;
+        if (oss.video_data) {
+          const v = oss.video_data;
+          spec = {
+            page_id: oss.page_id,
+            ...(oss.instagram_user_id ? { instagram_user_id: oss.instagram_user_id } : {}),
+            video_data: {
+              video_id: v.video_id,
+              ...(v.image_hash ? { image_hash: v.image_hash } : { image_url: v.image_url ?? source.creative.thumbnail_url }),
+              message: v.message ?? source.creative.body ?? "",
+              title: v.title ?? source.creative.title ?? "",
+              call_to_action: cta,
+            },
+          };
+        } else if (oss.link_data) {
+          const l = oss.link_data;
+          spec = {
+            page_id: oss.page_id,
+            ...(oss.instagram_user_id ? { instagram_user_id: oss.instagram_user_id } : {}),
+            link_data: {
+              link: APP_STORE_URL,
+              ...(l.image_hash ? { image_hash: l.image_hash } : { picture: l.picture ?? source.creative.thumbnail_url }),
+              message: l.message ?? source.creative.body ?? "",
+              name: l.name ?? source.creative.title ?? "",
+              call_to_action: cta,
+            },
+          };
+        } else {
+          ads.push({ sourceAdId: src.sourceAdId, name: source.name, skipped: "creative uses an asset feed (placement-customized); needs a rebuild" });
+          continue;
+        }
+        const name = `App | ${source.name}`.slice(0, 200);
+        const creative = await meta.metaGraph(`${acct}/adcreatives`, "POST", { name, object_story_spec: spec });
+        const ad = await meta.metaGraph(`${acct}/ads`, "POST", {
+          name,
+          adset_id: adsetId,
+          creative: { creative_id: creative.id },
+          status: "PAUSED",
+        });
+        ads.push({ sourceAdId: src.sourceAdId, name: source.name, group: src.group, adId: ad.id });
+      } catch (e) {
+        ads.push({ sourceAdId: src.sourceAdId, error: err(e) });
+      }
+    }
+    steps.ads = ads;
+    return NextResponse.json({ ok: true, paused: true, ...steps });
+  } catch (e) {
+    return NextResponse.json({ error: err(e), steps }, { status: 500 });
+  }
+}

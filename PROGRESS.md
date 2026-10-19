@@ -7,6 +7,32 @@
 
 ---
 
+## [2026-10-19] — Admin tool to build Meta App Store-install campaigns
+
+- **Requested by:** Keenan
+- **Committed by:** Claude Code
+- **Commit hash:** (see git log: "feat: Add an admin route that builds Meta app-install campaigns")
+
+### In plain English (for Keenan)
+We can now build Meta ad campaigns that send people straight to Ripple on the App Store (iPhone only for now), using the same videos and copy as our best web ads with an "Install now" button. Everything is created paused, and nothing spends until Keenan says yes. Also on 10-19, per Keenan, the women's "Same week. Same loop. Same me." ad was turned off; it had cost about $107 for one paid trial.
+
+### Technical changes (for Jimmy)
+- New `apps/web/src/app/api/admin/adlab/app-campaign/route.ts` (admin session or CRON_SECRET bearer):
+  - `apps`: lists `act/advertisable_applications`, the apps the ad account may advertise.
+  - `create`: one `OUTCOME_APP_PROMOTION` campaign, plus one ad set per group: `APP_INSTALLS`, `promoted_object` application_id + App Store URL, targeting copied from the group's web evergreen ad set with `user_os: ["iOS"]`. Ads clone each source ad's video_data or link_data with an `INSTALL_MOBILE_APP` CTA. All PAUSED. Asset-feed (placement-customized) creatives are skipped and reported.
+  - `activate`: sets the campaign, its ad sets and ads ACTIVE.
+- Ad kill on 10-19: AdLabAd `cmv5ctesz00019t501k5y5lul` (Meta ad 120255117024510581) paused via `/api/admin/adlab/ads/kill`.
+
+### Manual steps needed
+- [ ] The Ripple app must be advertisable from the ad account; if `apps` returns nothing, link the app to the business portfolio (Jimmy)
+- [ ] Trials/purchases to Meta need `Purchases.collectDeviceIdentifiers()` + `setFBAnonymousID()` in 1.9.1 (Jimmy)
+
+### Notes
+- iOS only: Android is still on 1.5.0.
+- Fourth Planner recovered after 10-12: about 6 paid trials on $152 (it had zero Oct 7-12).
+
+---
+
 ## [2026-10-16] — One-off "same words, two perspectives" post for Ripple
 
 - **Requested by:** Keenan
