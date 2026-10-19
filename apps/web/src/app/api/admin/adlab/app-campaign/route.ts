@@ -43,7 +43,7 @@ export async function POST(req: NextRequest) {
   const meta = await import("@/lib/adlab/meta");
   const acct = meta.adAccountPath();
   const body = (await req.json().catch(() => ({}))) as {
-    action?: "apps" | "create" | "add" | "fix-os" | "activate";
+    action?: "apps" | "create" | "add" | "fix-os" | "delete" | "activate";
     /** "add": existing app ad set per group. */
     adsets?: Partial<Record<Group, string>>;
     appId?: string;
@@ -81,6 +81,21 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: true, user_os: out });
   }
 
+  // Delete a paused app campaign that was built wrong (never ran).
+  if (body.action === "delete") {
+    if (!body.campaignId) return NextResponse.json({ error: "campaignId required" }, { status: 400 });
+    try {
+      const c = (await meta.metaGraph(body.campaignId, "GET", { fields: "name,effective_status,objective" })) as { name: string; effective_status: string; objective: string };
+      if (c.objective !== "OUTCOME_APP_PROMOTION" || c.effective_status === "ACTIVE") {
+        return NextResponse.json({ error: `refusing: ${c.name} is ${c.effective_status} / ${c.objective}` }, { status: 400 });
+      }
+      await meta.metaGraph(body.campaignId, "POST", { status: "DELETED" });
+      return NextResponse.json({ ok: true, deleted: c.name });
+    } catch (e) {
+      return NextResponse.json({ error: err(e) }, { status: 500 });
+    }
+  }
+
   if (body.action === "activate") {
     if (!body.campaignId) return NextResponse.json({ error: "campaignId required" }, { status: 400 });
     try {
@@ -115,6 +130,9 @@ export async function POST(req: NextRequest) {
       buying_type: "AUCTION",
       special_ad_categories: [],
       is_adset_budget_sharing_enabled: false,
+      // An "iOS 14+ campaign" (SKAdNetwork). Without it Meta caps targeting
+      // at iOS 14.4, and it can't be switched on after creation (2026-10-19).
+      is_skadnetwork_attribution: true,
       status: "PAUSED",
     });
     const campaignId = campaign.id as string;
