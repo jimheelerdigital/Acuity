@@ -3,12 +3,28 @@
 import { useCallback, useEffect, useState } from "react";
 
 import {
+  ROADMAP_CATEGORIES,
+  ROADMAP_CATEGORY_META,
+  ROADMAP_STATUS_META,
+} from "@acuity/shared";
+
+import {
   ROADMAP_STATUSES,
+  SECTION_MAX,
   SUMMARY_MAX,
+  TIMEFRAME_MAX,
   TITLE_MAX,
   type RoadmapItemDTO,
+  type RoadmapItemDetailDTO,
   type RoadmapStatus,
 } from "@/lib/roadmap";
+
+/**
+ * /admin/roadmap editor (2026-10-18; detail fields 2026-10-19). Each item
+ * has the card fields (title, summary, status, category, timing/version)
+ * and the detail-page sections (why it matters, what it does, highlights,
+ * how to use it). Everything except title + summary is optional.
+ */
 
 type Draft = {
   title: string;
@@ -16,13 +32,48 @@ type Draft = {
   status: RoadmapStatus;
   sortOrder: string;
   shippedVersion: string;
+  category: string;
+  timeframe: string;
+  problem: string;
+  solution: string;
+  highlights: string;
+  howTo: string;
 };
 
-const EMPTY: Draft = { title: "", summary: "", status: "considering", sortOrder: "0", shippedVersion: "" };
+const EMPTY: Draft = {
+  title: "",
+  summary: "",
+  status: "considering",
+  sortOrder: "0",
+  shippedVersion: "",
+  category: "",
+  timeframe: "",
+  problem: "",
+  solution: "",
+  highlights: "",
+  howTo: "",
+};
+
+function toBody(d: Draft) {
+  return {
+    title: d.title,
+    summary: d.summary,
+    status: d.status,
+    sortOrder: Number(d.sortOrder) || 0,
+    shippedVersion: d.shippedVersion || null,
+    category: d.category || null,
+    timeframe: d.timeframe,
+    problem: d.problem,
+    solution: d.solution,
+    highlights: d.highlights,
+    howTo: d.howTo,
+  };
+}
 
 const input =
   "w-full rounded-lg border border-acuity-card-border bg-acuity-bg px-3 py-2 text-sm text-acuity-text focus:border-acuity-primary focus:outline-none";
 const btn = "rounded-lg px-3 py-1.5 text-sm font-medium transition disabled:opacity-50";
+const label = "mb-1 block text-xs font-medium text-acuity-text-sec";
 
 export function RoadmapAdmin() {
   const [items, setItems] = useState<RoadmapItemDTO[] | null>(null);
@@ -52,13 +103,7 @@ export function RoadmapAdmin() {
       const res = await fetch("/api/admin/roadmap", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          title: draft.title,
-          summary: draft.summary,
-          status: draft.status,
-          sortOrder: Number(draft.sortOrder) || 0,
-          shippedVersion: draft.shippedVersion || null,
-        }),
+        body: JSON.stringify(toBody(draft)),
       });
       const body = (await res.json().catch(() => ({}))) as { error?: string };
       if (!res.ok) throw new Error(body.error ?? `HTTP ${res.status}`);
@@ -71,7 +116,7 @@ export function RoadmapAdmin() {
     }
   }
 
-  async function patch(id: string, data: Record<string, unknown>) {
+  async function patch(id: string, data: Record<string, unknown>): Promise<boolean> {
     setError(null);
     const res = await fetch(`/api/admin/roadmap/${id}`, {
       method: "PATCH",
@@ -81,9 +126,10 @@ export function RoadmapAdmin() {
     const body = (await res.json().catch(() => ({}))) as { error?: string };
     if (!res.ok) {
       setError(body.error ?? `HTTP ${res.status}`);
-      return;
+      return false;
     }
     await load();
+    return true;
   }
 
   async function remove(id: string, title: string) {
@@ -104,49 +150,7 @@ export function RoadmapAdmin() {
 
       <section className="rounded-2xl border border-acuity-card-border bg-acuity-card-bg p-5">
         <h2 className="text-base font-semibold">Add item</h2>
-        <div className="mt-4 grid gap-3 sm:grid-cols-2">
-          <input
-            className={input}
-            placeholder={`Title (≤${TITLE_MAX})`}
-            maxLength={TITLE_MAX}
-            value={draft.title}
-            onChange={(e) => setDraft({ ...draft, title: e.target.value })}
-          />
-          <div className="flex gap-3">
-            <select
-              className={input}
-              value={draft.status}
-              onChange={(e) => setDraft({ ...draft, status: e.target.value as RoadmapStatus })}
-            >
-              {ROADMAP_STATUSES.map((s) => (
-                <option key={s} value={s}>
-                  {s}
-                </option>
-              ))}
-            </select>
-            <input
-              className={input}
-              placeholder="Order"
-              inputMode="numeric"
-              value={draft.sortOrder}
-              onChange={(e) => setDraft({ ...draft, sortOrder: e.target.value })}
-            />
-            <input
-              className={input}
-              placeholder="Version (if shipped)"
-              value={draft.shippedVersion}
-              onChange={(e) => setDraft({ ...draft, shippedVersion: e.target.value })}
-            />
-          </div>
-          <textarea
-            className={`${input} sm:col-span-2`}
-            rows={2}
-            placeholder={`Summary — one or two plain sentences (≤${SUMMARY_MAX})`}
-            maxLength={SUMMARY_MAX}
-            value={draft.summary}
-            onChange={(e) => setDraft({ ...draft, summary: e.target.value })}
-          />
-        </div>
+        <ItemForm draft={draft} onChange={setDraft} />
         <div className="mt-3 flex justify-end">
           <button
             type="button"
@@ -162,24 +166,96 @@ export function RoadmapAdmin() {
       {items === null ? (
         <p className="text-sm text-acuity-text-sec">Loading…</p>
       ) : (
-        ROADMAP_STATUSES.map((status) => (
-          <section key={status}>
-            <h2 className="text-base font-semibold capitalize">
-              {status} <span className="text-acuity-text-quiet">({items.filter((i) => i.status === status).length})</span>
-            </h2>
-            <ul className="mt-3 divide-y divide-acuity-card-border rounded-2xl border border-acuity-card-border bg-acuity-card-bg">
-              {items
-                .filter((i) => i.status === status)
-                .map((it) => (
+        ROADMAP_STATUSES.map((status) => {
+          const rows = items.filter((i) => i.status === status);
+          return (
+            <section key={status}>
+              <h2 className="text-base font-semibold">
+                {ROADMAP_STATUS_META[status].label} <span className="text-acuity-text-quiet">({rows.length})</span>
+              </h2>
+              <ul className="mt-3 divide-y divide-acuity-card-border rounded-2xl border border-acuity-card-border bg-acuity-card-bg">
+                {rows.map((it) => (
                   <Row key={it.id} item={it} onPatch={patch} onRemove={remove} />
                 ))}
-              {items.filter((i) => i.status === status).length === 0 ? (
-                <li className="px-4 py-4 text-sm text-acuity-text-sec">None.</li>
-              ) : null}
-            </ul>
-          </section>
-        ))
+                {rows.length === 0 ? <li className="px-4 py-4 text-sm text-acuity-text-sec">None.</li> : null}
+              </ul>
+            </section>
+          );
+        })
       )}
+    </div>
+  );
+}
+
+function ItemForm({ draft, onChange }: { draft: Draft; onChange: (d: Draft) => void }) {
+  const set = (k: keyof Draft) => (e: { target: { value: string } }) => onChange({ ...draft, [k]: e.target.value });
+  return (
+    <div className="mt-4 grid gap-3 sm:grid-cols-2">
+      <div className="sm:col-span-2">
+        <span className={label}>Title (≤{TITLE_MAX})</span>
+        <input className={input} maxLength={TITLE_MAX} value={draft.title} onChange={set("title")} />
+      </div>
+      <div className="sm:col-span-2">
+        <span className={label}>Summary: one or two plain sentences, shown on the card (≤{SUMMARY_MAX})</span>
+        <textarea className={input} rows={2} maxLength={SUMMARY_MAX} value={draft.summary} onChange={set("summary")} />
+      </div>
+      <div className="grid grid-cols-2 gap-3 sm:col-span-2 sm:grid-cols-4">
+        <div>
+          <span className={label}>Status</span>
+          <select className={input} value={draft.status} onChange={set("status")}>
+            {ROADMAP_STATUSES.map((s) => (
+              <option key={s} value={s}>
+                {ROADMAP_STATUS_META[s].label}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div>
+          <span className={label}>Category</span>
+          <select className={input} value={draft.category} onChange={set("category")}>
+            <option value="">None</option>
+            {ROADMAP_CATEGORIES.map((c) => (
+              <option key={c} value={c}>
+                {ROADMAP_CATEGORY_META[c].label}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div>
+          <span className={label}>Timing (planned/building)</span>
+          <input
+            className={input}
+            maxLength={TIMEFRAME_MAX}
+            placeholder="e.g. November"
+            value={draft.timeframe}
+            onChange={set("timeframe")}
+          />
+        </div>
+        <div>
+          <span className={label}>Version (shipped)</span>
+          <input className={input} placeholder="1.9.5" value={draft.shippedVersion} onChange={set("shippedVersion")} />
+        </div>
+      </div>
+      <div>
+        <span className={label}>Why it matters: the problem, in the user&rsquo;s words</span>
+        <textarea className={input} rows={4} maxLength={SECTION_MAX} value={draft.problem} onChange={set("problem")} />
+      </div>
+      <div>
+        <span className={label}>What it does / what shipped</span>
+        <textarea className={input} rows={4} maxLength={SECTION_MAX} value={draft.solution} onChange={set("solution")} />
+      </div>
+      <div>
+        <span className={label}>Highlights: one per line (max 8)</span>
+        <textarea className={input} rows={4} value={draft.highlights} onChange={set("highlights")} />
+      </div>
+      <div>
+        <span className={label}>How to use it (shipped only)</span>
+        <textarea className={input} rows={4} maxLength={SECTION_MAX} value={draft.howTo} onChange={set("howTo")} />
+      </div>
+      <div>
+        <span className={label}>Order (lower first, used as a tie-break)</span>
+        <input className={input} inputMode="numeric" value={draft.sortOrder} onChange={set("sortOrder")} />
+      </div>
     </div>
   );
 }
@@ -190,17 +266,43 @@ function Row({
   onRemove,
 }: {
   item: RoadmapItemDTO;
-  onPatch: (id: string, data: Record<string, unknown>) => Promise<void>;
+  onPatch: (id: string, data: Record<string, unknown>) => Promise<boolean>;
   onRemove: (id: string, title: string) => Promise<void>;
 }) {
-  const [editing, setEditing] = useState(false);
-  const [title, setTitle] = useState(item.title);
-  const [summary, setSummary] = useState(item.summary);
-  const [version, setVersion] = useState(item.shippedVersion ?? "");
+  const [draft, setDraft] = useState<Draft | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  async function startEdit() {
+    // The list carries card fields only; fetch the detail sections.
+    setLoading(true);
+    try {
+      const res = await fetch(`/api/roadmap/${item.id}`, { cache: "no-store" });
+      const body = (await res.json()) as { item: RoadmapItemDetailDTO };
+      const d = body.item;
+      setDraft({
+        title: d.title,
+        summary: d.summary,
+        status: d.status,
+        sortOrder: "0",
+        shippedVersion: d.shippedVersion ?? "",
+        category: d.category ?? "",
+        timeframe: d.timeframe ?? "",
+        problem: d.problem ?? "",
+        solution: d.solution ?? "",
+        highlights: d.highlights.join("\n"),
+        howTo: d.howTo ?? "",
+      });
+    } finally {
+      setLoading(false);
+    }
+  }
 
   async function save() {
-    await onPatch(item.id, { title, summary, shippedVersion: version || null });
-    setEditing(false);
+    if (!draft) return;
+    // Status is changed from the dropdown (it stamps/clears shippedAt), and
+    // sortOrder isn't exposed in the list DTO, so neither is sent here.
+    const { status: _s, sortOrder: _o, ...rest } = toBody(draft);
+    if (await onPatch(item.id, rest)) setDraft(null);
   }
 
   return (
@@ -210,21 +312,22 @@ function Row({
           ▲{item.votes}
         </span>
         <div className="min-w-0 flex-1">
-          {editing ? (
-            <div className="space-y-2">
-              <input className={input} value={title} maxLength={TITLE_MAX} onChange={(e) => setTitle(e.target.value)} />
-              <textarea className={input} rows={2} value={summary} maxLength={SUMMARY_MAX} onChange={(e) => setSummary(e.target.value)} />
-              <input className={input} placeholder="Shipped version, e.g. 1.9.4" value={version} onChange={(e) => setVersion(e.target.value)} />
-            </div>
-          ) : (
-            <>
-              <p className="font-medium">{item.title}</p>
-              <p className="text-sm text-acuity-text-sec">{item.summary}</p>
-              {item.shippedVersion ? (
-                <p className="mt-1 text-xs text-acuity-good">Shipped in {item.shippedVersion}</p>
-              ) : null}
-            </>
-          )}
+          <p className="font-medium">
+            <a href={`/roadmap/${item.id}`} target="_blank" rel="noreferrer" className="hover:underline">
+              {item.title}
+            </a>
+          </p>
+          <p className="text-sm text-acuity-text-sec">{item.summary}</p>
+          <p className="mt-1 text-xs text-acuity-text-quiet">
+            {[
+              item.category ? ROADMAP_CATEGORY_META[item.category].label : "No category",
+              item.timeframe,
+              item.shippedVersion ? `Shipped in ${item.shippedVersion}` : null,
+              item.hasDetails ? "Has detail page content" : "No detail content yet",
+            ]
+              .filter(Boolean)
+              .join(" · ")}
+          </p>
         </div>
         <div className="flex shrink-0 flex-wrap items-center justify-end gap-1.5">
           <select
@@ -235,33 +338,38 @@ function Row({
           >
             {ROADMAP_STATUSES.map((s) => (
               <option key={s} value={s}>
-                {s}
+                {ROADMAP_STATUS_META[s].label}
               </option>
             ))}
           </select>
-          {editing ? (
-            <>
-              <button type="button" className={`${btn} bg-acuity-primary text-white`} onClick={() => void save()}>
-                Save
-              </button>
-              <button type="button" className={`${btn} border border-acuity-card-border`} onClick={() => setEditing(false)}>
-                Cancel
-              </button>
-            </>
-          ) : (
-            <button type="button" className={`${btn} border border-acuity-card-border`} onClick={() => setEditing(true)}>
-              Edit
+          {draft ? null : (
+            <button
+              type="button"
+              className={`${btn} border border-acuity-card-border`}
+              disabled={loading}
+              onClick={() => void startEdit()}
+            >
+              {loading ? "Loading…" : "Edit"}
             </button>
           )}
-          <button
-            type="button"
-            className={`${btn} text-acuity-bad`}
-            onClick={() => void onRemove(item.id, item.title)}
-          >
+          <button type="button" className={`${btn} text-acuity-bad`} onClick={() => void onRemove(item.id, item.title)}>
             Delete
           </button>
         </div>
       </div>
+      {draft ? (
+        <div className="mt-3 rounded-xl border border-acuity-card-border p-4">
+          <ItemForm draft={draft} onChange={setDraft} />
+          <div className="mt-3 flex justify-end gap-2">
+            <button type="button" className={`${btn} border border-acuity-card-border`} onClick={() => setDraft(null)}>
+              Cancel
+            </button>
+            <button type="button" className={`${btn} bg-acuity-primary text-white`} onClick={() => void save()}>
+              Save
+            </button>
+          </div>
+        </div>
+      ) : null}
     </li>
   );
 }

@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 
-import { listRoadmap, parseRoadmapBody, toggleVote } from "./roadmap";
+import { getRoadmapItem, listRoadmap, parseRoadmapBody, toggleVote } from "./roadmap";
 
 describe("parseRoadmapBody", () => {
   it("requires title + summary on create", () => {
@@ -80,5 +80,98 @@ describe("listRoadmap", () => {
     expect(items.map((i) => i.id)).toEqual(["d", "c", "a", "e", "b"]);
     expect(items.find((i) => i.id === "c")?.votedByMe).toBe(true);
     expect(items.find((i) => i.id === "a")?.votedByMe).toBe(false);
+  });
+});
+
+// ─── Detail pages (2026-10-19) ──────────────────────────────────────
+
+describe("roadmap detail fields", () => {
+  it("parses category, timing, sections and one-per-line highlights", () => {
+    const r = parseRoadmapBody(
+      {
+        category: "widgets",
+        timeframe: "  November ",
+        problem: "Opening the app to tick one box is friction.",
+        solution: "",
+        highlights: "- Check off from the Home Screen\n\n• Most pressing first\n",
+        howTo: null,
+      },
+      { partial: true }
+    );
+    expect(r).toEqual({
+      ok: true,
+      data: {
+        category: "widgets",
+        timeframe: "November",
+        problem: "Opening the app to tick one box is friction.",
+        solution: null,
+        highlights: ["Check off from the Home Screen", "Most pressing first"],
+        howTo: null,
+      },
+    });
+  });
+
+  it("accepts the new planned status and rejects unknown categories / oversized fields", () => {
+    expect(parseRoadmapBody({ status: "planned" }, { partial: true }).ok).toBe(true);
+    expect(parseRoadmapBody({ category: "games" }, { partial: true }).ok).toBe(false);
+    expect(parseRoadmapBody({ timeframe: "x".repeat(41) }, { partial: true }).ok).toBe(false);
+    expect(parseRoadmapBody({ highlights: Array(9).fill("one") }, { partial: true }).ok).toBe(false);
+    expect(parseRoadmapBody({ highlights: [1, 2] }, { partial: true }).ok).toBe(false);
+  });
+
+  it("orders building → planned → considering → shipped", async () => {
+    const base = { summary: "", shippedVersion: null, shippedAt: null, votes: [] };
+    const rows = [
+      { ...base, id: "s", title: "S", status: "shipped", _count: { votes: 0 } },
+      { ...base, id: "c", title: "C", status: "considering", _count: { votes: 5 } },
+      { ...base, id: "p", title: "P", status: "planned", _count: { votes: 1 } },
+      { ...base, id: "b", title: "B", status: "building", _count: { votes: 0 } },
+    ];
+    const prisma = { roadmapItem: { findMany: vi.fn().mockResolvedValue(rows) } };
+    const items = await listRoadmap(prisma as never, null);
+    expect(items.map((i) => i.id)).toEqual(["b", "p", "c", "s"]);
+  });
+
+  it("cards carry hasDetails but not the body; the detail call carries the body", async () => {
+    const row = {
+      id: "w",
+      title: "Widget",
+      summary: "Tasks on the Home Screen.",
+      status: "shipped",
+      shippedVersion: "1.9.4",
+      shippedAt: new Date("2026-10-18"),
+      category: "widgets",
+      timeframe: null,
+      problem: null,
+      solution: "Tap to check off.",
+      highlights: [],
+      howTo: "Long-press the Home Screen.",
+      _count: { votes: 2 },
+      votes: [{ userId: "u1" }],
+    };
+    const prisma = {
+      roadmapItem: {
+        findMany: vi.fn().mockResolvedValue([row]),
+        findUnique: vi.fn().mockResolvedValue(row),
+      },
+    };
+    const [card] = await listRoadmap(prisma as never, "u1");
+    expect(card).toMatchObject({ id: "w", category: "widgets", hasDetails: true, votedByMe: true });
+    expect(card).not.toHaveProperty("solution");
+    const detail = await getRoadmapItem(prisma as never, "w", "u1");
+    expect(detail).toMatchObject({ solution: "Tap to check off.", howTo: "Long-press the Home Screen.", highlights: [] });
+    prisma.roadmapItem.findUnique.mockResolvedValueOnce(null);
+    expect(await getRoadmapItem(prisma as never, "nope", null)).toBeNull();
+  });
+
+  it("an item with no sections reports hasDetails=false and an unknown category as null", async () => {
+    const row = {
+      id: "x", title: "X", summary: "s", status: "considering", shippedVersion: null, shippedAt: null,
+      category: "bogus", highlights: ["  "], _count: { votes: 0 }, votes: false,
+    };
+    const prisma = { roadmapItem: { findMany: vi.fn().mockResolvedValue([row]) } };
+    const [card] = await listRoadmap(prisma as never, null);
+    expect(card.hasDetails).toBe(false);
+    expect(card.category).toBeNull();
   });
 });
