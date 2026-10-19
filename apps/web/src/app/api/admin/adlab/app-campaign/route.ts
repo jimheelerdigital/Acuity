@@ -31,7 +31,7 @@ const APP_STORE_URL = "https://apps.apple.com/app/id6762633410";
 
 type Group = "women" | "men";
 
-const IOS_OS = "iOS_ver_15.0_and_above";
+const IOS_OS = "iOS_ver_16.0_and_above";
 
 export async function POST(req: NextRequest) {
   const bearer = req.headers.get("authorization");
@@ -130,7 +130,7 @@ export async function POST(req: NextRequest) {
       if (!project.evergreenAdsetId) throw new Error(`${group}: no evergreen ad set to copy targeting from`);
       const main = (await meta.metaGraph(project.evergreenAdsetId, "GET", { fields: "targeting" })) as { targeting: Record<string, unknown> };
       // iOS only: Android is still on 1.5.0 (2026-10-19). A bare "iOS" is
-      // read by Meta as iOS 2.0-14.4; the app needs iOS 15.1+ (Expo SDK 54).
+      // read by Meta as iOS 2.0-14.4; the app needs iOS 16.4+ (app.json deploymentTarget).
       const targeting = { ...main.targeting, user_os: [IOS_OS] };
       delete (targeting as Record<string, unknown>).user_device;
       const set = await meta.metaGraph(`${acct}/adsets`, "POST", {
