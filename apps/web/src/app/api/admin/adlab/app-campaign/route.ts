@@ -160,6 +160,9 @@ export async function POST(req: NextRequest) {
         bid_strategy: "LOWEST_COST_WITHOUT_CAP",
         promoted_object: { application_id: body.appId, object_store_url: APP_STORE_URL },
         targeting,
+        // iOS 14+ campaigns: each ad set names its measurement (Apple's
+        // SKAdNetwork); without it Meta rejects the ad set (2026-10-19).
+        campaign_attribution: "SKADNETWORK",
         status: "PAUSED",
       });
       adsets[group] = set.id as string;
