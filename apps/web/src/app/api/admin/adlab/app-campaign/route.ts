@@ -12,6 +12,8 @@
  *   video/image + copy with an "Install now" button to the App Store.
  *   EVERYTHING IS CREATED PAUSED (standing rule: never switch an ad live on
  *   Meta unasked).
+ * action "add": { adsets: { women?, men? }, ads } → more ads into existing
+ *   app ad sets (PAUSED).
  * action "activate": { campaignId } → campaign, its ad sets and ads ACTIVE.
  *
  * Auth: admin session OR `Authorization: Bearer ${CRON_SECRET}`.
@@ -39,7 +41,9 @@ export async function POST(req: NextRequest) {
   const meta = await import("@/lib/adlab/meta");
   const acct = meta.adAccountPath();
   const body = (await req.json().catch(() => ({}))) as {
-    action?: "apps" | "create" | "activate";
+    action?: "apps" | "create" | "add" | "activate";
+    /** "add": existing app ad set per group. */
+    adsets?: Partial<Record<Group, string>>;
     appId?: string;
     budgets?: Partial<Record<Group, number>>;
     ads?: { group: Group; sourceAdId: string }[];
@@ -76,12 +80,17 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  // ── create ────────────────────────────────────────────────────────────
-  if (!body.appId || !body.ads?.length || !body.budgets) {
-    return NextResponse.json({ error: "appId, budgets and ads required" }, { status: 400 });
+  // ── create (or "add": ads into existing app ad sets) ──────────────────
+  const adding = body.action === "add";
+  if (adding ? !body.adsets || !body.ads?.length : !body.appId || !body.ads?.length || !body.budgets) {
+    return NextResponse.json({ error: adding ? "adsets and ads required" : "appId, budgets and ads required" }, { status: 400 });
   }
   const steps: Record<string, unknown> = {};
+  const budgets = body.budgets ?? {};
+  const wanted = body.ads ?? [];
   try {
+    const adsets: Partial<Record<Group, string>> = { ...(body.adsets ?? {}) };
+    if (!adding) {
     const campaign = await meta.metaGraph(`${acct}/campaigns`, "POST", {
       name: "Ripple — iOS App Installs",
       objective: "OUTCOME_APP_PROMOTION",
@@ -93,10 +102,9 @@ export async function POST(req: NextRequest) {
     const campaignId = campaign.id as string;
     steps.campaignId = campaignId;
 
-    const adsets: Partial<Record<Group, string>> = {};
     for (const group of ["women", "men"] as Group[]) {
-      const budget = Math.round(Number(body.budgets[group]));
-      if (!budget || !body.ads.some((a) => a.group === group)) continue;
+      const budget = Math.round(Number(budgets[group]));
+      if (!budget || !wanted.some((a) => a.group === group)) continue;
       const project = await prisma.adLabProject.findUniqueOrThrow({
         where: { slug: group === "women" ? "ripple-women" : "ripple-men" },
         select: { evergreenAdsetId: true },
@@ -119,10 +127,11 @@ export async function POST(req: NextRequest) {
       });
       adsets[group] = set.id as string;
     }
+    }
     steps.adsets = adsets;
 
     const ads: Record<string, unknown>[] = [];
-    for (const src of body.ads) {
+    for (const src of wanted) {
       const adsetId = adsets[src.group];
       if (!adsetId) {
         ads.push({ sourceAdId: src.sourceAdId, skipped: "no ad set for group" });
@@ -163,8 +172,24 @@ export async function POST(req: NextRequest) {
               call_to_action: cta,
             },
           };
+        } else if (source.creative.asset_feed_spec?.images?.length) {
+          // Placement-customized image ads (asset feed): rebuilt as a single
+          // image (the feed's first image, usually the 4:5 one) with the
+          // feed's first primary text and headline (2026-10-19).
+          const f = source.creative.asset_feed_spec;
+          spec = {
+            page_id: oss.page_id,
+            ...(oss.instagram_user_id ? { instagram_user_id: oss.instagram_user_id } : {}),
+            link_data: {
+              link: APP_STORE_URL,
+              image_hash: f.images[0].hash,
+              message: f.bodies?.[0]?.text ?? source.creative.body ?? "",
+              name: f.titles?.[0]?.text ?? source.creative.title ?? "",
+              call_to_action: cta,
+            },
+          };
         } else {
-          ads.push({ sourceAdId: src.sourceAdId, name: source.name, skipped: "creative uses an asset feed (placement-customized); needs a rebuild" });
+          ads.push({ sourceAdId: src.sourceAdId, name: source.name, skipped: "creative has no video, image or asset feed to reuse" });
           continue;
         }
         const name = `App | ${source.name}`.slice(0, 200);
