@@ -5,8 +5,11 @@ import { useState, useEffect } from "react";
 // The two live v8 funnels. Each tags its events with its own flowVersion, so
 // they're tracked as separate cohorts with their own step lists (see
 // getFunnelAnalytics in api/admin/metrics/route.ts).
-type View = "cmp-ripple" | "cmp-bwk" | "cmp-all" | "ripple" | "bwk" | "test" | "testbwk" | "both" | "legacy";
-type CompareMode = "cmp-ripple" | "cmp-bwk" | "cmp-all";
+// Since 2026-10-19 every ad visitor lands on the test funnels (/start-test,
+// /start-test-bwk; FeatureFlag funnel_test_only), so "live" (both test
+// funnels) is the default and the normal funnels live under the archive menu.
+type View = "live" | "cmp-ripple" | "cmp-bwk" | "cmp-all" | "ripple" | "bwk" | "test" | "testbwk" | "both" | "legacy";
+type CompareMode = "live" | "cmp-ripple" | "cmp-bwk" | "cmp-all";
 type SplitFilter = "auto" | "on" | "off";
 type LegacyFlow = "v7" | "v6" | "v5" | "v4" | "v3" | "v2" | "v1" | "all";
 type Traffic = "real" | "inapp" | "all";
@@ -17,6 +20,8 @@ const FUNNELS = {
   test: { flow: "v9-test", name: "Test", path: "/start-test" },
   testbwk: { flow: "v9-test-bwk", name: "Test BWK", path: "/start-test-bwk" },
 } as const;
+
+const ARCHIVE_VIEWS: View[] = ["cmp-all", "cmp-ripple", "cmp-bwk", "ripple", "bwk"];
 
 const LEGACY_LABELS: Record<LegacyFlow, string> = {
   v7: "V7 (paywall split)", v6: "V6 (post-rebuild)", v5: "V5", v4: "V4", v3: "V3", v2: "V2", v1: "V1", all: "All versions",
@@ -129,19 +134,19 @@ function S1TestCard({ data }: { data: any }) {
 }
 
 function SideBySide({ start, end, traffic }: { start: string; end: string; traffic: Traffic }) {
-  const [pair, setPair] = useState<{ ripple: any; bwk: any } | null>(null);
+  const [pair, setPair] = useState<{ test: any; testbwk: any } | null>(null);
   const [error, setError] = useState<string | null>(null);
   useEffect(() => {
     setPair(null); setError(null);
-    Promise.all([fetchFunnel(start, end, FUNNELS.ripple.flow, traffic), fetchFunnel(start, end, FUNNELS.bwk.flow, traffic)])
-      .then(([ripple, bwk]) => setPair({ ripple, bwk }))
+    Promise.all([fetchFunnel(start, end, FUNNELS.test.flow, traffic), fetchFunnel(start, end, FUNNELS.testbwk.flow, traffic)])
+      .then(([test, testbwk]) => setPair({ test, testbwk }))
       .catch((e) => setError(e.message));
   }, [start, end, traffic]);
   if (error) return <div style={{ color: "var(--acuity-bad)", padding: 40, textAlign: "center" }}>Error: {error}</div>;
   if (!pair) return <div style={{ color: "var(--acuity-text-ter)", padding: 40, textAlign: "center" }}>Loading both funnels...</div>;
   return (
     <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: 16 }}>
-      {(["ripple", "bwk"] as const).map((k) => {
+      {(["test", "testbwk"] as const).map((k) => {
         const d = pair[k];
         const km = d.keyMetrics || {};
         return (
@@ -167,6 +172,7 @@ function SideBySide({ start, end, traffic }: { start: string; end: string; traff
 // milestone it follows or branches from.
 
 const COMPARE_COLUMNS: Record<CompareMode, (keyof typeof FUNNELS)[]> = {
+  live: ["test", "testbwk"],
   "cmp-ripple": ["ripple", "test"],
   "cmp-bwk": ["bwk", "testbwk"],
   "cmp-all": ["ripple", "test", "bwk", "testbwk"],
@@ -188,8 +194,8 @@ const FLOW_TO_KEY: Record<string, keyof typeof FUNNELS> = { v8: "ripple", "v9-te
 
 /** Paid subscribers from the subscription records themselves, so this can
  *  never read zero while real people are paying (2026-09-28). */
-function PaidCard({ paid, declines }: { paid: any[]; declines?: { users: number; trialEnd: number; renewal: number; unknown: number; codes: Record<string, number> } }) {
-  const byFunnel = (Object.keys(FUNNELS) as (keyof typeof FUNNELS)[]).map((fk) => ({ fk, n: paid.filter((p) => FLOW_TO_KEY[p.flow] === fk).length }));
+function PaidCard({ paid, declines, only }: { paid: any[]; declines?: { users: number; trialEnd: number; renewal: number; unknown: number; codes: Record<string, number> }; only?: (keyof typeof FUNNELS)[] }) {
+  const byFunnel = (only ?? (Object.keys(FUNNELS) as (keyof typeof FUNNELS)[])).map((fk) => ({ fk, n: paid.filter((p) => FLOW_TO_KEY[p.flow] === fk).length }));
   const other = paid.filter((p) => !FLOW_TO_KEY[p.flow]).length;
   const yearly = paid.filter((p) => p.plan === "yearly").length;
   return (
@@ -394,7 +400,9 @@ function NativeSteps({ start, end, traffic, fk }: { start: string; end: string; 
 }
 
 function CompareView({ start, end, traffic, mode }: { start: string; end: string; traffic: Traffic; mode: CompareMode }) {
-  const [split, setSplit] = useState<SplitFilter>("auto");
+  const live = mode === "live";
+  // Live funnels count every visitor (direct and redirected), not just split ones.
+  const [split, setSplit] = useState<SplitFilter>(live ? "off" : "auto");
   const [data, setData] = useState<any>(null);
   const [error, setError] = useState<string | null>(null);
   useEffect(() => {
@@ -410,6 +418,12 @@ function CompareView({ start, end, traffic, mode }: { start: string; end: string
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+      {live ? (
+        <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12, color: "var(--acuity-text-sec)" }}>
+          <span style={{ width: 8, height: 8, borderRadius: 999, background: "var(--acuity-good)" }} />
+          All ad traffic goes to <b style={{ color: "var(--acuity-text)" }}>/start-test</b> and <b style={{ color: "var(--acuity-text)" }}>/start-test-bwk</b> since Oct 19 (the 50/50 split with /start and /start-bwk has ended; see the archive menu for it).
+        </div>
+      ) : (
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 10 }}>
         <SplitStatus flag={data.flag} />
         <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: "var(--acuity-text-sec)", cursor: "pointer" }}
@@ -418,21 +432,22 @@ function CompareView({ start, end, traffic, mode }: { start: string; end: string
           Split visitors only
         </label>
       </div>
+      )}
 
-      <PaidCard paid={data.paid ?? []} declines={data.declines} />
+      <PaidCard paid={data.paid ?? []} declines={data.declines} only={live ? cols : undefined} />
       <AppStoreCard a={data.appStore} />
       <MilestoneChart funnels={Object.fromEntries(cols.map((fk) => [fk, funnel(fk)]))} cols={cols} />
-      {splitOn && (
+      {!live && splitOn && (
         <div style={{ fontSize: 11, color: "rgba(255,255,255,0.35)" }}>
           Split visitors only: {cols.map((fk) => `${COLUMN_LABEL[fk].title} ${COLUMN_LABEL[fk].arm.toLowerCase()} ${funnel(fk).excludedBySplit} hidden`).join(" · ")}
         </div>
       )}
 
-      {mode !== "cmp-bwk" && <PairVerdicts tests={data.tests.ripple} target={data.targetPerArm} title={mode === "cmp-all" ? "Ripple: normal vs test" : undefined} />}
-      {mode !== "cmp-ripple" && <PairVerdicts tests={data.tests.bwk} target={data.targetPerArm} title={mode === "cmp-all" ? "BWK: normal vs test" : undefined} />}
-      <div style={{ fontSize: 11, color: "rgba(255,255,255,0.35)" }}>
+      {!live && mode !== "cmp-bwk" && <PairVerdicts tests={data.tests.ripple} target={data.targetPerArm} title={mode === "cmp-all" ? "Ripple: normal vs test" : undefined} />}
+      {!live && mode !== "cmp-ripple" && <PairVerdicts tests={data.tests.bwk} target={data.targetPerArm} title={mode === "cmp-all" ? "BWK: normal vs test" : undefined} />}
+      {!live && <div style={{ fontSize: 11, color: "rgba(255,255,255,0.35)" }}>
         The normal-vs-test verdicts above always compare split visitors only, over the same hours, whatever the chart shows. Don&rsquo;t call a winner before ~{data.targetPerArm} real visitors per arm. Card trials need far more than that; use &ldquo;Passed the gate&rdquo; as the early read.
-      </div>
+      </div>}
 
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", gap: 12 }}>
         {cols.map((fk) => <NativeSteps key={`${fk}-${traffic}-${start}-${end}`} start={start} end={end} traffic={traffic} fk={fk} />)}
@@ -442,7 +457,7 @@ function CompareView({ start, end, traffic, mode }: { start: string; end: string
 }
 
 export default function FunnelAnalyticsTab({ start, end }: { start: string; end: string }) {
-  const [view, setView] = useState<View>("cmp-ripple");
+  const [view, setView] = useState<View>("live");
   const [legacyFlow, setLegacyFlow] = useState<LegacyFlow>("v7");
   const [traffic, setTraffic] = useState<Traffic>("real");
 
@@ -454,19 +469,12 @@ export default function FunnelAnalyticsTab({ start, end }: { start: string; end:
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-      <div style={{ display: "flex", gap: 4, flexWrap: "wrap", alignItems: "center" }}>
-        <span style={{ fontSize: 11, color: "rgba(255,255,255,0.35)", marginRight: 4 }}>Normal vs test:</span>
-        <button onClick={() => setView("cmp-ripple")} style={seg(view === "cmp-ripple")}>Ripple</button>
-        <button onClick={() => setView("cmp-bwk")} style={seg(view === "cmp-bwk")}>BWK</button>
-        <button onClick={() => setView("cmp-all")} style={seg(view === "cmp-all")}>All four</button>
-      </div>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 10 }}>
         <div style={{ display: "flex", gap: 4, flexWrap: "wrap", alignItems: "center" }}>
-          <span style={{ fontSize: 11, color: "rgba(255,255,255,0.35)", marginRight: 4 }}>One funnel:</span>
-          <button onClick={() => setView("ripple")} style={seg(view === "ripple")}>Ripple <span style={{ opacity: 0.6, fontWeight: 500 }}>/start</span></button>
-          <button onClick={() => setView("bwk")} style={seg(view === "bwk")}>BWK <span style={{ opacity: 0.6, fontWeight: 500 }}>/start-bwk</span></button>
-          <button onClick={() => setView("test")} style={seg(view === "test")}>Test <span style={{ opacity: 0.6, fontWeight: 500 }}>/start-test</span></button>
-          <button onClick={() => setView("testbwk")} style={seg(view === "testbwk")}>Test BWK <span style={{ opacity: 0.6, fontWeight: 500 }}>/start-test-bwk</span></button>
+          <span style={{ fontSize: 11, color: "rgba(255,255,255,0.35)", marginRight: 4 }}>Live funnels:</span>
+          <button onClick={() => setView("live")} style={seg(view === "live")}>Both</button>
+          <button onClick={() => setView("test")} style={seg(view === "test")}>Ripple <span style={{ opacity: 0.6, fontWeight: 500 }}>/start-test</span></button>
+          <button onClick={() => setView("testbwk")} style={seg(view === "testbwk")}>BWK <span style={{ opacity: 0.6, fontWeight: 500 }}>/start-test-bwk</span></button>
           <button onClick={() => setView("both")} style={seg(view === "both")}>Side by side</button>
         </div>
         <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
@@ -476,11 +484,21 @@ export default function FunnelAnalyticsTab({ start, end }: { start: string; end:
             <button onClick={() => setTraffic("all")} style={{ ...seg(traffic === "all"), fontSize: 11, padding: "4px 10px" }}>All sessions</button>
           </div>
           <select
-            value={view === "legacy" ? legacyFlow : ""}
-            onChange={(e) => { if (e.target.value) { setLegacyFlow(e.target.value as LegacyFlow); setView("legacy"); } }}
+            value={view === "legacy" ? legacyFlow : ARCHIVE_VIEWS.includes(view) ? `view:${view}` : ""}
+            onChange={(e) => {
+              const v = e.target.value;
+              if (!v) return;
+              if (v.startsWith("view:")) setView(v.slice(5) as View);
+              else { setLegacyFlow(v as LegacyFlow); setView("legacy"); }
+            }}
             style={{ background: "var(--acuity-bg-inset)", color: view === "legacy" ? "var(--acuity-text)" : "var(--acuity-text-quiet)", border: "none", borderRadius: 6, padding: "5px 8px", fontSize: 11 }}
           >
-            <option value="">Legacy versions…</option>
+            <option value="">Archive…</option>
+            <option value="view:cmp-all">Normal vs test (split ended Oct 19)</option>
+            <option value="view:cmp-ripple">Ripple: /start vs /start-test</option>
+            <option value="view:cmp-bwk">BWK: /start-bwk vs /start-test-bwk</option>
+            <option value="view:ripple">Ripple /start (retired)</option>
+            <option value="view:bwk">BWK /start-bwk (retired)</option>
             {(Object.keys(LEGACY_LABELS) as LegacyFlow[]).map((v) => <option key={v} value={v}>{LEGACY_LABELS[v]}</option>)}
           </select>
           <span style={{ fontSize: 11, color: "rgba(255,255,255,0.25)" }}>
@@ -489,7 +507,7 @@ export default function FunnelAnalyticsTab({ start, end }: { start: string; end:
         </div>
       </div>
 
-      {view === "cmp-ripple" || view === "cmp-bwk" || view === "cmp-all"
+      {view === "live" || view === "cmp-ripple" || view === "cmp-bwk" || view === "cmp-all"
         ? <CompareView key={view} start={start} end={end} traffic={traffic} mode={view} />
         : view === "both"
         ? <SideBySide start={start} end={end} traffic={traffic} />

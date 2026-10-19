@@ -43,6 +43,125 @@ The roadmap (goripple.io/roadmap, and Profile → Roadmap in the app) now has ta
 
 ---
 
+## [2026-10-19] — Admin funnel page now shows the live test funnels by default
+
+- **Requested by:** Keenan
+- **Committed by:** Claude Code
+- **Commit hash:** (see git log: "feat: Show only the live test funnels on the admin funnel tab")
+
+### In plain English (for Keenan)
+The Funnel tab in the admin dashboard now opens on the two funnels that get all the ad traffic: /start-test (Ripple) and /start-test-bwk (BWK). It counts every visitor, not just ones from the old 50/50 split, and the paid-subscriber card lists only those two. The old /start and /start-bwk funnels and the normal-vs-test comparison are still there under "Archive…" for history.
+
+### Technical changes (for Jimmy)
+- `apps/web/src/app/admin/tabs/FunnelAnalyticsTab.tsx`:
+  - New default view `live` (CompareView mode with columns test + testbwk). It requests `split=off` so direct and redirected visits all count, hides the split toggle and normal-vs-test verdicts, and shows a "test funnels only since Oct 19" status line.
+  - `PaidCard` takes `only` to list just the shown funnels.
+  - "Side by side" now pairs the two test funnels.
+  - Top row is "Live funnels: Both / Ripple /start-test / BWK /start-test-bwk / Side by side".
+  - The old comparisons and /start, /start-bwk views moved into the "Archive…" select, alongside V7–V1.
+- No API changes (`funnel-compare` / `funnel-analytics` already return the test flows).
+
+### Manual steps needed
+- [ ] None
+
+### Notes
+- Not visually checked in a logged-in admin session; it typechecks and uses the same components as before.
+
+---
+
+## [2026-10-19] — @therapyandthingss video 5 ("remember it all") set up at $20/day (paused until approved)
+
+- **Requested by:** Keenan
+- **Committed by:** Claude Code
+- **Commit hash:** (see git log: "docs: Log therapyandthingss UGC video 5")
+
+### In plain English (for Keenan)
+A fifth @therapyandthingss video ("you'll remember it later... spoiler, you never do") is set up as its own ad at $20/day, full length and not cut. Its signups show as video5. It stays paused until Keenan says go.
+
+### Technical changes (for Jimmy)
+- No code. Created via `/api/admin/adlab/ugc-ad` on prod, in the women's evergreen campaign 120254810968320581:
+  - Ad set 120255234693830581 ("… | therapyandthingss video 5 remember", $20/day, PAUSED)
+  - Ad 120255234701440581, creative 1111924974913004, Meta video 1676861890660376
+- Link `goripple.io/u/therapyandthings?utm_content=video5`.
+- Copy:
+  - Headline "Stop trying to remember it all"
+  - Description "Free for 7 days"
+  - CTA "learn more"
+- Assets: uncut H.264 transcode (44.5s) + thumbnail at `content-factory/ugc/therapyandthings/video-5.mp4` / `video-5-thumb.jpg`. The script came from a Whisper transcript.
+
+### Manual steps needed
+- [x] Keenan approved 2026-10-19; activated (ad set ACTIVE at $20/day; ad IN_PROCESS for Meta review). Live UGC: video1, video3, video4, video5 at $20/day each ($80/day).
+
+### Notes
+- In the video she uses Ripple in bed at night, which is fine for a creator. Our own ad text stays off time of day (positioning rule), so the copy focuses on not having to remember everything.
+
+---
+
+## [2026-10-19] — Two more @therapyandthingss UGC ads set up at $20/day each (paused until approved)
+
+- **Requested by:** Keenan
+- **Committed by:** Claude Code
+- **Commit hash:** (see git log: "docs: Log two new therapyandthingss UGC ads")
+
+### In plain English (for Keenan)
+@therapyandthingss's two new videos are set up on Meta, each as its own ad with its own $20/day budget, full length and not cut:
+- "Planners": stop buying paper planners you won't use, just talk into Ripple.
+- "Yap": talk your way into a plan.
+
+Both point at her tracking link, each with its own tag, so the admin shows which video every signup came from. They stay paused until Keenan says go.
+
+### Technical changes (for Jimmy)
+- No code. Created via `/api/admin/adlab/ugc-ad` (`create`) on prod, in the women's evergreen campaign 120254810968320581.
+- **Video 3 (planners, 56.7s):**
+  - Ad set 120255234402850581 ("… | therapyandthingss video 3 planners", $20/day, PAUSED)
+  - Ad 120255234408570581, creative 2310109629837097, Meta video 28631084509897375
+  - Link `goripple.io/u/therapyandthings?utm_content=video3`
+  - Headline "Stop buying planners you won't use"
+- **Video 4 (yap, 23.9s):**
+  - Ad set 120255234409150581 ("… | therapyandthingss video 4 yap", $20/day, PAUSED)
+  - Ad 120255234413870581, creative 1591462148772101, Meta video 4426038317708726
+  - Link `…?utm_content=video4`
+  - Headline "Talk your way to a plan"
+- Both: description "Free for 7 days", CTA "learn more" (the route default).
+- Assets: H.264 transcodes of the creator's HEVC files (uncut) plus 1s thumbnails at `content-factory/ugc/therapyandthings/video-3.mp4`, `video-3-thumb.jpg`, `video-4.mp4`, `video-4-thumb.jpg`. Video 4's script came from a Whisper transcript.
+
+### Manual steps needed
+- [x] Keenan approved 2026-10-19. Both activated via `action: "activate"`: ad sets ACTIVE at $20/day; ads were IN_PROCESS (Meta review) at activation.
+- [x] Keenan turned off the video 1 cut ad set (120255173042450581, $15/day) himself on 2026-10-19 for underperforming. Live UGC now: video1 ($20), video3 ($20), video4 ($20).
+
+### Notes
+- `CRON_SECRET` contains "=", so `awk -F=` truncates it and the route returns Unauthorized. Parse `.env` lines with a split on the first "=" only.
+- Like the earlier UGC ads, these sit outside the AdLab kill engine. Judge them by hand on cost per paid trial; the admin Source column now shows "UGC Meta ad · @therapyandthings · video3/video4".
+
+---
+
+## [2026-10-19] — Admin shows UGC ad signups vs the creator's own Instagram
+
+- **Requested by:** Keenan
+- **Committed by:** Claude Code
+- **Commit hash:** (see git log: "feat: Label UGC signups as Meta ad or creator's Instagram in admin")
+
+### In plain English (for Keenan)
+Signups that came through a creator used to all show as "ugc / creator", so you couldn't tell whether the person clicked our paid Meta ad running the creator's video or the creator's own Instagram post. The admin now says which: "UGC Meta ad · @therapyandthings · video1" or "UGC organic · @therapyandthings's Instagram". Checking the data: all 7 creator signups so far came from the Meta ads (6 on the original video, 1 on the shorter cut). The creator's own link brought 4 visits and no signups.
+
+### Technical changes (for Jimmy)
+- New `apps/web/src/lib/acquisition-label.ts`:
+  - `acquisitionLabel({ source, medium, campaign, content })`
+  - For `utm_source=ugc`: `utm_content` present means the Meta UGC ad. The ad links add it, e.g. `goripple.io/u/therapyandthings?utm_content=video1`; the creator's own `/u/` link has none.
+  - Everything else keeps "source / medium".
+- `apps/web/src/app/api/admin/users/route.ts`:
+  - Selects `signupUtmCampaign` and `signupUtmContent`.
+  - Returns `signupSourceLabel`.
+- `apps/web/src/app/admin/tabs/UsersTab.tsx`: the Source column renders `signupSourceLabel`, falling back to the old label.
+- `apps/web/src/app/api/admin/metrics/route.ts`: both funnel-session `source` fields use `acquisitionLabel`.
+- New `acquisition-label.test.ts`.
+
+### Manual steps needed
+- None
+
+### Notes
+- This relies on every UGC Meta ad link carrying `utm_content`, which `/api/admin/adlab/ugc-ad` already does. Never share a `/u/<creator>` link with `utm_content` on it organically, or it will read as an ad.
+- Meta adds `fbclid` to organic Instagram link clicks too, so `fbclid` can't separate the two. `utm_content` can.
 ## [2026-10-19] — 1.9.5: keyboard never covers buttons, bigger widget tasks, Settings fixes
 
 - **Requested by:** Jimmy (TestFlight 183 feedback, 10/19)
