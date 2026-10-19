@@ -7,6 +7,31 @@
 
 ---
 
+## [2026-10-19] — All ad traffic goes to the test funnels (/start-test, /start-test-bwk)
+
+- **Requested by:** Keenan
+- **Committed by:** Claude Code
+- **Commit hash:** (see git log: "feat: Send all ad traffic to the test funnels")
+
+### In plain English (for Keenan)
+Everyone who taps an ad now lands in the newer test funnels: /start-test for women's ads and the UGC creator link, /start-test-bwk for men's. That includes people the 50/50 test had previously placed in the original funnel. Live ads keep their links, so nothing in Meta changed and the ads keep what Meta has learned. New ads link to the test funnels directly. Over the last 21 days the test funnels got 40–55% more signups. Paid trials were mixed: men's test 3.1% vs 2.6%, women's test 2.0% vs 3.2% (5 vs 9 people, too few to call), so women's paid trials are worth watching.
+
+### Technical changes (for Jimmy)
+- `apps/web/src/lib/funnel-split-shared.ts`: new `FUNNEL_TEST_ONLY_FLAG = "funnel_test_only"`.
+- `apps/web/src/lib/funnel-split.ts`: `isTestFunnelOnly()` reads the FeatureFlag with a 30s memo.
+- `apps/web/src/app/start/page.tsx` and `start-bwk/page.tsx`: when test-only is on, every fresh landing (no `?step=`) 307s to the test funnel with its query string kept (UTMs, fbclid), ignoring the `acuity_fsplit` cookie.
+- `apps/web/src/lib/ugc/config.ts`: `TRACKING_LANDING_PATH = "/start-test"`.
+- `apps/web/src/app/api/admin/adlab/ads/launch/route.ts`: `direct_funnel` links go to /start-test; `custom_url` destinations at /start and /start-bwk are mapped to their test funnels. `ads/validate` checks /start-test.
+- DB: FeatureFlag `funnel_test_only` inserted, enabled (no schema change). The `funnel_test_split` flag is left as is; test-only wins.
+
+### Manual steps needed
+- [ ] None. To undo: set FeatureFlag `funnel_test_only` enabled=false (takes effect within 30s).
+
+### Notes
+- Arm numbers come from `funnel_split_arm` sessions, last 21 days. Payments that finish in Safari after the handoff may land on a different session token, so the test arms' paid counts may be understated.
+
+---
+
 ## [2026-10-19] — Mythicals: no beast, dragon or weapon type twice in a month
 
 - **Requested by:** Keenan

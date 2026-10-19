@@ -21,7 +21,7 @@
  * split off in admin must take effect everywhere within a minute.
  */
 import { prisma } from "@/lib/prisma";
-import { FUNNEL_SPLIT_FLAG, FSPLIT_PARAM, parseArm, SPLIT_TARGET, type SplitArm } from "@/lib/funnel-split-shared";
+import { FUNNEL_SPLIT_FLAG, FUNNEL_TEST_ONLY_FLAG, FSPLIT_PARAM, parseArm, SPLIT_TARGET, type SplitArm } from "@/lib/funnel-split-shared";
 
 export * from "@/lib/funnel-split-shared";
 
@@ -47,6 +47,22 @@ export async function isFunnelSplitOn(): Promise<boolean> {
     on = false;
   }
   memo = { at: Date.now(), on };
+  return on;
+}
+
+let testOnlyMemo: { at: number; on: boolean } | null = null;
+
+/** Test-only mode (2026-10-19): everyone lands on the test funnels. */
+export async function isTestFunnelOnly(): Promise<boolean> {
+  if (testOnlyMemo && Date.now() - testOnlyMemo.at < TTL_MS) return testOnlyMemo.on;
+  let on = false;
+  try {
+    const row = await prisma.featureFlag.findUnique({ where: { key: FUNNEL_TEST_ONLY_FLAG }, select: { enabled: true } });
+    on = !!row?.enabled;
+  } catch {
+    on = false;
+  }
+  testOnlyMemo = { at: Date.now(), on };
   return on;
 }
 

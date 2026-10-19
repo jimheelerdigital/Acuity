@@ -3,6 +3,10 @@
  * for how visitors are placed. No server imports here: the funnels import this.
  */
 export const FUNNEL_SPLIT_FLAG = "funnel_test_split";
+/** ON = every fresh landing on /start or /start-bwk goes to the test funnel,
+ *  ignoring earlier "normal" cookies (2026-10-19, per Keenan: the test
+ *  funnels "clearly perform better"). Wins over FUNNEL_SPLIT_FLAG. */
+export const FUNNEL_TEST_ONLY_FLAG = "funnel_test_only";
 export const FSPLIT_COOKIE = "acuity_fsplit";
 export const FSPLIT_PARAM = "fsplit";
 export type SplitArm = "normal" | "test";

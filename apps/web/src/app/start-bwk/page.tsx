@@ -7,7 +7,7 @@ import { BWK_ENTRY_QUESTION, BWK_ENTRY_INTRO, BWK_FUNNEL_CONFIG } from "@/lib/fu
 import { FunnelSsrEntry } from "@/components/funnel-ssr-entry";
 import { S1_YESNO } from "@/lib/funnel-s1-test";
 import { adMatchedIntro } from "@/lib/funnel-ad-match";
-import { FSPLIT_COOKIE, isFunnelSplitOn, normalArmScript, pickArm, testFunnelUrl } from "@/lib/funnel-split";
+import { FSPLIT_COOKIE, isFunnelSplitOn, isTestFunnelOnly, normalArmScript, pickArm, testFunnelUrl } from "@/lib/funnel-split";
 
 export const metadata: Metadata = {
   title: "Start Free Trial — Ripple",
@@ -38,6 +38,9 @@ export default async function StartBwkPage({
   // Normal-vs-test split (lib/funnel-split.ts). Only fresh landings are
   // split: a ?step= return always stays where it was.
   let inSplit = false;
+  // Test-only mode (2026-10-19, per Keenan): every fresh landing goes to the
+  // test funnel, including people the split had placed in the normal one.
+  if (!step && (await isTestFunnelOnly())) redirect(testFunnelUrl("/start-bwk", searchParams));
   if (!step && (await isFunnelSplitOn())) {
     const { arm } = pickArm(cookies().get(FSPLIT_COOKIE)?.value);
     if (arm === "test") redirect(testFunnelUrl("/start-bwk", searchParams));

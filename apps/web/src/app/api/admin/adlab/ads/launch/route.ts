@@ -443,16 +443,19 @@ export async function POST(req: NextRequest) {
         if (isAppInstall) {
           adLinkUrl = APP_STORE_URL;
         } else if (customDestinationUrl) {
-          // Keenan's own funnel URL, UTMs appended
+          // Keenan's own funnel URL, UTMs appended. /start and /start-bwk
+          // become their test funnels (2026-10-19, per Keenan).
           const linkUrl = new URL(customDestinationUrl);
+          if (linkUrl.pathname === "/start") linkUrl.pathname = "/start-test";
+          else if (linkUrl.pathname === "/start-bwk") linkUrl.pathname = "/start-test-bwk";
           linkUrl.searchParams.set("utm_source", "meta");
           linkUrl.searchParams.set("utm_medium", "paid");
           linkUrl.searchParams.set("utm_campaign", experiment.campaignName ?? experiment.id);
           linkUrl.searchParams.set("utm_content", creative.id);
           adLinkUrl = linkUrl.toString();
         } else if (experiment.destination === "direct_funnel") {
-          // Send directly to /start onboarding funnel
-          const linkUrl = new URL("https://goripple.io/start");
+          // Send directly to the test onboarding funnel (2026-10-19, per Keenan)
+          const linkUrl = new URL("https://goripple.io/start-test");
           linkUrl.searchParams.set("utm_source", "meta");
           linkUrl.searchParams.set("utm_medium", "paid");
           linkUrl.searchParams.set("utm_campaign", experiment.campaignName ?? experiment.id);

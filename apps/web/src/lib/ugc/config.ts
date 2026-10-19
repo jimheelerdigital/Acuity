@@ -97,7 +97,8 @@ export const EMAIL_MAX_WORDS = 120;
 export const DM_MAX_WORDS = 60;
 
 /** Where a creator's tracking link lands (goripple.io/u/<code>). */
-export const TRACKING_LANDING_PATH = "/start";
+// /start-test since 2026-10-19 (per Keenan: all ads go to the test funnels).
+export const TRACKING_LANDING_PATH = "/start-test";
 export const TRACKING_BASE_URL = "https://goripple.io";
 
 // ─── Discovery ─────────────────────────────────────────────────────────────
