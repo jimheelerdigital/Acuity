@@ -2,7 +2,7 @@ import Link from "next/link";
 import { getServerSession } from "next-auth";
 
 import { getAuthOptions } from "@/lib/auth";
-import { listRoadmap } from "@/lib/roadmap";
+import { isRoadmapStatus, listRoadmap } from "@/lib/roadmap";
 
 import { RoadmapBoard } from "./roadmap-board";
 
@@ -16,15 +16,21 @@ export const metadata = {
 export const dynamic = "force-dynamic";
 
 /**
- * Public roadmap (2026-10-18). Three columns — Building now, Considering,
- * Shipped — curated in /admin/roadmap. Anyone can read; voting needs an
+ * Public roadmap (2026-10-18; tabs + detail pages 2026-10-19). Tabs —
+ * Building, Planned, Vote, Shipped — curated in /admin/roadmap; every card
+ * opens /roadmap/[id]. Anyone can read; voting needs an
  * account (web session here, bearer in the app's Profile → Roadmap screen,
  * same API). "Suggest an idea" posts into the existing feedback funnel
  * (/api/feedback/submit → Slack), so ideas arrive where bugs already do.
  *
  * Same marketing register as /support: public + indexable, dark palette.
  */
-export default async function RoadmapPage() {
+export default async function RoadmapPage({
+  searchParams,
+}: {
+  searchParams?: { tab?: string };
+}) {
+  const initialTab = isRoadmapStatus(searchParams?.tab) ? searchParams?.tab : undefined;
   const session = await getServerSession(getAuthOptions());
   const userId = session?.user?.id ?? null;
   const { prisma } = await import("@/lib/prisma");
@@ -49,7 +55,7 @@ export default async function RoadmapPage() {
           genuinely changes the order we build in.
         </p>
 
-        <RoadmapBoard initialItems={items} signedIn={!!userId} />
+        <RoadmapBoard initialItems={items} signedIn={!!userId} initialTab={initialTab} />
       </main>
     </div>
   );

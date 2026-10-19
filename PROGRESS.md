@@ -7,6 +7,42 @@
 
 ---
 
+## [2026-10-19] — Roadmap redesign: status tabs + a detail page for every item
+
+- **Requested by:** Jimmy (TestFlight 183 feedback, 10/19; reference: roadmap.leanix.net)
+- **Committed by:** Claude Code
+- **Commit hash:** (see git log: "feat(roadmap): status tabs and detail pages")
+
+### In plain English (for Keenan)
+The roadmap (goripple.io/roadmap, and Profile → Roadmap in the app) now has tabs: Building, Planned, Vote and Shipped. Items show as cards with a coloured banner. Tapping any card opens its own page, which says why the item matters and what it does (or what shipped), lists the highlights, and for shipped items explains how to use it. Voting works on the cards and on the detail pages. "Planned" is a new stage between ideas and what's being built. The detail text is edited in /admin/roadmap.
+
+### Technical changes (for Jimmy)
+- Schema: `RoadmapItem` gains `category`, `timeframe`, `problem`, `solution`, `highlights String[]`, `howTo`. All additive (`docs/migrations/2026-10-19-roadmap-details.sql`).
+- Content for the 9 existing items is in `docs/migrations/2026-10-19-roadmap-details-content.sql`. It's data only and written from what's actually built.
+- `@acuity/shared` `roadmap.ts`: statuses (new `planned`), status labels/tabs, categories + banner colours. The web, the app and admin all use it.
+- `lib/roadmap.ts`:
+  - Card DTO adds `category`, `timeframe` and `hasDetails`.
+  - `RoadmapItemDetailDTO` and `getRoadmapItem()` are new.
+  - Validation covers the new fields, including highlights as one per line.
+- New `GET /api/roadmap/[id]`.
+- Web pages:
+  - `/roadmap` now has tabs, with `?tab=`.
+  - `/roadmap/[id]` is a new page (indexable, with per-item metadata).
+  - `roadmap-ui.tsx` holds the banner, pill and vote button.
+- Admin: a full editor with the detail fields; Edit loads the detail sections.
+- Mobile: `app/roadmap.tsx` moved to `app/roadmap/index.tsx` (tabs, cards). There's a new `app/roadmap/[id].tsx`, plus `components/roadmap/roadmap-ui.tsx`. This is JS only, so it can go out as an OTA to 1.9.5.
+- Old builds (183 / 184 embedded JS) hide `planned` items rather than break.
+- Tests: `roadmap.test.ts` +5. Web tests 1418/1418, web tsc 151 (baseline), mobile tsc 13 (baseline), iOS export OK.
+
+### Manual steps needed
+- [ ] Apply the additive migration, then the content SQL, to prod. This must happen BEFORE merging, because the web selects the new columns. Claude does it on Jimmy's go (Jimmy).
+- [ ] When 1.9.5 is released, move "Type an entry" and "Snap a handwritten page" to Shipped with version 1.9.5 in /admin/roadmap, and add a how-to (Jimmy / Claude).
+
+### Notes
+- Banners use category gradients and icons, not uploaded images. Images would need storage plus an upload UI, which wasn't worth it for 9 items.
+
+---
+
 ## [2026-10-19] — 1.9.5: keyboard never covers buttons, bigger widget tasks, Settings fixes
 
 - **Requested by:** Jimmy (TestFlight 183 feedback, 10/19)

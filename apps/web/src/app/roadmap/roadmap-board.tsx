@@ -1,101 +1,83 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 
-import type { RoadmapItemDTO, RoadmapStatus } from "@/lib/roadmap";
+import { ROADMAP_STATUS_META, roadmapVotingOpen, type RoadmapStatus } from "@acuity/shared";
 
-const COLUMNS: Array<{ status: RoadmapStatus; title: string; blurb: string }> = [
-  { status: "building", title: "Building now", blurb: "In progress — landing in the next release or two." },
-  { status: "considering", title: "Considering", blurb: "On the list. Your votes decide what moves up." },
-  { status: "shipped", title: "Shipped", blurb: "Already in the app." },
-];
+import type { RoadmapItemDTO } from "@/lib/roadmap";
 
-type Props = { initialItems: RoadmapItemDTO[]; signedIn: boolean };
+import { CategoryBanner, StatusPill, VoteButton, categoryLabel, contextLine } from "./roadmap-ui";
 
-export function RoadmapBoard({ initialItems, signedIn }: Props) {
-  const [items, setItems] = useState(initialItems);
-  const [busy, setBusy] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
+/**
+ * Tabbed roadmap board (2026-10-19, modelled on the LeanIX roadmap Jimmy
+ * pointed at): one tab per status, a card grid with a category banner,
+ * and every card opens /roadmap/[id]. Voting stays on the card.
+ */
 
-  async function toggle(id: string) {
-    if (busy) return;
-    setBusy(id);
-    setError(null);
-    // Optimistic flip; revert on failure.
-    const before = items;
-    setItems((cur) =>
-      cur.map((it) =>
-        it.id === id
-          ? { ...it, votedByMe: !it.votedByMe, votes: it.votes + (it.votedByMe ? -1 : 1) }
-          : it
-      )
-    );
-    try {
-      const res = await fetch(`/api/roadmap/${id}/vote`, { method: "POST" });
-      if (!res.ok) throw new Error(res.status === 429 ? "Slow down a little — try again in a bit." : "Couldn't save your vote.");
-      const body = (await res.json()) as { voted: boolean; votes: number };
-      setItems((cur) => cur.map((it) => (it.id === id ? { ...it, votedByMe: body.voted, votes: body.votes } : it)));
-    } catch (e) {
-      setItems(before);
-      setError(e instanceof Error ? e.message : "Couldn't save your vote.");
-    } finally {
-      setBusy(null);
-    }
+const TABS: RoadmapStatus[] = ["building", "planned", "considering", "shipped"];
+
+type Props = { initialItems: RoadmapItemDTO[]; signedIn: boolean; initialTab?: RoadmapStatus };
+
+export function RoadmapBoard({ initialItems, signedIn, initialTab }: Props) {
+  const counts = useMemo(() => {
+    const c: Record<RoadmapStatus, number> = { building: 0, planned: 0, considering: 0, shipped: 0 };
+    for (const it of initialItems) c[it.status] += 1;
+    return c;
+  }, [initialItems]);
+  // Open on the requested tab, else the first one with anything in it.
+  const [tab, setTab] = useState<RoadmapStatus>(
+    initialTab ?? TABS.find((t) => counts[t] > 0) ?? "building"
+  );
+  const rows = initialItems.filter((it) => it.status === tab);
+
+  function select(next: RoadmapStatus) {
+    setTab(next);
+    // Shareable/back-button friendly without a navigation.
+    const url = new URL(window.location.href);
+    url.searchParams.set("tab", next);
+    window.history.replaceState(null, "", url.toString());
   }
 
   return (
-    <div className="mt-12">
-      {error ? (
-        <p className="mb-6 rounded-xl border border-acuity-bad/30 bg-acuity-bad-soft px-4 py-3 text-sm text-acuity-text">
-          {error}
-        </p>
-      ) : null}
-      <div className="grid gap-10 md:grid-cols-3 md:gap-6">
-        {COLUMNS.map((col) => {
-          const rows = items.filter((it) => it.status === col.status);
+    <div className="mt-10">
+      <div role="tablist" aria-label="Roadmap status" className="flex gap-2 overflow-x-auto pb-1">
+        {TABS.map((t) => {
+          const active = t === tab;
           return (
-            <section key={col.status} aria-labelledby={`col-${col.status}`}>
-              <h2 id={`col-${col.status}`} className="text-lg font-semibold">
-                {col.title}
-              </h2>
-              <p className="mt-1 text-sm text-acuity-text-sec">{col.blurb}</p>
-              <ul className="mt-5 space-y-3">
-                {rows.length === 0 ? (
-                  <li className="rounded-2xl border border-dashed border-acuity-card-border px-4 py-6 text-sm text-acuity-text-sec">
-                    Nothing here right now.
-                  </li>
-                ) : null}
-                {rows.map((it) => (
-                  <li
-                    key={it.id}
-                    className="rounded-2xl border border-acuity-card-border bg-acuity-card-bg p-4"
-                  >
-                    <div className="flex items-start gap-3">
-                      <div className="min-w-0 flex-1">
-                        <h3 className="font-medium leading-snug">{it.title}</h3>
-                        <p className="mt-1 text-sm leading-relaxed text-acuity-text-sec">{it.summary}</p>
-                        {it.status === "shipped" && it.shippedVersion ? (
-                          <p className="mt-2 text-xs font-medium text-acuity-good">
-                            Shipped in {it.shippedVersion}
-                          </p>
-                        ) : null}
-                      </div>
-                      {it.status !== "shipped" ? (
-                        <VoteButton
-                          item={it}
-                          signedIn={signedIn}
-                          pending={busy === it.id}
-                          onToggle={() => void toggle(it.id)}
-                        />
-                      ) : null}
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            </section>
+            <button
+              key={t}
+              type="button"
+              role="tab"
+              aria-selected={active}
+              aria-controls="roadmap-panel"
+              onClick={() => select(t)}
+              className={`shrink-0 rounded-full border px-4 py-2 text-sm font-semibold transition ${
+                active
+                  ? "border-acuity-primary bg-acuity-primary text-white"
+                  : "border-acuity-card-border text-acuity-text-sec hover:text-acuity-text"
+              }`}
+            >
+              {ROADMAP_STATUS_META[t].tab}
+              <span className={`ml-2 tabular-nums ${active ? "text-white/80" : "text-acuity-text-quiet"}`}>{counts[t]}</span>
+            </button>
           );
         })}
+      </div>
+
+      <div id="roadmap-panel" role="tabpanel" className="mt-6">
+        <p className="text-sm text-acuity-text-sec">{ROADMAP_STATUS_META[tab].blurb}</p>
+        {rows.length === 0 ? (
+          <p className="mt-6 rounded-2xl border border-dashed border-acuity-card-border px-4 py-8 text-center text-sm text-acuity-text-sec">
+            Nothing here right now.
+          </p>
+        ) : (
+          <ul className="mt-6 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+            {rows.map((it) => (
+              <RoadmapCard key={it.id} item={it} signedIn={signedIn} />
+            ))}
+          </ul>
+        )}
       </div>
 
       <SuggestIdea signedIn={signedIn} />
@@ -103,46 +85,35 @@ export function RoadmapBoard({ initialItems, signedIn }: Props) {
   );
 }
 
-function VoteButton({
-  item,
-  signedIn,
-  pending,
-  onToggle,
-}: {
-  item: RoadmapItemDTO;
-  signedIn: boolean;
-  pending: boolean;
-  onToggle: () => void;
-}) {
-  const base =
-    "flex h-14 w-12 shrink-0 flex-col items-center justify-center rounded-xl border text-xs font-semibold transition";
-  const style = item.votedByMe
-    ? "border-acuity-primary bg-acuity-primary-soft text-acuity-primary"
-    : "border-acuity-card-border text-acuity-text-sec hover:border-acuity-primary hover:text-acuity-text";
-  if (!signedIn) {
-    return (
-      <Link
-        href="/auth/signin?callbackUrl=/roadmap"
-        className={`${base} ${style}`}
-        aria-label={`Sign in to vote for ${item.title}`}
-      >
-        <span aria-hidden>▲</span>
-        <span>{item.votes}</span>
-      </Link>
-    );
-  }
+function RoadmapCard({ item, signedIn }: { item: RoadmapItemDTO; signedIn: boolean }) {
+  const href = `/roadmap/${item.id}`;
+  const context = contextLine(item);
+  const cat = categoryLabel(item.category);
   return (
-    <button
-      type="button"
-      onClick={onToggle}
-      disabled={pending}
-      aria-pressed={item.votedByMe}
-      aria-label={`${item.votedByMe ? "Remove vote for" : "Vote for"} ${item.title}`}
-      className={`${base} ${style} disabled:opacity-60`}
-    >
-      <span aria-hidden>▲</span>
-      <span>{item.votes}</span>
-    </button>
+    <li className="flex flex-col overflow-hidden rounded-2xl border border-acuity-card-border bg-acuity-card-bg transition hover:border-acuity-primary/60">
+      <Link href={href} className="flex flex-1 flex-col focus:outline-none focus-visible:ring-2 focus-visible:ring-acuity-primary">
+        <CategoryBanner category={item.category} />
+        <div className="flex flex-1 flex-col p-4">
+          <div className="flex flex-wrap items-center gap-2">
+            <StatusPill status={item.status} />
+            {cat ? <span className="text-xs text-acuity-text-quiet">{cat}</span> : null}
+          </div>
+          <h3 className="mt-3 font-semibold leading-snug">{item.title}</h3>
+          <p className="mt-1 line-clamp-3 text-sm leading-relaxed text-acuity-text-sec">{item.summary}</p>
+          {context ? <p className="mt-3 text-xs font-medium text-acuity-text-sec">{context}</p> : null}
+        </div>
+      </Link>
+      <div className="flex items-center justify-between gap-3 border-t border-acuity-card-border px-4 py-3">
+        {roadmapVotingOpen(item.status) ? (
+          <VoteButton item={item} signedIn={signedIn} returnTo={`/roadmap?tab=${item.status}`} />
+        ) : (
+          <span className="text-xs font-medium text-acuity-good">In the app</span>
+        )}
+        <Link href={href} className="text-sm font-medium text-acuity-primary underline-offset-4 hover:underline">
+          {item.status === "shipped" ? "What changed →" : "Learn more →"}
+        </Link>
+      </div>
+    </li>
   );
 }
 
@@ -171,21 +142,21 @@ function SuggestIdea({ signedIn }: { signedIn: boolean }) {
   }
 
   return (
-    <section className="mt-16 rounded-3xl border border-acuity-card-border bg-acuity-card-bg p-6 sm:p-8">
+    <section id="suggest" className="mt-16 rounded-3xl border border-acuity-card-border bg-acuity-card-bg p-6 sm:p-8">
       <h2 className="text-xl font-semibold">Have an idea?</h2>
       <p className="mt-2 text-sm text-acuity-text-sec">
-        Tell us what would make Ripple more useful. Every suggestion is read by the people building it;
-        the good ones show up in Considering with your fellow users voting on them.
+        Tell us what would make Ripple more useful. The people building it read every suggestion,
+        and the good ones show up under Vote for everyone to weigh in on.
       </p>
       {!signedIn ? (
         <p className="mt-4 text-sm">
-          <Link href="/auth/signin?callbackUrl=/roadmap" className="text-acuity-primary underline-offset-4 hover:underline">
+          <Link href="/auth/signin?callbackUrl=/roadmap%23suggest" className="text-acuity-primary underline-offset-4 hover:underline">
             Sign in
           </Link>{" "}
           to suggest an idea.
         </p>
       ) : state === "sent" ? (
-        <p className="mt-4 text-sm font-medium text-acuity-good">Got it — thank you.</p>
+        <p className="mt-4 text-sm font-medium text-acuity-good">Got it, thank you.</p>
       ) : (
         <div className="mt-4">
           <textarea
@@ -198,7 +169,7 @@ function SuggestIdea({ signedIn }: { signedIn: boolean }) {
           />
           <div className="mt-3 flex items-center justify-between gap-3">
             <span className="text-xs text-acuity-text-sec">
-              {state === "error" ? "Couldn't send that — try again." : `${trimmed.length} / 4000`}
+              {state === "error" ? "Couldn't send that. Try again." : `${trimmed.length} / 4000`}
             </span>
             <button
               type="button"
