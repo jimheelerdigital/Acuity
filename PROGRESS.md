@@ -36,7 +36,8 @@ Both point at her tracking link, each with its own tag, so the admin shows which
 - Assets: H.264 transcodes of the creator's HEVC files (uncut) plus 1s thumbnails at `content-factory/ugc/therapyandthings/video-3.mp4`, `video-3-thumb.jpg`, `video-4.mp4`, `video-4-thumb.jpg`. Video 4's script came from a Whisper transcript.
 
 ### Manual steps needed
-- [ ] Keenan: approve going live. Then `action: "activate"` with each `adsetId` + `adId`.
+- [x] Keenan approved 2026-10-19. Both activated via `action: "activate"`: ad sets ACTIVE at $20/day; ads were IN_PROCESS (Meta review) at activation.
+- [x] Keenan turned off the video 1 cut ad set (120255173042450581, $15/day) himself on 2026-10-19 for underperforming. Live UGC now: video1 ($20), video3 ($20), video4 ($20).
 
 ### Notes
 - `CRON_SECRET` contains "=", so `awk -F=` truncates it and the route returns Unauthorized. Parse `.env` lines with a split on the first "=" only.
