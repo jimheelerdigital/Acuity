@@ -31,6 +31,8 @@ const APP_STORE_URL = "https://apps.apple.com/app/id6762633410";
 
 type Group = "women" | "men";
 
+const IOS_OS = "iOS_ver_15.0_and_above";
+
 export async function POST(req: NextRequest) {
   const bearer = req.headers.get("authorization");
   const cronSecret = process.env.CRON_SECRET;
@@ -41,7 +43,7 @@ export async function POST(req: NextRequest) {
   const meta = await import("@/lib/adlab/meta");
   const acct = meta.adAccountPath();
   const body = (await req.json().catch(() => ({}))) as {
-    action?: "apps" | "create" | "add" | "activate";
+    action?: "apps" | "create" | "add" | "fix-os" | "activate";
     /** "add": existing app ad set per group. */
     adsets?: Partial<Record<Group, string>>;
     appId?: string;
@@ -61,6 +63,22 @@ export async function POST(req: NextRequest) {
     } catch (e) {
       return NextResponse.json({ error: err(e) }, { status: 500 });
     }
+  }
+
+  // Correct an app ad set's OS targeting in place (2026-10-19).
+  if (body.action === "fix-os") {
+    const out: Record<string, unknown> = {};
+    for (const id of Object.values(body.adsets ?? {})) {
+      if (!id) continue;
+      try {
+        const cur = (await meta.metaGraph(id, "GET", { fields: "targeting" })) as { targeting: Record<string, unknown> };
+        await meta.metaGraph(id, "POST", { targeting: { ...cur.targeting, user_os: [IOS_OS] } });
+        out[id] = ((await meta.metaGraph(id, "GET", { fields: "targeting" })) as { targeting: { user_os?: string[] } }).targeting.user_os;
+      } catch (e) {
+        out[id] = { error: err(e) };
+      }
+    }
+    return NextResponse.json({ ok: true, user_os: out });
   }
 
   if (body.action === "activate") {
@@ -111,8 +129,9 @@ export async function POST(req: NextRequest) {
       });
       if (!project.evergreenAdsetId) throw new Error(`${group}: no evergreen ad set to copy targeting from`);
       const main = (await meta.metaGraph(project.evergreenAdsetId, "GET", { fields: "targeting" })) as { targeting: Record<string, unknown> };
-      // iOS only: Android is still on 1.5.0 (2026-10-19).
-      const targeting = { ...main.targeting, user_os: ["iOS"] };
+      // iOS only: Android is still on 1.5.0 (2026-10-19). A bare "iOS" is
+      // read by Meta as iOS 2.0-14.4; the app needs iOS 15.1+ (Expo SDK 54).
+      const targeting = { ...main.targeting, user_os: [IOS_OS] };
       delete (targeting as Record<string, unknown>).user_device;
       const set = await meta.metaGraph(`${acct}/adsets`, "POST", {
         name: `Ripple — iOS App Installs | ${group === "women" ? "Women" : "Men"}`,
