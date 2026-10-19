@@ -28,7 +28,7 @@ A fifth @therapyandthingss video ("you'll remember it later... spoiler, you neve
 - Assets: uncut H.264 transcode (44.5s) + thumbnail at `content-factory/ugc/therapyandthings/video-5.mp4` / `video-5-thumb.jpg`. The script came from a Whisper transcript.
 
 ### Manual steps needed
-- [ ] Keenan: approve going live, then `action: "activate"` with the ad set + ad ids above.
+- [x] Keenan approved 2026-10-19; activated (ad set ACTIVE at $20/day; ad IN_PROCESS for Meta review). Live UGC: video1, video3, video4, video5 at $20/day each ($80/day).
 
 ### Notes
 - In the video she uses Ripple in bed at night, which is fine for a creator. Our own ad text stays off time of day (positioning rule), so the copy focuses on not having to remember everything.
