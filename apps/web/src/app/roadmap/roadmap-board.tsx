@@ -156,11 +156,11 @@ function SuggestIdea({ signedIn }: { signedIn: boolean }) {
     if (!canSend) return;
     setState("sending");
     try {
-      // Same funnel as in-app feedback: Slack #acuity-feedback → Make → Monday.
+      // Same funnel as in-app feedback: stored in Feedback, alerted to Slack #acuity-feedback.
       const res = await fetch("/api/feedback/submit", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ content: `[roadmap idea] ${trimmed}`, type: "feature", osName: "web" }),
+        body: JSON.stringify({ content: `[roadmap idea] ${trimmed}`, type: "feature", osName: "web", source: "roadmap" }),
       });
       if (!res.ok) throw new Error(String(res.status));
       setState("sent");
