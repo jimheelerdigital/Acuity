@@ -25,9 +25,8 @@ Every bug report, idea and roadmap suggestion users send is now saved in our own
 - New `route.test.ts` (10 tests: every store × Slack outcome incl. network error and mark-delivered failure, exact stored columns, source handling, validation). Verified they fail against the old route. Web tests all pass; web tsc 151 = main baseline, none in touched files.
 
 ### Manual steps needed
-- [ ] Jimmy: merge `feat/feedback-table`.
-- [ ] Jimmy: from `main`, `npm run db:push` (guarded; additive only — creates `Feedback`).
-- [ ] Jimmy: **IMMEDIATELY after the push, same sitting** (the live code starts writing rows the moment the table exists, and new `public` tables are readable via the anon key until RLS is on): Supabase SQL editor, project rohjfcenylmfnqoyoirn: `ALTER TABLE public."Feedback" ENABLE ROW LEVEL SECURITY;` then re-run `scripts/verify-rls.ts`.
+- [x] Merged as PR #92 (squash `f76e068`) on 2026-10-18, by Claude at Jimmy's request.
+- [x] Table created in prod BEFORE the merge via Supabase migration `feedback_table_2026_10_18` (DDL mirrors the Prisma model; RLS enabled in the same transaction, so there was never an anon-readable window). Verified: RLS on, 0 policies, PK/FK/indexes named as Prisma names them. Main's destructive-diff check passed after merge. No `db:push` needed.
 - [ ] Then the Heeler Brain workspace for Ripple gets `metadata.raw_feedback_table = "Feedback"` (separate, prepared in heeler-brain).
 
 ### Notes
