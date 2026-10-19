@@ -7,6 +7,29 @@
 
 ---
 
+## [2026-10-19] — Daily "how to" guide lane switched off
+
+- **Requested by:** Keenan
+- **Committed by:** Claude Code
+- **Commit hash:** (see git log: "chore: Log retirement of the daily how-to guide lane")
+
+### In plain English (for Keenan)
+The daily "how to" paper guide (the one that wrote "how to stop replaying what you can't undo") is off. No more of those emails starting tomorrow. Ripple's two daily list posts keep running as before.
+
+### Technical changes (for Jimmy)
+- Data change only, no code: `ContentLane` row `reset-guide` ("How-To Guide (Women)", template `paper-guide`, `spec.style=howto`, 06 UTC) set to `status=RETIRED`, `retiredAt=2026-10-19T13:58Z`, with a dated note appended to `origin`.
+- `carousel-daily` already skips RETIRED lanes (`status: { not: "RETIRED" }`), so nothing else needed.
+- Ripple's only ACTIVE lane is now `ripple-list` (05 + 07 UTC).
+
+### Manual steps needed
+- None
+
+### Notes
+- To bring it back: set `reset-guide` to `status='ACTIVE'`, `retiredAt=null`. The how-to code (`how-to-guide.ts`, the howto branch in `carousel-daily.ts`) is left in place.
+- The men's version (`reset-guide-men`) was already retired on 2026-10-08.
+
+---
+
 ## [2026-10-19] — Admin tool to build Meta App Store-install campaigns
 
 - **Requested by:** Keenan
