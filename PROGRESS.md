@@ -7,6 +7,34 @@
 
 ---
 
+## [2026-10-19] — @therapyandthingss video 5 ("remember it all") set up at $20/day (paused until approved)
+
+- **Requested by:** Keenan
+- **Committed by:** Claude Code
+- **Commit hash:** (see git log: "docs: Log therapyandthingss UGC video 5")
+
+### In plain English (for Keenan)
+A fifth @therapyandthingss video ("you'll remember it later... spoiler, you never do") is set up as its own ad at $20/day, full length and not cut. Its signups show as video5. It stays paused until Keenan says go.
+
+### Technical changes (for Jimmy)
+- No code. Created via `/api/admin/adlab/ugc-ad` on prod, in the women's evergreen campaign 120254810968320581:
+  - Ad set 120255234693830581 ("… | therapyandthingss video 5 remember", $20/day, PAUSED)
+  - Ad 120255234701440581, creative 1111924974913004, Meta video 1676861890660376
+- Link `goripple.io/u/therapyandthings?utm_content=video5`.
+- Copy:
+  - Headline "Stop trying to remember it all"
+  - Description "Free for 7 days"
+  - CTA "learn more"
+- Assets: uncut H.264 transcode (44.5s) + thumbnail at `content-factory/ugc/therapyandthings/video-5.mp4` / `video-5-thumb.jpg`. The script came from a Whisper transcript.
+
+### Manual steps needed
+- [ ] Keenan: approve going live, then `action: "activate"` with the ad set + ad ids above.
+
+### Notes
+- In the video she uses Ripple in bed at night, which is fine for a creator. Our own ad text stays off time of day (positioning rule), so the copy focuses on not having to remember everything.
+
+---
+
 ## [2026-10-19] — Two more @therapyandthingss UGC ads set up at $20/day each (paused until approved)
 
 - **Requested by:** Keenan
