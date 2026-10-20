@@ -7,6 +7,27 @@
 
 ---
 
+## [2026-10-20] — Fix: adding ads no longer auto-retires our best ad
+
+- **Requested by:** Keenan
+- **Committed by:** Claude Code
+- **Commit hash:** (see git log: "fix: Only retire ads when an ad set is actually full")
+
+### In plain English (for Keenan)
+When "Bought the tracker" and "Fifth January" were added to the men's ad set, an automatic cleanup paused "Fourth planner. Still stuck." because its $49 per paid trial is above our $20 target. It was turned back on within minutes. Now that cleanup only runs when an ad set is full (8 ads), and only removes as many as it needs to.
+
+### Technical changes (for Jimmy)
+- apps/web/src/lib/adlab/evergreen.ts makeRoomInAdSet:
+  - Previously retired every "not_working" ad in the ad set on each activation, regardless of room.
+  - Now it retires only overflow = live + incoming − MAX_ACTIVE_ADS, weakest first (fewest trials, then most spend).
+- Data: Fourth planner (Meta ad 120255252665710581) set ACTIVE again; AdLabAd row back to live with a manual restore decision.
+
+### Manual steps needed
+- None
+
+### Notes
+- The same rule would have retired any ad above $20/paid trial whenever new ads joined. That mattered little with one ad per ad set, and a lot after consolidation.
+
 ## [2026-10-20] — Ad batches can take a one-off focus; men's "planners don't work" batch
 
 - **Requested by:** Keenan

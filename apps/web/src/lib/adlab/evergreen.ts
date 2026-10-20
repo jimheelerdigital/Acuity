@@ -389,7 +389,7 @@ async function pauseAd(ad: { id: string; metaAdId: string | null }, status: "pau
 
 export async function makeRoomInAdSet(
   adsetId: string,
-  _incoming: number
+  incoming: number
 ): Promise<{
   retired: Array<{ adId: string; reason: string }>;
   failed: string[];
@@ -405,7 +405,17 @@ export async function makeRoomInAdSet(
 
   const retired: Array<{ adId: string; reason: string }> = [];
   const failed: string[] = [];
-  for (const r of audit.filter((x) => x.verdict === "not_working")) {
+  // Only when the new ads would push the ad set past MAX_ACTIVE_ADS, and only
+  // as many as needed, weakest first (2026-10-20: adding 2 ads to a 1-ad set
+  // retired "Fourth planner", our best ad, for missing the $20 target).
+  const overflow = live.length + incoming - MAX_ACTIVE_ADS;
+  const toRetire = overflow > 0
+    ? audit
+        .filter((x) => x.verdict === "not_working")
+        .sort((x, y) => (x.trials - y.trials) || (y.spendCents - x.spendCents))
+        .slice(0, overflow)
+    : [];
+  for (const r of toRetire) {
     const reason = `AUDIT on new upload: not working — ${r.reason}.`;
     try {
       await pauseAd(r.ad, "killed", reason);
