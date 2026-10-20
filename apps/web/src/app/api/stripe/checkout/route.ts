@@ -77,6 +77,9 @@ export async function POST(req: NextRequest) {
   // starts paid immediately on checkout completion — avoids the
   // 14+7=21-day compound trial the old code created, and keeps the
   // trial clock in one place (IMPLEMENTATION_PLAN_PAYWALL §1.5).
+  // Meta match keys for the server-side Purchase (never throws; see lib/meta-match.ts).
+  const { checkoutMatchMetadata } = await import("@/lib/meta-match");
+  const matchMeta = checkoutMatchMetadata(req);
   let checkoutSession;
   try {
     checkoutSession = await stripe.checkout.sessions.create({
@@ -105,7 +108,7 @@ export async function POST(req: NextRequest) {
       // subscription (matching the funnel's create-checkout) so
       // subscription-scoped events carry it too.
       subscription_data: {
-        metadata: { userId: session.user.id, interval, source: "in_app_upgrade" },
+        metadata: { userId: session.user.id, interval, source: "in_app_upgrade", ...matchMeta },
       },
       metadata: { userId: session.user.id, interval, source: "in_app_upgrade" },
     });

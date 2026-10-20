@@ -542,6 +542,35 @@ describe("Task 1: payment telemetry", () => {
     expect(ev!.userId).toBe("u1");
   });
 
+  it("checkout.session.completed sends Meta the Purchase with the browser keys saved at checkout (2026-10-19)", async () => {
+    const { sendConversionEvent } = await import("@/lib/meta-capi");
+    vi.mocked(sendConversionEvent).mockClear();
+    users = [user({ id: "u1", subscriptionStatus: "TRIAL" })];
+    onboardingEvents = [funnelSeed()];
+
+    await send(
+      "checkout.session.completed",
+      checkoutSession({
+        metadata: { userId: "u1", interval: "monthly", meta_ip: "203.0.113.7", meta_ua: "UA", meta_fbp: "fbp1", meta_fbc: "fbc1", meta_country: "us" },
+        customer_details: { name: "Jane Doe", address: { country: "US", postal_code: "78701" } },
+      })
+    );
+
+    const call = vi.mocked(sendConversionEvent).mock.calls.find((c) => c[0].eventName === "Purchase");
+    expect(call).toBeTruthy();
+    expect(call![0].userData).toMatchObject({
+      externalId: "u1",
+      ip: "203.0.113.7",
+      userAgent: "UA",
+      fbp: "fbp1",
+      fbc: "fbc1",
+      country: "us",
+      zip: "78701",
+      firstName: "Jane",
+      lastName: "Doe",
+    });
+  });
+
   it("renewal invoice (subscription_cycle) writes funnel_payment_completed = <plan>:renewal", async () => {
     users = [user({ id: "u1", subscriptionStatus: "PRO" })];
     onboardingEvents = [funnelSeed()];

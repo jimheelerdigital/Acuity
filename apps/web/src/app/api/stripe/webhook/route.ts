@@ -579,6 +579,10 @@ export async function POST(req: NextRequest) {
           orderBy: { createdAt: "desc" },
           select: { fbclid: true },
         });
+        // Browser keys saved at checkout + card name/country/ZIP from Stripe
+        // (2026-10-19: Purchase match quality was 5.0/10 on email alone).
+        const { matchKeysFromSession } = await import("@/lib/meta-match");
+        const keys = matchKeysFromSession(session);
         await sendConversionEvent({
           eventName: "Purchase",
           eventId: capiEventId,
@@ -587,6 +591,8 @@ export async function POST(req: NextRequest) {
           userData: {
             email: user.email ?? undefined,
             fbclid: clickRow?.fbclid ?? undefined,
+            externalId: userId,
+            ...keys,
           },
           customData: {
             currency: "USD",

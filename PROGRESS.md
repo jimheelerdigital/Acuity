@@ -36,6 +36,57 @@ Build 184 crashed the moment you started a recording. The camera feature added f
 
 ---
 
+## [2026-10-19] — Signup emails say whether a UGC signup came from our Meta ad or the creator's own post
+
+- **Requested by:** Keenan
+- **Committed by:** Claude Code
+- **Commit hash:** (see git log: "feat: Show where each signup came from in the founder email")
+
+### In plain English (for Keenan)
+The "new user signed up" email now has a bold **Came from** line, for example "Meta ad · UGC @therapyandthings · video5 · ad set 1202…" or "Creator's own post (organic) · UGC @therapyandthings". Before, every visit through a creator's link said only "ugc", even when it came from our paid Meta ad, so the email couldn't tell paid from organic.
+
+### Technical changes (for Jimmy)
+- `apps/web/src/lib/founder-notifications.ts`: `notifyFoundersOfSignup` builds `cameFrom` from `User.signupUtm*` plus whether any OnboardingEvent for the user has an fbclid. A numeric `utm_term` (Meta's ad set id URL parameter) also counts as a Meta click. Wrapped in try; never blocks the email.
+- `apps/web/src/emails/founder-signup-notification.ts`: optional `cameFrom` var, rendered as the first row after Email.
+
+### Manual steps needed
+- [ ] None
+
+### Notes
+- Example: Jordan (10-19 7:54pm UTC) came from Meta ad set 120255234693830581, "therapyandthingss video 5 remember", created 10-19 16:06 UTC at $20/day outside this session.
+- Reporting that groups by `signupUtmSource` still lumps UGC paid and organic together; split with fbclid / numeric utm_term the same way.
+
+---
+
+## [2026-10-19] — Better Purchase matching for Meta (match quality 5.0 → target 7–8)
+
+- **Requested by:** Keenan
+- **Committed by:** Claude Code
+- **Commit hash:** (see git log: "feat: Send full match keys with the Meta Purchase event")
+
+### In plain English (for Keenan)
+When someone starts a paid trial, we now tell Meta enough to recognize who it was: their browser, network, Meta cookies, country/ZIP and a scrambled version of our user ID, not just their email. Meta should then credit more trials to the ads that caused them and optimize better. Events Manager rated our Purchase matching 5.0/10; the target is 7–8. Nothing changes in how people pay. Checkout, prices and Stripe's payment page are untouched, and if the extra capture ever fails, checkout continues normally.
+
+### Technical changes (for Jimmy)
+- New `apps/web/src/lib/meta-match.ts`:
+  - `checkoutMatchMetadata(req)` captures IP, user agent, `_fbp`, `_fbc` and Vercel IP country as Checkout Session metadata (`meta_ip`, `meta_ua`, `meta_fbp`, `meta_fbc`, `meta_country`; values ≤480 chars; wrapped in try → `{}`).
+  - `matchKeysFromSession(session)` reads them back and adds `customer_details` name, card country and postal code.
+- `apps/web/src/app/api/onboarding/create-checkout/route.ts` and `api/stripe/checkout/route.ts`: spread the metadata into the session `metadata` only (not `subscription_data`).
+- `apps/web/src/app/api/stripe/webhook/route.ts`: the CAPI Purchase sends `externalId: userId` plus the session keys.
+- `apps/web/src/lib/meta-capi.ts`: `UserData` gains `externalId` (sha256 → `external_id`), `country` (sha256, 2-letter), `zip` (sha256, US first 5).
+- `api/auth/signup` and `api/capi/complete-registration`: CompleteRegistration also sends `externalId`.
+- Tests:
+  - `src/lib/meta-match.test.ts` (5 tests): capture, Stripe limits, no-throw, payload hashing.
+  - New webhook test: Purchase carries the keys.
+  - Full web suite: 1,421 passing.
+
+### Manual steps needed
+- [ ] **Jimmy review required (payment code)**: checkout session metadata + webhook CAPI path (Jimmy)
+- [ ] In 3–7 days, check Events Manager → Purchase → Event match quality (Keenan)
+
+### Notes
+- Stripe metadata limits: 50 keys, key ≤40 chars, value ≤500 chars. We add at most 5 keys, all clipped.
+- Sessions created before this deploy have no `meta_*` keys; the webhook handles that and falls back to email + fbclid as before.
 ## [2026-10-19] — Roadmap redesign: status tabs + a detail page for every item
 
 - **Requested by:** Jimmy (TestFlight 183 feedback, 10/19; reference: roadmap.leanix.net)
