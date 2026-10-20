@@ -251,7 +251,7 @@
         {
           "photosPermission": "Ripple uses your photo library so you can add a picture of a handwritten journal page and turn it into an entry.",
           "cameraPermission": "Ripple uses your camera so you can snap a handwritten journal page and turn it into an entry.",
-          "microphonePermission": false
+          "microphonePermission": "Ripple uses your microphone to record voice entries, which are transcribed and analyzed to surface themes, tasks, and insights from what you said."
         }
       ],
       "expo-secure-store",
