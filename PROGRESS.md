@@ -7,6 +7,30 @@
 
 ---
 
+## [2026-10-20] — Day-2 come-back nudge switched on; weekly audit gets a cost-cutting scan
+
+- **Requested by:** Keenan
+- **Committed by:** Claude Code
+- **Commit hash:** (see git log: "docs: Add a cost-cutting scan to the weekly audit")
+
+### In plain English (for Keenan)
+- **Day-2 nudge:** the day-2 "Anything still taking up space?" nudge Jimmy built on 10-18 is now on. Every new user gets one reminder on their second day: a push if they have notifications on, otherwise one email. It goes out at their chosen reminder time, defaulting to 5:30pm their time, and skips anyone who already came back.
+- **Weekly audit:** it now has a dedicated Cost-Cutting Scan section. Each week it goes through every bill and recurring job and says keep, cut, downgrade or optimize, with the dollars saved and the top 3 cuts to make.
+
+### Technical changes (for Jimmy)
+- Vercel production env `ENABLE_V10_DAY2_PUSH=1`, added by Keenan 10-20. This push redeploys production to pick it up, and Inngest was resynced after.
+- `audits/WEEKLY_AUDIT_PROMPT.md`: new section 8 "Cost-Cutting Scan"; old sections 8–15 renumbered 9–16. `send-email.ts` / `run-audit.sh` only parse sections 1–2, so nothing downstream breaks.
+
+### Manual steps needed
+- [ ] None. Check `day2_nudge_sent` OnboardingEvents over the next 24h (Claude)
+
+### Notes
+- Expected volume: about 6–7 sends a day (~7 signups/day; only 11 of the last 96 have a push token, so ~90% get the email).
+- Baseline: 8 of the last 96 signups recorded again on day 2–3.
+- Keenan chose to go live on a Tuesday, an exception to the Monday-only email rule.
+
+---
+
 ## [2026-10-20] — Build 185: fix record crash (missing mic permission) + widget redesign
 
 - **Requested by:** Jimmy (TestFlight 184: "Record what's on your mind" crashes; widget "looks awful")

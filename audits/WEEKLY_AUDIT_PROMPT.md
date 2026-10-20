@@ -39,30 +39,44 @@ Walk the codebase. Rate the core loop (record → transcribe → extract → ins
 ## 7. Stack, Tools & Cost Audit
 Every tool and service we use: is it still the best choice at our stage? Current pricing (search it). Cost per active user by service. Specific savings, with $/month estimates: model swaps, caching, batching, cheaper transcription, prompt trimming. Are we using each tool's strongest features, or just the basics? (e.g. RevenueCat Experiments for paywall/price tests, targeting, and offerings.)
 
-## 8. Cutting-Edge Scan
+## 8. Cost-Cutting Scan
+Go line by line through every recurring cost and find money to cut without hurting the product or growth (added 2026-10-20, per Keenan). Sources: costs.* and costs.infrastructure_cost_table_rows in the data file, ClaudeCallLog grouped by purpose and model, cron schedules in code (vercel.json and every Inngest function's cron trigger), package.json, and env var NAMES of paid services.
+- For every service or line item: $/month, what it serves (Ripple product, Ripple marketing, Mythicals, BWK, other), what it produced in the last 30 days (signups, revenue, users served; cite it), and a verdict: Keep / Cut / Downgrade / Optimize.
+- Look specifically for:
+  - spend on a brand or experiment with no tracked Ripple signups or revenue
+  - plan tier vs actual usage (overages, or paying for a tier we don't use)
+  - crons and jobs running more often than they need to (every 5 minutes that could be hourly or daily), retry storms, duplicate runs
+  - AI calls: the most expensive purposes, whether a cheaper model holds quality, prompt size, caching, Batch API for work that isn't urgent, calls whose output is thrown away
+  - image and video generation: credits per published post, redos and rejects, cost per post vs its results
+  - subscriptions, seats and tools with no use in 30 days
+  - ads or ad sets still spending past the verdict rules
+- Output: a table (service | $/mo | used for | result | verdict | est. saving/mo | effort), then the total possible saving per month, then the top 3 cuts ranked by saving ÷ effort, each with exact steps to make it.
+- Never recommend cutting a revenue or acquisition source without data showing it doesn't work; if the data isn't there, say what would settle it. Don't re-pitch a cut Keenan already declined unless the numbers changed; then say it once, with the new number.
+
+## 9. Cutting-Edge Scan
 New models, APIs, and techniques from the last 30 days that apply directly to Ripple (voice AI, transcription, memory/long-context, on-device AI, agent features). For each: what it is, what it would do for Ripple specifically, effort to ship. Skip anything that doesn't apply.
 
-## 9. Marketing Audit
+## 10. Marketing Audit
 - Current angles vs. untested angles. Give 5 new hooks written out, ready to film, for TikTok (@levelupwithkey personal account + Ripple product account).
 - Competitors (AI journaling, voice notes, reflection, self-improvement apps; search for current players, including new entrants). What's working for them right now (ads, content formats, pricing, paywalls, positioning, App Store keywords)? What can we steal this week?
 - Niche audiences we're not targeting. For each: who, why Ripple fits, where to reach them, one test to run for under $100.
 - ASO: App Store title, subtitle, keywords, screenshots — specific fixes.
 
-## 10. Strategic Direction
+## 11. Strategic Direction
 Current thesis: evolve Ripple into an "AI Life Optimizer." Open question: retarget to young ambitious adults? Pressure-test both against this week's data. What direction creates the most value for users and the most defensible business? Also name the biggest thing Keenan is probably wrong about.
 
-## 11. Risks
+## 12. Risks
 Trademark/SEO risk of the name "Ripple" (existing high-profile company), privacy and compliance risk on sensitive journal data, App Store policy, platform dependency, security. Only what changed or got worse.
 
-## 12. Kill List
+## 13. Kill List
 What to stop doing, cut, or cancel. Features, tools, content formats, subscriptions.
 
-## 13. Backlog
+## 14. Backlog
 Everything else worth noting. One line each, with Impact/Effort.
 
-## 14. Ready-to-Paste Claude Code Prompts
+## 15. Ready-to-Paste Claude Code Prompts
 For each of the top 3 actions that involve code, write a complete Claude Code prompt in a code block that ends with this exact block:
 "Before starting, read progress.md to understand current state. When complete: (1) commit all changes with a descriptive commit message, (2) DO NOT push to main — wait for me to say 'push it', (3) update progress.md with a new entry that includes date, what changed, who requested it (Keenan = business cofounder, Jimmy = technical cofounder), and any manual steps still needed."
 
-## 15. Blind Spots
+## 16. Blind Spots
 Data you couldn't get this week and how to fix it.
