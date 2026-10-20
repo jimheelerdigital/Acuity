@@ -7,6 +7,25 @@
 
 ---
 
+## [2026-10-20] — Fix: the new split-video lane was posting the old "questions" carousel instead
+
+- **Requested by:** Keenan
+- **Committed by:** Claude Code
+- **Commit hash:** (see git log: "fix: Register the ripple-split lane so it stops falling back")
+
+### In plain English (for Keenan)
+The first test of the new "same words, two perspectives" video didn't make a video. The system didn't recognize the new lane, so it made and auto-posted an old-style "Things you stopped mentioning out loud" carousel to Ripple's Instagram at 15:48 UTC today. Fixed, so the Wednesday run makes the real split video.
+
+### Technical changes (for Jimmy)
+- apps/web/src/inngest/functions/carousel-daily.ts: added "ripple-split" to CAROUSEL_LANES. Unlisted buckets that aren't moody spec lanes fall back to "questions", so the split branch (bucket === "ripple-split") was unreachable.
+
+### Manual steps needed
+- [ ] Decide whether to delete the stray IG reel https://www.instagram.com/reel/DeuNnwwjLzR/ (post cmvguywk00000hdpwz0ymu9m7, lane questions) (Keenan)
+
+### Notes
+- Any new code-template lane must be added to CAROUSEL_LANES. The "questions" fallback ignores the lane's RETIRED status and auto-posts.
+- The fallback should probably refuse unknown buckets instead of posting; that wasn't changed here.
+
 ## [2026-10-20] — New Ripple lane: "same words, two perspectives" split videos, 3x a week; avatar list retired
 
 - **Requested by:** Keenan

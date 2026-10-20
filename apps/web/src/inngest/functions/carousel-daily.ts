@@ -144,6 +144,9 @@ const CAROUSEL_LANES = [
   "selfie",
   // Ripple "top N" list lane (2026-10-13): scenic, animated, no faces.
   "ripple-list",
+  // "Same words, two perspectives" split videos (2026-10-20). Must be listed
+  // here: an unlisted bucket falls back to "questions" and auto-posts it.
+  "ripple-split",
   "phone-quote",
   "phone-quote-men",
   // Five lanes added 2026-09-14 night (per Keenan: "do 1, 2, 3 for
