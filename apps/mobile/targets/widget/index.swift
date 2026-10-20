@@ -638,41 +638,25 @@ struct TodayProvider: TimelineProvider {
     }
 }
 
-private func bucketLabel(_ row: TodayRow) -> String {
-    switch row.bucket {
-    case .overdue: return "Overdue"
-    case .today: return "Today"
-    case .priority: return "Priority"
-    case .open: return "Open"
-    }
-}
-
-private func bucketColor(_ row: TodayRow) -> Color {
-    switch row.bucket {
-    case .overdue: return .red
-    case .today: return .orange
-    case .priority: return accent
-    case .open: return .secondary
-    }
-}
-
 struct TodayRowView: View {
     let row: TodayRow
     /// Title lines. Medium keeps one; Large has room for two.
     var titleLines: Int = 1
     var body: some View {
-        // Each row is a filled card that STRETCHES to share the widget's
-        // height (Jimmy, 10/19 on build 183: rows were "too small" and hard
-        // to hit; with only 3 shown they should take up the widget). The
-        // check button gets the full row height and a 48pt-wide column.
-        HStack(spacing: 6) {
+        // Clean list row (Jimmy, 10/19 on build 184: the grey pill rows
+        // "look awful"). No card fill; a ringed check on the left, a bold
+        // title, and a status tag only when it says something (Overdue /
+        // Today / Priority). The row's height is set by TodayListView so a
+        // fixed number of rows always fills the widget evenly.
+        HStack(spacing: 4) {
             // Interactive check-off (iOS 17 widget button). Runs in-process in
             // the extension; the title next to it still deep-links to the task.
+            // The whole left column (44pt × full row height) is the target.
             Button(intent: CompleteTaskIntent(taskId: row.item.id)) {
                 Image(systemName: row.done ? "checkmark.circle.fill" : "circle")
-                    .foregroundColor(row.done ? accent : .secondary)
-                    .font(.system(size: 24, weight: .regular))
-                    .frame(width: 48)
+                    .font(.system(size: 22, weight: .medium))
+                    .foregroundColor(row.done ? accent : accent.opacity(0.85))
+                    .frame(width: 44)
                     .frame(maxHeight: .infinity)
                     .contentShape(Rectangle())
             }
@@ -683,8 +667,9 @@ struct TodayRowView: View {
                     // Strikethrough drawn explicitly: WidgetKit dropped
                     // Text.strikethrough on device (row only greyed — Jimmy,
                     // 10/17 on build 181). An overlaid rule can't be skipped.
-                    Text(row.item.title).font(.system(size: 16, weight: .medium)).lineLimit(titleLines)
-                        .strikethrough(row.done, color: .secondary)
+                    Text(row.item.title)
+                        .font(.system(size: 16, weight: .semibold))
+                        .lineLimit(titleLines)
                         .foregroundColor(row.done ? .secondary : .primary)
                         .overlay {
                             if row.done {
@@ -695,20 +680,31 @@ struct TodayRowView: View {
                             }
                         }
                     Spacer(minLength: 4)
-                    Text(row.done ? "Done" : bucketLabel(row))
-                        .font(.system(size: 12, weight: .semibold))
-                        .foregroundColor(row.done ? .secondary : bucketColor(row))
+                    if let tag = statusTag(row) {
+                        Text(tag.label)
+                            .font(.system(size: 11, weight: .bold))
+                            .foregroundColor(tag.color)
+                            .padding(.horizontal, 7)
+                            .padding(.vertical, 3)
+                            .background(Capsule().fill(tag.color.opacity(0.14)))
+                    }
                 }
-                .padding(.trailing, 12)
                 .frame(maxHeight: .infinity)
                 .contentShape(Rectangle())
             }
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(
-            RoundedRectangle(cornerRadius: 12, style: .continuous)
-                .fill(Color.secondary.opacity(0.10))
-        )
+        .frame(maxWidth: .infinity)
+    }
+}
+
+/// Only tags that carry information: plain open tasks get none.
+private func statusTag(_ row: TodayRow) -> (label: String, color: Color)? {
+    if row.done { return ("Done", .secondary) }
+    switch row.bucket {
+    case .overdue: return ("Overdue", .red)
+    case .today: return ("Today", .orange)
+    case .priority: return ("Priority", accent)
+    case .open: return nil
     }
 }
 
@@ -719,35 +715,57 @@ struct TodayListView: View {
     var body: some View {
         let shown = Array(entry.rows.prefix(limit))
         let more = entry.rows.count - shown.count
-        VStack(alignment: .leading, spacing: 6) {
-            HStack {
-                Text("TODAY").font(.system(size: 11, weight: .bold)).foregroundColor(accent)
+        let openCount = entry.rows.filter { !$0.done }.count
+        VStack(alignment: .leading, spacing: 4) {
+            HStack(alignment: .firstTextBaseline) {
+                Text("TODAY").font(.system(size: 12, weight: .heavy)).foregroundColor(accent)
                 Spacer()
-                if more > 0 {
-                    Text("+\(more) more").font(.system(size: 11, weight: .medium)).foregroundColor(.secondary)
+                if entry.hasData && !entry.rows.isEmpty {
+                    Text(more > 0 ? "+\(more) more" : "\(openCount) open")
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundColor(.secondary)
                 }
             }
+            .padding(.leading, 4)
             if !entry.hasData {
-                Text("Open Ripple to load your tasks").font(.system(size: 14, weight: .medium)).foregroundColor(.secondary)
+                Spacer(minLength: 0)
+                Text("Open Ripple to load your tasks").font(.system(size: 15, weight: .semibold)).foregroundColor(.secondary)
+                Spacer(minLength: 0)
             } else if shown.isEmpty {
-                Text("No open tasks. Nice.")
-                    .font(.system(size: 14, weight: .medium)).foregroundColor(.secondary)
+                Spacer(minLength: 0)
+                HStack(spacing: 8) {
+                    Image(systemName: "checkmark.circle.fill").foregroundColor(accent)
+                    Text("All clear for today").font(.system(size: 15, weight: .semibold))
+                }
+                Spacer(minLength: 0)
             } else {
-                // Rows share the remaining height, so 3 rows fill a Medium
-                // widget. layoutPriority(1) gives them first claim over the
-                // Spacer below (otherwise the Spacer takes an equal share);
-                // the 64pt cap stops 1-2 tasks ballooning into giant bars,
-                // and then the Spacer takes what's left.
-                ForEach(Array(shown.enumerated()), id: \.offset) { _, row in
-                    TodayRowView(row: row, titleLines: titleLines)
-                        .frame(maxHeight: 64)
-                        .layoutPriority(1)
+                // Fixed row height = the space below the header split into
+                // `limit` slots, so 3 tasks fill a Medium widget evenly and
+                // 1–2 tasks keep the same comfortable size (the rest stays
+                // empty below). Measured with GeometryReader: on device the
+                // flexible-frame + layoutPriority version left rows short
+                // with a band of empty space underneath (Jimmy, 10/19).
+                GeometryReader { geo in
+                    let rowH = geo.size.height / CGFloat(max(limit, 1))
+                    VStack(spacing: 0) {
+                        ForEach(Array(shown.enumerated()), id: \.offset) { i, row in
+                            TodayRowView(row: row, titleLines: titleLines)
+                                .frame(height: rowH)
+                                .overlay(alignment: .top) {
+                                    if i > 0 {
+                                        Rectangle()
+                                            .fill(Color.secondary.opacity(0.18))
+                                            .frame(height: 0.5)
+                                            .padding(.leading, 48)
+                                    }
+                                }
+                        }
+                        Spacer(minLength: 0)
+                    }
                 }
             }
-            Spacer(minLength: 0)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-        .padding(12)
     }
 }
 
