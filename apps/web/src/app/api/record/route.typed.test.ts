@@ -82,6 +82,8 @@ describe("POST /api/record — typed entry", () => {
 
     expect(inngestSend).toHaveBeenCalledTimes(1);
     expect(inngestSend.mock.calls[0][0]).toEqual({
+      // Deterministic id: a resend (retry / queued-entry sweeper) is deduped.
+      id: "entry-process:entry_typed_1",
       name: "entry/process.requested",
       data: { entryId: "entry_typed_1", userId: "user_1", transcriptProvided: true },
     });

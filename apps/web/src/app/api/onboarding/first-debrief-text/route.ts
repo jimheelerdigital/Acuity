@@ -26,7 +26,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { getAnySessionUserId } from "@/lib/mobile-auth";
 import { requireEntitlement } from "@/lib/paywall";
-import { inngest } from "@/inngest/client";
+import { dispatchEntryProcessing } from "@/lib/entry-dispatch";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -63,10 +63,8 @@ export async function POST(req: NextRequest) {
   // Whisper, but skipTranscribe also means "edit reprocess" and suppresses
   // first-run work (calendar auto-link, people counting). This is a brand
   // new entry — same flag the app's typed entries use (POST /api/record).
-  await inngest.send({
-    name: "entry/process.requested",
-    data: { entryId: entry.id, userId, transcriptProvided: true },
-  });
+  // Never throws; the queued-entry sweeper covers a failed hand-off.
+  await dispatchEntryProcessing({ entryId: entry.id, userId, transcriptProvided: true });
 
   return NextResponse.json({ entryId: entry.id, status: "QUEUED" }, { status: 202 });
 }

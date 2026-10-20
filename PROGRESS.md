@@ -26,6 +26,34 @@ The first test of the new "same words, two perspectives" video didn't make a vid
 - Any new code-template lane must be added to CAROUSEL_LANES. The "questions" fallback ignores the lane's RETIRED status and auto-posts.
 - The fallback should probably refuse unknown buckets instead of posting; that wasn't changed here.
 
+## [2026-10-20] — Recordings no longer get stranded when the Inngest hand-off fails
+
+- **Requested by:** Jimmy (build 185: stuck on "Uploading your recording…", 0s elapsed)
+- **Committed by:** Claude Code
+- **Branch:** fix/record-dispatch-resilience
+
+### What happened (verified in Vercel logs + DB)
+- At 15:30 UTC, `POST /api/record` created the Entry, then `inngest.send` hung for about 30s.
+- It then failed with `fetch failed / other side closed`. The remote was inn.gs, Inngest's event API.
+- The route returned 500. The app retried the POST with the same storagePath, which created three Entries for one recording.
+- All three sat in QUEUED with no run.
+- Inngest's status page showed operational. From Jimmy's Mac, inn.gs answered in 0.15s.
+
+### Fix
+- New `lib/entry-dispatch.ts`, `dispatchEntryProcessing()`:
+  - Retries up to 3 attempts, 6s each, with backoff.
+  - Uses the deterministic event id `entry-process:<entryId>`, so Inngest dedupes any resend.
+  - Never throws. It returns false, and the route still answers 202.
+- Used by `/api/record` (voice and typed) and `/api/onboarding/first-debrief-text`.
+- New Inngest cron `entry-queued-sweeper` (every 2 min):
+  - Re-dispatches entries that are QUEUED with no `inngestRunId`, created more than 90s ago (within 24h).
+  - Only entries created after `SWEEP_EPOCH` (2026-10-20 16:00 UTC), because older sends have no dedupe id.
+- `/api/record` is idempotent on storagePath: a retry returns the existing Entry instead of creating another. audioPath is now set when the Entry is created.
+- App `record.tsx`: the uploading stage shows real elapsed seconds (it was hard-coded to 0).
+- Tests: `entry-dispatch.test.ts`, and the updated `route.typed.test.ts` (event id). Full suite green.
+
+### Manual steps
+- After the merge, Jimmy's 3 stuck entries (cmvguakjl…, cmvgub83h…, cmvgubygi…) are older than `SWEEP_EPOCH`, so the sweeper won't touch them. Plan: process the newest one and cancel the other two (pending Jimmy's OK).
 ## [2026-10-20] — New Ripple lane: "same words, two perspectives" split videos, 3x a week; avatar list retired
 
 - **Requested by:** Keenan
