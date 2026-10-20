@@ -41,14 +41,19 @@ export const GROUP_DAILY_BUDGET_CENTS: Record<BatchGroupKey, number> = {
   // 2026-10-07 (later), per Keenan: "cut women funnel down to $30, men funnel
   // down to $50, test funnels to $25 men $20 women... going to re-allocate
   // $20 a day to app store ads". Meta = $115/day with tests at $20/$15.
-  women: 3000,
-  men: 5000,
+  // 2026-10-20, per Keenan: one ad set per audience, optimizing for completed
+  // registrations: "$75 for UGC videos" (women) and men "up spend to $40/day".
+  women: 7500,
+  men: 4000,
 };
 
 /** 2026-09-30, per Keenan: "start to optimize for purchase". Was
  *  COMPLETE_REGISTRATION — Meta found signups (25 in 14 days) but only 5 of
  *  them paid. Purchase = the Stripe trial-start event (CAPI, with fbclid). */
-export const GROUP_OPTIMIZATION_EVENT = "PURCHASE";
+// 2026-10-20, per Keenan: back to completed registrations ("we had our best
+// results when we were targeting completed registrations"). ~44 purchases a
+// month was too thin for Meta to learn from. Judge ads on cost per paid trial.
+export const GROUP_OPTIMIZATION_EVENT = "COMPLETE_REGISTRATION";
 
 /**
  * Live ads allowed in one ad set. More than this splits $40–60/day too thin

@@ -7,6 +7,41 @@
 
 ---
 
+## [2026-10-20] — Meta ads: one ad set per audience, optimizing for completed registrations
+
+- **Requested by:** Keenan
+- **Committed by:** Claude Code
+- **Commit hash:** (see git log: "feat: Consolidate Meta ads into one registrations ad set per audience")
+
+### In plain English (for Keenan)
+Instead of many tiny $15/day ad sets that each optimize for purchases, we now run two:
+- **Women: all UGC creator videos** in one ad set at $75/day.
+- **Men** in one ad set at $40/day.
+
+Both tell Meta to find people who complete signup, which is when we had our best results. New ads, including new UGC videos, now join these two ad sets instead of getting their own.
+
+### Technical changes (for Jimmy)
+- New route apps/web/src/app/api/admin/adlab/consolidate/route.ts:
+  - action "list": live ad sets/ads with 7-day spend, registrations and purchases.
+  - action "run": creates one COMPLETE_REGISTRATION ad set in the lane's evergreen campaign and re-creates the given ads on the same Meta creatives. It activates the new set, then pauses the source ads and any emptied source ad sets.
+  - Also moves AdLabAd rows, and optionally makes the new set the lane's main ad set (setMain).
+- apps/web/src/lib/adlab/evergreen.ts:
+  - GROUP_OPTIMIZATION_EVENT PURCHASE → COMPLETE_REGISTRATION.
+  - GROUP_DAILY_BUDGET_CENTS women 7500 / men 4000. ensureEvergreenAdSet re-applies these on every launch.
+- apps/web/src/app/api/admin/adlab/ads/launch/route.ts:
+  - Weekly-batch ads go straight into the main ad set (no test ad set).
+  - ADLAB_SOLO_ADSET_CENTS default 1500 → 0 (no solo ad sets unless the env is set).
+- apps/web/src/app/api/admin/adlab/ugc-ad/route.ts: UGC ads join the women's main ad set (paused until activated). ownAdset: true keeps the old path.
+
+### Manual steps needed
+- None (the consolidation is run through the new route after deploy)
+
+### Notes
+- Keenan explicitly overrode the Monday-only rule for this change.
+- Meta won't change a published ad set's conversion event, so the ads are re-created in a new ad set. Same creatives, so tracking links and utm_content are unchanged.
+- Judge ads on cost per paid trial in our DB, not Meta's registration count.
+- The AdLab kill engine still applies the per-ad verdict rules to AdLab ads in these sets. UGC ads aren't AdLab rows, so it doesn't touch them.
+
 ## [2026-10-20] — Animated posts always publish; two held Ripple posts released
 
 - **Requested by:** Keenan
