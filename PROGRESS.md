@@ -7,6 +7,50 @@
 
 ---
 
+## [2026-10-20] — New Ripple lane: "same words, two perspectives" split videos, 3x a week; avatar list retired
+
+- **Requested by:** Keenan
+- **Committed by:** Claude Code
+- **Commit hash:** (see git log: "feat: Add the Ripple split-video lane")
+
+### In plain English (for Keenan)
+Ripple now runs two lanes:
+- **The all-scenery list post**, daily (07 UTC). The avatar-cover list version is gone.
+- **A new "same words, two perspectives" video**, 3 times a week (Mon/Wed/Fri at 05 UTC, which is Sun/Tue/Thu night Central). Each video is 3–5 lines. Every line shows twice: the heavy version on top and the freeing version below, as illustrated Kling 2.5 clips. It ends on two original lines fading in over black, runs about 15–20 seconds, auto-posts to Instagram and Facebook with music, and comes to you by email for TikTok.
+
+The first 8 videos are the scripts Keenan picked (The load, I got nothing done, Empty nest, It's all in my head, Saying no, It's too late, Rest, Everyone needs me). After that, Opus writes new ones in the same style, minus age and body themes, checked by the plain-sense editor and ranked by Jev. About $1.50 per video.
+
+### Technical changes (for Jimmy)
+- New `apps/web/src/lib/content-factory/split-post.ts`:
+  - `SPLIT_SEEDS` (8 approved scripts) and `nextSplitScript(usedThemes)` (next unused seed, else 3 Opus drafts → `splitSenseProblem` → `rankCandidates`).
+  - Also `splitImagePrompt`, `splitMotionPrompt`, `generateSplitImage` (gpt-image-2 1536x1024 medium), `SPLIT_DAYS_UTC` [1,3,5] and `splitSlug`.
+- New `apps/web/src/lib/content-factory/split-video.ts`, using sharp text with Patrick Hand SC / Tinos and ffmpeg-static:
+  - `lineLayer`: luminance-based ink. Top-half text sits at 31% of the half, clear of the app header.
+  - `pairSegment`: 1080x1920, halves cover-cropped, 3.5s trim, no retime; falls back to a still when a clip failed.
+  - `endingSegment`: last frame fades to black, lines fade in.
+  - `finishSplitVideo`: concat, then music.
+  - `pairStill`: slide and email still.
+- New font `apps/web/public/fonts/PatrickHandSC-Regular.ttf` (OFL).
+- `apps/web/src/inngest/functions/carousel-daily.ts`, new `bucket === "ripple-split"` branch:
+  - Day gate (skipped unless force/sample).
+  - Steps: script → one image step per half → Kling 2.5 submit → 30s poll ×30 → post created APPROVED with a pending video marker → one segment step per pair → finish.
+  - Finish step: ending; `reels/<id>.mp4` with music/ and `-ig.mp4` with music-ig/; marker done; status DRAFT (APPROVED if sample or held); recipe.
+- `apps/web/src/lib/content-factory/performance-loop.ts`: `LOOP_LANES["ripple-split"] = "ripple"`.
+- `apps/web/src/lib/content-factory/daily-digest.ts`: ContentLane `spec.daysUtc` makes a lane owe a post only on those UTC weekdays, so the 3x-weekly lane doesn't hold the daily emails on its off days.
+- DB (after deploy, by script):
+  - ContentLane `ripple-split` ACTIVE, hours [5], spec `{ daysUtc: [1,3,5], tiktokEmail: true }`.
+  - ContentLane `ripple-list` hours [7] only (avatar slot gone).
+
+### Manual steps needed
+- [ ] Keenan reviews the sample split video before the first scheduled run (Wed 10-21 05 UTC)
+
+### Notes
+- Tested locally on the 10-16 clips: 3 pairs + ending render in ~10s.
+- Locally the font falls back, because macOS Pango ignores fontfile; production uses the bundled TTF, same as the paper guides.
+- Samples don't use up a seed script (only non-APPROVED posts count as used).
+
+---
+
 ## [2026-10-20] — The weekly Social Brief now steers the daily post writers
 
 - **Requested by:** Keenan

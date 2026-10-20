@@ -1586,6 +1586,188 @@ export const carouselDailyCronFn = inngest.createFunction(
     // and everyday slides; the 07 UTC post keeps the all-scenic format.
     // Saved as lane "ripple-list" so both share rotation, history and the
     // learning loop. `story: true` still reaches the old story branch.
+    // ── Ripple split lane (2026-10-20, per Keenan) ─────────────────
+    // "Same words, two perspectives": 3-5 pairs, each line shown over a heavy
+    // (top) and a freeing (bottom) illustrated Kling 2.5 clip, ending on 2
+    // perspective lines over black. 3x weekly (Mon/Wed/Fri 05 UTC). First
+    // runs = Keenan's 8 approved scripts, then Opus writes new ones.
+    // lib/content-factory/split-post.ts + split-video.ts.
+    if (bucket === "ripple-split") {
+      const ev = (event.data ?? {}) as { force?: boolean };
+      const { SPLIT_DAYS_UTC } = await import("@/lib/content-factory/split-post");
+      const dow = new Date(typeof event.ts === "number" ? event.ts : Date.now()).getUTCDay();
+      if (!ev.force && !sample && !dryRun && !SPLIT_DAYS_UTC.includes(dow)) {
+        logger.info(`[carousel-cron] ripple-split: not a split day (UTC day ${dow})`);
+        return { generated: 0, bucket, skipped: "not a split day" };
+      }
+      const script = await step.run("split-script", async () => {
+        const { prisma } = await import("@/lib/prisma");
+        const { nextSplitScript } = await import("@/lib/content-factory/split-post");
+        // Samples (APPROVED) don't use up a script.
+        const used = await prisma.carouselPost.findMany({ where: { lane: "ripple-split", status: { not: "APPROVED" } }, select: { headline: true } });
+        return nextSplitScript(used.map((p) => p.headline));
+      });
+      logger.info(`[carousel-cron] Split: "${script.theme}" (${script.pairs.length} pairs, ${script.origin}) ${script.candidateLog ?? ""}${script.held ? ` HELD: ${script.held}` : ""}`);
+      if (dryRun) return saveDryRun(bucket, script);
+      const { splitSlug } = await import("@/lib/content-factory/split-post");
+      const slug = splitSlug(script.theme);
+
+      await step.run("ensure-bucket", async () => {
+        const { ensureBucket } = await import("@/lib/content-factory/carousel-generate");
+        await ensureBucket();
+      });
+
+      // Illustrations: one step per half.
+      const halves: { heavy: string; free: string }[] = [];
+      for (let i = 0; i < script.pairs.length; i++) {
+        const pair = script.pairs[i];
+        const urls = { heavy: "", free: "" };
+        for (const mood of ["heavy", "free"] as const) {
+          urls[mood] = await step.run(`split-img-${i}-${mood}`, async () => {
+            const { generateSplitImage, splitImagePrompt } = await import("@/lib/content-factory/split-post");
+            const { uploadImage } = await import("@/lib/content-factory/carousel-generate");
+            const buf = await generateSplitImage(splitImagePrompt(pair[mood], mood));
+            return uploadImage(buf, `carousels/${dateStr}/${slug}/pair-${i}-${mood}.png`, "image/png");
+          });
+        }
+        halves.push(urls);
+      }
+
+      // Kling 2.5 Turbo clips (same model as the other Ripple posts).
+      const jobs = await step.run("split-submit", async () => {
+        const { submitCoverVideo } = await import("@/lib/content-factory/animate-cover");
+        const { POST_VIDEO_MODEL } = await import("@/lib/content-factory/post-video");
+        const { splitMotionPrompt } = await import("@/lib/content-factory/split-post");
+        const out: { key: string; id: string | null; model: string }[] = [];
+        for (let i = 0; i < script.pairs.length; i++) {
+          for (const mood of ["heavy", "free"] as const) {
+            let id: string | null = null;
+            try {
+              id = await submitCoverVideo({ startImageUrl: halves[i][mood], prompt: splitMotionPrompt(script.pairs[i][mood]), duration: 5, model: POST_VIDEO_MODEL });
+            } catch (err) {
+              console.warn(`[split] submit ${i}-${mood} failed: ${err instanceof Error ? err.message : err}`);
+            }
+            out.push({ key: `${i}-${mood}`, id, model: POST_VIDEO_MODEL });
+          }
+        }
+        return out;
+      });
+      const clipUrl: Record<string, string | null> = {};
+      for (const j of jobs) if (!j.id) clipUrl[j.key] = null;
+      for (let k = 0; k < 30 && jobs.some((j) => j.id && clipUrl[j.key] === undefined); k++) {
+        await step.sleep(`split-wait-${k}`, "30s");
+        const got = await step.run(`split-poll-${k}`, async () => {
+          const { checkCoverVideo } = await import("@/lib/content-factory/animate-cover");
+          const res: Record<string, string | null> = {};
+          for (const j of jobs) {
+            if (!j.id || clipUrl[j.key] !== undefined) continue;
+            try {
+              const st = await checkCoverVideo(j.id, j.model);
+              if (st.status === "completed" && st.videoUrl) res[j.key] = st.videoUrl;
+              else if (st.status === "failed" || st.status === "nsfw") res[j.key] = null;
+            } catch {
+              // try again next round
+            }
+          }
+          return res;
+        });
+        Object.assign(clipUrl, got);
+      }
+      for (const j of jobs) if (clipUrl[j.key] === undefined) clipUrl[j.key] = null; // timed out → still frame
+
+      // The post (held until the video is done), with one still per pair.
+      const created = await step.run("split-post", async () => {
+        const { prisma } = await import("@/lib/prisma");
+        const { pairStill } = await import("@/lib/content-factory/split-video");
+        const { uploadImage, extractHashtags } = await import("@/lib/content-factory/carousel-generate");
+        const { SPLIT_CAPTION_TAGS } = await import("@/lib/content-factory/split-post");
+        const fetchBuf = async (u: string) => Buffer.from(await (await fetch(u)).arrayBuffer());
+        const stills: { imageUrl: string; overlayText: string; imagePrompt: string }[] = [];
+        for (let i = 0; i < script.pairs.length; i++) {
+          const still = await pairStill(await fetchBuf(halves[i].heavy), await fetchBuf(halves[i].free), script.pairs[i].line);
+          stills.push({
+            imageUrl: await uploadImage(still, `carousels/${dateStr}/${slug}/pair-${i}.jpg`),
+            overlayText: script.pairs[i].line,
+            imagePrompt: `split heavy: ${script.pairs[i].heavy}\nsplit free: ${script.pairs[i].free}`,
+          });
+        }
+        const caption = `${script.captionQuestion}\n\n${SPLIT_CAPTION_TAGS}`;
+        const post = await prisma.carouselPost.create({
+          data: {
+            topicSlug: slug,
+            headline: script.theme,
+            status: "APPROVED",
+            format: "PHOTO",
+            caption,
+            hashtags: extractHashtags(caption),
+            generatedFor: today,
+            lane: "ripple-split",
+            slides: { create: stills.map((s, i) => ({ order: i, kind: i === 0 ? ("COVER" as const) : ("REASON" as const), ...s })) },
+          },
+        });
+        const { writeVideoMarker } = await import("@/lib/content-factory/post-video");
+        await writeVideoMarker(post.id, { status: "pending", model: "split" });
+        return { postId: post.id };
+      });
+      const postId = created.postId;
+
+      // One video segment per pair, then the ending, then join + music.
+      const segUrls: string[] = [];
+      for (let i = 0; i < script.pairs.length; i++) {
+        segUrls.push(
+          await step.run(`split-seg-${i}`, async () => {
+            const { pairSegment } = await import("@/lib/content-factory/split-video");
+            const { supabase } = await import("@/lib/supabase.server");
+            const fetchBuf = async (u: string | null) => (u ? Buffer.from(await (await fetch(u)).arrayBuffer()) : null);
+            const buf = await pairSegment({
+              topClip: await fetchBuf(clipUrl[`${i}-heavy`]),
+              botClip: await fetchBuf(clipUrl[`${i}-free`]),
+              topImg: (await fetchBuf(halves[i].heavy))!,
+              botImg: (await fetchBuf(halves[i].free))!,
+              line: script.pairs[i].line,
+            });
+            const p = `living/${postId}/split-seg-${i}.mp4`;
+            const { error } = await supabase.storage.from("content-factory").upload(p, buf, { contentType: "video/mp4", upsert: true });
+            if (error) throw new Error(`segment upload failed: ${error.message}`);
+            return supabase.storage.from("content-factory").getPublicUrl(p).data.publicUrl;
+          })
+        );
+      }
+      const result = await step.run("split-finish", async () => {
+        const { endingSegment, finishSplitVideo } = await import("@/lib/content-factory/split-video");
+        const { pickMusicTrack } = await import("@/lib/content-factory/slideshow-reel");
+        const { reelPath, igReelPath, writeVideoMarker } = await import("@/lib/content-factory/post-video");
+        const { supabase } = await import("@/lib/supabase.server");
+        const { prisma } = await import("@/lib/prisma");
+        const segs: Buffer[] = await Promise.all(segUrls.map(async (u) => Buffer.from(await (await fetch(u)).arrayBuffer()) as Buffer));
+        segs.push(await endingSegment(segs[segs.length - 1], script.ending));
+        const seconds = Math.ceil(segs.length * 3.5 + 3);
+        const bucketFiles = supabase.storage.from("content-factory");
+        const main = await finishSplitVideo(segs, await pickMusicTrack("ripple-split", undefined, { minSeconds: seconds }));
+        await bucketFiles.upload(reelPath(postId), main.buf, { contentType: "video/mp4", upsert: true });
+        const igMusic = await pickMusicTrack("ripple-split", undefined, { minSeconds: seconds, platform: "instagram" }).catch(() => null);
+        if (igMusic?.includes("/music-ig/")) {
+          const ig = await finishSplitVideo(segs, igMusic);
+          await bucketFiles.upload(igReelPath(postId), ig.buf, { contentType: "video/mp4", upsert: true });
+        }
+        const url = bucketFiles.getPublicUrl(reelPath(postId)).data.publicUrl;
+        await writeVideoMarker(postId, { status: "done", url, source: "higgsfield", model: "split", liveSlides: Object.values(clipUrl).filter(Boolean).length, totalSlides: script.pairs.length * 2 });
+        // Ready: auto-post unless it's a sample or no script passed the editor.
+        await prisma.carouselPost.update({ where: { id: postId }, data: { status: sample || script.held ? "APPROVED" : "DRAFT" } });
+        if (!sample) {
+          try {
+            const { writeRecipe } = await import("@/lib/content-factory/performance-loop");
+            await writeRecipe({ postId, brand: "ripple", lane: "ripple-split", postType: "split", category: `split-${script.origin}`, title: script.theme, options: script.pairs.map((p) => p.line), generatedFor: today.toISOString().slice(0, 10), slotHourUtc: new Date().getUTCHours() });
+          } catch (err) {
+            console.warn("[carousel-cron] split recipe write failed:", err instanceof Error ? err.message : err);
+          }
+        }
+        return { seconds: main.seconds, clips: Object.values(clipUrl).filter(Boolean).length };
+      });
+      logger.info(`[carousel-cron] Generated split "${script.theme}": ${script.pairs.length} pairs, ${result.clips} clips, ${result.seconds}s`);
+      return { generated: 1, bucket, postId, ...result };
+    }
+
     const listEv = (event.data ?? {}) as { story?: boolean; listFormat?: string };
     if (bucket === "ripple-list" || (bucket === "selfie" && !listEv.story)) {
       const ev = (event.data ?? {}) as { rippleMention?: boolean; world?: string };
