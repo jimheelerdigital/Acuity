@@ -11,6 +11,7 @@ import { generateLifeAuditFn } from "@/inngest/functions/generate-life-audit";
 import { generateWeeklyReportFn } from "@/inngest/functions/generate-weekly-report";
 import { helloWorldFn } from "@/inngest/functions/hello-world";
 import { processEntryFn } from "@/inngest/functions/process-entry";
+import { entryQueuedSweeperFn } from "@/inngest/functions/entry-queued-sweeper";
 import { computeUserInsightsFn } from "@/inngest/functions/compute-user-insights";
 import { generateDataExportFn } from "@/inngest/functions/generate-data-export";
 import {
@@ -107,6 +108,7 @@ const handler = serve({
     mythicalsPortraitFn,
     helloWorldFn,
     processEntryFn,
+    entryQueuedSweeperFn,
     generateWeeklyReportFn,
     refreshLifeMapFn,
     day7AuditCronFn,
