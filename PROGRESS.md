@@ -7,6 +7,35 @@
 
 ---
 
+## [2026-10-20] — Build 185: fix record crash (missing mic permission) + widget redesign
+
+- **Requested by:** Jimmy (TestFlight 184: "Record what's on your mind" crashes; widget "looks awful")
+- **Committed by:** Claude Code
+- **Commit hash:** (see git log: "fix(mobile): restore the microphone permission string")
+
+### In plain English (for Keenan)
+Build 184 crashed the moment you started a recording. The camera feature added for handwritten pages accidentally removed the app's "why we need the microphone" text, and iOS closes any app that asks for the mic without it. That text is restored, and a test now blocks it from being removed again. The Today widget also gets a cleaner look: a plain list with check circles and coloured tags only for Overdue, Today and Priority.
+
+### Technical changes (for Jimmy)
+- Root cause, from Sentry and device crash logs: `RCTFatalException: This app is missing NSMicrophoneUsageDescription`.
+  - `app.json` had the expo-image-picker plugin set to `microphonePermission: false`, which deletes the key from Info.plist. Its mod runs after `infoPlist`/expo-av, so the delete won.
+  - Confirmed with `expo config --type introspect`: the key was MISSING before the fix and is present after.
+  - The device crash logs showed it via expo-updates' errorRecoveryQueue (a JS fatal turned into SIGABRT).
+- Fix: image-picker `microphonePermission` is set to the same string as infoPlist.
+- Guard: `evidence/ios-permission-strings.test.ts` checks that no plugin sets a permission to `false` and that every plugin mic string matches infoPlist. It was verified red on the old app.json.
+- Widget (`targets/widget/index.swift`):
+  - The list design: hairline dividers, a 44pt accent check column, a 16pt semibold title, and status tags only where they mean something.
+  - Rows are sized by GeometryReader (height / limit). On device, the flexible-frame version left rows short with empty space underneath.
+  - Typechecked and rendered offscreen.
+
+### Manual steps needed
+- [ ] Install build 185 and retest from the Home record card (Jimmy)
+
+### Notes
+- Lesson: a config-plugin permission flag of `false` means "remove", not "don't add".
+
+---
+
 ## [2026-10-19] — Signup emails say whether a UGC signup came from our Meta ad or the creator's own post
 
 - **Requested by:** Keenan
