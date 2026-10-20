@@ -32,7 +32,7 @@ import {
   uploadAudioBytes,
   verifyStoredAudio,
 } from "@/lib/audio";
-import { inngest } from "@/inngest/client";
+import { dispatchEntryProcessing } from "@/lib/entry-dispatch";
 import { processEntry } from "@/lib/pipeline";
 import { requireEntitlement } from "@/lib/paywall";
 import {
@@ -314,10 +314,9 @@ export async function POST(req: NextRequest) {
         inputMode: "typed",
       },
     });
-    await inngest.send({
-      name: "entry/process.requested",
-      data: { entryId: entry.id, userId, transcriptProvided: true },
-    });
+    // Never throws; on failure the entry stays QUEUED for the sweeper and
+    // this still answers 202 (lib/entry-dispatch.ts, 2026-10-20 outage).
+    await dispatchEntryProcessing({ entryId: entry.id, userId, transcriptProvided: true });
     return NextResponse.json(
       {
         entryId: entry.id,
@@ -364,8 +363,29 @@ export async function POST(req: NextRequest) {
   // ── 3a. Async path — upload, create Entry QUEUED, dispatch event ────────
   if (useInngest) {
     const { prisma } = await import("@/lib/prisma");
+
+    // Idempotent on the uploaded object (2026-10-20). The app retries this
+    // POST with the SAME storagePath when a response doesn't come back;
+    // each retry used to create another Entry for one recording (Jimmy got
+    // three). If this upload already has an Entry, answer with it, and
+    // re-dispatch if it never started (deduped by the event id).
+    if (storagePath) {
+      const existing = await prisma.entry.findFirst({
+        where: { userId, audioPath: storagePath },
+        select: { id: true, status: true, inngestRunId: true },
+      });
+      if (existing) {
+        if (existing.status === "QUEUED" && !existing.inngestRunId) {
+          await dispatchEntryProcessing({ entryId: existing.id, userId });
+        }
+        return NextResponse.json({ entryId: existing.id, status: existing.status }, { status: 202 });
+      }
+    }
+
     const entry = await prisma.entry.create({
-      data: { userId, status: "QUEUED", goalId, dimensionContext },
+      // audioPath set at creation (not only in the update below) so the
+      // idempotency check above can never miss a row mid-request.
+      data: { userId, status: "QUEUED", goalId, dimensionContext, ...(storagePath ? { audioPath: storagePath } : {}) },
     });
 
     let objectPath: string;
@@ -403,10 +423,9 @@ export async function POST(req: NextRequest) {
       },
     });
 
-    await inngest.send({
-      name: "entry/process.requested",
-      data: { entryId: entry.id, userId },
-    });
+    // Never throws; on failure the entry stays QUEUED for the sweeper and
+    // this still answers 202 (lib/entry-dispatch.ts, 2026-10-20 outage).
+    await dispatchEntryProcessing({ entryId: entry.id, userId });
 
     return NextResponse.json(
       {
