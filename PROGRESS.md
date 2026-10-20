@@ -7,6 +7,32 @@
 
 ---
 
+## [2026-10-20] — The weekly Social Brief now steers the daily post writers
+
+- **Requested by:** Keenan
+- **Committed by:** Claude Code
+- **Commit hash:** (see git log: "feat: Feed the weekly Social Brief plan to the post writers")
+
+### In plain English (for Keenan)
+The Ripple and Mythicals post writers now read the weekly Social Brief's plan every time they write: what's working and flopping, what to lean into, hook ideas to adapt, formats to test, and what to steer away from. Lane on/off decisions still come to you in the brief's "needs your yes" list. The plan is also told to fit the formats each brand's lanes actually make, and for Ripple to stay on the load in her head (no partner-blaming). BWK's plan is for posting by hand until BWK has active lanes.
+
+### Technical changes (for Jimmy)
+- `apps/web/src/lib/content-factory/social-brief.ts`:
+  - `socialBriefBlock(brand)` returns "" when the brief is more than 9 days old.
+  - `socialPlanBlock(brief)` is the pure formatter, capped at 3,500 chars.
+  - SYSTEM prompt: the plan must fit the active lanes; anything needing a lane change goes to `needsYourYes`.
+  - Ripple brand rule adds the niche rule and drops the hard-coded lane formats.
+- `apps/web/src/lib/content-factory/weekly-brief.ts`: `readBriefBlock(brand)` appends `socialBriefBlock(brand)`. Every reader picks it up: candidate-pipeline (Jev), generate-topic, ripple-list, how-to-guide and choice-lane (Mythicals).
+
+### Manual steps needed
+- [ ] None. Briefs were rebuilt after deploy (no email) so tomorrow's posts use the corrected plan.
+
+### Notes
+- BWK lane writers don't read `readBriefBlock`. Wire them in when BWK lanes are reactivated.
+- The Social Brief is built Saturday night; posts from Sunday's runs onward use it.
+
+---
+
 ## [2026-10-20] — One weekly social sweep and one Social Brief email (Ripple, Mythicals, BWK)
 
 - **Requested by:** Keenan

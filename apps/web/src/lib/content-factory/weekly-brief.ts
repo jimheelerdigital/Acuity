@@ -79,13 +79,27 @@ export async function readBrief(brand: BriefBrand): Promise<WeeklyBrief | null> 
   return readJson<WeeklyBrief>(briefPath(brand));
 }
 
-/** The writer/Jev prompt block for a brand, or "" when there's no brief. */
+/**
+ * The writer/Jev prompt block for a brand, or "" when there's no brief.
+ * Since 2026-10-20 it also carries the weekly Social Brief's plan (hooks,
+ * formats, keep / steer away), so every lane that reads this block follows
+ * the Saturday-night social sweep (social-brief.ts socialBriefBlock).
+ */
 export async function readBriefBlock(brand: BriefBrand): Promise<string> {
+  let block = "";
   try {
-    return (await readBrief(brand))?.promptBlock ?? "";
+    block = (await readBrief(brand))?.promptBlock ?? "";
   } catch {
-    return "";
+    block = "";
   }
+  try {
+    const { socialBriefBlock } = await import("./social-brief");
+    const plan = await socialBriefBlock(brand);
+    if (plan) block = block ? `${block}\n\n${plan}` : plan;
+  } catch {
+    // The plan is extra guidance; never block a writer over it.
+  }
+  return block;
 }
 
 export async function buildWeeklyBrief(brand: BriefBrand): Promise<WeeklyBrief> {

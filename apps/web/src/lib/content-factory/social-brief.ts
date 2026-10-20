@@ -160,6 +160,8 @@ export async function gather(brand: SocialBrand): Promise<Inputs> {
 
 const SYSTEM = `You write the weekly social media brief for one brand. It decides what the brand posts next week. The reader is Keenan, a non-technical founder: plain words, short lines, specific, no jargon, no hype. Base every point on the data given; if the data is thin, say so instead of inventing. Never invent numbers or competitor results.
 
+The nextWeek plan is read by the brand's automatic post writers, so it must fit the ACTIVE LANES listed in the data (their formats): keep, hooksToTest, formatsToTest and kill must be things those lanes can do. Anything that needs a new lane, a retired format or a lane turned on/off goes in needsYourYes instead, never in the plan.
+
 Return ONLY JSON:
 {"headline": "one sentence: the most important thing about this brand's social this week",
  "whatWorked": ["2-4 specific points, each naming the post/type and why it worked"],
@@ -170,7 +172,7 @@ Return ONLY JSON:
  "needsYourYes": ["decisions Keenan must make, e.g. kill/start a lane; empty if none"]}`;
 
 const BRAND_RULES: Record<SocialBrand, string> = {
-  ripple: "Ripple: AI life optimizer for women ~40-50 carrying a heavy mental load (habit tracker, voice journal, insights). Never claim it treats or replaces therapy, no recording-duration claims, no time-of-day framing; the feature is called a 'debrief'.",
+  ripple: "Ripple: AI life optimizer for women ~40-50 carrying a heavy mental load (habit tracker, voice journal, insights). The niche is the load in HER head (remembering, tracking, over-functioning), never relationship advice or blaming a partner. Never claim it treats or replaces therapy, no recording-duration claims, no time-of-day framing; the feature is called a 'debrief'. Its live lanes and their formats are in the data (ACTIVE LANES).",
   mythicals: "Legendary Mythicals: epic fantasy creatures, weapons and armor; 'which would you choose' style videos. No real animals.",
   bwk: "Build With Key: men's discipline / self-improvement content. Keenan is restarting it and will post by hand, so give him a concrete starter plan even if data is thin.",
 };
@@ -215,6 +217,43 @@ export async function buildSocialBrief(brand: SocialBrand): Promise<SocialBrief>
     await supabase.storage.from(BUCKET).upload(path, body, { contentType: "application/json", upsert: true });
   }
   return brief;
+}
+
+/**
+ * The Social Brief's plan as a writer prompt block (2026-10-20, per Keenan:
+ * "connect the research to the social posting lanes"). Appended to every
+ * writer's weekly-brief block via readBriefBlock, so each lane reads next
+ * week's hooks, formats and keep/stop guidance. "" when there's no brief
+ * from the last 9 days. Lane on/off decisions stay with Keenan.
+ */
+export async function socialBriefBlock(brand: SocialBrand): Promise<string> {
+  try {
+    const b = await readSocialBrief(brand);
+    if (!b || Date.now() - new Date(b.builtAt).getTime() > 9 * 86_400_000) return "";
+    return socialPlanBlock(b);
+  } catch {
+    return "";
+  }
+}
+
+/** Pure formatter for socialBriefBlock (testable without storage). */
+export function socialPlanBlock(b: SocialBrief): string {
+  {
+    const nw = b.nextWeek;
+    const line = (label: string, items: string[]) => (items.length ? `${label}\n${items.map((i) => `- ${i}`).join("\n")}` : "");
+    const block = [
+      `THIS WEEK'S SOCIAL PLAN (from the weekly Social Brief, ${b.builtAt.slice(0, 10)}; built from our results, competitor breakouts and the audience):`,
+      line("Working now:", b.whatWorked.slice(0, 3)),
+      line("Flopping now:", b.whatFlopped.slice(0, 3)),
+      line("Lean into:", nw.keep),
+      line("Hook ideas to try (adapt one to THIS post's format and topic when it fits; never copy one word for word, and don't reuse a hook a recent post already used):", nw.hooksToTest),
+      line("Formats worth testing:", nw.formatsToTest),
+      line("Steer away from:", nw.kill),
+    ]
+      .filter(Boolean)
+      .join("\n\n");
+    return block.slice(0, 3500);
+  }
 }
 
 export async function readSocialBrief(brand: SocialBrand): Promise<SocialBrief | null> {
