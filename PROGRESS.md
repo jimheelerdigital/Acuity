@@ -36,6 +36,41 @@ Build 184 crashed the moment you started a recording. The camera feature added f
 
 ---
 
+## [2026-10-20] — Admin "App funnel" tab; App Store trials labeled as paid; Keenan's test accounts removed
+
+- **Requested by:** Keenan
+- **Committed by:** Claude Code
+- **Commit hash:** (see git log: "feat: Add an App funnel tab for in-app onboarding drop-off")
+
+### In plain English (for Keenan)
+- **App funnel:** the admin dashboard has a new **App funnel** tab (Growth → App funnel) showing every in-app onboarding stage and where people drop off. It has two sections because two app versions are live: the questions (1.9.x only), then recording → results → paywall for everyone. It also lists problems (mic denied, recording or processing failures), screens before sign-in, and the web-payer welcome flow.
+  - Last 14 days: about a quarter quit during the questions, 29% of people who finished recording never saw their results (the biggest drop), and of 15 people at the paywall, 1 started an App Store trial while 13 skipped.
+- **Trial labels:** the Users list now shows App Store / Play trials as "Paid trial (App Store)" instead of a plain unpaid "Trial".
+- **Test accounts:** Keenan's 14 keenan+… test accounts were deleted. Jimmy's jim+… accounts were kept, including the Apple and Google review logins.
+
+### Technical changes (for Jimmy)
+- New `apps/web/src/lib/admin/app-funnel.ts` (`getAppFunnel`):
+  - Reads OnboardingEvent v10_* + app_signed_in.
+  - Steps carry `views` (event counts) and `people` (userId ?? sessionToken), in groups "questions" / "core".
+  - The paywall row and its outcomes are people; trial = user subscriptionSource apple/google with TRIAL/PRO.
+- `apps/web/src/app/api/admin/metrics/route.ts`: `tab=app-funnel` (2-minute cache).
+- New `apps/web/src/app/admin/tabs/AppFunnelTab.tsx`; `admin-dashboard.tsx` registers it (TAB_KEYS, Growth nav).
+- `apps/web/src/app/api/admin/users/route.ts`: `computePlanStatus` takes `subscriptionSource`.
+- DB: deleted 14 users with emails starting `keenan+` (verificationTokens + user cascade, voice-entries storage cleared). No DeletedUser tombstone was written: it canonicalizes away the +tag and would have cut trials for future keenan+ QA signups.
+
+### Manual steps needed
+- [ ] Jimmy, for 1.9.4 so the funnel is exact per person:
+  - a per-install UUID as `sessionToken` on every app event, backfilled to userId on sign-in
+  - `v10_purchase_started/completed/cancelled/failed` and `v10_restore_tapped`
+  - `app_first_open`, plus `app_version` on every event
+
+### Notes
+- Two onboarding versions are live: 1.9.x asks the questions (`flow: v11`) before recording; older builds go start → recognition → "I'm new" → record. They meet at `v10_start_tapped`.
+- 557 of 959 v10 events in the last 14 days had no userId or sessionToken.
+- `metrics/route.ts` already had 47 tsc implicit-any errors before this change; none were added.
+
+---
+
 ## [2026-10-19] — Signup emails say whether a UGC signup came from our Meta ad or the creator's own post
 
 - **Requested by:** Keenan

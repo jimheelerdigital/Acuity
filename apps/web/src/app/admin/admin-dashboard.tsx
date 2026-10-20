@@ -22,6 +22,7 @@ const GrowthMetricsTab = dynamic(() => import("./tabs/GrowthMetricsTab"));
 const BusinessMetricsTab = dynamic(() => import("./tabs/BusinessMetricsTab"));
 const SettingsTab = dynamic(() => import("./tabs/SettingsTab"));
 const FunnelAnalyticsTab = dynamic(() => import("./tabs/FunnelAnalyticsTab"));
+const AppFunnelTab = dynamic(() => import("./tabs/AppFunnelTab"));
 const MRITab = dynamic(() => import("./tabs/MRITab"));
 const FeatureAdoptionTab = dynamic(() => import("./tabs/FeatureAdoptionTab"));
 const EngagementDistributionTab = dynamic(
@@ -38,6 +39,7 @@ const TAB_KEYS = [
   "top-videos",
   "mri",
   "funnel-analytics",
+  "app-funnel",
   "users",
   "ads",
   "content",
@@ -76,6 +78,7 @@ const NAV_GROUPS: NavGroup[] = [
     eyebrow: "Growth",
     items: [
       { key: "funnel-analytics", label: "Funnel" },
+      { key: "app-funnel", label: "App funnel" },
       { key: "ads", label: "Ads" },
       { key: "growth-metrics", label: "Growth metrics" },
     ],
@@ -378,6 +381,7 @@ export default function AdminDashboard() {
             {activeTab === "funnel-analytics" && (
               <FunnelAnalyticsTab start={startStr} end={endStr} />
             )}
+            {activeTab === "app-funnel" && <AppFunnelTab start={startStr} end={endStr} />}
             {activeTab === "settings" && <SettingsTab />}
           </div>
         </main>
