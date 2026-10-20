@@ -7,6 +7,31 @@
 
 ---
 
+## [2026-10-20] — Animated posts always publish; two held Ripple posts released
+
+- **Requested by:** Keenan
+- **Committed by:** Claude Code
+- **Commit hash:** (see git log: "fix: Never hold animated Ripple posts back from publishing")
+
+### In plain English (for Keenan)
+Ripple posts were getting their animation made (and paid for) and then never posting. When none of the 5 drafts passed a strict "makes plain sense" check, the post was quietly marked held and only emailed. That happened to 4 of the last 12 Ripple posts, including both of today's, and all 4 read fine. Now an animated post always goes out. A failed check is written to the log instead of stopping the post. Today's two animated posts were released and will post in the next Ripple window.
+
+### Technical changes (for Jimmy)
+- `apps/web/src/inngest/functions/carousel-daily.ts`: `ripple-list`, `ripple-split` and `selfie` save as DRAFT even when `held` is set. Only `sample` posts are saved APPROVED (emailed, never auto-posted). `ripple-split` logs a `console.warn` with the hold reason.
+- `apps/web/src/lib/content-factory/publish-gate.ts`: `gateExemptLane` exempts `ripple-list` and `ripple-split`, so the Jev publish gate can't hold them either.
+- Data (prod): today's held `ripple-list` posts ("7 ways to stop being the parent the school emails", "6 things i stopped doing when my list hit 43 things") set APPROVED → DRAFT. `social-publish-cron` (every 30 min) enqueues them.
+
+### Manual steps needed
+- [ ] Push to deploy the code change (Keenan: "push it").
+- [ ] Remove yesterday's stills post "7 ways to hand off the holidays before they start" (IG https://www.instagram.com/reel/DervuGzCcUF/ + FB copy). `IG_ACCESS_TOKEN` is Vercel-sensitive, so this can't be done from a laptop.
+
+### Notes
+- Yesterday's two Ripple posts went out as stills because Higgsfield's developer-API balance ran out (403 on submit, marker `stillsReason: no-credits`). Keenan added $200 on 10-19. Today's builds are on `kling-video/v2.5-turbo/standard`, 7/7 and 8/8 slides.
+- `listSenseProblem` fails closed (a timeout or error cuts the draft) and is told "when in doubt, fail it". Its verdicts only reach Inngest logs.
+- Still able to block auto-posting: slides marked TEXT-UNVERIFIED (baked-text typo guard). Left as is.
+
+---
+
 ## [2026-10-20] — Fix: the new split-video lane was posting the old "questions" carousel instead
 
 - **Requested by:** Keenan

@@ -1756,7 +1756,8 @@ export const carouselDailyCronFn = inngest.createFunction(
         const url = bucketFiles.getPublicUrl(reelPath(postId)).data.publicUrl;
         await writeVideoMarker(postId, { status: "done", url, source: "higgsfield", model: "split", liveSlides: Object.values(clipUrl).filter(Boolean).length, totalSlides: script.pairs.length * 2 });
         // Ready: auto-post unless it's a sample or no script passed the editor.
-        await prisma.carouselPost.update({ where: { id: postId }, data: { status: sample || script.held ? "APPROVED" : "DRAFT" } });
+        await prisma.carouselPost.update({ where: { id: postId }, data: { status: sample ? "APPROVED" : "DRAFT" } });
+        if (script.held && !sample) console.warn(`[ripple-split] posting despite sense-check hold: ${script.held}`);
         if (!sample) {
           try {
             const { writeRecipe } = await import("@/lib/content-factory/performance-loop");
@@ -1932,8 +1933,8 @@ export const carouselDailyCronFn = inngest.createFunction(
           data: {
             topicSlug: slug,
             headline: list.title,
-            // sample / held: emailed, never auto-posted.
-            status: sample || list.held ? "APPROVED" : "DRAFT",
+            // sample: emailed, never auto-posted. // Never hold an animated post (2026-10-20, per Keenan: "don't ever fail animated posts. if we spend the money, post it"). A failed sense check is logged, not held; only samples stay unposted.
+            status: sample ? "APPROVED" : "DRAFT",
             format: "PHOTO",
             caption,
             hashtags: extractHashtags(caption),
@@ -2344,7 +2345,7 @@ export const carouselDailyCronFn = inngest.createFunction(
             headline: selfie.headline,
             // Held when it failed the plain-sense check twice (2026-10-13):
             // emailed, never auto-posted (APPROVED skips the social queue).
-            status: sample || selfie.held ? "APPROVED" : "DRAFT",
+            status: sample ? "APPROVED" : "DRAFT",
             // PHOTO format (it IS a static picture slideshow); the
             // "selfie" lane marks the sub-format — no schema change, so
             // this ships without waiting on the pending db push.
