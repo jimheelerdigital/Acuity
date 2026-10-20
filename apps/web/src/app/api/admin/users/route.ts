@@ -180,7 +180,8 @@ function computePlanStatus(
   stripeCustomerId: string | null,
   now: Date,
   paidTrialEndsAt?: Date,
-  createdAt?: Date
+  createdAt?: Date,
+  subscriptionSource?: string | null
 ): string {
   if (subscriptionStatus === "PRO" && paidTrialEndsAt) {
     const daysLeft = Math.ceil((paidTrialEndsAt.getTime() - now.getTime()) / 86400000);
@@ -198,6 +199,16 @@ function computePlanStatus(
     if (!end) return "Paid trial";
     const daysLeft = Math.ceil((end.getTime() - now.getTime()) / 86400000);
     return daysLeft > 0 ? `Paid trial — ${daysLeft}d left` : "Paid trial — charge due";
+  }
+  // App Store / Play trials (2026-10-20, Keenan: an in-app Apple trial showed
+  // as a plain no-card "Trial"). The store holds the payment method and
+  // charges at trial end, so it's a paid trial like a Stripe card trial.
+  if (subscriptionStatus === "TRIAL" && (subscriptionSource === "apple" || subscriptionSource === "google")) {
+    const store = subscriptionSource === "apple" ? "App Store" : "Play";
+    const end = trialEndsAt ?? paidTrialEndsAt;
+    if (!end) return `Paid trial (${store})`;
+    const daysLeft = Math.ceil((end.getTime() - now.getTime()) / 86400000);
+    return daysLeft > 0 ? `Paid trial (${store}) — ${daysLeft}d left` : `Paid trial (${store}) — charge due`;
   }
   if (subscriptionStatus === "TRIAL" && trialEndsAt) {
     const daysLeft = Math.ceil((trialEndsAt.getTime() - now.getTime()) / 86400000);
@@ -247,6 +258,7 @@ export async function GET(req: NextRequest) {
         id: true,
         subscriptionStatus: true,
         stripeSubscriptionId: true,
+        subscriptionSource: true,
         appFirstOpenedAt: true,
         devicePlatform: true,
         pushToken: true,
@@ -374,6 +386,7 @@ export async function GET(req: NextRequest) {
         subscriptionStatus: true,
         stripeCustomerId: true,
         stripeSubscriptionId: true,
+        subscriptionSource: true,
         trialEndsAt: true,
         devicePlatform: true,
         appVersion: true,
@@ -419,6 +432,7 @@ export async function GET(req: NextRequest) {
         subscriptionStatus: true,
         stripeCustomerId: true,
         stripeSubscriptionId: true,
+        subscriptionSource: true,
         trialEndsAt: true,
         devicePlatform: true,
         appVersion: true,
@@ -499,7 +513,7 @@ export async function GET(req: NextRequest) {
     const platform = computePlatform(u.appFirstOpenedAt, entryCount, u.devicePlatform);
     const userDownloadEvents = downloadEventsByUser.get(u.id) ?? EMPTY_EVENT_SET;
     const lifecycle = computeLifecycle(entryCount, lastEntryAt, u.appFirstOpenedAt, userDownloadEvents, now);
-    const planStatus = computePlanStatus(u.subscriptionStatus, u.trialEndsAt, u.stripeSubscriptionId, u.stripeCustomerId, now, paidTrials.get(u.id), u.createdAt);
+    const planStatus = computePlanStatus(u.subscriptionStatus, u.trialEndsAt, u.stripeSubscriptionId, u.stripeCustomerId, now, paidTrials.get(u.id), u.createdAt, u.subscriptionSource);
 
     // Last active: most recent of lastSeenAt, lastEntryAt, appFirstOpenedAt
     const candidates = [u.lastSeenAt, lastEntryAt, u.appFirstOpenedAt].filter(Boolean) as Date[];
