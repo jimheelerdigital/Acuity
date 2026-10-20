@@ -126,7 +126,8 @@ export const adlabWeeklyBatchFn = inngest.createFunction(
       const batch = await step.run(`create-batch-${groupKey}`, async () => {
         try {
           const { createBatchForGroup } = await import("@/lib/adlab/weekly-batch");
-          return await createBatchForGroup(groupKey, { seed, prefetched });
+          const focus = (event?.data as { focus?: string } | undefined)?.focus;
+          return await createBatchForGroup(groupKey, { seed, prefetched, ...(focus ? { focus } : {}) });
         } catch (err) {
           const msg = err instanceof Error ? err.message : String(err);
           logger.error(`[adlab-weekly] ${groupKey} batch failed: ${msg}`);

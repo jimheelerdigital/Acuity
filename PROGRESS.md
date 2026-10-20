@@ -7,6 +7,32 @@
 
 ---
 
+## [2026-10-20] — Ad batches can take a one-off focus; men's "planners don't work" batch
+
+- **Requested by:** Keenan
+- **Committed by:** Claude Code
+- **Commit hash:** (see git log: "feat: Let an ad batch run on a one-off focus brief")
+
+### In plain English (for Keenan)
+We can now ask for a batch of ads about one specific idea instead of the usual mix of audience themes. The first is a men-only batch about planners not working:
+- He tried them and he's still stuck.
+- Without a real system he keeps slipping behind.
+- Ripple is the thing that finally sticks.
+
+It lands in the review page as usual. Nothing goes live until you approve it.
+
+### Technical changes (for Jimmy)
+- apps/web/src/lib/adlab/weekly-batch.ts: CreateBatchOpts.focus. When set, it appends a FOCUS block to the system prompt and replaces the per-request audience-theme line.
+- apps/web/src/inngest/functions/adlab-weekly-batch.ts: passes event.data.focus to createBatchForGroup.
+- apps/web/src/app/api/admin/adlab/run-weekly-batch/route.ts: accepts { focus } (max 2000 chars).
+
+### Manual steps needed
+- [ ] Review and approve the men's planner batch in /admin/adlab/review (Keenan)
+
+### Notes
+- Manual runs write copy live, so the focus prompt is always used. The Message Batch collect pass is scheduled-only and never gets a focus.
+- The HARD RULES (no naming the reader's feelings) still apply. "Feel stuck" is delivered through situations, the way the "Fourth planner. Still stuck." winner does it.
+
 ## [2026-10-20] — Meta ads: one ad set per audience, optimizing for completed registrations
 
 - **Requested by:** Keenan
