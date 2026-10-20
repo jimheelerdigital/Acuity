@@ -26,6 +26,7 @@ import {
   setToken,
   type User,
 } from "@/lib/auth";
+import { installIdHeader } from "@/lib/install-id";
 
 /**
  * Sign in with Apple — native iOS flow.
@@ -159,7 +160,7 @@ export async function signInWithApple(): Promise<AppleSignInResult> {
   try {
     res = await fetch(`${publicApiBaseUrl()}/api/auth/mobile-callback-apple`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", ...(await installIdHeader()) },
       body: JSON.stringify({
         identityToken: credential.identityToken,
         appleUserId,

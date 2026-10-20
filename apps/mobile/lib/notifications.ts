@@ -147,7 +147,10 @@ Notifications.setNotificationHandler({
     // entry screen already covers it — don't also drop a banner on them.
     // (This handler only runs while the app is in the foreground.)
     const type = (notification.request.content.data as { type?: unknown } | undefined)?.type;
-    if (type === "completion") {
+    // "try_ready" (2026-10-20): the first-debrief "Your list is ready" push.
+    // Also only for people who left — if it lands while Ripple is open, the
+    // processing screen is already showing the results button.
+    if (type === "completion" || type === "try_ready") {
       return {
         shouldShowBanner: false,
         shouldShowList: false,

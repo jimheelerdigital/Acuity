@@ -39,6 +39,11 @@ export type V10Event =
   | "v10_chip_tapped"
   | "v10_recording_completed"
   | "v10_processing_viewed"
+  // Leaving mid-analysis (2026-10-20): left the app, came back, and a
+  // result collected after the phone lost the request.
+  | "v10_processing_backgrounded"
+  | "v10_processing_returned"
+  | "v10_processing_recovered"
   | "v10_processing_latency"
   | "v10_reveal_viewed"
   | "v10_compounding_viewed"
@@ -46,7 +51,13 @@ export type V10Event =
   | "v10_paywall_viewed"
   | "v10_plan_toggled"
   | "v10_plan_decision"
+  // Paywall outcomes (2026-10-20, Keenan): started → completed |
+  // cancelled | failed, plus restore taps.
+  | "v10_purchase_started"
   | "v10_purchase_completed"
+  | "v10_purchase_cancelled"
+  | "v10_purchase_failed"
+  | "v10_restore_tapped"
   | "v10_save_viewed"
   | "v10_save_later"
   | "v10_account_completed"

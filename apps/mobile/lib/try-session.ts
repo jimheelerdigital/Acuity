@@ -2,6 +2,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import Constants from "expo-constants";
 
 import { uploadAudioDirect } from "@/lib/direct-upload";
+import { getInstallId } from "@/lib/install-id";
 
 /**
  * Mobile anonymous Try Session — onboarding-v2 slice 1 (2026-05-25).
@@ -31,7 +32,6 @@ import { uploadAudioDirect } from "@/lib/direct-upload";
  * keychain entry today; the try-session token must outlive that).
  */
 
-const DEVICE_ID_KEY = "acuity.anon_session_id";
 const TRY_SESSION_TOKEN_KEY = "acuity.try_session_token";
 const TRY_SESSION_EXPIRES_KEY = "acuity.try_session_expires_at";
 // Slice 9 (2026-05-26) — extraction body persisted alongside the
@@ -53,20 +53,11 @@ const TRY_SESSION_EXTRACTION_KEY = "acuity.try_session_extraction";
  * stable analytics key, never a security boundary.
  */
 export async function getOrCreateAnonDeviceId(): Promise<string> {
-  try {
-    const existing = await AsyncStorage.getItem(DEVICE_ID_KEY);
-    if (existing && existing.length > 0) return existing;
-  } catch {
-    // AsyncStorage failure — fall through to generate, retry persist.
-  }
-  const id = uuidV4();
-  try {
-    await AsyncStorage.setItem(DEVICE_ID_KEY, id);
-  } catch {
-    // Non-fatal — next call generates a new one. Funnel analytics
-    // accept some duplication.
-  }
-  return id;
+  // 2026-10-20: the device id IS the install id now (lib/install-id.ts),
+  // which adopts any value already stored under acuity.anon_session_id and keeps that
+  // key in step. One id means TrySession.anonDeviceId joins straight onto
+  // the onboarding events' sessionToken.
+  return getInstallId();
 }
 
 export async function getStoredTrySessionToken(): Promise<string | null> {
@@ -185,11 +176,78 @@ export interface TryRecordingResponse {
  * returned sessionToken locally for the slice 8 claim step. Throws
  * on HTTP failure so the calling screen can surface a retry.
  */
+export type TryUploadStage = "uploading" | "analyzing";
+
+/**
+ * A debrief that reached the server but whose answer this device may not
+ * have received (2026-10-20, Keenan's processing drop-off). Persisted the
+ * moment the audio is in storage, cleared once the result is stored here.
+ *
+ * Why: analysis runs inside the POST (~15-50s). If she leaves the app, iOS
+ * suspends it and the request dies on the phone ("Network request failed")
+ * while the server finishes and saves the result anyway. Prod 2026-10-20:
+ * three TrySessions were created with no result ever shown. The pending
+ * record lets the app fetch that saved result instead of starting over.
+ */
+export interface PendingTryJob {
+  storagePath: string;
+  anonDeviceId: string;
+  /** Local audio file, so a real failure can still retry without re-recording. */
+  uri: string;
+  mimeType: string;
+  /** When the analysis request was sent (ms epoch). */
+  postedAt: number;
+}
+
+// ripple.v10.* = state of the CURRENT funnel attempt, which entry-routing
+// deliberately does not count as app history.
+const PENDING_KEY = "ripple.v10.try_pending_job";
+/** The server route's maxDuration is 120s; past this nothing more is coming. */
+export const TRY_RESULT_WINDOW_MS = 130_000;
+
+export async function getPendingTryJob(): Promise<PendingTryJob | null> {
+  try {
+    const raw = await AsyncStorage.getItem(PENDING_KEY);
+    if (!raw) return null;
+    const job = JSON.parse(raw) as PendingTryJob;
+    if (!job?.storagePath || !job.anonDeviceId) return null;
+    // A day later the TrySession itself has expired.
+    if (Date.now() - job.postedAt > 24 * 60 * 60 * 1000) {
+      await clearPendingTryJob();
+      return null;
+    }
+    return job;
+  } catch {
+    return null;
+  }
+}
+
+export async function clearPendingTryJob(): Promise<void> {
+  try {
+    await AsyncStorage.removeItem(PENDING_KEY);
+  } catch {
+    // non-fatal
+  }
+}
+
+async function storeResult(body: TryRecordingResponse): Promise<void> {
+  await setStoredTrySession(body.sessionToken, body.expiresAt);
+  await setStoredTryExtraction(body.extraction);
+  await clearPendingTryJob();
+}
+
+/**
+ * Upload an audio blob to /api/mobile/try-recording and persist the
+ * returned sessionToken locally for the slice 8 claim step. Throws
+ * on HTTP failure so the calling screen can surface a retry.
+ */
 export async function submitTryRecording(
   audioUri: string,
-  mimeType: string
+  mimeType: string,
+  onStage?: (stage: TryUploadStage) => void
 ): Promise<TryRecordingResponse> {
   const anonDeviceId = await getOrCreateAnonDeviceId();
+  onStage?.("uploading");
 
   // Direct-to-storage: the audio goes device → Supabase via a signed URL
   // and this request carries metadata only. Posting the bytes here meant
@@ -201,6 +259,14 @@ export async function submitTryRecording(
     target: "try",
   });
 
+  const job: PendingTryJob = { storagePath, anonDeviceId, uri: audioUri, mimeType, postedAt: Date.now() };
+  try {
+    await AsyncStorage.setItem(PENDING_KEY, JSON.stringify(job));
+  } catch {
+    // Recovery is a bonus; the request itself still goes.
+  }
+  onStage?.("analyzing");
+
   const res = await fetch(`${apiBaseUrl()}/api/mobile/try-recording`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -211,15 +277,85 @@ export async function submitTryRecording(
     }),
   });
   if (!res.ok) {
+    // 409 = this exact upload was already analysed (an earlier request
+    // finished on the server after the phone lost it). Fetch that result.
+    if (res.status === 409) {
+      const recovered = await fetchTryResult(job).catch(() => null);
+      if (recovered && recovered !== "failed") return recovered;
+    }
+    // Any other 4xx is final for this upload (too short, too long, bad
+    // input): nothing will ever be waiting on the server for it.
+    if (res.status >= 400 && res.status < 500) await clearPendingTryJob();
     const text = await res.text().catch(() => "");
-    throw new Error(
+    const err = new Error(
       `try-recording failed (${res.status}): ${text.slice(0, 200)}`
-    );
+    ) as Error & { status?: number };
+    err.status = res.status;
+    throw err;
   }
   const body = (await res.json()) as TryRecordingResponse;
-  await setStoredTrySession(body.sessionToken, body.expiresAt);
-  await setStoredTryExtraction(body.extraction);
+  await storeResult(body);
   return body;
+}
+
+/**
+ * Ask the server for the result of a pending job. Returns the result (and
+ * stores it exactly as a normal submit would), null while it isn't there
+ * yet, or "failed" when the server says it never will be (the analysis
+ * failed and the audio was discarded).
+ */
+export async function fetchTryResult(
+  job: PendingTryJob
+): Promise<TryRecordingResponse | "failed" | null> {
+  const res = await fetch(`${apiBaseUrl()}/api/mobile/try-recording/result`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ storagePath: job.storagePath, anonDeviceId: job.anonDeviceId }),
+  });
+  if (res.status === 200) {
+    const body = (await res.json()) as TryRecordingResponse;
+    await storeResult(body);
+    return body;
+  }
+  if (res.status === 410) return "failed";
+  return null;
+}
+
+/**
+ * Poll for a pending job's result until it lands or the server can no
+ * longer be working on it. `shouldStop` lets a screen abandon the wait.
+ */
+export async function waitForTryResult(
+  job: PendingTryJob,
+  shouldStop: () => boolean = () => false
+): Promise<TryRecordingResponse | "failed" | null> {
+  const deadline = job.postedAt + TRY_RESULT_WINDOW_MS;
+  for (;;) {
+    if (shouldStop()) return null;
+    const r = await fetchTryResult(job).catch(() => null);
+    if (r) return r;
+    if (Date.now() > deadline) return null;
+    await new Promise((resolve) => setTimeout(resolve, 2500));
+  }
+}
+
+/**
+ * "Your list is ready" push for someone who leaves mid-analysis. Called
+ * when the app goes to the background with a job in flight and push
+ * permission granted. The server waits for the result and sends the push
+ * itself, so it arrives even though this app is suspended. Fire-and-forget.
+ */
+export async function requestTryReadyPush(job: PendingTryJob, pushToken: string): Promise<void> {
+  try {
+    await fetch(`${apiBaseUrl()}/api/mobile/try-recording/notify`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ storagePath: job.storagePath, anonDeviceId: job.anonDeviceId, pushToken }),
+    });
+  } catch {
+    // The request usually outlives the app's suspension only on the server
+    // side; a lost response here is expected and harmless.
+  }
 }
 
 /**
@@ -252,27 +388,4 @@ export async function submitTryDebriefText(
   await setStoredTrySession(body.sessionToken, body.expiresAt);
   await setStoredTryExtraction(body.extraction);
   return body;
-}
-// ─── RFC 4122 v4 UUID (Math.random-backed) ─────────────────────────
-// Cryptographic randomness isn't required here — the value is a
-// stable analytics key, not a security boundary. Inline implementation
-// avoids pulling in expo-crypto just for this single helper.
-function uuidV4(): string {
-  const bytes = new Uint8Array(16);
-  for (let i = 0; i < 16; i++) bytes[i] = Math.floor(Math.random() * 256);
-  bytes[6] = (bytes[6] & 0x0f) | 0x40; // version
-  bytes[8] = (bytes[8] & 0x3f) | 0x80; // variant
-  const hex: string[] = [];
-  for (const b of bytes) hex.push(b.toString(16).padStart(2, "0"));
-  return (
-    hex.slice(0, 4).join("") +
-    "-" +
-    hex.slice(4, 6).join("") +
-    "-" +
-    hex.slice(6, 8).join("") +
-    "-" +
-    hex.slice(8, 10).join("") +
-    "-" +
-    hex.slice(10, 16).join("")
-  );
 }

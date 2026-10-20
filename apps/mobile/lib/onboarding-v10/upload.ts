@@ -1,4 +1,4 @@
-import { submitTryRecording } from "@/lib/try-session";
+import { submitTryRecording, type TryUploadStage } from "@/lib/try-session";
 
 /**
  * v10 debrief upload — deliberately isolated behind ONE function.
@@ -39,9 +39,12 @@ export interface UploadResult {
  * retried WITHOUT re-recording — spec §4 requires that, and it is why
  * Screen 3 hands the URI to Screen 4 instead of uploading itself.
  */
-export async function uploadDebrief(uri: string): Promise<UploadResult> {
+export async function uploadDebrief(
+  uri: string,
+  onStage?: (stage: TryUploadStage) => void
+): Promise<UploadResult> {
   try {
-    await submitTryRecording(uri, "audio/mp4");
+    await submitTryRecording(uri, "audio/mp4", onStage);
     return { ok: true, retryable: false };
   } catch (err) {
     const status = (err as { status?: number } | null)?.status;

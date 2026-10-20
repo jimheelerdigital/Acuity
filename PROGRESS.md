@@ -7,6 +7,82 @@
 
 ---
 
+## [2026-10-20] — Per-install analytics id, paywall outcome events, and no more lost first results (app 1.9.5, build 186)
+
+- **Requested by:** Keenan (relayed by Jimmy: "add this to next release", "absolutely NEED this")
+- **Committed by:** Claude Code
+- **Branch:** feat/analytics-install-id-processing
+
+### In plain English (for Keenan)
+**1. One id per install, before and after sign-in.** Every v10_* / app_* event from app 1.9.5 carries a per-install id as `sessionToken`, signed in or not, plus `app_version`. When someone signs in, the server stamps `app_signed_in` with that id and attaches their earlier anonymous events to their account. Your App funnel tab's "person = userId, else sessionToken" becomes exact per person from 1.9.5 on.
+- The id is the same one already on TrySession rows (`anonDeviceId`), so first recordings join to events too.
+- It lives in the iPhone Keychain, which survives deleting the app. A reinstall keeps the id; `app_first_open` still fires once per install with `reinstall: true` in that case.
+
+**2. Paywall outcomes:** `v10_purchase_started {plan, product_id, trial}`, `v10_purchase_completed {plan, product_id, trial, trial_days, entitlement_active}`, `v10_purchase_cancelled {plan}`, `v10_purchase_failed {plan, error}`, `v10_restore_tapped`.
+- `v10_keep_building_tapped` is unchanged (it is on the results screen).
+- `v10_save_later` can't fire: the account step has had no "Later" button since account-first, and the paywall has no skip (trial required). The only way past the paywall without buying is "Continue for now" when the store can't load (`v10_plan_decision {decision: "store_unavailable_continue"}`).
+
+**3. `app_first_open`** once per install (install id, app_version, platform, reinstall).
+
+**4. The 29% who never saw results.** Prod, last 14 days:
+- 28 "recording finished" events against 20 "saw results" events. These are events, not people: most rows have no id yet.
+- Analysis took 14-73s (most 15-25s).
+- Today one Android user (older build, 5-minute recording) had 3 analyses finish and save on the server without the phone ever showing them. They retried for 46 minutes, and the 4th attempt got through.
+- With no per-install id yet, the other drop-offs can't be traced per person. That is what part 1 fixes.
+
+Most likely cause, supported by the iOS "Network request failed" processing errors and the orphaned results: the analysis runs inside one request. Leaving the app suspends it, the phone drops the request ("Network request failed"), and the result the server saved anyway was thrown away. Now:
+- **Leave the app with notifications on →** "Your list is ready" push when it lands.
+- **Come back →** the screen collects the saved result instead of failing.
+- **App killed →** next launch goes straight back to collect it.
+- The screen also says it usually takes about 20 seconds, and that she can leave when a push can actually reach her.
+- New events: `v10_processing_backgrounded`, `v10_processing_returned` and `v10_processing_recovered` show how often each path happens.
+
+### Technical changes (for Jimmy)
+Mobile:
+- New `lib/install-id.ts`:
+  - `getInstallId()` reads SecureStore `acuity.install_id`. On first run it adopts the existing AsyncStorage `acuity.anon_session_id`, and it keeps that key in sync.
+  - Also `appContext()`, `claimFirstOpen()` and `installIdHeader()`.
+- `lib/onboarding-events.ts`: v10_/app_ events always send `sessionToken = installId` and merge `app_version` and `platform` into the metadata. Other event families are unchanged, because the web funnel queries read funnel_* rows by sessionToken. Adds `trackFirstOpenOnce()`, called from `app/_layout.tsx`.
+- `lib/auth.ts` and `lib/apple-auth.ts`: all 5 sign-in fetches send `X-Ripple-Install-Id`.
+- `lib/try-session.ts`:
+  - `getOrCreateAnonDeviceId()` now returns the install id.
+  - `submitTryRecording` takes an `onStage` callback and persists a pending job (`ripple.v10.try_pending_job`) once the audio is in storage. On a 409 it recovers the result.
+  - New `fetchTryResult`, `waitForTryResult` and `requestTryReadyPush`.
+- `app/onboarding-new/_v10/processing.tsx`:
+  - Real stages: upload, then analysis, then attach.
+  - Recovers the result after a retryable failure.
+  - Has a `resume=1` mode.
+  - Requests the push once per upload via an AppState listener.
+  - Shows the duration line.
+- `app/onboarding-new/start.tsx`: if a pending job exists, `router.replace` to processing `resume=1`.
+- `lib/push-token.ts`: adds `getGrantedPushToken()` and `pushPermissionGranted()`.
+- `lib/notifications.ts`: `try_ready` pushes are silent in the foreground.
+- `paywall.tsx`: the outcome events above.
+- `lib/onboarding-v10/entry-routing.ts`: `BOOT_WRITTEN_KEYS` gains `acuity.anon_session_id` and `acuity.first_open_sent_at`. **Load-bearing:** both are now written at boot, and without this every fresh install would read as "app history" and be sent to sign-in instead of the funnel.
+
+Web:
+- `api/onboarding-events`: accepts `^app_[a-z0-9_]+$`, except `app_signed_in`, which stays server-only.
+- `lib/mobile-session.ts`:
+  - `readInstallId()` reads the header via next/headers, so the 5 routes are unchanged.
+  - `app_signed_in` gets `sessionToken = installId`.
+  - `backfillInstallEvents()` sets userId on that install's anonymous v10_/app_ rows. It skips users who opted out of analytics.
+- New `lib/try-result.ts` and two routes:
+  - `POST /api/mobile/try-recording/result` returns 200 with the result, 202 while pending, or 410 if the analysis failed. It matches TrySession by audioPath + anonDeviceId.
+  - `POST /api/mobile/try-recording/notify` (maxDuration 150) waits for the result, then sends one Expo push with `data.type: "try_ready"`. It requires an Expo token, a live upload and the IP limiter.
+- No schema change.
+- Tests: `try-result.test.ts`, `mobile-session-install.test.ts`, `evidence/install-id-analytics.test.ts`, and new cases in `evidence/v10-entry-routing.test.ts`. Full suite: 118 files, 1446 tests green.
+
+### Manual steps / to verify on device (build 186)
+- **Not yet verified on a phone.** Start a first recording, then press Home during "Listening back…" with notifications allowed.
+  - Expect a "Your list is ready" push.
+  - Opening the app should show the results button, not "That didn't go through".
+- Repeat, then force-quit during the analysis and reopen. Expect it to go straight to the results.
+- The push relies on the server function continuing after the phone disconnects. Prod's orphaned TrySessions show that it does, but this is the first time anything depends on it.
+- Typed debriefs don't get the push (they are fast and synchronous; unchanged).
+- Requires the web deploy (merge) BEFORE build 186 reaches testers.
+
+---
+
 ## [2026-10-20] — One weekly social sweep and one Social Brief email (Ripple, Mythicals, BWK)
 
 - **Requested by:** Keenan
