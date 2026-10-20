@@ -7,6 +7,54 @@
 
 ---
 
+## [2026-10-20] — One weekly social sweep and one Social Brief email (Ripple, Mythicals, BWK)
+
+- **Requested by:** Keenan
+- **Committed by:** Claude Code
+- **Commit hash:** (see git log: "feat: One weekly social sweep and one Social Brief email")
+
+### In plain English (for Keenan)
+Social research now runs as **one sweep every Saturday night**, collecting in order:
+- competitor posts, keyword discovery and copy-this briefs
+- the Reddit audience pulse
+- new hashtags and creators to watch
+- our own post results
+
+It ends with **one Social Brief per brand** (Ripple, Legendary Mythicals, Build With Key), emailed **Sunday 9am Central**. Each brief covers what worked, what flopped, competitor moves, what the audience is talking about, next week's plan (keep, stop, start, hooks to test, ad angles), and a "needs your yes" list.
+
+The old social emails keep coming for one overlap week so you can compare. After that, one switch turns them all off: weekly brief, lane intelligence, niche memo, Monday performance report, UGC digest, competitor research and top-videos reports, video-script report. The data behind them keeps flowing into the Social Brief.
+
+Unchanged: the SEO weekly, the founder metrics email, and the weekly audit.
+
+### Technical changes (for Jimmy)
+- New `apps/web/src/lib/content-factory/social-brief.ts`:
+  - `gather(brand)` reads the scoreboard, active lanes with 14-day post counts, the weekly-brief how/what, CompetitorPost outliers (briefAt ≤ 9d), Reddit `getTopThemes`, `getLatestCompetitorBrief` women/men, and queued UgcCreators.
+  - `buildSocialBrief(brand)` makes one Opus 5.5 call → JSON, stored at `content-factory/social-briefs/latest-<brand>.json` plus a dated copy.
+  - Also `readSocialBrief` and `socialBriefEmailHtml`.
+- New `apps/web/src/lib/content-factory/social-brief-send.ts`: `sendSocialBriefEmail()` (only briefs younger than 3 days), and `socialBriefOnly()` reading FeatureFlag `social_brief_only` (60s memo; DB error → old emails stay on).
+- New `apps/web/src/inngest/functions/social-weekly-sweep.ts`:
+  - `socialWeeklySweepFn` runs cron `0 1 * * 0` (Sat 8pm CT) and event `content-factory/social.sweep {email?, skipCollectors?}`. It calls `step.invoke` on competitor-scrape (5h timeout), reddit-trends (30m) and niche-discovery (1h), then `refreshScoreboards`, then one step per brand. Every stage is soft.
+  - `socialBriefEmailFn` runs cron `0 14 * * 0` (Sun 9am CT) and event `content-factory/social.brief.email`.
+- Removed standalone crons:
+  - competitor-scrape-daily (`30 3 * * 0`); the sweep now runs it ~2.5h earlier, still before the 04:40 weekly-brief build.
+  - niche-discovery (`0 2 15 * *`); now weekly via the sweep.
+  - Event triggers on both kept.
+- `social_brief_only` gate added inside `sendTopVideosEmail`, `sendVideoScriptReport`, `sendWeeklyDigest` (UGC), `sendPerformanceReport` and `sendResearchReport`, and inline in the weekly-brief, lane-intelligence and niche-memo email steps.
+- `apps/web/src/app/api/admin/carousels/route.ts`: new action `social-sweep {email, skipCollectors}`.
+- `apps/web/src/app/api/inngest/route.ts`: registers both functions.
+- AdLab competitor ad research stays Sat 18:00 UTC because the ad batch reads it at 21:00; the brief reads its latest result.
+
+### Manual steps needed
+- [ ] After the overlap week (Sun 10-25 brief), turn on FeatureFlag `social_brief_only` to stop the old emails (Keenan says go, Claude flips it)
+- [ ] Reddit audience pulse: Reddit has blocked our RSS feed since 10-03; switch to an Apify Reddit scraper if we want it back (Keenan decision, small Apify cost)
+
+### Notes
+- Coverage differs by brand: Mythicals has no competitor or Reddit tracking (own results only); BWK has no weekly how/what brief and no active lanes yet (Keenan restarting it by hand).
+- Niche discovery went from monthly back to weekly, so watch Apify usage after the first sweeps (it was cut to monthly on 09-21 for plan limits).
+- Local scripts can't read `supabase.server` (server-only), so the scoreboard reads come back empty in local tests but work in production.
+
+---
+
 ## [2026-10-20] — Day-2 come-back nudge switched on; weekly audit gets a cost-cutting scan
 
 - **Requested by:** Keenan

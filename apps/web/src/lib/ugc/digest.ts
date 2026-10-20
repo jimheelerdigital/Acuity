@@ -99,6 +99,9 @@ export async function buildWeeklyDigest(now = new Date()) {
 }
 
 export async function sendWeeklyDigest(now = new Date()): Promise<{ queued: number }> {
+  // Folded into the weekly Social Brief (2026-10-20) once social_brief_only is on.
+  const { socialBriefOnly } = await import("@/lib/content-factory/social-brief-send");
+  if (await socialBriefOnly()) return { queued: 0 };
   const d = await buildWeeklyDigest(now);
   const failed = d.runs.filter((r) => r.status === "failed" || ((r.errors as unknown[] | null)?.length ?? 0) > 0);
   const parts: string[] = [];

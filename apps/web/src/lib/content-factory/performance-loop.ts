@@ -698,6 +698,9 @@ export async function sendPerformanceReport(
   extraHtml = "",
   opts: { topHtml?: string; subjectPrefix?: string } = {}
 ): Promise<{ sent: boolean; id?: string }> {
+  // Folded into the weekly Social Brief (2026-10-20) once social_brief_only is on.
+  const { socialBriefOnly } = await import("@/lib/content-factory/social-brief-send");
+  if (await socialBriefOnly()) return { sent: false };
   const use =
     boards ??
     ((await Promise.all((["mythicals", "ripple", "bwk"] as LoopBrand[]).map(readScoreboard))).filter(Boolean) as Scoreboard[]);

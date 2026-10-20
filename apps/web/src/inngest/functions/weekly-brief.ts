@@ -47,6 +47,9 @@ export const weeklyBriefFn = inngest.createFunction(
 
     if (email) {
       await step.run("email", async () => {
+        // Folded into the weekly Social Brief (2026-10-20) once social_brief_only is on.
+        const { socialBriefOnly } = await import("@/lib/content-factory/social-brief-send");
+        if (await socialBriefOnly()) return;
         const { readBrief, briefEmailHtml } = await import("@/lib/content-factory/weekly-brief");
         const { sendEmailOrThrow } = await import("@/lib/resend");
         const briefs = (await Promise.all([readBrief("ripple"), readBrief("mythicals")])).filter(

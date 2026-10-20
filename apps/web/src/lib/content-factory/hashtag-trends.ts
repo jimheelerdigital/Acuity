@@ -254,6 +254,9 @@ function esc(s: string): string {
  * Returns the number of hashtags included.
  */
 export async function sendTopVideosEmail(): Promise<number> {
+  // Folded into the weekly Social Brief (2026-10-20) once social_brief_only is on.
+  const { socialBriefOnly } = await import("@/lib/content-factory/social-brief-send");
+  if (await socialBriefOnly()) return 0;
   const { prisma } = await import("@/lib/prisma");
   const watches = await prisma.hashtagWatch.findMany({
     where: { status: "ACTIVE" },

@@ -142,6 +142,9 @@ Write this week's strategy memo.`,
       });
 
       try {
+        // Folded into the weekly Social Brief (2026-10-20) once social_brief_only is on.
+        const { socialBriefOnly } = await import("@/lib/content-factory/social-brief-send");
+        if (await socialBriefOnly()) throw new Error("social_brief_only: memo saved, email skipped");
         const { sendEmailOrThrow } = await import("@/lib/resend");
         await sendEmailOrThrow({
           from:

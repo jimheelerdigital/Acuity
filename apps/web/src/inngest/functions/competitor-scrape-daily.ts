@@ -26,10 +26,8 @@ export const competitorScrapeDailyFn = inngest.createFunction(
     name: "Content Factory — Competitor Research (weekly, Sundays)",
     retries: 1,
     triggers: [
-      // Sundays 3:30 UTC = Saturday 10:30pm Central (2026-10-02, per Keenan:
-      // "cut back to one full scrape weekly on sundays" — Apify $19 plan).
-      // Runs before the Sunday 10:00 UTC ad batch so its briefs are fresh.
-      { cron: "30 3 * * 0" },
+      // No cron since 2026-10-20: the weekly social sweep
+      // (social-weekly-sweep.ts, Sat 8pm Central) invokes this first.
       { event: "content-factory/competitor.scrape" },
     ],
   },

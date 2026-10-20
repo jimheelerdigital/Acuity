@@ -81,6 +81,7 @@ import { nicheDiscoveryFn } from "@/inngest/functions/niche-discovery";
 import { socialPublishCronFn } from "@/inngest/functions/social-publish-cron";
 import { laneIntelligenceReportFn } from "@/inngest/functions/lane-intelligence-report";
 import { redditTrendsDailyFn } from "@/inngest/functions/reddit-trends-daily";
+import { socialBriefEmailFn, socialWeeklySweepFn } from "@/inngest/functions/social-weekly-sweep";
 import { competitorScrapeDailyFn } from "@/inngest/functions/competitor-scrape-daily";
 import { adlabWeeklyBatchFn } from "@/inngest/functions/adlab-weekly-batch";
 import { adlabLookSamplesFn } from "@/inngest/functions/adlab-look-samples";
@@ -177,6 +178,8 @@ const handler = serve({
     socialPublishCronFn,
     laneIntelligenceReportFn,
     redditTrendsDailyFn,
+    socialWeeklySweepFn,
+    socialBriefEmailFn,
     competitorScrapeDailyFn,
     adlabWeeklyBatchFn,
     adlabLookSamplesFn,

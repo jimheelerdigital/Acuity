@@ -26,8 +26,9 @@ export const nicheDiscoveryFn = inngest.createFunction(
     name: "Niche Lab — Monthly Hashtag & Account Discovery",
     retries: 1,
     triggers: [
-      // Monthly (15th, 2:00 UTC) — was weekly; cut 2026-09-21 to stay inside Apify plan limits
-      { cron: "0 2 15 * *" },
+      // No cron since 2026-10-20: the weekly social sweep invokes it (weekly
+      // again; the sweep replaces the monthly 15th run). Was monthly to stay
+      // inside Apify plan limits; watch Apify usage after the first sweeps.
       { event: "content-factory/niche.discover" },
     ],
   },
