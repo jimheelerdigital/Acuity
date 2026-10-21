@@ -1029,6 +1029,8 @@ interface CreateBatchOpts {
   /** Collect pass: record the copy requests instead of calling Claude, and stop before any ad is written. */
   collect?: WeeklyCopyRequest[];
   prefetched?: PrefetchedCopy;
+  /** One-off batch focus (2026-10-20): every draft is about this, overriding the audience themes. */
+  focus?: string;
 }
 
 type BatchResult = { experimentId: string; creativeIds: string[]; videoCreativeIds: string[]; digestDate: string };
@@ -1210,6 +1212,7 @@ HARD RULES (Meta policy + brand — violations get ads rejected):
 - No recording-duration claims. ${ACQUISITION_TERM_RULE} ${TIME_OF_DAY_RULE}
 - CLAIMS: ${AD_CLAIM_GUARDRAIL}
 
+${opts.focus ? `\nTHIS BATCH'S FOCUS (a one-off brief from the founder; it OVERRIDES the audience themes and applies to EVERY slot, including the iterate slots):\n${opts.focus}\nMake the reader feel it through the SITUATION, never by naming his feelings: the HARD RULES still apply.\n` : ""}
 Submit the ads with the submit_ads tool.`;
 
   // Drafts for Jev (2026-09-30, per Keenan: "create multiple different ad
@@ -1221,7 +1224,7 @@ Submit the ads with the submit_ads tool.`;
   const per = Math.ceil(themes.length / halves.length);
   const themeSlices = halves.map((_, i) => themes.slice(i * per, (i + 1) * per));
   const halfPrompt = (i: number) =>
-    `This request covers ${halves[i].length} of this week's 10 slots (the batch is split into ${halves.length} requests). For EACH slot write ${VARIANTS} genuinely different drafts (a different hook, a different life moment, a different opening line each time), so ${halves[i].length * VARIANTS} ads in total. Set "archetype" to the slot key on every draft. The drafts are scored and only the strongest one per slot becomes an ad, so make each one a real contender, not a small rewording. Slots, in order: ${halves[i].map((sl) => `${sl.key} (look: ${lookByKey(sl.format)?.label ?? sl.format}, format ${sl.format})`).join(", ")}. Root the new-concept drafts in these audience themes: ${themeSlices[i].map((t) => t.theme).join(" | ") || "any of the themes above"}.
+    `This request covers ${halves[i].length} of this week's 10 slots (the batch is split into ${halves.length} requests). For EACH slot write ${VARIANTS} genuinely different drafts (a different hook, a different life moment, a different opening line each time), so ${halves[i].length * VARIANTS} ads in total. Set "archetype" to the slot key on every draft. The drafts are scored and only the strongest one per slot becomes an ad, so make each one a real contender, not a small rewording. Slots, in order: ${halves[i].map((sl) => `${sl.key} (look: ${lookByKey(sl.format)?.label ?? sl.format}, format ${sl.format})`).join(", ")}. ${opts.focus ? "Every draft is about THIS BATCH'S FOCUS from the system prompt." : `Root the new-concept drafts in these audience themes: ${themeSlices[i].map((t) => t.theme).join(" | ") || "any of the themes above"}.`}
 Call the submit_ads tool IMMEDIATELY. Do not write any analysis, plan, draft or commentary before or after the tool call; think silently and put everything into the tool input.`;
 
   const generateHalf = async (i: number): Promise<z.infer<typeof BatchAdSchema>[]> => {

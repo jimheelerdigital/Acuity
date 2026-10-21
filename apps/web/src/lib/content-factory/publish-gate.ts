@@ -173,7 +173,9 @@ export interface GateMarker {
  * don't count toward a brand-day being complete.
  */
 export function gateExemptLane(lane: string | null | undefined): boolean {
-  return !!lane && (lane.startsWith("voiced-") || lane.startsWith("pick-"));
+  // Animated Ripple lanes always post (2026-10-20, per Keenan: "if we spend
+  // the money, post it").
+  return !!lane && (lane.startsWith("voiced-") || lane.startsWith("pick-") || lane === "ripple-list" || lane === "ripple-split");
 }
 
 /** JEV_PUBLISH_GATE: on with a Jev key, "0" disables. */

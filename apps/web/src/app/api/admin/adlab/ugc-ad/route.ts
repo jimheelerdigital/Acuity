@@ -80,9 +80,17 @@ export async function POST(req: NextRequest) {
     });
     if (!project.metaPageId) throw new Error("lane has no metaPageId");
 
-    // 1. Own ad set at the budget (helper creates it ACTIVE) → paused at once.
-    const set = await ensureDedicatedAdSet(b.group, b.label.replace(/[^a-zA-Z0-9 @'_-]+/g, "").slice(0, 50), budgetCents);
-    await meta.setStatus(set.adsetId, "adset", "PAUSED");
+    // 1. The lane's main (registrations) ad set (2026-10-20, per Keenan: all
+    // UGC in one ad set). ownAdset: true keeps the old one-ad-per-ad-set path.
+    let set: { adsetId: string };
+    if ((body as { ownAdset?: boolean }).ownAdset) {
+      set = await ensureDedicatedAdSet(b.group, b.label.replace(/[^a-zA-Z0-9 @'_-]+/g, "").slice(0, 50), budgetCents);
+      await meta.setStatus(set.adsetId, "adset", "PAUSED");
+    } else {
+      const lane = await prisma.adLabProject.findUniqueOrThrow({ where: { slug: b.group === "women" ? "ripple-women" : "ripple-men" }, select: { evergreenAdsetId: true } });
+      if (!lane.evergreenAdsetId) throw new Error("lane has no main ad set");
+      set = { adsetId: lane.evergreenAdsetId };
+    }
     steps.adset = set;
 
     // 2. Assets.

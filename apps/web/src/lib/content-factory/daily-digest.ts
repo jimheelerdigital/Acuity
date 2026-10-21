@@ -70,7 +70,7 @@ export async function getDigestState(brand: SocialAccountKey, date: string): Pro
 
   const laneRows = await prisma.contentLane.findMany({
     where: { status: { not: "RETIRED" } },
-    select: { key: true, name: true, hoursUtc: true },
+    select: { key: true, name: true, hoursUtc: true, spec: true },
     orderBy: { key: "asc" },
   });
   const lanes: typeof laneRows = [];
@@ -116,8 +116,15 @@ export async function getDigestState(brand: SocialAccountKey, date: string): Pro
   // 05 and 07 UTC; presence alone would call the day complete after 05).
   const postCount = new Map<string, number>();
   for (const p of posts) postCount.set(p.lane, (postCount.get(p.lane) ?? 0) + 1);
+  // spec.daysUtc (2026-10-20): a lane that only runs on some weekdays (the
+  // 3x-weekly ripple-split) owes nothing on the other days.
+  const dayOfWeek = day.getUTCDay();
+  const runsToday = (spec: unknown) => {
+    const d = (spec as { daysUtc?: unknown } | null)?.daysUtc;
+    return !Array.isArray(d) || d.includes(dayOfWeek);
+  };
   const missingLanes = lanes
-    .filter((l) => l.hoursUtc.length > 0 && (postCount.get(l.key) ?? 0) < l.hoursUtc.length)
+    .filter((l) => l.hoursUtc.length > 0 && runsToday(l.spec) && (postCount.get(l.key) ?? 0) < l.hoursUtc.length)
     .map((l) => l.name);
 
   const { data: claim } = await supabase.storage.from(BUCKET).download(claimPath(brand, date));

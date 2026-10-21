@@ -1280,7 +1280,7 @@ export default function RecordScreen() {
           // room beneath the checklist.
           <View className="items-center gap-14">
             {state === "uploading" ? (
-              <ProcessingProgressBar phase="uploading" elapsedSeconds={0} />
+              <UploadingProgress />
             ) : (
               <ProcessingView
                 phase={poll.phase}
@@ -1681,4 +1681,20 @@ function formatTime(seconds: number): string {
     .padStart(2, "0");
   const s = (seconds % 60).toString().padStart(2, "0");
   return `${m}:${s}`;
+}
+
+/**
+ * The "uploading" stage with a REAL elapsed counter (2026-10-20). It used to
+ * pass a hard-coded 0, so a slow server read "0s elapsed" for a whole
+ * minute (Jimmy, build 185). Counts from when this stage appears; the bar's
+ * own "still working" copy kicks in past 30s.
+ */
+function UploadingProgress() {
+  const [startedAt] = useState(() => Date.now());
+  const [seconds, setSeconds] = useState(0);
+  useEffect(() => {
+    const t = setInterval(() => setSeconds(Math.floor((Date.now() - startedAt) / 1000)), 1000);
+    return () => clearInterval(t);
+  }, [startedAt]);
+  return <ProcessingProgressBar phase="uploading" elapsedSeconds={seconds} />;
 }
