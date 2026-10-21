@@ -28,6 +28,7 @@ Nothing on goripple.io says "Acuity" anymore. Every old blog address with "acuit
 - Verified: zero live posts with "acuity" in slug, title, visible text, hook, FAQ data or links; getacuity.io and getacuity.io/blog/* 308 to goripple.io.
 - Remaining "acuity" strings in code are internal (CSS tokens `acuity-*`, package names, tables) and never shown to visitors.
 - auto-blog already bans "acuity" in generated copy.
+- Follow-up commit ("chore: Delete the old Acuity-era homepage code and one-minute copy"): removed unused `components/landing.tsx` and the old homepage set (`components/marketing/{MarketingHome,Hero,HeroCta,HowItWorks,FeatureRow,PhoneFrame,Pricing,Consistency,FinalCTA,MarketingNav,Footer,badge-system}`, `marketing/screens/`); signup headline "One minute a day" → "Say it out loud. Ripple keeps track."; onboarding "You talk for about a minute" / "a minute each night" fixed; AdLab lander default headline fixed. Google's AI Overview still quoting "one minute to half an hour" and a "basic free tier" comes from the old homepage and the store listings; it refreshes on recrawl.
 
 ## [2026-10-21] — Comparison hub, "best AI journaling apps" page, live App Store rating
 

@@ -109,9 +109,8 @@ export default async function HomePage() {
         dangerouslySetInnerHTML={{ __html: JSON.stringify({ ...jsonLd, "@graph": graph }) }}
       />
       <AccountDeletedBanner />
-      {/* 2026-10 redesign (components/marketing/home-v2). The previous
-          MarketingHome is kept in components/marketing/ until this one
-          settles. The old LandingPage is retained only for /for/* pages. */}
+      {/* 2026-10 redesign (components/marketing/home-v2). The old Acuity-era
+          homepage components were deleted 2026-10-21. */}
       <HomeV2
         pricing={{
           annual: displayAnnual(),

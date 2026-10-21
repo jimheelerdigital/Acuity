@@ -258,10 +258,10 @@ function SignUpForm() {
         <div className="flex flex-col justify-center bg-gradient-to-br from-[#F8F6FF] to-white px-6 py-10 lg:w-[55%] lg:px-16 lg:py-16 xl:px-24">
           {/* Headline */}
           <h1 className="font-display text-3xl font-bold leading-tight tracking-tight text-zinc-900 sm:text-4xl xl:text-5xl">
-            One minute a day.
+            Say it out loud.
             <br />
             <span className="bg-gradient-to-r from-acuity-primary to-acuity-primary-hi bg-clip-text text-transparent">
-              A life of clarity.
+              Ripple keeps track.
             </span>
           </h1>
 

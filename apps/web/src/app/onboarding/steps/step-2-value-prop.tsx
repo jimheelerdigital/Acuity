@@ -23,13 +23,13 @@ export function Step2ValueProp() {
       <div className="mt-10 space-y-3">
         <ValueCard
           mark={<WaveMark />}
-          title="You talk for about a minute."
+          title="You talk, as long or as short as you like."
           body="Whatever&rsquo;s on your mind. Your day, what&rsquo;s bothering you, what you&rsquo;re chewing on. No prompt, no format. Just your own words."
         />
         <ValueCard
           mark={<ExtractMark />}
           title="Ripple pulls out the signal."
-          body="Tasks, goals, mood, recurring themes — lifted from what you said and placed on your dashboard. Takes a minute or two."
+          body="Tasks, goals, mood, recurring themes — lifted from what you said and placed on your dashboard."
         />
         <ValueCard
           mark={<ShapeMark />}

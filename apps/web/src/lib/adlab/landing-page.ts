@@ -121,7 +121,7 @@ Return ONLY valid JSON, no markdown fences.`;
     data: {
       experimentId,
       slug,
-      heroHeadline: generated.heroHeadline ?? "One minute a day. A life of clarity.",
+      heroHeadline: generated.heroHeadline ?? "Say it out loud. Ripple keeps track.",
       heroSubheadline: generated.heroSubheadline ?? "",
       painPoints: generated.painPoints ?? [],
       valuePropHeadline: generated.valuePropHeadline ?? "Here's what changes",
