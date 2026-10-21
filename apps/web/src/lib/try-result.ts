@@ -112,12 +112,12 @@ export async function sendTryReadyPush(pushToken: string, fetchImpl: typeof fetc
       }),
     });
     if (!res.ok) {
-      safeLog.error("try-ready-push.http_error", { status: res.status });
+      safeLog.error("try-ready-push.http_error", `HTTP ${res.status}`, { status: res.status });
       return false;
     }
     return true;
   } catch (err) {
-    safeLog.error("try-ready-push.fetch_throw", { err: err instanceof Error ? err.message : "unknown" });
+    safeLog.error("try-ready-push.fetch_throw", err);
     return false;
   }
 }
