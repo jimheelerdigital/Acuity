@@ -7,6 +7,27 @@
 
 ---
 
+## [2026-10-21] — Every Mythicals cover now has a hero walking in to choose (or out into the arena)
+
+- **Requested by:** Keenan
+- **Committed by:** Claude Code
+- **Commit hash:** (see git log: "content: Put a hero on every Legendary Mythicals cover")
+
+### In plain English (for Keenan)
+The cover makes or breaks a post, and our best covers have a main character. Every Legendary Mythicals cover now shows a hero from behind, either walking in toward the five glowing options or walking out into the place the question puts him: a gladiator pit, a tournament field, a throne room. Empty-room covers are gone.
+
+### Technical changes (for Jimmy)
+- apps/web/src/lib/content-factory/choice-lane.ts:
+  - MYTHIC_COVER_STYLES is now two hero styles: THE LINEUP (hero walking in to the five) and THE ENTRANCE (hero walking out into the arena). THE HALL (no person) is removed.
+  - The coverScene rule requires a hero on every cover, with hero-walks-forward motion.
+  - pickChoiceCover rejects drafts whose coverScene names no hero or figure. The last-resort fallback doesn't apply this filter, so a post is never dropped.
+
+### Manual steps needed
+- None
+
+### Notes
+- Takes effect from the next Mythicals run. Posts already drafted today keep their covers.
+
 ## [2026-10-21] — Mythicals "too close" title check: only Mythicals titles, last 14 days
 
 - **Requested by:** Keenan
