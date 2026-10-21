@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
+import { AppState, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import { router, useLocalSearchParams } from "expo-router";
 import Animated, {
   Easing,
@@ -24,7 +24,14 @@ import { uploadDebrief } from "@/lib/onboarding-v10/upload";
 import { loadAnswers, saveAnswers } from "@/lib/onboarding-v11/answers";
 import { habitSuggestions } from "@/lib/onboarding-v11/copy";
 import { trackV11 } from "@/lib/onboarding-v11/flow";
-import { registerPushTokenForReminderSlot } from "@/lib/push-token";
+import { getGrantedPushToken, pushPermissionGranted, registerPushTokenForReminderSlot } from "@/lib/push-token";
+import {
+  clearPendingTryJob,
+  getPendingTryJob,
+  requestTryReadyPush,
+  waitForTryResult,
+  type PendingTryJob,
+} from "@/lib/try-session";
 
 import {
   Body,
@@ -62,27 +69,67 @@ import {
  * ── Retry without re-recording (unchanged) ───────────────────────────
  * The audio URI is a route param, so a failed upload retries the SAME
  * file. `typed=1` (typed debrief, already extracted) skips the upload.
+ *
+ * ── Leaving mid-analysis (2026-10-20, Keenan: 29% never saw results) ──
+ * The analysis runs inside one request (~15-50s, prod median ~20s). If she
+ * leaves the app, iOS suspends it, the request dies on the phone, and the
+ * server finishes and saves the result anyway — which this screen used to
+ * throw away ("That didn't go through"). Now:
+ *   - leaving with push allowed → the server sends "Your list is ready"
+ *     when it lands (/api/mobile/try-recording/notify);
+ *   - coming back → the screen fetches the saved result
+ *     (/api/mobile/try-recording/result) instead of failing;
+ *   - app killed → the next launch's start screen sends her back here with
+ *     `resume=1`, which only collects the result.
  */
 
-const STAGES = ["Listening back to what you said", "Pulling out your to-dos and habits", "Putting it on your list"] as const;
+// Real stages: 0 = audio uploading, 1 = the server is transcribing and
+// extracting, 2 = attaching to her account / done.
+const STAGES = ["Sending your debrief", "Listening back and pulling out your to-dos", "Putting it on your list"] as const;
 
 type Phase = "notify" | "habit" | "waiting";
 
 export default function V10Processing() {
   const { user } = useAuth();
   const signedIn = !!user;
-  const params = useLocalSearchParams<{ uri?: string; typed?: string }>();
-  const uri = typeof params.uri === "string" ? params.uri : null;
+  const params = useLocalSearchParams<{ uri?: string; typed?: string; resume?: string }>();
+  const resume = params.resume === "1";
+  const [resumeUri, setResumeUri] = useState<string | null>(null);
+  const uri = typeof params.uri === "string" ? params.uri : resumeUri;
   const typed = params.typed === "1";
 
   const [stage, setStage] = useState(0);
   const [entryId, setEntryId] = useState<string | null>(null);
   const [ready, setReady] = useState(false);
   const [failed, setFailed] = useState<{ message: string; retryable: boolean; rerecord?: boolean } | null>(null);
-  const [phase, setPhase] = useState<Phase>("notify");
+  // Resumed after leaving: she already saw (or skipped past) the setup
+  // steps, so go straight to waiting and open the results when they land.
+  const [phase, setPhase] = useState<Phase>(resume ? "waiting" : "notify");
   const startedAtRef = useRef(Date.now());
   const attemptRef = useRef(0);
   const leftRef = useRef(false);
+  /** True while the analysis request is in flight (stage 1). */
+  const analyzingRef = useRef(false);
+  const backgroundedAtRef = useRef<number | null>(null);
+  /** One "ready" push per upload, however many times she leaves. */
+  const pushRequestedForRef = useRef<string | null>(null);
+  const [canLeave, setCanLeave] = useState(false);
+
+  /**
+   * Collect a result the server saved after this phone lost the request.
+   * Returns true when it was found (and stored, exactly like a normal
+   * submit). Shows the "analyzing" stage while it waits.
+   */
+  const recover = useCallback(async (job: PendingTryJob, how: "after_error" | "resume"): Promise<boolean> => {
+    setStage(1);
+    const r = await waitForTryResult(job, () => leftRef.current);
+    if (r && r !== "failed") {
+      trackV10("v10_processing_recovered", { how, ms: Date.now() - job.postedAt, attempt: attemptRef.current });
+      return true;
+    }
+    if (r === "failed") await clearPendingTryJob();
+    return false;
+  }, []);
 
   const run = useCallback(async () => {
     setFailed(null);
@@ -91,13 +138,43 @@ export default function V10Processing() {
     startedAtRef.current = Date.now();
     attemptRef.current += 1;
 
-    if (!typed) {
+    if (resume && attemptRef.current === 1) {
+      // Relaunched after leaving mid-analysis: only collect the result.
+      const job = await getPendingTryJob();
+      if (job) setResumeUri(job.uri);
+      const found = job ? await recover(job, "resume") : false;
+      if (!found) {
+        // Nothing more is coming for that upload. Forget it so the next
+        // launch doesn't land here again; "Try again" re-sends the same
+        // audio file (kept in resumeUri) if it is still on the phone.
+        await clearPendingTryJob();
+        trackV10("v10_processing_failed", { detail: "resume_not_found", retryable: !!job, attempt: attemptRef.current });
+        setFailed({
+          message: "Ripple couldn't finish that one. Your recording is safe. Try again.",
+          retryable: !!job,
+          rerecord: true,
+        });
+        return;
+      }
+    } else if (!typed) {
       if (!uri) {
         setFailed({ message: "That debrief didn't reach Ripple. Please record again.", retryable: false, rerecord: true });
         return;
       }
-      const result = await uploadDebrief(uri);
-      if (!result.ok) {
+      const result = await uploadDebrief(uri, (s) => {
+        analyzingRef.current = s === "analyzing";
+        setStage(s === "analyzing" ? 1 : 0);
+      });
+      analyzingRef.current = false;
+      let ok = result.ok;
+      if (!ok && result.retryable) {
+        // The request may have died on the phone (app left, network blip)
+        // while the server kept going. If it reached the server, wait for
+        // the saved result before calling it a failure.
+        const job = await getPendingTryJob();
+        if (job) ok = await recover(job, "after_error");
+      }
+      if (!ok) {
         trackV10("v10_processing_failed", {
           rerecord: !!result.rerecord,
           retryable: result.retryable,
@@ -118,7 +195,7 @@ export default function V10Processing() {
     // claim creates every extracted task, so the results can show the REAL
     // to-dos. Max 6s; on a timeout the results fall back to the extraction
     // and finishOnboarding() retries the claim.
-    setStage(1);
+    setStage(2);
     // Usually signed OUT here (account comes after the results): the
     // debrief stays on the anonymous try-session and is claimed at sign-up.
     // A signed-in user (resumed funnel) claims now so the results can show
@@ -130,15 +207,55 @@ export default function V10Processing() {
       ]);
       setEntryId(claim && claim.status === "claimed" && claim.entryId ? claim.entryId : null);
     }
-    setStage(2);
-    trackV10("v10_processing_latency", { ms: Date.now() - startedAtRef.current, attempt: attemptRef.current, typed });
+    trackV10("v10_processing_latency", { ms: Date.now() - startedAtRef.current, attempt: attemptRef.current, typed, resume });
     setReady(true);
-  }, [uri, typed, signedIn]);
+  }, [typed, signedIn, resume, recover, uri]);
 
   useEffect(() => {
-    trackV10("v10_processing_viewed", { flow: "v11" });
+    trackV10("v10_processing_viewed", { flow: "v11", resume });
     void run();
-  }, [run]);
+    // Start once. `run` is also what "Try again" calls.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // "You can leave, we'll tell you" is only promised when a push can
+  // actually arrive. Re-checked after the reminders step asks.
+  useEffect(() => {
+    void pushPermissionGranted().then(setCanLeave);
+  }, [phase]);
+
+  // Leaving mid-analysis → ask the server to push "Your list is ready".
+  useEffect(() => {
+    const sub = AppState.addEventListener("change", (next) => {
+      if (next === "background") {
+        if (ready || failed) return;
+        backgroundedAtRef.current = Date.now();
+        void (async () => {
+          const job = analyzingRef.current ? await getPendingTryJob() : null;
+          const token = job ? await getGrantedPushToken() : null;
+          const fresh = !!job && pushRequestedForRef.current !== job.storagePath;
+          if (job && token && fresh) {
+            pushRequestedForRef.current = job.storagePath;
+            void requestTryReadyPush(job, token);
+          }
+          trackV10("v10_processing_backgrounded", {
+            stage,
+            elapsed_ms: Date.now() - startedAtRef.current,
+            push_requested: !!(job && token && fresh),
+            push_allowed: !!token,
+          });
+        })();
+      } else if (next === "active" && backgroundedAtRef.current) {
+        trackV10("v10_processing_returned", {
+          away_ms: Date.now() - backgroundedAtRef.current,
+          ready,
+          failed: !!failed,
+        });
+        backgroundedAtRef.current = null;
+      }
+    });
+    return () => sub.remove();
+  }, [ready, failed, stage]);
 
   const openResults = useCallback(
     (how: "auto" | "button") => {
@@ -164,7 +281,7 @@ export default function V10Processing() {
         <FailedState failed={failed} onRetry={() => void run()} />
       ) : (
         <View style={{ flex: 1 }}>
-          <AnalyzingCard stage={stage} ready={ready} onOpen={() => openResults("button")} />
+          <AnalyzingCard stage={stage} ready={ready} canLeave={canLeave} onOpen={() => openResults("button")} />
           {phase === "notify" ? <NotifyStep signedIn={signedIn} onDone={afterNotify} /> : null}
           {phase === "habit" ? <HabitStep signedIn={signedIn} onDone={() => setPhase("waiting")} /> : null}
           {phase === "waiting" ? <WaitingState /> : null}
@@ -176,7 +293,17 @@ export default function V10Processing() {
 
 // ── Analyzing / ready card (top of the screen, always visible) ───────────
 
-function AnalyzingCard({ stage, ready, onOpen }: { stage: number; ready: boolean; onOpen: () => void }) {
+function AnalyzingCard({
+  stage,
+  ready,
+  canLeave,
+  onOpen,
+}: {
+  stage: number;
+  ready: boolean;
+  canLeave: boolean;
+  onOpen: () => void;
+}) {
   if (ready) {
     return (
       <Animated.View entering={FadeIn.duration(260)} style={{ paddingHorizontal: 20, paddingTop: 6 }}>
@@ -203,6 +330,12 @@ function AnalyzingCard({ stage, ready, onOpen }: { stage: number; ready: boolean
           <Text style={{ marginTop: 2, fontSize: 13, color: V11.ter }}>{STAGES[Math.min(stage, STAGES.length - 1)]}…</Text>
         </View>
       </Card>
+      {/* Prod 2026-10-07→20: 15-50s, median ~20s. */}
+      <Text style={{ marginTop: 8, textAlign: "center", fontSize: 12, lineHeight: 17, color: V11.ter }}>
+        {canLeave
+          ? "Usually takes about 20 seconds. You can leave the app, we'll let you know when your list is ready."
+          : "Usually takes about 20 seconds. Keep Ripple open and your list appears here."}
+      </Text>
     </View>
   );
 }
@@ -517,7 +650,14 @@ function FailedState({
         <>
           {failed.retryable ? <PrimaryButton label="Try again" onPress={onRetry} /> : null}
           {failed.rerecord ? (
-            <PrimaryButton label="Record again" icon="none" onPress={() => router.replace("/onboarding-new/record")} />
+            <PrimaryButton
+              label="Record again"
+              icon="none"
+              onPress={() => {
+                void clearPendingTryJob();
+                router.replace("/onboarding-new/record");
+              }}
+            />
           ) : null}
           {!failed.retryable && !failed.rerecord ? (
             <TextButton label="Back" onPress={() => router.back()} />

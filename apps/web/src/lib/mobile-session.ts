@@ -1,5 +1,6 @@
 import "server-only";
 
+import { headers } from "next/headers";
 import { encode } from "next-auth/jwt";
 import { appOnboardingCompleted } from "@/lib/app-onboarding";
 import { loadWelcomeFields } from "@/lib/welcome-eligibility";
@@ -81,7 +82,11 @@ export async function issueMobileSessionToken(
   // it and the activation emails stop once it exists. Never blocks sign-in.
   try {
     const { prisma } = await import("@/lib/prisma");
-    await prisma.onboardingEvent.create({ data: { userId: user.id, event: "app_signed_in" } });
+    const installId = readInstallId();
+    await prisma.onboardingEvent.create({
+      data: { userId: user.id, event: "app_signed_in", sessionToken: installId },
+    });
+    if (installId) await backfillInstallEvents(prisma, user.id, installId);
   } catch {
     // analytics only
   }
@@ -136,4 +141,62 @@ export async function mobileSessionResponse(params: {
       hasAiConsent: welcome.hasAiConsent,
     },
   };
+}
+
+// ── Install id (2026-10-20, Keenan) ─────────────────────────────────────
+// App 1.9.5+ sends a stable per-install UUID as `X-Ripple-Install-Id` on
+// every sign-in call, and as `sessionToken` on its v10_* / app_* onboarding
+// events. Stamping it on app_signed_in and backfilling userId onto the
+// install's earlier anonymous events turns the pre-sign-in funnel into
+// per-person data. No schema change: OnboardingEvent.sessionToken (indexed).
+
+const INSTALL_ID_RE = /^[0-9a-f-]{16,64}$/i;
+
+/**
+ * The install id from the current request, or null. Read via next/headers
+ * so the five sign-in routes need no change; this function is only ever
+ * called inside those route handlers. Outside a request it returns null.
+ */
+export function readInstallId(): string | null {
+  try {
+    const v = headers().get("x-ripple-install-id")?.trim() ?? "";
+    return INSTALL_ID_RE.test(v) ? v : null;
+  } catch {
+    return null;
+  }
+}
+
+type BackfillDb = {
+  user: { findUnique(args: { where: { id: string }; select: { productAnalyticsEnabled: true } }): Promise<{ productAnalyticsEnabled: boolean | null } | null> };
+  onboardingEvent: {
+    updateMany(args: {
+      where: { sessionToken: string; userId: null; event: { startsWith: string } };
+      data: { userId: string };
+    }): Promise<{ count: number }>;
+  };
+};
+
+/**
+ * Attach this install's anonymous onboarding events to the user who just
+ * signed in. Only rows with no user yet, and only the install-keyed
+ * families (v10_*, app_*) — the id is never written on anything else, so
+ * this can't touch web funnel rows. Skipped for someone who has opted out
+ * of product analytics (the events route drops their signed-in events too).
+ */
+export async function backfillInstallEvents(
+  db: BackfillDb,
+  userId: string,
+  installId: string
+): Promise<number> {
+  const u = await db.user.findUnique({ where: { id: userId }, select: { productAnalyticsEnabled: true } });
+  if (!u || u.productAnalyticsEnabled === false) return 0;
+  let total = 0;
+  for (const prefix of ["v10_", "app_"]) {
+    const r = await db.onboardingEvent.updateMany({
+      where: { sessionToken: installId, userId: null, event: { startsWith: prefix } },
+      data: { userId },
+    });
+    total += r.count;
+  }
+  return total;
 }

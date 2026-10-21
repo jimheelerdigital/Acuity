@@ -171,12 +171,15 @@ export async function requestMetaTracking(): Promise<void> {
       const { status } = await Tracking.requestTrackingPermissionsAsync();
       await applyTrackingFlags(status);
     }
-    linkAdIdentifiers();
   } catch (err) {
     if (__DEV__) {
       // eslint-disable-next-line no-console
       console.log("[meta-sdk] tracking request failed:", err);
     }
+  } finally {
+    // After the ATT decision (so a granted user yields Apple's Detailed
+    // payload / IDFA), and even if anything above failed.
+    linkAdIdentifiers();
   }
 }
 

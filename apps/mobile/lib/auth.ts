@@ -29,6 +29,7 @@ import { useMemo } from "react";
 import { Platform } from "react-native";
 
 import { publishSiriConfig } from "@/lib/siri-shortcuts-data";
+import { installIdHeader } from "@/lib/install-id";
 
 // Required for expo-auth-session on web + some Expo Go edge cases.
 // No-op on native iOS but safe to call anywhere.
@@ -372,7 +373,7 @@ export async function signInWithPassword(
   try {
     const res = await fetch(`${apiBaseUrl()}/api/auth/mobile-login`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", ...(await installIdHeader()) },
       body: JSON.stringify({ email, password }),
     });
     const body = (await res.json().catch(() => ({}))) as {
@@ -515,7 +516,7 @@ export async function verifyEmailCode(
   try {
     const res = await fetch(`${apiBaseUrl()}/api/auth/mobile-email-code/verify`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", ...(await installIdHeader()) },
       body: JSON.stringify({ email: email.trim(), code: code.replace(/\D/g, "") }),
     });
     const body = (await res.json().catch(() => ({}))) as {
@@ -576,7 +577,7 @@ export async function completeMobileMagicLink(
   try {
     const res = await fetch(`${apiBaseUrl()}/api/auth/mobile-complete`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", ...(await installIdHeader()) },
       body: JSON.stringify({ token }),
     });
     const body = (await res.json().catch(() => ({}))) as {
@@ -922,7 +923,7 @@ export function useGoogleSignIn() {
     try {
       const res = await fetch(`${apiBaseUrl()}/api/auth/mobile-callback`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", ...(await installIdHeader()) },
         body: JSON.stringify({ googleIdToken: idToken }),
       });
       debug.callbackStatus = res.status;

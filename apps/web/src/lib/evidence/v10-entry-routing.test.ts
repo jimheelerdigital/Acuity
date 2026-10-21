@@ -202,6 +202,24 @@ describe("app-history detection", () => {
       .toBe(false);
   });
 
+  it("ignores the install-id keys app_first_open writes at boot (2026-10-20)", () => {
+    // Every fresh 1.9.5+ install writes these on first launch. Counting
+    // them would send every new user to sign-in instead of the funnel.
+    const boot = ["acuity_has_launched", "acuity.anon_session_id", "acuity.first_open_sent_at"];
+    expect(hasAppHistoryFromKeys(boot)).toBe(false);
+    expect(decideColdStartRoute({ ...base, hasAppHistory: hasAppHistoryFromKeys(boot) })).toBe("v10");
+    // A first debrief mid-analysis is the current funnel attempt, too.
+    expect(isHistoryKey("ripple.v10.try_pending_job")).toBe(false);
+  });
+
+  it("the mobile code writes exactly those boot keys (no drift)", async () => {
+    const { readFileSync } = await import("node:fs");
+    const path = await import("node:path");
+    const src = readFileSync(path.resolve(__dirname, "../../../../mobile/lib/install-id.ts"), "utf8");
+    expect(src).toContain('LEGACY_ASYNC_KEY = "acuity.anon_session_id"');
+    expect(src).toContain('FIRST_OPEN_KEY = "acuity.first_open_sent_at"');
+  });
+
   it("ignores our own v10 markers", () => {
     // They describe the current funnel attempt, not pre-v10 history.
     expect(isHistoryKey("ripple.v10.branch")).toBe(false);
