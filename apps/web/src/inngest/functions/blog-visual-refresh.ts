@@ -125,7 +125,7 @@ export function validate(original: string, r: Restyle): { errors: string[]; html
     errors.push("inserts must not contain <img>, <script> or inline styles");
   }
   const joined = r.inserts.map((i) => i?.html ?? "").join("\n");
-  if (!joined.includes('class="rb-takeaways"')) errors.push("missing rb-takeaways insert");
+  if (!/class=["']rb-takeaways["']/.test(joined)) errors.push("missing rb-takeaways insert");
   if (!joined.includes("<!--rb-image-1-->") || !joined.includes("<!--rb-image-2-->")) {
     errors.push("missing image slot inserts");
   }
@@ -179,7 +179,7 @@ export const blogVisualRefreshFn = inngest.createFunction(
         // finalBody starts with a <meta name="description"> line; keep it out of the restyle.
         const metaLine = full.match(/^\s*<meta[^>]*>\s*/i)?.[0] ?? "";
         const original = full.slice(metaLine.length);
-        if (original.includes('class="rb-takeaways"')) return { ok: false as const, reason: "already restyled" };
+        if (/class=["']rb-takeaways["']/.test(original)) return { ok: false as const, reason: "already restyled" };
 
         let feedback = "";
         for (let attempt = 1; attempt <= 3; attempt++) {
@@ -196,11 +196,13 @@ export const blogVisualRefreshFn = inngest.createFunction(
             parsed = JSON.parse(extractJson(raw)) as Restyle;
           } catch {
             feedback = "output was not valid JSON";
+            console.warn(`[blog-visual-refresh] ${slug} attempt ${attempt} invalid JSON: ${raw.slice(0, 300)}`);
             continue;
           }
           const { errors, html } = validate(original, parsed);
           if (errors.length || !html) {
             feedback = errors.join("; ");
+            console.warn(`[blog-visual-refresh] ${slug} attempt ${attempt} rejected: ${feedback}`);
             continue;
           }
           return { ok: true as const, id: post.id, metaLine, bodyHtml: html, restyle: parsed };

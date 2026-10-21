@@ -360,7 +360,7 @@ function validateBlogPost(
 
   // Banned phrases — hard failure
   const bodyLower = post.body.toLowerCase();
-  if (!post.body.includes('class="rb-takeaways"')) {
+  if (!/class=["']rb-takeaways["']/.test(post.body)) {
     errors.push('Missing the Key takeaways box (<aside class="rb-takeaways">) after the opening paragraph');
   }
 
