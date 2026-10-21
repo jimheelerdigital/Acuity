@@ -7,6 +7,25 @@
 
 ---
 
+## [2026-10-21] — Mythicals covers build curiosity; remake-cover tool
+
+- **Requested by:** Keenan
+- **Committed by:** Claude Code
+- **Commit hash:** (see git log: "content: Make Mythicals covers tease the five choices")
+
+### In plain English (for Keenan)
+Covers now vary their opening scene from post to post: a different place, light and kind of hero each time. Every cover still teases the five choices without showing them, through glowing gates, shapes behind bars, or silhouettes in haze, so people swipe to see. There's also a new way to remake a single post's cover. It was used on today's last post.
+
+### Technical changes (for Jimmy)
+- apps/web/src/lib/content-factory/choice-lane.ts: cover rule adds VARY THE OPENER + CURIOSITY (options teased, never plainly shown).
+- apps/web/src/app/api/admin/carousels/route.ts: new action "remake-mythic-cover" { postId, coverScene, coverMotion }. It renders the cover like the daily run, updates the COVER slide (imageUrl, rawImageUrl, imagePrompt, videoUrl null), deletes living/<postId>/clips.json and calls queuePostVideo.
+
+### Manual steps needed
+- None
+
+### Notes
+- Remaking a cover rebuilds every clip in the post video (the clip cache is all-or-nothing), roughly one post's worth of Kling credits.
+
 ## [2026-10-21] — Every Mythicals cover now has a hero walking in to choose (or out into the arena)
 
 - **Requested by:** Keenan

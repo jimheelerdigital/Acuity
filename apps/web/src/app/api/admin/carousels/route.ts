@@ -196,6 +196,37 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ ok: true, queued: true });
     }
 
+    case "remake-mythic-cover": {
+      // Remake one Mythicals post's cover (2026-10-21, per Keenan: "remake
+      // the cover for today's last post"). Body: { postId, coverScene,
+      // coverMotion }. Renders the new cover like the daily run does, swaps
+      // it into the COVER slide, drops the cached clips and rebuilds the
+      // post video (the post waits on the video marker before it publishes).
+      const b = body as { coverScene?: string; coverMotion?: string };
+      if (!postId || !b.coverScene) return NextResponse.json({ error: "postId and coverScene required" }, { status: 400 });
+      const post = await prisma.carouselPost.findUniqueOrThrow({ where: { id: postId }, select: { headline: true, topicSlug: true, generatedFor: true } });
+      const cover = await prisma.carouselSlide.findFirstOrThrow({ where: { carouselPostId: postId, kind: "COVER" }, select: { id: true } });
+      const { generateImage, generateCheckedImage, uploadOverlaySlide } = await import("@/lib/content-factory/carousel-generate");
+      const { buildMythicImagePrompt, withMotion } = await import("@/lib/content-factory/choice-lane");
+      const { renderChoiceOverlay } = await import("@/lib/content-factory/compose");
+      const { chooseTextPlacement } = await import("@/lib/content-factory/text-placement");
+      const prompt = buildMythicImagePrompt(b.coverScene, "cover");
+      const { buffer: raw } = await generateCheckedImage(() => generateImage(prompt), { scene: b.coverScene, slot: "cover", personAllowed: true, fantasy: true });
+      const place = await chooseTextPlacement(raw, b.coverScene);
+      const overlay = await renderChoiceOverlay({ top: post.headline, topSize: 52, place });
+      const date = post.generatedFor.toISOString().slice(0, 10);
+      const { imageUrl, rawImageUrl } = await uploadOverlaySlide(raw, overlay, `carousels/${date}/${post.topicSlug}/slide-cover-${Date.now()}.jpg`);
+      await prisma.carouselSlide.update({
+        where: { id: cover.id },
+        data: { imageUrl, rawImageUrl, videoUrl: null, imagePrompt: withMotion(prompt, b.coverMotion ?? "") },
+      });
+      const { supabase } = await import("@/lib/supabase.server");
+      await supabase.storage.from("content-factory").remove([`living/${postId}/clips.json`]);
+      const { queuePostVideo } = await import("@/lib/content-factory/post-video");
+      await queuePostVideo(postId);
+      return NextResponse.json({ ok: true, imageUrl, videoQueued: true });
+    }
+
     case "living-reel": {
       // Living reel (2026-09-24): every slide animated by Higgsfield, text
       // burned on, clean transitions, music, emailed. Optional `model`
