@@ -63,7 +63,7 @@ const norm = (s: string) =>
     .toLowerCase()
     .replace(/[‘’]/g, "'")
     .replace(/[“”]/g, '"')
-    .replace(/[^a-z0-9' "]+/g, " ")
+    .replace(/[^a-z0-9 ]+/g, " ")
     .replace(/\s+/g, " ")
     .trim();
 
@@ -93,7 +93,8 @@ export function applyInserts(html: string, inserts: Insert[]): { html: string; p
     const anchor = norm(ins.after ?? ins.before ?? "");
     const hit =
       anchor.length >= 12
-        ? bs.find((b) => b.text.startsWith(anchor) || b.text.startsWith(anchor.slice(0, 40)))
+        ? bs.find((b) => b.text.startsWith(anchor) || b.text.startsWith(anchor.slice(0, 40))) ??
+          (anchor.length >= 25 ? bs.find((b) => b.text.includes(anchor.slice(0, 60))) : undefined)
         : undefined;
     if (hit) {
       at.push({ pos: ins.before ? hit.start : hit.end, html: ins.html });
