@@ -243,6 +243,12 @@ export function decideColdStartRoute(f: ColdStartFacts): ColdStartRoute {
 export const BOOT_WRITTEN_KEYS = new Set([
   "acuity_has_launched",
   "acuity_last_active_ms",
+  // 2026-10-20 install id (lib/install-id.ts): app_first_open resolves the
+  // install id and marks first-open at boot on EVERY fresh install. The
+  // device id used to be written only once the funnel had started; now it
+  // is written at boot, so it can no longer count as history either.
+  "acuity.anon_session_id",
+  "acuity.first_open_sent_at",
 ]);
 
 /**

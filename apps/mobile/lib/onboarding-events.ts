@@ -25,6 +25,7 @@
 import Constants from "expo-constants";
 
 import { getToken } from "@/lib/auth";
+import { appContext, claimFirstOpen, getInstallId } from "@/lib/install-id";
 import { getStoredTrySessionToken } from "@/lib/try-session";
 
 export type OnboardingEventName =
@@ -68,7 +69,15 @@ export type OnboardingEventName =
   // `V10Event` union is the closed, authoritative list. Duplicating it here
   // would just be two lists to keep in sync. The server accepts these by the
   // matching `^v10_[a-z0-9_]+$` prefix rule.
-  | `v10_${string}`;
+  | `v10_${string}`
+  // App lifecycle (2026-10-20, Keenan). Server accepts ^app_ except
+  // app_signed_in, which only the server writes (lib/mobile-session.ts).
+  | "app_first_open";
+
+/** Event families keyed by the install id (see trackOnboardingEvent). */
+export function isInstallKeyed(eventName: string): boolean {
+  return eventName.startsWith("v10_") || eventName.startsWith("app_");
+}
 
 export interface TrackOptions {
   /** Single-select answer key, signup method, error code, etc. */
@@ -139,10 +148,23 @@ export async function trackOnboardingEvent(
     };
     if (bearer) headers["Authorization"] = `Bearer ${bearer}`;
 
+    // v10_* / app_* (Keenan, 2026-10-20): the install id is the session key
+    // on EVERY event, signed in or not, so one person's pre-sign-in screens
+    // and post-sign-in screens share a key, and app_version rides along so
+    // the funnel can be split by build. Other families keep their old
+    // behaviour: the web funnel queries read funnel_* rows by sessionToken
+    // and must not suddenly see app rows mixed in.
+    const isAppFamily = isInstallKeyed(eventName);
+    const enriched: TrackOptions | undefined =
+      isAppFamily && opts?.value === undefined && !opts?.values?.length
+        ? { ...opts, metadata: { ...(opts?.metadata ?? {}), ...appContext() } }
+        : opts;
+
     const body: Record<string, unknown> = { event: eventName };
-    const value = encodeValue(opts);
+    const value = encodeValue(enriched);
     if (value !== undefined) body.value = value;
-    if (!bearer && trySessionToken) body.sessionToken = trySessionToken;
+    if (isAppFamily) body.sessionToken = await getInstallId();
+    else if (!bearer && trySessionToken) body.sessionToken = trySessionToken;
 
     await fetch(`${apiBaseUrl()}/api/onboarding-events`, {
       method: "POST",
@@ -151,5 +173,21 @@ export async function trackOnboardingEvent(
     });
   } catch {
     // Swallow — never block the user flow for analytics.
+  }
+}
+
+/**
+ * app_first_open — once per install (Keenan, 2026-10-20). Called at boot.
+ * Carries the install id (as sessionToken), app version and platform, and
+ * `reinstall: true` when the Keychain already held an id from an earlier
+ * install of the app on this phone (see lib/install-id.ts).
+ */
+export async function trackFirstOpenOnce(): Promise<void> {
+  try {
+    const first = await claimFirstOpen();
+    if (!first) return;
+    await trackOnboardingEvent("app_first_open", { metadata: { reinstall: first.reinstall } });
+  } catch {
+    // analytics only
   }
 }

@@ -38,6 +38,16 @@ const FUNNEL_EVENT_RE = /^funnel_[a-z0-9_]+$/;
  */
 const V10_EVENT_RE = /^v10_[a-z0-9_]+$/;
 
+/**
+ * App lifecycle events from the mobile app (2026-10-20, Keenan):
+ * app_first_open today, more later — same prefix reasoning as v10_*.
+ * EXCEPT app_signed_in: only the server writes that one, at session issue
+ * (lib/mobile-session.ts), and the activation emails / app-access checks
+ * read it as proof of a real sign-in. A client must not be able to forge it.
+ */
+const APP_EVENT_RE = /^app_[a-z0-9_]+$/;
+const SERVER_ONLY_EVENTS = new Set(["app_signed_in"]);
+
 const VALID_NON_FUNNEL_EVENTS = new Set([
   // Post-signup onboarding
   "onboarding_recording_screen_viewed",
@@ -86,8 +96,10 @@ export async function POST(req: NextRequest) {
   const event = body.event;
   if (
     !event ||
+    SERVER_ONLY_EVENTS.has(event) ||
     (!FUNNEL_EVENT_RE.test(event) &&
       !V10_EVENT_RE.test(event) &&
+      !APP_EVENT_RE.test(event) &&
       !VALID_NON_FUNNEL_EVENTS.has(event))
   ) {
     return new Response(null, { status: 400 });
