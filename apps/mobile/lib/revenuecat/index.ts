@@ -710,9 +710,17 @@ export async function purchaseProPackage(
     const result = await mod.default.purchasePackage(
       pkg as Parameters<typeof mod.default.purchasePackage>[0]
     );
-    const hasPro = Boolean(
-      result.customerInfo.entitlements.active[RC_ENTITLEMENT_PRO]
-    );
+    const ent = result.customerInfo.entitlements.active[RC_ENTITLEMENT_PRO];
+    const hasPro = Boolean(ent);
+    // On-device Meta purchase event (2026-10-21, Jimmy): StartTrial for a
+    // free trial, Subscribe for a paid start. Meta's SKAdNetwork / AEM
+    // measurement only sees events logged by the SDK on the phone, so
+    // trials from people who declined tracking were invisible to it (they
+    // reached Meta only server-side via RevenueCat's Conversions API).
+    // Trial vs paid comes from the entitlement's periodType AFTER the
+    // purchase, not from the package having an intro offer: someone who
+    // already used their trial is charged immediately.
+    logMetaPurchase(pkg, ent?.periodType);
     return {
       status: "success",
       hasPro,
@@ -741,4 +749,24 @@ export async function restoreProPurchases(): Promise<boolean | null> {
     log("restorePurchases failed", err);
     return null;
   }
+}
+
+/**
+ * Log the purchase to the Meta SDK. Every RevenueCat purchase in the app
+ * (onboarding paywall, Subscribe screen) goes through purchaseProPackage,
+ * so this is the one place it happens. Value = the package's store price
+ * in its own currency (for a trial: the price that starts after it).
+ * Fail-soft; lazy-loaded so revenuecat ↔ meta-sdk don't import each other
+ * at module load.
+ */
+function logMetaPurchase(pkg: unknown, periodType: string | undefined): void {
+  const product = (pkg as { product?: { price?: number; currencyCode?: string } } | null)?.product;
+  const price = typeof product?.price === "number" ? product.price : undefined;
+  const currency = product?.currencyCode || "USD";
+  void import("@/lib/meta-sdk")
+    .then((m) => {
+      if (periodType === "TRIAL") m.logStartTrial(price, currency);
+      else if (price !== undefined) m.logSubscribe(price, currency);
+    })
+    .catch(() => {});
 }

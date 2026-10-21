@@ -293,3 +293,30 @@ export async function refreshPushTokenOnLaunch(): Promise<void> {
     }
   }
 }
+
+/**
+ * The Expo push token IF notification permission is already granted, else
+ * null. Never prompts. Used for the "Your list is ready" push on the first
+ * debrief (2026-10-20), which goes to a device that has no account yet, so
+ * the token travels with that one request instead of /api/user/push-token.
+ */
+export async function getGrantedPushToken(): Promise<string | null> {
+  if (!currentPlatform()) return null;
+  try {
+    const current = await Notifications.getPermissionsAsync();
+    if (!current.granted) return null;
+    return await fetchExpoPushToken();
+  } catch {
+    return null;
+  }
+}
+
+/** Whether notification permission is granted right now (no prompt). */
+export async function pushPermissionGranted(): Promise<boolean> {
+  if (!currentPlatform()) return false;
+  try {
+    return (await Notifications.getPermissionsAsync()).granted;
+  } catch {
+    return false;
+  }
+}

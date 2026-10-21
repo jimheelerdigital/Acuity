@@ -43,9 +43,10 @@ import { WhatsNewOverlay } from "@/components/WhatsNewOverlay";
 import { CelebrationModal } from "@/components/achievements/CelebrationModal";
 import { TourProvider } from "@/components/tour/TourProvider";
 import { useAchievementQueue } from "@/hooks/use-achievement-queue";
-import { initMetaSdk, setMetaUserId } from "@/lib/meta-sdk";
+import { requestMetaTracking, setMetaUserId, startMetaSdk } from "@/lib/meta-sdk";
 import { reapplyRemindersIfNeeded } from "@/lib/notifications-boot";
 import { refreshPushTokenOnLaunch } from "@/lib/push-token";
+import { trackFirstOpenOnce } from "@/lib/onboarding-events";
 import { flushWidgetCompletions } from "@/lib/widget-data";
 import {
   handleColdStartNotificationTap,
@@ -181,7 +182,9 @@ function AuthGate() {
     // (e.g. CompleteRegistration at the account step) are queued and
     // flushed on init. Idempotent.
     if (user.onboardingCompleted) {
-      void initMetaSdk();
+      // The SDK itself is already running (started at launch, below);
+      // this only asks for tracking permission.
+      void requestMetaTracking();
     }
     // 1.9.4: push any home-screen-widget check-offs (App Group
     // `pendingDone`) to the server now that we're signed in, and again on
@@ -206,6 +209,19 @@ function AuthGate() {
       router.push(`/entry/${entryId}`)
     );
   }, [router]);
+
+  // Meta SDK on every launch, signed in or not (2026-10-21): the install and
+  // fb_mobile_activate_app events must reach Meta for app-install ads even
+  // when someone quits during onboarding. No ATT prompt here; that still
+  // waits for onboarding to finish (requestMetaTracking above).
+  useEffect(() => {
+    void startMetaSdk();
+  }, []);
+
+  // app_first_open, once per install (Keenan, 2026-10-20). Fail-soft.
+  useEffect(() => {
+    void trackFirstOpenOnce();
+  }, []);
 
   useEffect(() => {
     if (loading) return;
