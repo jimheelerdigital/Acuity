@@ -7,6 +7,24 @@
 
 ---
 
+## [2026-10-21] — Fix: a Mythicals post was dropped when every title looked "too close" to an old one
+
+- **Requested by:** Keenan
+- **Committed by:** Claude Code
+- **Commit hash:** (see git log: "fix: Never drop a Mythicals post over near-duplicate titles")
+
+### In plain English (for Keenan)
+Only two Legendary Mythicals posts were made today instead of three. The third slot wrote ten possible titles, and all of them were judged too similar to recent posts, so the system gave up. Now it falls back to the best of those titles, as long as it isn't an exact repeat. Today's missing post was made up by hand.
+
+### Technical changes (for Jimmy)
+- apps/web/src/lib/content-factory/choice-lane.ts pickChoiceCover: after two failed cover rounds, a third rankCandidates pass runs over all covers written, rejecting only exact repeats (isRecentHeadline), not nearDuplicateOf. It throws only if that also finds nothing.
+
+### Manual steps needed
+- None
+
+### Notes
+- 10-21 08 UTC mythic-picks: ~6 rounds of near-duplicate checks from 08:01 to 08:08 (Inngest retries) and no choice-topic call. The whole run failed in the cover step.
+
 ## [2026-10-20] — Fix: adding ads no longer auto-retires our best ad
 
 - **Requested by:** Keenan

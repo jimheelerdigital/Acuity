@@ -524,10 +524,25 @@ export async function pickChoiceCover(opts: ChoiceTopicOpts): Promise<ChoiceCove
     });
   let covers = await write("");
   let ranked = covers.length ? await rank(covers) : null;
+  const tried = [...covers];
   if (!ranked) {
     const why = covers.map((c) => c.title).join(" | ");
     covers = await write(`REJECTED (none read clearly to a fan in one glance): ${why}. Write five NEW covers that do.`);
+    tried.push(...covers);
     ranked = covers.length ? await rank(covers) : null;
+  }
+  // Never drop the post (2026-10-21: the 08 UTC slot was lost when all ten
+  // covers were "too close" to a recent title). Last resort: rank every cover
+  // written, rejecting only exact repeats; "close" is allowed.
+  if (!ranked && tried.length) {
+    ranked = await rankCandidates({
+      brand: "mythicals",
+      label: `mythic-cover-${opts.mode ?? "choice"}-fallback`,
+      candidates: tried,
+      render: (c) => `COVER: ${c.title}\n(picture: ${c.coverScene.slice(0, 200)})`,
+      reject: async (c) => ((await isRecentHeadline(c.title)) ? "repeats a recent title" : null),
+      senseCheck: (c) => coverSenseProblem(c.title),
+    });
   }
   if (!ranked) throw new Error(`[choice-lane] no cover passed the sense check (${opts.category})`);
   console.log(`[choice-lane] cover picked: "${ranked.winner.title}" (${ranked.rankedBy}, ${ranked.survivors}/${covers.length})\n${ranked.table}`);
