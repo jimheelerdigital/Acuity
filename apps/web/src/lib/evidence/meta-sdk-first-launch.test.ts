@@ -40,3 +40,24 @@ describe("Meta SDK start vs ATT prompt", () => {
     expect(layout).not.toContain("initMetaSdk(");
   });
 });
+
+describe("on-device purchase events (2026-10-21)", () => {
+  const rc = readFileSync(path.join(mobile, "lib/revenuecat/index.ts"), "utf8");
+
+  it("every RevenueCat purchase logs to Meta, trial vs paid from the entitlement periodType", () => {
+    const fn = rc.slice(rc.indexOf("export async function purchaseProPackage("), rc.indexOf("export async function restoreProPurchases("));
+    expect(fn).toContain("logMetaPurchase(pkg, ent?.periodType)");
+    expect(rc).toMatch(/periodType === "TRIAL"\) m\.logStartTrial\(/);
+    expect(rc).toContain("m.logSubscribe(price, currency)");
+  });
+
+  it("uses Meta's standard event names and never drops pre-init events", () => {
+    expect(sdk).toContain("AppEvents.StartTrial");
+    expect(sdk).toContain("AppEvents.Subscribe");
+    expect(sdk).not.toMatch(/logEvent\("fb_mobile_start_trial"/);
+    for (const fn of ["logStartTrial", "logSubscribe", "logCompletedRegistration"]) {
+      const start = sdk.indexOf(`export function ${fn}(`);
+      expect(sdk.slice(start, sdk.indexOf("\nexport ", start + 10)), fn).toContain("logOrQueue(");
+    }
+  });
+});

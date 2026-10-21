@@ -256,13 +256,19 @@ export function logStartTrial(
   currency: string = "USD"
 ): void {
   try {
-    if (typeof value === "number" && Number.isFinite(value)) {
-      AppEventsLogger.logEvent("fb_mobile_start_trial", value, {
-        fb_currency: currency,
-      });
-    } else {
-      AppEventsLogger.logEvent("fb_mobile_start_trial");
-    }
+    // Meta's STANDARD StartTrial event (iOS constant value "StartTrial").
+    // The old literal "fb_mobile_start_trial" is not a standard event name,
+    // so Meta would have treated it as a custom event.
+    logOrQueue(() => {
+      const { AppEvents, AppEventParams } = AppEventsLogger;
+      if (typeof value === "number" && Number.isFinite(value)) {
+        AppEventsLogger.logEvent(AppEvents.StartTrial, value, {
+          [AppEventParams.Currency]: currency,
+        });
+      } else {
+        AppEventsLogger.logEvent(AppEvents.StartTrial);
+      }
+    });
   } catch {
     // ignore
   }
@@ -279,8 +285,13 @@ export function logStartTrial(
  */
 export function logSubscribe(value: number, currency: string = "USD"): void {
   try {
-    AppEventsLogger.logPurchase(value, currency, {
-      fb_content_type: "subscription",
+    // Meta's STANDARD Subscribe event (iOS constant value "Subscribe") for a
+    // paid subscription start.
+    logOrQueue(() => {
+      const { AppEvents, AppEventParams } = AppEventsLogger;
+      AppEventsLogger.logEvent(AppEvents.Subscribe, value, {
+        [AppEventParams.Currency]: currency,
+      });
     });
   } catch {
     // ignore
