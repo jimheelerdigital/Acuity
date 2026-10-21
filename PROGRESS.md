@@ -34,6 +34,7 @@ Blog posts, the voice journaling guide and the research page now match the new h
 - gpt-image-2 house-style images verified by eye on 6 static-post images before use.
 - Running blog-image locally needs `tsx --conditions react-server` (supabase.server is server-only).
 - `ContentPiece.updatedAt` changes on any DB write (incl. image backfills), so sitemap/dateModified will move for these posts today.
+- Follow-up commit ("fix: Make the blog visual refresh insert components instead of rewriting"): the first refresh asked Claude to return the whole restyled body; it condensed the article (~2.8k tokens out for an ~8k-char post) and validation rejected all 3 attempts. Now Claude returns only the components anchored to the first words of existing elements, and code inserts them into the untouched HTML. Archive hero backfill: 94/95 done (therapy-journal-vs-journaling-app-what-s-the-difference failed, retry).
 
 ## [2026-10-21] — Site-wide SEO pass + five new search landing pages
 
