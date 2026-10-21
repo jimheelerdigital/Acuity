@@ -4,6 +4,7 @@ import Link from "next/link";
 import type { Metadata } from "next";
 import { getPostBySlug, getAllSlugs, BLOG_POSTS } from "@/lib/blog-posts";
 import { BlogCtaButtons } from "@/components/blog-try-button";
+import { OG_IMAGE } from "@/lib/seo";
 
 export const revalidate = 300; // 5 minutes
 
@@ -21,6 +22,9 @@ interface DynamicPost {
   cta: string;
   targetKeyword: string | null;
   distributedAt: Date | null;
+  publishedAt: Date | null;
+  createdAt: Date;
+  updatedAt: Date;
   finalBody: string | null;
   status: string;
   redirectTo: string | null;
@@ -54,6 +58,9 @@ async function getDynamicPost(slug: string): Promise<DynamicPost | null> {
         cta: true,
         targetKeyword: true,
         distributedAt: true,
+        publishedAt: true,
+        createdAt: true,
+        updatedAt: true,
         finalBody: true,
         status: true,
         redirectTo: true,
@@ -73,6 +80,14 @@ export async function generateStaticParams() {
 }
 
 // ─── Metadata ───────────────────────────────────────────────────────────────
+
+function dynamicDates(post: DynamicPost): { published: string; modified: string } {
+  const published = (post.publishedAt ?? post.distributedAt ?? post.createdAt).toISOString();
+  const modified = post.updatedAt.toISOString();
+  return { published, modified: modified > published ? modified : published };
+}
+
+const OG_IMAGE_ABSOLUTE = `https://goripple.io${OG_IMAGE.url}`;
 
 function extractMetaDescription(html: string): string {
   const match = html.match(
@@ -98,11 +113,13 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
         type: "article",
         publishedTime: staticPost.publishedAt,
         modifiedTime: staticPost.updatedAt,
+        images: [OG_IMAGE],
       },
       twitter: {
         card: "summary_large_image",
         title: staticPost.title,
         description: staticPost.metaDescription,
+        images: [OG_IMAGE.url],
       },
     };
   }
@@ -114,7 +131,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const description = extractMetaDescription(
     dynamicPost.finalBody ?? dynamicPost.body
   );
-  const publishedAt = dynamicPost.distributedAt?.toISOString() ?? new Date().toISOString();
+  const { published, modified } = dynamicDates(dynamicPost);
 
   return {
     title: dynamicPost.title,
@@ -127,17 +144,18 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       description,
       url: `https://goripple.io/blog/${dynamicPost.slug}`,
       type: "article",
-      publishedTime: publishedAt,
+      publishedTime: published,
+      modifiedTime: modified,
       authors: ["Keenan Assaraf"],
-      ...(dynamicPost.heroImageUrl
-        ? { images: [{ url: dynamicPost.heroImageUrl, width: 1792, height: 1024 }] }
-        : {}),
+      images: dynamicPost.heroImageUrl
+        ? [{ url: dynamicPost.heroImageUrl, width: 1792, height: 1024, alt: dynamicPost.title }]
+        : [OG_IMAGE],
     },
     twitter: {
       card: "summary_large_image",
       title: dynamicPost.title,
       description,
-      ...(dynamicPost.heroImageUrl ? { images: [dynamicPost.heroImageUrl] } : {}),
+      images: [dynamicPost.heroImageUrl ?? OG_IMAGE.url],
     },
   };
 }
@@ -156,7 +174,7 @@ function BlogJsonLdStatic({
         "@type": "BlogPosting",
         headline: post.title,
         description: post.metaDescription,
-        image: "https://goripple.io/og-image.png?v=3",
+        image: OG_IMAGE_ABSOLUTE,
         datePublished: post.publishedAt,
         dateModified: post.updatedAt,
         author: {
@@ -202,8 +220,7 @@ function BlogJsonLdDynamic({ post }: { post: DynamicPost }) {
   const description = extractMetaDescription(
     post.finalBody ?? post.body
   );
-  const publishedAt =
-    post.distributedAt?.toISOString() ?? new Date().toISOString();
+  const { published, modified } = dynamicDates(post);
 
   const schema = {
     "@context": "https://schema.org",
@@ -212,9 +229,9 @@ function BlogJsonLdDynamic({ post }: { post: DynamicPost }) {
         "@type": "BlogPosting",
         headline: post.title,
         description,
-        image: post.heroImageUrl ?? "https://goripple.io/og-image.png?v=3",
-        datePublished: publishedAt,
-        dateModified: publishedAt,
+        image: post.heroImageUrl ?? OG_IMAGE_ABSOLUTE,
+        datePublished: published,
+        dateModified: modified,
         author: {
           "@type": "Person",
           name: "Keenan Assaraf",
@@ -357,6 +374,8 @@ export default async function BlogPostPage({ params }: Props) {
                 </time>
                 <span className="text-acuity-line-strong">|</span>
                 <span>{staticPost.readingTime}</span>
+                <span className="text-acuity-line-strong">|</span>
+                <span>By Keenan Assaraf</span>
               </div>
               <h1 className="text-3xl font-extrabold tracking-tight sm:text-4xl lg:text-5xl leading-[1.1] mb-6">
                 {staticPost.title}
@@ -423,8 +442,7 @@ export default async function BlogPostPage({ params }: Props) {
   }
 
   const htmlBody = sanitizeHtml(dynamicPost.finalBody ?? dynamicPost.body);
-  const publishedAt =
-    dynamicPost.distributedAt?.toISOString() ?? new Date().toISOString();
+  const publishedAt = dynamicDates(dynamicPost).published;
   const wordCount = htmlBody.replace(/<[^>]+>/g, " ").split(/\s+/).length;
   const readingTime = `${Math.max(1, Math.round(wordCount / 250))} min read`;
 
@@ -496,13 +514,20 @@ function BlogCta() {
           Say it once. Ripple remembers.
         </h2>
         <p className="text-acuity-text-sec mb-6 max-w-md mx-auto">
-          Talk through your day and Ripple pulls out the tasks, tracks
-          your goals, and shows you your patterns each week. Free for 7
-          days.
+          Talk it out and Ripple pulls out your tasks, tracks your habits
+          and mood, and shows you your patterns each week.
         </p>
         <BlogCtaButtons />
         <p className="mt-3 text-xs text-acuity-text-sec">
-          No credit card required &middot; Cancel anytime
+          7-day free trial &middot; Cancel anytime
+        </p>
+        <p className="mt-5 text-sm">
+          <Link
+            href="/voice-journaling"
+            className="text-acuity-text-sec underline underline-offset-4 hover:text-acuity-primary transition-colors"
+          >
+            New to voice journaling? Start with the guide
+          </Link>
         </p>
       </div>
       <div className="mt-12 text-center">

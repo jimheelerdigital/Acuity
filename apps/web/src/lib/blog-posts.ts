@@ -211,7 +211,7 @@ export const BLOG_POSTS: BlogPost[] = [
       },
       {
         tag: "p",
-        text: "Ripple is designed around exactly this workflow. You speak for a few minutes before bed, and by morning, your entry has been transformed into a structured summary with mood analysis, extracted tasks, and connections to your previous entries. It’s the fastest path from thought to insight available today.",
+        text: `Ripple is designed around exactly this workflow. You talk whenever something’s on your mind, and within minutes your entry becomes a to-do list with dates, habits checked off, a mood score, and connections to your previous entries. For a full walkthrough of the practice itself, see our <a href="/voice-journaling">complete guide to voice journaling</a>.`,
       },
       {
         tag: "p",
@@ -384,7 +384,7 @@ export const BLOG_POSTS: BlogPost[] = [
       },
       {
         tag: "p",
-        text: `The basic brain dump is powerful on its own. But when you add AI to the mix, it becomes transformative. An AI-powered app like Ripple takes your raw, unstructured voice dump and automatically extracts tasks, identifies emotional themes, tracks mood over time, and connects tonight\u2019s entry to patterns from previous nights. If you struggle with <a href="/for/sleep">racing thoughts before sleep</a>, this is the fastest way to quiet your mind and wake up organized.`,
+        text: `The basic brain dump is powerful on its own. But when you add AI to the mix, it becomes transformative. An AI-powered app like Ripple takes your raw, unstructured voice dump and automatically extracts tasks, identifies emotional themes, tracks mood over time, and connects each entry to patterns from previous ones. If you struggle with <a href="/for/sleep">racing thoughts before sleep</a>, it gives those thoughts somewhere to go besides your head.`,
       },
       {
         tag: "p",
@@ -468,7 +468,7 @@ export const BLOG_POSTS: BlogPost[] = [
       },
       {
         tag: "p",
-        text: "Think of it this way: a regular journal is a mirror. An AI journal is a mirror that remembers every reflection and tells you when you’re making the same face you made last Tuesday.",
+        text: "Think of it this way: a regular journal keeps a record. An AI journal remembers every entry and tells you when you’re circling the same thing you circled last Tuesday.",
       },
       {
         tag: "h2",
@@ -556,7 +556,7 @@ export const BLOG_POSTS: BlogPost[] = [
       },
       {
         tag: "p",
-        text: "This is the newest and fastest-growing category. Voice-first apps are designed from the ground up around spoken input. You talk, the app listens, and AI transforms your words into structured journal entries with summaries, mood analysis, extracted tasks, and pattern connections. The key advantage is speed and naturalness — you can complete a meaningful journal entry in just a few minutes while lying in bed. Ripple sits in this category, combining high-quality voice transcription with deep AI analysis to turn a quick voice note into a rich, structured journal entry.",
+        text: "This is the newest and fastest-growing category. Voice-first apps are designed from the ground up around spoken input. You talk, the app listens, and AI transforms your words into structured journal entries with summaries, mood analysis, extracted tasks, and pattern connections. The key advantage is speed and naturalness — you can complete a meaningful journal entry wherever you are: on a walk, in the car, or lying in bed. Ripple sits in this category, combining high-quality voice transcription with deep AI analysis to turn a quick voice note into a rich, structured journal entry.",
       },
       {
         tag: "h3",
@@ -745,7 +745,7 @@ export const BLOG_POSTS: BlogPost[] = [
       },
       {
         tag: "h2",
-        text: "The 60-Second Nightly Journaling Framework",
+        text: "A Simple Voice Journaling Framework That Sticks",
       },
       {
         tag: "p",
@@ -1030,7 +1030,7 @@ export const BLOG_POSTS: BlogPost[] = [
       },
       {
         tag: "p",
-        text: "If you do voice dumps consistently using an AI-powered app like Ripple, you’ll start to see patterns in your nighttime thoughts. Maybe you always worry about work on Sunday nights. Maybe financial anxiety peaks at the end of the month. Maybe social interactions leave you ruminating more than solo activities. Seeing these patterns helps you address root causes rather than just managing symptoms. The AI connects your nightly entries over time and surfaces these trends automatically.",
+        text: "If you do voice dumps consistently using an AI-powered app like Ripple, you’ll start to see patterns in your nighttime thoughts. Maybe you always worry about work on Sunday nights. Maybe financial anxiety peaks at the end of the month. Maybe social interactions leave you ruminating more than solo activities. Seeing these patterns helps you act on what’s behind them. The AI connects your entries over time and surfaces these trends automatically.",
       },
       {
         tag: "h2",
@@ -1054,7 +1054,7 @@ export const BLOG_POSTS: BlogPost[] = [
       },
       {
         tag: "p",
-        text: `Racing thoughts before sleep don\u2019t have to be your nightly reality. The solution isn\u2019t to force your brain to be quiet \u2014 it\u2019s to give it a reason to be quiet. When your open loops are closed, your worries are captured, and your brain trusts that nothing important will be forgotten, silence comes naturally. It takes just a few minutes. It works tonight. And it gets more powerful every night you do it. Learn more about how <a href="/for/sleep">Ripple\u2019s nightly brain dump fixes racing thoughts before bed</a>.`,
+        text: `Racing thoughts before sleep don\u2019t have to be your nightly reality. The solution isn\u2019t to force your brain to be quiet \u2014 it\u2019s to give it a reason to be quiet. When your open loops are closed, your worries are captured, and your brain trusts that nothing important will be forgotten, silence comes naturally. It doesn\u2019t take long, and it gets more useful the more often you do it. Learn more about how <a href="/for/sleep">Ripple gives racing thoughts somewhere to go</a>, or read our <a href="/voice-journaling">guide to voice journaling</a>.`,
       },
     ],
   },
@@ -1130,7 +1130,7 @@ export const BLOG_POSTS: BlogPost[] = [
       },
       {
         tag: "p",
-        text: "This is the newest and fastest-growing category. Voice-first journaling apps are designed around spoken input. You talk for 60 to 120 seconds, and the app handles everything else: transcription, summarization, mood analysis, task extraction, and pattern detection. The key advantage is dramatically reduced friction. You can journal lying in bed, during a walk, or in your car. There’s no blank page, no typing, and no editing. You just speak honestly and let the AI do the organizing.",
+        text: "This is the newest and fastest-growing category. Voice-first journaling apps are designed around spoken input. You talk for as long as you like, and the app handles everything else: transcription, summarization, mood analysis, task extraction, and pattern detection. The key advantage is dramatically reduced friction. You can journal lying in bed, during a walk, or in your car. There’s no blank page, no typing, and no editing. You just speak honestly and let the AI do the organizing.",
       },
       {
         tag: "h2",
@@ -1234,7 +1234,7 @@ export const BLOG_POSTS: BlogPost[] = [
       },
       {
         tag: "p",
-        text: "Ripple is designed around a quick voice entry before bed. You speak your thoughts — as messy, unstructured, and stream-of-consciousness as they come — and our AI transforms them into a structured journal entry with mood analysis, key themes, extracted tasks, and connections to your previous entries. The whole experience, from opening the app to finishing your entry, takes just a couple of minutes.",
+        text: "Ripple is designed around a quick voice entry whenever something’s on your mind. You speak your thoughts — as messy, unstructured, and stream-of-consciousness as they come — and our AI turns them into a to-do list, tracks your habits and mood, pulls out key themes, and connects each entry to your previous ones. There’s no blank page and nothing to format.",
       },
       {
         tag: "p",
@@ -1399,7 +1399,7 @@ export const BLOG_POSTS: BlogPost[] = [
       },
       {
         tag: "p",
-        text: "Ripple was designed with this insight at its core. By making the entry process as frictionless as possible — one tap, a few minutes of speaking, done — it removes the barriers that prevent people from accessing the mental health benefits of journaling. The AI handles the organization, summarization, and pattern detection so that you get the value of a comprehensive journaling practice with the effort of a brief voice note.",
+        text: "Ripple was designed with this insight at its core. By making the entry process as frictionless as possible — one tap, talk, done — it removes the barriers that keep people from journaling at all. The AI handles the organization, summarization, and pattern detection so that you get the value of a comprehensive journaling practice with the effort of a brief voice note.",
       },
       {
         tag: "h2",
@@ -1592,7 +1592,7 @@ export const BLOG_POSTS: BlogPost[] = [
       },
       {
         tag: "p",
-        text: `Ripple automates much of this process. It takes your daily voice entries from the week, identifies recurring themes and tasks, tracks your mood and energy patterns, and generates a weekly summary that highlights what went well, what needs attention, and where your time actually went. The weekly review that used to take an hour now takes five minutes of reading. See how <a href="/for/founders">founders use Ripple as a nightly debrief system</a>, or learn more about the <a href="/for/weekly-report">AI-generated weekly report</a>.`,
+        text: `Ripple automates much of this process. It takes your daily voice entries from the week, identifies recurring themes and tasks, tracks your mood and energy patterns, and generates a weekly summary that highlights what went well, what needs attention, and where your time actually went. The weekly review that used to take an hour now takes five minutes of reading. See how <a href="/for/founders">founders use Ripple as a daily debrief system</a>, or learn more about the <a href="/for/weekly-report">AI-generated weekly report</a>.`,
       },
       {
         tag: "h2",
@@ -1624,7 +1624,7 @@ export const BLOG_POSTS: BlogPost[] = [
       },
       {
         tag: "p",
-        text: "Example one: A product manager does a two-minute voice debrief each evening. Over three weeks, the AI identifies that she mentions “stakeholder alignment” as a blocker in eight of fifteen entries. She hadn’t realized how much time she was losing to misaligned stakeholders. She schedules a single alignment meeting, resolves the recurring issue, and recovers hours of weekly productivity.",
+        text: "Example one: A product manager does a short voice debrief most days. Over three weeks, the AI identifies that she mentions “stakeholder alignment” as a blocker in eight of fifteen entries. She hadn’t realized how much time she was losing to misaligned stakeholders. She schedules a single alignment meeting, resolves the recurring issue, and recovers hours of weekly productivity.",
       },
       {
         tag: "p",
@@ -1644,7 +1644,7 @@ export const BLOG_POSTS: BlogPost[] = [
       },
       {
         tag: "p",
-        text: "If you want the AI analysis — the automatic task extraction, pattern detection, and weekly reviews — an app like Ripple adds that layer without adding friction. You do the same two-minute voice debrief, and the AI handles the analysis, organization, and synthesis.",
+        text: "If you want the AI analysis — the automatic task extraction, pattern detection, and weekly reviews — an app like Ripple adds that layer without adding friction. You do the same quick voice debrief, and the AI handles the analysis, organization, and synthesis.",
       },
       {
         tag: "p",
@@ -2053,7 +2053,7 @@ export const BLOG_POSTS: BlogPost[] = [
       },
       {
         tag: "p",
-        text: "The post-dump processing described above is valuable but time-consuming. This is exactly where AI shines. An AI-powered app like Ripple takes your raw, unstructured brain dump and does the processing for you automatically.",
+        text: "The post-dump processing described above is valuable but time-consuming. This is exactly where AI shines. An AI-powered <a href=\"/brain-dump-app\">brain dump app</a> like Ripple takes your raw, unstructured brain dump and does the processing for you automatically.",
       },
       {
         tag: "p",

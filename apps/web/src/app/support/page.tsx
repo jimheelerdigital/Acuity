@@ -1,9 +1,10 @@
 import Link from "next/link";
 
 export const metadata = {
-  title: "Support · Ripple",
+  title: "Support",
   description:
-    "Get help with Ripple — contact support, read our privacy policy and terms of service.",
+    "Get help with Ripple: answers to common questions about your account, subscription and privacy, plus how to reach the Ripple support team.",
+  alternates: { canonical: "/support" },
   robots: { index: true, follow: true },
 };
 

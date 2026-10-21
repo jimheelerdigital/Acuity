@@ -1,22 +1,27 @@
 /**
  * Footer — brand blurb + link columns + legal row. Ported from the
- * handoff (`marketing.jsx → Footer`). On-page anchors for product links;
+ * handoff (`marketing.jsx → Footer`). Homepage anchors for product links;
  * real routes for Privacy/Terms. "Cookie settings" in the legal row
  * opens the consent preferences panel (see cookie-consent.tsx).
  */
 import Image from "next/image";
 
 import { CookieSettingsLink } from "@/components/cookie-consent";
+import { LEARN_LINKS } from "@/lib/seo";
 
 const COLS: { head: string; links: [string, string][] }[] = [
   {
     head: "Product",
     links: [
-      ["Features", "#features"],
-      ["How it works", "#how"],
-      ["Pricing", "#pricing"],
+      ["Features", "/#what"],
+      ["How it works", "/#how"],
+      ["Pricing", "/#pricing"],
       ["Download", "/start"],
     ],
+  },
+  {
+    head: "Learn",
+    links: LEARN_LINKS,
   },
   {
     head: "Company",
@@ -31,14 +36,14 @@ const COLS: { head: string; links: [string, string][] }[] = [
 export function Footer() {
   return (
     <footer className="border-t border-acuity-line bg-acuity-bg-inset px-7 pb-10 pt-14">
-      <div className="mx-auto grid max-w-[1180px] grid-cols-1 gap-8 min-[700px]:grid-cols-[1.4fr_1fr_1fr]">
+      <div className="mx-auto grid max-w-[1180px] grid-cols-1 gap-8 min-[700px]:grid-cols-[1.4fr_1fr_1.2fr_1fr]">
         <div>
           <div className="mb-3.5 flex items-center gap-2.5">
             <Image src="/ripple-mark-coral-t.png" alt="Ripple" width={32} height={32} className="shrink-0" />
             <span className="font-display text-[19px] font-extrabold text-acuity-text">Ripple</span>
           </div>
           <p className="m-0 max-w-[260px] font-sans text-[14.5px] leading-[1.55] text-acuity-text-ter">
-            The AI voice journal for your daily debrief. One minute a day, a life of clarity.
+            Your AI life optimizer: talk it out, and Ripple keeps track.
           </p>
         </div>
         {COLS.map((col) => (

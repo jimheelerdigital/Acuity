@@ -1,15 +1,21 @@
 import type { MetadataRoute } from "next";
 
+// No trailing slashes, so "/home" also covers "/home" itself. AI crawlers
+// (GPTBot, ClaudeBot, PerplexityBot, Google-Extended…) follow the "*" group;
+// they had identical rules, so they no longer get their own.
 const DISALLOWED = [
-  "/admin/",
-  "/api/",
-  "/dashboard/",
-  "/home/",
-  "/tasks/",
-  "/goals/",
-  "/insights/",
-  "/auth/",
-  "/upgrade/",
+  "/admin",
+  "/api",
+  "/dashboard",
+  "/home",
+  "/tasks",
+  "/goals",
+  "/insights",
+  "/auth",
+  "/upgrade",
+  "/u/",
+  "/go/",
+  "/oauth",
 ];
 
 export default function robots(): MetadataRoute.Robots {
@@ -17,36 +23,6 @@ export default function robots(): MetadataRoute.Robots {
     rules: [
       {
         userAgent: "*",
-        allow: "/",
-        disallow: DISALLOWED,
-      },
-      {
-        userAgent: "GPTBot",
-        allow: "/",
-        disallow: DISALLOWED,
-      },
-      {
-        userAgent: "ChatGPT-User",
-        allow: "/",
-        disallow: DISALLOWED,
-      },
-      {
-        userAgent: "anthropic-ai",
-        allow: "/",
-        disallow: DISALLOWED,
-      },
-      {
-        userAgent: "ClaudeBot",
-        allow: "/",
-        disallow: DISALLOWED,
-      },
-      {
-        userAgent: "PerplexityBot",
-        allow: "/",
-        disallow: DISALLOWED,
-      },
-      {
-        userAgent: "Google-Extended",
         allow: "/",
         disallow: DISALLOWED,
       },

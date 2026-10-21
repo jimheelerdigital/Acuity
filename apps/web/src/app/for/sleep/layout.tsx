@@ -1,25 +1,28 @@
 import type { Metadata } from "next";
+import { OG_IMAGE } from "@/lib/seo";
+
+const title = "A Brain Dump App for Racing Thoughts";
+const description =
+  "Brain won't stop? Ripple is a brain dump app: talk whenever your head is full and it turns the swirl into a to-do list, tracked habits and mood, and patterns.";
 
 export const metadata: Metadata = {
-  title: "Ripple for Sleep — The 60-Second Brain Dump App That Fixes Racing Thoughts",
-  description:
-    "Can't sleep because your brain won't stop? Ripple is the brain dump app that lets you empty your head before bed. AI captures your thoughts so your mind can finally rest.",
+  title,
+  description,
   robots: { index: true, follow: true },
   alternates: { canonical: "https://goripple.io/for/sleep" },
   openGraph: {
-    title: "Ripple for Sleep — The 60-Second Brain Dump App That Fixes Racing Thoughts",
-    description:
-      "Can't sleep because your brain won't stop? The brain dump app that lets you empty your head before bed so your mind can finally rest.",
+    title,
+    description,
     url: "https://goripple.io/for/sleep",
     siteName: "Ripple",
-    images: [{ url: "/og-image.png?v=3", width: 1200, height: 630 }],
+    images: [OG_IMAGE],
   },
   twitter: {
     card: "summary_large_image",
-    title: "Ripple for Sleep — The 60-Second Brain Dump App That Fixes Racing Thoughts",
+    title,
     description:
-      "Can't sleep because your brain won't stop? The brain dump app that lets you empty your head before bed.",
-    images: ["/og-image.png?v=3"],
+      "Talk it out whenever your head is full. Ripple turns racing thoughts into a list, so they have somewhere to go besides your head.",
+    images: [OG_IMAGE.url],
   },
 };
 

@@ -36,8 +36,7 @@ export default function FoundersPage() {
             "@type": "BreadcrumbList",
             itemListElement: [
               { "@type": "ListItem", position: 1, name: "Home", item: "https://goripple.io" },
-              { "@type": "ListItem", position: 2, name: "Use Cases", item: "https://goripple.io/for/therapy" },
-              { "@type": "ListItem", position: 3, name: "Ripple for Founders", item: "https://goripple.io/for/founders" },
+              { "@type": "ListItem", position: 2, name: "Ripple for Founders", item: "https://goripple.io/for/founders" },
             ],
           }),
         }}
@@ -85,7 +84,7 @@ export default function FoundersPage() {
       <PainSection
         points={[
           "Decision fatigue is real. You make 100 decisions a day. By the end of the day your brain is full and you have nowhere to put it.",
-          "Your best thinking happens after hours. It disappears by morning. Voice memos go nowhere. Notion stays empty.",
+          "Your best thinking happens between meetings and in the car. An hour later it's gone. Voice memos go nowhere. Notion stays empty.",
           "You track everything in your business. You track nothing about yourself. That's the gap killing your performance.",
         ]}
       />
@@ -186,7 +185,7 @@ export default function FoundersPage() {
       {/* ───── PRE-HOW-IT-WORKS CTA ───── */}
       <MidPageCTA
         headline="Ready to start capturing every idea, task, and decision automatically?"
-        subheadline="No card. Quick setup. · cancel anytime"
+        subheadline="7-day free trial · Cancel anytime"
         utmCampaign={UTM}
       />
 
@@ -226,7 +225,7 @@ export default function FoundersPage() {
       {/* ───── MID-PAGE CTA ───── */}
       <MidPageCTA
         headline="What would your performance look like if you debriefed every day?"
-        subheadline="No card. Quick setup. · cancel anytime"
+        subheadline="7-day free trial · Cancel anytime"
         utmCampaign={UTM}
       />
 
@@ -235,7 +234,7 @@ export default function FoundersPage() {
         <div className="mx-auto max-w-3xl">
           <Reveal>
             <h2 className="text-3xl font-bold tracking-tight sm:text-4xl text-center mb-4">
-              Your Sunday morning debrief. Written by AI.
+              Your Sunday debrief. Written by AI.
             </h2>
             <p className="text-center text-acuity-text-sec mb-12">
               Framed as a performance report, not a wellness diary.
@@ -326,18 +325,18 @@ export default function FoundersPage() {
             </h2>
           </Reveal>
           <ComparisonTable
-            headers={["Executive Coach", "Therapy", "Ripple"]}
+            headers={["Executive Coach", "Ripple"]}
             rows={[
-              { feature: "Cost", values: ["$500+/month", "$600+/month", `${displayAnnualAsMonthly()}/month (billed yearly)`] },
+              { feature: "Cost", values: ["$500+/month", `${displayAnnualAsMonthly()}/month (billed yearly)`] },
               {
                 feature: "Availability",
-                values: ["Scheduled", "Scheduled", "Any time of day"],
+                values: ["Scheduled", "Any time of day"],
               },
-              { feature: "Memory", values: ["Limited", "Limited", "Perfect"] },
-              { feature: "Action items", values: ["Manual", "None", "Automatic"] },
+              { feature: "Memory", values: ["Limited", "Perfect"] },
+              { feature: "Action items", values: ["Manual", "Automatic"] },
               {
                 feature: "Pattern detection",
-                values: ["Slow", "Slow", "Real-time"],
+                values: ["Slow", "Real-time"],
               },
             ]}
           />
@@ -349,13 +348,13 @@ export default function FoundersPage() {
         <div className="mx-auto max-w-3xl text-center">
           <Reveal>
             <h2 className="text-3xl font-bold tracking-tight sm:text-5xl">
-              A few minutes a day.{" "}
+              Talk whenever you have{" "}
               <span className="text-transparent bg-clip-text bg-gradient-to-r from-violet-500 to-indigo-500">
-                7 minutes a week.
+                something on your mind.
               </span>
             </h2>
             <p className="mt-4 text-lg text-acuity-text-sec mb-8">
-              That's the total time investment. In return:
+              That's the whole habit. In return:
             </p>
           </Reveal>
 
@@ -363,7 +362,7 @@ export default function FoundersPage() {
             <div className="grid gap-4 sm:grid-cols-2 text-left max-w-lg mx-auto">
               {[
                 "Every task captured automatically",
-                "Every goal tracked without a system",
+                "Every goal and habit tracked without a system",
                 "Weekly performance report written for you",
                 "90-day pattern intelligence building in the background",
               ].map((item, i) => (

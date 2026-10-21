@@ -2,9 +2,10 @@ import Link from "next/link";
 import { displayAnnual, displayMonthly } from "@/lib/pricing";
 
 export const metadata = {
-  title: "Terms of Service — Ripple",
+  title: "Terms of Service",
   description:
-    "The terms governing your use of Ripple, the nightly voice journaling service.",
+    "The terms for using Ripple: your account, the subscription and 7-day free trial, billing, cancellation, acceptable use and who owns your content.",
+  alternates: { canonical: "/terms" },
   robots: { index: true, follow: true },
 };
 
@@ -427,10 +428,10 @@ export default function TermsPage() {
               </Link>
               , or by emailing{" "}
               <a
-                href="mailto:hello@getacuity.io"
+                href="mailto:hello@goripple.io"
                 className="underline hover:text-acuity-text"
               >
-                hello@getacuity.io
+                hello@goripple.io
               </a>
               . On termination, your data is deleted on the schedule
               described in the{" "}
@@ -484,10 +485,10 @@ export default function TermsPage() {
             <p>
               Questions about these Terms? Email{" "}
               <a
-                href="mailto:hello@getacuity.io"
+                href="mailto:hello@goripple.io"
                 className="underline hover:text-acuity-text"
               >
-                hello@getacuity.io
+                hello@goripple.io
               </a>
               .
             </p>

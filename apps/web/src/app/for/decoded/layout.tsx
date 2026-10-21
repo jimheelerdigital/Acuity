@@ -1,25 +1,28 @@
 import type { Metadata } from "next";
+import { OG_IMAGE } from "@/lib/seo";
+
+const title = "Ripple Decoded: The AI Journal That Shows Your Patterns";
+const description =
+  "Ripple is an AI journal and habit tracker that shows the patterns behind your moods and decisions: talk whenever and see what keeps coming up each week.";
 
 export const metadata: Metadata = {
-  title: "Ripple Decoded — AI Pattern Detection for Your Life",
-  description:
-    "Most people have no idea what's driving their moods, decisions, and habits. Ripple is the AI voice journal that surfaces the patterns you can't see — mood tracking, life pattern detection, and weekly reports from your daily debrief.",
+  title,
+  description,
   robots: { index: true, follow: true },
   alternates: { canonical: "https://goripple.io/for/decoded" },
   openGraph: {
-    title: "Ripple Decoded — AI Pattern Detection for Your Life",
-    description:
-      "The AI voice journal that surfaces the patterns you can't see — mood tracking, life pattern detection, and weekly reports from your daily debrief.",
+    title,
+    description,
     url: "https://goripple.io/for/decoded",
     siteName: "Ripple",
-    images: [{ url: "/og-image.png?v=3", width: 1200, height: 630 }],
+    images: [OG_IMAGE],
   },
   twitter: {
     card: "summary_large_image",
-    title: "Ripple Decoded — AI Pattern Detection for Your Life",
+    title,
     description:
-      "The AI voice journal that surfaces the patterns you can't see — mood tracking, pattern detection, and weekly reports.",
-    images: ["/og-image.png?v=3"],
+      "The AI voice journal that surfaces the patterns you can't see: mood tracking, habit tracking, and a weekly report every Sunday.",
+    images: [OG_IMAGE.url],
   },
 };
 

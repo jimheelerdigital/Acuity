@@ -1,25 +1,28 @@
 import type { Metadata } from "next";
+import { OG_IMAGE } from "@/lib/seo";
+
+const title = "AI Weekly Report From Your Voice Journal, Every Sunday";
+const description =
+  "Every Sunday, Ripple writes your week back to you: your wins, your patterns, the habits you kept, and what you said you'd do versus what actually happened.";
 
 export const metadata: Metadata = {
-  title: "Ripple Weekly Report — Every Sunday, AI Writes Your Week Back to You",
-  description:
-    "From your daily voice journal: your wins, your patterns, what you said you'd do versus what actually happened. A 400-word AI-written weekly report delivered every Sunday from your daily debrief entries.",
+  title,
+  description,
   robots: { index: true, follow: true },
   alternates: { canonical: "https://goripple.io/for/weekly-report" },
   openGraph: {
-    title: "Ripple Weekly Report — Every Sunday, AI Writes Your Week Back to You",
-    description:
-      "From your daily voice journal: your wins, your patterns, what you said you'd do versus what happened. An AI-written weekly report, every Sunday.",
+    title,
+    description,
     url: "https://goripple.io/for/weekly-report",
     siteName: "Ripple",
-    images: [{ url: "/og-image.png?v=3", width: 1200, height: 630 }],
+    images: [OG_IMAGE],
   },
   twitter: {
     card: "summary_large_image",
-    title: "Ripple Weekly Report — Every Sunday, AI Writes Your Week Back to You",
+    title,
     description:
-      "From your daily voice journal: your wins, your patterns, what you said you'd do versus what happened. An AI-written weekly report.",
-    images: ["/og-image.png?v=3"],
+      "Your wins, your patterns, and what you said you'd do versus what happened. An AI-written weekly report from your voice journal, every Sunday.",
+    images: [OG_IMAGE.url],
   },
 };
 

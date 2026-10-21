@@ -1,25 +1,28 @@
 import type { Metadata } from "next";
+import { OG_IMAGE } from "@/lib/seo";
+
+const title = "Ripple for Founders: Talk It Out, Get a Plan";
+const description =
+  "Founders carry 40 open loops. Talk to Ripple whenever and it pulls out your tasks with dates, tracks your goals and habits, and writes your weekly report.";
 
 export const metadata: Metadata = {
-  title: "Ripple for Founders — The 60-Second Daily Debrief for High Performers",
-  description:
-    "Every night you go to bed with 40 unfinished thoughts. Ripple is the AI journal that extracts tasks, tracks goals, and writes your weekly report automatically. The daily journal app built for founders and executives.",
+  title,
+  description,
   robots: { index: true, follow: true },
   alternates: { canonical: "https://goripple.io/for/founders" },
   openGraph: {
-    title: "Ripple for Founders — The 60-Second Daily Debrief for High Performers",
-    description:
-      "The AI journal that extracts tasks, tracks goals, and writes your weekly report automatically. The daily journal app built for founders and executives.",
+    title,
+    description,
     url: "https://goripple.io/for/founders",
     siteName: "Ripple",
-    images: [{ url: "/og-image.png?v=3", width: 1200, height: 630 }],
+    images: [OG_IMAGE],
   },
   twitter: {
     card: "summary_large_image",
-    title: "Ripple for Founders — The 60-Second Daily Debrief for High Performers",
+    title,
     description:
-      "The AI journal that extracts tasks, tracks goals, and writes your weekly report automatically. Built for founders.",
-    images: ["/og-image.png?v=3"],
+      "Talk through your day whenever you have a moment. Ripple turns it into tasks, tracked goals and habits, and a weekly report every Sunday.",
+    images: [OG_IMAGE.url],
   },
 };
 

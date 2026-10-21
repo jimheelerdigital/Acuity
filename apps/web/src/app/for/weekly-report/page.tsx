@@ -35,8 +35,7 @@ export default function WeeklyReportPage() {
             "@type": "BreadcrumbList",
             itemListElement: [
               { "@type": "ListItem", position: 1, name: "Home", item: "https://goripple.io" },
-              { "@type": "ListItem", position: 2, name: "Use Cases", item: "https://goripple.io/for/therapy" },
-              { "@type": "ListItem", position: 3, name: "Ripple Weekly Report", item: "https://goripple.io/for/weekly-report" },
+              { "@type": "ListItem", position: 2, name: "Ripple Weekly Report", item: "https://goripple.io/for/weekly-report" },
             ],
           }),
         }}
@@ -49,6 +48,9 @@ export default function WeeklyReportPage() {
         <div className="relative mx-auto max-w-4xl px-6 text-center">
           <Reveal>
             <HeroHeadline text="Every Sunday, an AI writes your week back to you." />
+            <p className="mt-4 text-sm font-semibold uppercase tracking-wide text-acuity-primary">
+              An AI weekly report from your voice journal
+            </p>
           </Reveal>
           <Reveal delay={1}>
             <p className="mt-6 text-lg text-acuity-text-sec leading-relaxed max-w-2xl mx-auto">
@@ -104,7 +106,7 @@ export default function WeeklyReportPage() {
       {/* ───── PRE-HOW-IT-WORKS CTA ───── */}
       <MidPageCTA
         headline="Ready to get your first weekly report this Sunday?"
-        subheadline="No card. Quick setup. · cancel anytime"
+        subheadline="7-day free trial · Cancel anytime"
         utmCampaign={UTM}
       />
 
@@ -233,7 +235,7 @@ export default function WeeklyReportPage() {
       {/* ───── MID-PAGE CTA ───── */}
       <MidPageCTA
         headline="What story will your first weekly report tell about you?"
-        subheadline="No card. Quick setup. · cancel anytime"
+        subheadline="7-day free trial · Cancel anytime"
         utmCampaign={UTM}
       />
 
@@ -289,7 +291,7 @@ export default function WeeklyReportPage() {
           },
           {
             quote:
-              "My Sunday morning ritual is now: coffee, Ripple report, intention for the week. It's the most grounding 10 minutes of my week.",
+              "My Sunday ritual is now: coffee, Ripple report, intention for the week. It's the most grounding part of my week.",
             name: "Sarah K.",
             role: "Executive",
           },

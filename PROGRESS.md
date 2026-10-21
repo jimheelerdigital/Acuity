@@ -7,6 +7,38 @@
 
 ---
 
+## [2026-10-21] — Site-wide SEO pass + five new search landing pages
+
+- **Requested by:** Keenan
+- **Committed by:** Claude Code
+- **Commit hash:** (see git log: "seo: Fix canonicals and metadata site-wide and add five landing pages")
+
+### In plain English (for Keenan)
+Every public page now tells Google its own correct address, has a title and description sized for search results, and the logged-in app pages are hidden from Google. Five new pages target searches people actually make: habit tracker app, AI journal app, brain dump app, the mental load, and mood tracker app. The homepage, blog and guide link to them. Copy across the voice journaling guide, the /for pages and older blog posts no longer breaks our rules (no "no card required", no bedtime-only framing, no one-minute claims, the therapy page is now about support between sessions instead of replacing therapy).
+
+### Technical changes (for Jimmy)
+- Root `app/layout.tsx`: removed the site-wide `alternates.canonical`/`openGraph.url` (every page without its own canonical was pointing Google at the homepage); default description from PRODUCT_CATEGORY; Organization JSON-LD: dropped the fake SearchAction, email hello@goripple.io. New `lib/seo.ts` (OG_IMAGE v4, LEARN_LINKS).
+- Homepage `app/page.tsx`: own metadata ("Ripple: AI Voice Journal & Habit Tracker App"), canonical "/", applicationCategory LifestyleApplication, revalidate 3600.
+- Canonicals + brand-free titles + descriptions: privacy, terms, support, support/crisis, delete-account (getacuity.io emails → goripple.io).
+- Noindex layouts: auth, save-video, home, insights, dashboard, tasks, goals, habits, upgrade; achievements metadata.
+- `for/[slug]/layout.tsx`: AdLab DB landers noindex; removed hidden duplicate sr-only h1 blocks; absolute titles. All 20 persona titles ≤60 chars in `lib/persona-pages.ts`; five static /for pages retitled, breadcrumb drops the fake "Use Cases" level.
+- `blog/page.tsx` + `blog/[slug]/page.tsx`: keyword titles, OG images, dynamic posts use updatedAt for dateModified (no `new Date()` fallbacks), visible byline, CTA copy fixed + link to /voice-journaling.
+- `sitemap.ts`: fixed lastModified dates, posts use updatedAt, adds privacy/terms/support/roadmap + the five new pages. `robots.ts`: bare-path disallows, + /u/ /go/ /oauth, single rule group.
+- New pages: `app/{habit-tracker-app,ai-journal-app,brain-dump-app,mental-load,mood-tracker-app}/page.tsx` on a shared server component `components/marketing/seo-landing/` (FAQPage + BreadcrumbList + SoftwareApplication JSON-LD, native details FAQ, homepage look).
+- Internal links: HomeV2 footer "Learn" row, blog Footer Learn column + fixed /# anchors, `voice-journaling/layout.tsx` + `research/layout.tsx` add nav/footer; pillar links research + new pages.
+- Copy compliance: voice-journaling, research, for/* pages, landing-shared, persona-pages, blog-posts; `inngest/functions/auto-blog.ts` banned phrases + internal-link allowlist for pillar/new pages + habit tracking in product context; link list now drops slugs containing a banned phrase (e.g. nightly-journaling-habit), which made posts fail validation.
+
+### Manual steps needed
+- [ ] Confirm the named testimonials on the /for persona pages (Priya N., Marcus T., Nina S., Dr. Sam W., Tommy L.) are real customers; wording was left exactly as written (Keenan)
+- [ ] Submit the updated sitemap in Google Search Console (Keenan, optional; IndexNow pings Bing automatically)
+
+### Notes
+- GSC 90d (2026-10-21): homepage ranks ~5.5 on branded queries; "ai journaling app"/"best journaling app" cluster sits at position 75-85 with the most impressions (the new /ai-journal-app targets it); gratitude-app queries sit at 36-51; comparison posts rank 5-9. Raw pull in `.tmp/gsc-audit-2026-10-21.txt`.
+- A copy agent reworded five persona testimonials to strip claim language; that was reverted. Customer quotes are never edited; the doc allows people to state their own experience.
+- The /for/sleep stats block ("23 min faster to fall asleep", "78% better sleep", "67s average") was removed: health-outcome and duration claims.
+- Pre-existing tsc errors in auth/* and save-video ("possibly null") are unrelated; vitest 1457/1457.
+- Not done here (next): blog post redesign, new image style, top-10 post refresh.
+
 ## [2026-10-21] — New homepage: bold, animated, for every audience
 
 - **Requested by:** Keenan

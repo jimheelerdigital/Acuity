@@ -2,28 +2,30 @@ import Link from "next/link";
 import Image from "next/image";
 import type { Metadata } from "next";
 import { BLOG_POSTS } from "@/lib/blog-posts";
+import { OG_IMAGE } from "@/lib/seo";
 
 export const revalidate = 300; // 5 minutes
 
+const BLOG_TITLE = "Ripple Blog: Voice Journaling, Habits & Mental Load";
+const BLOG_DESCRIPTION =
+  "Articles on voice journaling, habit tracking, mood, the mental load and getting your thoughts out of your head, from the team behind Ripple.";
+
 export const metadata: Metadata = {
-  title: "Blog — Ripple",
-  description:
-    "Articles on AI journaling, voice journaling, personal productivity, mood tracking, goal tracking, and building a daily journal habit.",
-  alternates: { canonical: "https://goripple.io/blog" },
+  title: { absolute: BLOG_TITLE },
+  description: BLOG_DESCRIPTION,
+  alternates: { canonical: "/blog" },
   openGraph: {
-    title: "Blog — Ripple",
-    description:
-      "Articles on AI journaling, voice journaling, personal productivity, mood tracking, and building a daily journal habit.",
-    url: "https://goripple.io/blog",
+    title: BLOG_TITLE,
+    description: BLOG_DESCRIPTION,
+    url: "/blog",
     siteName: "Ripple",
-    images: [{ url: "/og-image.png?v=3", width: 1200, height: 630 }],
+    images: [OG_IMAGE],
   },
   twitter: {
     card: "summary_large_image",
-    title: "Blog — Ripple",
-    description:
-      "Articles on AI journaling, voice journaling, personal productivity, and mood tracking.",
-    images: ["/og-image.png?v=3"],
+    title: BLOG_TITLE,
+    description: BLOG_DESCRIPTION,
+    images: [OG_IMAGE.url],
   },
 };
 
@@ -111,11 +113,11 @@ export default async function BlogIndex() {
     <main className="pt-32 pb-24 px-6">
       <div className="mx-auto max-w-4xl">
         <h1 className="text-4xl font-extrabold tracking-tight sm:text-5xl mb-4">
-          Blog
+          The Ripple Blog
         </h1>
         <p className="text-lg text-acuity-text-sec mb-16 max-w-2xl">
-          Ideas on voice journaling, productivity, mental health, and the
-          science of getting your thoughts out of your head.
+          Voice journaling, habits, and how to carry a lighter head: ideas
+          for getting your thoughts out of your head and acting on them.
         </p>
 
         <div className="grid gap-8 sm:grid-cols-2">

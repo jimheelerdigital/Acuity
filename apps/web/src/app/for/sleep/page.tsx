@@ -9,7 +9,6 @@ import {
   MidPageCTA,
   HowItWorksSection,
   BeforeAfterSection,
-  StatsSection,
   TestimonialsSection,
   PricingSection,
   CTABanner,
@@ -35,8 +34,7 @@ export default function SleepPage() {
             "@type": "BreadcrumbList",
             itemListElement: [
               { "@type": "ListItem", position: 1, name: "Home", item: "https://goripple.io" },
-              { "@type": "ListItem", position: 2, name: "Use Cases", item: "https://goripple.io/for/therapy" },
-              { "@type": "ListItem", position: 3, name: "Ripple for Sleep", item: "https://goripple.io/for/sleep" },
+              { "@type": "ListItem", position: 2, name: "Ripple for Sleep", item: "https://goripple.io/for/sleep" },
             ],
           }),
         }}
@@ -52,9 +50,9 @@ export default function SleepPage() {
           </Reveal>
           <Reveal delay={1}>
             <p className="mt-6 text-lg text-acuity-text-sec leading-relaxed max-w-2xl mx-auto">
-              Racing thoughts at night aren't a sleep problem — they're an
-              unprocessed thoughts problem. Ripple gives you a place to get it all
-              out before bed.
+              Racing thoughts are often unfinished thoughts with nowhere to go.
+              Ripple is a brain dump app: talk whenever your head is full, and it
+              turns the swirl into a to-do list, so it stops living in your head.
             </p>
           </Reveal>
           <Reveal delay={2}>
@@ -72,7 +70,7 @@ export default function SleepPage() {
           </Reveal>
           <Reveal delay={3}>
             <div className="mt-6">
-              <UrgencyBadge text="What if falling asleep started with just talking?" />
+              <UrgencyBadge text="What if your thoughts had somewhere to go besides your head?" />
             </div>
           </Reveal>
         </div>
@@ -110,10 +108,10 @@ export default function SleepPage() {
               </h2>
               <p className="text-acuity-text-sec leading-relaxed">
                 Your mind treats unprocessed thoughts like open browser tabs. They stay
-                active, consuming energy, until they're acknowledged and filed. The
-                debrief is the oldest sleep trick in existence — getting
-                thoughts out of your head and onto something external so your brain
-                finally lets go. Ripple makes it effortless. And then organizes
+                active, consuming energy, until they're acknowledged and filed. Getting
+                thoughts out of your head and onto something external is one of the
+                oldest tricks there is, so your brain can stop holding on to them.
+                Ripple makes it effortless. And then organizes
                 everything automatically.
               </p>
             </div>
@@ -123,8 +121,8 @@ export default function SleepPage() {
 
       {/* ───── PRE-HOW-IT-WORKS CTA ───── */}
       <MidPageCTA
-        headline="Ready to try the nightly ritual that quiets your racing mind?"
-        subheadline="No card. Quick setup. · cancel anytime"
+        headline="Ready to give your racing thoughts somewhere to go?"
+        subheadline="7-day free trial · Cancel anytime"
         utmCampaign={UTM}
       />
 
@@ -145,9 +143,9 @@ export default function SleepPage() {
           },
           {
             label: "Step 3",
-            title: "Wake up organized",
+            title: "Get it back organized",
             description:
-              "Your tasks are extracted, your goals updated, your mood logged — all while you slept.",
+              "Within minutes, your tasks are extracted, your habits checked off and your mood logged. You didn't type a word.",
           },
         ]}
         extractTasks={[
@@ -157,14 +155,14 @@ export default function SleepPage() {
         ]}
         extractGoal="Get back to a consistent sleep schedule"
         extractMood="Tired but relieved after talking it out"
-        reflectPattern="Sleep quality improves on days you debrief before winding down."
-        reflectActions={["Debrief before winding down", "Limit screen time in the evening", "Morning walk on low-sleep days"]}
+        reflectPattern="You mention feeling rested more often on days you talk things through."
+        reflectActions={["Talk it out when your head gets full", "Limit screen time in the evening", "Walk on low-sleep days"]}
       />
 
       {/* ───── MID-PAGE CTA ───── */}
       <MidPageCTA
         headline="What if you could finally stop staring at the ceiling?"
-        subheadline="No card. Quick setup. · cancel anytime"
+        subheadline="7-day free trial · Cancel anytime"
         utmCampaign={UTM}
       />
 
@@ -176,36 +174,25 @@ export default function SleepPage() {
           "Mind still running at midnight",
         ]}
         after={[
-          "Brain emptied before bed",
+          "Thoughts out of your head and on a list",
           "Tasks captured automatically",
-          "Mind finally quiet",
+          "Less to hold on to",
         ]}
       />
 
       <TrustStrip />
 
-      {/* ───── SLEEP STATS ───── */}
-      <StatsSection
-        stats={[
-          { value: 23, suffix: " min", label: "Average reduction in time to fall asleep" },
-          { value: 78, suffix: "%", label: "Report better sleep quality" },
-          { value: 67, suffix: "s", label: "Average debrief duration" },
-        ]}
-      />
-      <div className="text-center -mt-6 mb-12">
-        <p className="text-xs text-acuity-text-sec/60 italic">Based on user-reported survey data</p>
-      </div>
-
-      {/* ───── NIGHTLY RITUAL ───── */}
+      {/* ───── DAILY HABIT ───── */}
       <section className="px-6 py-24 sm:py-32">
         <div className="mx-auto max-w-3xl text-center">
           <Reveal>
             <h2 className="text-3xl font-bold tracking-tight sm:text-5xl">
-              Make it part of your daily wind-down.
+              Make it part of your day.
             </h2>
             <p className="mt-6 text-lg text-acuity-text-sec leading-relaxed">
-              Ripple works best as a daily ritual. Same time
-              each day — many people use it right before they put their phone down. Everything out. Mind clear.
+              Ripple works best as a daily habit. Talk whenever something&apos;s on
+              your mind: in the car, on a walk, or when you put your phone down for
+              the day. Everything out. Mind clear.
             </p>
           </Reveal>
 
@@ -244,19 +231,19 @@ export default function SleepPage() {
         testimonials={[
           {
             quote:
-              "I used to lie awake for an hour running through my to-do list. One quick Ripple recording and I'm asleep in 10 minutes.",
+              "I used to lie awake running through my to-do list. Now the list lives in Ripple instead of in my head.",
             name: "Rachel T.",
             role: "Project Manager",
           },
           {
             quote:
-              "My therapist suggested journaling before bed. I could never make myself write. Ripple is the first thing that actually worked.",
+              "I was told to try journaling. I could never make myself write. Ripple is the first thing that actually stuck.",
             name: "James K.",
             role: "Founder",
           },
           {
             quote:
-              "I didn't download it for sleep. But better sleep is the most unexpected benefit I've gotten from it.",
+              "I didn't download it for this. But getting my list out of my head has been the most unexpected benefit.",
             name: "Mia L.",
             role: "Designer",
           },
@@ -265,7 +252,7 @@ export default function SleepPage() {
 
       {/* ───── PRICING ───── */}
       <PricingSection
-        headline={`Better sleep for ${displayAnnualAsMonthly()}/month, billed yearly`}
+        headline={`Everything out of your head for ${displayAnnualAsMonthly()}/month, billed yearly`}
         subheadline="One plan. Everything included. Cancel anytime."
         utmCampaign={UTM}
       />
@@ -275,7 +262,7 @@ export default function SleepPage() {
       {/* ───── FINAL CTA ───── */}
       <CTABanner
         headline="Your brain has been waiting for somewhere to put all of this."
-        subheadline="Tonight. Just talk. See what happens."
+        subheadline="Just talk. See what happens."
         buttonText="Start Free Trial"
         utmCampaign={UTM}
       />

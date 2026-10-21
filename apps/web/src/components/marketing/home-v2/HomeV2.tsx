@@ -21,6 +21,7 @@ import Image from "next/image";
 import { useEffect, useState, type ReactNode } from "react";
 
 import { CookieSettingsLink } from "@/components/cookie-consent";
+import { LEARN_LINKS } from "@/lib/seo";
 import { trackOnboardingEvent } from "@/lib/track-onboarding";
 
 import { DEMO_PLATES, HOME_FAQS, HOME_REVIEWS, TICKER_ITEMS } from "./content";
@@ -793,6 +794,14 @@ export function HomeV2({ pricing }: { pricing: HomePricing }) {
             © 2026 Ripple · <CookieSettingsLink className="hover:text-[#1B1815]" />
           </span>
         </div>
+        <nav aria-label="Learn" className={cx(WRAP, "mt-4 flex flex-wrap items-center gap-x-6 gap-y-1 border-t border-[#EEE7DE] pt-4")}>
+          <span className="text-[13px] font-semibold uppercase tracking-[0.08em] text-[#57514B]">Learn</span>
+          {LEARN_LINKS.map(([label, href]) => (
+            <a key={href} href={href} className="inline-flex min-h-11 items-center text-[14px] font-semibold text-[#57514B] no-underline hover:text-[#1B1815]">
+              {label}
+            </a>
+          ))}
+        </nav>
       </footer>
 
       {/* Phone-only pinned CTA, appears once the hero button scrolls away */}

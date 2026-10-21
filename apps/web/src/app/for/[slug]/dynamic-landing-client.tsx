@@ -78,7 +78,7 @@ export function DynamicLandingPageView({ page, slug, ctaHref }: { page: DynamicL
                     </PulsingCTA>
                   </div>
                   <p className="text-xs text-acuity-text-sec">
-                    No credit card. Quick setup.
+                    7-day free trial · Cancel anytime
                   </p>
                 </div>
               </Reveal>
@@ -196,7 +196,7 @@ export function DynamicLandingPageView({ page, slug, ctaHref }: { page: DynamicL
                 </a>
               </div>
               <p className="mt-2.5 text-sm text-acuity-text-sec">
-                No credit card. Cancel anytime.
+                Nothing charged today. Cancel anytime.
               </p>
               <p className="mt-4 text-xs text-acuity-text-sec/60">
                 <span className="text-amber-400">★★★★★</span> on the App Store

@@ -10,7 +10,6 @@ import {
   PainSection,
   SolutionSection,
   HowItWorksSection,
-  ComparisonTable,
   FeatureGrid,
   TestimonialsSection,
   PricingSection,
@@ -20,7 +19,6 @@ import {
   FAQSection,
   StickyCTA,
 } from "@/components/landing-shared";
-import { displayAnnualAsMonthly, displayMonthly } from "@/lib/pricing";
 
 const UTM = "therapy";
 const WAITLIST = `/start?utm_campaign=${UTM}`;
@@ -36,8 +34,7 @@ export default function TherapyPage() {
             "@type": "BreadcrumbList",
             itemListElement: [
               { "@type": "ListItem", position: 1, name: "Home", item: "https://goripple.io" },
-              { "@type": "ListItem", position: 2, name: "Use Cases", item: "https://goripple.io/for/therapy" },
-              { "@type": "ListItem", position: 3, name: "Ripple for Therapy", item: "https://goripple.io/for/therapy" },
+              { "@type": "ListItem", position: 2, name: "Ripple for Therapy", item: "https://goripple.io/for/therapy" },
             ],
           }),
         }}
@@ -49,13 +46,13 @@ export default function TherapyPage() {
         <ParallaxOrbs />
         <div className="relative mx-auto max-w-4xl px-6 text-center">
           <Reveal>
-            <HeroHeadline text="What if you had a therapist who listened every single day?" />
+            <HeroHeadline text="Walk into your next session knowing what your week looked like." />
           </Reveal>
           <Reveal delay={1}>
             <p className="mt-6 text-lg text-acuity-text-sec leading-relaxed max-w-2xl mx-auto">
-              Ripple listens to your daily debrief, tracks your emotional
-              patterns, and writes your weekly mental health report — for less than
-              the cost of one therapy copay.
+              Talk to Ripple whenever something&apos;s on your mind between sessions.
+              It tracks your mood and the habits you&apos;re working on, notices what
+              keeps coming up, and sends a weekly report every Sunday.
             </p>
           </Reveal>
           <Reveal delay={2}>
@@ -73,7 +70,7 @@ export default function TherapyPage() {
           </Reveal>
           <Reveal delay={3}>
             <div className="mt-6">
-              <UrgencyBadge text="What would change if you had emotional support every single day?" />
+              <UrgencyBadge text="Support between sessions. Never a replacement for therapy." />
             </div>
           </Reveal>
         </div>
@@ -84,16 +81,16 @@ export default function TherapyPage() {
       {/* ───── PAIN SECTION ───── */}
       <PainSection
         points={[
-          "Therapy is $150/session. You can only afford once a week.",
-          "6 days pass between sessions. Your thoughts pile up.",
-          "You show up to therapy with vague feelings instead of actual patterns.",
+          "A week is a long time. By your session, the details have blurred.",
+          "Things happen between sessions and there's nowhere to put them.",
+          "You walk in trying to remember what actually happened since last time.",
         ]}
       />
 
       {/* ───── SOLUTION ───── */}
       <SolutionSection
-        headline="Ripple fills the 6 days between sessions."
-        body="Every day you speak freely. Ripple tracks your mood, detects emotional patterns, flags recurring themes, and builds a mental health timeline that compounds over time. Show up to therapy with 7 days of actual data — not just how you feel in the moment."
+        headline="Ripple keeps track of the days between sessions."
+        body="Talk whenever something's on your mind. Ripple tracks your mood, checks off the habits you're working on, notices the themes that keep coming up, and keeps a record you can look back on. Walk into your next session with a clear picture of your week, not just how you feel in that moment."
       />
 
       <TrustStrip />
@@ -101,7 +98,7 @@ export default function TherapyPage() {
       {/* ───── PRE-HOW-IT-WORKS CTA ───── */}
       <MidPageCTA
         headline="Ready to show up to your next session with real data?"
-        subheadline="No card. Quick setup. · cancel anytime"
+        subheadline="7-day free trial · Cancel anytime"
         utmCampaign={UTM}
       />
 
@@ -134,45 +131,43 @@ export default function TherapyPage() {
         ]}
         extractGoal="Process the anxiety around work changes"
         extractMood="Anxious but hopeful"
-        reflectPattern="Anxiety spikes on Sundays. Calm returns after Monday therapy sessions."
+        reflectPattern="Stress climbs on Sundays and eases after Monday sessions."
         reflectActions={["Discuss Sunday anxiety pattern", "Add wind-down ritual", "Track sleep vs mood"]}
       />
 
       {/* ───── MID-PAGE CTA ───── */}
       <MidPageCTA
-        headline="What if your therapist could see your emotional data from the last 7 days?"
-        subheadline="No card. Quick setup. · cancel anytime"
+        headline="What if the last 7 days were already written down when you walked in?"
+        subheadline="7-day free trial · Cancel anytime"
         utmCampaign={UTM}
       />
 
-      {/* ───── COMPARISON TABLE ───── */}
+      {/* ───── BETWEEN SESSIONS ───── */}
       <section className="px-6 py-24 sm:py-32 bg-transparent">
         <div className="mx-auto max-w-3xl">
           <Reveal>
-            <h2 className="text-3xl font-bold tracking-tight sm:text-4xl text-center mb-12 text-white">
-              Therapy vs. Ripple
+            <h2 className="text-3xl font-bold tracking-tight sm:text-4xl text-center mb-4 text-white">
+              What you bring to your next session
             </h2>
+            <p className="text-center text-acuity-text-sec mb-12 max-w-xl mx-auto">
+              Ripple supports the work you do in therapy. It never replaces it.
+            </p>
           </Reveal>
-          <ComparisonTable
-            headers={["Therapy", "Ripple"]}
-            rows={[
-              { feature: "Cost", values: ["$150/session", `${displayAnnualAsMonthly()}/month (billed yearly)`] },
-              { feature: "Frequency", values: ["Once a week", "Every single day"] },
-              {
-                feature: "Memory",
-                values: ["Depends on therapist", "Perfect — remembers everything"],
-              },
-              {
-                feature: "Availability",
-                values: ["Business hours", "Whenever you need it"],
-              },
-              {
-                feature: "Patterns",
-                values: ["Spotted over months", "Detected in days"],
-              },
-            ]}
-            note="Ripple is not a replacement for therapy. It's what makes therapy more effective."
-          />
+          <div className="grid gap-4 sm:grid-cols-2">
+            {[
+              { title: "Your mood, day by day", desc: "A simple line of how each day actually felt, not just how you feel walking in." },
+              { title: "What kept coming up", desc: "The people, worries and topics you mentioned more than once this week." },
+              { title: "The habits you're working on", desc: "Which ones you kept up and which ones slipped, checked off just by mentioning them." },
+              { title: "Your weekly report", desc: "Every Sunday, a short written story of your week to read before you go in." },
+            ].map((f, i) => (
+              <Reveal key={i} delay={Math.min(i + 1, 3) as 1 | 2 | 3}>
+                <div className="rounded-xl border border-acuity-line bg-acuity-card-bg p-6">
+                  <h3 className="text-base font-semibold text-white mb-2">{f.title}</h3>
+                  <p className="text-sm text-acuity-text-sec leading-relaxed">{f.desc}</p>
+                </div>
+              </Reveal>
+            ))}
+          </div>
         </div>
       </section>
 
@@ -217,32 +212,6 @@ export default function TherapyPage() {
           },
         ]}
       />
-
-      {/* ───── WHAT USERS SAY ───── */}
-      <section className="px-6 py-24 sm:py-32">
-        <div className="mx-auto max-w-2xl">
-          <Reveal>
-            <div className="rounded-xl border border-acuity-line bg-acuity-card-bg p-8 sm:p-10">
-              <div className="flex items-center gap-1 mb-4">
-                {[...Array(5)].map((_, i) => (
-                  <svg key={i} className="h-4 w-4 text-amber-400" fill="currentColor" viewBox="0 0 20 20">
-                    <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-                  </svg>
-                ))}
-              </div>
-              <blockquote className="text-base sm:text-lg text-acuity-text-sec leading-relaxed italic">
-                "I stopped going to therapy because of the cost. Ripple gives me the pattern recognition I was getting in sessions — at a fraction of the price."
-              </blockquote>
-              <div className="mt-6 flex items-center gap-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-acuity-primary-soft text-sm font-bold text-acuity-primary">S</div>
-                <div>
-                  <div className="text-sm font-semibold text-white">Sarah, 31</div>
-                </div>
-              </div>
-            </div>
-          </Reveal>
-        </div>
-      </section>
 
       {/* ───── FEATURE HIGHLIGHTS ───── */}
       <section className="px-6 py-24 sm:py-32">
@@ -291,7 +260,8 @@ export default function TherapyPage() {
             role: "Designer",
           },
           {
-            quote: `At ${displayMonthly()}/month it's the most affordable mental health tool I've ever used. And the most consistent.`,
+            quote:
+              "It's the one thing I actually keep up between sessions. I just talk, and the week is there when I need it.",
             name: "Jamie L.",
             role: "Teacher",
           },
@@ -300,7 +270,7 @@ export default function TherapyPage() {
 
       {/* ───── PRICING ───── */}
       <PricingSection
-        headline="Less than one therapy copay. Every month."
+        headline="One plan for the days between sessions."
         subheadline="One plan. Everything included. Cancel anytime."
         utmCampaign={UTM}
       />
@@ -309,7 +279,7 @@ export default function TherapyPage() {
 
       {/* ───── FINAL CTA ───── */}
       <CTABanner
-        headline="Your thoughts deserve to be heard every day. Not just once a week."
+        headline="Bring the whole week to your next session, not just the last day."
         utmCampaign={UTM}
       />
 

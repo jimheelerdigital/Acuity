@@ -1,25 +1,28 @@
 import type { Metadata } from "next";
+import { OG_IMAGE } from "@/lib/seo";
+
+const title = "Voice Journal for Therapy: Support Between Sessions";
+const description =
+  "Talk to Ripple between therapy sessions. It tracks your mood and habits, notices what keeps coming up, and sends a weekly report to bring to your next session.";
 
 export const metadata: Metadata = {
-  title: "Ripple for Therapy — AI Mood Tracking and Pattern Detection Between Sessions",
-  description:
-    "Track your emotional patterns daily with an AI voice journal. Ripple gives you the data to make therapy more effective — mood tracking, AI pattern detection, and weekly mental health reports for less than one copay.",
+  title,
+  description,
   robots: { index: true, follow: true },
   alternates: { canonical: "https://goripple.io/for/therapy" },
   openGraph: {
-    title: "Ripple for Therapy — AI Mood Tracking and Pattern Detection Between Sessions",
-    description:
-      "Track your emotional patterns daily with an AI voice journal. Mood tracking, AI pattern detection, and weekly mental health reports for less than one therapy copay.",
+    title,
+    description,
     url: "https://goripple.io/for/therapy",
     siteName: "Ripple",
-    images: [{ url: "/og-image.png?v=3", width: 1200, height: 630 }],
+    images: [OG_IMAGE],
   },
   twitter: {
     card: "summary_large_image",
-    title: "Ripple for Therapy — AI Mood Tracking and Pattern Detection",
+    title,
     description:
-      "Track your emotional patterns daily with an AI voice journal. Weekly mental health reports for less than one copay.",
-    images: ["/og-image.png?v=3"],
+      "Bring a clear picture of your week to your next session. Ripple tracks mood, habits and patterns between sessions. It supports therapy, never replaces it.",
+    images: [OG_IMAGE.url],
   },
 };
 

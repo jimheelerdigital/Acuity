@@ -16,6 +16,8 @@ import { CrisisFooter } from "@/components/crisis-footer";
 import { KeyboardShortcuts } from "@/components/keyboard-shortcuts";
 import { MetaPixelAdvancedMatching } from "@/components/meta-pixel-events";
 import { InstallBanner } from "@/components/install-banner";
+import { PRODUCT_CATEGORY } from "@/lib/positioning";
+import { OG_IMAGE } from "@/lib/seo";
 import {
   type Palette,
   type ResolvedTheme,
@@ -56,32 +58,29 @@ const manrope = Manrope({
 // Link previews (2026-10-14, per Keenan after an Instagram DM preview showed
 // the old Acuity image and "One Minute a Day"): positioning from
 // lib/positioning.ts, no recording-duration claim, new og-image.png.
+// No site-wide canonical or og:url (2026-10-21): pages declare their own,
+// otherwise every page without one pointed at the homepage.
+const DEFAULT_DESCRIPTION = `Ripple is ${PRODUCT_CATEGORY}. Try it free for 7 days.`;
+
 export const metadata: Metadata = {
   title: {
     default: "Ripple — Change Your Life for the Better",
     template: "%s | Ripple",
   },
-  description:
-    "Ripple is an AI life optimizer: a habit tracker, voice journal and insight tool. Talk it out and Ripple turns it into your to-do list, tracks your habits and mood, and shows you what keeps coming up.",
+  description: DEFAULT_DESCRIPTION,
   metadataBase: new URL("https://goripple.io"),
-  alternates: {
-    canonical: "https://goripple.io",
-  },
   openGraph: {
     type: "website",
-    url: "https://goripple.io",
     siteName: "Ripple",
     title: "Ripple — Change Your Life for the Better",
-    description:
-      "Ripple is an AI life optimizer: a habit tracker, voice journal and insight tool. Talk it out and Ripple turns it into your to-do list, tracks your habits and mood, and shows you what keeps coming up.",
-    images: [{ url: "/og-image.png?v=4", width: 1200, height: 630, alt: "Ripple — change your life for the better" }],
+    description: DEFAULT_DESCRIPTION,
+    images: [OG_IMAGE],
   },
   twitter: {
     card: "summary_large_image",
     title: "Ripple — Change Your Life for the Better",
-    description:
-      "Ripple is an AI life optimizer: a habit tracker, voice journal and insight tool. Talk it out and Ripple turns it into your to-do list, tracks your habits and mood, and shows you what keeps coming up.",
-    images: ["/og-image.png?v=4"],
+    description: DEFAULT_DESCRIPTION,
+    images: [OG_IMAGE.url],
   },
   robots: {
     index: true,
@@ -123,21 +122,13 @@ export default function RootLayout({
         name: "Ripple",
         url: "https://goripple.io",
         logo: "https://goripple.io/icon-512.png",
-        description:
-          "The AI voice journal that turns your daily debrief into action. Task extraction, goal tracking, pattern detection, and weekly reports — all from a daily voice recording.",
-        email: "hello@getacuity.io",
-        // sameAs: Keenan to provide social profile URLs (Twitter/X, LinkedIn, Instagram)
-        sameAs: [],
+        description: `Ripple is ${PRODUCT_CATEGORY}.`,
+        email: "hello@goripple.io",
       },
       {
         "@type": "WebSite",
         name: "Ripple",
         url: "https://goripple.io",
-        potentialAction: {
-          "@type": "SearchAction",
-          target: "https://goripple.io/blog?q={search_term_string}",
-          "query-input": "required name=search_term_string",
-        },
       },
     ],
   };

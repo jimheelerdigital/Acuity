@@ -20,9 +20,9 @@ export interface PersonaPage {
 export const PERSONA_PAGES: PersonaPage[] = [
   {
     slug: "anxiety",
-    title: "Ripple for Anxiety — Daily Voice Journaling to Calm Your Mind",
+    title: "Voice Journal for Anxious Thoughts: Talk It Out | Ripple",
     metaDescription:
-      "Ripple helps you manage anxiety with daily voice journaling. AI detects anxiety triggers, breaks rumination loops, and tracks your patterns over time.",
+      "Talk through anxious thoughts whenever they show up. Ripple's voice journal turns them into a list, tracks your mood, and shows what keeps coming up over time.",
     headline: "What if your anxiety had somewhere to go every day?",
     subheadline:
       "You can't think your way out of a thought spiral. Ripple gives your anxious mind a release valve — a place to talk whenever you need it, and AI that spots the patterns your worry hides from you.",
@@ -36,9 +36,9 @@ export const PERSONA_PAGES: PersonaPage[] = [
       "Any time the spiral starts, just open the app and talk. Say whatever's circling in your head — the worry, the dread, the thing you can't stop replaying. Ripple's AI listens, extracts the recurring themes, and shows you your anxiety patterns over time. When you can see that every Sunday you spiral about Monday, or that specific people trigger specific fears, you stop being trapped inside the loop.",
     features: [
       {
-        title: "Anxiety Trigger Detection",
+        title: "What Comes Before the Worry",
         description:
-          "Ripple's AI identifies the people, situations, and time patterns that consistently precede your anxiety spikes — things you'd never spot from inside the spiral.",
+          "Ripple notices the people, situations, and times of the week that keep showing up in your entries before a hard day — things you'd never spot from inside the spiral.",
       },
       {
         title: "Cognitive Offloading",
@@ -62,7 +62,7 @@ export const PERSONA_PAGES: PersonaPage[] = [
   },
   {
     slug: "adhd",
-    title: "Ripple for ADHD — Voice-First Journaling That Works With Your Brain",
+    title: "Voice Journal for ADHD: Just Talk, Get a List | Ripple",
     metaDescription:
       "Ripple is built for ADHD brains. Just talk, and AI extracts your tasks and priorities. No writing, no apps to check. Just speak and let go.",
     headline: "ADHD brains have 100 tabs open. Ripple catches what matters.",
@@ -95,7 +95,7 @@ export const PERSONA_PAGES: PersonaPage[] = [
     ],
     testimonial: {
       quote:
-        "Every productivity app becomes another thing I feel guilty about not using. Ripple is the first one that stuck because it's just talking. I ramble for a minute whenever I remember, and the next time I check I have a clean task list I didn't have to write. That's never happened before.",
+        "Every productivity app becomes another thing I feel guilty about not using. Ripple is the first one that stuck because it's just talking. I ramble whenever I remember, and the next time I check I have a clean task list I didn't have to write. That's never happened before.",
       name: "Devon K.",
       detail: "28, software developer with ADHD",
     },
@@ -104,7 +104,7 @@ export const PERSONA_PAGES: PersonaPage[] = [
   },
   {
     slug: "remote-workers",
-    title: "Ripple for Remote Workers — The Shutdown Ritual You're Missing",
+    title: "Daily Debrief for Remote Workers: End the Day | Ripple",
     metaDescription:
       "Remote workers need a way to leave work at work. Ripple's daily debrief creates the boundary your home office doesn't have.",
     headline: "The daily debrief remote workers have been looking for.",
@@ -115,7 +115,7 @@ export const PERSONA_PAGES: PersonaPage[] = [
       "Your bedroom is your office is your break room is your everything — there's no physical boundary to signal 'work is over'",
       "You can't remember the last time you had an evening that felt fully yours, not borrowed from tomorrow's to-do list",
     ],
-    solutionHeadline: "Draw the line. Every night.",
+    solutionHeadline: "Draw the line. Every workday.",
     solutionBody:
       "The commute used to be your transition. Now you need something else. Ripple's daily debrief is simple: say what happened today, what's lingering, what can wait until tomorrow. Your brain gets the signal that the workday is done. Over time, your weekly report shows whether your work-life boundary is holding — or slowly dissolving.",
     features: [
@@ -132,7 +132,7 @@ export const PERSONA_PAGES: PersonaPage[] = [
       {
         title: "Tomorrow's Task Capture",
         description:
-          "Mention what needs to happen tomorrow and Ripple extracts it cleanly. You wake up to a list instead of a fog of half-remembered obligations.",
+          "Mention what needs to happen tomorrow and Ripple extracts it cleanly. You start tomorrow with a list instead of a fog of half-remembered obligations.",
       },
     ],
     testimonial: {
@@ -141,12 +141,12 @@ export const PERSONA_PAGES: PersonaPage[] = [
       name: "James L.",
       detail: "31, remote product manager",
     },
-    ctaHeadline: "Your workday deserves an ending. Build it tonight.",
+    ctaHeadline: "Your workday deserves an ending. Build it today.",
     accentColor: "sky",
   },
   {
     slug: "new-parents",
-    title: "Ripple for New Parents — A Moment to Track Your Own Well-Being",
+    title: "Voice Journal for New Parents, Hands-Free | Ripple",
     metaDescription:
       "New parents track feedings, diapers, and naps — but who tracks you? Ripple's voice journal keeps you visible during the hardest season.",
     headline: "You're tracking your baby's everything. Who's tracking yours?",
@@ -188,9 +188,9 @@ export const PERSONA_PAGES: PersonaPage[] = [
   },
   {
     slug: "burnout",
-    title: "Ripple for Burnout — Detect the Patterns Before You Break",
+    title: "Voice Journal for Burnout: See the Patterns | Ripple",
     metaDescription:
-      "Burnout builds slowly in patterns you can't see. Ripple's AI tracks mood, work mentions, and energy over time to catch burnout before it catches you.",
+      "Burnout builds slowly in patterns you can't see. Ripple tracks your mood, how much work fills your days, and your energy over time, so the shift is visible early.",
     headline:
       "Burnout doesn't happen overnight. It builds in the patterns you can't see.",
     subheadline:
@@ -200,14 +200,14 @@ export const PERSONA_PAGES: PersonaPage[] = [
       "You used to love your work. Now you feel nothing about it, and that absence of feeling scares you more than stress ever did",
       "You're performing fine on the outside but running on fumes inside, and no one around you can tell the difference",
     ],
-    solutionHeadline: "An early warning system for your own burnout.",
+    solutionHeadline: "See the shift before you hit the wall.",
     solutionBody:
-      "Every day, just talk. Ripple's AI doesn't just listen — it watches the trends. When your entries start skewing more negative, when work takes over every single entry, when hobbies and friends stop appearing in your data, the weekly report flags it. You get a burnout signal weeks before you'd have noticed it yourself.",
+      "Every day, just talk. Ripple's AI doesn't just listen — it watches the trends. When your entries start skewing more negative, when work takes over every single entry, when hobbies and friends stop appearing in your data, the weekly report shows it. You see the shift in your own words, often weeks before you'd have noticed it yourself.",
     features: [
       {
-        title: "Burnout Pattern Detection",
+        title: "Work-Life Pattern Tracking",
         description:
-          "Ripple tracks the ratio of work-to-personal mentions, mood trajectory over weeks, and the disappearance of joy indicators — the classic burnout fingerprint.",
+          "Ripple tracks how much of what you talk about is work, how your mood moves over the weeks, and whether friends, hobbies, and rest still show up at all.",
       },
       {
         title: "Energy & Engagement Tracking",
@@ -231,7 +231,7 @@ export const PERSONA_PAGES: PersonaPage[] = [
   },
   {
     slug: "students",
-    title: "Ripple for Students — Track Stress, Capture Tasks, Stay on Top of It",
+    title: "Voice Journal for Students: Tasks and Stress | Ripple",
     metaDescription:
       "College and grad students: use Ripple's voice journal to manage stress, capture deadlines, and spot when you're overextending before you crash.",
     headline: "The study tool no one told you about: your own voice.",
@@ -244,7 +244,7 @@ export const PERSONA_PAGES: PersonaPage[] = [
     ],
     solutionHeadline: "Clear the noise. AI to find the signal.",
     solutionBody:
-      "Talk through your day whenever you have a minute. What's due, what's stressing you, what you're avoiding. Ripple extracts your tasks, tracks your stress levels across the semester, and shows you patterns — like how you always spiral on Sundays, or how your confidence drops after certain classes. It's the self-awareness you need to get through school without losing yourself.",
+      "Talk through your day whenever you get a moment. What's due, what's stressing you, what you're avoiding. Ripple extracts your tasks, tracks your stress levels across the semester, and shows you patterns — like how you always spiral on Sundays, or how your confidence drops after certain classes. It's the self-awareness you need to get through school without losing yourself.",
     features: [
       {
         title: "Deadline & Task Capture",
@@ -273,7 +273,7 @@ export const PERSONA_PAGES: PersonaPage[] = [
   },
   {
     slug: "entrepreneurs",
-    title: "Ripple for Entrepreneurs — Your Personal Co-Founder for Mental Clarity",
+    title: "Daily Debrief for Entrepreneurs: Talk It Out | Ripple",
     metaDescription:
       "Solo entrepreneurs need someone to debrief with. Ripple's daily AI voice journal captures decisions, tracks mental load, and writes your weekly review.",
     headline: "You run a business. Who's running your headspace?",
@@ -315,7 +315,7 @@ export const PERSONA_PAGES: PersonaPage[] = [
   },
   {
     slug: "creatives",
-    title: "Ripple for Creatives — Capture Ideas Before They Vanish",
+    title: "Voice Notes for Creatives: Capture Every Idea | Ripple",
     metaDescription:
       "Writers, artists, and musicians: Ripple captures your fleeting creative ideas with quick voice entries. Never lose an insight to sleep again.",
     headline: "Your best ideas come at the worst times. Ripple catches them.",
@@ -357,7 +357,7 @@ export const PERSONA_PAGES: PersonaPage[] = [
   },
   {
     slug: "couples",
-    title: "Ripple for Couples — Individual Clarity for Better Relationships",
+    title: "Voice Journal for Couples: Know Yourself First | Ripple",
     metaDescription:
       "Ripple helps couples communicate better. Individual voice journals reveal relationship patterns, unspoken needs, and what actually matters.",
     headline: "The daily habit that's saving relationships.",
@@ -399,9 +399,9 @@ export const PERSONA_PAGES: PersonaPage[] = [
   },
   {
     slug: "grief",
-    title: "Ripple for Grief — A Safe Space to Talk Every Day",
+    title: "Grief Journal by Voice: Somewhere to Talk Daily | Ripple",
     metaDescription:
-      "Processing grief is a journey. Ripple gives you a place each day to talk through loss, track healing over time, and see the progress you can\u2019t feel.",
+      "Processing grief is a journey. Ripple gives you a place each day to talk through loss, see how things shift over time, and notice the changes you can\u2019t feel.",
     headline: "You don't have to process grief alone.",
     subheadline:
       "Grief doesn't follow a schedule. It hits at 2pm on a Tuesday or 11pm when you hear their song. Ripple gives you a place to put it every day — not to fix it, not to analyze it, just to say it out loud and know that something is tracking the path even when you can't.",
@@ -412,7 +412,7 @@ export const PERSONA_PAGES: PersonaPage[] = [
     ],
     solutionHeadline: "A place for your grief. Every day. No pressure.",
     solutionBody:
-      "Just talk. Say their name. Say what you miss. Say you're angry, or say nothing happened today and that felt wrong too. Ripple holds it all without judgment, and over weeks and months, your report shows you the shape of your grief — the slow, non-linear, real trajectory of healing that you can't feel from inside it.",
+      "Just talk. Say their name. Say what you miss. Say you're angry, or say nothing happened today and that felt wrong too. Ripple holds it all without judgment, and over weeks and months, your report shows you the shape of your grief — the slow, non-linear, real way it changes that you can't feel from inside it.",
     features: [
       {
         title: "Grief Journey Tracking",
@@ -441,7 +441,7 @@ export const PERSONA_PAGES: PersonaPage[] = [
   },
   {
     slug: "career-change",
-    title: "Ripple for Career Change — Let Your Voice Notes Reveal the Answer",
+    title: "Career Change Journal: Hear What You Keep Saying | Ripple",
     metaDescription:
       "Considering a career change? Ripple's AI analyzes your daily voice entries to surface what drains you, what energizes you, and what you really want.",
     headline:
@@ -470,7 +470,7 @@ export const PERSONA_PAGES: PersonaPage[] = [
       {
         title: "Decision Clarity Report",
         description:
-          "Your weekly narrative synthesizes the themes across your entries. It's not advice. It's a mirror — showing you what you've been saying to yourself when nobody's listening.",
+          "Your weekly narrative synthesizes the themes across your entries. It's not advice. It shows you what you've been saying to yourself when nobody's listening.",
       },
     ],
     testimonial: {
@@ -484,9 +484,9 @@ export const PERSONA_PAGES: PersonaPage[] = [
   },
   {
     slug: "nurses",
-    title: "Ripple for Nurses — Process the Shift Before It Follows You Home",
+    title: "Voice Journal for Nurses: Debrief Any Shift | Ripple",
     metaDescription:
-      "Nurses carry impossible emotional weight. Ripple's voice journal helps healthcare workers process the day and track compassion fatigue over time.",
+      "Nurses carry impossible emotional weight. Ripple's voice journal gives healthcare workers a place to talk through any shift and see how the work lands over time.",
     headline: "12-hour shifts. Zero time to process. Ripple changes that.",
     subheadline:
       "You held someone's hand while they died, then charted for an hour, then drove home and were supposed to be 'normal.' You don't need a 30-minute journaling practice. You need a way to put the shift down before it follows you to bed.",
@@ -497,12 +497,12 @@ export const PERSONA_PAGES: PersonaPage[] = [
     ],
     solutionHeadline: "Put the shift down. In private.",
     solutionBody:
-      "In the parking lot, in your car, on the drive home — just talk. Not a debrief for your charge nurse. For you. Say what hit you today, what you're carrying, what you need to let go of. Ripple tracks your compassion fatigue patterns over weeks, so you can see when you're depleting faster than you're recovering.",
+      "In the parking lot, in your car, on the drive home — just talk. Not a debrief for your charge nurse. For you. Say what hit you today, what you're carrying, what you need to let go of. Ripple tracks your mood and what keeps coming up over the weeks, so you can see when you're depleting faster than you're recovering.",
     features: [
       {
-        title: "Compassion Fatigue Tracking",
+        title: "Notice the Slow Shift",
         description:
-          "Ripple detects the slow erosion — when your entries shift from processing emotions to flat, detached recounting. That shift is a signal, and Ripple catches it before you burn out.",
+          "Ripple notices when your entries shift from talking through feelings to flat, detached recounting. That shift is worth knowing about, and your weekly report shows it.",
       },
       {
         title: "Quick Emotional Debrief",
@@ -526,9 +526,9 @@ export const PERSONA_PAGES: PersonaPage[] = [
   },
   {
     slug: "teachers",
-    title: "Ripple for Teachers — Manage Your Own Mind While Managing 30 Others",
+    title: "Voice Journal for Teachers: See What Drains You | Ripple",
     metaDescription:
-      "Teachers give everything to their students. Ripple's voice journal helps educators track burnout, process emotional labor, and protect their energy.",
+      "Teachers give everything to their students. Ripple's voice journal helps educators see what drains them, talk through the day, and protect their energy.",
     headline: "You manage 30 minds a day. Who manages yours?",
     subheadline:
       "You're a teacher, counselor, referee, motivator, and admin — all before lunch. By 3pm you're empty. Ripple's daily debrief helps you see what's actually draining you, what still lights you up, and whether you're heading toward a wall.",
@@ -552,9 +552,9 @@ export const PERSONA_PAGES: PersonaPage[] = [
           "Teaching is emotional labor disguised as a profession. Ripple tracks the weight of student needs, parent interactions, and administrative pressure so you can see the invisible load you're carrying.",
       },
       {
-        title: "Burnout Early Warning",
+        title: "Spot the Shift",
         description:
-          "When your entries stop mentioning students and start focusing only on frustration and fatigue, Ripple flags the shift. Catch the slide before you become the teacher who stopped caring.",
+          "When your entries stop mentioning students and start focusing only on frustration and fatigue, your weekly report shows the shift, so you can act on it early.",
       },
     ],
     testimonial: {
@@ -568,12 +568,12 @@ export const PERSONA_PAGES: PersonaPage[] = [
   },
   {
     slug: "therapists",
-    title: "Ripple for Therapists — Your Own Emotional Processing Tool",
+    title: "Voice Journal for Therapists: Your Own Debrief | Ripple",
     metaDescription:
       "Therapists absorb client emotions all day with nowhere to put them. Ripple's voice journal gives clinicians their own pattern detection system.",
     headline: "You listen to everyone else all day. Who listens to you?",
     subheadline:
-      "You hold space for other people's darkest moments and then drive home and make dinner like nothing happened. You know better than anyone that unexpressed emotions compound. Ripple gives you your own tool — the one you'd prescribe to a client.",
+      "You hold space for other people's darkest moments and then drive home and make dinner like nothing happened. You know better than anyone that unexpressed emotions compound. Ripple gives you your own tool — the one you'd recommend to a client.",
     painPoints: [
       "You absorb your clients' grief, anxiety, and trauma all day, and by evening you're carrying emotional weight that isn't yours but feels like it is",
       "You know you should have your own reflective practice, but after 8 sessions a day the last thing you want is more introspection",
@@ -581,7 +581,7 @@ export const PERSONA_PAGES: PersonaPage[] = [
     ],
     solutionHeadline: "Process your own patterns with the rigor you give your clients.",
     solutionBody:
-      "At the end of each day, just talk. Not clinical notes — your emotional residue from the day. What session stuck with you, where you felt activated, what you're carrying home. Ripple's AI detects your patterns the same way you detect your clients' patterns: recurring themes, emotional shifts, blind spots. Your weekly report is supervision between supervisions.",
+      "Whenever a session stays with you, just talk. Not clinical notes — your emotional residue from the day. What session stuck with you, where you felt activated, what you're carrying home. Ripple's AI detects your patterns the same way you detect your clients' patterns: recurring themes, emotional shifts, blind spots. Your weekly report gives you something concrete to bring to supervision.",
     features: [
       {
         title: "Countertransference Awareness",
@@ -589,9 +589,9 @@ export const PERSONA_PAGES: PersonaPage[] = [
           "Ripple tracks which clients and themes keep appearing in your entries, surfacing potential countertransference patterns you might not be catching in the session.",
       },
       {
-        title: "Vicarious Trauma Monitoring",
+        title: "Your Own Baseline, Over Time",
         description:
-          "Your weekly report flags shifts in your emotional baseline — creeping cynicism, emotional flatness, hypervigilance — the classic signs of vicarious traumatization that clinicians miss in themselves.",
+          "Your weekly report shows how the way you talk about your days is changing, like more flat or tired entries, so you can bring what you notice to supervision.",
       },
       {
         title: "Professional Reflection Archive",
@@ -610,7 +610,7 @@ export const PERSONA_PAGES: PersonaPage[] = [
   },
   {
     slug: "overthinkers",
-    title: "Ripple for Overthinkers — Get It Out of Your Head, Into Something Useful",
+    title: "Brain Dump App for Overthinkers: Get It Out | Ripple",
     metaDescription:
       "Chronic overthinker? Ripple's voice journal gives racing thoughts somewhere to go. AI finds patterns in your mental loops so you can break them.",
     headline: "Your brain won't stop. Give it somewhere to go.",
@@ -652,7 +652,7 @@ export const PERSONA_PAGES: PersonaPage[] = [
   },
   {
     slug: "introverts",
-    title: "Ripple for Introverts — Process Internally, Understand Externally",
+    title: "Voice Journal for Introverts: Think Out Loud | Ripple",
     metaDescription:
       "Introverts process deeply but rarely externalize. Ripple's private voice journal makes your inner world visible — no audience, no judgment.",
     headline: "You process the world internally. Ripple makes it visible.",
@@ -694,7 +694,7 @@ export const PERSONA_PAGES: PersonaPage[] = [
   },
   {
     slug: "managers",
-    title: "Ripple for Managers — Debrief Your Leadership, Not Just Your Team",
+    title: "Leadership Journal for Managers: Daily Debrief | Ripple",
     metaDescription:
       "People managers carry invisible weight. Ripple's daily debrief tracks leadership patterns, team dynamics, and management growth over time.",
     headline: "You're responsible for everyone else's growth. What about yours?",
@@ -736,7 +736,7 @@ export const PERSONA_PAGES: PersonaPage[] = [
   },
   {
     slug: "freelancers",
-    title: "Ripple for Freelancers — The Accountability System You Actually Need",
+    title: "Daily Debrief for Freelancers: Stay Accountable | Ripple",
     metaDescription:
       "Freelancers lack structure and accountability. Ripple's daily debrief tracks goals, surfaces procrastination, and writes your weekly review.",
     headline: "No structure. No boss. No accountability. Until now.",
@@ -773,12 +773,12 @@ export const PERSONA_PAGES: PersonaPage[] = [
       name: "Sasha D.",
       detail: "27, freelance brand designer",
     },
-    ctaHeadline: "Freedom needs structure. Build yours tonight.",
+    ctaHeadline: "Freedom needs structure. Build yours today.",
     accentColor: "amber",
   },
   {
     slug: "athletes",
-    title: "Ripple for Athletes — Track the Mental Game That Wins Championships",
+    title: "Mental Game Journal for Athletes | Ripple",
     metaDescription:
       "Athletes track physical performance but ignore the mental game. Ripple's voice journal tracks confidence, focus, and competitive mindset over time.",
     headline: "The mental game is the game. Start tracking it.",
@@ -820,9 +820,9 @@ export const PERSONA_PAGES: PersonaPage[] = [
   },
   {
     slug: "chronic-pain",
-    title: "Ripple for Chronic Pain — Track Flares, Mood, and Patterns in Your Words",
+    title: "Chronic Pain Journal by Voice: Track Patterns | Ripple",
     metaDescription:
-      "Living with chronic pain? Ripple's voice journal tracks flare triggers, mood-pain links, and energy patterns. Real data for real appointments.",
+      "Living with chronic pain? Ripple's voice journal tracks your mood, energy, and the patterns in what you mention, so you have something real for appointments.",
     headline: "Track what your body is telling you — in your own words.",
     subheadline:
       "Pain scales lie. '7 out of 10' doesn't capture what it's actually like — the frustration, the grief, the way it steals your plans and your patience. Ripple lets you describe your experience in your own voice, then finds the patterns that pain diaries miss.",
@@ -833,17 +833,17 @@ export const PERSONA_PAGES: PersonaPage[] = [
     ],
     solutionHeadline: "Your voice captures what pain scales can't.",
     solutionBody:
-      "Just talk. Describe today — the pain, the mood, what you ate, how you slept, what you could and couldn't do. Ripple's AI finds the correlations you're too exhausted to track: sleep-to-flare patterns, stress-to-pain links, which treatments actually change your baseline. Print your weekly report and bring it to your next appointment. Give your doctor the data that actually matters.",
+      "Just talk. Describe today — the pain, the mood, what you ate, how you slept, what you could and couldn't do. Ripple notices the patterns in what you mention that you're too exhausted to track: how you slept, stress, food, activity, and what came before a hard day. Print your weekly report and bring it to your next appointment. Give your doctor the data that actually matters.",
     features: [
       {
-        title: "Flare Trigger Correlation",
+        title: "Patterns in What You Mention",
         description:
-          "Ripple analyzes your entries for patterns before flare-ups — sleep changes, stress spikes, weather mentions, food, activity levels. Over time, your triggers become visible in the data.",
+          "Ripple looks across your entries at what you tend to mention before a hard day: sleep changes, stress, weather, food, activity. Over time, the patterns in your own words become visible.",
       },
       {
-        title: "Mood-Pain Connection Mapping",
+        title: "Mood and Pain, Side by Side",
         description:
-          "Chronic pain and mental health are inseparable. Ripple tracks how your mood and pain levels interact — showing whether emotional stress is preceding physical flares or the other way around.",
+          "Ripple tracks your mood alongside how you describe your pain, so you can see how the two move together over time.",
       },
       {
         title: "Appointment-Ready Reports",
@@ -853,7 +853,7 @@ export const PERSONA_PAGES: PersonaPage[] = [
     ],
     testimonial: {
       quote:
-        "I have fibromyalgia and my doctor kept asking me to keep a symptom diary. I couldn't — on bad days I can barely hold my phone. With Ripple I just talk from bed. My report showed that my worst flares happened 2-3 days after high-stress entries. My rheumatologist said that correlation was more useful than a year of pain scales. I cried in her office.",
+        "I have fibromyalgia and my doctor kept asking me to keep a symptom diary. I couldn't — on bad days I can barely hold my phone. With Ripple I just talk from bed. My report showed that my hardest days often came a few days after stressful ones. My rheumatologist said that was more useful than a year of pain scales. I cried in her office.",
       name: "Laura B.",
       detail: "45, living with fibromyalgia for 12 years",
     },

@@ -1,9 +1,10 @@
 import Link from "next/link";
 
 export const metadata = {
-  title: "Delete Your Account — Ripple",
+  title: "Delete Your Account",
   description:
-    "How to request deletion of your Ripple account and data, what gets deleted, and what we retain for legal reasons.",
+    "How to request deletion of your Ripple account and all of your data, exactly what gets deleted, and what we retain for legal reasons.",
+  alternates: { canonical: "/delete-account" },
   robots: { index: true, follow: true },
 };
 
@@ -124,10 +125,10 @@ export default function DeleteAccountPage() {
               <li>
                 Send a message to{" "}
                 <a
-                  href="mailto:hello@getacuity.io?subject=Account%20Deletion%20Request"
+                  href="mailto:hello@goripple.io?subject=Account%20Deletion%20Request"
                   className="text-acuity-primary underline-offset-4 hover:underline"
                 >
-                  hello@getacuity.io
+                  hello@goripple.io
                 </a>
                 .
               </li>
@@ -197,10 +198,10 @@ export default function DeleteAccountPage() {
             <p className="mt-3">
               Questions about deleting your account or data? Email{" "}
               <a
-                href="mailto:hello@getacuity.io"
+                href="mailto:hello@goripple.io"
                 className="text-acuity-primary underline-offset-4 hover:underline"
               >
-                hello@getacuity.io
+                hello@goripple.io
               </a>
               . Ripple is operated by Heeler Digital LLC. See also our{" "}
               <Link

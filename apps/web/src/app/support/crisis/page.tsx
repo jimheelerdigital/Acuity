@@ -1,9 +1,10 @@
 import Link from "next/link";
 
 export const metadata = {
-  title: "Crisis resources · Ripple",
+  title: "Crisis Resources",
   description:
-    "If you're in crisis, here are 24/7 hotlines and text lines. Ripple is a journaling tool — not a substitute for professional support.",
+    "If you are in crisis, here are 24/7 hotlines and text lines you can reach right now. Ripple is a journaling tool, not a substitute for professional support.",
+  alternates: { canonical: "/support/crisis" },
   robots: { index: true, follow: true },
 };
 

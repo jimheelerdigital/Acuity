@@ -709,7 +709,7 @@ export function PricingSection({
                 <span className="text-acuity-text-sec">/month, billed yearly</span>
               </p>
               <p className="mt-2 text-sm text-acuity-text-sec">
-                {displayAnnual()}/year, or {displayMonthly()} month to month &middot; 7-day free trial &middot; No card. Quick setup.
+                {displayAnnual()}/year, or {displayMonthly()} month to month &middot; 7-day free trial &middot; Cancel anytime
               </p>
 
               <ul className="mt-8 space-y-3 text-sm text-acuity-text-sec">
@@ -1027,7 +1027,7 @@ export function HowItWorksSection({ steps, ...phoneProps }: HowItWorksConfig) {
                 </div>
                 <h3 className="text-3xl font-bold sm:text-4xl">{steps[1]?.title || "Extract"}</h3>
                 <p className="mt-4 text-lg text-acuity-text-sec leading-relaxed max-w-md">
-                  {steps[1]?.description || "By morning, your tasks are on a list, your goals are tracked, and your mood is scored. You didn\u2019t type a word."}
+                  {steps[1]?.description || "Within minutes, your tasks are on a list, your habits are checked off, and your mood is scored. You didn\u2019t type a word."}
                 </p>
               </Reveal>
             </div>
@@ -1107,8 +1107,8 @@ export function CTABanner({
                 {buttonText}
               </a>
               <span className="text-sm text-acuity-text-sec">
-                Then {displayAnnual()}/year ({displayAnnualAsMonthly()}/mo) &middot; No
-                card. Quick setup.
+                Then {displayAnnual()}/year ({displayAnnualAsMonthly()}/mo) &middot; Cancel
+                anytime
               </span>
             </div>
           </div>
@@ -1806,7 +1806,7 @@ export function SocialProofBar() {
 export function TrustStrip() {
   const items = [
     "Audio deleted within 24hrs",
-    "No card. Quick setup.",
+    "Nothing charged today",
     "Cancel anytime",
     "7-day free trial",
   ];
@@ -1848,7 +1848,7 @@ export function FAQSection() {
     },
     {
       q: "Is this just a journaling app?",
-      a: "No. You don't write anything. You just open the app and talk, and within minutes your tasks are extracted, your mood is scored, and every Sunday you get a written story of your week.",
+      a: "No. You don't write anything. You just open the app and talk, and within minutes your tasks are extracted, your habits are checked off, your mood is scored, and every Sunday you get a written story of your week.",
     },
   ];
 
@@ -1892,7 +1892,7 @@ export function StickyCTA({ utmCampaign }: { utmCampaign: string }) {
           Start Free Trial
         </a>
         <p className="mt-1.5 text-center text-xs text-acuity-text-sec">
-          Free for 7 days &middot; No card required
+          7-day free trial &middot; Cancel anytime
         </p>
       </div>
     </div>

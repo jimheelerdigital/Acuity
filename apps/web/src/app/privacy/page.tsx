@@ -1,9 +1,10 @@
 import Link from "next/link";
 
 export const metadata = {
-  title: "Privacy Policy — Ripple",
+  title: "Privacy Policy",
   description:
-    "How Ripple collects, uses, stores, and protects your voice journal data. GDPR + UK GDPR compliant.",
+    "How Ripple collects, uses, stores and protects your voice journal, habit and mood data, and the rights you have over it under GDPR and UK GDPR.",
+  alternates: { canonical: "/privacy" },
   robots: { index: true, follow: true },
 };
 

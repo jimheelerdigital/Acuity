@@ -1,5 +1,6 @@
 import Link from "next/link";
 import type { Metadata } from "next";
+import { OG_IMAGE } from "@/lib/seo";
 
 /**
  * Linkable data asset (Phase 3, 2026-09). All numbers computed 2026-09-23
@@ -44,25 +45,27 @@ const THEMES = [
 ];
 
 const description =
-  "Aggregate data from 1,117 voice journal entries: when people actually record, the midweek mood dip, how often talking surfaces a to-do, and what people really reflect on.";
+  "Data from 1,117 voice journal entries: when people really record (every hour of the day), the midweek mood dip, how often talking surfaces a to-do, and more.";
+
+const title = "Voice Journaling Data: What 1,117 Entries Reveal";
 
 export const metadata: Metadata = {
-  title: "What 1,117 Voice Journal Entries Reveal About How People Reflect",
+  title,
   description,
   alternates: { canonical: "https://goripple.io/research/voice-journaling-data" },
   openGraph: {
-    title: "What 1,117 Voice Journal Entries Reveal About How People Reflect",
+    title,
     description,
     url: "https://goripple.io/research/voice-journaling-data",
     type: "article",
     siteName: "Ripple",
-    images: [{ url: "/og-image.png?v=3", width: 1200, height: 630 }],
+    images: [OG_IMAGE],
   },
   twitter: {
     card: "summary_large_image",
     title: "Voice journaling, quantified: data from 1,117 real entries",
     description,
-    images: ["/og-image.png?v=3"],
+    images: [OG_IMAGE.url],
   },
 };
 
@@ -326,13 +329,26 @@ export default function VoiceJournalingDataPage() {
           <div className="h-px bg-acuity-line my-12" />
 
           <p className="text-base text-acuity-text leading-[1.8] mb-5">
-            The data on this page comes from Ripple, a voice journaling app. You talk through
-            your day, any time of day; Ripple pulls out the tasks, tracks the goals you
-            mention, scores mood, and surfaces your patterns in a weekly report. There is a{" "}
+            The data on this page comes from Ripple, an AI life optimizer: a habit tracker,
+            voice journal and insight tool that helps people change their lives for the
+            better. You talk through your day, any time of day; Ripple turns it into a to-do
+            list, checks off the habits you mention, tracks your mood, and surfaces your
+            patterns in a weekly report. There is a{" "}
             <Link href="/start" className="text-acuity-primary hover:underline">
               7-day free trial
             </Link>
-            , no card required.
+            , and you can cancel anytime.
+          </p>
+          <p className="text-base text-acuity-text leading-[1.8] mb-5">
+            New to the practice? Start with our{" "}
+            <Link href="/voice-journaling" className="text-acuity-primary hover:underline">
+              complete guide to voice journaling
+            </Link>
+            , or browse more on the{" "}
+            <Link href="/blog" className="text-acuity-primary hover:underline">
+              Ripple blog
+            </Link>
+            .
           </p>
         </div>
       </article>

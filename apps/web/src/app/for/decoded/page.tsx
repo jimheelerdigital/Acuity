@@ -33,8 +33,7 @@ export default function DecodedPage() {
             "@type": "BreadcrumbList",
             itemListElement: [
               { "@type": "ListItem", position: 1, name: "Home", item: "https://goripple.io" },
-              { "@type": "ListItem", position: 2, name: "Use Cases", item: "https://goripple.io/for/therapy" },
-              { "@type": "ListItem", position: 3, name: "Ripple Decoded", item: "https://goripple.io/for/decoded" },
+              { "@type": "ListItem", position: 2, name: "Ripple Decoded", item: "https://goripple.io/for/decoded" },
             ],
           }),
         }}
@@ -47,6 +46,9 @@ export default function DecodedPage() {
         <div className="relative mx-auto max-w-4xl px-6 text-center">
           <Reveal>
             <HeroHeadline text="Your subconscious, decoded." />
+            <p className="mt-4 text-sm font-semibold uppercase tracking-wide text-acuity-primary">
+              The AI journal and habit tracker that shows your patterns
+            </p>
           </Reveal>
           <Reveal delay={1}>
             <p className="mt-6 text-lg text-acuity-text-sec leading-relaxed max-w-2xl mx-auto">
@@ -132,7 +134,7 @@ export default function DecodedPage() {
           </Reveal>
           <RevealCards
             items={[
-              "Why you feel anxious every Sunday night",
+              "Why Sundays always feel heavier than the rest of the week",
               "Which relationships drain you vs energize you",
               "The goal you keep mentioning but never act on",
               "What you actually care about vs what you think you care about",
@@ -144,7 +146,7 @@ export default function DecodedPage() {
       {/* ───── PRE-HOW-IT-WORKS CTA ───── */}
       <MidPageCTA
         headline="Ready to find out what your subconscious has been trying to tell you?"
-        subheadline="No card. Quick setup. · cancel anytime"
+        subheadline="7-day free trial · Cancel anytime"
         utmCampaign={UTM}
       />
 
@@ -247,7 +249,7 @@ export default function DecodedPage() {
       {/* ───── MID-PAGE CTA ───── */}
       <MidPageCTA
         headline="What would you do differently if you could finally see your blind spots?"
-        subheadline="No card. Quick setup. · cancel anytime"
+        subheadline="7-day free trial · Cancel anytime"
         utmCampaign={UTM}
       />
 

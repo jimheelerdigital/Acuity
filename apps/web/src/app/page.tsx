@@ -1,7 +1,9 @@
+import type { Metadata } from "next";
 import { AccountDeletedBanner } from "@/components/account-deleted-banner";
 import { HOME_FAQS } from "@/components/marketing/home-v2/content";
 import { HomeV2 } from "@/components/marketing/home-v2/HomeV2";
 import { PRODUCT_CATEGORY } from "@/lib/positioning";
+import { OG_IMAGE } from "@/lib/seo";
 import {
   displayAnnual,
   displayAnnualAsMonthly,
@@ -9,10 +11,32 @@ import {
   displaySavingsPct,
 } from "@/lib/pricing";
 
-// ISR: regenerate every 60 seconds. Auth redirect for logged-in users
+// ISR: regenerate hourly. Auth redirect for logged-in users
 // is handled by middleware (not getServerSession here) so this page
 // can be statically generated and served from edge cache.
-export const revalidate = 60;
+export const revalidate = 3600;
+
+const HOME_TITLE = "Ripple: AI Voice Journal & Habit Tracker App";
+const HOME_DESCRIPTION =
+  "Talk it out and Ripple turns it into your to-do list, tracks your habits and mood, spots patterns and sends a weekly report. Start your 7-day free trial.";
+
+export const metadata: Metadata = {
+  title: { absolute: HOME_TITLE },
+  description: HOME_DESCRIPTION,
+  alternates: { canonical: "/" },
+  openGraph: {
+    title: HOME_TITLE,
+    description: HOME_DESCRIPTION,
+    url: "/",
+    images: [OG_IMAGE],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: HOME_TITLE,
+    description: HOME_DESCRIPTION,
+    images: [OG_IMAGE.url],
+  },
+};
 
 const jsonLd = {
   "@context": "https://schema.org",
@@ -23,7 +47,7 @@ const jsonLd = {
       description:
         `Ripple is ${PRODUCT_CATEGORY}. Talk through what is on your mind and it turns it into your to-do list, tracks your habits and mood, shows your patterns, and sends a weekly report.`,
       url: "https://goripple.io",
-      applicationCategory: "HealthApplication",
+      applicationCategory: "LifestyleApplication",
       operatingSystem: "Web, iOS, Android",
       offers: {
         "@type": "Offer",

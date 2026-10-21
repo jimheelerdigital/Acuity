@@ -45,6 +45,24 @@ const PERSONA_SLUGS = [
   "weekly-report",
 ];
 
+// Evergreen SEO pages outside /for and /blog that posts may link to.
+// /voice-journaling is the pillar page for the "voice journaling" cluster.
+const EXTRA_INTERNAL_PAGES = [
+  "/voice-journaling",
+  "/research/voice-journaling-data",
+  "/habit-tracker-app",
+  "/ai-journal-app",
+  "/brain-dump-app",
+  "/mental-load",
+  "/mood-tracker-app",
+];
+
+function escapeRegExp(s: string): string {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+const EXTRA_INTERNAL_LINK_PATTERN = EXTRA_INTERNAL_PAGES.map(escapeRegExp).join("|");
+
 // ─── Banned phrases ─────────────────────────────────────────────────────────
 
 const BANNED_PHRASES = [
@@ -68,6 +86,14 @@ const BANNED_PHRASES = [
   "90-second",
   "nightly",
   "before bed",
+  "one minute a day",
+  // The 7-day trial collects a card, so these are false. ("no card" alone
+  // would false-positive on "no cardio".)
+  "no card required",
+  "no card needed",
+  "no credit card",
+  // Retired voice line (2026-09-29)
+  "mirror, not a coach",
   // Statistical AI tells (humanizer skill) — these mark a post as
   // machine-written to both readers and search quality systems
   "delve",
@@ -250,7 +276,9 @@ function validateBlogPost(
 
   // Internal links — at least 1 required (relaxed from 2)
   const internalLinkCount = (
-    post.body.match(/href=["']\/(?:for|blog)\//gi) ?? []
+    post.body.match(
+      new RegExp(`href=["'](?:\\/(?:for|blog)\\/|(?:${EXTRA_INTERNAL_LINK_PATTERN})\\/?["'#?])`, "gi")
+    ) ?? []
   ).length;
   if (internalLinkCount < 1) {
     errors.push(`No internal links found, need at least 1`);
@@ -447,7 +475,11 @@ export const autoBlogGenerateFn = inngest.createFunction(
       const dynamicSlugs = dynamicPosts
         .map((p) => p.slug)
         .filter((s): s is string => s !== null);
-      const allBlogSlugs = [...new Set([...staticSlugs, ...dynamicSlugs])];
+      // Slugs containing a banned phrase (e.g. "nightly-journaling-habit")
+      // would fail the body check the moment the model links them.
+      const allBlogSlugs = [...new Set([...staticSlugs, ...dynamicSlugs])].filter(
+        (s) => !BANNED_PHRASES.some((ph) => s.includes(ph.toLowerCase().replace(/\s+/g, "-")))
+      );
 
       return {
         id: topic.id,
@@ -1286,7 +1318,8 @@ CURRENT YEAR: ${currentYear}. Never reference ${currentYear - 1} or ${currentYea
 
 PRODUCT CONTEXT:
 - Users record a "debrief": they talk, out loud, any time of day, about whatever is in their head
-- Ripple transcribes it, pulls out the to-dos, quietly tracks goals they mention, scores mood, and surfaces patterns across weeks
+- Ripple transcribes it, pulls out the to-dos (with the dates they mentioned), quietly tracks goals they mention, scores mood, and surfaces patterns across weeks
+- Habit tracking: habits they mention get checked off automatically, and Ripple notices the ones they skip
 - Life Matrix: six life domains tracked over time
 - Weekly report every Sunday: a written narrative of the user's week
 - How Ripple talks: ${VOICE_PRINCIPLE}
@@ -1318,7 +1351,8 @@ BANNED PHRASES (never use these):
 "unlock", "elevate", "journey", "transform", "AI-powered", "seamless", "game-changer",
 "in today's fast-paced world", "revolutionize", "harness the power of", "empower",
 "cutting-edge", "leverage", "delve", "tapestry", "testament to",
-"let's dive", "let's explore", "in the heart of", "nightly", "before bed", "Acuity"
+"let's dive", "let's explore", "in the heart of", "nightly", "before bed", "one minute a day",
+"no card required", "no credit card", "mirror, not a coach", "Acuity"
 (The product's old name was "Acuity". It must never appear; the product is Ripple.)
 
 TITLE RULES:
@@ -1334,23 +1368,26 @@ ${
     topic.searchIntent === "comparison"
       ? `This is a COMPARISON post. Follow this exact structure:
 1. Short intro (2-3 sentences: who both apps are for)
-2. Feature comparison TABLE in HTML: side-by-side columns comparing voice input, AI extraction, task tracking, mood tracking, pattern detection, weekly reports, free trial, platforms. Use <table> with clear headers. Do not put prices in the table; prices go stale.
+2. Feature comparison TABLE in HTML: side-by-side columns comparing voice input, AI extraction, task tracking, habit tracking, mood tracking, pattern detection, weekly reports, free trial, platforms. Use <table> with clear headers. Do not put prices in the table; prices go stale.
 3. Section "Where [competitor] wins": be honest and fair. Never trash them. This builds trust.
-4. Section "Where Ripple wins": talking instead of typing, automatic task extraction from a debrief, the weekly narrative report, Life Matrix, pattern detection.
+4. Section "Where Ripple wins": talking instead of typing, automatic task extraction from a debrief, habits checked off just by mentioning them, the weekly narrative report, Life Matrix, pattern detection.
 5. Section "Who should choose [competitor]": be genuine about their strengths
 6. Section "Who should choose Ripple": people who quit journaling because writing felt like work, people who want patterns surfaced automatically
-7. CTA at bottom: a plain sentence linking to /start, e.g. "Try Ripple free for 7 days. No card required."
+7. CTA at bottom: a plain sentence linking to /start, e.g. "Try Ripple free for 7 days, cancel anytime."
 8. FAQ section with 3-4 comparison questions
 IMPORTANT: Do NOT fabricate competitor features or pricing. If unsure, say "check their website for current pricing." Be fair and honest. Readers respect balanced comparisons.`
       : topic.searchIntent === "informational" ||
         topic.searchIntent === "problem-solving"
-        ? `INCLUDE one CTA around 2/3 of the way down, phrased as a natural next step in the writer's own words. Something like: "This is roughly what Ripple does: you talk for a bit, it pulls out the tasks and tracks the goals you keep circling. There's a 7-day free trial, no card required." Link to /start. No urgency, no scarcity, no member counts. Never place the CTA in the first 40% of the post.`
+        ? `INCLUDE one CTA around 2/3 of the way down, phrased as a natural next step in the writer's own words. Something like: "This is roughly what Ripple does: you talk for a bit, it pulls out the tasks and tracks the goals you keep circling. There's a 7-day free trial, and you can cancel anytime." Link to /start. No urgency, no scarcity, no member counts. Never place the CTA in the first 40% of the post.`
         : `NO CTA. This topic is a loose tangent. End with 2-3 internal links to related posts.`
   }
 
 Every post (CTA or not) ends with 2-3 internal links to related posts.
 
 INTERNAL LINKING — use at least 2 links from the lists below. ONLY use URLs from these lists. Do NOT invent or guess internal link paths.
+
+Evergreen guides (all valid). /voice-journaling is the pillar guide: link to it whenever the post touches voice journaling, talking instead of writing, or how to start:
+${EXTRA_INTERNAL_PAGES.join(", ")}
 
 /for/* persona pages (all valid):
 ${PERSONA_SLUGS.map((s) => `/for/${s}`).join(", ")}
@@ -1364,7 +1401,7 @@ EXTERNAL CITATIONS — link to 2-4 authoritative external sources per post to su
 Rules for external links:
 - Every external link must use the EXACT, full URL you are confident exists (e.g., https://www.apa.org/monitor/2023/06/cover-story-expressive-writing)
 - Prefer homepage-level or well-known permalink URLs that are unlikely to break (e.g., https://www.psychologytoday.com rather than a deeply nested article you are not sure exists)
-- NEVER link to goripple.io as an external link — all Ripple links must be internal (/for/*, /blog/*)
+- NEVER link to goripple.io as an external link — all Ripple links must be internal (/for/*, /blog/*, or the evergreen guides listed above)
 - NEVER use these wrong domains for Ripple: acuity.how, acuity.app, acuityapp.com, acuity.com, useacuity.com
 - All external links must open in a new tab: target="_blank" rel="noopener noreferrer"
 - If you are not 100% certain a URL exists, do NOT include it. A post with zero external links is better than a post with broken external links.

@@ -16,7 +16,8 @@ import { AchievementsGrid, type CatalogItem } from "./grid-client";
 export const dynamic = "force-dynamic";
 
 export const metadata = {
-  title: "Achievements — Ripple",
+  title: "Achievements",
+  robots: { index: false, follow: false },
 };
 
 export default async function AchievementsPage() {

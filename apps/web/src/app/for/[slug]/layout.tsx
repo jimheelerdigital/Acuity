@@ -1,12 +1,14 @@
 import type { Metadata } from "next";
 import { getPersonaBySlug } from "@/lib/persona-pages";
+import { OG_IMAGE } from "@/lib/seo";
 
 export async function generateMetadata({ params }: { params: { slug: string } }): Promise<Metadata> {
   const page = getPersonaBySlug(params.slug);
 
   if (page) {
+    // Persona titles already name Ripple, so skip the "%s | Ripple" template.
     return {
-      title: page.title,
+      title: { absolute: page.title },
       description: page.metaDescription,
       robots: { index: true, follow: true },
       alternates: { canonical: `https://goripple.io/for/${params.slug}` },
@@ -15,13 +17,18 @@ export async function generateMetadata({ params }: { params: { slug: string } })
         description: page.metaDescription,
         url: `https://goripple.io/for/${params.slug}`,
         siteName: "Ripple",
-        images: [{ url: "/og-image.png?v=3", width: 1200, height: 630 }],
+        images: [OG_IMAGE],
       },
-      twitter: { card: "summary_large_image", title: page.title, description: page.metaDescription },
+      twitter: {
+        card: "summary_large_image",
+        title: page.title,
+        description: page.metaDescription,
+        images: [OG_IMAGE.url],
+      },
     };
   }
 
-  // Check DB for AdLab-generated landing page
+  // AdLab ad landers: paid-traffic pages, kept out of the index.
   try {
     const { prisma } = await import("@/lib/prisma");
     const lp = await prisma.adLabLandingPage.findUnique({ where: { slug: params.slug } });
@@ -29,16 +36,21 @@ export async function generateMetadata({ params }: { params: { slug: string } })
       return {
         title: lp.metaTitle,
         description: lp.metaDescription,
-        robots: { index: true, follow: true },
+        robots: { index: false, follow: true },
         alternates: { canonical: `https://goripple.io/for/${params.slug}` },
         openGraph: {
           title: lp.metaTitle,
           description: lp.metaDescription,
           url: `https://goripple.io/for/${params.slug}`,
           siteName: "Ripple",
-          images: [{ url: "/og-image.png?v=3", width: 1200, height: 630 }],
+          images: [OG_IMAGE],
         },
-        twitter: { card: "summary_large_image", title: lp.metaTitle, description: lp.metaDescription },
+        twitter: {
+          card: "summary_large_image",
+          title: lp.metaTitle,
+          description: lp.metaDescription,
+          images: [OG_IMAGE.url],
+        },
       };
     }
   } catch {
@@ -48,56 +60,6 @@ export async function generateMetadata({ params }: { params: { slug: string } })
   return {};
 }
 
-export default async function Layout({ children, params }: { children: React.ReactNode; params: { slug: string } }) {
-  const page = getPersonaBySlug(params.slug);
-
-  // SSR content for crawlers
-  if (page) {
-    return (
-      <>
-        <div aria-hidden="true" className="sr-only">
-          <h1>{page.headline}</h1>
-          <p>{page.subheadline}</p>
-          <h2>{page.solutionHeadline}</h2>
-          <p>{page.solutionBody}</p>
-          <h2>Features</h2>
-          <ul>
-            {page.features.map((f) => (
-              <li key={f.title}><strong>{f.title}</strong>: {f.description}</li>
-            ))}
-          </ul>
-          <blockquote>{page.testimonial.quote} — {page.testimonial.name}</blockquote>
-          <a href="/start">Start Free Trial</a>
-        </div>
-        {children}
-      </>
-    );
-  }
-
-  // For dynamic pages, try to render SSR content from DB
-  try {
-    const { prisma } = await import("@/lib/prisma");
-    const lp = await prisma.adLabLandingPage.findUnique({ where: { slug: params.slug } });
-    if (lp) {
-      return (
-        <>
-          <div aria-hidden="true" className="sr-only">
-            <h1>{lp.heroHeadline}</h1>
-            <p>{lp.heroSubheadline}</p>
-            <h2>{lp.valuePropHeadline}</h2>
-            <ul>
-              {lp.valueProps.map((v) => <li key={v}>{v}</li>)}
-            </ul>
-            {lp.testimonialQuote && <blockquote>{lp.testimonialQuote}</blockquote>}
-            <a href="/start">{lp.ctaText}</a>
-          </div>
-          {children}
-        </>
-      );
-    }
-  } catch {
-    // DB not available at build time
-  }
-
+export default function Layout({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }

@@ -1,27 +1,30 @@
 import Link from "next/link";
 import type { Metadata } from "next";
 import { displayPriceLine } from "@/lib/pricing";
+import { OG_IMAGE } from "@/lib/seo";
+
+const title = "Voice Journaling: How to Journal by Talking";
+const description =
+  "Voice journaling explained: how journaling by talking works, why it sticks when writing doesn't, how to start, and how an AI voice journal turns it into a plan.";
 
 export const metadata: Metadata = {
-  title: "Voice Journaling: The Complete Guide to Journaling by Talking",
-  description:
-    "Learn how voice journaling works, why a voice journal app beats written journaling for most people, and how to build a daily debrief habit with AI insights. The definitive guide for 2026.",
+  title,
+  description,
   alternates: { canonical: "https://goripple.io/voice-journaling" },
   openGraph: {
-    title: "Voice Journaling: The Complete Guide to Journaling by Talking",
-    description:
-      "Learn how voice journaling works, why a voice journal app beats written journaling, and how to build a daily debrief habit with AI insights.",
+    title,
+    description,
     url: "https://goripple.io/voice-journaling",
     type: "article",
     siteName: "Ripple",
-    images: [{ url: "/og-image.png?v=3", width: 1200, height: 630 }],
+    images: [OG_IMAGE],
   },
   twitter: {
     card: "summary_large_image",
     title: "Voice Journaling: The Complete Guide",
     description:
-      "Why a voice journal beats typing — and how to start your daily debrief tonight.",
-    images: ["/og-image.png?v=3"],
+      "Why a voice journal beats typing, and how to start a daily debrief that fits your day.",
+    images: [OG_IMAGE.url],
   },
 };
 
@@ -31,10 +34,9 @@ const jsonLd = {
     {
       "@type": "Article",
       headline: "Voice Journaling: The Complete Guide to Journaling by Talking",
-      description:
-        "Learn how voice journaling works, why a voice journal app beats written journaling for most people, and how to build a daily debrief habit with AI insights.",
+      description,
       datePublished: "2026-04-17",
-      dateModified: "2026-04-17",
+      dateModified: "2026-10-21",
       author: {
         "@type": "Organization",
         name: "Ripple",
@@ -97,7 +99,7 @@ const jsonLd = {
           name: "How long should a voice journal entry be?",
           acceptedAnswer: {
             "@type": "Answer",
-            text: "Even a short entry is enough to get a meaningful brain dump. Most voice journaling apps, including Ripple, are designed around this micro-habit approach. The key is consistency over length — a brief entry every night beats a 20-minute session once a month.",
+            text: "Even a short entry is enough to get a meaningful brain dump. Most voice journaling apps, including Ripple, are designed around this micro-habit approach. The key is consistency over length — a brief entry most days beats a 20-minute session once a month.",
           },
         },
         {
@@ -113,7 +115,7 @@ const jsonLd = {
           name: "What is the best voice journaling app?",
           acceptedAnswer: {
             "@type": "Answer",
-            text: `Ripple is a voice journaling app that combines AI transcription with automatic task extraction, mood tracking, mental pattern detection, and weekly AI reports. It turns a nightly voice brain dump into structured insights about your life, goals, and emotional patterns. It costs ${displayPriceLine()}, with a 7-day free trial.`,
+            text: `Ripple is an AI life optimizer: a habit tracker, voice journal and insight tool. You talk (or type) whenever something's on your mind, and it turns that into a to-do list with dates, checks off the habits you mention, tracks your mood, spots your patterns, scores six areas of your life in the Life Matrix, and sends a weekly report every Sunday. It costs ${displayPriceLine()}, with a 7-day free trial.`,
           },
         },
       ],
@@ -143,10 +145,10 @@ export default function VoiceJournalingPage() {
             Voice Journaling: The Complete Guide to Journaling by Talking
           </h1>
           <p className="text-lg text-acuity-text leading-relaxed mb-4">
-            Most people who try journaling quit within two weeks. The blank page is intimidating, typing feels slow, and life gets in the way. Voice journaling solves all three problems — you just talk. This guide covers everything you need to know about voice journaling: what it is, why it works, the science behind it, and how to build a nightly habit that actually sticks.
+            Most people who try journaling quit within two weeks. The blank page is intimidating, typing feels slow, and life gets in the way. Voice journaling solves all three problems — you just talk. This guide covers everything you need to know about voice journaling: what it is, why it works, the science behind it, and how to build a daily habit that actually sticks.
           </p>
           <p className="text-sm text-acuity-text-sec mb-12">
-            Updated April 2026 &middot; 12 min read
+            Updated October 2026 &middot; 12 min read
           </p>
 
           <div className="h-px bg-acuity-line mb-12" />
@@ -159,7 +161,7 @@ export default function VoiceJournalingPage() {
             Voice journaling is the practice of recording yourself speaking freely — about your day, your feelings, your plans, whatever is on your mind — instead of writing it down. You open an app, hit record, and talk for as little or as long as you want. No editing. No formatting. Just an unfiltered stream of consciousness captured in your own voice.
           </p>
           <p className="text-base text-acuity-text leading-[1.8] mb-5">
-            Think of it as a <strong className="text-acuity-text">nightly brain dump</strong>. Everything rattling around in your head — tasks you forgot, feelings you haven't processed, wins you didn't celebrate — gets emptied into a recording. Your brain can finally stop holding onto it all.
+            Think of it as a <strong className="text-acuity-text">brain dump you can do any time of day</strong>. Everything rattling around in your head — tasks you forgot, feelings you haven't processed, wins you didn't celebrate — gets emptied into a recording. Your brain can finally stop holding onto it all.
           </p>
           <p className="text-base text-acuity-text leading-[1.8] mb-5">
             Traditional journaling asks you to sit down with a notebook or open a blank document and <em>write</em>. For many people, that friction is enough to kill the habit before it starts. Voice journaling removes that barrier entirely. You already know how to talk. You do it all day. Voice journaling just gives you a place to do it intentionally.
@@ -183,7 +185,7 @@ export default function VoiceJournalingPage() {
             The speed advantage
           </h3>
           <p className="text-base text-acuity-text leading-[1.8] mb-5">
-            A short voice journal entry contains roughly 130-150 words of content — the equivalent of a half-page of written journaling. That's a meaningful <Link href="/blog/brain-dump-before-bed" className="text-acuity-primary hover:underline">brain dump before bed</Link> captured in the time it takes to brush your teeth. For people who say they "don't have time to journal," voice journaling removes that excuse entirely.
+            A short voice journal entry contains roughly 130-150 words of content — the equivalent of a half-page of written journaling. That's a meaningful <Link href="/blog/brain-dump-before-bed" className="text-acuity-primary hover:underline">brain dump</Link> captured in the time it takes to brush your teeth. For people who say they "don't have time to journal," voice journaling removes that excuse entirely.
           </p>
 
           <h3 className="text-xl font-semibold mt-8 mb-3 text-acuity-text">
@@ -203,10 +205,10 @@ export default function VoiceJournalingPage() {
           {/* ──── Mid-article CTA ──── */}
           <div className="my-12 rounded-xl border border-acuity-primary/30 bg-acuity-card-bg p-8 text-center">
             <h2 className="text-xl font-bold mb-3">
-              Try voice journaling tonight
+              Try voice journaling today
             </h2>
             <p className="text-acuity-text-sec mb-6 max-w-md mx-auto">
-              Ripple turns a nightly voice brain dump into tasks, mood tracking, pattern detection, and weekly AI reports. 7-day free trial.
+              Ripple is a habit tracker, voice journal and insight tool. Talk whenever something's on your mind and get a to-do list, habits checked off, mood tracking, patterns, and a weekly report. 7-day free trial.
             </p>
             <Link
               href="/start?utm_campaign=voice-journaling-guide"
@@ -227,10 +229,10 @@ export default function VoiceJournalingPage() {
             When you speak a feeling or thought aloud, you engage Broca's area (language production) alongside the prefrontal cortex (executive function) and the limbic system (emotion). This cross-brain activation is what makes talking about problems feel cathartic — you're literally integrating emotional and rational processing in real time.
           </p>
           <p className="text-base text-acuity-text leading-[1.8] mb-5">
-            Research by Dr. Matthew Lieberman at UCLA showed that putting feelings into words — a process he calls "affect labeling" — reduces activity in the amygdala, the brain's threat-detection center. In plain language: <strong className="text-acuity-text">naming your emotions makes them less overwhelming</strong>. Voice journaling is structured affect labeling you can do every night, without needing a therapist present.
+            Research by Dr. Matthew Lieberman at UCLA showed that putting feelings into words — a process he calls "affect labeling" — reduces activity in the amygdala, the brain's threat-detection center. In plain language: <strong className="text-acuity-text">naming your emotions makes them less overwhelming</strong>. Voice journaling is structured affect labeling you can do any day, whenever you have something to name.
           </p>
           <p className="text-base text-acuity-text leading-[1.8] mb-5">
-            James Pennebaker's expressive writing research found that journaling about emotional experiences for just 15-20 minutes over four consecutive days led to measurable improvements in immune function, fewer doctor visits, and reduced anxiety. Voice journaling delivers the same benefits in a fraction of the time — because speaking is faster and more emotionally accessible than writing.
+            James Pennebaker's expressive writing research found that journaling about emotional experiences for just 15-20 minutes over four consecutive days led to measurable improvements in immune function, fewer doctor visits, and reduced anxiety. Voice journaling taps the same mechanism, often in less time, because speaking is faster and more emotionally accessible than writing.
           </p>
 
           {/* ──── How to Start ──── */}
@@ -238,18 +240,18 @@ export default function VoiceJournalingPage() {
             How to Start a Voice Journaling Habit
           </h2>
           <p className="text-base text-acuity-text leading-[1.8] mb-5">
-            The best journaling habit is the one you actually maintain. Here's a practical framework for making voice journaling a <Link href="/blog/nightly-journaling-habit" className="text-acuity-primary hover:underline">nightly habit</Link> that sticks:
+            The best journaling habit is the one you actually maintain. Here's a practical framework for making voice journaling a <Link href="/blog/nightly-journaling-habit" className="text-acuity-primary hover:underline">daily habit</Link> that sticks:
           </p>
 
           <h3 className="text-xl font-semibold mt-8 mb-3 text-acuity-text">
             1. Pick a trigger moment
           </h3>
           <p className="text-base text-acuity-text leading-[1.8] mb-5">
-            Attach your voice journal to something you already do every night. The most popular trigger is right before bed — after you've brushed your teeth, when you're lying in bed with your phone. Other good triggers: right after dinner, during your evening walk, or the moment you sit in your car after the gym.
+            Attach your voice journal to something you already do every day: the moment you sit in the car after school drop-off, your walk at lunch, the kettle boiling, or winding down before sleep. There is no right hour. In <Link href="/research/voice-journaling-data" className="text-acuity-primary hover:underline">our data from 1,117 voice journal entries</Link>, people recorded during every hour of the day, not just at bedtime. The habit that lasts is the one that fits the gaps you already have.
           </p>
 
           <h3 className="text-xl font-semibold mt-8 mb-3 text-acuity-text">
-            2. Set a timer if it helps — even one minute is enough
+            2. Keep it short so you'll do it again
           </h3>
           <p className="text-base text-acuity-text leading-[1.8] mb-5">
             Don't try to record a 10-minute monologue. A short entry is enough to capture the essential thoughts and feelings from your day. The constraint actually helps — it removes the pressure to be comprehensive and encourages you to lead with what matters most. If you have more to say, keep going. But brevity is the minimum viable brain dump.
@@ -266,14 +268,14 @@ export default function VoiceJournalingPage() {
             4. Make it non-negotiable for 7 days
           </h3>
           <p className="text-base text-acuity-text leading-[1.8] mb-5">
-            Commit to one week. Not a month, not a year — seven days. Research on habit formation shows that a short, intense commitment period is more effective than an open-ended "I'll try to do this every day." After seven days, most people are hooked because they've felt the benefit of clearing their head before sleep.
+            Commit to one week. Not a month, not a year — seven days. Research on habit formation shows that a short, intense commitment period is more effective than an open-ended "I'll try to do this every day." After seven days, most people are hooked because they've felt the benefit of getting what's in their head out of it.
           </p>
 
           <h3 className="text-xl font-semibold mt-8 mb-3 text-acuity-text">
             5. Review weekly, not daily
           </h3>
           <p className="text-base text-acuity-text leading-[1.8] mb-5">
-            Don't re-listen to every entry. The act of speaking is the therapy. But once a week, glance at your transcripts or AI-generated summary (if your app provides one) to spot patterns. You'll notice recurring themes, unresolved tasks, and emotional trends that are invisible day-to-day but obvious over seven entries. This is where voice journaling becomes more than venting — it becomes <Link href="/blog/journaling-for-productivity" className="text-acuity-primary hover:underline">a productivity system</Link> and a self-awareness tool.
+            Don't re-listen to every entry. Saying it out loud is where most of the value is. But once a week, glance at your transcripts or AI-generated summary (if your app provides one) to spot patterns. You'll notice recurring themes, unresolved tasks, and emotional trends that are invisible day-to-day but obvious over seven entries. This is where voice journaling becomes more than venting — it becomes <Link href="/blog/journaling-for-productivity" className="text-acuity-primary hover:underline">a productivity system</Link> and a self-awareness tool.
           </p>
 
           {/* ──── Voice vs Written ──── */}
@@ -332,7 +334,7 @@ export default function VoiceJournalingPage() {
             </table>
           </div>
           <p className="text-base text-acuity-text leading-[1.8] mb-5">
-            Many people find the ideal approach is voice journaling as a nightly brain dump (fast, emotional, habit-forming) combined with occasional written journaling for deep reflection on specific topics. The two methods complement each other.
+            Many people find the ideal approach is voice journaling as a daily brain dump (fast, emotional, habit-forming) combined with occasional written journaling for deep reflection on specific topics. The two methods complement each other.
           </p>
 
           {/* ──── Common Mistakes ──── */}
@@ -351,7 +353,7 @@ export default function VoiceJournalingPage() {
             Making entries too long
           </h3>
           <p className="text-base text-acuity-text leading-[1.8] mb-5">
-            Longer isn't better. A focused short entry every night beats a meandering 15-minute entry once a week. Consistency is what builds the habit and generates the data. Keep it short so you actually do it tomorrow.
+            Longer isn't better. A focused short entry most days beats a meandering 15-minute entry once a week. Consistency is what builds the habit and generates the data. Keep it short so you actually do it tomorrow.
           </p>
 
           <h3 className="text-xl font-semibold mt-8 mb-3 text-acuity-text">
@@ -394,7 +396,7 @@ export default function VoiceJournalingPage() {
             Advanced: AI voice journaling apps
           </h3>
           <p className="text-base text-acuity-text leading-[1.8] mb-5">
-            This is where voice journaling gets genuinely powerful. AI-powered voice journaling apps like Ripple don't just transcribe — they <em>understand</em>. After you record an entry, AI automatically extracts tasks you mentioned, tracks goals you referenced, scores your mood, detects recurring emotional patterns, and generates a <Link href="/blog/weekly-review-template" className="text-acuity-primary hover:underline">weekly narrative report</Link> that reads like a therapist's session notes. Your nightly brain dump becomes structured life intelligence — a Life Matrix that scores your wellbeing across Health, Wealth, Relationships, Spirituality, Career, and Growth.
+            This is where voice journaling gets genuinely powerful. AI-powered voice journaling apps like Ripple don't just transcribe — they <em>understand</em>. After you record an entry, AI automatically extracts tasks you mentioned, tracks goals you referenced, scores your mood, detects recurring emotional patterns, and generates a <Link href="/blog/weekly-review-template" className="text-acuity-primary hover:underline">weekly narrative report</Link> of what happened, what moved and what slipped. It also works as a habit tracker: mention the walk you took or the workout you skipped, and Ripple checks it off or notices the gap. Your brain dump becomes a plan you can act on, plus a Life Matrix that scores six areas of your life over time: Health, Wealth, Relationships, Spirituality, Career, and Growth.
           </p>
 
           {/* ──── Who Voice Journaling Is For ──── */}
@@ -405,10 +407,10 @@ export default function VoiceJournalingPage() {
             Voice journaling isn't for everyone — but it's for more people than you'd expect. It's especially effective for:
           </p>
           <ul className="list-disc list-inside text-acuity-text space-y-2 mb-5 ml-2">
-            <li><strong className="text-acuity-text">Overwhelmed professionals</strong> who have too many thoughts racing through their head at night and need a fast way to clear them</li>
+            <li><strong className="text-acuity-text">Overwhelmed professionals</strong> who have too many thoughts racing through their head and need a fast way to get them out</li>
             <li><strong className="text-acuity-text">People with ADHD</strong> who find written journaling tedious or impossible to sustain but can talk freely without losing focus</li>
             <li><strong className="text-acuity-text">Therapy-goers</strong> who want to track emotional patterns between sessions without the effort of a mood diary</li>
-            <li><strong className="text-acuity-text">Founders and operators</strong> who need a nightly debrief to extract action items and maintain clarity across dozens of competing priorities</li>
+            <li><strong className="text-acuity-text">Founders and operators</strong> who need a daily debrief to extract action items and maintain clarity across dozens of competing priorities</li>
             <li><strong className="text-acuity-text">Anyone who's tried journaling before and quit</strong> — if writing didn't work, talking might</li>
           </ul>
 
@@ -435,7 +437,7 @@ export default function VoiceJournalingPage() {
             How long should a voice journal entry be?
           </h3>
           <p className="text-base text-acuity-text leading-[1.8] mb-5">
-            Even a short entry is enough to get a meaningful brain dump. Most AI voice journaling apps, including Ripple, are designed around this micro-habit approach. The key is consistency over length — a brief entry every night beats a 20-minute session once a month.
+            Even a short entry is enough to get a meaningful brain dump. Most AI voice journaling apps, including Ripple, are designed around this micro-habit approach. The key is consistency over length — a brief entry most days beats a 20-minute session once a month.
           </p>
 
           <h3 className="text-xl font-semibold mt-8 mb-3 text-acuity-text">
@@ -449,16 +451,28 @@ export default function VoiceJournalingPage() {
             What is the best voice journaling app?
           </h3>
           <p className="text-base text-acuity-text leading-[1.8] mb-5">
-            Ripple is a voice journaling app that combines AI transcription with automatic task extraction, mood tracking, mental pattern detection, and weekly AI reports. It turns a nightly voice brain dump into structured insights about your life, goals, and emotional patterns. It costs {displayPriceLine()}, with a 7-day free trial.
+            Ripple is an AI life optimizer: a habit tracker, voice journal and insight tool. You talk (or type) whenever something's on your mind, and it turns that into a to-do list with dates, checks off the habits you mention, tracks your mood, spots your patterns, scores six areas of your life in the Life Matrix, and sends a weekly report every Sunday. It costs {displayPriceLine()}, with a 7-day free trial.
           </p>
+
+          {/* ──── Related ──── */}
+          <h2 className="text-2xl font-bold tracking-tight mt-12 mb-4 text-acuity-text">
+            Related guides
+          </h2>
+          <ul className="list-disc list-inside text-acuity-text space-y-2 mb-5 ml-2">
+            <li><Link href="/habit-tracker-app" className="text-acuity-primary hover:underline">Habit tracker app</Link>: check off habits just by mentioning them</li>
+            <li><Link href="/brain-dump-app" className="text-acuity-primary hover:underline">Brain dump app</Link>: get everything out of your head and into a list</li>
+            <li><Link href="/mental-load" className="text-acuity-primary hover:underline">The mental load</Link>: what it is and how to put some of it down</li>
+            <li><Link href="/ai-journal-app" className="text-acuity-primary hover:underline">AI journal app</Link>: what AI adds to a journal, and what it shouldn&apos;t</li>
+            <li><Link href="/research/voice-journaling-data" className="text-acuity-primary hover:underline">Voice journaling data</Link>: what 1,117 real entries show</li>
+          </ul>
 
           {/* ──── Bottom CTA ──── */}
           <div className="mt-16 rounded-xl border border-acuity-primary/30 bg-acuity-card-bg p-8 sm:p-10 text-center">
             <h2 className="text-2xl font-bold mb-3">
-              Start voice journaling tonight
+              Start voice journaling today
             </h2>
             <p className="text-acuity-text-sec mb-6 max-w-md mx-auto">
-              Ripple turns a nightly voice brain dump into tasks, mood tracking, pattern detection, and weekly AI reports. 7-day free trial.
+              Ripple is a habit tracker, voice journal and insight tool. Talk whenever something's on your mind and get a to-do list, habits checked off, mood tracking, patterns, and a weekly report. 7-day free trial.
             </p>
             <Link
               href="/start?utm_campaign=voice-journaling-guide"
@@ -467,7 +481,7 @@ export default function VoiceJournalingPage() {
               Start Free Trial
             </Link>
             <p className="mt-3 text-xs text-acuity-text-sec">
-              No credit card required &middot; Cancel anytime
+              7-day free trial &middot; Cancel anytime
             </p>
           </div>
 
