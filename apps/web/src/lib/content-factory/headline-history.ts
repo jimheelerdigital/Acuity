@@ -124,10 +124,34 @@ function words(h: string): Set<string> {
  * lines). So a match needs BOTH to agree; plain rewordings ("SEE THE PART
  * NOBODY FILMS NOW") are caught in code by word overlap instead.
  */
-export async function nearDuplicateOf(h: string): Promise<string | null> {
+/** Optional scope (2026-10-21, per Keenan: Mythicals compares only with its
+ *  own titles from the last 14 days, not every brand's last ~60 posts). */
+async function scopedHeadlines(scope: { brand: string; days: number }): Promise<string[]> {
+  try {
+    const { prisma } = await import("@/lib/prisma");
+    const lanes = (await prisma.contentLane.findMany({ where: { brand: scope.brand }, select: { key: true } })).map((l) => l.key);
+    const rows = await prisma.carouselPost.findMany({
+      where: { lane: { in: lanes }, createdAt: { gte: new Date(Date.now() - scope.days * 86_400_000) } },
+      orderBy: { createdAt: "desc" },
+      select: { headline: true },
+      take: 500,
+    });
+    const seen = new Set<string>();
+    return rows.map((r) => (r.headline ?? "").trim()).filter((x) => {
+      const k = normalizeHeadline(x);
+      if (!k || seen.has(k)) return false;
+      seen.add(k);
+      return true;
+    });
+  } catch {
+    return (await loadHistory()).headlines;
+  }
+}
+
+export async function nearDuplicateOf(h: string, scope?: { brand: string; days: number }): Promise<string | null> {
   const candidate = h.trim();
   if (!candidate) return null;
-  const { headlines } = await loadHistory();
+  const headlines = scope ? await scopedHeadlines(scope) : (await loadHistory()).headlines;
   const n = normalizeHeadline(candidate);
   const pool = headlines
     .filter((x) => normalizeHeadline(x) !== n)

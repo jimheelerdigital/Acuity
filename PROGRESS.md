@@ -7,6 +7,26 @@
 
 ---
 
+## [2026-10-21] — Mythicals "too close" title check: only Mythicals titles, last 14 days
+
+- **Requested by:** Keenan
+- **Committed by:** Claude Code
+- **Commit hash:** (see git log: "fix: Compare Mythicals titles only with Mythicals from 14 days")
+
+### In plain English (for Keenan)
+A new Legendary Mythicals title is now only judged "too similar" against Mythicals posts from the last 14 days. Before, it was compared with the most recent 60 posts across Ripple, BWK and Mythicals. Exact repeats are still blocked for 60 days.
+
+### Technical changes (for Jimmy)
+- apps/web/src/lib/content-factory/headline-history.ts: nearDuplicateOf takes an optional scope { brand, days }. scopedHeadlines loads that brand's lanes (ContentLane.brand) and their headlines in the window.
+- apps/web/src/lib/content-factory/choice-lane.ts: the cover reject check calls nearDuplicateOf(title, { brand: "mythicals", days: 14 }).
+
+### Manual steps needed
+- None
+
+### Notes
+- Other lanes keep the cross-brand last-60 pool.
+- If the scoped query fails, it falls back to the shared pool.
+
 ## [2026-10-21] — Fix: a Mythicals post was dropped when every title looked "too close" to an old one
 
 - **Requested by:** Keenan

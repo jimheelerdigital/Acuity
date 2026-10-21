@@ -517,7 +517,7 @@ export async function pickChoiceCover(opts: ChoiceTopicOpts): Promise<ChoiceCove
       render: (c) => `COVER: ${c.title}\n(picture: ${c.coverScene.slice(0, 200)})`,
       reject: async (c) => {
         if (await isRecentHeadline(c.title)) return "repeats a recent title";
-        const near = await nearDuplicateOf(c.title);
+        const near = await nearDuplicateOf(c.title, { brand: "mythicals", days: 14 });
         return near ? `too close to recent title "${near}"` : null;
       },
       senseCheck: (c) => coverSenseProblem(c.title),
