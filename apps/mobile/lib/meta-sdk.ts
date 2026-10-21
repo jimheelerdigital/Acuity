@@ -94,65 +94,98 @@ function flushPending(): void {
   }
 }
 
-export async function initMetaSdk(): Promise<void> {
-  if (sdkInitialized) return;
+/**
+ * 2026-10-21 (before app-install ads): START the SDK on every launch,
+ * separately from ASKING for tracking.
+ *
+ * initMetaSdk used to do both, and _layout only called it once onboarding
+ * was finished (so the ATT pop-up couldn't interrupt the first recording).
+ * The side effect: a new install that quit before the paywall never sent
+ * Meta an install / fb_mobile_activate_app at all, and finishers only sent
+ * it at the end of onboarding. App-install campaigns optimise on exactly
+ * those events.
+ *
+ * Now:
+ *   - startMetaSdk(): first thing at launch. Reads the CURRENT ATT status
+ *     without prompting; tracking flags stay OFF unless the user already
+ *     granted it. Meta's auto-logged install + activate events go out with
+ *     the limited (no-IDFA) signal, which Apple permits without consent.
+ *   - requestMetaTracking(): unchanged timing (after onboarding). Shows the
+ *     ATT prompt once and switches the flags on if granted.
+ */
+async function applyTrackingFlags(status: string): Promise<void> {
+  if (status === "granted") attStatus = "granted";
+  else if (status === "denied" || status === "restricted") attStatus = "denied";
+  else attStatus = status === "undetermined" ? "unrequested" : "unknown";
+  const granted = attStatus === "granted";
+  Settings.setAdvertiserTrackingEnabled(granted);
+  // Two independent flags in the SDK; both follow the user's choice.
+  Settings.setAdvertiserIDCollectionEnabled(granted);
+}
 
+function linkAdIdentifiers(): void {
+  // RevenueCat → Meta (Conversions API) matching needs the Meta anonymous
+  // id + device identifiers. Re-run after the ATT answer so a granted
+  // user's IDFA reaches RevenueCat. Fire-and-forget.
+  void AppEventsLogger.getAnonymousID()
+    .then((anonId) => linkRevenueCatAdIdentifiers(anonId))
+    .catch(() => {});
+  // Apple Search Ads → RevenueCat (AdServices token; no ATT needed).
+  // Idempotent inside.
+  void enableAppleSearchAdsAttribution().catch(() => {});
+}
+
+export async function startMetaSdk(): Promise<void> {
+  if (sdkInitialized) return;
   try {
     if (Platform.OS === "ios") {
-      // ATT permission. expo-tracking-transparency handles the
-      // status check + request in one call; if already decided
-      // (granted / denied / restricted), no system prompt re-renders.
-      const { status } = await Tracking.requestTrackingPermissionsAsync();
-      if (status === "granted") {
-        attStatus = "granted";
-        Settings.setAdvertiserTrackingEnabled(true);
-      } else if (status === "denied" || status === "restricted") {
-        attStatus = "denied";
-        Settings.setAdvertiserTrackingEnabled(false);
-      } else {
-        attStatus = "unknown";
-        Settings.setAdvertiserTrackingEnabled(false);
-      }
-      // Apple requires this acknowledgment regardless of ATT outcome.
-      // Setting `setAdvertiserIDCollectionEnabled` separately because
-      // the SDK reads them as two independent flags.
-      Settings.setAdvertiserIDCollectionEnabled(attStatus === "granted");
-      // SDK data-processing options — leave default ("standard"). The
-      // null-call shape with empty options keeps Meta's signal usable
-      // without invoking the "Limited Data Use" (LDU) flag, which is
-      // a separate CCPA-only path we don't have signal for.
+      // Read only — never prompts.
+      const { status } = await Tracking.getTrackingPermissionsAsync();
+      await applyTrackingFlags(status);
     }
-
-    // initializeSDK kicks off the auto-logged App Install / App Open
-    // events. Runs on both iOS and Android. Android has no ATT
-    // equivalent — we just init.
+    // Auto-logged install / fb_mobile_activate_app fire on init
+    // (autoLogAppEventsEnabled in app.config).
     Settings.initializeSDK();
     sdkInitialized = true;
     flushPending();
-    // RevenueCat → Meta Ads (Conversions API) matching. RC sends
-    // StartTrial / Subscribe / renewals to Meta server-side; it needs the
-    // Meta anonymous id + device identifiers to attribute them to the ad
-    // click. Runs after the ATT decision above, so the IDFA RC collects
-    // reflects the user's choice. Fire-and-forget; never blocks init.
-    void AppEventsLogger.getAnonymousID()
-      .then((anonId) => linkRevenueCatAdIdentifiers(anonId))
-      .catch(() => {});
+    linkAdIdentifiers();
   } catch (err) {
-    // Non-fatal. The SDK has known init-time crashes on edge cases
-    // (missing client token, network at init, etc.); we'd rather lose
-    // attribution than crash the app.
+    // Non-fatal: lose attribution rather than crash.
     if (__DEV__) {
       // eslint-disable-next-line no-console
-      console.log("[meta-sdk] init failed:", err);
+      console.log("[meta-sdk] start failed:", err);
+    }
+  }
+}
+
+let trackingRequested = false;
+
+/** Ask for ATT (iOS) once, after onboarding, and apply the answer. */
+export async function requestMetaTracking(): Promise<void> {
+  if (trackingRequested) return;
+  trackingRequested = true;
+  try {
+    await startMetaSdk();
+    if (Platform.OS === "ios") {
+      // No system prompt if the user already decided.
+      const { status } = await Tracking.requestTrackingPermissionsAsync();
+      await applyTrackingFlags(status);
+    }
+  } catch (err) {
+    if (__DEV__) {
+      // eslint-disable-next-line no-console
+      console.log("[meta-sdk] tracking request failed:", err);
     }
   } finally {
-    // Apple Search Ads → RevenueCat attribution. Same timing rule as the
-    // Meta identifiers: after the ATT decision so a granted user yields
-    // Apple's Detailed payload. Independent of the Meta SDK succeeding and
-    // of the RC purchases flag (attribution works in observer mode too).
-    // iOS-only and idempotent inside.
-    void enableAppleSearchAdsAttribution().catch(() => {});
+    // After the ATT decision (so a granted user yields Apple's Detailed
+    // payload / IDFA), and even if anything above failed.
+    linkAdIdentifiers();
   }
+}
+
+/** @deprecated kept for older call sites: start + ask. */
+export async function initMetaSdk(): Promise<void> {
+  await requestMetaTracking();
 }
 
 /**
@@ -226,13 +259,19 @@ export function logStartTrial(
   currency: string = "USD"
 ): void {
   try {
-    if (typeof value === "number" && Number.isFinite(value)) {
-      AppEventsLogger.logEvent("fb_mobile_start_trial", value, {
-        fb_currency: currency,
-      });
-    } else {
-      AppEventsLogger.logEvent("fb_mobile_start_trial");
-    }
+    // Meta's STANDARD StartTrial event (iOS constant value "StartTrial").
+    // The old literal "fb_mobile_start_trial" is not a standard event name,
+    // so Meta would have treated it as a custom event.
+    logOrQueue(() => {
+      const { AppEvents, AppEventParams } = AppEventsLogger;
+      if (typeof value === "number" && Number.isFinite(value)) {
+        AppEventsLogger.logEvent(AppEvents.StartTrial, value, {
+          [AppEventParams.Currency]: currency,
+        });
+      } else {
+        AppEventsLogger.logEvent(AppEvents.StartTrial);
+      }
+    });
   } catch {
     // ignore
   }
@@ -249,8 +288,13 @@ export function logStartTrial(
  */
 export function logSubscribe(value: number, currency: string = "USD"): void {
   try {
-    AppEventsLogger.logPurchase(value, currency, {
-      fb_content_type: "subscription",
+    // Meta's STANDARD Subscribe event (iOS constant value "Subscribe") for a
+    // paid subscription start.
+    logOrQueue(() => {
+      const { AppEvents, AppEventParams } = AppEventsLogger;
+      AppEventsLogger.logEvent(AppEvents.Subscribe, value, {
+        [AppEventParams.Currency]: currency,
+      });
     });
   } catch {
     // ignore

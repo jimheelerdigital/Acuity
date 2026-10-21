@@ -24,11 +24,16 @@ describe("Apple Search Ads attribution via RevenueCat", () => {
   });
 
   it("it is triggered after the ATT decision, independent of Meta init succeeding", () => {
-    const attIdx = meta.indexOf("requestTrackingPermissionsAsync");
-    const finallyIdx = meta.indexOf("} finally {");
-    const callIdx = meta.indexOf("enableAppleSearchAdsAttribution()");
+    // 2026-10-21: the SDK starts at launch (startMetaSdk) and the ATT prompt
+    // moved to requestMetaTracking; attribution runs from its finally.
+    const req = meta.slice(meta.indexOf("export async function requestMetaTracking("));
+    const attIdx = req.indexOf("requestTrackingPermissionsAsync");
+    const finallyIdx = req.indexOf("} finally {");
+    const callIdx = req.indexOf("linkAdIdentifiers()", finallyIdx);
     expect(attIdx).toBeGreaterThan(-1);
     expect(finallyIdx).toBeGreaterThan(attIdx);
     expect(callIdx).toBeGreaterThan(finallyIdx);
+    const link = meta.slice(meta.indexOf("function linkAdIdentifiers("), meta.indexOf("export async function startMetaSdk("));
+    expect(link).toContain("enableAppleSearchAdsAttribution()");
   });
 });
