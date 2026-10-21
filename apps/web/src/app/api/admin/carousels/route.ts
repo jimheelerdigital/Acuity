@@ -232,6 +232,15 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ ok: true, queued: true });
     }
 
+    case "social-sweep": {
+      // Weekly Social Brief (2026-10-20). skipCollectors rebuilds the briefs
+      // from data already collected; email sends the Social Brief right away.
+      const b = body as { email?: boolean; skipCollectors?: boolean };
+      const { inngest } = await import("@/inngest/client");
+      await inngest.send({ name: "content-factory/social.sweep", data: { email: b.email === true, skipCollectors: b.skipCollectors === true } });
+      return NextResponse.json({ ok: true, queued: true });
+    }
+
     case "weekly-brief": {
       // Rebuild the weekly "what's working" briefs now (2026-10-13); emails
       // them unless { email: false }.

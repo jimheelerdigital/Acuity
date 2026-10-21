@@ -7,6 +7,302 @@
 
 ---
 
+## [2026-10-20] — Fix: adding ads no longer auto-retires our best ad
+
+- **Requested by:** Keenan
+- **Committed by:** Claude Code
+- **Commit hash:** (see git log: "fix: Only retire ads when an ad set is actually full")
+
+### In plain English (for Keenan)
+When "Bought the tracker" and "Fifth January" were added to the men's ad set, an automatic cleanup paused "Fourth planner. Still stuck." because its $49 per paid trial is above our $20 target. It was turned back on within minutes. Now that cleanup only runs when an ad set is full (8 ads), and only removes as many as it needs to.
+
+### Technical changes (for Jimmy)
+- apps/web/src/lib/adlab/evergreen.ts makeRoomInAdSet:
+  - Previously retired every "not_working" ad in the ad set on each activation, regardless of room.
+  - Now it retires only overflow = live + incoming − MAX_ACTIVE_ADS, weakest first (fewest trials, then most spend).
+- Data: Fourth planner (Meta ad 120255252665710581) set ACTIVE again; AdLabAd row back to live with a manual restore decision.
+
+### Manual steps needed
+- None
+
+### Notes
+- The same rule would have retired any ad above $20/paid trial whenever new ads joined. That mattered little with one ad per ad set, and a lot after consolidation.
+
+## [2026-10-20] — Ad batches can take a one-off focus; men's "planners don't work" batch
+
+- **Requested by:** Keenan
+- **Committed by:** Claude Code
+- **Commit hash:** (see git log: "feat: Let an ad batch run on a one-off focus brief")
+
+### In plain English (for Keenan)
+We can now ask for a batch of ads about one specific idea instead of the usual mix of audience themes. The first is a men-only batch about planners not working:
+- He tried them and he's still stuck.
+- Without a real system he keeps slipping behind.
+- Ripple is the thing that finally sticks.
+
+It lands in the review page as usual. Nothing goes live until you approve it.
+
+### Technical changes (for Jimmy)
+- apps/web/src/lib/adlab/weekly-batch.ts: CreateBatchOpts.focus. When set, it appends a FOCUS block to the system prompt and replaces the per-request audience-theme line.
+- apps/web/src/inngest/functions/adlab-weekly-batch.ts: passes event.data.focus to createBatchForGroup.
+- apps/web/src/app/api/admin/adlab/run-weekly-batch/route.ts: accepts { focus } (max 2000 chars).
+
+### Manual steps needed
+- [ ] Review and approve the men's planner batch in /admin/adlab/review (Keenan)
+
+### Notes
+- Manual runs write copy live, so the focus prompt is always used. The Message Batch collect pass is scheduled-only and never gets a focus.
+- The HARD RULES (no naming the reader's feelings) still apply. "Feel stuck" is delivered through situations, the way the "Fourth planner. Still stuck." winner does it.
+
+## [2026-10-20] — Meta ads: one ad set per audience, optimizing for completed registrations
+
+- **Requested by:** Keenan
+- **Committed by:** Claude Code
+- **Commit hash:** (see git log: "feat: Consolidate Meta ads into one registrations ad set per audience")
+
+### In plain English (for Keenan)
+Instead of many tiny $15/day ad sets that each optimize for purchases, we now run two:
+- **Women: all UGC creator videos** in one ad set at $75/day.
+- **Men** in one ad set at $40/day.
+
+Both tell Meta to find people who complete signup, which is when we had our best results. New ads, including new UGC videos, now join these two ad sets instead of getting their own.
+
+### Technical changes (for Jimmy)
+- New route apps/web/src/app/api/admin/adlab/consolidate/route.ts:
+  - action "list": live ad sets/ads with 7-day spend, registrations and purchases.
+  - action "run": creates one COMPLETE_REGISTRATION ad set in the lane's evergreen campaign and re-creates the given ads on the same Meta creatives. It activates the new set, then pauses the source ads and any emptied source ad sets.
+  - Also moves AdLabAd rows, and optionally makes the new set the lane's main ad set (setMain).
+- apps/web/src/lib/adlab/evergreen.ts:
+  - GROUP_OPTIMIZATION_EVENT PURCHASE → COMPLETE_REGISTRATION.
+  - GROUP_DAILY_BUDGET_CENTS women 7500 / men 4000. ensureEvergreenAdSet re-applies these on every launch.
+- apps/web/src/app/api/admin/adlab/ads/launch/route.ts:
+  - Weekly-batch ads go straight into the main ad set (no test ad set).
+  - ADLAB_SOLO_ADSET_CENTS default 1500 → 0 (no solo ad sets unless the env is set).
+- apps/web/src/app/api/admin/adlab/ugc-ad/route.ts: UGC ads join the women's main ad set (paused until activated). ownAdset: true keeps the old path.
+
+### Manual steps needed
+- None (the consolidation is run through the new route after deploy)
+
+### Notes
+- Keenan explicitly overrode the Monday-only rule for this change.
+- Meta won't change a published ad set's conversion event, so the ads are re-created in a new ad set. Same creatives, so tracking links and utm_content are unchanged.
+- Judge ads on cost per paid trial in our DB, not Meta's registration count.
+- The AdLab kill engine still applies the per-ad verdict rules to AdLab ads in these sets. UGC ads aren't AdLab rows, so it doesn't touch them.
+
+## [2026-10-20] — Animated posts always publish; two held Ripple posts released
+
+- **Requested by:** Keenan
+- **Committed by:** Claude Code
+- **Commit hash:** (see git log: "fix: Never hold animated Ripple posts back from publishing")
+
+### In plain English (for Keenan)
+Ripple posts were getting their animation made (and paid for) and then never posting. When none of the 5 drafts passed a strict "makes plain sense" check, the post was quietly marked held and only emailed. That happened to 4 of the last 12 Ripple posts, including both of today's, and all 4 read fine. Now an animated post always goes out. A failed check is written to the log instead of stopping the post. Today's two animated posts were released and will post in the next Ripple window.
+
+### Technical changes (for Jimmy)
+- `apps/web/src/inngest/functions/carousel-daily.ts`: `ripple-list`, `ripple-split` and `selfie` save as DRAFT even when `held` is set. Only `sample` posts are saved APPROVED (emailed, never auto-posted). `ripple-split` logs a `console.warn` with the hold reason.
+- `apps/web/src/lib/content-factory/publish-gate.ts`: `gateExemptLane` exempts `ripple-list` and `ripple-split`, so the Jev publish gate can't hold them either.
+- Data (prod): today's held `ripple-list` posts ("7 ways to stop being the parent the school emails", "6 things i stopped doing when my list hit 43 things") set APPROVED → DRAFT. `social-publish-cron` (every 30 min) enqueues them.
+
+### Manual steps needed
+- [ ] Push to deploy the code change (Keenan: "push it").
+- [ ] Remove yesterday's stills post "7 ways to hand off the holidays before they start" (IG https://www.instagram.com/reel/DervuGzCcUF/ + FB copy). `IG_ACCESS_TOKEN` is Vercel-sensitive, so this can't be done from a laptop.
+
+### Notes
+- Yesterday's two Ripple posts went out as stills because Higgsfield's developer-API balance ran out (403 on submit, marker `stillsReason: no-credits`). Keenan added $200 on 10-19. Today's builds are on `kling-video/v2.5-turbo/standard`, 7/7 and 8/8 slides.
+- `listSenseProblem` fails closed (a timeout or error cuts the draft) and is told "when in doubt, fail it". Its verdicts only reach Inngest logs.
+- Still able to block auto-posting: slides marked TEXT-UNVERIFIED (baked-text typo guard). Left as is.
+
+---
+
+## [2026-10-20] — Fix: the new split-video lane was posting the old "questions" carousel instead
+
+- **Requested by:** Keenan
+- **Committed by:** Claude Code
+- **Commit hash:** (see git log: "fix: Register the ripple-split lane so it stops falling back")
+
+### In plain English (for Keenan)
+The first test of the new "same words, two perspectives" video didn't make a video. The system didn't recognize the new lane, so it made and auto-posted an old-style "Things you stopped mentioning out loud" carousel to Ripple's Instagram at 15:48 UTC today. Fixed, so the Wednesday run makes the real split video.
+
+### Technical changes (for Jimmy)
+- apps/web/src/inngest/functions/carousel-daily.ts: added "ripple-split" to CAROUSEL_LANES. Unlisted buckets that aren't moody spec lanes fall back to "questions", so the split branch (bucket === "ripple-split") was unreachable.
+
+### Manual steps needed
+- [ ] Decide whether to delete the stray IG reel https://www.instagram.com/reel/DeuNnwwjLzR/ (post cmvguywk00000hdpwz0ymu9m7, lane questions) (Keenan)
+
+### Notes
+- Any new code-template lane must be added to CAROUSEL_LANES. The "questions" fallback ignores the lane's RETIRED status and auto-posts.
+- The fallback should probably refuse unknown buckets instead of posting; that wasn't changed here.
+
+## [2026-10-20] — Recordings no longer get stranded when the Inngest hand-off fails
+
+- **Requested by:** Jimmy (build 185: stuck on "Uploading your recording…", 0s elapsed)
+- **Committed by:** Claude Code
+- **Branch:** fix/record-dispatch-resilience
+
+### What happened (verified in Vercel logs + DB)
+- At 15:30 UTC, `POST /api/record` created the Entry, then `inngest.send` hung for about 30s.
+- It then failed with `fetch failed / other side closed`. The remote was inn.gs, Inngest's event API.
+- The route returned 500. The app retried the POST with the same storagePath, which created three Entries for one recording.
+- All three sat in QUEUED with no run.
+- Inngest's status page showed operational. From Jimmy's Mac, inn.gs answered in 0.15s.
+
+### Fix
+- New `lib/entry-dispatch.ts`, `dispatchEntryProcessing()`:
+  - Retries up to 3 attempts, 6s each, with backoff.
+  - Uses the deterministic event id `entry-process:<entryId>`, so Inngest dedupes any resend.
+  - Never throws. It returns false, and the route still answers 202.
+- Used by `/api/record` (voice and typed) and `/api/onboarding/first-debrief-text`.
+- New Inngest cron `entry-queued-sweeper` (every 2 min):
+  - Re-dispatches entries that are QUEUED with no `inngestRunId`, created more than 90s ago (within 24h).
+  - Only entries created after `SWEEP_EPOCH` (2026-10-20 16:00 UTC), because older sends have no dedupe id.
+- `/api/record` is idempotent on storagePath: a retry returns the existing Entry instead of creating another. audioPath is now set when the Entry is created.
+- App `record.tsx`: the uploading stage shows real elapsed seconds (it was hard-coded to 0).
+- Tests: `entry-dispatch.test.ts`, and the updated `route.typed.test.ts` (event id). Full suite green.
+
+### Manual steps
+- After the merge, Jimmy's 3 stuck entries (cmvguakjl…, cmvgub83h…, cmvgubygi…) are older than `SWEEP_EPOCH`, so the sweeper won't touch them. Plan: process the newest one and cancel the other two (pending Jimmy's OK).
+## [2026-10-20] — New Ripple lane: "same words, two perspectives" split videos, 3x a week; avatar list retired
+
+- **Requested by:** Keenan
+- **Committed by:** Claude Code
+- **Commit hash:** (see git log: "feat: Add the Ripple split-video lane")
+
+### In plain English (for Keenan)
+Ripple now runs two lanes:
+- **The all-scenery list post**, daily (07 UTC). The avatar-cover list version is gone.
+- **A new "same words, two perspectives" video**, 3 times a week (Mon/Wed/Fri at 05 UTC, which is Sun/Tue/Thu night Central). Each video is 3–5 lines. Every line shows twice: the heavy version on top and the freeing version below, as illustrated Kling 2.5 clips. It ends on two original lines fading in over black, runs about 15–20 seconds, auto-posts to Instagram and Facebook with music, and comes to you by email for TikTok.
+
+The first 8 videos are the scripts Keenan picked (The load, I got nothing done, Empty nest, It's all in my head, Saying no, It's too late, Rest, Everyone needs me). After that, Opus writes new ones in the same style, minus age and body themes, checked by the plain-sense editor and ranked by Jev. About $1.50 per video.
+
+### Technical changes (for Jimmy)
+- New `apps/web/src/lib/content-factory/split-post.ts`:
+  - `SPLIT_SEEDS` (8 approved scripts) and `nextSplitScript(usedThemes)` (next unused seed, else 3 Opus drafts → `splitSenseProblem` → `rankCandidates`).
+  - Also `splitImagePrompt`, `splitMotionPrompt`, `generateSplitImage` (gpt-image-2 1536x1024 medium), `SPLIT_DAYS_UTC` [1,3,5] and `splitSlug`.
+- New `apps/web/src/lib/content-factory/split-video.ts`, using sharp text with Patrick Hand SC / Tinos and ffmpeg-static:
+  - `lineLayer`: luminance-based ink. Top-half text sits at 31% of the half, clear of the app header.
+  - `pairSegment`: 1080x1920, halves cover-cropped, 3.5s trim, no retime; falls back to a still when a clip failed.
+  - `endingSegment`: last frame fades to black, lines fade in.
+  - `finishSplitVideo`: concat, then music.
+  - `pairStill`: slide and email still.
+- New font `apps/web/public/fonts/PatrickHandSC-Regular.ttf` (OFL).
+- `apps/web/src/inngest/functions/carousel-daily.ts`, new `bucket === "ripple-split"` branch:
+  - Day gate (skipped unless force/sample).
+  - Steps: script → one image step per half → Kling 2.5 submit → 30s poll ×30 → post created APPROVED with a pending video marker → one segment step per pair → finish.
+  - Finish step: ending; `reels/<id>.mp4` with music/ and `-ig.mp4` with music-ig/; marker done; status DRAFT (APPROVED if sample or held); recipe.
+- `apps/web/src/lib/content-factory/performance-loop.ts`: `LOOP_LANES["ripple-split"] = "ripple"`.
+- `apps/web/src/lib/content-factory/daily-digest.ts`: ContentLane `spec.daysUtc` makes a lane owe a post only on those UTC weekdays, so the 3x-weekly lane doesn't hold the daily emails on its off days.
+- DB (after deploy, by script):
+  - ContentLane `ripple-split` ACTIVE, hours [5], spec `{ daysUtc: [1,3,5], tiktokEmail: true }`.
+  - ContentLane `ripple-list` hours [7] only (avatar slot gone).
+
+### Manual steps needed
+- [ ] Keenan reviews the sample split video before the first scheduled run (Wed 10-21 05 UTC)
+
+### Notes
+- Tested locally on the 10-16 clips: 3 pairs + ending render in ~10s.
+- Locally the font falls back, because macOS Pango ignores fontfile; production uses the bundled TTF, same as the paper guides.
+- Samples don't use up a seed script (only non-APPROVED posts count as used).
+
+---
+
+## [2026-10-20] — The weekly Social Brief now steers the daily post writers
+
+- **Requested by:** Keenan
+- **Committed by:** Claude Code
+- **Commit hash:** (see git log: "feat: Feed the weekly Social Brief plan to the post writers")
+
+### In plain English (for Keenan)
+The Ripple and Mythicals post writers now read the weekly Social Brief's plan every time they write: what's working and flopping, what to lean into, hook ideas to adapt, formats to test, and what to steer away from. Lane on/off decisions still come to you in the brief's "needs your yes" list. The plan is also told to fit the formats each brand's lanes actually make, and for Ripple to stay on the load in her head (no partner-blaming). BWK's plan is for posting by hand until BWK has active lanes.
+
+### Technical changes (for Jimmy)
+- `apps/web/src/lib/content-factory/social-brief.ts`:
+  - `socialBriefBlock(brand)` returns "" when the brief is more than 9 days old.
+  - `socialPlanBlock(brief)` is the pure formatter, capped at 3,500 chars.
+  - SYSTEM prompt: the plan must fit the active lanes; anything needing a lane change goes to `needsYourYes`.
+  - Ripple brand rule adds the niche rule and drops the hard-coded lane formats.
+- `apps/web/src/lib/content-factory/weekly-brief.ts`: `readBriefBlock(brand)` appends `socialBriefBlock(brand)`. Every reader picks it up: candidate-pipeline (Jev), generate-topic, ripple-list, how-to-guide and choice-lane (Mythicals).
+
+### Manual steps needed
+- [ ] None. Briefs were rebuilt after deploy (no email) so tomorrow's posts use the corrected plan.
+
+### Notes
+- BWK lane writers don't read `readBriefBlock`. Wire them in when BWK lanes are reactivated.
+- The Social Brief is built Saturday night; posts from Sunday's runs onward use it.
+
+---
+
+## [2026-10-20] — One weekly social sweep and one Social Brief email (Ripple, Mythicals, BWK)
+
+- **Requested by:** Keenan
+- **Committed by:** Claude Code
+- **Commit hash:** (see git log: "feat: One weekly social sweep and one Social Brief email")
+
+### In plain English (for Keenan)
+Social research now runs as **one sweep every Saturday night**, collecting in order:
+- competitor posts, keyword discovery and copy-this briefs
+- the Reddit audience pulse
+- new hashtags and creators to watch
+- our own post results
+
+It ends with **one Social Brief per brand** (Ripple, Legendary Mythicals, Build With Key), emailed **Sunday 9am Central**. Each brief covers what worked, what flopped, competitor moves, what the audience is talking about, next week's plan (keep, stop, start, hooks to test, ad angles), and a "needs your yes" list.
+
+The old social emails keep coming for one overlap week so you can compare. After that, one switch turns them all off: weekly brief, lane intelligence, niche memo, Monday performance report, UGC digest, competitor research and top-videos reports, video-script report. The data behind them keeps flowing into the Social Brief.
+
+Unchanged: the SEO weekly, the founder metrics email, and the weekly audit.
+
+### Technical changes (for Jimmy)
+- New `apps/web/src/lib/content-factory/social-brief.ts`:
+  - `gather(brand)` reads the scoreboard, active lanes with 14-day post counts, the weekly-brief how/what, CompetitorPost outliers (briefAt ≤ 9d), Reddit `getTopThemes`, `getLatestCompetitorBrief` women/men, and queued UgcCreators.
+  - `buildSocialBrief(brand)` makes one Opus 5.5 call → JSON, stored at `content-factory/social-briefs/latest-<brand>.json` plus a dated copy.
+  - Also `readSocialBrief` and `socialBriefEmailHtml`.
+- New `apps/web/src/lib/content-factory/social-brief-send.ts`: `sendSocialBriefEmail()` (only briefs younger than 3 days), and `socialBriefOnly()` reading FeatureFlag `social_brief_only` (60s memo; DB error → old emails stay on).
+- New `apps/web/src/inngest/functions/social-weekly-sweep.ts`:
+  - `socialWeeklySweepFn` runs cron `0 1 * * 0` (Sat 8pm CT) and event `content-factory/social.sweep {email?, skipCollectors?}`. It calls `step.invoke` on competitor-scrape (5h timeout), reddit-trends (30m) and niche-discovery (1h), then `refreshScoreboards`, then one step per brand. Every stage is soft.
+  - `socialBriefEmailFn` runs cron `0 14 * * 0` (Sun 9am CT) and event `content-factory/social.brief.email`.
+- Removed standalone crons:
+  - competitor-scrape-daily (`30 3 * * 0`); the sweep now runs it ~2.5h earlier, still before the 04:40 weekly-brief build.
+  - niche-discovery (`0 2 15 * *`); now weekly via the sweep.
+  - Event triggers on both kept.
+- `social_brief_only` gate added inside `sendTopVideosEmail`, `sendVideoScriptReport`, `sendWeeklyDigest` (UGC), `sendPerformanceReport` and `sendResearchReport`, and inline in the weekly-brief, lane-intelligence and niche-memo email steps.
+- `apps/web/src/app/api/admin/carousels/route.ts`: new action `social-sweep {email, skipCollectors}`.
+- `apps/web/src/app/api/inngest/route.ts`: registers both functions.
+- AdLab competitor ad research stays Sat 18:00 UTC because the ad batch reads it at 21:00; the brief reads its latest result.
+
+### Manual steps needed
+- [ ] After the overlap week (Sun 10-25 brief), turn on FeatureFlag `social_brief_only` to stop the old emails (Keenan says go, Claude flips it)
+- [ ] Reddit audience pulse: Reddit has blocked our RSS feed since 10-03; switch to an Apify Reddit scraper if we want it back (Keenan decision, small Apify cost)
+
+### Notes
+- Coverage differs by brand: Mythicals has no competitor or Reddit tracking (own results only); BWK has no weekly how/what brief and no active lanes yet (Keenan restarting it by hand).
+- Niche discovery went from monthly back to weekly, so watch Apify usage after the first sweeps (it was cut to monthly on 09-21 for plan limits).
+- Local scripts can't read `supabase.server` (server-only), so the scoreboard reads come back empty in local tests but work in production.
+
+---
+
+## [2026-10-20] — Day-2 come-back nudge switched on; weekly audit gets a cost-cutting scan
+
+- **Requested by:** Keenan
+- **Committed by:** Claude Code
+- **Commit hash:** (see git log: "docs: Add a cost-cutting scan to the weekly audit")
+
+### In plain English (for Keenan)
+- **Day-2 nudge:** the day-2 "Anything still taking up space?" nudge Jimmy built on 10-18 is now on. Every new user gets one reminder on their second day: a push if they have notifications on, otherwise one email. It goes out at their chosen reminder time, defaulting to 5:30pm their time, and skips anyone who already came back.
+- **Weekly audit:** it now has a dedicated Cost-Cutting Scan section. Each week it goes through every bill and recurring job and says keep, cut, downgrade or optimize, with the dollars saved and the top 3 cuts to make.
+
+### Technical changes (for Jimmy)
+- Vercel production env `ENABLE_V10_DAY2_PUSH=1`, added by Keenan 10-20. This push redeploys production to pick it up, and Inngest was resynced after.
+- `audits/WEEKLY_AUDIT_PROMPT.md`: new section 8 "Cost-Cutting Scan"; old sections 8–15 renumbered 9–16. `send-email.ts` / `run-audit.sh` only parse sections 1–2, so nothing downstream breaks.
+
+### Manual steps needed
+- [ ] None. Check `day2_nudge_sent` OnboardingEvents over the next 24h (Claude)
+
+### Notes
+- Expected volume: about 6–7 sends a day (~7 signups/day; only 11 of the last 96 have a push token, so ~90% get the email).
+- Baseline: 8 of the last 96 signups recorded again on day 2–3.
+- Keenan chose to go live on a Tuesday, an exception to the Monday-only email rule.
+
+---
+
 ## [2026-10-20] — Build 185: fix record crash (missing mic permission) + widget redesign
 
 - **Requested by:** Jimmy (TestFlight 184: "Record what's on your mind" crashes; widget "looks awful")
@@ -33,6 +329,41 @@ Build 184 crashed the moment you started a recording. The camera feature added f
 
 ### Notes
 - Lesson: a config-plugin permission flag of `false` means "remove", not "don't add".
+
+---
+
+## [2026-10-20] — Admin "App funnel" tab; App Store trials labeled as paid; Keenan's test accounts removed
+
+- **Requested by:** Keenan
+- **Committed by:** Claude Code
+- **Commit hash:** (see git log: "feat: Add an App funnel tab for in-app onboarding drop-off")
+
+### In plain English (for Keenan)
+- **App funnel:** the admin dashboard has a new **App funnel** tab (Growth → App funnel) showing every in-app onboarding stage and where people drop off. It has two sections because two app versions are live: the questions (1.9.x only), then recording → results → paywall for everyone. It also lists problems (mic denied, recording or processing failures), screens before sign-in, and the web-payer welcome flow.
+  - Last 14 days: about a quarter quit during the questions, 29% of people who finished recording never saw their results (the biggest drop), and of 15 people at the paywall, 1 started an App Store trial while 13 skipped.
+- **Trial labels:** the Users list now shows App Store / Play trials as "Paid trial (App Store)" instead of a plain unpaid "Trial".
+- **Test accounts:** Keenan's 14 keenan+… test accounts were deleted. Jimmy's jim+… accounts were kept, including the Apple and Google review logins.
+
+### Technical changes (for Jimmy)
+- New `apps/web/src/lib/admin/app-funnel.ts` (`getAppFunnel`):
+  - Reads OnboardingEvent v10_* + app_signed_in.
+  - Steps carry `views` (event counts) and `people` (userId ?? sessionToken), in groups "questions" / "core".
+  - The paywall row and its outcomes are people; trial = user subscriptionSource apple/google with TRIAL/PRO.
+- `apps/web/src/app/api/admin/metrics/route.ts`: `tab=app-funnel` (2-minute cache).
+- New `apps/web/src/app/admin/tabs/AppFunnelTab.tsx`; `admin-dashboard.tsx` registers it (TAB_KEYS, Growth nav).
+- `apps/web/src/app/api/admin/users/route.ts`: `computePlanStatus` takes `subscriptionSource`.
+- DB: deleted 14 users with emails starting `keenan+` (verificationTokens + user cascade, voice-entries storage cleared). No DeletedUser tombstone was written: it canonicalizes away the +tag and would have cut trials for future keenan+ QA signups.
+
+### Manual steps needed
+- [ ] Jimmy, for 1.9.4 so the funnel is exact per person:
+  - a per-install UUID as `sessionToken` on every app event, backfilled to userId on sign-in
+  - `v10_purchase_started/completed/cancelled/failed` and `v10_restore_tapped`
+  - `app_first_open`, plus `app_version` on every event
+
+### Notes
+- Two onboarding versions are live: 1.9.x asks the questions (`flow: v11`) before recording; older builds go start → recognition → "I'm new" → record. They meet at `v10_start_tapped`.
+- 557 of 959 v10 events in the last 14 days had no userId or sessionToken.
+- `metrics/route.ts` already had 47 tsc implicit-any errors before this change; none were added.
 
 ---
 

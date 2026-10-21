@@ -41,14 +41,19 @@ export const GROUP_DAILY_BUDGET_CENTS: Record<BatchGroupKey, number> = {
   // 2026-10-07 (later), per Keenan: "cut women funnel down to $30, men funnel
   // down to $50, test funnels to $25 men $20 women... going to re-allocate
   // $20 a day to app store ads". Meta = $115/day with tests at $20/$15.
-  women: 3000,
-  men: 5000,
+  // 2026-10-20, per Keenan: one ad set per audience, optimizing for completed
+  // registrations: "$75 for UGC videos" (women) and men "up spend to $40/day".
+  women: 7500,
+  men: 4000,
 };
 
 /** 2026-09-30, per Keenan: "start to optimize for purchase". Was
  *  COMPLETE_REGISTRATION — Meta found signups (25 in 14 days) but only 5 of
  *  them paid. Purchase = the Stripe trial-start event (CAPI, with fbclid). */
-export const GROUP_OPTIMIZATION_EVENT = "PURCHASE";
+// 2026-10-20, per Keenan: back to completed registrations ("we had our best
+// results when we were targeting completed registrations"). ~44 purchases a
+// month was too thin for Meta to learn from. Judge ads on cost per paid trial.
+export const GROUP_OPTIMIZATION_EVENT = "COMPLETE_REGISTRATION";
 
 /**
  * Live ads allowed in one ad set. More than this splits $40–60/day too thin
@@ -384,7 +389,7 @@ async function pauseAd(ad: { id: string; metaAdId: string | null }, status: "pau
 
 export async function makeRoomInAdSet(
   adsetId: string,
-  _incoming: number
+  incoming: number
 ): Promise<{
   retired: Array<{ adId: string; reason: string }>;
   failed: string[];
@@ -400,7 +405,17 @@ export async function makeRoomInAdSet(
 
   const retired: Array<{ adId: string; reason: string }> = [];
   const failed: string[] = [];
-  for (const r of audit.filter((x) => x.verdict === "not_working")) {
+  // Only when the new ads would push the ad set past MAX_ACTIVE_ADS, and only
+  // as many as needed, weakest first (2026-10-20: adding 2 ads to a 1-ad set
+  // retired "Fourth planner", our best ad, for missing the $20 target).
+  const overflow = live.length + incoming - MAX_ACTIVE_ADS;
+  const toRetire = overflow > 0
+    ? audit
+        .filter((x) => x.verdict === "not_working")
+        .sort((x, y) => (x.trials - y.trials) || (y.spendCents - x.spendCents))
+        .slice(0, overflow)
+    : [];
+  for (const r of toRetire) {
     const reason = `AUDIT on new upload: not working — ${r.reason}.`;
     try {
       await pauseAd(r.ad, "killed", reason);

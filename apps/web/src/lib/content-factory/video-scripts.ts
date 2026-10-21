@@ -189,6 +189,9 @@ function scriptHtml(s: VideoScript, i: number): string {
  * Returns the number of scripts sent (0 = nothing sent).
  */
 export async function sendVideoScriptReport(): Promise<number> {
+  // Folded into the weekly Social Brief (2026-10-20) once social_brief_only is on.
+  const { socialBriefOnly } = await import("@/lib/content-factory/social-brief-send");
+  if (await socialBriefOnly()) return 0;
   const [ripple, bwk] = [
     await generateVideoScripts("ripple"),
     await generateVideoScripts("bwk"),

@@ -11,6 +11,7 @@ import { generateLifeAuditFn } from "@/inngest/functions/generate-life-audit";
 import { generateWeeklyReportFn } from "@/inngest/functions/generate-weekly-report";
 import { helloWorldFn } from "@/inngest/functions/hello-world";
 import { processEntryFn } from "@/inngest/functions/process-entry";
+import { entryQueuedSweeperFn } from "@/inngest/functions/entry-queued-sweeper";
 import { computeUserInsightsFn } from "@/inngest/functions/compute-user-insights";
 import { generateDataExportFn } from "@/inngest/functions/generate-data-export";
 import {
@@ -81,6 +82,7 @@ import { nicheDiscoveryFn } from "@/inngest/functions/niche-discovery";
 import { socialPublishCronFn } from "@/inngest/functions/social-publish-cron";
 import { laneIntelligenceReportFn } from "@/inngest/functions/lane-intelligence-report";
 import { redditTrendsDailyFn } from "@/inngest/functions/reddit-trends-daily";
+import { socialBriefEmailFn, socialWeeklySweepFn } from "@/inngest/functions/social-weekly-sweep";
 import { competitorScrapeDailyFn } from "@/inngest/functions/competitor-scrape-daily";
 import { adlabWeeklyBatchFn } from "@/inngest/functions/adlab-weekly-batch";
 import { adlabLookSamplesFn } from "@/inngest/functions/adlab-look-samples";
@@ -106,6 +108,7 @@ const handler = serve({
     mythicalsPortraitFn,
     helloWorldFn,
     processEntryFn,
+    entryQueuedSweeperFn,
     generateWeeklyReportFn,
     refreshLifeMapFn,
     day7AuditCronFn,
@@ -177,6 +180,8 @@ const handler = serve({
     socialPublishCronFn,
     laneIntelligenceReportFn,
     redditTrendsDailyFn,
+    socialWeeklySweepFn,
+    socialBriefEmailFn,
     competitorScrapeDailyFn,
     adlabWeeklyBatchFn,
     adlabLookSamplesFn,

@@ -38,6 +38,7 @@ const TAB_TTLS: Record<string, number> = {
   "business-metrics": 10 * 60_000,
   "funnel-analytics": 2 * 60_000,
   "funnel-compare": 2 * 60_000,
+  "app-funnel": 2 * 60_000,
   guide: Infinity, // static content
 };
 
@@ -170,6 +171,11 @@ export async function GET(req: NextRequest) {
           const traffic = tp === "inapp" ? "inapp" : tp === "all" ? "all" : "real";
           const sp = req.nextUrl.searchParams.get("split");
           return getFunnelCompare(prisma, start, end, showBots, traffic, sp === "on" ? "on" : sp === "off" ? "off" : null);
+        }
+        case "app-funnel": {
+          // In-app onboarding funnel (2026-10-20, per Keenan). lib/admin/app-funnel.ts
+          const { getAppFunnel } = await import("@/lib/admin/app-funnel");
+          return getAppFunnel(prisma, start, end);
         }
         case "guide":
           return getGuide();

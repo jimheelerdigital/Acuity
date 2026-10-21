@@ -31,6 +31,9 @@ export async function sendResearchReport(run: {
   keywordChanges: { retired: string[]; added: string[] };
   learning: ResearchLearning | null;
 }): Promise<void> {
+  // Folded into the weekly Social Brief (2026-10-20) once social_brief_only is on.
+  const { socialBriefOnly } = await import("@/lib/content-factory/social-brief-send");
+  if (await socialBriefOnly()) return;
   const { prisma } = await import("@/lib/prisma");
   const since = new Date(run.startedAt);
   const newCreators = await prisma.competitorAccount.findMany({

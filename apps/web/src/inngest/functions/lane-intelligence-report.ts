@@ -308,6 +308,9 @@ Write this week's lane intelligence report.`,
     });
 
     await step.run("email-report", async () => {
+      // Folded into the weekly Social Brief (2026-10-20) once social_brief_only is on.
+      const { socialBriefOnly } = await import("@/lib/content-factory/social-brief-send");
+      if (await socialBriefOnly()) return;
       const { sendEmailOrThrow } = await import("@/lib/resend");
       const today = new Date().toISOString().slice(0, 10);
       const body = `LANE SCOREBOARD — last ${LOOKBACK_DAYS} days

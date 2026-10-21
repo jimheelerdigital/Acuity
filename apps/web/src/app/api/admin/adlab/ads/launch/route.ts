@@ -218,7 +218,7 @@ export async function POST(req: NextRequest) {
 
   const errors: { creativeId: string; error: string }[] = [];
   const created: { creativeId: string; adId: string; adsetId: string }[] = [];
-  const soloAdsetCents = Math.max(0, Number(process.env.ADLAB_SOLO_ADSET_CENTS ?? 1500) || 0);
+  const soloAdsetCents = Math.max(0, Number(process.env.ADLAB_SOLO_ADSET_CENTS ?? 0) || 0);
 
   try {
     const topicSlug = slug(experiment.topicBrief, 50);
@@ -248,10 +248,11 @@ export async function POST(req: NextRequest) {
         adsetId = own.adsetId;
         console.log(`[adlab-launch] Evergreen ${evergreenGroup}: campaign ${campaignId}, OWN ad set ${adsetId} "${label}" $${ownBudget / 100}/day${own.created ? " (created)" : ""}`);
       } else {
-        const { ensureTestAdSet } = await import("@/lib/adlab/evergreen");
-        const test = await ensureTestAdSet(evergreenGroup);
-        adsetId = test.adsetId;
-        console.log(`[adlab-launch] Evergreen ${evergreenGroup}: campaign ${campaignId}, TEST ad set ${adsetId}${test.created ? " (created)" : ""} (main ${eg.adsetId})`);
+        // 2026-10-20, per Keenan: one ad set per audience. New ads join the
+        // lane's main (registrations) ad set directly — no test ad set, no
+        // solo ad sets.
+        adsetId = eg.adsetId;
+        console.log(`[adlab-launch] Evergreen ${evergreenGroup}: campaign ${campaignId}, MAIN ad set ${adsetId}`);
       }
     } catch (err) {
       logMetaError("Evergreen campaign/ad set", err);
@@ -260,9 +261,9 @@ export async function POST(req: NextRequest) {
         { status: 500 }
       );
     }
-    const { TEST_DAILY_BUDGET_CENTS } = await import("@/lib/adlab/evergreen");
+    const { GROUP_DAILY_BUDGET_CENTS } = await import("@/lib/adlab/evergreen");
     const ownAdsetBudget = (experiment as Record<string, unknown>).adSetDailyBudgetCents as number | null;
-    adsetBudget = experiment.campaignTags?.includes("own-adset") && ownAdsetBudget ? ownAdsetBudget : TEST_DAILY_BUDGET_CENTS[evergreenGroup];
+    adsetBudget = experiment.campaignTags?.includes("own-adset") && ownAdsetBudget ? ownAdsetBudget : GROUP_DAILY_BUDGET_CENTS[evergreenGroup];
     // One ad per ad set (2026-10-12, per Keenan: "run them all as separate ad
     // groups with independent $15 daily budgets ... do the same exact thing
     // for all from now on"): every weekly-batch ad gets its own ad set at

@@ -29,9 +29,12 @@ export async function POST(req: NextRequest) {
 
   const { inngest } = await import("@/inngest/client");
   // Optional { groups: ["women"] } to remake just one group.
-  const body = (await req.json().catch(() => ({}))) as { groups?: string[] };
+  // Optional { focus: "..." } (2026-10-20): a one-off brief every ad in the
+  // batch is about, in place of the standing audience themes.
+  const body = (await req.json().catch(() => ({}))) as { groups?: string[]; focus?: string };
   const groups = (body.groups ?? []).filter((g) => g === "women" || g === "men");
-  await inngest.send({ name: "adlab/weekly-batch.requested", data: groups.length ? { groups } : {} });
+  const focus = typeof body.focus === "string" ? body.focus.slice(0, 2000) : undefined;
+  await inngest.send({ name: "adlab/weekly-batch.requested", data: { ...(groups.length ? { groups } : {}), ...(focus ? { focus } : {}) } });
 
   return NextResponse.json({ ok: true });
 }
