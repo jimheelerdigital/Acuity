@@ -7,6 +7,26 @@
 
 ---
 
+## [2026-10-21] — Review-ask email to our most engaged app users
+
+- **Requested by:** Keenan
+- **Committed by:** Claude Code
+- **Commit hash:** (see git log: "feat: Add one-off review-ask email for engaged app users")
+
+### In plain English (for Keenan)
+A short personal note from Keenan to our most engaged app users (app installed, 3+ debriefs, active in the last 30 days: 17 people on 2026-10-21) asking for an honest App Store or Google Play rating, with a one-tap link to the right store. Each person can only ever get it once, and it includes an unsubscribe link. Nothing is offered in exchange, and everyone in the group is asked (no picking only happy users), which is what Apple and Google require.
+
+### Technical changes (for Jimmy)
+- New `app/api/admin/emails/review-ask/route.ts` (Bearer CRON_SECRET or admin): `mode` preview (masked list, no send) / test (iOS + Android versions to `testEmail`) / send. Segment on pushTokenPlatform ios|android, totalRecordings ≥ minDebriefs (3), lastRecordingAt within `days` (30), weeklyEmailEnabled, !onboardingUnsubscribed, excludes admins/team/test addresses. Dedup via OnboardingEvent `email_review_ask_sent`. Unsubscribe uses the existing "onboarding" token kind.
+- Sender `"Keenan from Ripple" <keenan@goripple.io>`, replyTo keenan@heelerdigital.com (goripple.io has no MX).
+
+### Manual steps needed
+- None (sent by Claude Code after Keenan approved the test email)
+
+### Notes
+- Runs in prod because local NEXTAUTH_SECRET differs from prod; locally signed unsubscribe tokens would not verify.
+- Found while doing this: `emails/weekly-digest.ts` still sends from keenan@getacuity.io (old domain). Not changed here; separate fix.
+
 ## [2026-10-21] — No more Acuity pages: every old-brand URL redirects, all post text says Ripple
 
 - **Requested by:** Keenan
