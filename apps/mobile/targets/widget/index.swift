@@ -245,19 +245,20 @@ struct RippleWidget: Widget {
 //
 // Tap-to-check (1.9.4): the row's circle is an interactive Button running
 // CompleteTaskIntent, which TOGGLES:
-//   • unchecked → checked: the id goes into the App Group key `pendingDone`
-//     (JSON string array) first, then PATCH /api/tasks {id, action:"complete"}
-//     with the session bearer read from the SHARED keychain access group
-//     (see sharedSessionToken()). On 2xx the id leaves `pendingDone`, the
-//     item leaves `todayTasks`, and a snapshot of it goes into `recentDone`
-//     so the row STAYS on the widget, struck through, for RECENT_DONE_LINGER
-//     seconds (Jimmy: "they should stick for a few so I can uncheck"). On
-//     failure it stays in `pendingDone`, renders checked, and the app flushes
-//     it on next foreground (lib/widget-data.ts flushWidgetCompletions).
+//   • unchecked → checked: LOCAL first and immediately — the id goes into the
+//     App Group key `pendingDone` (JSON string array), the item leaves
+//     `todayTasks`, and a snapshot goes into `recentDone` so the row STAYS,
+//     struck through, for RECENT_DONE_LINGER seconds (Jimmy: "they should
+//     stick for a few so I can uncheck"). Then PATCH /api/tasks
+//     {id, action:"complete"} goes out on a background URLSession with the
+//     bearer from the SHARED keychain access group (sharedSessionToken()).
+//     The id stays in `pendingDone` until the app's next foreground flush
+//     (lib/widget-data.ts flushWidgetCompletions) re-sends it (idempotent).
 //   • checked → unchecked (within the linger window): the id leaves
 //     `pendingDone`/`recentDone`, the snapshot goes back into `todayTasks`,
-//     and PATCH {action:"reopen"} is sent. If reopen fails the row goes back
-//     to checked so the widget never lies about server state.
+//     and PATCH {action:"reopen"} goes out the same way.
+//   perform() never awaits the network: WidgetKit re-renders only after it
+//   returns, and awaiting the PATCH made taps take ~5s (build 185, 10/20).
 // Struck rows drop off on their own when the linger expires (timeline
 // entries are scheduled at each expiry), so the app needn't be running.
 
@@ -481,108 +482,98 @@ struct CompleteTaskIntent: AppIntent {
     init() {}
     init(taskId: String) { self.taskId = taskId }
 
-    /// PATCH /api/tasks { id, action } — same call the Tasks tab / Home card
-    /// make (apps/web/src/app/api/tasks/route.ts). Returns the HTTP status,
-    /// or nil when there is no token / no network.
-    private func patchTask(_ action: String) async -> Int? {
-        guard let token = sharedSessionToken(),
-              let url = URL(string: apiBase() + "/api/tasks") else { return nil }
-        var req = URLRequest(url: url)
-        req.httpMethod = "PATCH"
-        req.timeoutInterval = 10
-        req.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
-        req.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        req.setValue("ios", forHTTPHeaderField: "X-Platform")
-        req.setValue(extensionVersion(), forHTTPHeaderField: "X-App-Version")
-        req.httpBody = try? JSONSerialization.data(withJSONObject: ["id": taskId, "action": action])
-        let config = URLSessionConfiguration.ephemeral
-        config.timeoutIntervalForRequest = 10
-        config.timeoutIntervalForResource = 10
-        let session = URLSession(configuration: config)
-        guard let result = try? await session.data(for: req) else { return nil }
-        return (result.1 as? HTTPURLResponse)?.statusCode
-    }
+    // Why perform() never awaits the network (Jimmy, 10/20 on build 185:
+    // "5 second delay" between tapping a circle and seeing it checked):
+    // WidgetKit only re-renders an interactive widget AFTER perform()
+    // returns, so the old version, which awaited PATCH /api/tasks (cold
+    // extension + TLS + server, up to 10s), held the checkmark hostage to the
+    // round trip. Now perform() only writes the local state and returns
+    // immediately; the request goes out on a BACKGROUND URLSession, which the
+    // system finishes even after the extension exits. The task stays in
+    // `pendingDone` until the app's next foreground flush
+    // (lib/widget-data.ts flushWidgetCompletions) re-sends it, and complete is
+    // idempotent, so a lost background request can't lose the check-off.
 
     func perform() async throws -> some IntentResult {
         let pending = readPendingDone()
         let recent = readRecentDone()
         let isChecked = pending.contains(taskId) || recent.contains { $0.item.id == taskId }
         if isChecked {
-            await uncheck(pending: pending, recent: recent)
+            uncheck(pending: pending, recent: recent)
+            sendInBackground(action: "reopen")
         } else {
-            await check(pending: pending, recent: recent)
+            check(pending: pending, recent: recent)
+            sendInBackground(action: "complete")
         }
         WidgetCenter.shared.reloadTimelines(ofKind: TODAY_WIDGET_KIND)
         return .result()
     }
 
-    /// unchecked → checked
-    private func check(pending: [String], recent: [RecentDone]) async {
-        // (a) Optimistic: mark pending so the row renders checked right away
-        //     and survives timeline reloads until the server confirms.
-        writePendingDone(pending + [taskId])
-        WidgetCenter.shared.reloadTimelines(ofKind: TODAY_WIDGET_KIND)
-
-        // (b) Confirm with the server. 404 = already gone (deleted elsewhere).
-        let code = await patchTask("complete")
-        let ok = code.map { (200..<300).contains($0) || $0 == 404 } ?? false
-        guard ok else {
-            // Stays in `pendingDone`; the app retries it on next foreground and
-            // keeps rendering it as done meanwhile.
-            return
-        }
-
-        // Unchecked again while the request was in flight? Their undo ran
-        // before our complete landed on the server — honour the undo.
-        guard readPendingDone().contains(taskId) else {
-            _ = await patchTask("reopen")
-            return
-        }
-
-        // (c) Confirmed: leave `pendingDone`, leave `todayTasks`, but keep a
-        //     snapshot in `recentDone` so the row lingers struck-through and
-        //     can be unchecked.
-        writePendingDone(readPendingDone().filter { $0 != taskId })
-        if let items = readTodayItems() {
-            if let item = items.first(where: { $0.id == taskId }) {
-                let nowSec = Int(Date().timeIntervalSince1970)
-                var list = readRecentDone().filter { $0.item.id != taskId }
-                list.append(RecentDone(item: item, doneAt: nowSec))
-                writeRecentDone(list)
-            }
+    /// unchecked → checked, all local. The row lingers struck-through for
+    /// RECENT_DONE_LINGER (undo window), then drops off.
+    private func check(pending: [String], recent: [RecentDone]) {
+        if !pending.contains(taskId) { writePendingDone(pending + [taskId]) }
+        if let items = readTodayItems(), let item = items.first(where: { $0.id == taskId }) {
+            let nowSec = Int(Date().timeIntervalSince1970)
+            writeRecentDone(recent.filter { $0.item.id != taskId } + [RecentDone(item: item, doneAt: nowSec)])
             writeTodayItems(items.filter { $0.id != taskId })
         }
     }
 
-    /// checked → unchecked (undo within the linger window)
-    private func uncheck(pending: [String], recent: [RecentDone]) async {
-        let snapshot = recent.first(where: { $0.item.id == taskId })
-        let wasPendingOnly = snapshot == nil
-
-        // (a) Optimistic: clear local checked state and put the row back.
+    /// checked → unchecked (undo within the linger window), all local.
+    private func uncheck(pending: [String], recent: [RecentDone]) {
         writePendingDone(pending.filter { $0 != taskId })
         writeRecentDone(recent.filter { $0.item.id != taskId })
-        if let item = snapshot?.item {
+        if let item = recent.first(where: { $0.item.id == taskId })?.item {
             var items = readTodayItems() ?? []
             if !items.contains(where: { $0.id == item.id }) {
                 items.append(item)
                 writeTodayItems(items)
             }
         }
-        WidgetCenter.shared.reloadTimelines(ofKind: TODAY_WIDGET_KIND)
+    }
 
-        // (b) Reopen on the server. If the original complete never reached the
-        //     server (pending only) there may be nothing to reopen, but a
-        //     reopen is idempotent, so send it anyway in case it did.
-        let code = await patchTask("reopen")
-        let ok = code.map { (200..<300).contains($0) || $0 == 404 } ?? false
-        if !ok && !wasPendingOnly, let snap = snapshot {
-            // Server still has it DONE: don't lie — restore the checked state.
-            writeRecentDone(readRecentDone().filter { $0.item.id != taskId } + [snap])
-            if let items = readTodayItems() {
-                writeTodayItems(items.filter { $0.id != taskId })
+    /// PATCH /api/tasks { id, action } on a background URLSession. Background
+    /// sessions need an upload-from-file task (no in-memory bodies, no
+    /// completion handlers), so the JSON body is written to the shared
+    /// container first. Fire-and-forget by design; see the note above.
+    private func sendInBackground(action: String) {
+        guard let token = sharedSessionToken(),
+              let url = URL(string: apiBase() + "/api/tasks"),
+              let body = try? JSONSerialization.data(withJSONObject: ["id": taskId, "action": action]),
+              let dir = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: APP_GROUP)
+        else { return }
+        // Sweep request bodies from earlier taps (the system has long since
+        // read them) so the shared container doesn't accumulate files.
+        let fm = FileManager.default
+        if let old = try? fm.contentsOfDirectory(at: dir, includingPropertiesForKeys: [.contentModificationDateKey]) {
+            let cutoff = Date().addingTimeInterval(-3600)
+            for f in old where f.lastPathComponent.hasPrefix("widget-") && f.pathExtension == "json" {
+                let m = (try? f.resourceValues(forKeys: [.contentModificationDateKey]))?.contentModificationDate
+                if let m, m < cutoff { try? fm.removeItem(at: f) }
             }
         }
+        let file = dir.appendingPathComponent("widget-\(action)-\(taskId)-\(UUID().uuidString).json")
+        guard (try? body.write(to: file)) != nil else { return }
+
+        var req = URLRequest(url: url)
+        req.httpMethod = "PATCH"
+        req.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        req.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        req.setValue("ios", forHTTPHeaderField: "X-Platform")
+        req.setValue(extensionVersion(), forHTTPHeaderField: "X-App-Version")
+
+        // Unique identifier per request: reusing one while a previous session
+        // with that id is still alive makes the new session's tasks unreliable.
+        let config = URLSessionConfiguration.background(
+            withIdentifier: "com.heelerdigital.acuity.widget.tasks.\(UUID().uuidString)"
+        )
+        config.sharedContainerIdentifier = APP_GROUP
+        config.sessionSendsLaunchEvents = false
+        config.isDiscretionary = false
+        let session = URLSession(configuration: config)
+        session.uploadTask(with: req, fromFile: file).resume()
+        session.finishTasksAndInvalidate()
     }
 }
 
