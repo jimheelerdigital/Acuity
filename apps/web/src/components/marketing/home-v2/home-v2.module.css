@@ -32,15 +32,11 @@
 
 /* Rotating last word of the headline. 5 words + the first repeated, so the
    loop wraps without a jump. */
-/* The highlight sits on each word (not the window), so it hugs that word's
-   width instead of the longest one, and spans the lower half of the
-   letters rather than dropping below the baseline. */
+/* No highlight bar behind the word (Keenan, 2026-10-21: it never sat
+   right); the word itself carries the colour. */
 .rot { display: inline-block; height: 1.05em; overflow: hidden; vertical-align: bottom; }
 .rotIn { display: flex; flex-direction: column; align-items: flex-start; animation: rot 11s cubic-bezier(0.75, 0, 0.25, 1) infinite; }
-.rotIn span {
-  display: block; height: 1.05em; line-height: 1.05em; padding: 0 0.06em;
-  background: linear-gradient(transparent 52%, #FFD3C2 52%, #FFD3C2 86%, transparent 86%);
-}
+.rotIn span { display: block; height: 1.05em; line-height: 1.05em; }
 @keyframes rot {
   0%, 16% { transform: translateY(0); }
   20%, 36% { transform: translateY(-1.05em); }
