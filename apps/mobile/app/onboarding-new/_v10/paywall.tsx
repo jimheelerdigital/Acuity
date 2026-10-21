@@ -165,15 +165,35 @@ export default function V10Paywall() {
   const onBuy = async () => {
     if (!selected || busy) return;
     setBusy("buy");
+    // Paywall outcomes (Keenan, 2026-10-20). `trial` = the selected package
+    // has a free intro offer, i.e. this purchase starts a trial.
+    const product_id = selected.pkg.product.identifier;
+    const trial = selected.trialDays !== null;
+    trackV10("v10_purchase_started", { plan, product_id, trial });
     try {
       const result = await purchaseProPackage(selected.pkg);
-      if (result.status === "cancelled") return;
+      if (result.status === "cancelled") {
+        trackV10("v10_purchase_cancelled", { plan, product_id });
+        return;
+      }
       if (result.status === "success") {
+        trackV10("v10_purchase_completed", {
+          plan,
+          product_id: result.productId,
+          trial,
+          trial_days: selected.trialDays,
+          entitlement_active: result.hasPro,
+        });
         trackV10("v10_plan_decision", { decision: plan });
         await setV10PlanDecision(plan);
         await finish();
         return;
       }
+      trackV10("v10_purchase_failed", {
+        plan,
+        product_id,
+        error: result.status === "error" ? result.message.slice(0, 200) : "purchases_disabled",
+      });
       Alert.alert(
         "Purchase didn't go through",
         result.status === "error" ? result.message : "Purchases are unavailable right now. Please try again."
@@ -186,6 +206,7 @@ export default function V10Paywall() {
   const onRestore = async () => {
     if (busy) return;
     setBusy("restore");
+    trackV10("v10_restore_tapped", {});
     trackV10("v10_plan_decision", { decision: "restore_attempted" });
     try {
       const pro = await restoreProPurchases();

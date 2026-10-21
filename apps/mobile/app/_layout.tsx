@@ -46,6 +46,7 @@ import { useAchievementQueue } from "@/hooks/use-achievement-queue";
 import { initMetaSdk, setMetaUserId } from "@/lib/meta-sdk";
 import { reapplyRemindersIfNeeded } from "@/lib/notifications-boot";
 import { refreshPushTokenOnLaunch } from "@/lib/push-token";
+import { trackFirstOpenOnce } from "@/lib/onboarding-events";
 import { flushWidgetCompletions } from "@/lib/widget-data";
 import {
   handleColdStartNotificationTap,
@@ -206,6 +207,11 @@ function AuthGate() {
       router.push(`/entry/${entryId}`)
     );
   }, [router]);
+
+  // app_first_open, once per install (Keenan, 2026-10-20). Fail-soft.
+  useEffect(() => {
+    void trackFirstOpenOnce();
+  }, []);
 
   useEffect(() => {
     if (loading) return;
