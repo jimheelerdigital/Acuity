@@ -306,11 +306,20 @@ const nextConfig = {
         ["acuity-vs-reflectly-which-journal-app-is-right-for-you-in-20", "/compare/ripple-vs-reflectly"],
         ["acuity-vs-stoic-which-journal-app-is-right-for-you-in-2026", "/compare/ripple-vs-stoic"],
         ["acuity-vs-stoic-app-which-mental-health-journaling-app-offer", "/compare/ripple-vs-stoic"],
+        ["acuity-vs-reflectr-comparing-ai-journaling-for-emotional-ins", "/best-ai-journaling-apps"],
+        ["acuity-vs-notion-journal-which-is-better-for-structured-refl", "/best-ai-journaling-apps"],
       ].map(([slug, destination]) => ({
         source: `/blog/${slug}`,
         destination,
         permanent: true,
       })),
+      // Catch-all (Keenan, 2026-10-21: "only Ripple pages from here on out"):
+      // no /blog URL carrying the old brand name ever renders again.
+      {
+        source: "/blog/:slug((?:.*-)?acuity(?:-.*)?)",
+        destination: "/best-ai-journaling-apps",
+        permanent: true,
+      },
     ];
   },
 };

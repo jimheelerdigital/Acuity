@@ -7,6 +7,28 @@
 
 ---
 
+## [2026-10-21] — No more Acuity pages: every old-brand URL redirects, all post text says Ripple
+
+- **Requested by:** Keenan
+- **Committed by:** Claude Code
+- **Commit hash:** (see git log: "seo: Redirect every remaining Acuity blog URL and purge the old name")
+
+### In plain English (for Keenan)
+Nothing on goripple.io says "Acuity" anymore. Every old blog address with "acuity" in it now forwards permanently to the matching Ripple page, and a catch-all makes sure no acuity address can ever load again. The 24 live posts that still mentioned Acuity (mostly in the hidden FAQ data Google reads) now say Ripple, with the current price. The old getacuity.io domain already forwards everything to goripple.io.
+
+### Technical changes (for Jimmy)
+- `next.config.js`: direct 308s for acuity-vs-reflectr / acuity-vs-notion (they chained through other acuity slugs) to /best-ai-journaling-apps, plus a catch-all `/blog/:slug((?:.*-)?acuity(?:-.*)?)` → /best-ai-journaling-apps after the specific redirects.
+- Data: 24 live ContentPiece rows: "Acuity" → "Ripple" in visible text, hook and faqSchema; /blog/acuity-vs-* links → /compare/ripple-vs-*; leftover $4.99 / "no card required" / "60-second" in the same spots fixed. List in `.tmp/acuity-purge-2026-10-21.txt`.
+- Earlier today (data, same task family): stale Ripple pricing/trial/founding-member claims fixed in 68 posts (`.tmp/stale-pricing-fix-2026-10-21.json`).
+
+### Manual steps needed
+- None
+
+### Notes
+- Verified: zero live posts with "acuity" in slug, title, visible text, hook, FAQ data or links; getacuity.io and getacuity.io/blog/* 308 to goripple.io.
+- Remaining "acuity" strings in code are internal (CSS tokens `acuity-*`, package names, tables) and never shown to visitors.
+- auto-blog already bans "acuity" in generated copy.
+
 ## [2026-10-21] — Comparison hub, "best AI journaling apps" page, live App Store rating
 
 - **Requested by:** Keenan
