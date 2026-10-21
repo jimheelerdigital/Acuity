@@ -113,6 +113,10 @@ export function applyInserts(html: string, inserts: Insert[]): { html: string; p
   return { html: out, placed };
 }
 
+function usableHook(h: unknown): h is string {
+  return typeof h === "string" && h.length >= 80 && h.length <= 220 && !isQueryLikeHook(h) && !/[\u2013\u2014]/.test(h);
+}
+
 /** "Acuity" → "Ripple" in visible text only (URLs and slugs untouched). */
 function rebrand(html: string): string {
   return html.replace(/>([^<]*)</g, (_m, text: string) => `>${text.replace(/\bAcuity\b/g, "Ripple")}<`);
@@ -132,9 +136,6 @@ export function validate(original: string, r: Restyle): { errors: string[]; html
   if (/\bacuity\b/i.test(htmlText(joined))) errors.push('"Acuity" in new text');
   if (/no (credit )?card (required|needed)/i.test(joined)) errors.push('"no card required" in new text');
   if (!r.heroScene || !Array.isArray(r.images) || r.images.length < 2) errors.push("need heroScene and 2 images");
-  if (!r.hook || isQueryLikeHook(r.hook) || r.hook.length > 200) {
-    errors.push("hook must be a reader-facing summary, 140-165 chars");
-  }
   if (errors.length) return { errors };
 
   const { html, placed } = applyInserts(
@@ -237,7 +238,8 @@ export const blogVisualRefreshFn = inngest.createFunction(
           where: { id: restyled.id },
           data: {
             finalBody: `${restyled.metaLine}${body}`,
-            hook: restyle.hook,
+            // The hook is optional polish: keep the existing one if the new one isn't usable.
+            ...(usableHook(restyle.hook) ? { hook: restyle.hook } : {}),
             ...(heroUrl ? { heroImageUrl: heroUrl } : {}),
           },
         });
