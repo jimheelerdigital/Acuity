@@ -37,6 +37,7 @@ goripple.io has a brand-new homepage. It opens with "Say it out loud. Ripple sor
 - curl to goripple.io returns 403 (bot protection), so verify deploys in a real browser, not with curl.
 - Follow-up commit ("style: Fit the headline highlight to each rotating word"): the highlight was one bar sized to the longest word and hung below the baseline; it now sits on each word, behind the lower half of the letters.
 - Follow-up commit ("style: Drop the highlight bar behind the headline word"): Keenan still didn't like it; the bar is gone and the rotating word is plain coral.
+- Follow-up commit ("style: Remove highlight bars behind text site-wide"): the `.mark` highlight (pain section closing line) is gone too; emphasis is weight/colour only.
 
 ## [2026-10-21] — Stop scouting UGC creators in our system (moved to Keenan's ChatGPT agent)
 

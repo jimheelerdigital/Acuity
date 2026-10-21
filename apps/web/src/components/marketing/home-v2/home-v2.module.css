@@ -86,7 +86,9 @@
   animation: bigring 4.5s ease-out infinite;
 }
 
-.mark { background: linear-gradient(transparent 60%, #FFD3C2 60%); }
+/* Emphasis is weight only: highlight bars behind text were removed site-wide
+   (Keenan, 2026-10-21). Kept as a class so existing usages stay valid. */
+.mark { background: none; }
 
 @media (prefers-reduced-motion: reduce) {
   .reveal, .pop, .word, .ring, .bar, .floatA, .floatB, .rotIn, .marquee, .draw, .dot,
