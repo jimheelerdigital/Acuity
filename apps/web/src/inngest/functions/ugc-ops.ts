@@ -50,7 +50,7 @@ export const ugcSendDailyFn = inngest.createFunction(
     concurrency: { limit: 1 },
     triggers: [
       // 15:00 UTC = 10am Central.
-      { cron: "0 15 * * *" },
+      // Daily cron removed 2026-10-21 (creator scouting moved outside this system).
       { event: "ugc/send.requested" },
     ],
   },
@@ -108,7 +108,7 @@ export const ugcWeeklyDigestFn = inngest.createFunction(
     retries: 2,
     triggers: [
       // Mondays 13:00 UTC = 8am Central, the morning after Sunday's run.
-      { cron: "0 13 * * 1" },
+      // Monday cron removed 2026-10-21, per Keenan: no more creator digest email.
       { event: "ugc/digest.requested" },
     ],
   },

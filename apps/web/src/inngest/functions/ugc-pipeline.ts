@@ -48,8 +48,8 @@ export const ugcDiscoverFn = inngest.createFunction(
     // "stuck run" check (running > 6h).
     onFailure: async ({ event, error }) => failRun("discover", event, error),
     triggers: [
-      // Sundays 5:00 UTC, after the 3:30 competitor scrape (same Apify plan).
-      { cron: "0 5 * * 0" },
+      // Weekly cron removed 2026-10-21, per Keenan: creator scouting now
+      // happens outside this system. Manual event only.
       { event: "ugc/discover.requested" },
     ],
   },

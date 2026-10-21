@@ -7,6 +7,27 @@
 
 ---
 
+## [2026-10-21] — Stop scouting UGC creators in our system (moved to Keenan's ChatGPT agent)
+
+- **Requested by:** Keenan
+- **Committed by:** Claude Code
+- **Commit hash:** (see git log: "chore: Stop the scheduled UGC creator scrape and digest")
+
+### In plain English (for Keenan)
+Our system no longer searches for UGC creators or emails you about them. A ChatGPT agent does that now. The Sunday creator scrape, the daily outreach job and the Monday creator digest email are off, and the weekly Social Brief no longer lists creators to review. Running UGC videos as ads is unchanged.
+
+### Technical changes (for Jimmy)
+- apps/web/src/inngest/functions/ugc-pipeline.ts: ugc-discover loses its Sunday cron (event trigger kept).
+- apps/web/src/inngest/functions/ugc-ops.ts: ugc-send-daily and ugc-weekly-digest lose their crons (event triggers kept).
+- apps/web/src/lib/content-factory/social-brief.ts: UGC queue section and stat removed.
+- Not touched: the ugc-ad route, UgcCreator/UgcVideo tables, ugc-brief.
+
+### Manual steps needed
+- None (Inngest synced after deploy)
+
+### Notes
+- Saves the weekly Apify spend the creator scrape used.
+
 ## [2026-10-21] — Mythicals covers build curiosity; remake-cover tool
 
 - **Requested by:** Keenan

@@ -11,7 +11,7 @@
  *   - Reddit audience pulse (Ripple, BWK; Reddit has blocked our RSS feed
  *     since 2026-10-03, so this is usually empty, and the brief says so)
  *   - competitors' Meta ads (Ripple ad groups women / men)
- *   - UGC creators waiting for review and newly discovered niche accounts
+ *   - newly discovered niche accounts
  *
  * Opus turns that into one plan per brand. Stored in the content-factory
  * bucket at social-briefs/latest-<brand>.json (+ a dated copy) and emailed
@@ -134,7 +134,7 @@ export async function gather(brand: SocialBrand): Promise<Inputs> {
     gaps.push("no competitor or Reddit tracking set up for Mythicals (own results only)");
   }
 
-  // Ripple: competitors' Meta ads, UGC queue, niche discoveries.
+  // Ripple: competitors' Meta ads, niche discoveries.
   if (brand === "ripple") {
     try {
       const { getLatestCompetitorBrief } = await import("@/lib/adlab/competitor-research");
@@ -145,14 +145,8 @@ export async function gather(brand: SocialBrand): Promise<Inputs> {
     } catch {
       gaps.push("competitor ad research unavailable");
     }
-    try {
-      const queued = await prisma.ugcCreator.findMany({ where: { status: "queued" }, orderBy: { score: "desc" }, take: 5, select: { handle: true } });
-      const total = await prisma.ugcCreator.count({ where: { status: "queued" } });
-      stats.ugcQueued = total;
-      if (total) parts.push(`UGC CREATORS WAITING FOR REVIEW: ${total} (top: ${queued.map((c) => "@" + c.handle).join(", ")})`);
-    } catch {
-      // optional
-    }
+    // UGC creator queue dropped 2026-10-21, per Keenan: creator scouting now
+    // happens outside this system.
   }
 
   return { text: parts.join("\n\n"), gaps, stats };
@@ -279,7 +273,7 @@ export function socialBriefEmailHtml(briefs: SocialBrief[]): string {
       return `<div style="border-top:3px solid #F97E4E;margin:28px 0 0;padding-top:12px">
 <h2 style="font-size:19px;margin:0 0 6px;color:#111">${BRAND_LABEL[b.brand]}</h2>
 <p style="font-size:15px;margin:0 0 6px;color:#111"><b>${esc(b.headline)}</b></p>
-<p style="font-size:12px;color:#888;margin:0">${b.stats.ownPosts} scored posts · ${b.stats.competitorBriefs} competitor breakouts · ${b.stats.redditThemes} audience themes${b.brand === "ripple" ? ` · ${b.stats.ugcQueued} UGC creators to review` : ""}</p>
+<p style="font-size:12px;color:#888;margin:0">${b.stats.ownPosts} scored posts · ${b.stats.competitorBriefs} competitor breakouts · ${b.stats.redditThemes} audience themes</p>
 ${list("What worked", b.whatWorked)}${list("What flopped", b.whatFlopped)}${list("Competitors", b.competitorMoves)}${list("Audience pulse", b.audiencePulse)}
 <p style="margin:16px 0 0;font-weight:800;font-size:15px;color:#F97E4E">Next week</p>
 ${list("Keep", nw.keep)}${list("Stop", nw.kill)}${list("Start", nw.start)}${list("Hooks to test", nw.hooksToTest)}${list("Formats to test", nw.formatsToTest)}${list("Ad angles", nw.adAngles)}
@@ -292,6 +286,6 @@ ${b.gaps.length ? `<p style="font-size:12px;color:#a66;margin:12px 0 0">Missing 
 <p style="font-size:13px;color:#666;margin:0 0 12px">Week ending ${new Date().toISOString().slice(0, 10)} · one sweep, one plan per brand</p>
 ${yes.length ? `<div style="background:#FFF4EE;border-radius:10px;padding:12px 16px;margin:0 0 8px"><p style="margin:0 0 6px;font-weight:700;font-size:14px">Needs your yes</p><ul style="margin:0;padding-left:20px;font-size:14px;line-height:1.5">${yes.map((y) => `<li>${esc(y)}</li>`).join("")}</ul></div>` : ""}
 ${sections}
-<p style="font-size:11px;color:#999;margin:24px 0 0">Built from the Saturday-night social sweep: our post results, competitor breakouts, competitor Meta ads, the audience pulse and the UGC queue.</p>
+<p style="font-size:11px;color:#999;margin:24px 0 0">Built from the Saturday-night social sweep: our post results, competitor breakouts, competitor Meta ads, and the audience pulse.</p>
 </div></body></html>`;
 }
