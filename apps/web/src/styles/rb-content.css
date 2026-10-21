@@ -1,0 +1,175 @@
+/*
+ * Content pages in the 2026-10 site look: blog, voice-journaling guide,
+ * research. Imported by those layouts.
+ *
+ * .rb-light pins the acuity-* surface/text tokens to the warm light
+ * palette for the subtree, so a visitor with the app's dark theme cookie
+ * still gets dark text on the cream page.
+ *
+ * .rb-* component classes are the vocabulary auto-blog and the visual
+ * refresh write into post HTML (lib/blog-visuals.ts BLOG_COMPONENT_GUIDE).
+ */
+
+.rb-light {
+  --acuity-bg: #FBF8F4;
+  --acuity-bg-sub: #F6F1EA;
+  --acuity-bg-inset: #F3EEE8;
+  --acuity-bg-inset-strong: #ECE5DC;
+  --acuity-card-bg: #FFFFFF;
+  --acuity-card-bg-tint: #FFF4EF;
+  --acuity-card-bg-raised: #FFFFFF;
+  --acuity-card-border: #EEE7DE;
+  --acuity-text: #1B1815;
+  --acuity-text-sec: #4A443E;
+  --acuity-text-ter: #57514B;
+  --acuity-text-quiet: #6B645D;
+  --acuity-line: #EEE7DE;
+  --acuity-line-strong: #E2D9CE;
+  --acuity-shadow-soft: 0 6px 18px rgba(60, 40, 20, 0.06);
+  --acuity-shadow-lift: 0 24px 50px rgba(60, 40, 20, 0.12);
+  --acuity-primary: #B9472A;
+  background: #FBF8F4;
+  color: #1B1815;
+}
+
+/* ── Article body ─────────────────────────────────────────────────── */
+
+.rb-article {
+  font-size: 18px;
+  line-height: 1.75;
+  color: #2B2622;
+}
+.rb-article > * + * { margin-top: 1.15em; }
+.rb-article p { margin: 0; }
+.rb-article p + p { margin-top: 1.15em; }
+.rb-article h2 {
+  font-family: var(--font-display), system-ui, sans-serif;
+  font-size: 30px; line-height: 1.15; letter-spacing: -0.025em; font-weight: 800;
+  color: #1B1815; margin: 2.2em 0 0.6em; scroll-margin-top: 110px;
+}
+.rb-article h3 {
+  font-family: var(--font-display), system-ui, sans-serif;
+  font-size: 22px; line-height: 1.25; letter-spacing: -0.015em; font-weight: 800;
+  color: #1B1815; margin: 1.8em 0 0.5em;
+}
+.rb-article a { color: #B9472A; font-weight: 600; text-decoration: underline; text-decoration-thickness: 1.5px; text-underline-offset: 3px; }
+.rb-article a:hover { color: #8F3519; }
+.rb-article strong { color: #1B1815; }
+/* Plain lists only (direct children); component lists style themselves. */
+.rb-article > ul:not([class]), .rb-article > ol:not([class]) { padding-left: 1.3em; }
+.rb-article > ul:not([class]) > li, .rb-article > ol:not([class]) > li { margin-top: 0.45em; }
+.rb-article > ul:not([class]) > li::marker { color: #F27A55; }
+.rb-article > ol:not([class]) > li::marker { color: #B9472A; font-weight: 800; }
+.rb-article blockquote:not([class]) {
+  margin-left: 0; padding: 4px 0 4px 20px; border-left: 3px solid #F27A55; color: #4A443E; font-style: italic;
+}
+.rb-article hr { border: 0; border-top: 1px solid #EEE7DE; margin: 2.4em 0; }
+.rb-article img { max-width: 100%; height: auto; }
+
+/* Tables (comparison posts) */
+.rb-article table {
+  width: 100%; border-collapse: separate; border-spacing: 0; font-size: 15.5px; line-height: 1.5;
+  border: 1px solid #EEE7DE; border-radius: 18px; overflow: hidden; background: #FFFFFF;
+  display: block; overflow-x: auto;
+}
+.rb-article thead th {
+  background: #1B1815; color: #FFFFFF; text-align: left; font-weight: 800; padding: 14px 16px; white-space: nowrap;
+}
+.rb-article tbody td { padding: 13px 16px; border-top: 1px solid #EEE7DE; vertical-align: top; color: #2B2622; }
+.rb-article tbody tr:nth-child(even) td { background: #FBF8F4; }
+
+/* Labels shared by components */
+.rb-label {
+  margin: 0 !important; font-family: var(--font-display), system-ui, sans-serif;
+  font-size: 12.5px; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase;
+}
+
+/* Key takeaways */
+.rb-takeaways {
+  background: #FFFFFF; border: 1px solid #EEE7DE; border-radius: 24px; padding: 24px 26px;
+  box-shadow: 0 14px 34px rgba(60, 40, 20, 0.07); margin: 1.8em 0;
+}
+.rb-takeaways .rb-label { color: #B9472A; }
+.rb-takeaways ul { list-style: none; padding: 0; margin: 14px 0 0; display: grid; gap: 12px; }
+.rb-takeaways li { position: relative; padding-left: 34px; font-size: 17px; line-height: 1.55; font-weight: 600; color: #1B1815; }
+.rb-takeaways li::before {
+  content: ""; position: absolute; left: 0; top: 3px; width: 22px; height: 22px; border-radius: 999px;
+  background: #D9F0E6 url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%231D6B51' stroke-width='3.5' stroke-linecap='round' stroke-linejoin='round'><path d='M5 12l5 5L20 7'/></svg>") center / 13px no-repeat;
+}
+
+/* Callout */
+.rb-callout {
+  background: #FFF4EF; border-radius: 22px; padding: 20px 24px; margin: 1.8em 0;
+  border: 1px solid #FBDCCF;
+}
+.rb-callout .rb-label { color: #8F3519; }
+.rb-callout p:not(.rb-label) { margin-top: 8px !important; font-size: 17px; line-height: 1.6; color: #2B2622; }
+
+/* Pull quote */
+.rb-pull {
+  margin: 2em 0; padding: 0; border: 0; text-align: left;
+}
+.rb-pull p {
+  font-family: var(--font-display), system-ui, sans-serif; font-size: 27px; line-height: 1.3;
+  letter-spacing: -0.02em; font-weight: 800; color: #1B1815; font-style: normal;
+}
+.rb-pull p::before {
+  content: "“"; display: block; color: #F27A55; font-size: 64px; line-height: 0.6; margin-bottom: 10px;
+}
+
+/* Example card: what you say → what Ripple catches */
+.rb-example {
+  display: grid; gap: 14px; margin: 2em 0; padding: 18px; border-radius: 26px;
+  background: #FFFFFF; border: 1px solid #EEE7DE; box-shadow: 0 24px 50px rgba(60, 40, 20, 0.1);
+}
+.rb-said { background: #FBF8F4; border-radius: 18px; padding: 16px 18px; }
+.rb-said .rb-label { color: #57514B; }
+.rb-said p:not(.rb-label) { margin-top: 8px !important; font-size: 17px; line-height: 1.55; font-weight: 500; color: #1B1815; }
+.rb-caught .rb-label { color: #B9472A; padding: 0 4px; }
+.rb-caught ul { list-style: none; padding: 0; margin: 10px 0 0; display: grid; gap: 8px; }
+.rb-caught li { border-radius: 14px; padding: 11px 14px; font-size: 15.5px; font-weight: 700; line-height: 1.45; }
+.rb-caught li.rb-task { border: 1px solid #EEE7DE; background: #FFFFFF; padding-left: 40px; position: relative; }
+.rb-caught li.rb-task::before {
+  content: ""; position: absolute; left: 14px; top: 13px; width: 16px; height: 16px; border-radius: 5px; border: 2px solid #D8CDBF;
+}
+.rb-caught li.rb-mood { background: #FDE3D8; color: #5A2A1A; }
+.rb-caught li.rb-habit { background: #D9F0E6; color: #164C3A; }
+.rb-caught li.rb-pattern { background: #6D5EF0; color: #FFFFFF; }
+
+/* Numbered steps */
+.rb-steps { list-style: none; counter-reset: rb-step; padding: 0; margin: 1.8em 0; display: grid; gap: 12px; }
+.rb-steps li {
+  counter-increment: rb-step; position: relative; background: #FFFFFF; border: 1px solid #EEE7DE;
+  border-radius: 20px; padding: 18px 20px 18px 70px; font-size: 17px; line-height: 1.6;
+}
+.rb-steps li::before {
+  content: counter(rb-step); position: absolute; left: 18px; top: 16px; width: 36px; height: 36px; border-radius: 12px;
+  display: flex; align-items: center; justify-content: center; background: #F27A55; color: #1B1815;
+  font-family: var(--font-display), system-ui, sans-serif; font-weight: 800; font-size: 17px;
+}
+.rb-steps li:nth-child(3n + 2)::before { background: #6D5EF0; color: #FFFFFF; }
+.rb-steps li:nth-child(3n + 3)::before { background: #2E9C78; color: #FFFFFF; }
+
+/* Inline images */
+.rb-figure { margin: 2.2em -8px; }
+.rb-figure img { display: block; width: 100%; height: auto; border-radius: 24px; aspect-ratio: 3 / 2; object-fit: cover; background: #F3EEE8; }
+.rb-figure figcaption { margin-top: 10px; padding: 0 8px; font-size: 14.5px; line-height: 1.5; color: #57514B; }
+
+@media (min-width: 900px) {
+  .rb-article { font-size: 19px; }
+  .rb-article h2 { font-size: 36px; }
+  .rb-figure { margin-left: -48px; margin-right: -48px; }
+  .rb-example { grid-template-columns: 1fr 1fr; padding: 20px; }
+  .rb-pull p { font-size: 32px; }
+}
+
+/* Reading progress bar (blog post) */
+.rb-progress {
+  position: fixed; left: 0; right: 0; top: var(--install-banner-h, 0px); height: 3px; z-index: 70;
+  transform-origin: left; transform: scaleX(0); background: #F27A55; pointer-events: none;
+}
+@supports (animation-timeline: scroll()) {
+  .rb-progress { animation: rb-grow linear both; animation-timeline: scroll(root); }
+  @keyframes rb-grow { to { transform: scaleX(1); } }
+}
+@media (prefers-reduced-motion: reduce) { .rb-progress { display: none; } }

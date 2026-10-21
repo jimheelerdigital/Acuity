@@ -110,7 +110,7 @@ export default async function BlogIndex() {
   );
 
   return (
-    <main className="pt-32 pb-24 px-6">
+    <main className="pt-10 pb-24 px-5 min-[900px]:pt-16">
       <div className="mx-auto max-w-4xl">
         <h1 className="text-4xl font-extrabold tracking-tight sm:text-5xl mb-4">
           The Ripple Blog

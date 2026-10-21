@@ -7,6 +7,34 @@
 
 ---
 
+## [2026-10-21] — Blog redesign: new look, real-life images, visual components
+
+- **Requested by:** Keenan
+- **Committed by:** Claude Code
+- **Commit hash:** (see git log: "feat: Redesign blog posts with house-style images and visual components")
+
+### In plain English (for Keenan)
+Blog posts, the voice journaling guide and the research page now match the new homepage: warm light pages, the new nav, a table of contents, a reading progress bar, a mid-article "try it" card and a new end card. Images are now warm, real-life photos of the situation each post is about (a parked car, a kitchen table), not dark purple abstracts. Posts can carry a Key takeaways box, tip callouts, pull quotes, step cards and a "you say / Ripple catches" example, plus two images through the article. New auto-blog posts get all of this automatically, and a job restyles existing posts (being run on the top 10 by search impressions).
+
+### Technical changes (for Jimmy)
+- New `lib/blog-visuals.ts`: HOUSE_IMAGE_STYLE + buildImagePrompt, BLOG_COMPONENT_GUIDE (rb-* markup vocabulary), IMAGE_SCENE_GUIDE, insertInlineImages (<!--rb-image-N--> slots → figures), cleanHook/isQueryLikeHook, withHeadingIds (TOC), splitAtMiddleH2 (mid CTA).
+- `lib/blog-image.ts`: `opts { fileName, styled }` (versioned names bust caches; styled wraps the scene in the house style).
+- New `styles/rb-content.css`: `.rb-light` pins acuity-* tokens to the warm light palette (dark-theme cookie can't flip text colour on cream), article typography, rb-* components, figures, scroll-driven progress bar.
+- New `components/marketing/site-chrome/SiteChrome.tsx` (SiteNav, SiteFooter with Learn links, ContentShell); blog, voice-journaling and research layouts use it.
+- `app/blog/[slug]/page.tsx`: one PostView for static + DB posts (header, hero or brand-ring fallback, TOC, mid CTA, new end CTA, "Keep reading" cards with images); meta description + hook pass through cleanHook.
+- `lib/blog-posts.ts`: BlogPost gains heroImage/heroAlt and an "html" block type; best-journaling-app and ai-journaling-app-2026 restyled by hand (takeaways, callout, steps, example card, 2 figures, new heroes).
+- `inngest/functions/auto-blog.ts`: prompt carries the component + scene guides, `inlineImages` output, reader-facing metaDescription rule; validation requires rb-takeaways; new steps generate hero (styled, `-v2`) + 2 inline images and insert them; GSC topic refill skips AI-assistant prompts (>9 words or "explain/recommend/help me…").
+- New `inngest/functions/blog-visual-refresh.ts` (event admin/blog-visual-refresh.requested, registered in api/inngest) + `POST /api/admin/blog/visual-refresh { slugs }` (Bearer CRON_SECRET or admin). Restyle is validated: all original links kept, ≥85% of original sentences verbatim, takeaways + 2 image slots present.
+- Data: one DB post hook rewritten (online-journal-tools-vs-notion: was "Compare … to help me understand"); before/after in `.tmp/hook-fix-2026-10-21.json`. Archive hero images regenerated in the house style by a local script (`-v2.png` files).
+
+### Manual steps needed
+- None (Inngest resync + top-10 refresh trigger run by Claude Code after deploy)
+
+### Notes
+- gpt-image-2 house-style images verified by eye on 6 static-post images before use.
+- Running blog-image locally needs `tsx --conditions react-server` (supabase.server is server-only).
+- `ContentPiece.updatedAt` changes on any DB write (incl. image backfills), so sitemap/dateModified will move for these posts today.
+
 ## [2026-10-21] — Site-wide SEO pass + five new search landing pages
 
 - **Requested by:** Keenan

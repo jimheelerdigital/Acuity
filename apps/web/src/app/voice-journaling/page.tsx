@@ -130,7 +130,7 @@ export default function VoiceJournalingPage() {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
-      <article className="pt-32 pb-24 px-6">
+      <article className="pt-10 pb-24 px-5 min-[900px]:pt-16">
         <div className="mx-auto max-w-3xl">
           {/* Breadcrumb */}
           <nav aria-label="Breadcrumb" className="mb-8 text-sm text-acuity-text-sec">

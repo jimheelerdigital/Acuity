@@ -3,8 +3,8 @@ import Image from "next/image";
 import Link from "next/link";
 import type { Metadata } from "next";
 import { getPostBySlug, getAllSlugs, BLOG_POSTS } from "@/lib/blog-posts";
-import { BlogCtaButtons } from "@/components/blog-try-button";
 import { OG_IMAGE } from "@/lib/seo";
+import { cleanHook, splitAtMiddleH2, withHeadingIds, type TocItem } from "@/lib/blog-visuals";
 
 export const revalidate = 300; // 5 minutes
 
@@ -128,7 +128,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const dynamicPost = await getDynamicPost(params.slug);
   if (!dynamicPost) return {};
 
-  const description = extractMetaDescription(
+  const description = cleanHook(
+    extractMetaDescription(dynamicPost.finalBody ?? dynamicPost.body),
     dynamicPost.finalBody ?? dynamicPost.body
   );
   const { published, modified } = dynamicDates(dynamicPost);
@@ -314,24 +315,21 @@ function FaqJsonLd({ faqSchema }: { faqSchema: unknown }) {
 
 function Breadcrumbs({ title }: { title: string }) {
   return (
-    <nav aria-label="Breadcrumb" className="mb-8 text-sm text-acuity-text-sec">
-      <ol className="flex flex-wrap items-center gap-1.5">
+    <nav aria-label="Breadcrumb" className="mb-6 text-[14px] font-semibold text-[#57514B]">
+      <ol className="m-0 flex list-none flex-wrap items-center gap-2 p-0">
         <li>
-          <Link href="/" className="hover:text-acuity-primary transition-colors">
+          <Link href="/" className="inline-flex min-h-11 items-center hover:text-[#1B1815]">
             Home
           </Link>
         </li>
-        <li aria-hidden="true">›</li>
+        <li aria-hidden="true">/</li>
         <li>
-          <Link href="/blog" className="hover:text-acuity-primary transition-colors">
+          <Link href="/blog" className="inline-flex min-h-11 items-center hover:text-[#1B1815]">
             Blog
           </Link>
         </li>
-        <li aria-hidden="true">›</li>
-        <li
-          aria-current="page"
-          className="truncate max-w-[14rem] sm:max-w-md text-acuity-text"
-        >
+        <li aria-hidden="true">/</li>
+        <li aria-current="page" className="max-w-[14rem] truncate text-[#1B1815] sm:max-w-md">
           {title}
         </li>
       </ol>
@@ -353,6 +351,13 @@ function sanitizeHtml(html: string): string {
 
 // ─── Page ───────────────────────────────────────────────────────────────────
 
+/** Static posts store blocks; render them to the same HTML shape as DB posts. */
+function staticPostHtml(post: NonNullable<ReturnType<typeof getPostBySlug>>): string {
+  return post.content
+    .map((block) => (block.tag === "html" ? block.text : `<${block.tag}>${block.text}</${block.tag}>`))
+    .join("\n");
+}
+
 export default async function BlogPostPage({ params }: Props) {
   // Try static post first
   const staticPost = getPostBySlug(params.slug);
@@ -360,68 +365,18 @@ export default async function BlogPostPage({ params }: Props) {
     return (
       <>
         <BlogJsonLdStatic post={staticPost} />
-        <article className="pt-32 pb-24 px-6">
-          <div className="mx-auto max-w-3xl">
-            <div className="mb-12">
-              <Breadcrumbs title={staticPost.title} />
-              <div className="flex items-center gap-3 text-sm text-acuity-text-sec mb-6">
-                <time dateTime={staticPost.publishedAt}>
-                  {new Date(staticPost.publishedAt).toLocaleDateString("en-US", {
-                    month: "long",
-                    day: "numeric",
-                    year: "numeric",
-                  })}
-                </time>
-                <span className="text-acuity-line-strong">|</span>
-                <span>{staticPost.readingTime}</span>
-                <span className="text-acuity-line-strong">|</span>
-                <span>By Keenan Assaraf</span>
-              </div>
-              <h1 className="text-3xl font-extrabold tracking-tight sm:text-4xl lg:text-5xl leading-[1.1] mb-6">
-                {staticPost.title}
-              </h1>
-              <p className="text-lg text-acuity-text leading-relaxed">
-                {staticPost.excerpt}
-              </p>
-            </div>
-            <div className="h-px bg-acuity-line mb-12" />
-            <div className="prose-custom">
-              {staticPost.content.map((block, i) => {
-                switch (block.tag) {
-                  case "h2":
-                    return (
-                      <h2
-                        key={i}
-                        className="text-2xl font-bold tracking-tight mt-12 mb-4 text-acuity-text"
-                        dangerouslySetInnerHTML={{ __html: block.text }}
-                      />
-                    );
-                  case "h3":
-                    return (
-                      <h3
-                        key={i}
-                        className="text-xl font-semibold mt-8 mb-3 text-acuity-text"
-                        dangerouslySetInnerHTML={{ __html: block.text }}
-                      />
-                    );
-                  case "p":
-                    return (
-                      <p
-                        key={i}
-                        className="text-base text-acuity-text leading-[1.8] mb-5"
-                        dangerouslySetInnerHTML={{ __html: block.text }}
-                      />
-                    );
-                }
-              })}
-            </div>
-            <BlogCta />
-            <RelatedPosts
-              currentSlug={staticPost.slug}
-              currentText={`${staticPost.title} ${staticPost.targetKeyword ?? ""}`}
-            />
-          </div>
-        </article>
+        <PostView
+          slug={staticPost.slug}
+          title={staticPost.title}
+          eyebrow={staticPost.targetKeyword}
+          hook={staticPost.excerpt}
+          publishedAt={staticPost.publishedAt}
+          readingTime={staticPost.readingTime}
+          heroImageUrl={staticPost.heroImage ?? null}
+          heroAlt={staticPost.heroAlt ?? staticPost.title}
+          html={staticPostHtml(staticPost)}
+          relatedText={`${staticPost.title} ${staticPost.targetKeyword ?? ""}`}
+        />
       </>
     );
   }
@@ -430,8 +385,7 @@ export default async function BlogPostPage({ params }: Props) {
   const dynamicPost = await getDynamicPost(params.slug);
   if (!dynamicPost) notFound();
 
-  // Trimmed posts return 410 Gone via /api/blog-gone/[slug] route handler.
-  // If the request reaches here (middleware bypass), fall through to notFound().
+  // Trimmed posts: nothing routes to a 410 handler, so they 404.
   if (dynamicPost.status === "TRIMMED") {
     notFound();
   }
@@ -441,66 +395,154 @@ export default async function BlogPostPage({ params }: Props) {
     permanentRedirect(`/blog/${dynamicPost.redirectTo}`);
   }
 
-  const htmlBody = sanitizeHtml(dynamicPost.finalBody ?? dynamicPost.body);
-  const publishedAt = dynamicDates(dynamicPost).published;
+  const htmlBody = sanitizeHtml(dynamicPost.finalBody ?? dynamicPost.body).replace(
+    /^\s*<meta[^>]*>\s*/i,
+    ""
+  );
   const wordCount = htmlBody.replace(/<[^>]+>/g, " ").split(/\s+/).length;
-  const readingTime = `${Math.max(1, Math.round(wordCount / 250))} min read`;
 
   return (
     <>
       <BlogJsonLdDynamic post={dynamicPost} />
       <FaqJsonLd faqSchema={dynamicPost.faqSchema} />
-      <article className="pt-32 pb-24 px-6">
-        <div className="mx-auto max-w-3xl">
-          <div className="mb-12">
-            <Breadcrumbs title={dynamicPost.title} />
-            <div className="flex items-center gap-3 text-sm text-acuity-text-sec mb-6">
-              <time dateTime={publishedAt}>
-                {new Date(publishedAt).toLocaleDateString("en-US", {
-                  month: "long",
-                  day: "numeric",
-                  year: "numeric",
-                })}
-              </time>
-              <span className="text-acuity-line-strong">|</span>
-              <span>{readingTime}</span>
-              <span className="text-acuity-line-strong">|</span>
-              <span>By Keenan Assaraf</span>
-            </div>
-            <h1 className="text-3xl font-extrabold tracking-tight sm:text-4xl lg:text-5xl leading-[1.1] mb-6">
-              {dynamicPost.title}
-            </h1>
-            <p className="text-lg text-acuity-text leading-relaxed">
-              {dynamicPost.hook}
-            </p>
-          </div>
-          {dynamicPost.heroImageUrl && (
-            <div className="relative w-full aspect-[16/9] rounded-xl overflow-hidden mb-12">
-              <Image
-                src={dynamicPost.heroImageUrl}
-                alt={dynamicPost.title}
-                fill
-                className="object-cover"
-                sizes="(max-width: 768px) 100vw, 768px"
-                priority
-              />
-            </div>
-          )}
-          {!dynamicPost.heroImageUrl && (
-            <div className="h-px bg-acuity-line mb-12" />
-          )}
-          <div
-            className="acuity-blog-prose prose prose-base max-w-none prose-headings:text-acuity-text prose-headings:font-bold prose-h2:text-2xl prose-h2:tracking-tight prose-h2:mt-12 prose-h2:mb-4 prose-h3:text-xl prose-h3:mt-8 prose-h3:mb-3 prose-p:text-acuity-text prose-p:text-base prose-p:leading-[1.8] prose-p:mb-5 prose-a:text-acuity-primary prose-strong:text-acuity-text prose-li:text-acuity-text prose-li:text-base prose-blockquote:border-acuity-primary/40 prose-blockquote:text-acuity-text-sec prose-th:text-acuity-text prose-td:text-acuity-text prose-table:text-acuity-text"
-            dangerouslySetInnerHTML={{ __html: htmlBody }}
-          />
-          <BlogCta />
-          <RelatedPosts
-            currentSlug={params.slug}
-            currentText={`${dynamicPost.title} ${dynamicPost.targetKeyword ?? ""}`}
-          />
-        </div>
-      </article>
+      <PostView
+        slug={dynamicPost.slug}
+        title={dynamicPost.title}
+        eyebrow={dynamicPost.targetKeyword}
+        hook={cleanHook(dynamicPost.hook, htmlBody)}
+        publishedAt={dynamicDates(dynamicPost).published}
+        readingTime={`${Math.max(1, Math.round(wordCount / 250))} min read`}
+        heroImageUrl={dynamicPost.heroImageUrl}
+        heroAlt={dynamicPost.title}
+        html={htmlBody}
+        relatedText={`${dynamicPost.title} ${dynamicPost.targetKeyword ?? ""}`}
+      />
     </>
+  );
+}
+
+// ─── Post layout (2026-10 redesign) ─────────────────────────────────────────
+
+function PostView(props: {
+  slug: string;
+  title: string;
+  eyebrow: string | null;
+  hook: string;
+  publishedAt: string;
+  readingTime: string;
+  heroImageUrl: string | null;
+  heroAlt: string;
+  html: string;
+  relatedText: string;
+}) {
+  const { html, toc } = withHeadingIds(props.html);
+  const [first, second] = splitAtMiddleH2(html);
+  const date = new Date(props.publishedAt).toLocaleDateString("en-US", {
+    month: "long",
+    day: "numeric",
+    year: "numeric",
+  });
+
+  return (
+    <article className="pb-24">
+      <div aria-hidden="true" className="rb-progress" />
+      <header className="relative overflow-hidden px-5 pb-10 pt-8 min-[900px]:pb-14 min-[900px]:pt-12">
+        <div aria-hidden="true" className="absolute right-[-160px] top-[-160px] h-[420px] w-[420px] rounded-full bg-[#FDE6DC] min-[900px]:right-[-120px] min-[900px]:h-[620px] min-[900px]:w-[620px]" />
+        <div className="relative mx-auto max-w-[760px]">
+          <Breadcrumbs title={props.title} />
+          {props.eyebrow && (
+            <p className="mb-4 text-[13px] font-extrabold uppercase tracking-[0.1em] text-[#B9472A]">{props.eyebrow}</p>
+          )}
+          <h1 className="m-0 text-[36px] font-extrabold leading-[1.08] tracking-[-0.035em] text-[#1B1815] min-[900px]:text-[52px]">
+            {props.title}
+          </h1>
+          {props.hook && (
+            <p className="mt-5 text-[18px] leading-[1.6] text-[#4A443E] min-[900px]:text-[20px]">{props.hook}</p>
+          )}
+          <div className="mt-6 flex flex-wrap items-center gap-x-3 gap-y-2 text-[14px] font-semibold text-[#57514B]">
+            <span aria-hidden="true" className="flex h-9 w-9 items-center justify-center rounded-full bg-[#F27A55] text-[14px] font-extrabold text-[#1B1815]">
+              K
+            </span>
+            <span className="text-[#1B1815]">By Keenan Assaraf</span>
+            <span aria-hidden="true">·</span>
+            <time dateTime={props.publishedAt}>{date}</time>
+            <span aria-hidden="true">·</span>
+            <span>{props.readingTime}</span>
+          </div>
+        </div>
+      </header>
+
+      <div className="mx-auto max-w-[1000px] px-5">
+        {props.heroImageUrl ? (
+          <div className="relative aspect-[3/2] w-full overflow-hidden rounded-[28px] bg-[#F3EEE8] shadow-[0_30px_70px_rgba(60,40,20,0.14)]">
+            <Image src={props.heroImageUrl} alt={props.heroAlt} fill className="object-cover" sizes="(max-width: 1000px) 100vw, 1000px" priority />
+          </div>
+        ) : (
+          <HeroArt />
+        )}
+      </div>
+
+      <div className="mx-auto mt-12 max-w-[720px] px-5">
+        {toc.length >= 3 && <Toc items={toc} />}
+        <div className="rb-article" dangerouslySetInnerHTML={{ __html: first }} />
+        {second && <MidCta />}
+        {second && <div className="rb-article" dangerouslySetInnerHTML={{ __html: second }} />}
+        <BlogCta />
+      </div>
+      <div className="mx-auto max-w-[1000px] px-5">
+        <RelatedPosts currentSlug={props.slug} currentText={props.relatedText} />
+      </div>
+    </article>
+  );
+}
+
+/** Shown when a post has no hero image yet: brand rings instead of an empty gap. */
+function HeroArt() {
+  return (
+    <div aria-hidden="true" className="relative aspect-[3/1] w-full overflow-hidden rounded-[28px] bg-[#F27A55]">
+      {[120, 200, 280, 360].map((r) => (
+        <span
+          key={r}
+          className="absolute left-1/2 top-1/2 rounded-full border-2 border-white/30"
+          style={{ width: r * 2, height: r * 2, marginLeft: -r, marginTop: -r }}
+        />
+      ))}
+    </div>
+  );
+}
+
+function Toc({ items }: { items: TocItem[] }) {
+  return (
+    <details open className="group mb-10 rounded-[22px] border border-[#EEE7DE] bg-white px-6 py-5">
+      <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between text-[13px] font-extrabold uppercase tracking-[0.1em] text-[#57514B]">
+        In this article
+        <span aria-hidden="true" className="text-[20px] text-[#B9472A] transition-transform group-open:rotate-45">+</span>
+      </summary>
+      <ol className="m-0 mt-2 grid list-none gap-1 p-0">
+        {items.map((t, i) => (
+          <li key={t.id}>
+            <a href={`#${t.id}`} className="flex min-h-11 items-baseline gap-3 py-1 text-[16px] font-semibold leading-snug text-[#1B1815] no-underline hover:text-[#B9472A]">
+              <span className="w-5 shrink-0 text-[13px] font-extrabold text-[#B9472A]">{i + 1}</span>
+              {t.text}
+            </a>
+          </li>
+        ))}
+      </ol>
+    </details>
+  );
+}
+
+function MidCta() {
+  return (
+    <aside className="my-12 flex flex-col gap-4 rounded-[24px] bg-[#1B1815] p-6 text-white min-[700px]:flex-row min-[700px]:items-center min-[700px]:justify-between min-[700px]:p-7">
+      <div>
+        <p className="m-0 text-[13px] font-extrabold uppercase tracking-[0.1em] text-[#F7A386]">Try it on your own week</p>
+        <p className="m-0 mt-2 text-[18px] font-bold leading-[1.4]">Say what&apos;s on your mind. Ripple turns it into your to-do list, habits and patterns.</p>
+      </div>
+      <a href="/start" className="inline-flex h-12 shrink-0 items-center justify-center rounded-full bg-[#F27A55] px-6 text-[16px] font-extrabold text-[#1B1815] no-underline">
+        Start free week
+      </a>
+    </aside>
   );
 }
 
@@ -509,33 +551,34 @@ export default async function BlogPostPage({ params }: Props) {
 function BlogCta() {
   return (
     <>
-      <div className="mt-16 rounded-xl border border-acuity-primary/30 bg-acuity-card-bg p-8 sm:p-10 text-center">
-        <h2 className="text-2xl font-bold mb-3">
+      <div className="relative mt-16 overflow-hidden rounded-[30px] bg-[#F27A55] px-6 py-12 text-center min-[700px]:px-10">
+        {[110, 180, 250].map((r) => (
+          <span
+            key={r}
+            aria-hidden="true"
+            className="pointer-events-none absolute left-1/2 top-1/2 rounded-full border-2 border-white/25"
+            style={{ width: r * 2, height: r * 2, marginLeft: -r, marginTop: -r }}
+          />
+        ))}
+        <h2 className="relative m-0 text-[30px] font-extrabold leading-[1.1] tracking-[-0.03em] text-[#1B1815] min-[700px]:text-[38px]">
           Say it once. Ripple remembers.
         </h2>
-        <p className="text-acuity-text-sec mb-6 max-w-md mx-auto">
-          Talk it out and Ripple pulls out your tasks, tracks your habits
-          and mood, and shows you your patterns each week.
+        <p className="relative mx-auto mt-3 max-w-md text-[17px] font-semibold leading-[1.5] text-[#2B211C]">
+          Talk it out and Ripple pulls out your tasks, tracks your habits and mood, and shows you your patterns each week.
         </p>
-        <BlogCtaButtons />
-        <p className="mt-3 text-xs text-acuity-text-sec">
-          7-day free trial &middot; Cancel anytime
-        </p>
-        <p className="mt-5 text-sm">
-          <Link
-            href="/voice-journaling"
-            className="text-acuity-text-sec underline underline-offset-4 hover:text-acuity-primary transition-colors"
-          >
+        <a href="/start" className="relative mt-6 inline-flex h-14 items-center justify-center rounded-full bg-[#1B1815] px-8 text-[17px] font-extrabold text-white no-underline">
+          Start your free week
+        </a>
+        <p className="relative mt-3 text-[14px] font-semibold text-[#2B211C]">7-day free trial · Cancel anytime</p>
+        <p className="relative mt-4 text-[15px]">
+          <Link href="/voice-journaling" className="font-bold text-[#1B1815] underline underline-offset-4">
             New to voice journaling? Start with the guide
           </Link>
         </p>
       </div>
-      <div className="mt-12 text-center">
-        <Link
-          href="/blog"
-          className="text-sm text-acuity-text-sec hover:text-acuity-primary transition-colors"
-        >
-          &larr; More articles
+      <div className="mt-10 text-center">
+        <Link href="/blog" className="inline-flex min-h-11 items-center text-[15px] font-bold text-[#57514B] hover:text-[#1B1815]">
+          ← More articles
         </Link>
       </div>
     </>
@@ -573,7 +616,7 @@ async function RelatedPosts({
   currentSlug: string;
   currentText: string;
 }) {
-  let candidates: Array<{ slug: string; title: string; keyword: string }> = [];
+  let candidates: Array<{ slug: string; title: string; keyword: string; image: string | null }> = [];
 
   try {
     const { prisma } = await import("@/lib/prisma");
@@ -584,12 +627,13 @@ async function RelatedPosts({
         slug: { not: null },
       },
       orderBy: { distributedAt: "desc" },
-      select: { slug: true, title: true, targetKeyword: true },
+      select: { slug: true, title: true, targetKeyword: true, heroImageUrl: true },
     });
     candidates = pieces.map((p) => ({
       slug: p.slug!,
       title: p.title,
       keyword: p.targetKeyword ?? "",
+      image: p.heroImageUrl,
     }));
   } catch {
     // DB unavailable — fall through to static posts
@@ -600,6 +644,7 @@ async function RelatedPosts({
       slug: post.slug,
       title: post.title,
       keyword: post.targetKeyword ?? "",
+      image: post.heroImage ?? null,
     });
   }
 
@@ -625,21 +670,26 @@ async function RelatedPosts({
   if (related.length === 0) return null;
 
   return (
-    <div className="mt-16">
-      <h2 className="text-xl font-bold mb-6 text-acuity-text">Related articles</h2>
-      <div className="grid gap-4 sm:grid-cols-3">
+    <section className="mt-20">
+      <h2 className="m-0 mb-6 text-[28px] font-extrabold tracking-[-0.03em] text-[#1B1815]">Keep reading</h2>
+      <div className="grid gap-5 min-[700px]:grid-cols-3">
         {related.map((post) => (
           <Link
             key={post.slug}
             href={`/blog/${post.slug}`}
-            className="group rounded-lg border border-acuity-line bg-acuity-card-bg p-5 transition hover:border-acuity-primary/40"
+            className="group flex flex-col overflow-hidden rounded-[24px] border border-[#EEE7DE] bg-white no-underline transition-transform hover:-translate-y-1"
           >
-            <h3 className="text-sm font-semibold text-acuity-text group-hover:text-acuity-primary transition-colors leading-snug">
+            <div className="relative aspect-[3/2] w-full bg-[#FDE6DC]">
+              {post.image && (
+                <Image src={post.image} alt="" fill className="object-cover" sizes="(max-width: 700px) 100vw, 320px" />
+              )}
+            </div>
+            <h3 className="m-0 p-5 text-[17px] font-extrabold leading-snug text-[#1B1815] group-hover:text-[#B9472A]">
               {post.title}
             </h3>
           </Link>
         ))}
       </div>
-    </div>
+    </section>
   );
 }

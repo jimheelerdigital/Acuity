@@ -48,6 +48,7 @@ import {
   autoBlogPruneFn,
 } from "@/inngest/functions/auto-blog";
 import { blogRewriteTriageFn } from "@/inngest/functions/blog-rewrite-triage";
+import { blogVisualRefreshFn } from "@/inngest/functions/blog-visual-refresh";
 import { weeklySeoReportFn } from "@/inngest/functions/weekly-seo-report";
 import { weeklyMetricsEmailFn } from "@/inngest/functions/weekly-metrics-email";
 import { waitlistReactivationFn } from "@/inngest/functions/waitlist-reactivation";
@@ -144,6 +145,7 @@ const handler = serve({
     autoBlogGenerateFn,
     autoBlogPruneFn,
     blogRewriteTriageFn,
+    blogVisualRefreshFn,
     weeklySeoReportFn,
     weeklyMetricsEmailFn,
     waitlistReactivationFn,

@@ -12,6 +12,7 @@
  */
 
 import { inngest } from "@/inngest/client";
+import { BLOG_COMPONENT_GUIDE, IMAGE_SCENE_GUIDE } from "@/lib/blog-visuals";
 import type { PrismaClient } from "@prisma/client";
 import { ACQUISITION_TERM_RULE, CLAIMS_RULE, PRODUCT_ONE_LINER, VOICE_PRINCIPLE } from "@/lib/positioning";
 
@@ -131,6 +132,8 @@ interface AutoBlogResult {
   heroH1: string;
   body: string;
   heroImagePrompt?: string;
+  /** Scenes for the <!--rb-image-N--> slots (lib/blog-visuals). */
+  inlineImages?: { scene: string; alt: string; caption?: string }[];
   estimatedReadTime: number;
   primaryKeyword: string;
   secondaryKeywords: string[];
@@ -357,6 +360,10 @@ function validateBlogPost(
 
   // Banned phrases — hard failure
   const bodyLower = post.body.toLowerCase();
+  if (!post.body.includes('class="rb-takeaways"')) {
+    errors.push('Missing the Key takeaways box (<aside class="rb-takeaways">) after the opening paragraph');
+  }
+
   for (const phrase of BANNED_PHRASES) {
     if (bodyLower.includes(phrase.toLowerCase())) {
       errors.push(`Contains banned phrase: "${phrase}"`);
@@ -602,9 +609,11 @@ export const autoBlogGenerateFn = inngest.createFunction(
         const { generateAndStoreBlogImage } = await import(
           "@/lib/blog-image"
         );
+        // heroImagePrompt is a scene; styled wraps it in the house style.
         const imageUrl = await generateAndStoreBlogImage(
           publishResult.slug,
-          heroImagePrompt
+          heroImagePrompt,
+          { styled: true, fileName: `${publishResult.slug}-v2.png` }
         );
         if (imageUrl) {
           const { prisma } = await import("@/lib/prisma");
@@ -617,6 +626,36 @@ export const autoBlogGenerateFn = inngest.createFunction(
           logger.warn("[auto-blog] Hero image generation failed — post published without image");
         }
         return { imageUrl };
+      });
+    }
+
+    // ── Step 7c: Inline images into the <!--rb-image-N--> slots ──
+    const inlineScenes = result.inlineImages ?? [];
+    if (inlineScenes.length > 0) {
+      const inline: { url: string; alt: string; caption?: string }[] = [];
+      for (const [i, img] of inlineScenes.entries()) {
+        const url = await step.run(`generate-inline-image-${i + 1}`, async () => {
+          const { generateAndStoreBlogImage } = await import("@/lib/blog-image");
+          return generateAndStoreBlogImage(publishResult.slug, img.scene, {
+            styled: true,
+            fileName: `${publishResult.slug}-v2-${i + 1}.png`,
+          });
+        });
+        if (url) inline.push({ url, alt: img.alt, caption: img.caption });
+      }
+      await step.run("insert-inline-images", async () => {
+        const { prisma } = await import("@/lib/prisma");
+        const { insertInlineImages } = await import("@/lib/blog-visuals");
+        const piece = await prisma.contentPiece.findUnique({
+          where: { id: publishResult.pieceId },
+          select: { body: true },
+        });
+        if (!piece) return { inserted: 0 };
+        await prisma.contentPiece.update({
+          where: { id: publishResult.pieceId },
+          data: { body: insertInlineImages(piece.body, inline) },
+        });
+        return { inserted: inline.length };
       });
     }
 
@@ -668,6 +707,7 @@ interface GenerateAttemptResult {
   errors: string[];
   pieceId: string | null;
   heroImagePrompt?: string;
+  inlineImages?: { scene: string; alt: string; caption?: string }[];
 }
 
 async function callClaudeForBlog(
@@ -756,6 +796,7 @@ async function callClaudeForBlog(
       errors: [],
       pieceId: piece.id,
       heroImagePrompt: parsed.heroImagePrompt,
+      inlineImages: Array.isArray(parsed.inlineImages) ? parsed.inlineImages.slice(0, 2) : [],
     };
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
@@ -1406,15 +1447,20 @@ Rules for external links:
 - All external links must open in a new tab: target="_blank" rel="noopener noreferrer"
 - If you are not 100% certain a URL exists, do NOT include it. A post with zero external links is better than a post with broken external links.
 
+${BLOG_COMPONENT_GUIDE}
+
+${IMAGE_SCENE_GUIDE}
+
 OUTPUT FORMAT — respond with a single JSON object:
 {
   "title": "Blog post title",
   "slug": "url-friendly-slug",
   "metaTitle": "50-60 character SEO title",
-  "metaDescription": "140-160 character meta description",
+  "metaDescription": "140-160 character summary shown under the title and in search results, written TO the reader about what the post gives them. Never phrase it as the searcher's request (no 'Compare X to help me understand', 'Explain…', 'Recommend…').",
   "heroH1": "H1 heading (include primary keyword)",
   "body": "<full HTML with h2, h3, p tags, FAQ section, internal links>",
-  "heroImagePrompt": "A concise image prompt (1-2 sentences) for a hero image. Abstract, editorial style — no text, no logos, no faces. Moody lighting, muted purple/indigo tones on dark background. Should evoke the post's theme visually.",
+  "heroImagePrompt": "Hero image SCENE (see IMAGE SCENES): one concrete real-life moment from this post, 1-2 sentences, no style words.",
+  "inlineImages": [{"scene": "scene for <!--rb-image-1-->", "alt": "plain description", "caption": "one short sentence tying it to the section"}, {"scene": "scene for <!--rb-image-2-->", "alt": "…", "caption": "…"}],
   "estimatedReadTime": 7,
   "primaryKeyword": "${topic.targetKeyword}",
   "secondaryKeywords": ["kw1", "kw2", "kw3"],
@@ -1510,6 +1556,11 @@ async function pullUncoveredQueries(
     .filter(([query]) => {
       if (branded.test(query)) return false;
       if (query.split(/\s+/).length < 3) return false; // head terms: 12-month play, not topic fodder
+      // Prompts typed into AI assistants ("compare … to help me understand",
+      // "sign me up for …") show up in GSC; posts written to them came out
+      // with request-shaped titles and summaries.
+      if (query.split(/\s+/).length > 9) return false;
+      if (/^(explain|recommend|tell me|help me|show me|find me|give me|sign me up|need a|i need|can you)\b/.test(query)) return false;
       return !covered.some((c) => c.includes(query) || query.includes(c));
     })
     .map(([query, v]) => ({

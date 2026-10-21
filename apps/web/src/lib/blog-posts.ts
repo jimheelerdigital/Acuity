@@ -7,7 +7,11 @@ export interface BlogPost {
   updatedAt: string;
   readingTime: string;
   excerpt: string;
-  content: Array<{ tag: "h2" | "h3" | "p"; text: string }>;
+  /** House-style hero image (lib/blog-visuals), optional. */
+  heroImage?: string;
+  heroAlt?: string;
+  /** "html" blocks carry rb-* components and figures (app/blog styles). */
+  content: Array<{ tag: "h2" | "h3" | "p" | "html"; text: string }>;
 }
 
 export const BLOG_POSTS: BlogPost[] = [
@@ -449,11 +453,14 @@ export const BLOG_POSTS: BlogPost[] = [
     readingTime: "10 min read",
     excerpt:
       "AI journaling apps have evolved far beyond simple note-taking. This guide breaks down what makes them different, what features to look for, and how to choose the right one for your needs in 2026.",
+    heroImage: "https://rohjfcenylmfnqoyoirn.supabase.co/storage/v1/object/public/blog-images/ai-journaling-app-2026-v2-2.png",
+    heroAlt: "A desk at the end of the day with a handwritten list mostly ticked off and a phone beside it",
     content: [
       {
         tag: "p",
         text: "The journaling app landscape in 2026 looks nothing like it did even two years ago. If you haven’t explored what’s available lately, you might still be imagining a blank text editor with a date stamp. The reality is far more interesting. Today’s AI journaling app takes your raw thoughts — written or spoken — and transforms them into structured insights, actionable tasks, mood trends, and personalized patterns. It’s the difference between a filing cabinet and a personal analyst. This guide will walk you through everything you need to know about the AI journaling app category in 2026, including what makes these tools different, what features actually matter, and how to find the one that fits your life.",
       },
+      { tag: "html", text: "<aside class=\"rb-takeaways\"><p class=\"rb-label\">Key takeaways</p><ul><li>An AI journal does the follow-up for you: it summarizes, pulls out tasks, tracks mood and spots patterns across weeks.</li><li>The features that matter most are task extraction, mood over time, pattern detection, privacy and voice input.</li><li>AI journals are not therapy and cannot diagnose anything; they help you see what you already said.</li><li>Choose by input first (write, speak or both), then goal, then privacy, then try it free.</li></ul></aside>" },
       {
         tag: "h2",
         text: "What Makes an AI Journaling App Different",
@@ -470,6 +477,7 @@ export const BLOG_POSTS: BlogPost[] = [
         tag: "p",
         text: "Think of it this way: a regular journal keeps a record. An AI journal remembers every entry and tells you when you’re circling the same thing you circled last Tuesday.",
       },
+      { tag: "html", text: "<figure class=\"rb-figure\"><img src=\"https://rohjfcenylmfnqoyoirn.supabase.co/storage/v1/object/public/blog-images/ai-journaling-app-2026-v2.png\" alt=\"A person seen from behind on a park bench at golden hour, speaking into a phone\" loading=\"lazy\" width=\"1536\" height=\"1024\"><figcaption>A journal that listens can fit into a walk instead of waiting for a free evening.</figcaption></figure>" },
       {
         tag: "h2",
         text: "Key Features to Look For in an AI Journaling App in 2026",
@@ -502,6 +510,7 @@ export const BLOG_POSTS: BlogPost[] = [
         tag: "p",
         text: "When you journal, you often mention things you need to do. “I should call the accountant” buried in a paragraph about financial stress. “Need to book that flight” mentioned in passing. A good AI journaling app catches these and surfaces them as actionable items, bridging the gap between reflection and action. This is especially powerful in voice journaling, where people naturally mention tasks without consciously intending to create a to-do list.",
       },
+      { tag: "html", text: "<div class=\"rb-example\"><div class=\"rb-said\"><p class=\"rb-label\">You say</p><p>“I should call the accountant before Friday, the permission slip is still in my bag, and I want to get back to running.”</p></div><div class=\"rb-caught\"><p class=\"rb-label\">Ripple catches</p><ul><li class=\"rb-task\">Call the accountant before Friday</li><li class=\"rb-task\">Sign the permission slip</li><li class=\"rb-habit\">Habit: running, not logged this week</li></ul></div></div>" },
       {
         tag: "h3",
         text: "Pattern Detection Across Time",
@@ -586,6 +595,7 @@ export const BLOG_POSTS: BlogPost[] = [
         tag: "p",
         text: "Some apps offer a particularly appealing model: your data is processed to generate insights but never stored on external servers after processing is complete. This gives you the benefits of cloud-based AI without the privacy concerns of long-term cloud storage.",
       },
+      { tag: "html", text: "<aside class=\"rb-callout\"><p class=\"rb-label\">Worth knowing</p><p>Before you trust an app with your journal, find three answers in its privacy policy: where entries are stored, whether they are used to train models, and how to delete everything.</p></aside>" },
       {
         tag: "h2",
         text: "What to Expect from AI Insights",
@@ -614,22 +624,8 @@ export const BLOG_POSTS: BlogPost[] = [
         tag: "p",
         text: "With so many options available, here’s a practical framework for choosing the right app for you.",
       },
-      {
-        tag: "p",
-        text: "Start with your input preference. Do you want to write, speak, or both? This will immediately narrow your options. If you’re a confident writer who enjoys the process, a text-first app will serve you well. If writing feels like a barrier, go voice-first.",
-      },
-      {
-        tag: "p",
-        text: "Next, consider your primary goal. Are you journaling for mental health, productivity, creativity, or general self-awareness? Different apps optimize for different outcomes. Mental health-focused apps tend to emphasize mood tracking and emotional patterns. Productivity-focused apps prioritize task extraction and goal tracking.",
-      },
-      {
-        tag: "p",
-        text: "Then evaluate privacy. Read the privacy policy. Seriously. If your journal is going to contain your deepest thoughts, you need to know how they’re being handled. Look for end-to-end encryption, clear data ownership, and the ability to export or delete your data at any time.",
-      },
-      {
-        tag: "p",
-        text: "Finally, try the free tier before committing. Most AI journaling apps offer a limited free plan or a trial period. Use this to test the actual experience: How accurate is the transcription? Are the insights genuinely useful? Does it fit into your daily routine? The answers to these questions matter more than any feature comparison.",
-      },
+      { tag: "html", text: "<ol class=\"rb-steps\"><li><strong>Start with your input preference.</strong> Do you want to write, speak, or both? This will immediately narrow your options. If you’re a confident writer who enjoys the process, a text-first app will serve you well. If writing feels like a barrier, go voice-first.</li><li><strong>Next, consider your primary goal.</strong> Are you journaling for mental health, productivity, creativity, or general self-awareness? Different apps optimize for different outcomes. Mental health-focused apps tend to emphasize mood tracking and emotional patterns. Productivity-focused apps prioritize task extraction and goal tracking.</li><li><strong>Then evaluate privacy.</strong> Read the privacy policy. Seriously. If your journal is going to contain your deepest thoughts, you need to know how they’re being handled. Look for end-to-end encryption, clear data ownership, and the ability to export or delete your data at any time.</li><li><strong>Finally, try the free tier before committing.</strong> Most AI journaling apps offer a limited free plan or a trial period. Use this to test the actual experience: How accurate is the transcription? Are the insights genuinely useful? Does it fit into your daily routine? The answers to these questions matter more than any feature comparison.</li></ol>" },
+      { tag: "html", text: "<figure class=\"rb-figure\"><img src=\"https://rohjfcenylmfnqoyoirn.supabase.co/storage/v1/object/public/blog-images/ai-journaling-app-2026-v2-1.png\" alt=\"Hands holding a phone over an entryway table with keys, a permission slip and sticky notes\" loading=\"lazy\" width=\"1536\" height=\"1024\"><figcaption>Most of what fills a journal is the small stuff you would otherwise have to remember.</figcaption></figure>" },
       {
         tag: "h2",
         text: "The Future of AI Journaling",
@@ -1071,11 +1067,14 @@ export const BLOG_POSTS: BlogPost[] = [
     readingTime: "9 min read",
     excerpt:
       "The best journaling app isn’t the one with the most features — it’s the one you actually use. Here’s how to evaluate journaling apps in 2026 across the dimensions that truly matter.",
+    heroImage: "https://rohjfcenylmfnqoyoirn.supabase.co/storage/v1/object/public/blog-images/best-journaling-app-v2.png",
+    heroAlt: "A kitchen table in morning light with a closed notebook, a pen, a mug of tea and a phone face down",
     content: [
       {
         tag: "p",
         text: "There are hundreds of journaling apps available in 2026, and they range from simple text editors to sophisticated AI-powered platforms that analyze your emotions, extract tasks, and surface patterns you never noticed. With that much variety, finding the best journaling app for your needs can feel overwhelming. But here’s the truth that most comparison articles won’t tell you: the best journaling app is the one you’ll actually use consistently. Features don’t matter if the app sits unused on your phone. This guide will help you figure out what to look for, what to ignore, and how to find the app that fits your life rather than the one that wins feature comparisons.",
       },
+      { tag: "html", text: "<aside class=\"rb-takeaways\"><p class=\"rb-label\">Key takeaways</p><ul><li>The best journaling app is the one you still open after two weeks, so judge it on how fast you can make an entry.</li><li>Apps fall into four camps: plain text, prompted, AI on top of text, and voice-first.</li><li>Look for real AI value, clear privacy, and something that shows your entries back to you.</li><li>Test any app for 14 days before you commit; the second week is where most habits break.</li></ul></aside>" },
       {
         tag: "h2",
         text: "The Consistency Problem: Why Features Aren’t Everything",
@@ -1092,6 +1091,7 @@ export const BLOG_POSTS: BlogPost[] = [
         tag: "p",
         text: "So when you’re evaluating the best journaling app for yourself, start with this question: how easy is it to create an entry on my worst day? Not your most motivated day — your most exhausted, lowest-energy, everything-went-wrong day. If you can still see yourself using the app on that day, you’ve found a contender.",
       },
+      { tag: "html", text: "<figure class=\"rb-figure\"><img src=\"https://rohjfcenylmfnqoyoirn.supabase.co/storage/v1/object/public/blog-images/best-journaling-app-v2-1.png\" alt=\"Three journals on a desk: a leather notebook, a spiral pad of crossed-out lists, and a phone with earbuds\" loading=\"lazy\" width=\"1536\" height=\"1024\"><figcaption>Paper, prompts or your phone: the format matters less than whether you keep using it.</figcaption></figure>" },
       {
         tag: "h2",
         text: "Categories of Journaling Apps in 2026",
@@ -1148,6 +1148,7 @@ export const BLOG_POSTS: BlogPost[] = [
         tag: "p",
         text: "How quickly can you go from picking up your phone to actively journaling? The best apps get you there in one or two taps. No login screens, no loading delays, no navigation menus. The moment you open the app, you should be able to start capturing your thoughts. Every extra step is a chance for you to decide it’s not worth the effort tonight.",
       },
+      { tag: "html", text: "<aside class=\"rb-callout\"><p class=\"rb-label\">Try this</p><p>Time your first entry in any app you are testing. If it takes more than a minute just to get to the point where you can start, that friction will win on a busy week.</p></aside>" },
       {
         tag: "h3",
         text: "Genuine AI Value",
@@ -1208,22 +1209,8 @@ export const BLOG_POSTS: BlogPost[] = [
         tag: "p",
         text: "Here’s a practical framework for testing any journaling app before committing to it.",
       },
-      {
-        tag: "p",
-        text: "Day one: Create your first entry during the time you plan to journal regularly. Notice how long it takes, how the interface feels, and whether the experience is pleasant or friction-filled.",
-      },
-      {
-        tag: "p",
-        text: "Days two through five: Continue daily entries. Pay attention to whether you look forward to the entry or dread it. Notice if the AI insights are useful or generic. Evaluate whether the app respects your time or demands too much of it.",
-      },
-      {
-        tag: "p",
-        text: "Day seven: Review your week of entries. Does the app help you see patterns or connections? Does the summary or review feature add value? Or is it just showing you what you already know?",
-      },
-      {
-        tag: "p",
-        text: "Day fourteen: This is the real test. If you’re still using the app after two weeks — including at least one night where you were tired, stressed, or busy — you’ve found a potentially lasting fit. If you’ve already missed several days, the friction is too high.",
-      },
+      { tag: "html", text: "<ol class=\"rb-steps\"><li><strong>Day one.</strong> Create your first entry during the time you plan to journal regularly. Notice how long it takes, how the interface feels, and whether the experience is pleasant or friction-filled.</li><li><strong>Days two through five.</strong> Continue daily entries. Pay attention to whether you look forward to the entry or dread it. Notice if the AI insights are useful or generic. Evaluate whether the app respects your time or demands too much of it.</li><li><strong>Day seven.</strong> Review your week of entries. Does the app help you see patterns or connections? Does the summary or review feature add value? Or is it just showing you what you already know?</li><li><strong>Day fourteen.</strong> This is the real test. If you’re still using the app after two weeks — including at least one night where you were tired, stressed, or busy — you’ve found a potentially lasting fit. If you’ve already missed several days, the friction is too high.</li></ol>" },
+      { tag: "html", text: "<figure class=\"rb-figure\"><img src=\"https://rohjfcenylmfnqoyoirn.supabase.co/storage/v1/object/public/blog-images/best-journaling-app-v2-2.png\" alt=\"A woman seen from behind in a parked car, talking into her phone, grocery bags on the passenger seat\" loading=\"lazy\" width=\"1536\" height=\"1024\"><figcaption>The entries that stick are the ones that fit into the day you already have.</figcaption></figure>" },
       {
         tag: "h2",
         text: "Why We Built Ripple as Voice-First",
@@ -1236,6 +1223,7 @@ export const BLOG_POSTS: BlogPost[] = [
         tag: "p",
         text: "Ripple is designed around a quick voice entry whenever something’s on your mind. You speak your thoughts — as messy, unstructured, and stream-of-consciousness as they come — and our AI turns them into a to-do list, tracks your habits and mood, pulls out key themes, and connects each entry to your previous ones. There’s no blank page and nothing to format.",
       },
+      { tag: "html", text: "<div class=\"rb-example\"><div class=\"rb-said\"><p class=\"rb-label\">You say</p><p>“The dentist moved Ava to Thursday, I still owe Mark the budget, and I skipped my walk again. Work is just loud this week.”</p></div><div class=\"rb-caught\"><p class=\"rb-label\">Ripple catches</p><ul><li class=\"rb-task\">Take Ava to the dentist Thursday</li><li class=\"rb-task\">Send Mark the budget</li><li class=\"rb-mood\">Mood: stretched</li><li class=\"rb-habit\">Habit: walk skipped</li><li class=\"rb-pattern\">Pattern: walks are the first thing to go when work gets loud</li></ul></div></div>" },
       {
         tag: "p",
         text: "We’re not the only voice journaling app, and we’re not the right fit for everyone. If you love writing and want a beautiful text editor, Ripple isn’t the right tool. But if you’ve tried traditional journaling and couldn’t make it stick, or if you want the benefits of reflection without the time commitment, voice-first is worth trying.",

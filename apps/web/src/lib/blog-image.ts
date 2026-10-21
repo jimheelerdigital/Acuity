@@ -55,7 +55,13 @@ async function ensureBucket(): Promise<boolean> {
  */
 export async function generateAndStoreBlogImage(
   slug: string,
-  imagePrompt: string
+  imagePrompt: string,
+  opts: {
+    /** Storage file name; defaults to `${slug}.png`. Use a new name to bust caches. */
+    fileName?: string;
+    /** Treat imagePrompt as a scene and wrap it in the house style (lib/blog-visuals). */
+    styled?: boolean;
+  } = {}
 ): Promise<string | null> {
   try {
     // 0. Ensure bucket exists
@@ -65,7 +71,9 @@ export async function generateAndStoreBlogImage(
     // 1. Generate image via gpt-image-2 (b64_json — no URL download needed)
     const response = await openai().images.generate({
       model: "gpt-image-2",
-      prompt: imagePrompt,
+      prompt: opts.styled
+        ? (await import("@/lib/blog-visuals")).buildImagePrompt(imagePrompt)
+        : imagePrompt,
       n: 1,
       size: "1536x1024",
     });
@@ -80,7 +88,7 @@ export async function generateAndStoreBlogImage(
 
     // 2. Upload to Supabase Storage as PNG
     const { supabase } = await import("@/lib/supabase.server");
-    const filePath = `${slug}.png`;
+    const filePath = opts.fileName ?? `${slug}.png`;
 
     const { error: uploadError } = await supabase.storage
       .from("blog-images")
