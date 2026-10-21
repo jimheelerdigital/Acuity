@@ -33,6 +33,8 @@ goripple.io has a brand-new homepage. It opens with "Say it out loud. Ripple sor
 - Locally the price shows $39.99 unless NEW_PRICING_ENABLED is set; production has it, so it renders $89.99 / $9.99, save 25%.
 - Priya R.'s review is shortened (dropped "I've been in therapy for a year") to stay clear of the therapy-claim rule.
 - Verified: tsc clean for the new files, vitest 1457/1457, desktop 1440 and phone 390 (no horizontal scroll) checked on a local dev server.
+- Follow-up commit ("style: Move hero floating notes off the demo text"): on the live page two desktop floating notes covered the demo's quote and pattern card; they now sit on the card's top-left and bottom-left corners.
+- curl to goripple.io returns 403 (bot protection), so verify deploys in a real browser, not with curl.
 
 ## [2026-10-21] — Stop scouting UGC creators in our system (moved to Keenan's ChatGPT agent)
 
