@@ -379,18 +379,6 @@ export function HomeV2({ pricing }: { pricing: HomePricing }) {
           </div>
 
           <div className="relative">
-            <div className={cx(s.floatA, "absolute bottom-[-34px] left-[-36px] z-[3] hidden items-center gap-2 rounded-[14px] bg-white px-3.5 py-2.5 text-[14px] font-bold shadow-[0_14px_34px_rgba(60,40,20,0.14)] min-[1100px]:flex")}>
-              <span className="flex h-[18px] w-[18px] items-center justify-center rounded-md bg-[#2E9C78]">
-                <svg aria-hidden="true" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12l5 5L20 7" /></svg>
-              </span>
-              Called the plumber
-            </div>
-            <div className={cx(s.floatB, "absolute right-[-10px] top-[-26px] z-[3] rounded-[14px] bg-[#6D5EF0] px-3.5 py-2.5 text-[14px] font-extrabold text-white shadow-[0_14px_34px_rgba(109,94,240,0.35)] min-[1100px]:right-[-40px]")}>
-              Gym: 3 this week
-            </div>
-            <div className={cx(s.floatB, "absolute left-[-36px] top-[-24px] z-[3] hidden rounded-[14px] bg-[#F2B544] px-3.5 py-2.5 text-[14px] font-extrabold shadow-[0_14px_34px_rgba(242,181,68,0.35)] min-[1100px]:block")} style={{ animationDelay: "-3s" }}>
-              Mood: lighter than last week
-            </div>
             <Demo />
           </div>
         </div>

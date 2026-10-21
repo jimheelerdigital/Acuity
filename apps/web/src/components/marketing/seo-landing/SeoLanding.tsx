@@ -216,9 +216,6 @@ function Hero({ c }: { c: SeoLandingContent }) {
           </div>
 
           <div className="relative min-w-0">
-            <div className={cx(s.floatB, "absolute right-[-6px] top-[-22px] z-[3] hidden rounded-[14px] bg-[#F2B544] px-3.5 py-2.5 text-[14px] font-extrabold shadow-[0_14px_34px_rgba(242,181,68,0.35)] min-[600px]:block")}>
-              {h.chips[0]}
-            </div>
             <div className={cx(s.pop, "relative z-[2] flex flex-col gap-4 rounded-[28px] border border-[#EEE7DE] bg-white p-5 shadow-[0_40px_90px_rgba(60,40,20,0.16)] min-[900px]:p-7")} style={{ animationDelay: "200ms" }}>
               <div className="text-[13px] font-extrabold uppercase tracking-[0.08em] text-[#57514B]">{h.card.label}</div>
               <div className="flex flex-col gap-3 rounded-[20px] bg-[#FBF8F4] p-4">

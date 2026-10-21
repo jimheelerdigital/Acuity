@@ -26,6 +26,7 @@ A short personal note from Keenan to our most engaged app users (app installed, 
 ### Notes
 - Runs in prod because local NEXTAUTH_SECRET differs from prod; locally signed unsubscribe tokens would not verify.
 - Found while doing this: `emails/weekly-digest.ts` still sends from keenan@getacuity.io (old domain). Not changed here; separate fix.
+- Same session, unrelated design fix ("style: Remove floating notes from the hero demo cards"): Keenan asked to remove the floating sticky notes ("Mood: lighter than last week", "Gym: 3 this week", "Called the plumber") around the homepage demo and the landing-page hero cards.
 
 ## [2026-10-21] — No more Acuity pages: every old-brand URL redirects, all post text says Ripple
 
