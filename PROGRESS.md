@@ -7,6 +7,33 @@
 
 ---
 
+## [2026-10-21] — New homepage: bold, animated, for every audience
+
+- **Requested by:** Keenan
+- **Committed by:** Claude Code
+- **Commit hash:** (see git log: "feat: Replace the homepage with the animated, audience-neutral redesign")
+
+### In plain English (for Keenan)
+goripple.io has a brand-new homepage. It opens with "Say it out loud. Ripple sorts your…" with the last word rotating, and next to it a live example that plays itself: visitors tap what's on their plate (work, kids and family, aging parents, training, a side project) and watch what they'd say turn into to-dos, a mood, a habit and a pattern. It speaks to anyone, not only women in their 40s, so it works for the Ripple and BWK audiences. It also fixes the old page's rule breaks ("One minute a day", "tonight", "No credit card required"), adds App Store and Google Play badges in two places, real reviews, an on-page FAQ, and a "Start free" bar that stays on screen on phones.
+
+### Technical changes (for Jimmy)
+- New apps/web/src/components/marketing/home-v2/HomeV2.tsx (client): full page — nav, hero + self-playing demo, ticker, pain cards, how it works, feature bento, weekly report band, reviews + trust row, pricing (yearly/monthly toggle), FAQ accordion, final CTA, footer, phone-only pinned CTA bar.
+- New home-v2/home-v2.module.css: all motion (rotating headline word, word-by-word demo reveal, mic rings, waveform, floats, marquee, chart draw, scroll reveals via `animation-timeline: view()` inside `@supports`). Reveal/pop animate `translate`/`scale`, not `transform`, so held end states don't cancel card tilts or hover lifts. Everything is off under prefers-reduced-motion and visible by default where scroll timelines aren't supported.
+- New home-v2/content.ts: demo plates (women's + BWK funnel samples), FAQ, real reviews, ticker items.
+- apps/web/src/app/page.tsx: renders HomeV2 (prices from lib/pricing on the server, passed as props); JSON-LD description uses PRODUCT_CATEGORY; FAQPage JSON-LD now built from the on-page FAQ (dropped stale "No card required" / "daily voice recording" answers).
+- CTAs still go to /start (funnel_test_only forwards to /start-test). Analytics: kept funnel_hero_quiz_clicked / funnel_hero_app_store_clicked / funnel_hero_play_store_clicked; added funnel_hero_demo_picked (value = plate), funnel_home_start_clicked (value = nav|report|pricing|final|sticky), funnel_home_app_store_clicked / funnel_home_play_store_clicked.
+- Old components/marketing/* (MarketingHome, Hero, HeroCta, FeatureRow, Pricing, etc.) are now unused but left in place until the new page settles.
+
+### Manual steps needed
+- None
+
+### Notes
+- Page uses a fixed light palette and ignores the app's dark-mode toggle (the funnels it hands off to are light).
+- Mockup lives on the canvas "Ripple Homepage Redesign" (claude.ai artifact 9k7KwgmUh84HB6mZAqKrei); edits are being iterated from there.
+- Locally the price shows $39.99 unless NEW_PRICING_ENABLED is set; production has it, so it renders $89.99 / $9.99, save 25%.
+- Priya R.'s review is shortened (dropped "I've been in therapy for a year") to stay clear of the therapy-claim rule.
+- Verified: tsc clean for the new files, vitest 1457/1457, desktop 1440 and phone 390 (no horizontal scroll) checked on a local dev server.
+
 ## [2026-10-21] — Stop scouting UGC creators in our system (moved to Keenan's ChatGPT agent)
 
 - **Requested by:** Keenan
