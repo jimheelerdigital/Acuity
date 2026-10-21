@@ -124,6 +124,11 @@ export default function RootLayout({
         logo: "https://goripple.io/icon-512.png",
         description: `Ripple is ${PRODUCT_CATEGORY}.`,
         email: "hello@goripple.io",
+        // Ties the brand "Ripple" to our app listings, not other Ripples.
+        sameAs: [
+          "https://apps.apple.com/app/id6762633410",
+          "https://play.google.com/store/apps/details?id=com.heelerdigital.acuity",
+        ],
       },
       {
         "@type": "WebSite",

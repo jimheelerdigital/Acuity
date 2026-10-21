@@ -291,6 +291,26 @@ const nextConfig = {
         destination: "/auth/signin",
         permanent: false,
       },
+      // Comparison blog posts → the comparison pages (2026-10-21). The old
+      // auto-blog posts used the Acuity name and stale prices; the new
+      // /best-ai-journaling-apps and /compare/* pages replace them.
+      ...[
+        ["the-7-best-ai-journaling-apps-in-2026-tested-and-compared", "/best-ai-journaling-apps"],
+        ["the-best-ai-journal-apps-in-2026-compared-honestly", "/best-ai-journaling-apps"],
+        ["day-one-vs-acuity-vs-rosebud-best-journaling-app-for-self-re", "/best-ai-journaling-apps"],
+        ["acuity-vs-rosebud-which-ai-journal-app-is-right-for-you-in-2", "/compare/ripple-vs-rosebud"],
+        ["acuity-vs-mindsera-which-ai-journal-app-is-right-for-you-in-", "/compare/ripple-vs-mindsera"],
+        ["acuity-vs-day-one-which-journal-app-is-right-for-you-in-2026", "/compare/ripple-vs-day-one"],
+        ["acuity-vs-daylio-which-journal-app-is-right-for-you-in-2026", "/compare/ripple-vs-daylio"],
+        ["acuity-vs-finch-which-self-care-app-is-right-for-you-in-2026", "/compare/ripple-vs-finch"],
+        ["acuity-vs-reflectly-which-journal-app-is-right-for-you-in-20", "/compare/ripple-vs-reflectly"],
+        ["acuity-vs-stoic-which-journal-app-is-right-for-you-in-2026", "/compare/ripple-vs-stoic"],
+        ["acuity-vs-stoic-app-which-mental-health-journaling-app-offer", "/compare/ripple-vs-stoic"],
+      ].map(([slug, destination]) => ({
+        source: `/blog/${slug}`,
+        destination,
+        permanent: true,
+      })),
     ];
   },
 };

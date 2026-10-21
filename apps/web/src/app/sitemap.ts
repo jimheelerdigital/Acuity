@@ -1,5 +1,6 @@
 import type { MetadataRoute } from "next";
 import { BLOG_POSTS } from "@/lib/blog-posts";
+import { ALTERNATIVE_SLUGS, COMPARE_SLUGS } from "@/lib/compare-data";
 import { getAllPersonaSlugs } from "@/lib/persona-pages";
 
 export const revalidate = 300; // 5 minutes
@@ -12,6 +13,7 @@ const RESEARCH_UPDATED = "2026-10-21";
 const FOR_PAGES_UPDATED = "2026-10-21";
 const SEO_PAGES_UPDATED = "2026-10-21";
 const LEGAL_UPDATED = "2026-10-21";
+const COMPARE_UPDATED = "2026-10-21";
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const baseUrl = "https://goripple.io";
@@ -103,6 +105,19 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority: 0.9,
   }));
 
+  // ─── Comparison pages (2026-10-21) ───────────────────────────────────────
+  const comparePages: MetadataRoute.Sitemap = [
+    { path: "/best-ai-journaling-apps", priority: 0.9 },
+    { path: "/compare", priority: 0.8 },
+    ...COMPARE_SLUGS.map((slug) => ({ path: `/compare/${slug}`, priority: 0.7 })),
+    ...ALTERNATIVE_SLUGS.map((slug) => ({ path: `/alternatives/${slug}`, priority: 0.7 })),
+  ].map(({ path, priority }) => ({
+    url: `${baseUrl}${path}`,
+    lastModified: COMPARE_UPDATED,
+    changeFrequency: "monthly" as const,
+    priority,
+  }));
+
   // ─── Legal / support ─────────────────────────────────────────────────────
   const utilityPages: MetadataRoute.Sitemap = [
     { path: "/support", priority: 0.4 },
@@ -142,6 +157,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   return [
     ...staticPages,
     ...seoPages,
+    ...comparePages,
     ...staticForPages,
     ...personaPages,
     ...staticBlogPages,

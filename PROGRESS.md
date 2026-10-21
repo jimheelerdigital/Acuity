@@ -7,6 +7,34 @@
 
 ---
 
+## [2026-10-21] — Comparison hub, "best AI journaling apps" page, live App Store rating
+
+- **Requested by:** Keenan
+- **Committed by:** Claude Code
+- **Commit hash:** (see git log: "seo: Add comparison hub and best AI journaling apps page")
+
+### In plain English (for Keenan)
+We weren't showing up for "best AI journaling app" because competitors (Rosebud, Mindsera, Reflection) each publish an honest-looking comparison list and a set of "X vs Y" pages, and those are what Google and its AI answers quote. We now have the same: one "Best AI journaling apps in 2026" page with checked prices and features (Ripple is "best for turning what you say into tasks and habits", not falsely "best overall"), ten "Ripple vs X" pages, and five "X alternatives" pages. Our old duplicate and acuity-named comparison posts now redirect into them. Google also now gets our real App Store rating, and our brand is linked to our app listings so it isn't confused with other "Ripple"s.
+
+### Technical changes (for Jimmy)
+- New `lib/compare-data.ts` (competitor facts with source URLs, checkedAt 2026-10-21; "Not stated" where unverified), `components/marketing/compare/{ui.tsx,copy.ts}`.
+- New pages: `app/best-ai-journaling-apps`, `app/compare` (hub), `app/compare/[slug]` (10, static params), `app/alternatives/[slug]` (5). BreadcrumbList + FAQPage (+ ItemList on best-of) JSON-LD, disclosure + updated date on every page.
+- `next.config.js`: 308s from 11 blog posts (2 duplicate best-of posts, the 3-way day-one/rosebud post, 8 acuity-vs-* posts) to the new pages. Those 11 ContentPiece rows set to PRUNED_DAY90 (out of sitemap/index/related).
+- `sitemap.ts` + `lib/seo.ts` LEARN_LINKS: new pages added.
+- New `lib/app-store-rating.ts`: homepage SoftwareApplication aggregateRating now comes from Apple's lookup API (hourly); it was hardcoded 5.0/4, real is 4.78/9. Organization JSON-LD gets sameAs App Store + Google Play.
+
+### Manual steps needed
+- [ ] Rename the App Store listing title to lead with the category ("Ripple: AI Journal & Habit Tracker" style; today "Ripple: Voice Journal & Habits") and check the Play listing matches (Keenan/Jimmy)
+- [ ] Ask happy users for App Store ratings: 9 ratings vs Rosebud's 35k is the weakest trust signal on every comparison (Keenan)
+- [ ] Submit Ripple to AlternativeTo (as alternative to Rosebud, Day One, Daylio, Dayora), Product Hunt, There's An AI For That, stork.ai; pitch zapier.com/blog/best-journaling-apps, taskade, techinch, geteverydayai (Keenan; Sept draft kit in Gmail covers several)
+- [ ] Confirm privacy facts with Jimmy (encryption at rest? entries never used for AI training?) so the site can state them; competitors lead with this (Jimmy)
+
+### Notes
+- Competitor research (2026-10-21): Google's AI Overview for "best ai journaling app" cites vendor-written lists (Reflection writes Holstee's list too). Reddit (~25%) and YouTube (~18%) are large AI-answer citation sources for "best journaling app".
+- Ripple's rating cell on comparison pages reads "Newer app, fewer ratings so far" (Keenan's no-number rating rule; 4.8 isn't five stars).
+- Unverified competitor facts are marked "Not stated"; Rosebud's free plan status is shown both ways (help center says retired 2026-09-30, homepage still says free).
+- Re-check competitor prices monthly; the pages carry a visible updated date.
+
 ## [2026-10-21] — Blog redesign: new look, real-life images, visual components
 
 - **Requested by:** Keenan

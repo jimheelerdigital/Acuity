@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { getAppStoreRating } from "@/lib/app-store-rating";
 import { AccountDeletedBanner } from "@/components/account-deleted-banner";
 import { HOME_FAQS } from "@/components/marketing/home-v2/content";
 import { HomeV2 } from "@/components/marketing/home-v2/HomeV2";
@@ -56,18 +57,9 @@ const jsonLd = {
         name: "Pro (yearly)",
         description: "7-day free trial. Unlimited debriefs, to-dos, habits, mood, patterns, Life Matrix and a weekly report.",
       },
-      // Re-added 2026-06-09 with REAL App Store data (4 × 5-star). sameAs
-      // + the rating url point Google at the verifiable source. Bump
-      // ratingValue/reviewCount here (and the hero badge) as reviews grow.
+      // aggregateRating is added at render from the live App Store lookup
+      // (lib/app-store-rating.ts); it was hardcoded "5.0 from 4" until 2026-10-21.
       sameAs: "https://apps.apple.com/app/id6762633410",
-      aggregateRating: {
-        "@type": "AggregateRating",
-        ratingValue: "5.0",
-        reviewCount: "4",
-        bestRating: "5",
-        worstRating: "1",
-        url: "https://apps.apple.com/app/id6762633410",
-      },
     },
     {
       // Mirrors the FAQ visitors see on the page (home-v2/content.ts), as
@@ -93,12 +85,28 @@ const jsonLd = {
   ],
 };
 
-export default function HomePage() {
+export default async function HomePage() {
+  const rating = await getAppStoreRating();
+  const graph = jsonLd["@graph"].map((node) =>
+    node["@type"] === "SoftwareApplication" && rating
+      ? {
+          ...node,
+          aggregateRating: {
+            "@type": "AggregateRating",
+            ratingValue: String(rating.value),
+            ratingCount: String(rating.count),
+            bestRating: "5",
+            worstRating: "1",
+            url: "https://apps.apple.com/app/id6762633410",
+          },
+        }
+      : node
+  );
   return (
     <>
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+        dangerouslySetInnerHTML={{ __html: JSON.stringify({ ...jsonLd, "@graph": graph }) }}
       />
       <AccountDeletedBanner />
       {/* 2026-10 redesign (components/marketing/home-v2). The previous

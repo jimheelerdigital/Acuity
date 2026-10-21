@@ -15,4 +15,6 @@ export const LEARN_LINKS: [string, string][] = [
   ["Mental load", "/mental-load"],
   ["Mood tracker app", "/mood-tracker-app"],
   ["Voice journaling research", "/research/voice-journaling-data"],
+  ["Best AI journaling apps", "/best-ai-journaling-apps"],
+  ["Compare Ripple", "/compare"],
 ];
