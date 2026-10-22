@@ -1,5 +1,7 @@
 import { useCallback, useRef } from "react";
 import { trackOnboardingEvent } from "@/lib/onboarding-events";
+
+import { useScreenFrame } from "./screen-frame";
 import {
   View,
   useWindowDimensions,
@@ -64,28 +66,39 @@ export function KeyboardSafeView({
 
   const reported = useRef(false);
 
+  const frame = useScreenFrame();
+
   const measure = useCallback(
     (keyboardOpenHeight?: number) => {
       ref.current?.measureInWindow((_x, y, _w, h) => {
         if (!Number.isFinite(y) || !Number.isFinite(h)) return;
-        const gap = Math.max(0, windowHeight - (y + h));
-        gapBelow.value = gap;
-        if (diagnosticsName && keyboardOpenHeight && !reported.current) {
-          reported.current = true;
-          void trackOnboardingEvent("app_keyboard_layout", {
-            metadata: {
-              view: diagnosticsName,
-              y: Math.round(y),
-              h: Math.round(h),
-              window_h: Math.round(windowHeight),
-              keyboard_h: Math.round(keyboardOpenHeight),
-              gap: Math.round(gap),
-            },
-          });
-        }
+        const apply = (frameBottom: number, source: "screen_frame" | "window") => {
+          // Distance from this view's bottom to the bottom of its screen,
+          // both in the same coordinate space (see screen-frame.tsx: in an
+          // iOS sheet that space is the sheet, not the phone screen).
+          const gap = Math.max(0, frameBottom - (y + h));
+          gapBelow.value = gap;
+          if (diagnosticsName && keyboardOpenHeight && !reported.current) {
+            reported.current = true;
+            void trackOnboardingEvent("app_keyboard_layout", {
+              metadata: {
+                view: diagnosticsName,
+                y: Math.round(y),
+                h: Math.round(h),
+                window_h: Math.round(windowHeight),
+                frame_bottom: Math.round(frameBottom),
+                source,
+                keyboard_h: Math.round(keyboardOpenHeight),
+                gap: Math.round(gap),
+              },
+            });
+          }
+        };
+        if (frame) frame.measureBottom((bottom) => apply(bottom, "screen_frame"));
+        else apply(windowHeight, "window");
       });
     },
-    [gapBelow, windowHeight, diagnosticsName]
+    [gapBelow, windowHeight, diagnosticsName, frame]
   );
 
   const onLayout = useCallback(() => measure(), [measure]);

@@ -14,6 +14,7 @@ import {
 import { useTheme } from "@/contexts/theme-context";
 import { submitFeedback, type FeedbackType } from "@/lib/feedback";
 import { KeyboardSafeView } from "@/components/keyboard/keyboard-safe-view";
+import { ScreenFrame } from "@/components/keyboard/screen-frame";
 
 /**
  * Slice O (2026-05-18). User-facing feedback modal. Surfaced from
@@ -92,6 +93,8 @@ export function FeedbackModal({ visible, onClose, initialType }: Props) {
       presentationStyle="pageSheet"
       onRequestClose={handleClose}
     >
+      {/* Own ScreenFrame: a pageSheet Modal is its own presentation. */}
+      <ScreenFrame>
       <View className="flex-1" style={{ backgroundColor: tokens.bg }}>
         {/* KeyboardSafeView (1.9.5) measures itself in the window, so the
             pageSheet's top inset no longer needs a hand-tuned
@@ -241,6 +244,7 @@ export function FeedbackModal({ visible, onClose, initialType }: Props) {
           </View>
         </KeyboardSafeView>
       </View>
+      </ScreenFrame>
     </Modal>
   );
 }
