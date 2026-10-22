@@ -1,12 +1,13 @@
 import { Ionicons } from "@expo/vector-icons";
 import { useFocusEffect, useRouter } from "expo-router";
 import { AttachStep } from "react-native-spotlight-tour";
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Linking, Platform, Pressable, ScrollView, Text, View } from "react-native";
 import { requestPinWidget } from "react-native-android-widget";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { StickyBackButton } from "@/components/back-button";
+import { registerTourScroll } from "@/components/tour/scroll-registry";
 import { WHATS_NEW_STEP_INDEX } from "@/components/tour/steps";
 import { useTheme } from "@/contexts/theme-context";
 import { ANDROID_WIDGET_NAME } from "@/lib/android-widget/snapshot";
@@ -44,6 +45,36 @@ export default function SetupScreen() {
     }, [])
   );
 
+  // What's New tour (1.9.5): scroll a spotlit card near the top before
+  // the spotlight measures it (it used to sit at the bottom, under the
+  // tour card). Card y comes from onLayout, relative to the scroll content.
+  const scrollRef = useRef<ScrollView>(null);
+  const cardY = useRef<Record<number, number>>({});
+  useEffect(() => {
+    const scrollTo = (idx: number) => async () => {
+      const y = cardY.current[idx];
+      if (y === undefined || !scrollRef.current) return;
+      // Leave room for the sticky back button above the card.
+      scrollRef.current.scrollTo({ y: Math.max(0, y - 72), animated: true });
+      await new Promise((r) => setTimeout(r, 400));
+    };
+    const offA = registerTourScroll(
+      WHATS_NEW_STEP_INDEX.actionButton,
+      scrollTo(WHATS_NEW_STEP_INDEX.actionButton)
+    );
+    const offW = registerTourScroll(
+      WHATS_NEW_STEP_INDEX.widgets,
+      scrollTo(WHATS_NEW_STEP_INDEX.widgets)
+    );
+    return () => {
+      offA();
+      offW();
+    };
+  }, []);
+  const noteCardY = (idx: number) => (e: { nativeEvent: { layout: { y: number } } }) => {
+    cardY.current[idx] = e.nativeEvent.layout.y;
+  };
+
   const openAppSettings = () => {
     if (Platform.OS === "ios") {
       Linking.openURL("app-settings:").catch(() => {});
@@ -55,7 +86,7 @@ export default function SetupScreen() {
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: tokens.bg }} edges={["top"]}>
       <StickyBackButton onPress={() => router.back()} />
-      <ScrollView contentContainerStyle={{ padding: 20, paddingTop: 56, paddingBottom: 48 }}>
+      <ScrollView ref={scrollRef} contentContainerStyle={{ padding: 20, paddingTop: 56, paddingBottom: 48 }}>
         <Text style={{ fontFamily: tokens.fontDisplay, fontSize: 26, color: tokens.text, marginBottom: 6 }}>
           Set up Ripple everywhere
         </Text>
@@ -74,6 +105,7 @@ export default function SetupScreen() {
         ) : (
           <>
             {/* Action Button */}
+            <View onLayout={noteCardY(WHATS_NEW_STEP_INDEX.actionButton)}>
             <AttachStep index={WHATS_NEW_STEP_INDEX.actionButton} fill>
             <Card tokens={tokens} icon="ellipse-outline" title="Action Button" done={status?.actionButton}>
               <Text style={cardBody(tokens)}>
@@ -89,6 +121,7 @@ export default function SetupScreen() {
               </Text>
             </Card>
             </AttachStep>
+            </View>
 
             {/* Siri */}
             <Card tokens={tokens} icon="mic-circle-outline" title="Siri" done={status?.siri}>
@@ -104,6 +137,7 @@ export default function SetupScreen() {
             </Card>
 
             {/* Widgets */}
+            <View onLayout={noteCardY(WHATS_NEW_STEP_INDEX.widgets)}>
             <AttachStep index={WHATS_NEW_STEP_INDEX.widgets} fill>
             <Card tokens={tokens} icon="apps-outline" title="Widgets" done={status?.widget}>
               <Text style={cardBody(tokens)}>
@@ -114,6 +148,7 @@ export default function SetupScreen() {
               <Step tokens={tokens} n={2} text="Lock screen: long-press the lock screen → Customize → tap the area under the clock → add Ripple." />
             </Card>
             </AttachStep>
+            </View>
 
             {/* Permissions — these DO deep-link to Ripple's own Settings page */}
             <Card tokens={tokens} icon="options-outline" title="Permissions">

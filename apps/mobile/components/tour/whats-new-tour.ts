@@ -27,6 +27,14 @@ export interface WhatsNewTourCard {
   body: string;
   /** Tasks swipe stop: peek the first row open to show the buttons. */
   peekSwipe?: boolean;
+  /**
+   * Screen stop instead of a spotlight: the tour opens this screen and
+   * the screen shows the card itself, pointing at the real control.
+   * Used for /record, a native modal the spotlight overlay can't sit on
+   * (Jimmy, 10/22: show the actual "Type it instead" button, don't just
+   * describe how to reach it). `target` is unused for these.
+   */
+  screen?: "record";
 }
 
 export interface WhatsNewTourRequest {
@@ -49,9 +57,15 @@ export function cardForItem(
   const t = item.tour;
   if (!t) return null;
   switch (t.target) {
-    // 1.9.5: the record button in the tab bar (on every main screen).
+    // 1.9.5: opens the recording screen and points at "Type it instead".
     case "record":
-      return { target: TOUR_STEP_INDEX.mic, itemId: item.id, title: t.title, body: t.body };
+      return {
+        target: TOUR_STEP_INDEX.mic,
+        screen: "record",
+        itemId: item.id,
+        title: t.title,
+        body: t.body,
+      };
     case "today":
       return ctx.hasOpenTasks
         ? { target: WHATS_NEW_STEP_INDEX.today, itemId: item.id, title: t.title, body: t.body }

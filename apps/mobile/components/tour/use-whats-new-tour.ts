@@ -1,5 +1,4 @@
 import { useCallback } from "react";
-import { useSpotlightTour } from "react-native-spotlight-tour";
 
 import { cachedGet } from "@/lib/cache";
 import { isOpenNow, type TodayTaskInput } from "@/lib/today-tasks";
@@ -35,16 +34,17 @@ async function tourContext(): Promise<WhatsNewTourContext> {
  * layout is).
  */
 export function useWhatsNewTour() {
-  const { prepareWhatsNewTour } = useTourMode();
-  const { goTo } = useSpotlightTour();
+  const { prepareWhatsNewTour, showWhatsNewCard } = useTourMode();
 
   const run = useCallback(
     (req: WhatsNewTourRequest | null) => {
       if (!req || req.cards.length === 0) return;
       prepareWhatsNewTour(req);
-      goTo(req.cards[0].target);
+      // Through the provider, not spotlight's goTo: the first card can be
+      // a screen stop (1.9.5 opens /record).
+      showWhatsNewCard(0);
     },
-    [prepareWhatsNewTour, goTo]
+    [prepareWhatsNewTour, showWhatsNewCard]
   );
 
   /** `onlyUnexplored`: "Continue the tour" — skip stops already seen. */
