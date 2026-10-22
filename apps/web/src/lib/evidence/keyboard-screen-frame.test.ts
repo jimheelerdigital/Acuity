@@ -33,7 +33,15 @@ describe("KeyboardSafeView measures against the screen it is in", () => {
     const src = read("components/keyboard/keyboard-safe-view.tsx");
     expect(src).toContain("useScreenFrame()");
     expect(src).toContain("frame.measureBottom(");
-    expect(src).toMatch(/frameBottom - \(y \+ h\)/);
+    expect(src).toMatch(/bottom - \(y \+ h\)/);
+  });
+
+  it("calibrates against true screen coordinates via the focused input when the keyboard is up", () => {
+    const src = read("components/keyboard/keyboard-safe-view.tsx");
+    expect(src).toContain("useReanimatedFocusedInput()");
+    expect(src).toContain("TextInput.State.currentlyFocusedInput");
+    expect(src).toMatch(/layout\.absoluteY - fy/);
+    expect(src).toMatch(/windowHeight - screenBottom/);
   });
 
   it("a pageSheet <Modal> hosting a KeyboardSafeView has its own ScreenFrame", () => {

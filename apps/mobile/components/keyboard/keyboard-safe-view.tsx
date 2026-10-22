@@ -3,12 +3,17 @@ import { trackOnboardingEvent } from "@/lib/onboarding-events";
 
 import { useScreenFrame } from "./screen-frame";
 import {
+  TextInput,
   View,
   useWindowDimensions,
   type StyleProp,
   type ViewStyle,
 } from "react-native";
-import { useKeyboardHandler, useReanimatedKeyboardAnimation } from "react-native-keyboard-controller";
+import {
+  useKeyboardHandler,
+  useReanimatedFocusedInput,
+  useReanimatedKeyboardAnimation,
+} from "react-native-keyboard-controller";
 import Animated, { runOnJS, useAnimatedStyle, useSharedValue } from "react-native-reanimated";
 
 /**
@@ -67,38 +72,65 @@ export function KeyboardSafeView({
   const reported = useRef(false);
 
   const frame = useScreenFrame();
+  const { input: focusedInput } = useReanimatedFocusedInput();
 
   const measure = useCallback(
     (keyboardOpenHeight?: number) => {
       ref.current?.measureInWindow((_x, y, _w, h) => {
         if (!Number.isFinite(y) || !Number.isFinite(h)) return;
-        const apply = (frameBottom: number, source: "screen_frame" | "window") => {
-          // Distance from this view's bottom to the bottom of its screen,
-          // both in the same coordinate space (see screen-frame.tsx: in an
-          // iOS sheet that space is the sheet, not the phone screen).
-          const gap = Math.max(0, frameBottom - (y + h));
-          gapBelow.value = gap;
+
+        const apply = (gap: number, source: string, extra: Record<string, number> = {}) => {
+          gapBelow.value = Math.max(0, gap);
           if (diagnosticsName && keyboardOpenHeight && !reported.current) {
             reported.current = true;
             void trackOnboardingEvent("app_keyboard_layout", {
               metadata: {
                 view: diagnosticsName,
+                source,
                 y: Math.round(y),
                 h: Math.round(h),
                 window_h: Math.round(windowHeight),
-                frame_bottom: Math.round(frameBottom),
-                source,
                 keyboard_h: Math.round(keyboardOpenHeight),
-                gap: Math.round(gap),
+                gap: Math.round(Math.max(0, gap)),
+                ...extra,
               },
             });
           }
         };
-        if (frame) frame.measureBottom((bottom) => apply(bottom, "screen_frame"));
-        else apply(windowHeight, "window");
+
+        // Fallback: compare with the screen frame (same coordinate space) or
+        // the window. Exact on full screens; in iOS sheets it can be off,
+        // because the sheet's view extends below the visible screen (Jimmy's
+        // phone: frame_bottom 914 in sheet space, still ~24pt short).
+        const fallback = () => {
+          if (frame) frame.measureBottom((bottom) => apply(bottom - (y + h), "screen_frame", { frame_bottom: Math.round(bottom) }));
+          else apply(windowHeight - (y + h), "window");
+        };
+
+        // Exact path (2026-10-22): calibrate RN's coordinates against true
+        // SCREEN coordinates using the focused text field. keyboard-controller
+        // reports its frame natively in screen space (UIView.convert to the
+        // window's root view: correct inside sheets); measuring the same field
+        // with measureInWindow gives it in RN's space. The difference is the
+        // offset between the two spaces, which applies to this view too.
+        const layout = focusedInput.value?.layout;
+        const field = TextInput.State.currentlyFocusedInput?.() as
+          | { measureInWindow?: (cb: (x: number, y: number, w: number, h: number) => void) => void }
+          | null
+          | undefined;
+        if (keyboardOpenHeight && layout && field?.measureInWindow) {
+          field.measureInWindow((_fx, fy) => {
+            if (!Number.isFinite(fy) || !Number.isFinite(layout.absoluteY)) return fallback();
+            const offset = layout.absoluteY - fy;
+            const screenBottom = y + h + offset;
+            apply(windowHeight - screenBottom, "focused_input", { offset: Math.round(offset) });
+          });
+          return;
+        }
+        fallback();
       });
     },
-    [gapBelow, windowHeight, diagnosticsName, frame]
+    [gapBelow, windowHeight, diagnosticsName, frame, focusedInput]
   );
 
   const onLayout = useCallback(() => measure(), [measure]);
