@@ -1,6 +1,7 @@
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
+import { goBackOr } from "@/lib/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
@@ -166,7 +167,7 @@ export default function EntryDetailScreen() {
               await api.del(`/api/entries/${id}`);
               invalidate(entryDetailKey(id));
               invalidate("/api/entries");
-              router.back();
+              goBackOr("/(tabs)/entries");
             } catch (err) {
               const message =
                 err instanceof Error ? err.message : "Delete failed.";

@@ -1,5 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
 import { useLocalSearchParams, useRouter } from "expo-router";
+import { goBackOr } from "@/lib/navigation";
 import { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
@@ -182,7 +183,7 @@ export default function GoalDetailScreen() {
       >
         <Text style={{ color: tokens.textSec }}>Goal not found.</Text>
         <Pressable
-          onPress={() => router.back()}
+          onPress={() => goBackOr("/(tabs)/goals")}
           className="mt-4 rounded-full px-4 py-2"
           style={{ backgroundColor: tokens.primary }}
         >
@@ -604,7 +605,7 @@ export default function GoalDetailScreen() {
                     onPress: async () => {
                       try {
                         await api.del(`/api/goals/${delta.id}`);
-                        router.back();
+                        goBackOr("/(tabs)/goals");
                       } catch {
                         Alert.alert("Couldn't delete", "Please try again.");
                       }

@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import { ScrollView, Text } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { router } from "expo-router";
+import { goBackOr } from "@/lib/navigation";
 
 import { StickyBackButton } from "@/components/back-button";
 import { HabitsPane } from "@/components/growth/habits-pane";
@@ -33,7 +34,7 @@ export default function HabitsScreen() {
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: tokens.bg }} edges={["top"]}>
-      <StickyBackButton onPress={() => router.back()} />
+      <StickyBackButton onPress={() => goBackOr("/(tabs)")} />
       <KeyboardScroll
         contentContainerStyle={{ paddingTop: 56, paddingBottom: 40 }}
       >
