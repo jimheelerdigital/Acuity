@@ -1274,7 +1274,10 @@ export default function RecordScreen() {
                 fontFamily: tokens.fontSans,
                 fontSize: 17,
                 fontWeight: "600",
-                color: typedCanSubmit ? tokens.primary : tokens.textTer,
+                // Same violet as the recording screen's other actions
+                // (bg-violet-600: Try again, Back to dashboard), not the
+                // user-selectable accent (Jimmy, 2026-10-22).
+                color: typedCanSubmit ? "#7C3AED" : tokens.textTer,
               }}
             >
               {typedSubmitting ? "Saving…" : "Save"}
@@ -1282,7 +1285,7 @@ export default function RecordScreen() {
           </Pressable>
         ) : null,
     });
-  }, [state, handleBackPress, navigation, tokens.textSec, tokens.primary, tokens.textTer, tokens.fontSans, typedCanSubmit, typedSubmitting, submitTyped]);
+  }, [state, handleBackPress, navigation, tokens.textSec, tokens.textTer, tokens.fontSans, typedCanSubmit, typedSubmitting, submitTyped]);
 
   // v1.3.3 fire-and-forget: once the "saved" confirmation shows, auto-
   // dismiss back to where the user came from so they go about their day
