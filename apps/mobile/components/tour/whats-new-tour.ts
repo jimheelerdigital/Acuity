@@ -49,6 +49,9 @@ export function cardForItem(
   const t = item.tour;
   if (!t) return null;
   switch (t.target) {
+    // 1.9.5: the record button in the tab bar (on every main screen).
+    case "record":
+      return { target: TOUR_STEP_INDEX.mic, itemId: item.id, title: t.title, body: t.body };
     case "today":
       return ctx.hasOpenTasks
         ? { target: WHATS_NEW_STEP_INDEX.today, itemId: item.id, title: t.title, body: t.body }
