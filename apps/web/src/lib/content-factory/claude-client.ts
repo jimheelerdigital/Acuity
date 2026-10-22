@@ -89,7 +89,92 @@ function modelUnavailable(err: unknown): boolean {
   return err instanceof Anthropic.BadRequestError && /model/i.test(err.message);
 }
 
+/**
+ * Writer swap test (2026-10-22, per Keenan: "have chatgpt 6.1 sol write the
+ * image and video scripts ... do this for the next few days until Monday").
+ * Inside the window, every WRITING call (all brands, the whole post: titles,
+ * options, scenes, motion, captions) goes to OpenAI WRITER_OVERRIDE.model.
+ * Checks stay on Claude: "low"-effort calls and anything with an image or
+ * tools. Jev scoring is a separate service and is untouched.
+ * After the window this is a no-op; delete it once the test is judged.
+ */
+export const WRITER_OVERRIDE = {
+  model: "gpt-6.1-sol",
+  from: Date.parse("2026-10-23T00:00:00Z"),
+  until: Date.parse("2026-10-26T00:00:00Z"),
+};
+
+function overrideActive(params: CreateParams, model: string): boolean {
+  const now = Date.now();
+  if (now < WRITER_OVERRIDE.from || now >= WRITER_OVERRIDE.until) return false;
+  if (!openAiKey()) return false;
+  // Writers and the image checks share Opus 5.5, so checks are told apart by
+  // effort ("low") and by carrying an image, never by model name.
+  void model;
+  if ((params.effort ?? "high") === "low") return false;
+  if ((params as { tools?: unknown[] }).tools?.length) return false;
+  const hasImage = params.messages.some(
+    (m) => Array.isArray(m.content) && m.content.some((b) => (b as { type?: string }).type !== "text")
+  );
+  return !hasImage;
+}
+
+function openAiKey(): string | undefined {
+  return process.env.ACUITY_ADLAB_OPENAI_KEY || process.env.OPENAI_API_KEY;
+}
+
+function blockText(c: unknown): string {
+  if (typeof c === "string") return c;
+  if (Array.isArray(c)) return c.map((b) => ((b as { type?: string }).type === "text" ? (b as { text: string }).text : "")).join("");
+  return "";
+}
+
+async function openAiWrite(params: CreateParams): Promise<Anthropic.Message> {
+  const effort = params.effort ?? "high";
+  const messages = [
+    ...(params.system ? [{ role: "system", content: blockText(params.system) }] : []),
+    ...params.messages.map((m) => ({ role: m.role, content: blockText(m.content) })),
+  ];
+  const res = await fetch("https://api.openai.com/v1/chat/completions", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${openAiKey()}`, "content-type": "application/json" },
+    body: JSON.stringify({
+      model: WRITER_OVERRIDE.model,
+      messages,
+      max_completion_tokens: params.max_tokens + THINKING_HEADROOM[effort],
+      reasoning_effort: effort,
+    }),
+  });
+  const j = (await res.json()) as {
+    error?: { message?: string };
+    choices?: { message?: { content?: string }; finish_reason?: string }[];
+    usage?: { prompt_tokens?: number; completion_tokens?: number };
+  };
+  const text = j.choices?.[0]?.message?.content;
+  if (!res.ok || typeof text !== "string" || !text.trim()) {
+    throw new Error(`[content-writer] ${WRITER_OVERRIDE.model} failed: ${j.error?.message ?? res.status}`);
+  }
+  return {
+    id: `openai-${Date.now()}`,
+    type: "message",
+    role: "assistant",
+    model: WRITER_OVERRIDE.model,
+    content: [{ type: "text", text, citations: null }],
+    stop_reason: j.choices?.[0]?.finish_reason === "length" ? "max_tokens" : "end_turn",
+    stop_sequence: null,
+    usage: { input_tokens: j.usage?.prompt_tokens ?? 0, output_tokens: j.usage?.completion_tokens ?? 0 },
+  } as unknown as Anthropic.Message;
+}
+
 async function create(params: CreateParams): Promise<Anthropic.Message> {
+  if (overrideActive(params, params.model ?? CONTENT_MODEL)) {
+    try {
+      return await openAiWrite(params);
+    } catch (err) {
+      // Never lose a post to the test: fall back to the normal Claude writer.
+      console.warn(`${err instanceof Error ? err.message : err} — falling back to Claude`);
+    }
+  }
   const {
     effort = "high",
     max_tokens,

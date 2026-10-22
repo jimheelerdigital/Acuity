@@ -7,6 +7,30 @@
 
 ---
 
+## [2026-10-22] — Test: ChatGPT 6.1 Sol writes every post Fri 10-23 through Sun 10-25
+
+- **Requested by:** Keenan
+- **Committed by:** Claude Code
+- **Commit hash:** (see git log: "feat: Let gpt-6.1-sol write all posts Oct 23-25")
+
+### In plain English (for Keenan)
+From Friday through Sunday, OpenAI's ChatGPT 6.1 Sol writes every social post instead of Claude: Mythicals, the Ripple list post and the split video, the whole post (titles, options, picture and motion descriptions, captions). Our quality checks and Jev's picks still run the same way. On Monday it switches back to Claude on its own, so we can compare the weekend's results.
+
+### Technical changes (for Jimmy)
+- apps/web/src/lib/content-factory/claude-client.ts: WRITER_OVERRIDE { model: "gpt-6.1-sol", 2026-10-23T00:00Z to 2026-10-26T00:00Z }.
+  - Inside the window, contentAnthropic.messages.create routes writing calls to OpenAI chat completions (max_completion_tokens = answer + thinking headroom, reasoning_effort = effort) and returns an Anthropic-shaped Message.
+  - Skipped (stay on Claude): effort "low" calls (checks), calls with image blocks (vision checks), calls with tools.
+  - On any OpenAI error it falls back to Claude, so no post is lost.
+  - Key: ACUITY_ADLAB_OPENAI_KEY || OPENAI_API_KEY.
+- AdLab ad copy (lib/adlab/claude.ts) and Jev are untouched.
+
+### Manual steps needed
+- [ ] Monday 10-26: compare the 10-23–10-25 posts with the week before (views, shares) and decide whether to keep it (Keenan)
+
+### Notes
+- Writers and the image checks both use Opus 5.5, so checks are told apart by effort and image content, not by model name. The first version got this wrong and was caught in a local test.
+- After the window the code is a no-op; remove it once the test is judged.
+
 ## [2026-10-22] — Creator platform: referral links, commission ledger, creator dashboard, payouts
 
 - **Requested by:** Keenan
