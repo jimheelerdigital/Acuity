@@ -196,6 +196,19 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ ok: true, queued: true });
     }
 
+    case "rebuild-post-video": {
+      // Re-render one post's video with the same pictures (2026-10-22, per
+      // Keenan: remake the ChatGPT sample with the new animation prompts).
+      // Drops the cached clips so every clip is re-prompted and re-rendered.
+      if (!postId) return NextResponse.json({ error: "postId required" }, { status: 400 });
+      await prisma.carouselSlide.updateMany({ where: { carouselPostId: postId }, data: { videoUrl: null } });
+      const { supabase } = await import("@/lib/supabase.server");
+      await supabase.storage.from("content-factory").remove([`living/${postId}/clips.json`]);
+      const { queuePostVideo } = await import("@/lib/content-factory/post-video");
+      await queuePostVideo(postId);
+      return NextResponse.json({ ok: true, videoQueued: true });
+    }
+
     case "remake-mythic-cover": {
       // Remake one Mythicals post's cover (2026-10-21, per Keenan: "remake
       // the cover for today's last post"). Body: { postId, coverScene,
