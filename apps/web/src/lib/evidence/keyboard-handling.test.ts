@@ -78,9 +78,14 @@ describe("keyboard handling (apps/mobile)", () => {
     expect(offenders).toEqual([]);
   });
 
-  it("the typed composer keeps Save above the keyboard", () => {
+  it("the typed composer's Save can never be covered by the keyboard", () => {
+    // 2026-10-22 (Jimmy: "I like top right"): Save lives in the header's
+    // right slot while typing; the footer (camera, counter) still rides the
+    // keyboard inside a KeyboardSafeView.
     const record = code(join(MOBILE, "app", "record.tsx"));
-    expect(record).toMatch(/<KeyboardSafeView[\s\S]*Save entry[\s\S]*<\/KeyboardSafeView>/);
+    expect(record).toMatch(/headerRight: \(\) =>\s*state === "typing"/);
+    expect(record).toMatch(/accessibilityLabel="Save entry"/);
+    expect(record).toMatch(/<KeyboardSafeView[^>]*diagnosticsName="typed_composer"/);
   });
 
   it("KeyboardSafeView measures itself instead of taking an offset", () => {
