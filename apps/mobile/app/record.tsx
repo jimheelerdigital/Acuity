@@ -1205,6 +1205,13 @@ export default function RecordScreen() {
     }
   }, [state, polledEntryId, canceling, router, poll.phase]);
 
+  const typedLength = typedDraft.trim().length;
+  const typedCanSubmit =
+    typedLength >= TYPED_MIN_CHARS &&
+    typedLength <= TYPED_MAX_CHARS &&
+    !typedSubmitting &&
+    !photoReading;
+
   // Wire the back button into the native navigation header's
   // headerLeft slot (Slice Q5 polish 5, 2026-05-20). The prior cut
   // had a custom in-content Pressable positioned via insets.top —
@@ -1248,8 +1255,34 @@ export default function RecordScreen() {
             />
           </Pressable>
         ) : null,
+      // Typed entry: Save lives top-right in the header, like Mail / Notes
+      // compose, where the keyboard can never cover it (Jimmy, 2026-10-22:
+      // "I like top right").
+      headerRight: () =>
+        state === "typing" ? (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Save entry"
+            accessibilityState={{ disabled: !typedCanSubmit }}
+            disabled={!typedCanSubmit}
+            onPress={() => void submitTyped()}
+            hitSlop={12}
+            style={{ paddingHorizontal: 8, paddingVertical: 6, marginRight: 4 }}
+          >
+            <Text
+              style={{
+                fontFamily: tokens.fontSans,
+                fontSize: 17,
+                fontWeight: "600",
+                color: typedCanSubmit ? tokens.primary : tokens.textTer,
+              }}
+            >
+              {typedSubmitting ? "Saving…" : "Save"}
+            </Text>
+          </Pressable>
+        ) : null,
     });
-  }, [state, handleBackPress, navigation, tokens.textSec]);
+  }, [state, handleBackPress, navigation, tokens.textSec, tokens.primary, tokens.textTer, tokens.fontSans, typedCanSubmit, typedSubmitting, submitTyped]);
 
   // v1.3.3 fire-and-forget: once the "saved" confirmation shows, auto-
   // dismiss back to where the user came from so they go about their day
@@ -1366,7 +1399,6 @@ export default function RecordScreen() {
           <TypedComposer
             value={typedDraft}
             onChange={setTypedDraft}
-            onSubmit={() => void submitTyped()}
             onAddPhoto={handwritingCaptureAvailable() ? promptPhotoSource : undefined}
             submitting={typedSubmitting}
             photoReading={photoReading}
@@ -1399,7 +1431,6 @@ export default function RecordScreen() {
 function TypedComposer({
   value,
   onChange,
-  onSubmit,
   onAddPhoto,
   submitting,
   photoReading,
@@ -1407,7 +1438,6 @@ function TypedComposer({
 }: {
   value: string;
   onChange: (text: string) => void;
-  onSubmit: () => void;
   /** Undefined when this binary lacks the image modules (build 183):
    *  the camera button isn't shown. See lib/handwriting-capture.ts. */
   onAddPhoto?: () => void;
@@ -1419,7 +1449,6 @@ function TypedComposer({
   const tooShort = trimmedLength < TYPED_MIN_CHARS;
   const tooLong = trimmedLength > TYPED_MAX_CHARS;
   const busy = submitting || photoReading;
-  const canSubmit = !tooShort && !tooLong && !busy;
   return (
     // KeyboardSafeView measures itself, so the Save row always sits just
     // above the keyboard. The old RN KeyboardAvoidingView used a guessed
@@ -1515,18 +1544,6 @@ function TypedComposer({
                     : `${trimmedLength.toLocaleString()} characters`}
             </Text>
           </View>
-          <Pressable
-            onPress={onSubmit}
-            disabled={!canSubmit}
-            accessibilityRole="button"
-            accessibilityState={{ disabled: !canSubmit }}
-            className="rounded-2xl bg-violet-600 px-6 py-3"
-            style={{ opacity: canSubmit ? 1 : 0.45 }}
-          >
-            <Text className="text-sm font-semibold text-white">
-              {submitting ? "Saving…" : "Save entry"}
-            </Text>
-          </Pressable>
         </View>
       </View>
     </KeyboardSafeView>

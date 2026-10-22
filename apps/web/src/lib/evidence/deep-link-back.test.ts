@@ -10,7 +10,7 @@ import { describe, expect, it } from "vitest";
 
 const app = path.resolve(__dirname, "../../../../mobile/app");
 const DEEP_LINKABLE = [
-  "task/[id].tsx", // widget task rows: acuity://task/<id>
+  "task/[id].tsx", // acuity://task/<id> links (Siri, notifications)
   "task/new.tsx",
   "habits.tsx", // acuity://habits
   "habit/[id].tsx",
@@ -28,8 +28,10 @@ describe("deep-linkable screens can always be left", () => {
     });
   }
 
-  it("the widget still links task rows to the task screen", () => {
+  it("widget task rows open the Tasks tab, not one task's editor (2026-10-22)", () => {
     const swift = readFileSync(path.resolve(app, "../targets/widget/index.swift"), "utf8");
-    expect(swift).toContain('acuity://task/\\(row.item.id)');
+    expect(swift).not.toContain("acuity://task/");
+    expect(swift).toContain("Button(intent: CompleteTaskIntent(taskId: row.item.id))");
+    expect(swift).toContain(".widgetURL(TASKS_URL)");
   });
 });
