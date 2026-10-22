@@ -1424,7 +1424,7 @@ function TypedComposer({
     // KeyboardSafeView measures itself, so the Save row always sits just
     // above the keyboard. The old RN KeyboardAvoidingView used a guessed
     // 96pt offset and left Save under the keyboard (Jimmy, 10/19).
-    <KeyboardSafeView style={{ width: "100%" }}>
+    <KeyboardSafeView style={{ width: "100%" }} diagnosticsName="typed_composer">
       <View style={{ flex: 1, width: "100%", paddingTop: 8, gap: 12 }}>
         <Text
           style={{
