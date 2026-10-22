@@ -3,7 +3,7 @@ import * as Sentry from "@sentry/react-native";
 import { Audio, InterruptionModeAndroid, InterruptionModeIOS } from "expo-av";
 import { activateKeepAwakeAsync, deactivateKeepAwake } from "expo-keep-awake";
 import { useLocalSearchParams, useNavigation, useRouter } from "expo-router";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import {
   isEffectivelySilentPeak,
   NO_SOUND_CAPTURED_MESSAGE,
@@ -11,6 +11,7 @@ import {
 import {
   ActivityIndicator,
   Alert,
+  Animated,
   AppState,
   type AppStateStatus,
   Platform,
@@ -23,6 +24,8 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 import { KeyboardSafeView } from "@/components/keyboard/keyboard-safe-view";
 import { ProcessingProgressBar } from "@/components/processing-progress-bar";
+import { useWhatsNewScreenStop } from "@/components/tour/TourProvider";
+import { WhatsNewTourCard } from "@/components/tour/WhatsNewTourCard";
 import {
   RecordOrb,
   RecordWaveform,
@@ -178,6 +181,15 @@ export default function RecordScreen() {
 
   const [state, setState] = useState<State>("idle");
   const [elapsed, setElapsed] = useState(0);
+
+  // What's New tour screen stop (1.9.5): the tour opens this screen and
+  // points at the real "Type it instead" button (Jimmy, 10/22). Tell the
+  // tour when the screen goes away so a header-back / swipe-down mid-stop
+  // ends it cleanly.
+  const { stop: tourStop, screenGone: tourScreenGone } = useWhatsNewScreenStop();
+  const tourScreenGoneRef = useRef(tourScreenGone);
+  tourScreenGoneRef.current = tourScreenGone;
+  useEffect(() => () => tourScreenGoneRef.current(), []);
   // Guards the autostart against React StrictMode's double-invoke and any
   // re-render — arming the mic twice would leave an orphaned Recording
   // object holding the audio session.
@@ -1417,10 +1429,40 @@ export default function RecordScreen() {
               lastModeRef.current = "typed";
               setState("typing");
             }}
+            coach={tourStop !== null}
             tokens={tokens}
           />
         )}
       </View>
+      {tourStop ? (
+        // Tour stop: block the screen (like the spotlight backdrop) and
+        // show the same What's New card at the top, clear of the
+        // highlighted button below (RecordSurface's `coach` ring).
+        <View
+          style={{
+            position: "absolute",
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            justifyContent: "flex-start",
+            alignItems: "center",
+            paddingHorizontal: 16,
+            paddingTop: 16,
+          }}
+        >
+          <WhatsNewTourCard
+            card={tourStop.card}
+            at={tourStop.at}
+            count={tourStop.count}
+            single={tourStop.single}
+            onNext={tourStop.onNext}
+            onBack={tourStop.onBack}
+            onSkip={tourStop.onSkip}
+            onBackToList={tourStop.onBackToList}
+          />
+        </View>
+      ) : null}
     </SafeAreaView>
   );
 }
@@ -1582,6 +1624,7 @@ function RecordSurface({
   levels,
   onPress,
   onTypeInstead,
+  coach = false,
   tokens,
 }: {
   state: State;
@@ -1589,6 +1632,8 @@ function RecordSurface({
   levels: number[];
   onPress: () => void;
   onTypeInstead: () => void;
+  /** What's New tour is pointing at "Type it instead": ring it. */
+  coach?: boolean;
   tokens: ReturnType<typeof useTheme>["tokens"];
 }) {
   const isRecording = state === "recording";
@@ -1648,6 +1693,7 @@ function RecordSurface({
           live, switching modes would mean discarding audio, and the
           back button already covers that path. */}
       {!isRecording ? (
+        <CoachRing active={coach}>
         <Pressable
           onPress={onTypeInstead}
           accessibilityRole="button"
@@ -1660,23 +1706,64 @@ function RecordSurface({
             paddingHorizontal: 14,
             paddingVertical: 8,
             borderRadius: 999,
-            borderWidth: 1,
-            borderColor: tokens.cardBorder,
+            borderWidth: coach ? 2 : 1,
+            borderColor: coach ? "#7C3AED" : tokens.cardBorder,
+            backgroundColor: coach ? tokens.cardBg : "transparent",
           }}
         >
-          <Ionicons name="create-outline" size={16} color={tokens.textSec} />
+          <Ionicons name="create-outline" size={16} color={coach ? "#7C3AED" : tokens.textSec} />
           <Text
             style={{
               fontFamily: tokens.fontSans,
               fontSize: 13,
               fontWeight: "600",
-              color: tokens.textSec,
+              color: coach ? "#7C3AED" : tokens.textSec,
             }}
           >
             Type it instead
           </Text>
         </Pressable>
+        </CoachRing>
       ) : null}
+    </View>
+  );
+}
+
+/**
+ * Pulsing violet halo behind a control the What's New tour is pointing
+ * at (1.9.5). Renders the child untouched when inactive.
+ */
+function CoachRing({ active, children }: { active: boolean; children: ReactNode }) {
+  const pulse = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    if (!active) return;
+    const loop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulse, { toValue: 1, duration: 900, useNativeDriver: true }),
+        Animated.timing(pulse, { toValue: 0, duration: 900, useNativeDriver: true }),
+      ])
+    );
+    loop.start();
+    return () => loop.stop();
+  }, [active, pulse]);
+  if (!active) return <>{children}</>;
+  return (
+    <View style={{ alignItems: "center", justifyContent: "center" }}>
+      <Animated.View
+        pointerEvents="none"
+        style={{
+          position: "absolute",
+          top: -8,
+          bottom: -8,
+          left: -8,
+          right: -8,
+          borderRadius: 999,
+          backgroundColor: "rgba(124, 58, 237, 0.22)",
+          opacity: pulse.interpolate({ inputRange: [0, 1], outputRange: [0.35, 1] }),
+          transform: [{ scale: pulse.interpolate({ inputRange: [0, 1], outputRange: [0.96, 1.08] }) }],
+        }}
+      />
+      {children}
     </View>
   );
 }

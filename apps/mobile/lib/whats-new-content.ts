@@ -64,7 +64,7 @@ export const WHATS_NEW_RELEASES: WhatsNewRelease[] = [
         tour: {
           target: "record",
           title: "Type or snap an entry",
-          body: "Tap record, then \"Type it instead\". The camera button turns a handwritten page into text.",
+          body: "Tap \"Type it instead\" to write your entry. Once you're typing, the camera button turns a photo of a handwritten page into text.",
         },
       },
       {
