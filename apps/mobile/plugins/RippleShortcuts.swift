@@ -315,22 +315,90 @@ struct AddHabitIntent: AppIntent {
     }
 }
 
+/// Optional due date for "Add a Task" (Jimmy, 2026-10-22: "no way to enter a
+/// due date. Make that optional"). Asked once after the title; "No due date"
+/// is the first choice, so skipping costs one tap.
+@available(iOS 16.0, *)
+enum TaskDueChoice: String, AppEnum {
+    case none, today, tomorrow, nextWeek, pick
+
+    static var typeDisplayRepresentation = TypeDisplayRepresentation(name: "Due date")
+    static var caseDisplayRepresentations: [TaskDueChoice: DisplayRepresentation] = [
+        .none: "No due date",
+        .today: "Today",
+        .tomorrow: "Tomorrow",
+        .nextWeek: "In a week",
+        .pick: "Pick a date…",
+    ]
+}
+
+/// A calendar day as YYYY-MM-DD in the device's local timezone: the same
+/// shape the app's task form sends (the server stores it as that day).
+private func ymd(_ date: Date) -> String {
+    let f = DateFormatter()
+    f.calendar = Calendar(identifier: .gregorian)
+    f.locale = Locale(identifier: "en_US_POSIX")
+    f.timeZone = .current
+    f.dateFormat = "yyyy-MM-dd"
+    return f.string(from: date)
+}
+
 @available(iOS 16.0, *)
 struct AddTaskIntent: AppIntent {
     static var title: LocalizedStringResource = "Add a Task"
-    static var description = IntentDescription("Adds a new task to your Ripple list.")
+    static var description = IntentDescription("Adds a new task to your Ripple list, with an optional due date.")
     static var openAppWhenRun: Bool = false
 
     @Parameter(title: "Task", requestValueDialog: "What task should I add?")
     var taskTitle: String
 
+    /// Optional. Pre-set it in a Shortcut to skip the question.
+    @Parameter(title: "Due date")
+    var due: TaskDueChoice?
+
+    /// Only used for "Pick a date…".
+    @Parameter(title: "Date")
+    var pickedDate: Date?
+
     func perform() async throws -> some IntentResult & ProvidesDialog {
         SetupStamp.mark(SetupStamp.siriKey)
         let trimmed = taskTitle.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return .result(dialog: "I didn't catch the task.") }
+
+        let choice: TaskDueChoice
+        if let preset = due {
+            choice = preset
+        } else {
+            choice = try await $due.requestValue("Add a due date?")
+        }
+        let cal = Calendar.current
+        var dueDay: Date?
+        switch choice {
+        case .none: dueDay = nil
+        case .today: dueDay = Date()
+        case .tomorrow: dueDay = cal.date(byAdding: .day, value: 1, to: Date())
+        case .nextWeek: dueDay = cal.date(byAdding: .day, value: 7, to: Date())
+        case .pick:
+            if let preset = pickedDate {
+                dueDay = preset
+            } else {
+                dueDay = try await $pickedDate.requestValue("Which day is it due?")
+            }
+        }
+
+        var body: [String: Any] = ["title": trimmed]
+        if let d = dueDay { body["dueDate"] = ymd(d) }
+        let when: String = {
+            guard let d = dueDay else { return "" }
+            if cal.isDateInToday(d) { return ", due today" }
+            if cal.isDateInTomorrow(d) { return ", due tomorrow" }
+            let f = DateFormatter()
+            f.dateFormat = "EEEE, MMM d"
+            return ", due \(f.string(from: d))"
+        }()
         let msg = await speakResult(
-            { try await RippleAPI.post("/api/tasks", body: ["title": trimmed]) },
-            ok: { _ in "Added \(trimmed) to your tasks." },
+            { try await RippleAPI.post("/api/tasks", body: body) },
+            ok: { _ in "Added \(trimmed) to your tasks\(when)." },
             fail: "I couldn't add that task right now."
         )
         return .result(dialog: IntentDialog(stringLiteral: msg))

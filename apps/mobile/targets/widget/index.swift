@@ -641,8 +641,11 @@ struct TodayRowView: View {
         // fixed number of rows always fills the widget evenly.
         HStack(spacing: 4) {
             // Interactive check-off (iOS 17 widget button). Runs in-process in
-            // the extension; the title next to it still deep-links to the task.
-            // The whole left column (44pt × full row height) is the target.
+            // the extension. The whole left column (44pt × full row height)
+            // is the target. Everything else on the widget opens the Tasks
+            // tab (widgetURL TASKS_URL), not one task's editor (Jimmy,
+            // 2026-10-22: "click the bubble and it checks it off or I click
+            // elsewhere on the widget and it just opens tasks").
             Button(intent: CompleteTaskIntent(taskId: row.item.id)) {
                 Image(systemName: row.done ? "checkmark.circle.fill" : "circle")
                     .font(.system(size: 22, weight: .medium))
@@ -653,8 +656,7 @@ struct TodayRowView: View {
             }
             .buttonStyle(.plain)
             .accessibilityLabel(row.done ? "Undo complete \(row.item.title)" : "Mark \(row.item.title) complete")
-            Link(destination: URL(string: "acuity://task/\(row.item.id)") ?? TASKS_URL) {
-                HStack(spacing: 8) {
+            HStack(spacing: 8) {
                     // Strikethrough drawn explicitly: WidgetKit dropped
                     // Text.strikethrough on device (row only greyed — Jimmy,
                     // 10/17 on build 181). An overlaid rule can't be skipped.
@@ -681,8 +683,6 @@ struct TodayRowView: View {
                     }
                 }
                 .frame(maxHeight: .infinity)
-                .contentShape(Rectangle())
-            }
         }
         .frame(maxWidth: .infinity)
     }
