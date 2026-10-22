@@ -1,4 +1,5 @@
 import { useRouter } from "expo-router";
+import { goBackOr } from "@/lib/navigation";
 import { useEffect, useState } from "react";
 import {
   Alert,
@@ -111,7 +112,7 @@ export default function TaskCreateScreen() {
     };
     const cached = getCached<{ tasks: unknown[] }>(TASKS_CACHE_KEY);
     setCached(TASKS_CACHE_KEY, { tasks: [optimistic, ...(cached?.tasks ?? [])] });
-    router.back();
+    goBackOr("/(tabs)/tasks");
     try {
       const res = await api.post<{ task?: { id: string } & Record<string, unknown> }>(
         "/api/tasks",
@@ -152,7 +153,7 @@ export default function TaskCreateScreen() {
         className="flex-row items-center justify-between px-5 pt-2 pb-3 border-b"
         style={{ borderColor: tokens.line }}
       >
-        <Pressable onPress={() => router.back()} hitSlop={10}>
+        <Pressable onPress={() => goBackOr("/(tabs)/tasks")} hitSlop={10}>
           <Text className="text-sm" style={{ color: tokens.textSec }}>
             Cancel
           </Text>

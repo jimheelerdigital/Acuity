@@ -1,5 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
 import { useLocalSearchParams, useRouter } from "expo-router";
+import { goBackOr } from "@/lib/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
@@ -289,7 +290,7 @@ export default function HabitDetailScreen() {
             const ok = await archiveHabit(habit.id).catch(() => false);
             if (ok) {
               await resyncAllReminders().catch(() => {});
-              router.back();
+              goBackOr("/habits");
             } else {
               Alert.alert("Couldn't delete", "Please try again.");
             }
@@ -318,7 +319,7 @@ export default function HabitDetailScreen() {
       >
         <Text style={{ color: tokens.textSec }}>Habit not found.</Text>
         <Pressable
-          onPress={() => router.back()}
+          onPress={() => goBackOr("/habits")}
           className="mt-4 rounded-full px-4 py-2"
           style={{ backgroundColor: tokens.primary }}
         >

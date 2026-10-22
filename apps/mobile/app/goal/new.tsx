@@ -1,4 +1,5 @@
 import { useRouter } from "expo-router";
+import { goBackOr } from "@/lib/navigation";
 import { useState } from "react";
 import {
   Alert,
@@ -68,7 +69,7 @@ export default function GoalCreateScreen() {
       // when this modal closes.
       invalidate(GOALS_TREE_KEY);
       invalidate(GOALS_TREE_ARCHIVED_KEY);
-      router.back();
+      goBackOr("/(tabs)/goals");
     } catch (err) {
       Alert.alert(
         "Couldn't add goal",
@@ -89,7 +90,7 @@ export default function GoalCreateScreen() {
         className="flex-row items-center justify-between px-5 pt-2 pb-3 border-b"
         style={{ borderColor: tokens.line }}
       >
-        <Pressable onPress={() => router.back()} hitSlop={10}>
+        <Pressable onPress={() => goBackOr("/(tabs)/goals")} hitSlop={10}>
           <Text className="text-sm" style={{ color: tokens.textSec }}>
             Cancel
           </Text>

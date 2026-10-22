@@ -1,4 +1,5 @@
 import { useLocalSearchParams, useRouter } from "expo-router";
+import { goBackOr } from "@/lib/navigation";
 import { useEffect, useState } from "react";
 import {
   ActivityIndicator,
@@ -137,7 +138,7 @@ export default function TaskEditScreen() {
           // hydrated from cache, keep the cached copy.
           if (!cachedTask) {
             Alert.alert("Not found", "Couldn't load this task.");
-            router.back();
+            goBackOr("/(tabs)/tasks");
           }
           return;
         }
@@ -226,7 +227,7 @@ export default function TaskEditScreen() {
       // Drop the cached list so Tasks + Home's TODAY card refetch the
       // saved version instead of showing the pre-edit one for up to 30s.
       invalidate(TASKS_CACHE_KEY);
-      router.back();
+      goBackOr("/(tabs)/tasks");
     } catch (err) {
       Alert.alert(
         "Couldn't save",
@@ -247,7 +248,7 @@ export default function TaskEditScreen() {
         className="flex-row items-center justify-between px-5 pt-2 pb-3 border-b"
         style={{ borderColor: tokens.line }}
       >
-        <Pressable onPress={() => router.back()} hitSlop={10}>
+        <Pressable onPress={() => goBackOr("/(tabs)/tasks")} hitSlop={10}>
           <Text className="text-sm" style={{ color: tokens.textSec }}>
             Cancel
           </Text>
@@ -477,7 +478,7 @@ export default function TaskEditScreen() {
                             action: "dismiss",
                           });
                           invalidate(TASKS_CACHE_KEY);
-                          router.back();
+                          goBackOr("/(tabs)/tasks");
                         } catch {
                           Alert.alert("Couldn't delete — try again.");
                         }
