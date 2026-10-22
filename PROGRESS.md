@@ -7,6 +7,28 @@
 
 ---
 
+## [2026-10-22] — ChatGPT now writes the animation prompts too, by looking at each picture
+
+- **Requested by:** Keenan
+- **Committed by:** Claude Code
+- **Commit hash:** (see git log: "feat: ChatGPT writes each clip's animation prompt from the picture")
+
+### In plain English (for Keenan)
+The images in the ChatGPT sample looked great, but the animations were flat. That's because the video instructions came from one fixed template plus a short motion line, and nothing ever looked at the actual picture. During the ChatGPT test (Fri through Sun), ChatGPT now looks at each finished picture and writes that clip's animation itself: one clear, cinematic action (the dragon lifts its head and turns toward the camera, wings unfurl, fire streams into the sky), a few things moving around it, and a gentle camera. It stays inside our existing motion rules. The sample post was also posted to Mythicals' Instagram.
+
+### Technical changes (for Jimmy)
+- apps/web/src/lib/content-factory/claude-client.ts:
+  - writerOverrideOn(): the 10-23–10-25 window or the writer_override_now flag.
+  - gptMotionPrompt({ imageUrl, rules, seconds }): gpt-6.1-sol vision call. It returns one 90–150 word paragraph, replaces timid "holds its pose" actions with a bolder single action, and logs ClaudeCallLog purpose "openai-motion".
+- apps/web/src/inngest/functions/carousel-post-video.ts prepare-i: while the override is on, the clip prompt = gptMotionPrompt(base image, livingMotionPrompt rules). Falls back to the standard prompt on any failure.
+- Data: SocialPublish row (instagram, mythicals) queued for the 10-22 sample post cmvjqcjer0000vhvqag0hvemv.
+
+### Manual steps needed
+- None
+
+### Notes
+- Tested on two of the sample's slides. The first version copied the writer's static action, so the prompt now tells it to replace small or static actions.
+
 ## [2026-10-22] — Test: ChatGPT 6.1 Sol writes every post Fri 10-23 through Sun 10-25
 
 - **Requested by:** Keenan

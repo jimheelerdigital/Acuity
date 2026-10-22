@@ -121,6 +121,63 @@ async function writerFlagOn(): Promise<boolean> {
   return on;
 }
 
+/** True while ChatGPT is the writer (dated window or the manual flag). */
+export async function writerOverrideOn(): Promise<boolean> {
+  const now = Date.now();
+  if (!openAiKey()) return false;
+  return (now >= WRITER_OVERRIDE.from && now < WRITER_OVERRIDE.until) || (await writerFlagOn());
+}
+
+/**
+ * ChatGPT writes a slide's image-to-video prompt while LOOKING at the
+ * finished picture (2026-10-22, per Keenan: "the prompts for animation need
+ * work ... animations looked poor, make sure that happens on chatgpt").
+ * `rules` is our standard motion brief for the lane (livingMotionPrompt),
+ * which the new prompt must stay inside. Returns null on any failure so the
+ * caller keeps the standard prompt.
+ */
+export async function gptMotionPrompt(opts: { imageUrl: string; rules: string; seconds: number }): Promise<string | null> {
+  try {
+    const res = await fetch("https://api.openai.com/v1/chat/completions", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${openAiKey()}`, "content-type": "application/json" },
+      body: JSON.stringify({
+        model: WRITER_OVERRIDE.model,
+        reasoning_effort: "medium",
+        max_completion_tokens: 6000,
+        messages: [
+          {
+            role: "system",
+            content:
+              "You are a film director writing the prompt for an image-to-video model (Kling). The image is the exact first frame. Write ONE plain paragraph, 90-150 words, no lists, no JSON, no headings. Describe only what moves, in concrete physical verbs, at real-world speed, across the whole clip: (1) one clear, cinematic main action by the subject that fits what is actually in the picture (a dragon raises its head and unfurls its wings, exhales a long jet of fire into the sky; a hero walks forward three heavy steps, cloak swinging); (2) two or three things in the environment that move with it (embers, mist, banners, water, light from glowing runes); (3) the camera: steady or a slow push-in. Name the subject by what you see (colors, material) so the model animates the right thing. Keep everything in the frame recognizable: no morphing, no new creatures or people, no text, no scene cuts. Follow the house rules you are given exactly; where they forbid something, never ask for it. The brief's own 'Action:' line is only a starting point: if it is small, static or mostly 'holds its pose' (a tail curl, a blink, standing still), REPLACE it with a bolder, more cinematic main action the subject can clearly perform in this picture: the head rises and turns toward the camera, the wings unfurl and beat once, kicking up dust, fire or frost streams from the jaws into the sky, the hero strides forward, the beast rears and settles. It stays measured and believable, one main action, never frantic.",
+          },
+          {
+            role: "user",
+            content: [
+              { type: "text", text: `Clip length: ${opts.seconds} seconds.\n\nHouse rules and the original brief for this slide:\n${opts.rules}\n\nReturn only the prompt paragraph.` },
+              { type: "image_url", image_url: { url: opts.imageUrl } },
+            ],
+          },
+        ],
+      }),
+    });
+    const j = (await res.json()) as { choices?: { message?: { content?: string } }[]; usage?: { prompt_tokens?: number; completion_tokens?: number } };
+    const text = j.choices?.[0]?.message?.content?.trim();
+    if (!res.ok || !text || text.length < 60) return null;
+    try {
+      const { prisma } = await import("@/lib/prisma");
+      await prisma.claudeCallLog.create({
+        data: { purpose: "openai-motion", model: WRITER_OVERRIDE.model, tokensIn: j.usage?.prompt_tokens ?? 0, tokensOut: j.usage?.completion_tokens ?? 0, costCents: 0, durationMs: 0, success: true },
+      });
+    } catch {
+      // logging only
+    }
+    return text;
+  } catch {
+    return null;
+  }
+}
+
 async function overrideActive(params: CreateParams, model: string): Promise<boolean> {
   const now = Date.now();
   const inWindow = now >= WRITER_OVERRIDE.from && now < WRITER_OVERRIDE.until;

@@ -571,7 +571,17 @@ export const carouselPostVideoFn = inngest.createFunction(
         });
         // Camera stays still (2026-10-12, per Keenan: "I don't want the camera
         // moving"): only the subject moves. The per-slide camera moves were removed.
-        const prompt = basePrompt;
+        let prompt = basePrompt;
+        // ChatGPT writer test (2026-10-22): ChatGPT looks at the finished
+        // picture and writes the clip prompt inside the same house rules.
+        // Any failure keeps the standard prompt.
+        {
+          const { writerOverrideOn, gptMotionPrompt } = await import("@/lib/content-factory/claude-client");
+          if (await writerOverrideOn()) {
+            const gpt = await gptMotionPrompt({ imageUrl: baseUrl, rules: basePrompt, seconds: clipSec(i) });
+            if (gpt) prompt = gpt;
+          }
+        }
         // Shot sheet (2026-10-06): one continuous shot in Keenan's JSON
         // format; the old prompt is its brief and its fallback.
         let sheet: string | null = null;
