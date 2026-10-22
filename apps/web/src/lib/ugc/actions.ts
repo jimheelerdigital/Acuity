@@ -104,12 +104,21 @@ export async function moveStatus(creatorId: string, to: UgcStatus, note?: string
 
 // ─── Deal + brief ──────────────────────────────────────────────────────────
 
-/** Mark a deal at an agreed per-video fee; the brief job starts from here. */
-export async function markDeal(creatorId: string, feePerVideo: number) {
-  if (!(feePerVideo > 0)) throw new Error("Agreed fee per video is required");
-  await setStatus(creatorId, "deal", "keenan", `$${feePerVideo}/video${feePerVideo > MAX_FEE_PER_VIDEO ? " (over cap)" : ""}`, {
-    agreedFeeCents: Math.round(feePerVideo * 100),
-  });
+/**
+ * Mark a deal. Since 2026-10-22 deals are commission-only, so the per-video
+ * fee is optional (legacy). setStatus("deal") issues the referral code and
+ * sends the dashboard invite; the brief job starts from here.
+ */
+export async function markDeal(creatorId: string, feePerVideo?: number) {
+  const fee = Number(feePerVideo);
+  const hasFee = Number.isFinite(fee) && fee > 0;
+  await setStatus(
+    creatorId,
+    "deal",
+    "keenan",
+    hasFee ? `$${fee}/video${fee > MAX_FEE_PER_VIDEO ? " (over cap)" : ""}` : "commission deal",
+    hasFee ? { agreedFeeCents: Math.round(fee * 100) } : {}
+  );
   const { inngest } = await import("@/inngest/client");
   await inngest.send({ name: "ugc/brief.requested", data: { creatorId } });
 }

@@ -1,0 +1,157 @@
+import "server-only";
+
+/**
+ * Admin-side creator actions: issue codes, invite to the dashboard, grant
+ * the free-premium perk, and the weekly Stripe reconciliation.
+ */
+
+import { prisma } from "@/lib/prisma";
+import { safeLog } from "@/lib/safe-log";
+
+import { RECONCILE_TOLERANCE_CENTS } from "./config";
+import { firstNameOf, generateCreatorCode } from "./money";
+
+const DEAL_OR_LATER = new Set(["deal", "briefed", "delivered", "paid"]);
+
+/**
+ * Give a creator their referral code (idempotent — an existing code is
+ * kept). Allowed from status deal onward, or always with `force` (manual add).
+ */
+export async function issueReferralCode(creatorId: string, opts: { force?: boolean } = {}): Promise<string> {
+  const c = await prisma.ugcCreator.findUniqueOrThrow({
+    where: { id: creatorId },
+    select: { id: true, status: true, referralCode: true, displayName: true, handle: true, firstName: true, email: true, selfFingerprints: true },
+  });
+  if (c.referralCode) return c.referralCode;
+  if (!opts.force && !DEAL_OR_LATER.has(c.status)) {
+    throw new Error(`creator is "${c.status}"; codes are issued from "deal" on`);
+  }
+  const fp = (c.selfFingerprints ?? {}) as { emails?: string[] };
+  const emails = Array.from(new Set([...(fp.emails ?? []), ...(c.email ? [c.email.toLowerCase()] : [])]));
+  for (let attempt = 0; attempt < 8; attempt++) {
+    const code = generateCreatorCode();
+    try {
+      await prisma.ugcCreator.update({
+        where: { id: c.id },
+        data: {
+          referralCode: code,
+          firstName: c.firstName ?? firstNameOf(c.displayName, c.handle),
+          selfFingerprints: { ...(c.selfFingerprints as object | null ?? {}), emails },
+        },
+      });
+      return code;
+    } catch (err) {
+      if ((err as { code?: string } | null)?.code !== "P2002") throw err;
+    }
+  }
+  throw new Error("could not generate a unique referral code");
+}
+
+/**
+ * Status deal: issue the code and send the dashboard invite (which asks for
+ * agreement acceptance + Stripe onboarding). Safe to call repeatedly; the
+ * invite goes once unless `resend`.
+ */
+export async function onCreatorDeal(creatorId: string, opts: { resend?: boolean } = {}): Promise<void> {
+  await issueReferralCode(creatorId, { force: true });
+  const c = await prisma.ugcCreator.findUniqueOrThrow({
+    where: { id: creatorId },
+    select: { email: true, dashboardInvitedAt: true },
+  });
+  if (!c.email) {
+    safeLog.warn("creators.deal.no-email", { creatorId });
+    return;
+  }
+  if (c.dashboardInvitedAt && !opts.resend) return;
+  const { sendDashboardLink } = await import("./emails");
+  await sendDashboardLink(creatorId, "invite");
+}
+
+/**
+ * Free Ripple premium while active: link the creator's Ripple account by
+ * email and comp it (same durable comp as /api/admin/comp). The account is
+ * also recorded as the creator's own, so it can never count as a referral.
+ */
+export async function grantCreatorPremium(creatorId: string, email: string, by: string) {
+  const { COMP_SUBSCRIPTION_SOURCE } = await import("@/lib/entitlements");
+  const user = await prisma.user.findFirst({
+    where: { email: email.trim().toLowerCase() },
+    select: { id: true, subscriptionStatus: true, subscriptionSource: true, pushToken: true },
+  });
+  if (!user) throw new Error("No Ripple account with that email. Ask them to sign up first.");
+  const c = await prisma.ugcCreator.findUniqueOrThrow({ where: { id: creatorId }, select: { selfFingerprints: true } });
+  const fp = (c.selfFingerprints ?? {}) as { emails?: string[]; devices?: string[]; payments?: string[] };
+  await prisma.$transaction([
+    prisma.user.update({
+      where: { id: user.id },
+      data: { subscriptionStatus: "PRO", subscriptionSource: COMP_SUBSCRIPTION_SOURCE, trialEndsAt: null, stripeFirstFailureAt: null },
+    }),
+    prisma.ugcCreator.update({
+      where: { id: creatorId },
+      data: {
+        userId: user.id,
+        selfFingerprints: {
+          ...fp,
+          emails: Array.from(new Set([...(fp.emails ?? []), email.trim().toLowerCase()])),
+          devices: Array.from(new Set([...(fp.devices ?? []), ...(user.pushToken ? [user.pushToken] : [])])),
+        },
+      },
+    }),
+  ]);
+  const { ADMIN_ACTIONS, logAdminAction } = await import("@/lib/admin-audit");
+  await logAdminAction({
+    adminUserId: by,
+    action: ADMIN_ACTIONS.USER_COMP,
+    targetUserId: user.id,
+    metadata: { reason: "creator premium perk", creatorId, from: `${user.subscriptionStatus}/${user.subscriptionSource ?? "null"}` },
+  }).catch(() => {});
+  return user.id;
+}
+
+/**
+ * Weekly: compare the ledger's Stripe revenue per creator with Stripe's own
+ * paid invoices for the same customers since their referral. A gap over $1
+ * opens a data flag. (App-store revenue has no per-customer transaction API
+ * in RevenueCat v1, so it is reconciled by the RC dashboard by hand.)
+ */
+export async function reconcileStripe(): Promise<Array<{ creatorId: string; ledgerCents: number; stripeCents: number }>> {
+  const { stripe } = await import("@/lib/stripe");
+  const gaps: Array<{ creatorId: string; ledgerCents: number; stripeCents: number }> = [];
+  const refs = await prisma.creatorReferral.findMany({
+    where: { firstPaidAt: { not: null } },
+    select: { creatorId: true, userId: true, attributedAt: true },
+  });
+  const users = await prisma.user.findMany({
+    where: { id: { in: refs.map((r) => r.userId) }, stripeCustomerId: { not: null } },
+    select: { id: true, stripeCustomerId: true },
+  });
+  const custBy = new Map(users.map((u) => [u.id, u.stripeCustomerId!]));
+  const perCreator = new Map<string, { ledger: number; stripe: number }>();
+  for (const r of refs) {
+    const cust = custBy.get(r.userId);
+    if (!cust) continue;
+    const ledger = await prisma.creatorRevenueEvent.aggregate({
+      where: { userId: r.userId, source: "stripe", type: "payment" },
+      _sum: { amountPaid: true },
+    });
+    let stripeTotal = 0;
+    for await (const inv of stripe.invoices.list({
+      customer: cust,
+      status: "paid",
+      created: { gte: Math.floor(r.attributedAt.getTime() / 1000) - 3600 },
+      limit: 100,
+    })) {
+      stripeTotal += inv.amount_paid;
+    }
+    const g = perCreator.get(r.creatorId) ?? { ledger: 0, stripe: 0 };
+    g.ledger += ledger._sum.amountPaid ?? 0;
+    g.stripe += stripeTotal;
+    perCreator.set(r.creatorId, g);
+  }
+  for (const [creatorId, g] of Array.from(perCreator.entries())) {
+    if (Math.abs(g.ledger - g.stripe) > RECONCILE_TOLERANCE_CENTS) {
+      gaps.push({ creatorId, ledgerCents: g.ledger, stripeCents: g.stripe });
+    }
+  }
+  return gaps;
+}

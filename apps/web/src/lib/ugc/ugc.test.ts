@@ -168,7 +168,7 @@ describe("drafts + brief", () => {
     expect(b).toContain("[branch: load]");
     expect(b).toContain("Hook B: b");
     expect(b).toContain(PARTNERSHIP_LINE);
-    expect(b).toContain("$80 per video");
+    expect(b).toContain("25% of what each customer you send pays");
     expect(b).not.toContain(CREDENTIALED_LINE);
     expect(composeBrief({ ...base, creatorType: "credentialed" }, videos)).toContain(CREDENTIALED_LINE);
   });

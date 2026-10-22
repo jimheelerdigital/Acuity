@@ -108,6 +108,18 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
   const appUserId = event.app_user_id ?? event.original_app_user_id ?? null;
 
+  // Creator commission ledger (2026-10-22). Independent of observer /
+  // source-of-truth mode: writes ONLY creator tables, App Store + Play Store
+  // events only (web money comes from the Stripe webhook), never throws.
+  try {
+    const { handleRevenueCatEventForCreators } = await import("@/lib/creators/providers");
+    await handleRevenueCatEventForCreators(event as Parameters<typeof handleRevenueCatEventForCreators>[0]);
+  } catch (err) {
+    safeLog.warn("revenuecat.webhook.creator-ledger-failed", {
+      err: err instanceof Error ? err.message : String(err),
+    });
+  }
+
   // ── Observer mode: decide, log, write nothing ──────────────────────
   if (!flags.RC_SOURCE_OF_TRUTH) {
     // Resolve the user READ-ONLY so the logged decision is the real one we

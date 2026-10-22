@@ -198,12 +198,12 @@ export function DealForm({ creatorId }: { creatorId: string }) {
   const [msg, setMsg] = useState<string | null>(null);
   return (
     <span className="inline-flex items-center gap-2">
-      <input className={`${INPUT} w-24`} placeholder="$ / video" value={fee} onChange={(e) => setFee(e.target.value)} />
+      <input className={`${INPUT} w-28`} placeholder="$ / video (opt.)" value={fee} onChange={(e) => setFee(e.target.value)} />
       <button
         className={`${BTN} ${TONES.go}`}
         onClick={async () => {
           const r = await post({ action: "deal", creatorId, feePerVideo: fee });
-          setMsg(r.error ?? "Deal marked — brief is being written");
+          setMsg(r.error ?? "Deal marked: code issued, dashboard invite sent, brief being written");
           if (!r.error) setTimeout(() => window.location.reload(), 1200);
         }}
       >

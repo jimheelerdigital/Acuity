@@ -194,3 +194,13 @@ AdLabLearning rls
 # Both service-role only; RLS enabled in prod by the migration (verified).
 RoadmapItem rls
 RoadmapVote rls
+
+# Creator platform (2026-10-22): click logs, captured emails, customer → creator
+# links, commission ledger and payouts. Server-only (service role).
+CreatorReferralClick rls
+CreatorReferral rls
+CreatorRevenueEvent rls
+CreatorLedgerEntry rls
+CreatorPayout rls
+CreatorFlag rls
+CreatorPost rls

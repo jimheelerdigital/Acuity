@@ -25,6 +25,13 @@ import {
   USAGE_RIGHTS_MONTHS,
   WINNER_BONUS_PER_VIDEO,
 } from "@/lib/ugc/config";
+import {
+  BOOST_BONUS_CENTS,
+  COMMISSION_RATE,
+  COMMISSION_WINDOW_MONTHS,
+  MILESTONE_TIERS,
+  PAYOUT_MIN_CENTS,
+} from "@/lib/creators/config";
 import { ACQUISITION_TERM_RULE, CLAIMS_RULE, PRODUCT_ONE_LINER, TIME_OF_DAY_RULE } from "@/lib/positioning";
 import type { Candidate } from "@/lib/ugc/sources/types";
 
@@ -32,6 +39,13 @@ import type { Candidate } from "@/lib/ugc/sources/types";
 export function allowedDollars(c?: Pick<Candidate, "costPerVideoCents" | "quotedRateCents"> | null): number[] {
   const prices = RIPPLE_PRICING.match(/\d+(?:\.\d+)?/g)?.map(Number) ?? [];
   return [
+    // Commission deal (creator platform, 2026-10-22)
+    BOOST_BONUS_CENTS / 100,
+    PAYOUT_MIN_CENTS / 100,
+    ...MILESTONE_TIERS.map((t) => t.bonusCents / 100),
+    2.5,
+    22.5,
+    // Legacy per-video figures (older drafts / deals)
     MAX_FEE_PER_VIDEO,
     WINNER_BONUS_PER_VIDEO,
     RIGHTS_EXTENSION_FEE,
@@ -42,16 +56,18 @@ export function allowedDollars(c?: Pick<Candidate, "costPerVideoCents" | "quoted
   ];
 }
 
+/**
+ * The offer (2026-10-22): commission only, no upfront fee. Spec "Ripple UGC
+ * Creator Platform"; numbers from lib/creators/config.ts.
+ */
 export function offerTerms(): string {
   return [
-    `${BUNDLE_SIZE} videos, ${HOOKS_PER_VIDEO} hooks each (two different openings per video)`,
-    `up to $${MAX_FEE_PER_VIDEO} per video`,
-    `plus a $${WINNER_BONUS_PER_VIDEO} bonus for any video that becomes a winning ad`,
-    "raw footage included",
-    `paid ad usage rights for ${USAGE_RIGHTS_MONTHS} months (we run the videos as ads from Ripple's own accounts; they don't post them)`,
+    `${Math.round(COMMISSION_RATE * 100)}% of what every customer they send pays Ripple for that customer's first ${COMMISSION_WINDOW_MONTHS} months (their own link and code)`,
+    `a $${BOOST_BONUS_CENTS / 100} bonus each time we run one of their posts as an ad`,
+    `monthly bonuses of ${MILESTONE_TIERS.map((t) => `$${t.bonusCents / 100} at ${t.customers}`).join(", ")} paying customers`,
     "free Ripple premium",
-    "paid on delivery",
-    "month-to-month, no auto-renew",
+    "no upfront fee; they post on their own account and get paid every other Friday through Stripe",
+    "a dashboard showing every click, signup and payout",
   ].join("; ");
 }
 
@@ -93,11 +109,9 @@ function firstName(c: Candidate): string | null {
 }
 
 function rateSituation(c: Candidate): string {
-  if (!c.costPerVideoCents) return "They have NOT quoted a rate. Pitch our offer and ask for their rate and availability.";
+  if (!c.costPerVideoCents) return "They have NOT quoted a rate. Pitch the commission offer and ask if they'd like their link.";
   const per = c.costPerVideoCents / 100;
-  return per <= MAX_FEE_PER_VIDEO
-    ? `They ALREADY quoted $${per} per video, which is within our budget. Respond to THEIR rate (say it works for a ${BUNDLE_SIZE}-video test), restate the rest of the terms briefly, and ask for their availability. Don't pitch our own number.`
-    : `They ALREADY quoted $${per} per video, above our $${MAX_FEE_PER_VIDEO} test budget. Respond to their rate honestly: we're testing at up to $${MAX_FEE_PER_VIDEO} per video plus the $${WINNER_BONUS_PER_VIDEO} winner bonus, and winners get more work. Ask if they can do a ${BUNDLE_SIZE}-video test at that, and their availability.`;
+  return `They ALREADY quoted $${per} per video. Be straight with them: this is a commission deal with no flat fee, so it suits creators who'd post about Ripple anyway. Restate the commission briefly and ask if they'd like their link. Don't haggle on their rate.`;
 }
 
 const SYSTEM = `You write short cold outreach from Keenan, co-founder of Ripple, to one UGC creator. One person writing to one person. Plain text, no formatting, no emojis, no exclamation-mark gushing.

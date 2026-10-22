@@ -965,9 +965,25 @@ export async function POST(req: NextRequest) {
       break;
     }
 
+    case "charge.refunded":
+    case "charge.dispute.created":
+    case "charge.dispute.closed":
+      // Creator-ledger only (handled below); no billing state changes.
+      break;
+
     default:
       safeLog.info("stripe-webhook.unhandled-event-type", { type: event.type });
       break;
+  }
+
+  // Creator commission ledger (2026-10-22). Runs AFTER all billing work and
+  // never throws, so it cannot affect entitlement handling. Only referred
+  // customers produce rows.
+  try {
+    const { handleStripeEventForCreators } = await import("@/lib/creators/providers");
+    await handleStripeEventForCreators(event);
+  } catch (err) {
+    safeLog.error("stripe-webhook.creator-ledger-failed", err, { id: event.id, type: event.type });
   }
 
   return NextResponse.json({ received: true });

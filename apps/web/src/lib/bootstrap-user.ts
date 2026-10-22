@@ -167,6 +167,15 @@ export async function bootstrapNewUser(params: {
   };
   await safeUpdateUserBootstrap(userId, fullData);
 
+  // Creator referral attribution (2026-10-22): Road 1 (rp_click cookie) and
+  // Road 3 (email captured on the creator landing). Never blocks signup.
+  try {
+    const { attributeNewUser } = await import("@/lib/creators/attribution");
+    await attributeNewUser({ userId, email });
+  } catch {
+    // logged inside; attribution is best-effort
+  }
+
   await track(userId, "trial_started", {
     trialEndsAt: trialEndsAt.toISOString(),
     trialDays,

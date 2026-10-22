@@ -38,6 +38,7 @@ import {
   ugcScoreRoughFn,
 } from "@/inngest/functions/ugc-pipeline";
 import { ugcBriefFn, ugcSendDailyFn, ugcWeeklyDigestFn } from "@/inngest/functions/ugc-ops";
+import { creatorsFunctions } from "@/inngest/functions/creators-ledger";
 import { trialCountdownPushCronFn } from "@/inngest/functions/trial-countdown-push-cron";
 import { v10Day2PushCronFn } from "@/inngest/functions/v10-day2-push-cron";
 import { trialEmailOrchestratorFn } from "@/inngest/functions/trial-email-orchestrator";
@@ -106,6 +107,7 @@ export const maxDuration = 300;
 const handler = serve({
   client: inngest,
   functions: [
+    ...creatorsFunctions,
     mythicalsPortraitFn,
     helloWorldFn,
     processEntryFn,

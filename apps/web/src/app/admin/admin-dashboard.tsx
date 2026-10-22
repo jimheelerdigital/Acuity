@@ -109,6 +109,7 @@ const NAV_GROUPS: NavGroup[] = [
 const TOOL_LINKS: { href: string; label: string }[] = [
   { href: "/admin/adlab", label: "AdLab" },
   { href: "/admin/ugc", label: "UGC creators" },
+  { href: "/admin/creators", label: "Creator payouts" },
   { href: "/admin/content-factory/carousels", label: "Carousel queue" },
   { href: "/admin/content-factory/metrics", label: "Social metrics" },
   { href: "/admin/content-factory/niche", label: "Niche lab" },

@@ -24,6 +24,13 @@ import {
   type Persona,
 } from "@/lib/ugc/config";
 import { allowedDollars } from "@/lib/ugc/draft";
+import {
+  BOOST_BONUS_CENTS,
+  COMMISSION_RATE,
+  COMMISSION_WINDOW_MONTHS,
+  MILESTONE_TIERS,
+  PAYOUT_MIN_CENTS,
+} from "@/lib/creators/config";
 
 export interface BriefVideo {
   n: number;
@@ -44,16 +51,19 @@ export interface BriefCreator {
 export const CREDENTIALED_LINE =
   "Speak as someone who uses Ripple, not as a professional prescribing it.";
 export const PARTNERSHIP_LINE =
-  "Anything you post yourself carries a paid partnership label.";
+  'Every post with your link or code carries "#ad" or the paid-partnership label, plus the line "I earn a commission from this link."';
 
-export function moneyTerms(feePerVideoCents: number): string[] {
-  const fee = feePerVideoCents / 100;
+/**
+ * Money terms in the brief. Since 2026-10-22 every deal is commission-only
+ * (lib/creators/config.ts); the fee argument is kept for older briefs.
+ */
+export function moneyTerms(_feePerVideoCents?: number): string[] {
   return [
-    `Fee: $${fee} per video, ${BUNDLE_SIZE} videos ($${fee * BUNDLE_SIZE} total), ${PAYMENT_TERMS}.`,
-    `Winner bonus: $${WINNER_BONUS_PER_VIDEO} for any video that becomes a winning ad.`,
-    `Usage rights: paid ad usage for ${USAGE_RIGHTS_MONTHS} months from delivery. We run the videos as ads from Ripple's own accounts.`,
-    `Extension: $${RIGHTS_EXTENSION_FEE} per video for each extra ${USAGE_RIGHTS_MONTHS} months, winners only.`,
-    "Free Ripple premium. Month-to-month, no auto-renew.",
+    `Commission: ${Math.round(COMMISSION_RATE * 100)}% of what each customer you send pays for their first ${COMMISSION_WINDOW_MONTHS} months. No upfront fee.`,
+    `Boost bonus: $${BOOST_BONUS_CENTS / 100} each time we run one of your posts as an ad. We may run any post carrying your link as an ad for 12 months.`,
+    `Monthly bonuses: ${MILESTONE_TIERS.map((t) => `$${t.bonusCents / 100} at ${t.customers}`).join(", ")} paying customers.`,
+    `Payouts every other Friday through Stripe once you have $${PAYOUT_MIN_CENTS / 100} payable. Your dashboard shows every click, signup and payout.`,
+    "Free Ripple premium while you're active.",
   ];
 }
 
@@ -73,7 +83,7 @@ export function composeBrief(c: BriefCreator, videos: BriefVideo[]): string {
   return [
     base,
     "",
-    `What to send: ${BUNDLE_SIZE} videos, each with ${HOOKS_PER_VIDEO} different hooks (film the opening twice), plus all raw footage. Vertical 9:16, talking to camera, natural light, phone audio is fine.`,
+    `What to post: ${BUNDLE_SIZE} videos on your own account, each with your Ripple link or code. Film ${HOOKS_PER_VIDEO} different openings per video and use the one you like; send us the other take and the raw footage so we can run winners as ads. Vertical 9:16, talking to camera, natural light, phone audio is fine. Log each post in your dashboard.`,
     ...plan,
     "",
     "Rules for you:",

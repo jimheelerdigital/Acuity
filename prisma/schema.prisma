@@ -3576,6 +3576,34 @@ model UgcCreator {
   briefs   UgcBrief[]
   videos   UgcVideo[]
 
+  // ── Creator platform: commission payments (2026-10-22, per Keenan) ──
+  // See lib/creators/config.ts. Code issued automatically at status deal.
+  /// 6 chars, no ambiguous characters. Link: goripple.io/c/<referralCode>.
+  referralCode          String?   @unique
+  /// First name shown on the referral landing ("Sent by <firstName>").
+  firstName             String?
+  /// Bumped to revoke every outstanding dashboard magic link + session.
+  dashboardTokenVersion Int       @default(0)
+  dashboardInvitedAt    DateTime?
+  /// The creator's own Ripple account (free premium perk, self-referral check).
+  userId                String?
+  stripeAccountId       String?   @unique
+  stripePayoutsEnabled  Boolean   @default(false)
+  paypalEmail           String?
+  agreementVersion      String?
+  agreementAcceptedAt   DateTime?
+  /// Admin hold: keeps the creator out of payout runs until cleared.
+  payoutHold            Boolean   @default(false)
+  /// { emails: string[], devices: string[], payments: string[] } — never referable.
+  selfFingerprints      Json?
+
+  clicks    CreatorReferralClick[]
+  referrals CreatorReferral[]
+  ledger    CreatorLedgerEntry[]
+  payouts   CreatorPayout[]
+  flags     CreatorFlag[]
+  posts     CreatorPost[]
+
   @@unique([platform, handle])
   @@index([status, queuedAt])
   @@index([persona, creatorType])
@@ -3699,6 +3727,240 @@ model UgcMailbox {
   refreshTokenEnc String
   scopes          String
   connectedAt     DateTime @default(now())
+}
+
+// ─── Creator platform: referral attribution + commission ledger ─────────────
+// (2026-10-22, per Keenan; spec "Ripple UGC Creator Platform — Spec").
+// Creators earn 25% of referred customers' net revenue for 12 months.
+// Rules + numbers: apps/web/src/lib/creators/config.ts. Money is integer cents.
+// The ledger is APPEND-ONLY: rows are never edited except status transitions
+// (pending → payable → paid, or → voided on admin reassign). Balances are sums.
+
+enum CreatorReferralSource {
+  web_cookie
+  code
+  email_match
+  admin
+}
+
+enum CreatorRevenueSource {
+  revenuecat
+  stripe
+}
+
+enum CreatorRevenueStore {
+  app_store
+  play_store
+  stripe
+}
+
+enum CreatorRevenueType {
+  payment
+  refund
+  dispute
+  dispute_won
+}
+
+enum CreatorLedgerType {
+  commission
+  clawback
+  boost_bonus
+  milestone_bonus
+  adjustment
+  payout
+}
+
+enum CreatorLedgerStatus {
+  pending
+  payable
+  paid
+  voided
+}
+
+enum CreatorPayoutRail {
+  stripe_connect
+  paypal
+  manual
+}
+
+enum CreatorPayoutStatus {
+  previewed
+  approved
+  sent
+  failed
+}
+
+enum CreatorFlagStatus {
+  open
+  held
+  resolved
+}
+
+/// One row per visit to goripple.io/c/<code>. Clicks are deleted after 90
+/// days; capturedEmail is nulled after 30.
+model CreatorReferralClick {
+  id              String     @id @default(cuid())
+  creatorId       String
+  creator         UgcCreator @relation(fields: [creatorId], references: [id], onDelete: Cascade)
+  /// Random id stored in the first-party rp_click cookie.
+  clickId         String     @unique
+  ipHash          String?
+  userAgent       String?
+  referrer        String?
+  /// Reporting only; never decides attribution.
+  utm             Json?
+  /// "Drop your email and we'll send the link" (Road 3).
+  capturedEmail   String?
+  capturedEmailAt DateTime?
+  createdAt       DateTime   @default(now())
+
+  @@index([creatorId, createdAt])
+  @@index([capturedEmail])
+}
+
+/// The permanent customer → creator link. One per account, written once.
+model CreatorReferral {
+  id             String                @id @default(cuid())
+  userId         String                @unique
+  creatorId      String
+  creator        UgcCreator            @relation(fields: [creatorId], references: [id], onDelete: Cascade)
+  source         CreatorReferralSource
+  clickId        String?
+  attributedAt   DateTime              @default(now())
+  /// Set by the first commission; windowEnd = firstPaidAt + 12 months.
+  firstPaidAt    DateTime?
+  windowEnd      DateTime?
+  /// Set when an admin reassigns: the previous creator id.
+  reassignedFrom String?
+  reason         String?
+
+  @@index([creatorId])
+}
+
+/// Raw money facts for referred accounts, one per webhook payment / refund /
+/// dispute. Accounts without a referral never get rows.
+model CreatorRevenueEvent {
+  id                 String               @id @default(cuid())
+  userId             String
+  source             CreatorRevenueSource
+  store              CreatorRevenueStore
+  /// "stripe:inv:<id>", "stripe:refund:<id>", "stripe:dispute:<id>", "rc:txn:<id>"…
+  externalEventId    String               @unique
+  /// The provider's webhook event id (link-out from the admin ledger).
+  providerEventId    String?
+  type               CreatorRevenueType
+  /// "monthly" | "annual" | product id when unknown
+  plan               String?
+  /// Cents. For refunds / disputes: the amount returned (positive).
+  amountPaid         Int
+  discount           Int                  @default(0)
+  tax                Int                  @default(0)
+  netRevenue         Int
+  currency           String               @default("usd")
+  /// For refunds / disputes: the payment row this reverses.
+  relatesToId        String?
+  /// Stripe card fingerprint (shared_payment + self-referral checks).
+  paymentFingerprint String?
+  occurredAt         DateTime
+  createdAt          DateTime             @default(now())
+
+  @@index([userId])
+  @@index([relatesToId])
+  @@index([paymentFingerprint])
+}
+
+model CreatorLedgerEntry {
+  id             String              @id @default(cuid())
+  creatorId      String
+  creator        UgcCreator          @relation(fields: [creatorId], references: [id], onDelete: Cascade)
+  type           CreatorLedgerType
+  /// Signed cents.
+  amount         Int
+  status         CreatorLedgerStatus
+  payableAt      DateTime
+  revenueEventId String?
+  /// The referred customer (commission / clawback rows).
+  userId         String?
+  postId         String?
+  /// "YYYY-MM" for milestone_bonus.
+  milestoneMonth String?
+  payoutId       String?
+  reason         String?
+  /// Idempotency key: a replayed webhook / job cannot write the same row
+  /// twice. Rewritten with a ":void:<id>" suffix when a row is voided.
+  dedupeKey      String              @unique
+  createdBy      String?
+  createdAt      DateTime            @default(now())
+
+  @@index([creatorId, status])
+  @@index([revenueEventId])
+  @@index([payoutId])
+  @@index([userId])
+}
+
+/// One per creator per payout run.
+model CreatorPayout {
+  id          String              @id @default(cuid())
+  creatorId   String
+  creator     UgcCreator          @relation(fields: [creatorId], references: [id], onDelete: Cascade)
+  /// Groups the payouts of one run ("2026-11-06" or "offcycle-<cuid>").
+  runKey      String
+  periodStart DateTime?
+  periodEnd   DateTime
+  amount      Int
+  rail        CreatorPayoutRail
+  externalId  String?
+  status      CreatorPayoutStatus @default(previewed)
+  /// The ledger entry ids this payout covers (fixed at preview).
+  entryIds    Json
+  error       String?
+  approvedBy  String?
+  approvedAt  DateTime?
+  sentAt      DateTime?
+  createdAt   DateTime            @default(now())
+
+  @@unique([runKey, creatorId])
+  @@index([creatorId, createdAt])
+}
+
+model CreatorFlag {
+  id             String            @id @default(cuid())
+  creatorId      String
+  creator        UgcCreator        @relation(fields: [creatorId], references: [id], onDelete: Cascade)
+  referralId     String?
+  /// self_referral | refund_rate | velocity | shared_payment | stale_click | existing_user
+  kind           String
+  detail         String
+  /// Stops the daily scan re-opening the same flag.
+  dedupeKey      String            @unique
+  status         CreatorFlagStatus @default(open)
+  resolvedReason String?
+  resolvedBy     String?
+  resolvedAt     DateTime?
+  createdAt      DateTime          @default(now())
+
+  @@index([creatorId, status])
+}
+
+/// A post the creator logged; boost figures filled by admin.
+model CreatorPost {
+  id              String     @id @default(cuid())
+  creatorId       String
+  creator         UgcCreator @relation(fields: [creatorId], references: [id], onDelete: Cascade)
+  url             String
+  /// "instagram" | "tiktok" | "youtube" | "facebook" | "other"
+  platform        String
+  postedAt        DateTime
+  boosted         Boolean    @default(false)
+  boostedAt       DateTime?
+  /// Cents.
+  adSpend         Int?
+  trials          Int?
+  paidConversions Int?
+  createdAt       DateTime   @default(now())
+
+  @@unique([creatorId, url])
+  @@index([creatorId, postedAt])
 }
 
 // ─── Public roadmap (2026-10-18) ──────────────────────────────────────

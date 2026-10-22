@@ -89,4 +89,18 @@ export async function setStatus(
   ]);
   const reason = DNC_ON[to] ?? (to === "contacted" ? "contacted" : null);
   if (reason) await addDoNotContact(c, reason);
+  // Creator platform (2026-10-22): a deal issues the referral code and sends
+  // the dashboard invite (agreement + Stripe onboarding). Best-effort.
+  if (to === "deal" && c.status !== "deal") {
+    try {
+      const { onCreatorDeal } = await import("@/lib/creators/admin");
+      await onCreatorDeal(creatorId);
+    } catch (err) {
+      const { safeLog } = await import("@/lib/safe-log");
+      safeLog.warn("ugc.deal.creator-invite-failed", {
+        creatorId,
+        err: err instanceof Error ? err.message : String(err),
+      });
+    }
+  }
 }

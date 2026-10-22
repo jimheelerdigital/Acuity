@@ -7,6 +7,43 @@
 
 ---
 
+## [2026-10-22] — Creator platform: referral links, commission ledger, creator dashboard, payouts
+
+- **Requested by:** Keenan
+- **Committed by:** Claude Code
+- **Commit hash:** (see git log: "feat: Add creator referral, commission and payout platform")
+
+### In plain English (for Keenan)
+Creators can now be paid on commission: each one gets a code and a link (goripple.io/c/CODE), and every customer who signs up through it is tied to that creator for good. That holds whether the customer signs up on the web, types the code in the app, or left their email on the landing page. The creator earns 25% of what each customer pays for 12 months. Every payment, refund and bonus is written to a ledger, and creators get their own dashboard (goripple.io/creators, emailed sign-in link, no password) showing earnings, signups, customers by number only, their posts and their payouts. You get a Creator payouts admin area: ROI per creator, every ledger row, fraud flags, and a payout run every other Friday that pays nobody until you approve it. Marking a creator "deal" in UGC now issues their code and emails them the dashboard invite, and offers and briefs now pitch the commission deal instead of a per-video fee.
+
+### Technical changes (for Jimmy)
+- **Prisma (additive only):** `UgcCreator` + referralCode (unique), firstName, dashboardTokenVersion, dashboardInvitedAt, userId, stripeAccountId (unique), stripePayoutsEnabled, paypalEmail, agreementVersion, agreementAcceptedAt, payoutHold, selfFingerprints. New models CreatorReferralClick, CreatorReferral (userId unique), CreatorRevenueEvent (externalEventId unique), CreatorLedgerEntry (dedupeKey unique, append-only), CreatorPayout (runKey+creatorId unique), CreatorFlag, CreatorPost; enums CreatorReferralSource/RevenueSource/RevenueStore/RevenueType/LedgerType/LedgerStatus/PayoutRail/PayoutStatus/FlagStatus. RLS: `supabase/migrations/2026-10-22_creator_platform_rls.sql` + `prisma/rls-allowlist.txt`.
+- **lib/creators/**: config.ts (every number; locked decisions), money.ts (pure rules + tests in creators.test.ts), attribution.ts (3 roads, self-referral, Stripe customer metadata + RC `creator_id` attribute), ledger.ts (recordPayment/recordReversal/recordDisputeWon, matureLedger, boost, milestones, adjustments, reassign), providers.ts (Stripe + RC event mapping), payouts.ts (preview → approve → execute, Stripe Connect Express onboarding + transfers), flags.ts (daily scan), stats.ts, admin.ts (issue code, deal invite, comp perk, Stripe reconciliation), emails.ts, session.ts (HMAC magic link + 30-day session cookie), agreement.ts (v2026-10-22).
+- **BILLING-ADJACENT hooks (Jimmy review required):** `api/stripe/webhook/route.ts` calls `handleStripeEventForCreators(event)` after the switch (never throws) and adds no-op cases for charge.refunded / charge.dispute.created / charge.dispute.closed. `api/revenuecat/webhook/route.ts` calls `handleRevenueCatEventForCreators(event)` right after parsing, in both observer and source-of-truth modes; it writes only creator tables and skips STRIPE / RC_BILLING store events. `lib/bootstrap-user.ts` calls `attributeNewUser` after the trial write (best-effort).
+- **Routes:** `/c/[code]` (click log + rp_click cookie, 90 days, `.goripple.io`), `/with/[code]` (HomeV2 + "Sent by" banner + store-badge email step, noindex), `api/creators/capture-email`, `api/creators/code` (GET validate, POST attribute; mobile Bearer or web session), `/creators` dashboard + `creators/login`, `api/creators/{request-link,logout,agreement,paypal,posts,connect,payouts/[id]/csv}`, `/admin/creators` (Creators | Ledger | Payout run | Flags) + `/admin/creators/[id]`, `api/admin/creators/{action,export}`.
+- **Inngest** (`inngest/functions/creators-ledger.ts`): creators-ledger-mature (hourly), creators-milestones (daily), creators-flags-scan (daily), creators-cleanup (daily), creators-reconcile (Mon), creators-payout-preview (Fridays, acts on payout Fridays only).
+- **UGC outreach:** `lib/ugc/status.ts` setStatus("deal") → onCreatorDeal (code + invite); `draft.ts` offerTerms/rateSituation + `brief.ts` moneyTerms/PARTNERSHIP_LINE now carry commission terms; markDeal fee optional.
+- New env (optional): `CREATOR_STRIPE_PAYOUTS=1` turns on Connect transfers; `CREATOR_ACCEPT_SANDBOX=1` lets RC sandbox purchases write rows (testing only).
+
+### Manual steps needed
+- [ ] **db:push BEFORE this deploys** (new UgcCreator columns: the existing UGC admin pages read whole rows and would error until the columns exist). Committed on main; run `npm run db:push` FROM MAIN (Supabase port was unreachable from this machine on 10-22; working form: `npx dotenv -e apps/web/.env.local -- tsx scripts/check-destructive-diff.ts --require-db` then `npx dotenv -e apps/web/.env.local -- prisma db push`), then run `supabase/migrations/2026-10-22_creator_platform_rls.sql` (Keenan / Claude)
+- [ ] Jimmy review of the Stripe + RevenueCat webhook hooks and bootstrap-user change before relying on the ledger (Jimmy)
+- [ ] Stripe dashboard: add `charge.refunded`, `charge.dispute.created`, `charge.dispute.closed` to the existing webhook endpoint's events (Keenan / Jimmy)
+- [ ] Stripe Connect: enable Connect (Express) on the platform account, then set `CREATOR_STRIPE_PAYOUTS=1` in Vercel + redeploy (Keenan)
+- [ ] Inngest resync after deploy: `curl -X PUT https://goripple.io/api/inngest` (Claude / Keenan)
+- [ ] App onboarding field "Did a creator send you? Enter their code." → POST /api/creators/code; pre-fill from the Play install referrer (`utm_campaign=<CODE>`) (Jimmy)
+- [ ] Privacy policy: one line about referral tracking (Keenan)
+- [ ] Have a lawyer read the creator agreement (`lib/creators/agreement.ts`) before the first payout (Keenan)
+- [ ] Approve the first payout run by hand (first scheduled run Fri 2026-11-06) (Keenan)
+
+### Notes
+- Spec conflicts resolved with Keenan 10-22: 14-day hold everywhere (spec's "30-day" lines were stale); milestones $50 / $150 / $300 at 10 / 25 / 50 paying customers per calendar month, each tier paid separately ($500 at 50); web money from the Stripe webhook directly, not RevenueCat's Stripe store, because RC isn't source of truth yet and its Stripe events would double-count. Payouts every other Friday (the agreement section's "monthly" line was stale).
+- Milestones run daily (not only on the 1st) so a tier pays once the counted customers' first payments clear the hold; idempotent per creator/month/tier.
+- "Trials" in funnels = referred account with a Stripe subscription, an Apple/Google source, or any payment row.
+- `/u/<code>` (paid UGC ad tracking via UTMs) is unchanged and separate from `/c/<CODE>`.
+- RC refunds are matched by transaction_id (CANCELLATION with CUSTOMER_SUPPORT or negative price); payments dedupe on `rc:txn:<transaction_id>`, so a PRODUCT_CHANGE and RENEWAL sharing a transaction can't double-pay. App-store reconciliation is by hand (RC v1 has no per-customer transaction list); Stripe reconciles weekly.
+- Not browser-tested: the new tables don't exist in prod until db:push. Verified: typecheck clean on all new/changed files, 42 vitest tests pass (spec acceptance numbers $2.50 / $22.50 / refund nets to zero / window / schedule).
+
 ## [2026-10-21] — Review-ask email to our most engaged app users
 
 - **Requested by:** Keenan
