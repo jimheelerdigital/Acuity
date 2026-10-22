@@ -1,12 +1,13 @@
 import { useCallback, useRef } from "react";
+import { trackOnboardingEvent } from "@/lib/onboarding-events";
 import {
   View,
   useWindowDimensions,
   type StyleProp,
   type ViewStyle,
 } from "react-native";
-import { useReanimatedKeyboardAnimation } from "react-native-keyboard-controller";
-import Animated, { useAnimatedStyle, useSharedValue } from "react-native-reanimated";
+import { useKeyboardHandler, useReanimatedKeyboardAnimation } from "react-native-keyboard-controller";
+import Animated, { runOnJS, useAnimatedStyle, useSharedValue } from "react-native-reanimated";
 
 /**
  * A container that keeps its bottom edge above the keyboard. Put a screen's
@@ -33,6 +34,7 @@ export function KeyboardSafeView({
   style,
   extraSpace = 8,
   fill = true,
+  diagnosticsName,
 }: {
   children: React.ReactNode;
   style?: StyleProp<ViewStyle>;
@@ -44,6 +46,13 @@ export function KeyboardSafeView({
    * justify-end, which then rises by the keyboard overlap.
    */
   fill?: boolean;
+  /**
+   * When set, reports the measured geometry once per mount while the
+   * keyboard is open (event app_keyboard_layout). Used to verify the
+   * maths on real phones (2026-10-22: Save still under the keyboard in
+   * the typed composer on build 187).
+   */
+  diagnosticsName?: string;
 }) {
   const { height: keyboardHeight } = useReanimatedKeyboardAnimation();
   const { height: windowHeight } = useWindowDimensions();
@@ -53,13 +62,48 @@ export function KeyboardSafeView({
   // never changes the outer frame we measure.
   const gapBelow = useSharedValue(0);
 
-  const onLayout = useCallback(() => {
-    ref.current?.measureInWindow((_x, y, _w, h) => {
-      if (Number.isFinite(y) && Number.isFinite(h)) {
-        gapBelow.value = Math.max(0, windowHeight - (y + h));
-      }
-    });
-  }, [gapBelow, windowHeight]);
+  const reported = useRef(false);
+
+  const measure = useCallback(
+    (keyboardOpenHeight?: number) => {
+      ref.current?.measureInWindow((_x, y, _w, h) => {
+        if (!Number.isFinite(y) || !Number.isFinite(h)) return;
+        const gap = Math.max(0, windowHeight - (y + h));
+        gapBelow.value = gap;
+        if (diagnosticsName && keyboardOpenHeight && !reported.current) {
+          reported.current = true;
+          void trackOnboardingEvent("app_keyboard_layout", {
+            metadata: {
+              view: diagnosticsName,
+              y: Math.round(y),
+              h: Math.round(h),
+              window_h: Math.round(windowHeight),
+              keyboard_h: Math.round(keyboardOpenHeight),
+              gap: Math.round(gap),
+            },
+          });
+        }
+      });
+    },
+    [gapBelow, windowHeight, diagnosticsName]
+  );
+
+  const onLayout = useCallback(() => measure(), [measure]);
+
+  // Re-measure every time the keyboard finishes opening. A single onLayout
+  // measurement can be stale: it may run while a modal sheet is still
+  // animating in, or before a parent settles, and the outer frame doesn't
+  // change afterwards so onLayout never fires again (build 187: Save sat
+  // under the keyboard in the typed composer).
+  useKeyboardHandler(
+    {
+      onEnd: (e) => {
+        "worklet";
+        if (e.height > 0) runOnJS(measure)(e.height);
+      },
+    },
+    [measure]
+  );
 
   const padStyle = useAnimatedStyle(() => {
     // keyboard-controller reports height as a negative translate when open.

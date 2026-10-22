@@ -72,7 +72,9 @@ export type OnboardingEventName =
   | `v10_${string}`
   // App lifecycle (2026-10-20, Keenan). Server accepts ^app_ except
   // app_signed_in, which only the server writes (lib/mobile-session.ts).
-  | "app_first_open";
+  | "app_first_open"
+  // Keyboard geometry diagnostics (components/keyboard/keyboard-safe-view).
+  | "app_keyboard_layout";
 
 /** Event families keyed by the install id (see trackOnboardingEvent). */
 export function isInstallKeyed(eventName: string): boolean {
