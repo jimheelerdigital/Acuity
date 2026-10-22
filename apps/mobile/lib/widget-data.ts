@@ -11,7 +11,7 @@ import {
   type Habit,
   type HabitCheckRow,
 } from "@/lib/habits-api";
-import { publishSiriHabits } from "@/lib/siri-shortcuts-data";
+import { clearSiriUserData, publishSiriHabits } from "@/lib/siri-shortcuts-data";
 import {
   dueYmdOf,
   isHighPriority,
@@ -112,6 +112,8 @@ export async function clearWidgetData(): Promise<void> {
     storage.remove("pendingDone");
     // Struck-through "just completed" rows the widget keeps for undo.
     storage.remove("recentDone");
+    // Siri's habit + task-group lists (siri-shortcuts-data.ts).
+    clearSiriUserData();
     storage.set("updatedAt", Date.now());
     ExtensionStorage.reloadWidget();
   } catch {

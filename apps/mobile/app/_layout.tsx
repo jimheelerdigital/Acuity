@@ -45,6 +45,7 @@ import { TourProvider } from "@/components/tour/TourProvider";
 import { useAchievementQueue } from "@/hooks/use-achievement-queue";
 import { ScreenFrame } from "@/components/keyboard/screen-frame";
 import { requestMetaTracking, setMetaUserId, startMetaSdk } from "@/lib/meta-sdk";
+import { startSiriTaskGroupsPublisher } from "@/lib/siri-shortcuts-data";
 import { reapplyRemindersIfNeeded } from "@/lib/notifications-boot";
 import { refreshPushTokenOnLaunch } from "@/lib/push-token";
 import { trackFirstOpenOnce } from "@/lib/onboarding-events";
@@ -218,6 +219,9 @@ function AuthGate() {
   useEffect(() => {
     void startMetaSdk();
   }, []);
+
+  // Task groups → App Group, for the Add a Task card (2026-10-22).
+  useEffect(() => startSiriTaskGroupsPublisher(), []);
 
   // app_first_open, once per install (Keenan, 2026-10-20). Fail-soft.
   useEffect(() => {
@@ -445,6 +449,13 @@ function ThemedApp() {
         />
         <Stack.Screen
           name="task/new"
+          options={{
+            headerShown: false,
+            presentation: "modal",
+          }}
+        />
+        <Stack.Screen
+          name="task-groups"
           options={{
             headerShown: false,
             presentation: "modal",
