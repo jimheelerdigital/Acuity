@@ -28,6 +28,28 @@ During the Fri–Sun ChatGPT test, each day's three Legendary Mythicals posts ar
 ### Notes
 - A control post is recognized downstream by lane mythic-picks + created during 08:xx UTC. A manual run made at 08 UTC would also count as control.
 - Tested locally: inside the window the normal path uses ChatGPT, and the scoped control path doesn't.
+## [2026-10-22] — What's New tour: Setup stops scroll into view; "Type it or snap it" shows the real button
+
+- **Requested by:** Jimmy
+- **Committed by:** Claude Code
+- **Commit hash:** (see git log: "fix(tour): scroll Setup stops into view; type-or-snap opens /record")
+
+### In plain English
+On the Setup screen the tour highlighted cards at the very bottom, half hidden by the tour card. Now it scrolls each card near the top first. The "Type it or snap it" stop used to point at the Home button and explain how to get there. Now it opens the recording screen and rings the actual "Type it instead" button.
+
+### Technical changes
+- components/tour/scroll-registry.ts (new): registerTourScroll / runTourScroll per step index.
+- app/setup.tsx: ScrollView ref + onLayout y for the Action Button and Widgets cards; registers scrollTo(y - 72) for both.
+- TourProvider: What's New steps run runTourScroll(idx) after navigating; widgets tooltip below.
+- Screen stops: WhatsNewTourCard.screen = "record". The provider pauses the spotlight (its overlay is an RN Modal and can't sit on the native /record modal), pushes /record, and exposes the card via useWhatsNewScreenStop. Next/Back close /record and goTo the next spotlight target. finishWhatsNew is shared by onStop and screen stops. Closing /record mid-stop ends the tour quietly.
+- app/record.tsx: renders the What's New card at the top over a touch-blocking layer; CoachRing pulses around "Type it instead".
+- use-whats-new-tour: starts through showWhatsNewCard(0) (the first 1.9.5 card is the screen stop).
+- Test: whats-new-195.test.ts.
+
+### Manual steps needed
+- None. JS-only, ships by OTA to runtime 1.9.5.
+
+---
 
 ## [2026-10-22] — ChatGPT now writes the animation prompts too, by looking at each picture
 

@@ -1,6 +1,7 @@
 import { createContext, useCallback, useContext, useMemo, useRef, useState, type ReactNode } from "react";
 import {
   SpotlightTourProvider,
+  type SpotlightTour,
   type TourStep,
   type TourState,
 } from "react-native-spotlight-tour";
@@ -13,10 +14,11 @@ import { useTheme } from "@/contexts/theme-context";
 import { api } from "@/lib/api";
 import { trackOnboardingEvent } from "@/lib/onboarding-events";
 import { markExplored } from "@/lib/whats-new-state";
+import { runTourScroll } from "./scroll-registry";
 import { TourTooltip } from "./TourTooltip";
 import { WelcomeTourCard } from "./WelcomeTourCard";
 import { WhatsNewTourCard } from "./WhatsNewTourCard";
-import type { WhatsNewTourRequest } from "./whats-new-tour";
+import type { WhatsNewTourCard as WhatsNewCard, WhatsNewTourRequest } from "./whats-new-tour";
 import { welcomeTourCards, type WelcomeTourRequest } from "./welcome-tour";
 import { WELCOME_CORAL } from "@/lib/welcome/look";
 import {
@@ -56,6 +58,11 @@ const TOUR_STEP_PATHS: string[] = [
 // target — lets the tab become visible + lay out. Tune in sim if a cutout
 // lands before its screen settles.
 const NAV_SETTLE_MS = 450;
+// The spotlight overlay is an RN <Modal>, and /record is a native modal.
+// iOS won't present one while the other is still animating away, so a
+// screen stop waits this long between hiding one and showing the other.
+const MODAL_SWAP_MS = 400;
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 /**
  * Wraps the app's navigator with react-native-spotlight-tour, replacing
@@ -91,11 +98,41 @@ const NAV_SETTLE_MS = 450;
 type TourModeApi = {
   prepareWelcomeTour: (req: WelcomeTourRequest) => void;
   prepareWhatsNewTour: (req: WhatsNewTourRequest) => void;
+  /** Opens What's New card `at` (spotlight stop or screen stop). */
+  showWhatsNewCard: (at: number) => void;
 };
 const TourModeContext = createContext<TourModeApi>({
   prepareWelcomeTour: () => {},
   prepareWhatsNewTour: () => {},
+  showWhatsNewCard: () => {},
 });
+
+/**
+ * A What's New screen stop (card.screen set) that the screen itself
+ * renders — see useWhatsNewScreenStop. Null when none is showing.
+ */
+export type WhatsNewScreenStop = {
+  card: WhatsNewCard;
+  at: number;
+  count: number;
+  single: boolean;
+  onNext: () => void;
+  onBack: () => void;
+  onSkip: () => void;
+  onBackToList: () => void;
+};
+type ScreenStopApi = {
+  stop: WhatsNewScreenStop | null;
+  /** The screen calls this when it unmounts (header back, swipe down). */
+  screenGone: () => void;
+};
+const ScreenStopContext = createContext<ScreenStopApi>({
+  stop: null,
+  screenGone: () => {},
+});
+export function useWhatsNewScreenStop(): ScreenStopApi {
+  return useContext(ScreenStopContext);
+}
 
 // Path for each What's New step index (7+).
 const WHATS_NEW_PATH_BY_INDEX: Record<number, string> = Object.fromEntries(
@@ -107,6 +144,8 @@ const WHATS_NEW_PATH_BY_INDEX: Record<number, string> = Object.fromEntries(
 const WHATS_NEW_BELOW = new Set<number>([
   WHATS_NEW_STEP_INDEX.today,
   WHATS_NEW_STEP_INDEX.swipe,
+  // Setup cards are scrolled to the top of the screen first (setup.tsx).
+  WHATS_NEW_STEP_INDEX.widgets,
   WHATS_NEW_STEP_INDEX.actionButton,
   WHATS_NEW_STEP_INDEX.notifications,
 ]);
@@ -148,9 +187,128 @@ export function TourProvider({ children }: { children: ReactNode }) {
     lastPathRef.current = "";
     setWhatsNewActive(true);
   }, []);
+  // Imperative handle on the spotlight engine, for What's New screen
+  // stops (they run outside a spotlight step's render props).
+  const tourRef = useRef<SpotlightTour>(null);
+  // True while the tour has /record open for a screen stop.
+  const onRecordRef = useRef(false);
+  // Set when the tour itself closes /record, so screenGone() can tell
+  // that apart from the person closing it (header back / swipe down).
+  const closingRecordRef = useRef(false);
+  const [screenStop, setScreenStop] = useState<{
+    card: WhatsNewCard;
+    at: number;
+    count: number;
+    single: boolean;
+  } | null>(null);
+
+  // Ends What's New mode. Shared by spotlight's onStop and screen stops.
+  const finishWhatsNew = useCallback(
+    (backToList: boolean) => {
+      const wasOnRecord = onRecordRef.current;
+      whatsNewReqRef.current = null;
+      whatsNewCardRef.current = 0;
+      whatsNewBackToListRef.current = false;
+      onRecordRef.current = false;
+      setScreenStop(null);
+      setWhatsNewActive(false);
+      const goHome = () => {
+        router.navigate(HOME_PATH as never);
+        lastPathRef.current = HOME_PATH;
+        if (backToList) {
+          setTimeout(() => router.push("/whats-new" as never), NAV_SETTLE_MS);
+        }
+      };
+      if (wasOnRecord) {
+        closingRecordRef.current = true;
+        router.back();
+        setTimeout(goHome, MODAL_SWAP_MS);
+      } else {
+        goHome();
+      }
+    },
+    [router]
+  );
+
+  // Opens What's New card `at`. Spotlight stops go through goTo (their
+  // step's before() navigates); a screen stop pauses the spotlight and
+  // opens its screen, which renders the card itself.
+  const showWhatsNewCard = useCallback(
+    async (at: number) => {
+      const req = whatsNewReqRef.current;
+      const tour = tourRef.current;
+      const card = req?.cards[at];
+      if (!req || !tour || !card) return;
+      whatsNewCardRef.current = at;
+      if (card.screen === "record") {
+        if (card.itemId) markExplored(card.itemId);
+        const wasRunning = tour.status === "running";
+        if (wasRunning) tour.pause();
+        setScreenStop({ card, at, count: req.cards.length, single: req.single });
+        if (!onRecordRef.current) {
+          onRecordRef.current = true;
+          lastPathRef.current = "/record";
+          if (wasRunning) await sleep(MODAL_SWAP_MS);
+          router.push("/record" as never);
+        }
+        return;
+      }
+      if (onRecordRef.current) {
+        onRecordRef.current = false;
+        closingRecordRef.current = true;
+        setScreenStop(null);
+        router.back();
+        // Unknown what's under the modal now; force the next navigate.
+        lastPathRef.current = "";
+        await sleep(MODAL_SWAP_MS);
+      }
+      tour.goTo(card.target);
+    },
+    [router]
+  );
+
+  // /record unmounted. If the tour closed it, nothing to do; if the
+  // person closed it mid-stop, end the tour quietly where they are.
+  const screenGone = useCallback(() => {
+    if (closingRecordRef.current) {
+      closingRecordRef.current = false;
+      return;
+    }
+    if (!onRecordRef.current) return;
+    onRecordRef.current = false;
+    whatsNewReqRef.current = null;
+    whatsNewCardRef.current = 0;
+    whatsNewBackToListRef.current = false;
+    setScreenStop(null);
+    setWhatsNewActive(false);
+    lastPathRef.current = "";
+  }, []);
+
+  const screenStopApi = useMemo<ScreenStopApi>(() => {
+    if (!screenStop) return { stop: null, screenGone };
+    const { at, count, single } = screenStop;
+    const isLast = single || at === count - 1;
+    return {
+      stop: {
+        ...screenStop,
+        onNext: () => (isLast ? finishWhatsNew(false) : void showWhatsNewCard(at + 1)),
+        onBack: () => {
+          if (at > 0) void showWhatsNewCard(at - 1);
+        },
+        onSkip: () => finishWhatsNew(false),
+        onBackToList: () => finishWhatsNew(true),
+      },
+      screenGone,
+    };
+  }, [screenStop, screenGone, finishWhatsNew, showWhatsNewCard]);
+
   const modeApi = useMemo(
-    () => ({ prepareWelcomeTour, prepareWhatsNewTour }),
-    [prepareWelcomeTour, prepareWhatsNewTour]
+    () => ({
+      prepareWelcomeTour,
+      prepareWhatsNewTour,
+      showWhatsNewCard: (at: number) => void showWhatsNewCard(at),
+    }),
+    [prepareWelcomeTour, prepareWhatsNewTour, showWhatsNewCard]
   );
 
   // Shared by every step: navigate to the step's screen (skip if already
@@ -185,13 +343,11 @@ export function TourProvider({ children }: { children: ReactNode }) {
               props.stop();
               return;
             }
-            whatsNewCardRef.current = at + 1;
-            props.goTo(req.cards[at + 1].target);
+            void showWhatsNewCard(at + 1);
           }}
           onBack={() => {
             if (at === 0) return;
-            whatsNewCardRef.current = at - 1;
-            props.goTo(req.cards[at - 1].target);
+            void showWhatsNewCard(at - 1);
           }}
           onSkip={() => props.stop()}
           onBackToList={() => {
@@ -201,7 +357,7 @@ export function TourProvider({ children }: { children: ReactNode }) {
         />
       );
     },
-    []
+    [showWhatsNewCard]
   );
 
   // Marks the current What's New card's item explored as its stop opens.
@@ -323,6 +479,9 @@ export function TourProvider({ children }: { children: ReactNode }) {
             before: async () => {
               noteWhatsNewStop();
               await goToPath(WHATS_NEW_PATH_BY_INDEX[idx] ?? HOME_PATH, false);
+              // Bring the target near the top of a scrolling screen
+              // (Setup) so it isn't measured half off-screen.
+              await runTourScroll(idx);
             },
             render: (props) => renderWhatsNew(props),
           })
@@ -336,16 +495,7 @@ export function TourProvider({ children }: { children: ReactNode }) {
       // What's New mode: no first-login bookkeeping. Back to the list if
       // they asked for it, otherwise Home.
       if (whatsNewReqRef.current) {
-        const backToList = whatsNewBackToListRef.current;
-        whatsNewReqRef.current = null;
-        whatsNewCardRef.current = 0;
-        whatsNewBackToListRef.current = false;
-        setWhatsNewActive(false);
-        router.navigate(HOME_PATH as never);
-        lastPathRef.current = HOME_PATH;
-        if (backToList) {
-          setTimeout(() => router.push("/whats-new" as never), NAV_SETTLE_MS);
-        }
+        finishWhatsNew(whatsNewBackToListRef.current);
         return;
       }
       // Reaching the last step = completion; stopping earlier = skip.
@@ -394,12 +544,14 @@ export function TourProvider({ children }: { children: ReactNode }) {
           if (finished) requestAchievementCheck();
         });
     },
-    [refresh, router]
+    [refresh, router, finishWhatsNew]
   );
 
   return (
     <TourModeContext.Provider value={modeApi}>
+    <ScreenStopContext.Provider value={screenStopApi}>
     <SpotlightTourProvider
+      ref={tourRef}
       steps={steps}
       overlayColor="rgb(8, 8, 16)"
       // Welcome mode barely dims: the point of each stop is to SHOW that
@@ -430,6 +582,7 @@ export function TourProvider({ children }: { children: ReactNode }) {
     >
       {children}
     </SpotlightTourProvider>
+    </ScreenStopContext.Provider>
     </TourModeContext.Provider>
   );
 }
