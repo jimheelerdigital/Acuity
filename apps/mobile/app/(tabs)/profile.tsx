@@ -347,10 +347,24 @@ export default function ProfileTab() {
             all, because every row below is conditional). The action
             rows keep their existing rules. */}
         <SettingsGroup label="Subscription">
+          {/* Tapping the plan does what you'd expect for that plan (Jimmy,
+              build 187: "clicking Ripple Pro does nothing"). Store subs open
+              Customer Center, web subs the Stripe portal, free users the
+              subscribe screen. A comped plan has nothing to manage, so the
+              row is informational: no chevron, not pressable. */}
           <MenuItem
             icon={plan.title === "Free plan" ? "person-outline" : "sparkles-outline"}
             label={plan.title}
             sublabel={plan.detail}
+            onPress={
+              canManageSubscription && (isAppleSub || isPlaySub)
+                ? () => void handleManageStoreSubscription()
+                : canManageStripeSubscription
+                  ? () => void openSubscriptionPortal()
+                  : showInAppSubscribe
+                    ? () => router.push("/subscribe")
+                    : undefined
+            }
           />
           {/* Phase 3a — FREE users see "Subscribe" (in-app, iOS only,
               flag-on) AND "Manage plan on web" (3.1.3(b) requires the
@@ -667,9 +681,13 @@ function MenuItem({
   const labelColor = destructive ? tokens.bad : tokens.text;
   const sublabelColor = destructive ? tokens.bad : tokens.textTer;
   const iconColor = destructive ? tokens.bad : tokens.textSec;
+  // A row without an action is information, not a button: no chevron and
+  // not pressable, so it never looks tappable and then does nothing.
   return (
     <Pressable
       onPress={onPress}
+      disabled={!onPress}
+      accessibilityRole={onPress ? "button" : "text"}
       style={{
         flexDirection: "row",
         alignItems: "center",
@@ -708,7 +726,7 @@ function MenuItem({
           </Text>
         )}
       </View>
-      <Ionicons name="chevron-forward" size={16} color={tokens.textTer} />
+      {onPress ? <Ionicons name="chevron-forward" size={16} color={tokens.textTer} /> : null}
     </Pressable>
   );
 }
