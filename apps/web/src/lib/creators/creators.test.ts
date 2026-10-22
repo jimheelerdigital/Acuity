@@ -3,6 +3,8 @@ import { describe, expect, it } from "vitest";
 import { MILESTONE_TIERS } from "./config";
 import {
   clawbackFor,
+  codeKey,
+  customCodeProblem,
   commissionFor,
   generateCreatorCode,
   insideWindow,
@@ -112,8 +114,25 @@ describe("referral codes", () => {
   });
   it("normalizes typed codes and rejects bad ones", () => {
     expect(normalizeCode(" ab3-k9m ")).toBe("AB3K9M");
-    expect(normalizeCode("AB3K9")).toBeNull();
-    expect(normalizeCode("AB0K9M")).toBeNull(); // 0 isn't in the alphabet
+    expect(normalizeCode("tess")).toBe("TESS");
+    expect(normalizeCode("TES")).toBeNull(); // too short
+    expect(normalizeCode("ABCDEFGHIJKLM")).toBeNull(); // 13 > 12
+    expect(normalizeCode("tess!")).toBeNull();
     expect(normalizeCode(null)).toBeNull();
+  });
+  it("treats look-alikes as the same code (no TESSO + TESS0)", () => {
+    expect(codeKey("TESSO")).toBe(codeKey("TESS0"));
+    expect(codeKey("LILY1")).toBe(codeKey("1I1Y1"));
+    expect(codeKey("TESS")).not.toBe(codeKey("TESA"));
+  });
+  it("custom codes: letters + digits, 4–12, no brand / discount / rude words", () => {
+    expect(customCodeProblem("TESS")).toBeNull();
+    expect(customCodeProblem("jane-smith")).toBeNull();
+    expect(customCodeProblem("ab")).toMatch(/at least 4/);
+    expect(customCodeProblem("1234")).toMatch(/letter/);
+    expect(customCodeProblem("RIPPLE1")).toMatch(/isn't available/);
+    expect(customCodeProblem("R1PPLE")).toMatch(/isn't available/); // look-alike of RIPPLE
+    expect(customCodeProblem("TESS20OFF")).toMatch(/discount/);
+    expect(customCodeProblem("FREETESS")).toMatch(/discount/);
   });
 });

@@ -9,7 +9,7 @@ import { prisma } from "@/lib/prisma";
 import { safeLog } from "@/lib/safe-log";
 
 import { RECONCILE_TOLERANCE_CENTS } from "./config";
-import { firstNameOf, generateCreatorCode } from "./money";
+import { firstNameOf } from "./money";
 
 const DEAL_OR_LATER = new Set(["deal", "briefed", "delivered", "paid"]);
 
@@ -28,23 +28,15 @@ export async function issueReferralCode(creatorId: string, opts: { force?: boole
   }
   const fp = (c.selfFingerprints ?? {}) as { emails?: string[] };
   const emails = Array.from(new Set([...(fp.emails ?? []), ...(c.email ? [c.email.toLowerCase()] : [])]));
-  for (let attempt = 0; attempt < 8; attempt++) {
-    const code = generateCreatorCode();
-    try {
-      await prisma.ugcCreator.update({
-        where: { id: c.id },
-        data: {
-          referralCode: code,
-          firstName: c.firstName ?? firstNameOf(c.displayName, c.handle),
-          selfFingerprints: { ...(c.selfFingerprints as object | null ?? {}), emails },
-        },
-      });
-      return code;
-    } catch (err) {
-      if ((err as { code?: string } | null)?.code !== "P2002") throw err;
-    }
-  }
-  throw new Error("could not generate a unique referral code");
+  await prisma.ugcCreator.update({
+    where: { id: c.id },
+    data: {
+      firstName: c.firstName ?? firstNameOf(c.displayName, c.handle),
+      selfFingerprints: { ...((c.selfFingerprints as object | null) ?? {}), emails },
+    },
+  });
+  const { assignGeneratedCode } = await import("./codes");
+  return assignGeneratedCode(c.id);
 }
 
 /**

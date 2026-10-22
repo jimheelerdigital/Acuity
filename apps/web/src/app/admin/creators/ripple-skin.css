@@ -1,0 +1,58 @@
+/**
+ * Creator admin in Ripple's own app colors (2026-10-22, per Keenan: "reflect
+ * our app color scheme"). Re-declares the acuity-* tokens on a wrapper inside
+ * the admin's Neo skin, using the DESIGN_SYSTEM.md §2 coral preset (dark):
+ * coral primary, violet secondary, warm-undertone charcoal surfaces. Only
+ * pages that set data-ripple-skin change; the rest of the admin is untouched.
+ */
+[data-ripple-skin] {
+  --acuity-primary: oklch(0.76 0.155 38);
+  --acuity-primary-hi: oklch(0.84 0.155 38);
+  --acuity-primary-lo: oklch(0.66 0.155 38);
+  --acuity-primary-soft: oklch(0.76 0.155 38 / 0.14);
+  --acuity-secondary: oklch(0.66 0.18 285);
+  --acuity-secondary-hi: oklch(0.74 0.18 285);
+  --acuity-secondary-lo: oklch(0.56 0.18 285);
+  --acuity-secondary-soft: oklch(0.66 0.18 285 / 0.16);
+
+  --acuity-bg: oklch(0.21 0.022 290);
+  --acuity-bg-sub: oklch(0.235 0.024 290);
+  --acuity-bg-inset: oklch(0.185 0.02 285);
+  --acuity-card-bg: oklch(0.245 0.024 290 / 0.82);
+  --acuity-card-bg-tint: oklch(0.255 0.034 43 / 0.82);
+  --acuity-card-bg-raised: oklch(0.29 0.03 290);
+  --acuity-card-border: oklch(1 0 0 / 0.07);
+
+  --acuity-text: oklch(0.98 0.004 285);
+  --acuity-text-sec: oklch(0.74 0.01 285);
+  --acuity-text-ter: oklch(0.56 0.012 285);
+  --acuity-text-quiet: oklch(0.42 0.01 285);
+
+  --acuity-line: oklch(1 0 0 / 0.07);
+  --acuity-line-strong: oklch(1 0 0 / 0.13);
+
+  --acuity-shadow-soft: inset 0 1px 0 oklch(1 0 0 / 0.04), 0 8px 22px oklch(0 0 0 / 0.28);
+  --acuity-shadow-lift: inset 0 1px 0 oklch(1 0 0 / 0.06), 0 14px 36px oklch(0 0 0 / 0.34);
+
+  position: relative;
+  background:
+    radial-gradient(55% 40% at 8% -6%, oklch(0.76 0.155 38 / 0.16) 0%, transparent 62%),
+    radial-gradient(50% 38% at 96% -4%, oklch(0.66 0.18 285 / 0.18) 0%, transparent 60%),
+    radial-gradient(70% 50% at 50% 110%, oklch(0.66 0.18 285 / 0.07) 0%, transparent 60%),
+    var(--acuity-bg);
+  color: var(--acuity-text);
+}
+
+/* Title: warm white → coral → violet (the app's gradMix). */
+[data-ripple-skin] .neo-title {
+  background: linear-gradient(100deg, oklch(0.98 0.004 285) 0%, oklch(0.84 0.155 38) 55%, oklch(0.74 0.18 285) 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+/* Primary buttons in the creator admin use the app's warm CTA gradient. */
+[data-ripple-skin] .ripple-cta {
+  background: linear-gradient(135deg, var(--acuity-primary-hi), var(--acuity-primary), var(--acuity-primary-lo));
+  color: white;
+}

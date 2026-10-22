@@ -101,6 +101,30 @@ From Friday through Sunday, OpenAI's ChatGPT 6.1 Sol writes every social post in
   - Each ChatGPT-written call now logs a ClaudeCallLog row (purpose "openai-writer", model gpt-6.1-sol), because callers' own rows hardcode the model they asked for.
 - First sample (10-22, flag on 15:49–16:03 UTC): "WHICH DRAGON IS YOURS?" (post cmvjqcjer0000vhvqag0hvemv). No fallback warnings in the prod logs.
 
+## [2026-10-22] — Creators pick their own code; creator admin in app colors; captions without #ad
+
+- **Requested by:** Keenan
+- **Committed by:** Claude Code
+- **Commit hash:** (see git log: "feat: Let creators pick their own referral code")
+
+### In plain English (for Keenan)
+Creators can now choose their own code on their dashboard (for example TESS), with a live "available / taken" check. No two creators can ever have the same code, or two codes that look alike (TESSO and TESS0). If a creator changes their code, their old link and code keep working, so posts already out never break. You can also set a creator's code from their admin page. The creator admin pages now use Ripple's own colors (coral and violet on the warm dark background) with a fresher layout: headline numbers with icons, creator cards with mini funnel bars, colored ROI and a plain "Ready to pay / Needs agreement" status. On the creator dashboard, the "Required on every post" box is gone and the caption ideas no longer include "#ad".
+
+### Technical changes (for Jimmy)
+- Prisma (additive, pushed 10-22 via session pooler from main): new CreatorCode (code @unique, codeKey @unique look-alike-proof O→0 / I,L→1, creatorId, createdBy, retiredAt) + UgcCreator.codes; RLS `supabase/migrations/2026-10-22_creator_codes_rls.sql` (applied); Tess's code backfilled.
+- `lib/creators/codes.ts`: resolveCode (current + retired codes, legacy fallback), isCodeTaken, assignGeneratedCode, setCustomCode (max 5 codes per creator unless admin), backfillCodes. `money.ts`: normalizeCode now 4–12 A–Z0–9, codeKey, customCodeProblem (blocked brand / discount / rude words).
+- All lookups (/c, /with, capture-email, api/creators/code, attribution) go through resolveCode; /c/<old code> lands on the current code.
+- New `api/creators/code/custom` (GET availability, POST set); dashboard CodeEditor; admin action `set-code` + form on `/admin/creators/[id]`.
+- `admin/creators/ripple-skin.css` re-declares acuity-* tokens (DESIGN_SYSTEM coral preset) under `[data-ripple-skin]`; Creators tab rebuilt (Stat, Avatar, FunnelBars, RoiBadge, pill tabs with counts, next-payout chip); admin buttons now pill + coral CTA.
+- `creators/page.tsx`: removed the FTC box + claims line from the post kit; caption templates no longer end with "#ad I earn a commission from this link."
+
+### Manual steps needed
+- [ ] Stripe Connect: sign up for Connect in the Stripe Dashboard (Express accounts). The dashboard's "Connect Stripe" fails until then with "You can only create new accounts if you've signed up for Connect" (Keenan)
+
+### Notes
+- Disclosure is still required by the creator agreement and the brief; it's just no longer pre-written into the dashboard captions (Keenan's call 10-22). The FTC holds brands responsible for undisclosed paid endorsements, so creators should still use the platform's paid-partnership label.
+- Blocked-word matching is substring-based (e.g. SKILLS contains KILL), so a few innocent codes are refused with "try another".
+
 ## [2026-10-22] — Creator admin: "View as creator", cleaner Creators tab, Stripe refund events on
 
 - **Requested by:** Keenan

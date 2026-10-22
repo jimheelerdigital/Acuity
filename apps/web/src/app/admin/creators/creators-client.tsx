@@ -7,14 +7,14 @@
  */
 import { useState } from "react";
 
-export const BTN = "px-3 py-1.5 rounded text-sm font-medium transition disabled:opacity-50";
+export const BTN = "px-4 py-2 rounded-full text-sm font-semibold transition active:scale-[0.98] disabled:opacity-50";
 export const TONES: Record<string, string> = {
-  go: "bg-emerald-600 hover:bg-emerald-500 text-white",
-  plain: "bg-acuity-bg-inset hover:bg-acuity-card-bg",
-  stop: "bg-zinc-600 hover:bg-zinc-500 text-white",
-  warn: "bg-amber-600 hover:bg-amber-500 text-white",
+  go: "ripple-cta hover:brightness-110",
+  plain: "border border-acuity-line bg-acuity-bg-sub text-acuity-text hover:border-acuity-line-strong",
+  stop: "border border-acuity-line-strong text-acuity-text-sec hover:text-acuity-text",
+  warn: "border border-amber-400/40 bg-amber-400/10 text-amber-200 hover:bg-amber-400/15",
 };
-export const INPUT = "rounded border border-acuity-line bg-acuity-bg-inset px-2 py-1 text-sm";
+export const INPUT = "rounded-[14px] border border-acuity-line bg-acuity-bg-inset px-3 py-2 text-sm focus:border-acuity-line-strong focus:outline-none";
 
 type Resp = { ok?: boolean; error?: string; result?: unknown };
 

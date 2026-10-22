@@ -12,7 +12,7 @@ import { createHash, randomUUID } from "node:crypto";
 import { NextRequest, NextResponse } from "next/server";
 
 import { CLICK_COOKIE, CLICK_COOKIE_DAYS, CODE_COOKIE, cookieDomainFor } from "@/lib/creators/config";
-import { firstNameOf, normalizeCode } from "@/lib/creators/money";
+import { firstNameOf } from "@/lib/creators/money";
 import { safeLog } from "@/lib/safe-log";
 
 export const dynamic = "force-dynamic";
@@ -21,18 +21,13 @@ export const runtime = "nodejs";
 const BOT_UA = /bot|crawl|spider|preview|facebookexternalhit|slurp|bingpreview|whatsapp|telegram|discord|curl|wget|python|headless/i;
 
 export async function GET(req: NextRequest, { params }: { params: { code: string } }) {
-  const code = normalizeCode(params.code);
   const home = new URL("/", req.nextUrl.origin);
-  if (!code) return NextResponse.redirect(home, 302);
-
-  const { prisma } = await import("@/lib/prisma");
-  const creator = await prisma.ugcCreator
-    .findUnique({
-      where: { referralCode: code },
-      select: { id: true, firstName: true, displayName: true, handle: true },
-    })
-    .catch(() => null);
+  // Current or retired code: old posts keep working and land on the CURRENT code.
+  const { resolveCode } = await import("@/lib/creators/codes");
+  const creator = await resolveCode(params.code).catch(() => null);
   if (!creator) return NextResponse.redirect(home, 302);
+  const code = creator.referralCode;
+  const { prisma } = await import("@/lib/prisma");
 
   const dest = new URL(`/with/${code}`, req.nextUrl.origin);
   req.nextUrl.searchParams.forEach((v, k) => dest.searchParams.set(k, v));

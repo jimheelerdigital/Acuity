@@ -45,6 +45,20 @@ export async function POST(req: NextRequest) {
         result = await issueReferralCode(need(str(b.creatorId), "creatorId"), { force: true });
         break;
       }
+      case "set-code": {
+        const { setCustomCode } = await import("@/lib/creators/codes");
+        const creatorId = need(str(b.creatorId), "creatorId");
+        const { prisma } = await import("@/lib/prisma");
+        const c = await prisma.ugcCreator.findUniqueOrThrow({ where: { id: creatorId }, select: { referralCode: true } });
+        if (!c.referralCode) {
+          const { issueReferralCode } = await import("@/lib/creators/admin");
+          await issueReferralCode(creatorId, { force: true });
+        }
+        const r = await setCustomCode(creatorId, need(str(b.code), "code"), `admin:${guard.adminUserId}`);
+        if (!r.ok) throw new Error(r.message);
+        result = r.code;
+        break;
+      }
       case "invite": {
         const { onCreatorDeal } = await import("@/lib/creators/admin");
         await onCreatorDeal(need(str(b.creatorId), "creatorId"), { resend: true });

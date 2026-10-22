@@ -15,18 +15,18 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import { creatorByCode, writeReferral } from "@/lib/creators/attribution";
-import { firstNameOf, normalizeCode } from "@/lib/creators/money";
+import { firstNameOf } from "@/lib/creators/money";
 import { getAnySessionUserId } from "@/lib/mobile-auth";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
 const MESSAGES: Record<string, string> = {
-  invalid: "That code doesn't match a Ripple creator. Check the spelling: codes are 6 letters and numbers.",
+  invalid: "That code doesn't match a Ripple creator. Check the spelling and try again.",
   already_referred: "Your account is already linked to a creator.",
   not_new: "Creator codes only work on new accounts.",
   self_referral: "Creators can't use their own code.",
-  unknown_creator: "That code doesn't match a Ripple creator. Check the spelling: codes are 6 letters and numbers.",
+  unknown_creator: "That code doesn't match a Ripple creator. Check the spelling and try again.",
   no_user: "Please sign in and try again.",
   error: "Something went wrong. Please try again.",
 };
@@ -52,8 +52,7 @@ export async function POST(req: NextRequest) {
   if (!rl.success) return rateLimitedResponse(rl);
 
   const body = (await req.json().catch(() => null)) as { code?: unknown } | null;
-  const code = normalizeCode(typeof body?.code === "string" ? body.code : null);
-  const creator = code ? await creatorByCode(code) : null;
+  const creator = await creatorByCode(typeof body?.code === "string" ? body.code : null);
   if (!creator) return NextResponse.json({ error: "invalid", message: MESSAGES.invalid }, { status: 400 });
 
   const r = await writeReferral({ userId, creatorId: creator.id, source: "code" });

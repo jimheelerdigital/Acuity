@@ -11,7 +11,6 @@ import { Card } from "@/components/acuity";
 import { AGREEMENT_SECTIONS } from "@/lib/creators/agreement";
 import {
   AGREEMENT_VERSION,
-  FTC_LINE,
   HOLD_DAYS,
   PAYOUT_MIN_CENTS,
   SITE_URL,
@@ -21,6 +20,7 @@ import { ADMIN_VIEW_COOKIE, currentCreatorId } from "@/lib/creators/session";
 
 import {
   AcceptAgreementButton,
+  CodeEditor,
   CopyButton,
   DeletePostButton,
   PaypalForm,
@@ -88,9 +88,9 @@ function Pill({ tone, children }: { tone: "good" | "warn" | "quiet"; children: R
 }
 
 const CAPTIONS = [
-  "I used to carry my whole to-do list in my head. Now I talk it out and Ripple turns it into tasks, tracks my habits and shows me what keeps coming up. 7-day free trial: {link} (code {code})\n\n#ad I earn a commission from this link.",
-  "The mental load is real. Ripple is where I put mine: I say what's on my mind and it pulls out the to-dos, notices the patterns and sends me a weekly report. Try it free for 7 days at {link}, code {code}.\n\n#ad I earn a commission from this link.",
-  "What surprised me about Ripple: it remembers. I talk, it keeps track, and every week I can see what's actually changing and what keeps repeating. {link} · code {code}\n\n#ad I earn a commission from this link.",
+  "I used to carry my whole to-do list in my head. Now I talk it out and Ripple turns it into tasks, tracks my habits and shows me what keeps coming up. 7-day free trial: {link} (code {code})",
+  "The mental load is real. Ripple is where I put mine: I say what's on my mind and it pulls out the to-dos, notices the patterns and sends me a weekly report. Try it free for 7 days at {link}, code {code}.",
+  "What surprised me about Ripple: it remembers. I talk, it keeps track, and every week I can see what's actually changing and what keeps repeating. {link} · code {code}",
 ];
 
 export default async function CreatorsPage({
@@ -239,6 +239,9 @@ export default async function CreatorsPage({
             <CopyButton text={link} label="Copy link" />
             <CopyButton text={code} label="Copy code" />
           </div>
+        </div>
+        <div className="mt-4 border-t border-acuity-line pt-4">
+          <CodeEditor current={code} />
         </div>
       </Card>
 
@@ -440,16 +443,8 @@ export default async function CreatorsPage({
 
       {/* Post kit */}
       <Section eyebrow="Post kit" title="What to post">
-        <div className="rounded-acuity-md border border-acuity-line-strong bg-acuity-card-bg-tint p-4">
-          <div className={EYEBROW}>Required on every post</div>
-          <p className="mt-2 text-[15px] font-semibold text-acuity-text">{FTC_LINE}</p>
-        </div>
-        <p className="mt-4 text-[14px] text-acuity-text-sec">
-          Share your own experience and credentials. Never say Ripple treats, diagnoses, cures or replaces therapy.
-        </p>
-
-        <h3 className="mt-6 text-[15px] font-semibold">Caption ideas</h3>
-        <p className="mt-1 text-[13px] text-acuity-text-ter">Rewrite them in your own words. Keep the disclosure line.</p>
+        <h3 className="text-[15px] font-semibold">Caption ideas</h3>
+        <p className="mt-1 text-[13px] text-acuity-text-ter">Rewrite them in your own words.</p>
         <div className="mt-3 flex flex-col gap-3">
           {captions.map((c, i) => (
             <div key={i} className="rounded-acuity-md border border-acuity-line bg-acuity-bg-sub p-4">

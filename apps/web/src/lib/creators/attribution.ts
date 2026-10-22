@@ -22,7 +22,6 @@ import {
   CLICK_COOKIE_DAYS,
   EMAIL_MATCH_DAYS,
 } from "./config";
-import { normalizeCode } from "./money";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 /** An account older than this at attribution time is not "new". */
@@ -197,14 +196,10 @@ export async function tagPaymentProviders(
   }
 }
 
-/** Find a creator by referral code (any case / spacing). */
+/** Find a creator by any current or retired code (any case, look-alikes forgiven). */
 export async function creatorByCode(raw: string | null | undefined) {
-  const code = normalizeCode(raw);
-  if (!code) return null;
-  return prisma.ugcCreator.findUnique({
-    where: { referralCode: code },
-    select: { id: true, referralCode: true, displayName: true, firstName: true, handle: true },
-  });
+  const { resolveCode } = await import("./codes");
+  return resolveCode(raw);
 }
 
 /** Read the rp_click cookie when called inside a request; null otherwise. */

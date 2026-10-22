@@ -14,12 +14,13 @@ import { formatCents } from "@/lib/creators/money";
 import { prisma } from "@/lib/prisma";
 
 import { ActionButton, FormAction, PostFigures } from "../creators-client";
+import "../ripple-skin.css";
 
 export const dynamic = "force-dynamic";
 
 const usd = (c: number | null | undefined) => (c == null ? "—" : formatCents(c));
 const day = (d: Date | null | undefined) => (d ? d.toISOString().slice(0, 10) : "—");
-const CARD = "rounded-lg border border-acuity-line bg-acuity-card-bg p-4 space-y-3";
+const CARD = "neo-glass rounded-2xl p-5 space-y-3";
 
 export default async function CreatorDetail({ params }: { params: { id: string } }) {
   const c = await prisma.ugcCreator.findUnique({
@@ -50,11 +51,11 @@ export default async function CreatorDetail({ params }: { params: { id: string }
   const agreementOk = Boolean(c.agreementAcceptedAt && c.agreementVersion === AGREEMENT_VERSION);
 
   return (
-    <div className="min-h-screen bg-acuity-bg text-white p-6">
+    <div data-ripple-skin className="min-h-screen px-4 py-10 sm:px-6">
       <div className="max-w-6xl mx-auto space-y-6">
         <div>
           <Link className="text-sm underline text-acuity-text-ter" href="/admin/creators">← Creator payouts</Link>
-          <h1 className="text-2xl font-bold mt-1">{c.displayName ?? `@${c.handle}`}</h1>
+          <h1 className="neo-title mt-2 font-display text-[32px] font-extrabold tracking-[-0.8px]">{c.displayName ?? `@${c.handle}`}</h1>
           <p className="text-sm text-acuity-text-ter">
             @{c.handle} · {c.platform} · status {c.status} · {c.email ?? "no email"} ·{" "}
             <Link className="underline" href={`/admin/ugc/creators/${c.id}`}>outreach record</Link>
@@ -82,9 +83,9 @@ export default async function CreatorDetail({ params }: { params: { id: string }
             ["Paid to date", b.paidToDate],
             ["Bonuses (lifetime)", b.bonuses],
           ].map(([label, v]) => (
-            <div key={label as string} className="rounded-lg border border-acuity-line bg-acuity-card-bg p-4">
+            <div key={label as string} className="neo-glass neo-edge rounded-2xl p-5">
               <p className="text-xs text-acuity-text-ter">{label}</p>
-              <p className="text-xl font-bold tabular-nums">{usd(v as number)}</p>
+              <p className="mt-2 font-display text-[26px] font-extrabold leading-none tracking-[-0.6px] tabular-nums">{usd(v as number)}</p>
             </div>
           ))}
         </section>
@@ -100,7 +101,13 @@ export default async function CreatorDetail({ params }: { params: { id: string }
             <p>Payout hold: {c.payoutHold ? <b className="text-amber-400">ON</b> : "off"}</p>
           </div>
           <div className="flex flex-wrap gap-3">
-            {!c.referralCode && <ActionButton body={{ action: "issue-code", creatorId: c.id }} label="Issue code" tone="go" />}
+            {!c.referralCode && <ActionButton body={{ action: "issue-code", creatorId: c.id }} label="Issue random code" tone="go" />}
+            <FormAction
+              body={{ action: "set-code", creatorId: c.id }}
+              fields={[{ name: "code", placeholder: c.referralCode ? "New code, e.g. TESS" : "Custom code, e.g. TESS", width: "w-44" }]}
+              required={["code"]}
+              label={c.referralCode ? "Change code" : "Set custom code"}
+            />
             {c.email && (
               <ActionButton body={{ action: "invite", creatorId: c.id }} label={c.dashboardInvitedAt ? "Resend dashboard invite" : "Send dashboard invite"} />
             )}

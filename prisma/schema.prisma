@@ -3598,6 +3598,7 @@ model UgcCreator {
   selfFingerprints      Json?
 
   clicks    CreatorReferralClick[]
+  codes     CreatorCode[]
   referrals CreatorReferral[]
   ledger    CreatorLedgerEntry[]
   payouts   CreatorPayout[]
@@ -3794,6 +3795,25 @@ enum CreatorFlagStatus {
   open
   held
   resolved
+}
+
+/// Every referral code a creator has ever had (2026-10-22). The current one
+/// is mirrored on UgcCreator.referralCode; retired codes keep resolving to
+/// the same creator so old posts never break, and stay reserved forever.
+/// codeKey is the look-alike-proof form (O→0, I/L→1): unique, so TESSO and
+/// TESS0 can never both exist.
+model CreatorCode {
+  id        String     @id @default(cuid())
+  code      String     @unique
+  codeKey   String     @unique
+  creatorId String
+  creator   UgcCreator @relation(fields: [creatorId], references: [id], onDelete: Cascade)
+  /// "system" | "creator" | admin user id
+  createdBy String
+  createdAt DateTime   @default(now())
+  retiredAt DateTime?
+
+  @@index([creatorId])
 }
 
 /// One row per visit to goripple.io/c/<code>. Clicks are deleted after 90

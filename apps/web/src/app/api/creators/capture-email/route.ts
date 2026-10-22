@@ -17,7 +17,6 @@ import {
   CREATOR_EMAIL_REPLY_TO,
   cookieDomainFor,
 } from "@/lib/creators/config";
-import { normalizeCode } from "@/lib/creators/money";
 import { safeLog } from "@/lib/safe-log";
 
 export const dynamic = "force-dynamic";
@@ -29,7 +28,9 @@ const PLAY_URL = "https://play.google.com/store/apps/details?id=com.heelerdigita
 export async function POST(req: NextRequest) {
   const body = (await req.json().catch(() => null)) as { email?: unknown; code?: unknown } | null;
   const email = typeof body?.email === "string" ? body.email.trim().toLowerCase() : "";
-  const code = normalizeCode(typeof body?.code === "string" ? body.code : null);
+  const { resolveCode } = await import("@/lib/creators/codes");
+  const owner = await resolveCode(typeof body?.code === "string" ? body.code : null);
+  const code = owner?.referralCode ?? null;
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || email.length > 254 || !code) {
     return NextResponse.json({ error: "Invalid" }, { status: 400 });
   }
@@ -40,8 +41,7 @@ export async function POST(req: NextRequest) {
   if (!rl.success) return rateLimitedResponse(rl);
 
   const { prisma } = await import("@/lib/prisma");
-  const creator = await prisma.ugcCreator.findUnique({ where: { referralCode: code }, select: { id: true } });
-  if (!creator) return NextResponse.json({ error: "Invalid" }, { status: 400 });
+  const creator = owner!;
 
   const now = new Date();
   let clickId = req.cookies.get(CLICK_COOKIE)?.value ?? null;

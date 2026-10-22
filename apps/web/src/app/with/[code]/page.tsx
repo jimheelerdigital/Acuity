@@ -11,7 +11,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
 import { HomeV2 } from "@/components/marketing/home-v2/HomeV2";
-import { firstNameOf, normalizeCode } from "@/lib/creators/money";
+import { firstNameOf } from "@/lib/creators/money";
 import {
   displayAnnual,
   displayAnnualAsMonthly,
@@ -29,14 +29,10 @@ export const metadata: Metadata = {
 };
 
 export default async function CreatorLandingPage({ params }: { params: { code: string } }) {
-  const code = normalizeCode(params.code);
-  if (!code) notFound();
-  const { prisma } = await import("@/lib/prisma");
-  const creator = await prisma.ugcCreator.findUnique({
-    where: { referralCode: code },
-    select: { firstName: true, displayName: true, handle: true },
-  });
+  const { resolveCode } = await import("@/lib/creators/codes");
+  const creator = await resolveCode(params.code);
   if (!creator) notFound();
+  const code = creator.referralCode;
   const name = creator.firstName ?? firstNameOf(creator.displayName, creator.handle);
   return (
     <CreatorLanding code={code} name={name}>

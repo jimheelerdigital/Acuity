@@ -120,13 +120,49 @@ export function generateCreatorCode(rand: () => number = Math.random): string {
   return out;
 }
 
-/** Uppercase, strip anything outside the alphabet; null if not a valid shape. */
+/** Custom codes: 4–12 letters and digits. Generated ones are 6. */
+export const CODE_MIN = 4;
+export const CODE_MAX = 12;
+
+/** Uppercase, strip spaces/dashes; null if not 4–12 letters and digits. */
 export function normalizeCode(raw: string | null | undefined): string | null {
   if (!raw) return null;
-  const s = raw.toUpperCase().replace(/[^A-Z0-9]/g, "");
-  if (s.length !== CODE_LENGTH) return null;
-  for (const ch of s) if (!CODE_ALPHABET.includes(ch)) return null;
+  const s = raw.toUpperCase().replace(/[\s\-_.]/g, "");
+  if (s.length < CODE_MIN || s.length > CODE_MAX || !/^[A-Z0-9]+$/.test(s)) return null;
   return s;
+}
+
+/**
+ * Look-alike-proof key: O→0 and I/L→1. Unique in CreatorCode, so two codes
+ * that read the same (TESSO / TESS0) can never both exist, and a customer
+ * who types the wrong one still reaches the right creator.
+ */
+export function codeKey(code: string): string {
+  return code.toUpperCase().replace(/O/g, "0").replace(/[IL]/g, "1");
+}
+
+const BLOCKED_CODE_WORDS = [
+  "RIPPLE", "GORIPPLE", "ACUITY", "ADMIN", "SUPPORT", "OFFICIAL", "STAFF", "TEST",
+  "FREE", "DISCOUNT", "COUPON", "PROMO", "SALE", "DEAL", "OFF", "REFUND",
+  "FUCK", "SHIT", "CUNT", "BITCH", "NIGGER", "NIGGA", "FAG", "SEX", "PORN", "NAZI", "KILL",
+];
+
+/** Why a requested custom code can't be used, or null if the shape is fine. */
+export function customCodeProblem(raw: string): string | null {
+  const s = (raw ?? "").toUpperCase().replace(/[\s\-_.]/g, "");
+  if (s.length < CODE_MIN) return `Codes need at least ${CODE_MIN} characters.`;
+  if (s.length > CODE_MAX) return `Codes can be at most ${CODE_MAX} characters.`;
+  if (!/^[A-Z0-9]+$/.test(s)) return "Use letters and numbers only.";
+  if (/^[0-9]+$/.test(s)) return "Include at least one letter.";
+  const key = codeKey(s);
+  for (const w of BLOCKED_CODE_WORDS) {
+    if (key.includes(codeKey(w))) {
+      return w === "FREE" || w === "DISCOUNT" || w === "COUPON" || w === "PROMO" || w === "SALE" || w === "DEAL" || w === "OFF"
+        ? "Codes can't suggest a discount: your code identifies you, it doesn't change the price."
+        : "That code isn't available. Try another.";
+    }
+  }
+  return null;
 }
 
 export function formatCents(cents: number): string {

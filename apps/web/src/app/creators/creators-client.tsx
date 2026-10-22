@@ -234,3 +234,88 @@ export function SignOutButton() {
     </Button>
   );
 }
+
+/**
+ * "Pick your own code" (2026-10-22). Live availability check while typing;
+ * the old code keeps working after a change, so published posts never break.
+ */
+export function CodeEditor({ current }: { current: string }) {
+  const [open, setOpen] = useState(false);
+  const [value, setValue] = useState("");
+  const [status, setStatus] = useState<{ ok: boolean; message?: string } | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function check(v: string) {
+    setValue(v);
+    setError(null);
+    const clean = v.toUpperCase().replace(/[\s\-_.]/g, "");
+    if (clean.length < 4) {
+      setStatus(null);
+      return;
+    }
+    try {
+      const r = await fetch(`/api/creators/code/custom?code=${encodeURIComponent(clean)}`);
+      const j = (await r.json()) as { available?: boolean; message?: string };
+      if (clean === v.toUpperCase().replace(/[\s\-_.]/g, "")) setStatus({ ok: Boolean(j.available), message: j.message });
+    } catch {
+      setStatus(null);
+    }
+  }
+
+  if (!open) {
+    return (
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        className="text-[13px] font-semibold text-acuity-text-sec underline underline-offset-2 hover:text-acuity-text"
+      >
+        Pick your own code
+      </button>
+    );
+  }
+  return (
+    <form
+      className="mt-3 flex w-full flex-col gap-2"
+      onSubmit={async (e) => {
+        e.preventDefault();
+        setSaving(true);
+        const r = await send("/api/creators/code/custom", "POST", { code: value });
+        setSaving(false);
+        if (r.error) setError(r.error);
+        else window.location.reload();
+      }}
+    >
+      <label className="font-mono text-[11px] font-bold uppercase tracking-[1.4px] text-acuity-text-ter" htmlFor="creator-code">
+        Your new code
+      </label>
+      <div className="flex flex-col gap-2 sm:flex-row">
+        <input
+          id="creator-code"
+          className={`${INPUT} font-mono uppercase tracking-[1.4px]`}
+          placeholder={current}
+          maxLength={14}
+          autoComplete="off"
+          value={value}
+          onChange={(e) => check(e.target.value)}
+        />
+        <div className="flex gap-2">
+          <Button type="submit" disabled={saving || !status?.ok}>
+            {saving ? "Saving…" : "Save code"}
+          </Button>
+          <Button type="button" variant="secondary" onClick={() => setOpen(false)}>
+            Cancel
+          </Button>
+        </div>
+      </div>
+      <p className={`text-[13px] ${error || (status && !status.ok) ? "text-acuity-bad" : status?.ok ? "text-acuity-good" : "text-acuity-text-ter"}`}>
+        {error ??
+          (status
+            ? status.ok
+              ? status.message ?? "Available."
+              : status.message
+            : "4 to 12 letters and numbers, like your name. Your current link keeps working after you change it.")}
+      </p>
+    </form>
+  );
+}
