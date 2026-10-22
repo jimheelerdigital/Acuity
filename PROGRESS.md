@@ -26,7 +26,7 @@ Creators can now be paid on commission: each one gets a code and a link (gorippl
 - New env (optional): `CREATOR_STRIPE_PAYOUTS=1` turns on Connect transfers; `CREATOR_ACCEPT_SANDBOX=1` lets RC sandbox purchases write rows (testing only).
 
 ### Manual steps needed
-- [ ] **db:push BEFORE this deploys** (new UgcCreator columns: the existing UGC admin pages read whole rows and would error until the columns exist). Committed on main; run `npm run db:push` FROM MAIN (Supabase port was unreachable from this machine on 10-22; working form: `npx dotenv -e apps/web/.env.local -- tsx scripts/check-destructive-diff.ts --require-db` then `npx dotenv -e apps/web/.env.local -- prisma db push`), then run `supabase/migrations/2026-10-22_creator_platform_rls.sql` (Keenan / Claude)
+- [x] db:push + RLS SQL done 2026-10-22 by Claude from main (guard passed: additive only; RLS verified on all 7 Creator* tables). Ran via the Supabase session pooler (pooler host, port 5432): the direct db.* host is IPv6-only and this network has no IPv6
 - [ ] Jimmy review of the Stripe + RevenueCat webhook hooks and bootstrap-user change before relying on the ledger (Jimmy)
 - [ ] Stripe dashboard: add `charge.refunded`, `charge.dispute.created`, `charge.dispute.closed` to the existing webhook endpoint's events (Keenan / Jimmy)
 - [ ] Stripe Connect: enable Connect (Express) on the platform account, then set `CREATOR_STRIPE_PAYOUTS=1` in Vercel + redeploy (Keenan)
