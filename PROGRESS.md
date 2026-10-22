@@ -30,6 +30,10 @@ From Friday through Sunday, OpenAI's ChatGPT 6.1 Sol writes every social post in
 ### Notes
 - Writers and the image checks both use Opus 5.5, so checks are told apart by effort and image content, not by model name. The first version got this wrong and was caught in a local test.
 - After the window the code is a no-op; remove it once the test is judged.
+- Follow-ups the same day:
+  - FeatureFlag `writer_override_now` forces the swap outside the window, for sample runs. It's off, and is turned on only briefly for samples.
+  - Each ChatGPT-written call now logs a ClaudeCallLog row (purpose "openai-writer", model gpt-6.1-sol), because callers' own rows hardcode the model they asked for.
+- First sample (10-22, flag on 15:49–16:03 UTC): "WHICH DRAGON IS YOURS?" (post cmvjqcjer0000vhvqag0hvemv). No fallback warnings in the prod logs.
 
 ## [2026-10-22] — Creator platform: referral links, commission ledger, creator dashboard, payouts
 

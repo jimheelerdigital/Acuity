@@ -172,6 +172,24 @@ async function openAiWrite(params: CreateParams): Promise<Anthropic.Message> {
   if (!res.ok || typeof text !== "string" || !text.trim()) {
     throw new Error(`[content-writer] ${WRITER_OVERRIDE.model} failed: ${j.error?.message ?? res.status}`);
   }
+  // One log row per ChatGPT-written call, so the test is countable per day
+  // (callers' own rows record the model they asked for, not who answered).
+  try {
+    const { prisma } = await import("@/lib/prisma");
+    await prisma.claudeCallLog.create({
+      data: {
+        purpose: "openai-writer",
+        model: WRITER_OVERRIDE.model,
+        tokensIn: j.usage?.prompt_tokens ?? 0,
+        tokensOut: j.usage?.completion_tokens ?? 0,
+        costCents: 0,
+        durationMs: 0,
+        success: true,
+      },
+    });
+  } catch {
+    // logging only
+  }
   return {
     id: `openai-${Date.now()}`,
     type: "message",
