@@ -21,6 +21,7 @@ import type { Ionicons } from "@expo/vector-icons";
  */
 
 export type WhatsNewTarget =
+  | "record"
   | "today"
   | "swipe"
   | "widgets"
@@ -49,6 +50,61 @@ export type WhatsNewRelease = {
 };
 
 export const WHATS_NEW_RELEASES: WhatsNewRelease[] = [
+  {
+    // 1.9.5 (2026-10-22). App Store users come from 1.9.3 (1.9.4 never
+    // shipped), so this covers everything since then. User-facing only:
+    // nothing about billing plumbing / analytics.
+    version: "1.9.5",
+    items: [
+      {
+        id: "type-or-snap",
+        icon: "create-outline",
+        title: "Type it or snap it",
+        body: "Can't talk right now? Type your entry instead, or take a photo of a handwritten page and Ripple reads it.",
+        tour: {
+          target: "record",
+          title: "Type or snap an entry",
+          body: "Tap record, then \"Type it instead\". The camera button turns a handwritten page into text.",
+        },
+      },
+      {
+        id: "widget-checkoff",
+        icon: "checkmark-circle-outline",
+        title: "Check off tasks from your Home Screen",
+        body: "The Today widget shows all your open tasks. Tap a circle to check one off without opening the app.",
+        platform: "ios",
+        tour: {
+          target: "widgets",
+          title: "Check tasks off right on the widget",
+          body: "Add the Ripple Today widget, then tap any circle to check that task off. Tap anywhere else to open your tasks.",
+        },
+      },
+      {
+        id: "siri-due-dates",
+        icon: "mic-circle-outline",
+        title: "Add tasks with Siri, due dates included",
+        body: "Say \"Add a task in Ripple\" or use the Action Button, then pick a due date if you want one.",
+        platform: "ios",
+        tour: {
+          target: "actionButton",
+          title: "Add tasks hands-free",
+          body: "Set the Action Button or ask Siri to \"Add a task in Ripple\". You'll be asked for an optional due date.",
+        },
+      },
+      {
+        id: "roadmap",
+        icon: "map-outline",
+        title: "See what's coming next",
+        body: "Profile → Roadmap shows what we're building and what's planned. Vote for what you want most.",
+      },
+      {
+        id: "keyboard",
+        icon: "chatbox-ellipses-outline",
+        title: "Smoother typing everywhere",
+        body: "The keyboard no longer covers what you're typing or the buttons you need.",
+      },
+    ],
+  },
   {
     version: "1.9.1",
     items: [
