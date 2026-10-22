@@ -7,6 +7,28 @@
 
 ---
 
+## [2026-10-22] — ChatGPT test: 2 of 3 Mythicals posts per day, the third stays Claude
+
+- **Requested by:** Keenan
+- **Committed by:** Claude Code
+- **Commit hash:** (see git log: "feat: Keep one Claude Mythicals post a day during the ChatGPT test")
+
+### In plain English (for Keenan)
+During the Fri–Sun ChatGPT test, each day's three Legendary Mythicals posts are split. The 12pm and 3pm CT posts are written and animated by ChatGPT. The 5pm CT post is our normal Claude post: writing, caption and animation all Claude. That gives a same-day comparison. The Ripple posts stay on ChatGPT for the test.
+
+### Technical changes (for Jimmy)
+- apps/web/src/lib/content-factory/claude-client.ts: writerScope (AsyncLocalStorage { forceClaude }), CLAUDE_CONTROL = mythic-picks @ 08 UTC, isClaudeControlRun(lane, hourUtc). overrideActive and writerOverrideOn return false inside a forceClaude scope.
+- apps/web/src/inngest/functions/carousel-daily.ts: the handler body runs in writerScope.run({ forceClaude }), true for a daily.generate event with bucket mythic-picks and hourUtc 8.
+- apps/web/src/lib/content-factory/caption-writer.ts: ensureWrittenCaption wraps writeCaption in the scope for control posts (by post lane + createdAt UTC hour).
+- apps/web/src/inngest/functions/carousel-post-video.ts: no ChatGPT clip prompts for control posts.
+
+### Manual steps needed
+- None
+
+### Notes
+- A control post is recognized downstream by lane mythic-picks + created during 08:xx UTC. A manual run made at 08 UTC would also count as control.
+- Tested locally: inside the window the normal path uses ChatGPT, and the scoped control path doesn't.
+
 ## [2026-10-22] — ChatGPT now writes the animation prompts too, by looking at each picture
 
 - **Requested by:** Keenan

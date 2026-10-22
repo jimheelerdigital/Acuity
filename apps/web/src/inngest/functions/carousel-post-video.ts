@@ -577,7 +577,11 @@ export const carouselPostVideoFn = inngest.createFunction(
         // Any failure keeps the standard prompt.
         {
           const { writerOverrideOn, gptMotionPrompt } = await import("@/lib/content-factory/claude-client");
-          if (await writerOverrideOn()) {
+          const { isClaudeControlRun } = await import("@/lib/content-factory/claude-client");
+          const { prisma } = await import("@/lib/prisma");
+          const made = await prisma.carouselPost.findUnique({ where: { id: postId }, select: { createdAt: true } });
+          const control = !!made && isClaudeControlRun(plan.lane, made.createdAt.getUTCHours());
+          if (!control && (await writerOverrideOn())) {
             const gpt = await gptMotionPrompt({ imageUrl: baseUrl, rules: basePrompt, seconds: clipSec(i) });
             if (gpt) prompt = gpt;
           }

@@ -1,4 +1,5 @@
 import Anthropic from "@anthropic-ai/sdk";
+import { AsyncLocalStorage } from "node:async_hooks";
 
 /**
  * One model for every piece of content-factory copy (2026-09-26, per
@@ -121,8 +122,21 @@ async function writerFlagOn(): Promise<boolean> {
   return on;
 }
 
+/**
+ * Claude control post (2026-10-22, per Keenan: "make just two of the three
+ * posts chatgpt only ... then 1 is our normal post"). The 08 UTC Mythicals
+ * run (the 5pm CT post) stays fully on Claude: writing, caption and clip
+ * prompts. writerScope marks a run as forced-Claude for everything it calls.
+ */
+export const writerScope = new AsyncLocalStorage<{ forceClaude: boolean }>();
+export const CLAUDE_CONTROL = { lane: "mythic-picks", hourUtc: 8 };
+export function isClaudeControlRun(lane: string | null | undefined, hourUtc: number): boolean {
+  return lane === CLAUDE_CONTROL.lane && hourUtc === CLAUDE_CONTROL.hourUtc;
+}
+
 /** True while ChatGPT is the writer (dated window or the manual flag). */
 export async function writerOverrideOn(): Promise<boolean> {
+  if (writerScope.getStore()?.forceClaude) return false;
   const now = Date.now();
   if (!openAiKey()) return false;
   return (now >= WRITER_OVERRIDE.from && now < WRITER_OVERRIDE.until) || (await writerFlagOn());
@@ -179,6 +193,7 @@ export async function gptMotionPrompt(opts: { imageUrl: string; rules: string; s
 }
 
 async function overrideActive(params: CreateParams, model: string): Promise<boolean> {
+  if (writerScope.getStore()?.forceClaude) return false;
   const now = Date.now();
   const inWindow = now >= WRITER_OVERRIDE.from && now < WRITER_OVERRIDE.until;
   if (!inWindow && !(await writerFlagOn())) return false;

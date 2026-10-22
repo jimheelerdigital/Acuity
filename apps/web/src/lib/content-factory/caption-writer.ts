@@ -373,6 +373,7 @@ export async function ensureWrittenCaption(
         captionWrittenAt: true,
         headline: true,
         lane: true,
+        createdAt: true,
         slides: {
           orderBy: { order: "asc" },
           select: { overlayText: true, kind: true },
@@ -384,7 +385,10 @@ export async function ensureWrittenCaption(
 
     const { laneBrand } = await import("@/lib/content-factory/social-publish");
     const brand = await laneBrand(post.lane);
-    const written = await writeCaption({
+    // The Claude control post keeps a Claude caption (2026-10-22).
+    const { writerScope, isClaudeControlRun } = await import("@/lib/content-factory/claude-client");
+    const forceClaude = isClaudeControlRun(post.lane, post.createdAt.getUTCHours());
+    const written = await writerScope.run({ forceClaude }, () => writeCaption({
       brand,
       headline: post.headline,
       slideText: post.slides
@@ -393,7 +397,7 @@ export async function ensureWrittenCaption(
         .filter(Boolean)
         .slice(0, 10),
       question: existingQuestion(post.caption),
-    });
+    }));
     if (!written) return post.caption;
 
     await prisma.carouselPost.update({

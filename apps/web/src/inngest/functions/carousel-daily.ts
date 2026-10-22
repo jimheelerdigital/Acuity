@@ -224,6 +224,14 @@ export const carouselDailyCronFn = inngest.createFunction(
     retries: 2,
   },
   async ({ event, step, logger }) => {
+    // Claude control post (2026-10-22): the 08 UTC Mythicals run stays on
+    // Claude for everything it writes while the ChatGPT test runs.
+    const { writerScope, isClaudeControlRun } = await import("@/lib/content-factory/claude-client");
+    const evData = (event?.data ?? {}) as { bucket?: string; hourUtc?: number };
+    const forceClaude =
+      event?.name === "content-factory/daily.generate" &&
+      isClaudeControlRun(evData.bucket, typeof evData.hourUtc === "number" ? evData.hourUtc : -1);
+    return writerScope.run({ forceClaude }, async () => {
     // ── CRON runs only DISPATCH: fan out this hour's two lanes ─────
     // (2026-08-28 night.) Generation always happens on the event
     // trigger so the two lanes run as parallel, independently-retried
@@ -3258,5 +3266,6 @@ export const carouselDailyCronFn = inngest.createFunction(
       `[carousel-cron] Generated moody-family (${bucket}) "${moody.title}": ${moodyResult.slideCount} slides`
     );
     return { generated: 1, bucket, ...moodyResult };
+    });
   }
 );
