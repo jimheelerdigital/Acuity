@@ -104,9 +104,27 @@ export const WRITER_OVERRIDE = {
   until: Date.parse("2026-10-26T00:00:00Z"),
 };
 
-function overrideActive(params: CreateParams, model: string): boolean {
+/** FeatureFlag "writer_override_now": forces the swap outside the window
+ *  (sample runs, 2026-10-22). Read with a 30s memo; off on any DB error. */
+const WRITER_FLAG = "writer_override_now";
+let flagMemo: { at: number; on: boolean } | null = null;
+async function writerFlagOn(): Promise<boolean> {
+  if (flagMemo && Date.now() - flagMemo.at < 30_000) return flagMemo.on;
+  let on = false;
+  try {
+    const { prisma } = await import("@/lib/prisma");
+    on = !!(await prisma.featureFlag.findUnique({ where: { key: WRITER_FLAG }, select: { enabled: true } }))?.enabled;
+  } catch {
+    on = false;
+  }
+  flagMemo = { at: Date.now(), on };
+  return on;
+}
+
+async function overrideActive(params: CreateParams, model: string): Promise<boolean> {
   const now = Date.now();
-  if (now < WRITER_OVERRIDE.from || now >= WRITER_OVERRIDE.until) return false;
+  const inWindow = now >= WRITER_OVERRIDE.from && now < WRITER_OVERRIDE.until;
+  if (!inWindow && !(await writerFlagOn())) return false;
   if (!openAiKey()) return false;
   // Writers and the image checks share Opus 5.5, so checks are told apart by
   // effort ("low") and by carrying an image, never by model name.
@@ -167,7 +185,7 @@ async function openAiWrite(params: CreateParams): Promise<Anthropic.Message> {
 }
 
 async function create(params: CreateParams): Promise<Anthropic.Message> {
-  if (overrideActive(params, params.model ?? CONTENT_MODEL)) {
+  if (await overrideActive(params, params.model ?? CONTENT_MODEL)) {
     try {
       return await openAiWrite(params);
     } catch (err) {
