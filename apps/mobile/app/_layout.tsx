@@ -43,6 +43,7 @@ import { WhatsNewOverlay } from "@/components/WhatsNewOverlay";
 import { CelebrationModal } from "@/components/achievements/CelebrationModal";
 import { TourProvider } from "@/components/tour/TourProvider";
 import { useAchievementQueue } from "@/hooks/use-achievement-queue";
+import { ScreenFrame } from "@/components/keyboard/screen-frame";
 import { requestMetaTracking, setMetaUserId, startMetaSdk } from "@/lib/meta-sdk";
 import { reapplyRemindersIfNeeded } from "@/lib/notifications-boot";
 import { refreshPushTokenOnLaunch } from "@/lib/push-token";
@@ -389,6 +390,10 @@ function ThemedApp() {
       <AuthGate />
       <WebRedemptionHandler />
       <Stack
+        // Every screen gets a ScreenFrame so KeyboardSafeView can measure
+        // against the screen it is actually in (iOS sheets report
+        // sheet-relative coordinates; see components/keyboard/screen-frame).
+        screenLayout={({ children }) => <ScreenFrame>{children}</ScreenFrame>}
         screenOptions={{
           headerShown: false,
           // Show just the chevron on native back buttons — no parent
