@@ -57,6 +57,27 @@ From Friday through Sunday, OpenAI's ChatGPT 6.1 Sol writes every social post in
   - Each ChatGPT-written call now logs a ClaudeCallLog row (purpose "openai-writer", model gpt-6.1-sol), because callers' own rows hardcode the model they asked for.
 - First sample (10-22, flag on 15:49–16:03 UTC): "WHICH DRAGON IS YOURS?" (post cmvjqcjer0000vhvqag0hvemv). No fallback warnings in the prod logs.
 
+## [2026-10-22] — Creator admin: "View as creator", cleaner Creators tab, Stripe refund events on
+
+- **Requested by:** Keenan
+- **Committed by:** Claude Code
+- **Commit hash:** (see git log: "feat: Add View as creator and tidy the creator admin")
+
+### In plain English (for Keenan)
+From the creator admin you can now open any creator's dashboard exactly as they see it with one click ("View as creator"), with a banner and a "Back to admin" link. The Creators tab is simpler: three headline numbers, a single table with the funnel on one line and a plain "Ready to pay / Needs agreement / Needs payout setup" status, and dropdown filters instead of long link lists. Stripe now tells us about refunds and chargebacks, so they automatically take back the creator's commission.
+
+### Technical changes (for Jimmy)
+- New `api/admin/creators/view-as/route.ts` (requireAdmin): signs a 2-hour creator session + `rp_creator_admin_view` cookie; `?exit=1` clears both. `lib/creators/session.ts` exports ADMIN_VIEW_COOKIE; `/creators` shows an admin-view banner.
+- `admin/creators/page.tsx` Creators tab rewritten (Stat/Pill/SetupPill, FilterBar client selects in `creators-client.tsx`); BOOST/DORMANT cards only render when non-empty; `[id]/page.tsx` gets a "View their dashboard as them" button.
+- Stripe (live, via API): webhook we_1TPqdBD9XJakJqj5dgHvjrbX (goripple.io/api/stripe/webhook) now also sends charge.refunded, charge.dispute.created, charge.dispute.closed; the 7 existing events kept.
+
+### Manual steps needed
+- None
+
+### Notes
+- End-to-end test 2026-10-22 on prod passed (all three attribution roads, ledger math, duplicates, window, refund clawback, boost, payout hold-outs, emails, dashboard). Test creator "Tess Tester" (C7M5KB, payout hold ON) and keenan+crtest1/2/3@heelerdigital.com remain for Keenan to look at; delete after.
+- In admin view, anything clicked on the dashboard acts as the creator (banner says so).
+
 ## [2026-10-22] — Creator platform: referral links, commission ledger, creator dashboard, payouts
 
 - **Requested by:** Keenan

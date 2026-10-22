@@ -7,14 +7,13 @@
 import Link from "next/link";
 
 import { CREATOR_TYPES, PERSONAS } from "@/lib/ugc/config";
-import { ALL_STATUSES } from "@/lib/ugc/status";
 import { stripePayoutsEnabled } from "@/lib/creators/config";
 import { formatCents, nextPayoutDate } from "@/lib/creators/money";
 import { labelFor } from "@/lib/creators/emails";
 import { adminCreatorRows, adminTopline } from "@/lib/creators/stats";
 import { prisma } from "@/lib/prisma";
 
-import { ActionButton, FormAction, PayoutRunPanel } from "./creators-client";
+import { ActionButton, FilterBar, FormAction, PayoutRunPanel } from "./creators-client";
 
 export const dynamic = "force-dynamic";
 
@@ -29,7 +28,7 @@ const PAGE_SIZE = 100;
 
 const usd = (c: number | null | undefined) => (c == null ? "—" : formatCents(c));
 const day = (d: Date | string | null | undefined) => (d ? new Date(d).toISOString().slice(0, 10) : "—");
-const CARD = "rounded-lg border border-acuity-line bg-acuity-card-bg p-4";
+const CARD = "rounded-xl border border-acuity-line bg-acuity-card-bg p-5";
 const TH = "p-2";
 
 function qs(sp: SP, patch: Record<string, string | undefined>): string {
@@ -49,21 +48,20 @@ function ExportLink({ table }: { table: string }) {
 export default async function CreatorsAdmin({ searchParams }: { searchParams: SP }) {
   const tab = TABS.some((t) => t.key === searchParams.tab) ? searchParams.tab! : "creators";
   return (
-    <div className="min-h-screen bg-acuity-bg text-white p-6">
-      <div className="max-w-7xl mx-auto space-y-6">
+    <div className="min-h-screen bg-acuity-bg text-white px-4 py-8 sm:px-6">
+      <div className="max-w-6xl mx-auto space-y-8">
         <div>
           <h1 className="text-2xl font-bold">Creator payouts</h1>
-          <p className="text-sm text-acuity-text-ter">
-            Commission-only creators: 25% for 12 months, 14-day hold, payouts every other Friday after you approve.
-            Outreach lives in <Link className="underline" href="/admin/ugc">UGC creators</Link>.
+          <p className="mt-1 text-sm text-acuity-text-ter">
+            Creators earn 25% of what their customers pay for 12 months. Payouts every other Friday, only after you approve.
           </p>
         </div>
-        <nav className="flex gap-2 border-b border-acuity-line">
+        <nav className="flex gap-1 border-b border-acuity-line">
           {TABS.map((t) => (
             <Link
               key={t.key}
               href={`/admin/creators?tab=${t.key}`}
-              className={`px-3 py-2 text-sm ${tab === t.key ? "border-b-2 border-emerald-500 font-semibold" : "text-acuity-text-ter"}`}
+              className={`-mb-px px-3 py-2.5 text-sm ${tab === t.key ? "border-b-2 border-white font-semibold" : "text-acuity-text-ter hover:text-white"}`}
             >
               {t.label}
             </Link>
@@ -80,6 +78,35 @@ export default async function CreatorsAdmin({ searchParams }: { searchParams: SP
 
 // ── Creators ──────────────────────────────────────────────────────────
 
+function Stat({ label, value, hint }: { label: string; value: string; hint?: string }) {
+  return (
+    <div className={CARD}>
+      <p className="text-[11px] font-mono uppercase tracking-[1.4px] text-acuity-text-ter">{label}</p>
+      <p className="mt-2 text-[28px] font-bold leading-none tabular-nums">{value}</p>
+      {hint && <p className="mt-2 text-xs text-acuity-text-ter">{hint}</p>}
+    </div>
+  );
+}
+
+function Pill({ tone, children }: { tone: "good" | "warn" | "quiet" | "bad"; children: React.ReactNode }) {
+  const t = {
+    good: "bg-emerald-500/15 text-emerald-300",
+    warn: "bg-amber-500/15 text-amber-300",
+    bad: "bg-red-500/15 text-red-300",
+    quiet: "bg-white/5 text-acuity-text-ter",
+  }[tone];
+  return <span className={`inline-flex items-center whitespace-nowrap rounded-full px-2 py-0.5 text-[11px] font-medium ${t}`}>{children}</span>;
+}
+
+/** What's still missing before this creator can be paid, in plain words. */
+function SetupPill({ r }: { r: Awaited<ReturnType<typeof adminCreatorRows>>[number] }) {
+  if (r.openFlags) return <Pill tone="bad">{r.openFlags} flag{r.openFlags === 1 ? "" : "s"}</Pill>;
+  if (!r.referralCode) return <Pill tone="quiet">No code yet</Pill>;
+  if (!r.agreementAccepted) return <Pill tone="warn">Needs agreement</Pill>;
+  if (!r.payoutReady) return <Pill tone="warn">Needs payout setup</Pill>;
+  return <Pill tone="good">Ready to pay</Pill>;
+}
+
 async function CreatorsTab({ sp }: { sp: SP }) {
   const all = await adminCreatorRows();
   const top = await adminTopline(all);
@@ -89,117 +116,124 @@ async function CreatorsTab({ sp }: { sp: SP }) {
       (!sp.persona || r.persona === sp.persona) &&
       (!sp.type || r.creatorType === sp.type)
   );
-  const filter = (k: string, values: string[]) => (
-    <div className="flex flex-wrap items-center gap-2 text-xs">
-      <span className="text-acuity-text-ter">{k}:</span>
-      <Link className={!sp[k] ? "font-bold" : "underline"} href={qs(sp, { tab: "creators", [k]: undefined })}>
-        all
-      </Link>
-      {values.map((v) => (
-        <Link key={v} className={sp[k] === v ? "font-bold" : "underline"} href={qs(sp, { tab: "creators", [k]: v })}>
-          {v}
-        </Link>
-      ))}
-    </div>
-  );
+  const statuses = Array.from(new Set(all.map((r) => r.status)));
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       <section className="grid gap-4 sm:grid-cols-3">
-        <div className={CARD}>
-          <p className="text-xs text-acuity-text-ter">Creator spend this month</p>
-          <p className="text-2xl font-bold tabular-nums">{usd(top.creatorSpendMonthCents)}</p>
-          <p className="text-xs text-acuity-text-ter">commissions + bonuses + boost ad spend</p>
-        </div>
-        <div className={CARD}>
-          <p className="text-xs text-acuity-text-ter">Attributed revenue (all time, net)</p>
-          <p className="text-2xl font-bold tabular-nums">{usd(top.attributedRevenueCents)}</p>
-        </div>
-        <div className={CARD}>
-          <p className="text-xs text-acuity-text-ter">Blended cost per trial (this month)</p>
-          <p className="text-2xl font-bold tabular-nums">{usd(top.blendedCostPerTrialCents)}</p>
-          <p className="text-xs text-acuity-text-ter">{top.trialsMonth} trials from creator traffic</p>
-        </div>
+        <Stat label="Revenue from creators" value={usd(top.attributedRevenueCents)} hint="All time, after refunds" />
+        <Stat label="Spent on creators" value={usd(top.creatorSpendMonthCents)} hint="This month: commission, bonuses, boost ads" />
+        <Stat
+          label="Cost per trial"
+          value={top.blendedCostPerTrialCents == null ? "—" : usd(top.blendedCostPerTrialCents)}
+          hint={`This month, ${top.trialsMonth} trial${top.trialsMonth === 1 ? "" : "s"} from creators`}
+        />
       </section>
-      <section className="grid gap-4 lg:grid-cols-2">
-        <div className={CARD}>
-          <h2 className="font-semibold">BOOST ({top.boost.length})</h2>
-          <p className="text-xs text-acuity-text-ter mb-2">Boosted posts under $15 per trial. Put more behind these.</p>
-          {top.boost.map((b) => (
-            <p key={b.postId} className="text-sm">
-              {b.creator} · <a className="underline" href={b.url} target="_blank" rel="noreferrer">post</a> · {usd(b.costPerTrialCents)}/trial
-            </p>
-          ))}
+
+      {(top.boost.length > 0 || top.dormant.length > 0) && (
+        <section className="grid gap-4 lg:grid-cols-2">
+          {top.boost.length > 0 && (
+            <div className={CARD}>
+              <h2 className="text-sm font-semibold">Worth more ad spend</h2>
+              <p className="mb-3 text-xs text-acuity-text-ter">Boosted posts getting trials under $15 each.</p>
+              <ul className="space-y-1 text-sm">
+                {top.boost.map((b) => (
+                  <li key={b.postId}>
+                    {b.creator} · <a className="underline" href={b.url} target="_blank" rel="noreferrer">post</a> · {usd(b.costPerTrialCents)} per trial
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+          {top.dormant.length > 0 && (
+            <div className={CARD}>
+              <h2 className="text-sm font-semibold">Gone quiet</h2>
+              <p className="mb-3 text-xs text-acuity-text-ter">No clicks on their link in 30 days.</p>
+              <ul className="space-y-1 text-sm">
+                {top.dormant.map((d) => (
+                  <li key={d.id}>
+                    <Link className="underline" href={`/admin/creators/${d.id}`}>{d.name}</Link>
+                    <span className="text-acuity-text-ter"> · last click {d.lastClickAt ? day(d.lastClickAt) : "never"}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </section>
+      )}
+
+      <section className="space-y-3">
+        <div className="flex flex-wrap items-center gap-3">
+          <h2 className="mr-auto text-base font-semibold">
+            Creators <span className="font-normal text-acuity-text-ter">({rows.length})</span>
+          </h2>
+          <FilterBar
+            current={{ status: sp.status ?? "", persona: sp.persona ?? "", type: sp.type ?? "" }}
+            options={{
+              status: statuses,
+              persona: Object.keys(PERSONAS),
+              type: Object.keys(CREATOR_TYPES),
+            }}
+          />
+          <ExportLink table="creators" />
         </div>
-        <div className={CARD}>
-          <h2 className="font-semibold">DORMANT ({top.dormant.length})</h2>
-          <p className="text-xs text-acuity-text-ter mb-2">Creators with a code and no click in 30 days.</p>
-          {top.dormant.map((d) => (
-            <p key={d.id} className="text-sm">
-              <Link className="underline" href={`/admin/creators/${d.id}`}>{d.name}</Link> · last click {day(d.lastClickAt)}
-            </p>
-          ))}
-        </div>
-      </section>
-      <section className="space-y-2">
-        {filter("status", ALL_STATUSES as unknown as string[])}
-        {filter("persona", Object.keys(PERSONAS))}
-        {filter("type", Object.keys(CREATOR_TYPES))}
-        <div className="flex justify-end"><ExportLink table="creators" /></div>
-        <div className="overflow-x-auto rounded-lg border border-acuity-line">
+        <div className="overflow-x-auto rounded-xl border border-acuity-line">
           <table className="w-full text-sm tabular-nums">
-            <thead className="text-left text-acuity-text-ter text-xs bg-acuity-bg-inset">
+            <thead className="bg-white/[0.02] text-left text-[11px] uppercase tracking-[0.8px] text-acuity-text-ter">
               <tr>
-                <th className={TH}>Creator</th>
-                <th className={TH}>Status</th>
-                <th className={TH}>Persona / type</th>
-                <th className={TH}>Code</th>
-                <th className={TH}>Clicks</th>
-                <th className={TH}>Signups</th>
-                <th className={TH}>Trials</th>
-                <th className={TH}>Paying</th>
-                <th className={TH}>Revenue</th>
-                <th className={TH}>Owed</th>
-                <th className={TH}>Ad spend</th>
-                <th className={TH}>ROI</th>
-                <th className={TH}>Agmt</th>
-                <th className={TH}>Payout</th>
-                <th className={TH}>Flags</th>
+                <th className="px-4 py-3 font-medium">Creator</th>
+                <th className="px-4 py-3 font-medium">Code</th>
+                <th className="px-4 py-3 font-medium" title="Clicks → signups → trials → paying">Funnel</th>
+                <th className="px-4 py-3 text-right font-medium">Revenue</th>
+                <th className="px-4 py-3 text-right font-medium">Owed</th>
+                <th className="px-4 py-3 text-right font-medium" title="Revenue ÷ (commission + bonuses + boost ad spend)">ROI</th>
+                <th className="px-4 py-3 font-medium">Status</th>
+                <th className="px-4 py-3"></th>
               </tr>
             </thead>
             <tbody>
               {rows.length === 0 && (
                 <tr>
-                  <td colSpan={15} className="p-3 text-acuity-text-ter">
-                    No creators yet. Codes are issued when a creator reaches &ldquo;deal&rdquo; in UGC creators.
+                  <td colSpan={8} className="px-4 py-8 text-center text-acuity-text-ter">
+                    No creators here yet. Mark a creator &ldquo;deal&rdquo; in{" "}
+                    <Link className="underline" href="/admin/ugc">UGC creators</Link> and they show up with a code.
                   </td>
                 </tr>
               )}
               {rows.map((r) => (
-                <tr key={r.id} className="border-t border-acuity-line">
-                  <td className="p-2">
-                    <Link className="underline" href={`/admin/creators/${r.id}`}>{r.name}</Link>
-                    <div className="text-xs text-acuity-text-ter">@{r.handle} · {r.platform}</div>
+                <tr key={r.id} className="border-t border-acuity-line hover:bg-white/[0.02]">
+                  <td className="px-4 py-3">
+                    <Link className="font-medium hover:underline" href={`/admin/creators/${r.id}`}>{r.name}</Link>
+                    <div className="text-xs text-acuity-text-ter">
+                      @{r.handle} · {r.platform}
+                      {r.persona ? ` · ${r.persona}` : ""}
+                    </div>
                   </td>
-                  <td className="p-2">{r.status}</td>
-                  <td className="p-2">{r.persona ?? "—"} / {r.creatorType ?? "—"}</td>
-                  <td className="p-2 font-mono">{r.referralCode ?? "—"}</td>
-                  <td className="p-2">{r.clicks}</td>
-                  <td className="p-2">{r.signups}</td>
-                  <td className="p-2">{r.trials}</td>
-                  <td className="p-2">{r.paying}</td>
-                  <td className="p-2">{usd(r.revenueCents)}</td>
-                  <td className="p-2">{usd(r.commissionOwedCents)}</td>
-                  <td className="p-2">{usd(r.adSpendCents)}</td>
-                  <td className="p-2">{r.roi == null ? "—" : `${r.roi.toFixed(2)}×`}</td>
-                  <td className="p-2">{r.agreementAccepted ? "✓" : "—"}</td>
-                  <td className="p-2">{r.payoutReady ? "✓" : "—"}</td>
-                  <td className={`p-2 ${r.openFlags ? "text-amber-400 font-semibold" : ""}`}>{r.openFlags || "—"}</td>
+                  <td className="px-4 py-3 font-mono text-[13px]">{r.referralCode ?? <span className="text-acuity-text-ter">—</span>}</td>
+                  <td className="px-4 py-3 whitespace-nowrap">
+                    {r.clicks} <span className="text-acuity-text-ter">→</span> {r.signups} <span className="text-acuity-text-ter">→</span> {r.trials}{" "}
+                    <span className="text-acuity-text-ter">→</span> <b>{r.paying}</b>
+                  </td>
+                  <td className="px-4 py-3 text-right">{usd(r.revenueCents)}</td>
+                  <td className="px-4 py-3 text-right">{usd(r.commissionOwedCents)}</td>
+                  <td className="px-4 py-3 text-right">{r.roi == null ? "—" : `${r.roi.toFixed(1)}×`}</td>
+                  <td className="px-4 py-3"><SetupPill r={r} /></td>
+                  <td className="px-4 py-3 text-right whitespace-nowrap">
+                    {r.referralCode ? (
+                      <a className="text-xs underline text-acuity-text-sec" href={`/api/admin/creators/view-as?id=${r.id}`}>
+                        View as creator
+                      </a>
+                    ) : (
+                      <Link className="text-xs underline text-acuity-text-sec" href={`/admin/creators/${r.id}`}>Issue code</Link>
+                    )}
+                  </td>
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
-        <p className="text-xs text-acuity-text-ter">ROI = attributed net revenue ÷ (commission + bonuses + boost ad spend). Sorted by ROI.</p>
+        <p className="text-xs text-acuity-text-ter">
+          Funnel is clicks → signups → trials → paying. Sorted by ROI (revenue ÷ everything we paid or spent on the creator).
+        </p>
       </section>
     </div>
   );

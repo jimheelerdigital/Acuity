@@ -59,6 +59,14 @@ export default async function CreatorDetail({ params }: { params: { id: string }
             @{c.handle} · {c.platform} · status {c.status} · {c.email ?? "no email"} ·{" "}
             <Link className="underline" href={`/admin/ugc/creators/${c.id}`}>outreach record</Link>
           </p>
+          {c.referralCode && (
+            <a
+              className="mt-3 inline-block rounded-full border border-acuity-line bg-acuity-bg-inset px-4 py-2 text-sm font-medium hover:bg-acuity-card-bg"
+              href={`/api/admin/creators/view-as?id=${c.id}`}
+            >
+              View their dashboard as them
+            </a>
+          )}
         </div>
 
         {c.flags.length > 0 && (

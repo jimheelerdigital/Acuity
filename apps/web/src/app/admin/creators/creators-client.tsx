@@ -346,3 +346,39 @@ export function PostFigures({
     />
   );
 }
+
+/** Creators-tab filters: three selects that update the URL on change. */
+export function FilterBar({
+  current,
+  options,
+}: {
+  current: { status: string; persona: string; type: string };
+  options: { status: string[]; persona: string[]; type: string[] };
+}) {
+  const labels = { status: "Any status", persona: "Any persona", type: "Any type" } as const;
+  function go(key: keyof typeof labels, value: string) {
+    const p = new URLSearchParams({ tab: "creators" });
+    const next = { ...current, [key]: value };
+    for (const [k, v] of Object.entries(next)) if (v) p.set(k, v);
+    window.location.href = `/admin/creators?${p}`;
+  }
+  return (
+    <div className="flex flex-wrap gap-2">
+      {(Object.keys(labels) as Array<keyof typeof labels>).map((k) => (
+        <select
+          key={k}
+          value={current[k]}
+          onChange={(e) => go(k, e.target.value)}
+          className="rounded-full border border-acuity-line bg-acuity-bg-inset px-3 py-1.5 text-xs"
+        >
+          <option value="">{labels[k]}</option>
+          {options[k].map((v) => (
+            <option key={v} value={v}>
+              {v.replace(/_/g, " ")}
+            </option>
+          ))}
+        </select>
+      ))}
+    </div>
+  );
+}

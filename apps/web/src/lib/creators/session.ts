@@ -14,6 +14,8 @@ import "server-only";
 import { createHmac, timingSafeEqual } from "crypto";
 
 export const SESSION_COOKIE = "rp_creator_session";
+/** Set (to the creator id) when an admin opens a dashboard via "View as creator". */
+export const ADMIN_VIEW_COOKIE = "rp_creator_admin_view";
 const LINK_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 export const SESSION_TTL_MS = 30 * 24 * 60 * 60 * 1000;
 

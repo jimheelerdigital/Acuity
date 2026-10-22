@@ -17,7 +17,7 @@ import {
   SITE_URL,
 } from "@/lib/creators/config";
 import { firstNameOf, formatCents, nextPayoutDate } from "@/lib/creators/money";
-import { currentCreatorId } from "@/lib/creators/session";
+import { ADMIN_VIEW_COOKIE, currentCreatorId } from "@/lib/creators/session";
 
 import {
   AcceptAgreementButton,
@@ -185,8 +185,21 @@ export default async function CreatorsPage({
         : "Rolls over";
   const captions = CAPTIONS.map((c) => c.replace(/\{link\}/g, link.replace("https://", "")).replace(/\{code\}/g, code));
 
+  const { cookies } = await import("next/headers");
+  const adminView = cookies().get(ADMIN_VIEW_COOKIE)?.value === creatorId;
+
   return (
     <Shell>
+      {adminView && (
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-acuity-sm border border-acuity-line-strong bg-acuity-bg-sub px-4 py-3 text-[14px]">
+          <span className="text-acuity-text-sec">
+            Admin view: this is exactly what {name} sees. Anything you click here acts as them.
+          </span>
+          <a className="font-semibold underline" href="/api/admin/creators/view-as?exit=1">
+            Back to admin
+          </a>
+        </div>
+      )}
       {/* Header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
