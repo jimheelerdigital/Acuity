@@ -29,6 +29,135 @@ When someone starts a paid trial inside the iPhone app, like Bre from the UGC ad
 ### Notes
 - Root cause: RC_SOURCE_OF_TRUTH has been live in production for about 24 days, so RC's webhook writes App Store trials. App 1.9 buys through the RC SDK and never calls /api/iap/verify-receipt, the only Apple path that emailed founders. Every in-app trial since then sent no founder email.
 - Bre (brpuga94@gmail.com, UGC @therapyandthings video4) started her App Store trial 10-23 02:06 UTC. No backfill email was sent.
+## [2026-10-23] — Server analytics were being rejected by PostHog (personal key used for capture)
+
+- **Requested by:** Jimmy ("look into it")
+- **Committed by:** Claude Code
+- **Commit hash:** (see git log: "fix(analytics): capture with the PostHog project key")
+
+### In plain English
+Every analytics event the server sends (trial started, subscription started, first recording, streak milestones and more) has been rejected by PostHog since at least June 16. The server was configured with the wrong kind of PostHog key: a personal key, which can read data but can't send events. The server now uses the project key, the same one the website already uses successfully. Events from before this fix are not recoverable.
+
+### Verified
+- Reproduced the exact production error: sending events with a personal key returns "API key is not valid: personal_api_key", while a project key returns Ok.
+- The site's public project key is valid on PostHog US (/flags returns 200), and the public bundle only references US hosts.
+- Vercel production has POSTHOG_API_KEY, POSTHOG_PROJECT_ID, NEXT_PUBLIC_POSTHOG_KEY and NEXT_PUBLIC_POSTHOG_HOST (values not read). POSTHOG_PROJECT_ID is unused in code.
+
+### Technical changes
+- lib/posthog.ts resolvePosthogConfig:
+  - Capture uses POSTHOG_API_KEY only if it is a project key (phc_); otherwise it uses NEXT_PUBLIC_POSTHOG_KEY.
+  - The host comes from POSTHOG_HOST or the client's absolute host, defaulting to US.
+  - Logs a warning once when a personal key is ignored.
+- Test: lib/posthog.test.ts.
+
+### Manual steps needed
+- Optional: rename the personal key in Vercel to POSTHOG_PERSONAL_API_KEY so it's clear it's only for the read API. Nothing breaks if left as is.
+
+---
+
+## [2026-10-22] — Task groups: pick one from Siri / the Action Button, and manage them in the app
+
+- **Requested by:** Jimmy
+- **Committed by:** Claude Code
+- **Commit hash:** (see git log: "feat: task groups on the Add a Task card + Manage groups")
+
+### In plain English
+After you name a task from Siri or the Action Button, iOS 26 shows one card with the due-date choices AND your groups (Work, Personal, Health…), then Add. On older iOS, or if you skip the group, Ripple files the task into a group with AI. A new Manage groups screen (tag button on the Tasks tab) lets you add, rename, change the icon, reorder and delete groups. Before this everyone was stuck with the five starter groups.
+
+### Technical changes
+- plugins/RippleShortcuts.swift: AddTaskIntent on iOS 26+ calls requestConfirmation(actionName: .add, snippetIntent: AddTaskCardSnippet). The card has Button(intent:) chips (ChooseTaskDueIntent / ChooseTaskGroupIntent) that write an App Group draft. Older iOS keeps the due-date question. New optional Group parameter (TaskGroupEntity, for Shortcut presets). Sends groupId, or autoGroup: true.
+- lib/siri-shortcuts-data.ts: taskGroupsForSiri published on every write to the /api/task-groups cache (started in _layout); cleared with habitsForSiri on sign-out.
+- app/task-groups.tsx + lib/task-groups.ts: Manage groups on the existing /api/task-groups API (POST / PATCH / DELETE with moveTasksTo "Other").
+- Web: POST /api/tasks with autoGroup and no group → task/auto-group Inngest event (bounded 4s, deduped per task, never throws). inngest/functions/task-auto-group.ts classifies and sets groupId only if still null. The classifier moved to lib/task-group-classify.ts (shared with recategorize).
+- Test: task-groups-card.test.ts.
+
+### Manual steps needed
+- None. Swift changes need the next EAS build. The server part is inert until that build sends autoGroup.
+
+### Notes
+- The card is checked against Apple's API (local Xcode 27 SDK typecheck at iOS 16.4 and 17 targets) but not yet on a device. Verify it from the Action Button on TestFlight.
+## [2026-10-23] — Calendar, option A: the phone's own calendar (Apple / Android, Google accounts included)
+
+- **Requested by:** Jimmy ("option a"; "can we make google cal available as well")
+- **Committed by:** Claude Code
+- **Commit hash:** (see git log: "feat(calendar): connect the phone's calendar")
+
+### In plain English
+Profile → Calendar now connects for real. Ripple asks for calendar access, you pick which calendar it adds to (grouped by account, so a Google calendar on the phone is right there), and choose whether tasks with due dates go on automatically. From then on, every time the app opens it writes waiting tasks to that calendar and shares the titles and times of your events (nothing else), so your entries can reference your real day. Android works the same way, through the phone's calendar, which includes Google.
+
+### Technical changes
+- Mobile:
+  - expo-calendar plus a permission string.
+  - lib/device-calendar.ts (guarded with requireOptionalNativeModule).
+  - lib/calendar-op.ts (pure op → event mapping).
+  - lib/calendar-sync-client.ts (drain → write → /sync-result, and event upload throttled to every 30 min).
+  - _layout runs it on sign-in and on every foreground.
+  - integrations.tsx: real connect flow + calendar picker (components/calendar/calendar-picker.tsx) + change calendar.
+- Web:
+  - POST /api/integrations/calendar/events: snapshot upsert into CalendarEvent, prefixed "device:", and removes events the phone dropped.
+  - Provider `android_calendar`.
+  - Connect queues open tasks due today or later and returns the settings shape.
+  - Disconnect un-queues PENDING tasks.
+- Fixes:
+  - Prompt event times now use the user's timezone.
+  - The stuck-task cron measures from the new `Task.calendarPendingSince` (it was createdAt, which failed old tasks within 30 minutes).
+  - All-day events are labelled as such.
+- Schema: Task.calendarPendingSince, CalendarEvent.allDay (docs/migrations/2026-10-23-calendar-phone.sql).
+- Test: evidence/apple-calendar.test.ts; enqueue-sync test updated.
+
+### Manual steps needed
+- **Before merging:** apply docs/migrations/2026-10-23-calendar-phone.sql to production.
+- **At release:** enable the `calendar_integrations` flag for PRO.
+- Needs the next native build (expo-calendar).
+
+---
+
+## [2026-10-23] — Release announcement emails: one template, one send script
+
+- **Requested by:** Jimmy (Miro: "Formalize email cadence to announce product releases")
+- **Committed by:** Claude Code
+- **Commit hash:** (see git log: "feat(email): reusable release announcement")
+
+### In plain English
+Each release used to need its own email file and send script. Now a release is one short entry (headline, features, small items) and the same template and script send it. The 1.9.5 email is written and ready. Nothing has been sent.
+
+### Technical changes
+- apps/web/src/emails/announcements/release.ts: generic template (iOS → App Store, Android → Google Play).
+- apps/web/src/emails/announcements/releases.ts: RELEASE_EMAILS, with the 1.9.5 entry. Cadence note at the top.
+- apps/web/scripts/release-announce-send.ts:
+  - Modes: `<version>` dry-run / test / preview / live --yes.
+  - Live sends are claimed in TrialEmailLog (`release_<version>`) before sending, so a re-run never double-sends.
+  - iOS release gate: refuses unless the App Store's public lookup shows that version live.
+- Test: release.test.ts.
+
+### Manual steps needed
+- Jimmy: confirm the cadence (one email per store release with user-facing changes, sent the day it's live).
+- When 1.9.5 is live: dry-run → test → live --yes.
+
+---
+
+## [2026-10-23] — Faster entry processing: fewer Inngest round trips before results
+
+- **Requested by:** Jimmy (Miro: "Speed up processing")
+- **Committed by:** Claude Code
+- **Commit hash:** (see git log: "perf(processing): one step from transcript to Claude")
+
+### In plain English
+A week of timing data showed a median of 47 s from saving an entry to seeing results. About 11 s of that was the system handing work between steps, not doing anything. Those hand-offs are now collapsed into one step, plus one more before results are saved. Expect roughly 8–10 s faster; we'll measure it after deploy.
+
+### Technical changes
+- apps/web/src/inngest/functions/process-entry.ts:
+  - `prepare-and-extract` replaces compute-entitlement, build-memory-context, fetch-calendar-context, read-dispositional-flag, cancel-check-before-extract, set-extracting-status and extract.
+  - The FREE fork and the cancel gate are unchanged in order.
+  - persist-extraction does the cancel gate inline (same step id, so no double persist).
+  - The new step id means runs in flight at deploy re-run cleanly.
+- docs/processing-timeline.md: baseline numbers + what changed.
+- Test: evidence/processing-speed.test.ts.
+
+### Manual steps needed
+- None.
+
+---
 
 ## [2026-10-22] — ChatGPT test: 2 of 3 Mythicals posts per day, the third stays Claude
 

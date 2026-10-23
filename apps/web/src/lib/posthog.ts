@@ -30,19 +30,51 @@ import { __sanitize_for_tests as sanitize } from "@/lib/safe-log";
 let _client: PostHog | null = null;
 let _warned = false;
 
+/**
+ * Which key and host the server sends events with (2026-10-23).
+ *
+ * Event capture only accepts a PROJECT key (phc_…). Production had
+ * POSTHOG_API_KEY set to a PERSONAL key (phx_…), so every server event since
+ * at least June was rejected with "API key is not valid: personal_api_key"
+ * (trial_started, subscription_started, first_recording_completed, …).
+ * Personal keys are for PostHog's read API, never capture.
+ *
+ * So: use POSTHOG_API_KEY only when it is a project key, otherwise the web
+ * client's NEXT_PUBLIC_POSTHOG_KEY (the same project; project keys are
+ * write-only and already public in the browser bundle). Same for the host:
+ * the server must talk to the project's region, and the client's host is
+ * the one known to work. A relative proxy path can't be used server-side.
+ */
+export function resolvePosthogConfig(env: Record<string, string | undefined>): {
+  key: string | null;
+  host: string;
+  ignoredPersonalKey: boolean;
+} {
+  const isProjectKey = (k: string | undefined): k is string => !!k && k.startsWith("phc_");
+  const serverKey = env.POSTHOG_API_KEY?.trim();
+  const publicKey = env.NEXT_PUBLIC_POSTHOG_KEY?.trim();
+  const key = isProjectKey(serverKey) ? serverKey : isProjectKey(publicKey) ? publicKey : null;
+  const absolute = (h: string | undefined) => (h && /^https:\/\//.test(h.trim()) ? h.trim() : null);
+  const host = absolute(env.POSTHOG_HOST) ?? absolute(env.NEXT_PUBLIC_POSTHOG_HOST) ?? "https://us.i.posthog.com";
+  return { key, host, ignoredPersonalKey: !!serverKey && serverKey.startsWith("phx_") };
+}
+
 function getClient(): PostHog | null {
   if (_client) return _client;
-  const key = process.env.POSTHOG_API_KEY;
+  const { key, host, ignoredPersonalKey } = resolvePosthogConfig(process.env);
   if (!key) {
     if (!_warned) {
       console.warn(
-        "[posthog] POSTHOG_API_KEY not set — events dropped. Set via Vercel env to enable analytics."
+        "[posthog] no PostHog project key (phc_…) in POSTHOG_API_KEY or NEXT_PUBLIC_POSTHOG_KEY — events dropped."
       );
       _warned = true;
     }
     return null;
   }
-  const host = process.env.POSTHOG_HOST ?? "https://us.i.posthog.com";
+  if (ignoredPersonalKey && !_warned) {
+    console.warn("[posthog] POSTHOG_API_KEY is a personal key (phx_…); using the project key for capture.");
+    _warned = true;
+  }
   _client = new PostHog(key, { host });
   return _client;
 }

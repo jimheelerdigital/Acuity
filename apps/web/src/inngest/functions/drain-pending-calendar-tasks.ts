@@ -86,10 +86,17 @@ export const drainPendingCalendarTasksFn = inngest.createFunction(
           // 24h ago. The pure selector applies the precise threshold,
           // including the calendarSyncedAt fallback for partial-success
           // re-entries.
-          createdAt: { lt: new Date(now.getTime() - 24 * 60 * 60 * 1000) },
+          OR: [
+            { calendarPendingSince: { lt: new Date(now.getTime() - 24 * 60 * 60 * 1000) } },
+            {
+              calendarPendingSince: null,
+              createdAt: { lt: new Date(now.getTime() - 24 * 60 * 60 * 1000) },
+            },
+          ],
         },
         select: {
           id: true,
+          calendarPendingSince: true,
           calendarSyncedAt: true,
           createdAt: true,
         },

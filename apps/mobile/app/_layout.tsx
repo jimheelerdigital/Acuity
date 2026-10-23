@@ -44,7 +44,9 @@ import { CelebrationModal } from "@/components/achievements/CelebrationModal";
 import { TourProvider } from "@/components/tour/TourProvider";
 import { useAchievementQueue } from "@/hooks/use-achievement-queue";
 import { ScreenFrame } from "@/components/keyboard/screen-frame";
+import { runCalendarSync } from "@/lib/calendar-sync-client";
 import { requestMetaTracking, setMetaUserId, startMetaSdk } from "@/lib/meta-sdk";
+import { startSiriTaskGroupsPublisher } from "@/lib/siri-shortcuts-data";
 import { reapplyRemindersIfNeeded } from "@/lib/notifications-boot";
 import { refreshPushTokenOnLaunch } from "@/lib/push-token";
 import { trackFirstOpenOnce } from "@/lib/onboarding-events";
@@ -191,10 +193,14 @@ function AuthGate() {
     // `pendingDone`) to the server now that we're signed in, and again on
     // every return to the foreground. The Tasks tab also flushes on focus.
     void flushWidgetCompletions();
+    // Calendar (2026-10-23): write waiting tasks to the phone's calendar
+    // and share today's event titles/times. No-op unless connected.
+    void runCalendarSync();
     const sub = AppState.addEventListener("change", (next) => {
       if (next === "active") {
         void reapplyRemindersIfNeeded(userId);
         void flushWidgetCompletions();
+        void runCalendarSync();
       }
     });
     return () => {
@@ -218,6 +224,9 @@ function AuthGate() {
   useEffect(() => {
     void startMetaSdk();
   }, []);
+
+  // Task groups → App Group, for the Add a Task card (2026-10-22).
+  useEffect(() => startSiriTaskGroupsPublisher(), []);
 
   // app_first_open, once per install (Keenan, 2026-10-20). Fail-soft.
   useEffect(() => {
@@ -445,6 +454,13 @@ function ThemedApp() {
         />
         <Stack.Screen
           name="task/new"
+          options={{
+            headerShown: false,
+            presentation: "modal",
+          }}
+        />
+        <Stack.Screen
+          name="task-groups"
           options={{
             headerShown: false,
             presentation: "modal",

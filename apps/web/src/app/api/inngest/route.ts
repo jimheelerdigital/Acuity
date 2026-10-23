@@ -96,6 +96,7 @@ import { adlabRegenImagesFn } from "@/inngest/functions/adlab-regen-images";
 import { adlabDailyCronFn } from "@/inngest/functions/adlab-daily-cron";
 import { mythicalsPortraitFn } from "@/inngest/functions/mythicals-portrait";
 import { rcTrialReminderFn } from "@/inngest/functions/rc-trial-reminder";
+import { taskAutoGroupFn } from "@/inngest/functions/task-auto-group";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -112,6 +113,7 @@ const handler = serve({
     helloWorldFn,
     processEntryFn,
     entryQueuedSweeperFn,
+    taskAutoGroupFn,
     generateWeeklyReportFn,
     refreshLifeMapFn,
     day7AuditCronFn,

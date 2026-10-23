@@ -32,6 +32,7 @@
 import AppIntents
 import Foundation
 import Security
+import SwiftUI
 import UIKit
 
 // The shared App Group. Must match app.json ios.entitlements and
@@ -343,10 +344,88 @@ private func ymd(_ date: Date) -> String {
     return f.string(from: date)
 }
 
+// MARK: - Task groups (shared from the app)
+
+/// One task group as published by the RN app (siri-shortcuts-data.ts
+/// publishSiriTaskGroups), in the user's order.
+struct SiriTaskGroup: Codable, Hashable {
+    let id: String
+    let name: String
+    let icon: String
+}
+
+@available(iOS 16.0, *)
+private enum TaskGroupsShared {
+    static func groups() -> [SiriTaskGroup] {
+        guard let data = UserDefaults(suiteName: APP_GROUP)?.data(forKey: "taskGroupsForSiri") else { return [] }
+        return (try? JSONDecoder().decode([SiriTaskGroup].self, from: data)) ?? []
+    }
+}
+
+/// A task group, so a Shortcut can preset it ("Add a Task" → Group: Work).
+@available(iOS 16.0, *)
+struct TaskGroupEntity: AppEntity {
+    let id: String
+    let name: String
+
+    static var typeDisplayRepresentation: TypeDisplayRepresentation = "Task group"
+    var displayRepresentation: DisplayRepresentation { DisplayRepresentation(title: "\(name)") }
+
+    static var defaultQuery = TaskGroupQuery()
+}
+
+@available(iOS 16.0, *)
+struct TaskGroupQuery: EntityStringQuery {
+    func entities(for identifiers: [TaskGroupEntity.ID]) async throws -> [TaskGroupEntity] {
+        TaskGroupsShared.groups()
+            .filter { identifiers.contains($0.id) }
+            .map { TaskGroupEntity(id: $0.id, name: $0.name) }
+    }
+
+    func entities(matching string: String) async throws -> [TaskGroupEntity] {
+        let q = string.lowercased().trimmingCharacters(in: .whitespacesAndNewlines)
+        return TaskGroupsShared.groups()
+            .filter { $0.name.lowercased().contains(q) || q.contains($0.name.lowercased()) }
+            .map { TaskGroupEntity(id: $0.id, name: $0.name) }
+    }
+
+    func suggestedEntities() async throws -> [TaskGroupEntity] {
+        TaskGroupsShared.groups().map { TaskGroupEntity(id: $0.id, name: $0.name) }
+    }
+}
+
+/// The Add a Task card's in-progress choices (iOS 26+). The card's buttons
+/// run their own small intents, which can't hand values back directly, so
+/// the choice lives in the App Group until the card's Add button returns.
+/// Reset at the start of every run. Non-secret.
+@available(iOS 16.0, *)
+private enum AddTaskDraft {
+    private static let dueKey = "addTask.draft.due"
+    private static let groupKey = "addTask.draft.groupId"
+    private static var d: UserDefaults? { UserDefaults(suiteName: APP_GROUP) }
+
+    static func reset() {
+        d?.removeObject(forKey: dueKey)
+        d?.removeObject(forKey: groupKey)
+    }
+    static var due: TaskDueChoice {
+        get { TaskDueChoice(rawValue: d?.string(forKey: dueKey) ?? "") ?? .none }
+        set { d?.set(newValue.rawValue, forKey: dueKey) }
+    }
+    static var groupId: String? {
+        get { d?.string(forKey: groupKey) }
+        set {
+            if let v = newValue { d?.set(v, forKey: groupKey) } else { d?.removeObject(forKey: groupKey) }
+        }
+    }
+}
+
+// MARK: - Add a Task
+
 @available(iOS 16.0, *)
 struct AddTaskIntent: AppIntent {
     static var title: LocalizedStringResource = "Add a Task"
-    static var description = IntentDescription("Adds a new task to your Ripple list, with an optional due date.")
+    static var description = IntentDescription("Adds a new task to your Ripple list, with an optional due date and group.")
     static var openAppWhenRun: Bool = false
 
     @Parameter(title: "Task", requestValueDialog: "What task should I add?")
@@ -360,17 +439,38 @@ struct AddTaskIntent: AppIntent {
     @Parameter(title: "Date")
     var pickedDate: Date?
 
+    /// Optional. Pre-set it in a Shortcut; otherwise chosen on the card
+    /// (iOS 26+) or filed by AI.
+    @Parameter(title: "Group")
+    var group: TaskGroupEntity?
+
     func perform() async throws -> some IntentResult & ProvidesDialog {
         SetupStamp.mark(SetupStamp.siriKey)
         let trimmed = taskTitle.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return .result(dialog: "I didn't catch the task.") }
 
-        let choice: TaskDueChoice
-        if let preset = due {
-            choice = preset
-        } else {
-            choice = try await $due.requestValue("Add a due date?")
+        var choice: TaskDueChoice = due ?? .none
+        var groupId: String? = group?.id
+
+        // One card for due date + group (Jimmy, 2026-10-22: "the less
+        // screens popping up consecutively the better"). iOS 26+ only, and
+        // only when a Shortcut didn't preset the due date.
+        if due == nil {
+            if #available(iOS 26.0, *) {
+                AddTaskDraft.reset()
+                if let g = groupId { AddTaskDraft.groupId = g }
+                try await requestConfirmation(
+                    actionName: .add,
+                    snippetIntent: AddTaskCardSnippet(taskTitle: trimmed)
+                )
+                choice = AddTaskDraft.due
+                groupId = AddTaskDraft.groupId
+                AddTaskDraft.reset()
+            } else {
+                choice = try await $due.requestValue("Add a due date?")
+            }
         }
+
         let cal = Calendar.current
         var dueDay: Date?
         switch choice {
@@ -388,6 +488,13 @@ struct AddTaskIntent: AppIntent {
 
         var body: [String: Any] = ["title": trimmed]
         if let d = dueDay { body["dueDate"] = ymd(d) }
+        if let g = groupId {
+            body["groupId"] = g
+        } else {
+            // No group chosen: the server files it with AI after answering.
+            body["autoGroup"] = true
+        }
+        let groupName = groupId.flatMap { id in TaskGroupsShared.groups().first { $0.id == id }?.name }
         let when: String = {
             guard let d = dueDay else { return "" }
             if cal.isDateInToday(d) { return ", due today" }
@@ -398,10 +505,198 @@ struct AddTaskIntent: AppIntent {
         }()
         let msg = await speakResult(
             { try await RippleAPI.post("/api/tasks", body: body) },
-            ok: { _ in "Added \(trimmed) to your tasks\(when)." },
+            ok: { _ in
+                if let name = groupName { return "Added \(trimmed) to \(name)\(when)." }
+                return "Added \(trimmed) to your tasks\(when)."
+            },
             fail: "I couldn't add that task right now."
         )
         return .result(dialog: IntentDialog(stringLiteral: msg))
+    }
+}
+
+// MARK: - Add a Task card (iOS 26+)
+
+/// The card shown after the task name: due-date buttons, group buttons and
+/// the system's Add button. Re-rendered by the system after each tap.
+@available(iOS 26.0, *)
+struct AddTaskCardSnippet: SnippetIntent {
+    static var title: LocalizedStringResource = "Add a Task card"
+    static var isDiscoverable: Bool = false
+
+    @Parameter(title: "Task")
+    var taskTitle: String
+
+    init() {}
+    init(taskTitle: String) { self.taskTitle = taskTitle }
+
+    func perform() async throws -> some IntentResult & ShowsSnippetView {
+        .result(view: AddTaskCardView(
+            title: taskTitle,
+            due: AddTaskDraft.due,
+            groups: TaskGroupsShared.groups(),
+            groupId: AddTaskDraft.groupId
+        ))
+    }
+}
+
+/// Card button: choose a due date.
+@available(iOS 26.0, *)
+struct ChooseTaskDueIntent: AppIntent {
+    static var title: LocalizedStringResource = "Choose task due date"
+    static var isDiscoverable: Bool = false
+
+    @Parameter(title: "Due")
+    var choice: TaskDueChoice
+
+    init() {}
+    init(_ choice: TaskDueChoice) { self.choice = choice }
+
+    func perform() async throws -> some IntentResult {
+        AddTaskDraft.due = choice
+        return .result()
+    }
+}
+
+/// Card button: choose a group (tap the chosen one again to clear it).
+@available(iOS 26.0, *)
+struct ChooseTaskGroupIntent: AppIntent {
+    static var title: LocalizedStringResource = "Choose task group"
+    static var isDiscoverable: Bool = false
+
+    @Parameter(title: "Group ID")
+    var groupId: String
+
+    init() {}
+    init(_ groupId: String) { self.groupId = groupId }
+
+    func perform() async throws -> some IntentResult {
+        AddTaskDraft.groupId = AddTaskDraft.groupId == groupId ? nil : groupId
+        return .result()
+    }
+}
+
+@available(iOS 26.0, *)
+private struct AddTaskCardView: View {
+    let title: String
+    let due: TaskDueChoice
+    let groups: [SiriTaskGroup]
+    let groupId: String?
+
+    private static let violet = Color(red: 0x7C / 255, green: 0x3A / 255, blue: 0xED / 255)
+    private static let dueChoices: [(TaskDueChoice, String)] = [
+        (.none, "No date"), (.today, "Today"), (.tomorrow, "Tomorrow"),
+        (.nextWeek, "In a week"), (.pick, "Pick a date…"),
+    ]
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text(title)
+                .font(.headline)
+                .lineLimit(2)
+            Text("Due")
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.secondary)
+            ChipFlow {
+                ForEach(Self.dueChoices, id: \.0) { item in
+                    Button(intent: ChooseTaskDueIntent(item.0)) {
+                        chip(item.1, systemImage: nil, selected: due == item.0)
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+            if !groups.isEmpty {
+                Text("Group")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.secondary)
+                ChipFlow {
+                    ForEach(groups, id: \.id) { g in
+                        Button(intent: ChooseTaskGroupIntent(g.id)) {
+                            chip(g.name, systemImage: sfSymbol(for: g.icon), selected: groupId == g.id)
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+                if groupId == nil {
+                    Text("Skip it and Ripple picks one.")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                }
+            }
+        }
+        .padding()
+    }
+
+    private func chip(_ label: String, systemImage: String?, selected: Bool) -> some View {
+        HStack(spacing: 4) {
+            if let s = systemImage { Image(systemName: s).font(.caption) }
+            Text(label).font(.subheadline.weight(selected ? .semibold : .regular))
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 7)
+        .foregroundStyle(selected ? Color.white : Color.primary)
+        .background(Capsule().fill(selected ? Self.violet : Color.secondary.opacity(0.15)))
+    }
+}
+
+/// Ionicons name (what the app stores) → SF Symbol for the card.
+@available(iOS 16.0, *)
+private func sfSymbol(for ionicon: String) -> String {
+    switch ionicon {
+    case "briefcase": return "briefcase.fill"
+    case "person": return "person.fill"
+    case "heart": return "heart.fill"
+    case "cart": return "cart.fill"
+    case "home": return "house.fill"
+    case "people": return "person.2.fill"
+    case "school": return "graduationcap.fill"
+    case "barbell": return "dumbbell.fill"
+    case "cash": return "dollarsign.circle.fill"
+    case "airplane": return "airplane"
+    case "book": return "book.fill"
+    case "leaf": return "leaf.fill"
+    case "paw": return "pawprint.fill"
+    case "car": return "car.fill"
+    case "star": return "star.fill"
+    default: return "circle.fill"
+    }
+}
+
+/// Wraps chips onto new lines (SwiftUI has no built-in flow layout).
+@available(iOS 16.0, *)
+private struct ChipFlow: Layout {
+    var spacing: CGFloat = 8
+
+    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
+        let width = proposal.width ?? .infinity
+        var x: CGFloat = 0, y: CGFloat = 0, rowHeight: CGFloat = 0, maxX: CGFloat = 0
+        for s in subviews {
+            let size = s.sizeThatFits(.unspecified)
+            if x > 0 && x + size.width > width {
+                x = 0
+                y += rowHeight + spacing
+                rowHeight = 0
+            }
+            x += size.width + spacing
+            maxX = max(maxX, x - spacing)
+            rowHeight = max(rowHeight, size.height)
+        }
+        return CGSize(width: min(maxX, width), height: y + rowHeight)
+    }
+
+    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
+        var x = bounds.minX, y = bounds.minY, rowHeight: CGFloat = 0
+        for s in subviews {
+            let size = s.sizeThatFits(.unspecified)
+            if x > bounds.minX && x + size.width > bounds.maxX {
+                x = bounds.minX
+                y += rowHeight + spacing
+                rowHeight = 0
+            }
+            s.place(at: CGPoint(x: x, y: y), proposal: ProposedViewSize(size))
+            x += size.width + spacing
+            rowHeight = max(rowHeight, size.height)
+        }
     }
 }
 

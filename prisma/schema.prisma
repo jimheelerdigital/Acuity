@@ -1004,6 +1004,10 @@ model Task {
   //                from the scoping doc Decisions §1)
   //   SYNCED     — green check
   //   FAILED     — red icon with retry on hover/tap
+  // When the task last entered PENDING (2026-10-23). The stuck-task cron
+  // measures its 24h from here; before this it used createdAt, so any task
+  // older than a day was marked FAILED within 30 minutes of being queued.
+  calendarPendingSince DateTime?
   calendarSyncStatus String    @default("NOT_SYNCED")
 
   @@index([goalId])
@@ -2272,6 +2276,9 @@ model CalendarEvent {
   // Stored as Json for forward-compat (Outlook attendee shape will
   // differ; we normalize at read time).
   attendees       Json?
+  // All-day events (2026-10-23, phone calendars send this). Google rows
+  // default false.
+  allDay          Boolean   @default(false)
   location        String?
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
