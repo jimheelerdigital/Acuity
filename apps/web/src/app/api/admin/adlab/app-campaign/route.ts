@@ -179,15 +179,16 @@ export async function POST(req: NextRequest) {
           special_ad_categories: [],
           smart_promotion_type: "SMART_APP_PROMOTION",
           is_skadnetwork_attribution: true,
-          daily_budget: String(budget),
-          // No bid_strategy: Advantage+ app campaigns reject it (Meta picks
-          // "highest volume" itself).
+          // No bid_strategy or daily_budget on the campaign: Meta rejects both
+          // for Advantage+ app campaigns ("Invalid campaign param … AAA ad").
+          // The budget goes on the single ad set below.
           status: "PAUSED",
         });
         campaigns[group] = campaign.id as string;
         const set = await meta.metaGraph(`${acct}/adsets`, "POST", {
           name: `Ripple — App Installs | ${label}`,
           campaign_id: campaign.id,
+          daily_budget: String(budget),
           billing_event: "IMPRESSIONS",
           optimization_goal: "APP_INSTALLS",
           promoted_object: { application_id: body.appId, object_store_url: body.storeUrl ?? APP_STORE_URL },
