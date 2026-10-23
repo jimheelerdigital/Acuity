@@ -170,6 +170,23 @@ export async function POST(req: NextRequest) {
       },
     });
     if (newlyInternal) await flagSessionInternal(prisma, sessionToken, verifiedUserId);
+    // Founder email on every app download (2026-10-23, per Keenan).
+    if (event === "app_first_open" && !internal) {
+      let meta: Record<string, unknown> = {};
+      try {
+        meta = body.value ? (JSON.parse(body.value) as Record<string, unknown>) : {};
+      } catch {
+        /* plain value */
+      }
+      const { notifyFoundersOfInstall } = await import("@/lib/founder-notifications");
+      await notifyFoundersOfInstall({
+        platform: req.headers.get("x-platform") ?? (typeof meta.platform === "string" ? meta.platform : null),
+        appVersion: req.headers.get("x-app-version") ?? (typeof meta.app_version === "string" ? meta.app_version : null),
+        reinstall: meta.reinstall === true,
+        installId: sessionToken,
+        timestamp: new Date(),
+      });
+    }
   } catch (err) {
     console.error("[onboarding-events] Failed to log event:", err);
   }

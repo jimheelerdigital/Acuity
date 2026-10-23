@@ -7,6 +7,27 @@
 
 ---
 
+## [2026-10-23] — Founder emails for every app download and every trial-to-paid conversion
+
+- **Requested by:** Keenan
+- **Committed by:** Claude Code
+- **Commit hash:** (see git log: "feat: Email founders on every app download and trial conversion")
+
+### In plain English (for Keenan)
+You and Jimmy now get an email for every app download (the first time someone opens the app, from version 1.9.5 on) and every time a free trial turns into a real paid charge, on the web or in the App Store / Google Play. Signups, trial starts and direct purchases already emailed you and still do.
+
+### Technical changes (for Jimmy)
+- `lib/founder-notifications.ts`: new notifyFoundersOfInstall; payment sources stripe_trial_converted / app_store_trial_converted / play_store_trial_converted ("Trial converted to paid").
+- `api/onboarding-events/route.ts`: on `app_first_open` (non-internal, non-bot) → install email (platform/version from X-Platform / X-App-Version, reinstall flag from the event value, install id = sessionToken).
+- BILLING-ADJACENT (Jimmy review): `api/stripe/webhook/route.ts` invoice.payment_succeeded (subscription_cycle) → if the subscription's only paid invoice is this one and it had a $0 trial invoice, send "Trial converted to paid"; `api/revenuecat/webhook/route.ts` storePurchaseFounderEmail also fires on RENEWAL with is_trial_conversion. Email-only; no billing state changes; both wrapped so failures are logged, never thrown.
+
+### Manual steps needed
+- None
+
+### Notes
+- Apple doesn't report downloads that are never opened, and app versions before 1.9.5 don't send app_first_open, so install emails start low and grow as people update.
+- The RC conversion email runs in the webhook's apply path (same as the existing App Store trial email).
+
 ## [2026-10-23] — iOS app-install campaigns live; privacy page wording
 
 - **Requested by:** Keenan
