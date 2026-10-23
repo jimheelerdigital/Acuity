@@ -7,6 +7,21 @@
 
 ---
 
+## [2026-10-23] — Apple Watch app back in, polished (1.9.6)
+
+- **Requested by:** Jimmy ("Get it all into this build" — Watch is priority #1)
+- **Committed by:** Claude Code
+- **What:** restores the watch target, WatchConnectivity sender and its app.json plugin (held out of 1.9.0 in ab3f692d; contents from feat/watch-polish, unchanged since). Polish on top:
+  - Uploads use the phone's direct-to-storage flow (upload-url → PUT → /api/record JSON) instead of multipart, so the 4.5MB Vercel cap no longer applies.
+  - Queue no longer jams: 400/413/415 recordings are dropped; 401 clears the token and keeps the recording.
+  - Background retry (`.backgroundTask(.appRefresh)`) while anything is queued, plus a drain on every foreground.
+  - Token moved from UserDefaults to the watch Keychain (one-time migration).
+  - Watch asks the phone for a token when it opens signed out (phone answers via `didReceiveMessage`), so signing in on the phone no longer needs a background/foreground cycle.
+  - Haptics (start/stop/success/failure/click) and VoiceOver labels on the orb, timer, queue note, task/habit/goal rows.
+  - Growth shows goals even when the habits list fails.
+- **Not included:** a watch-face complication (needs a new widget extension + a new bundle id/provisioning profile).
+- **Verified:** swiftc typecheck of every watch file against the watchOS 27 SDK (Swift 5 and 6 modes) and the phone sender against iOS. Simulator build + on-wrist QA pending.
+- **Generated, not committed:** targets/watch/Assets.xcassets (apple-targets builds it from `icon`/`colors` at prebuild).
 ## [2026-10-23] — Fix: What's New catches people up on releases they skipped
 
 - **Requested by:** Jimmy ("Get it all into this build")
