@@ -58,6 +58,13 @@ export async function POST(req: NextRequest) {
     campaignId?: string;
     /** promoted_object.object_store_url override (defaults to APP_STORE_URL). */
     storeUrl?: string;
+    /**
+     * "aac" (2026-10-23): one Advantage+ app campaign PER GROUP (Women / Men),
+     * campaign budget, iOS 14+ with SKAdNetwork, location-only targeting —
+     * the setup Ads Manager accepted when the classic per-group ad sets were
+     * rejected with 3955009. Default is the classic single campaign.
+     */
+    mode?: "classic" | "aac";
   };
   const err = (e: unknown) => meta.redactAccessToken(String(e)).slice(0, 500);
 
@@ -148,7 +155,54 @@ export async function POST(req: NextRequest) {
   const wanted = body.ads ?? [];
   try {
     const adsets: Partial<Record<Group, string>> = { ...(body.adsets ?? {}) };
-    if (!adding) {
+    if (!adding && body.mode === "aac") {
+      const campaigns: Partial<Record<Group, string>> = {};
+      steps.campaigns = campaigns;
+      for (const group of ["women", "men"] as Group[]) {
+        const budget = Math.round(Number(budgets[group]));
+        if (!budget || !wanted.some((a) => a.group === group)) continue;
+        const label = group === "women" ? "Women" : "Men";
+        const project = await prisma.adLabProject.findUniqueOrThrow({
+          where: { slug: group === "women" ? "ripple-women" : "ripple-men" },
+          select: { evergreenAdsetId: true },
+        });
+        // Advantage+ app campaigns take location only; copy the countries.
+        let geo: Record<string, unknown> = { countries: ["US", "CA", "GB"] };
+        if (project.evergreenAdsetId) {
+          const main = (await meta.metaGraph(project.evergreenAdsetId, "GET", { fields: "targeting" })) as { targeting: { geo_locations?: Record<string, unknown> } };
+          if (main.targeting.geo_locations) geo = main.targeting.geo_locations;
+        }
+        const campaign = await meta.metaGraph(`${acct}/campaigns`, "POST", {
+          name: `Ripple — App Installs | ${label}`,
+          objective: "OUTCOME_APP_PROMOTION",
+          buying_type: "AUCTION",
+          special_ad_categories: [],
+          // Graph v24+: no smart_promotion_type (Automated App Campaigns are
+          // retired, code 2490569). A campaign is "Advantage+" when it uses
+          // the automatic levers: campaign budget + Advantage+ audience +
+          // automatic placements — what Ads Manager built on 2026-10-23.
+          is_skadnetwork_attribution: true,
+          // iOS 14+ campaigns name the app on the CAMPAIGN (Ads Manager's
+          // "iOS 14+ campaign → App"); without it the ad set is rejected as
+          // "not an iOS 14+ campaign" (3955009).
+          promoted_object: { application_id: body.appId, object_store_url: body.storeUrl ?? APP_STORE_URL },
+          daily_budget: String(budget),
+          bid_strategy: "LOWEST_COST_WITHOUT_CAP",
+          status: "PAUSED",
+        });
+        campaigns[group] = campaign.id as string;
+        const set = await meta.metaGraph(`${acct}/adsets`, "POST", {
+          name: `Ripple — App Installs | ${label}`,
+          campaign_id: campaign.id,
+          billing_event: "IMPRESSIONS",
+          optimization_goal: "APP_INSTALLS",
+          promoted_object: { application_id: body.appId, object_store_url: body.storeUrl ?? APP_STORE_URL },
+          targeting: { geo_locations: geo, user_os: [IOS_OS], targeting_automation: { advantage_audience: 1 } },
+          status: "PAUSED",
+        });
+        adsets[group] = set.id as string;
+      }
+    } else if (!adding) {
     const campaign = await meta.metaGraph(`${acct}/campaigns`, "POST", {
       name: "Ripple — iOS App Installs",
       objective: "OUTCOME_APP_PROMOTION",
