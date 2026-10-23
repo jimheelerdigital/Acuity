@@ -7,6 +7,30 @@
 
 ---
 
+## [2026-10-23] — Release announcement emails: one template, one send script
+
+- **Requested by:** Jimmy (Miro: "Formalize email cadence to announce product releases")
+- **Committed by:** Claude Code
+- **Commit hash:** (see git log: "feat(email): reusable release announcement")
+
+### In plain English
+Each release used to need its own email file and send script. Now a release is one short entry (headline, features, small items) and the same template and script send it. The 1.9.5 email is written and ready. Nothing has been sent.
+
+### Technical changes
+- apps/web/src/emails/announcements/release.ts: generic template (iOS → App Store, Android → Google Play).
+- apps/web/src/emails/announcements/releases.ts: RELEASE_EMAILS, with the 1.9.5 entry. Cadence note at the top.
+- apps/web/scripts/release-announce-send.ts:
+  - Modes: `<version>` dry-run / test / preview / live --yes.
+  - Live sends are claimed in TrialEmailLog (`release_<version>`) before sending, so a re-run never double-sends.
+  - iOS release gate: refuses unless the App Store's public lookup shows that version live.
+- Test: release.test.ts.
+
+### Manual steps needed
+- Jimmy: confirm the cadence (one email per store release with user-facing changes, sent the day it's live).
+- When 1.9.5 is live: dry-run → test → live --yes.
+
+---
+
 ## [2026-10-23] — Faster entry processing: fewer Inngest round trips before results
 
 - **Requested by:** Jimmy (Miro: "Speed up processing")
