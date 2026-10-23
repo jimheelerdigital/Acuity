@@ -3,6 +3,8 @@ import Constants from "expo-constants";
 import * as Linking from "expo-linking";
 import { Platform } from "react-native";
 
+import { compareVersion } from "@/lib/semver";
+
 /**
  * Mobile-side version-check client. Mirrors the
  * `apps/web/src/lib/app-version-config.ts → AppVersionConfig` shape.
@@ -59,32 +61,6 @@ export interface VersionCheckResult {
 
 const DISMISSED_KEY = "update-prompt-dismissed-version";
 const FETCH_TIMEOUT_MS = 4000;
-
-/**
- * Strip pre-release / build-metadata suffixes and parse into a
- * fixed-length [major, minor, patch] tuple. Any segment that
- * doesn't parse becomes 0 — defensive against malformed config or
- * `Constants.expoConfig.version` returning something unexpected.
- */
-function parseVersion(raw: string): [number, number, number] {
-  const cleaned = raw.split(/[-+]/, 1)[0] ?? raw;
-  const parts = cleaned.split(".");
-  const [major, minor, patch] = [0, 1, 2].map((i) => {
-    const n = Number.parseInt(parts[i] ?? "0", 10);
-    return Number.isFinite(n) ? n : 0;
-  });
-  return [major, minor, patch];
-}
-
-/** Returns -1 if a < b, 0 if equal, 1 if a > b. */
-function compareVersion(a: string, b: string): -1 | 0 | 1 {
-  const [aM, am, ap] = parseVersion(a);
-  const [bM, bm, bp] = parseVersion(b);
-  if (aM !== bM) return aM < bM ? -1 : 1;
-  if (am !== bm) return am < bm ? -1 : 1;
-  if (ap !== bp) return ap < bp ? -1 : 1;
-  return 0;
-}
 
 /** `current` strictly less than `target`. */
 function isOlderThan(current: string, target: string): boolean {
