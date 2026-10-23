@@ -32,18 +32,25 @@ export function CreatorCodeField() {
   const [value, setValue] = useState("");
   const [check, setCheck] = useState<Check>({ state: "idle" });
   const seq = useRef(0);
+  // Nothing is written until the saved code has been read back; otherwise
+  // the first render's empty value clears the stored code before the
+  // restore below can load it.
+  const [restored, setRestored] = useState(false);
 
   // Restore a code typed before a cold start / back-navigation.
   useEffect(() => {
-    void loadAnswers().then((a) => {
-      if (a.creatorCode) {
-        setOpen(true);
-        setValue(a.creatorCode);
-      }
-    });
+    void loadAnswers()
+      .then((a) => {
+        if (a.creatorCode) {
+          setOpen(true);
+          setValue(a.creatorCode);
+        }
+      })
+      .finally(() => setRestored(true));
   }, []);
 
   useEffect(() => {
+    if (!restored) return;
     const code = clean(value);
     if (code.length < 4) {
       setCheck({ state: "idle" });
@@ -72,7 +79,7 @@ export function CreatorCodeField() {
       }
     }, 450);
     return () => clearTimeout(t);
-  }, [value]);
+  }, [value, restored]);
 
   if (!open) {
     return (
