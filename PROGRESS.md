@@ -260,10 +260,10 @@ From Friday through Sunday, OpenAI's ChatGPT 6.1 Sol writes every social post in
 - **Commit hash:** (see git log: "feat: Skip the web debrief and send paid funnel users to the app")
 
 ### In plain English (for Keenan)
-After someone pays in the web funnel, they no longer get asked to do their first debrief in the browser. That debrief didn't carry into the app, and in-app browsers (Instagram, Facebook) almost always block the microphone. They now go straight to setting a password and then "Get the app", which already says their first debrief happens in the app and emails them a one-tap sign-in link. Also: the creator funnel banner is now a small light toast, and the old pay-per-video creator fees are gone (separate commits).
+After someone pays in the web funnel, they go straight to "Get the app": no web debrief and no password (neither the password screen nor the optional password box). They download the app and tap the emailed one-tap sign-in link. Before: they were asked to do their first debrief in the browser. That debrief didn't carry into the app, and in-app browsers (Instagram, Facebook) almost always block the microphone.  Also: the creator funnel banner is now a small light toast, and the old pay-per-video creator fees are gone (separate commits).
 
 ### Technical changes (for Jimmy)
-- `components/funnel-v9.tsx`: removed the `paid && !debrief` FunnelFirstDebrief branch in the download step and the now-unused firstDebriefPrefill helper + imports. A debrief saved by an older version of the page (sessionStorage outcome) still switches GetTheApp's copy.
+- `components/funnel-v9.tsx`: removed the PasswordStep screen and the LoginCard password box on Get the app (one-tap email link only); removed the `paid && !debrief` FunnelFirstDebrief branch in the download step and the now-unused firstDebriefPrefill helper + imports. A debrief saved by an older version of the page (sessionStorage outcome) still switches GetTheApp's copy.
 - `components/funnel-first-debrief.tsx` kept (still imported by the older onboarding-funnel.tsx, which isn't served while funnel_test_only is on).
 - Verified 2026-10-23: test signup keenan+paywalltest1 via goripple.io/c/TESS50 → CreatorReferral TESS50 / web_cookie, utm creator-tess50; no commission yet because the card-up trial's first charge is Oct 30 (correct).
 
