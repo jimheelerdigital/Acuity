@@ -47,7 +47,7 @@ export async function POST(req: NextRequest) {
   const meta = await import("@/lib/adlab/meta");
   const acct = meta.adAccountPath();
   const body = (await req.json().catch(() => ({}))) as {
-    action?: "apps" | "diag" | "create" | "add" | "fix-os" | "delete" | "activate" | "pause";
+    action?: "apps" | "diag" | "create" | "add" | "fix-os" | "delete" | "activate" | "pause" | "set-geo" | "delete-ad";
     /** Ad set measurement for iOS 14+ campaigns: "SKADNETWORK" (default), "AEM", or "none". */
     attribution?: "SKADNETWORK" | "AEM" | "none";
     /** "add": existing app ad set per group. */
@@ -56,8 +56,12 @@ export async function POST(req: NextRequest) {
     budgets?: Partial<Record<Group, number>>;
     ads?: { group: Group; sourceAdId: string }[];
     campaignId?: string;
-    /** "diag": also read these ad sets' targeting/budget/status. */
+    /** "diag": also read these ad sets' targeting/budget/status. "set-geo": ad sets to update. */
     adsetIds?: string[];
+    /** "set-geo": country codes, e.g. ["US","CA","GB"]. */
+    countries?: string[];
+    /** "delete-ad": the ad to delete (app-promotion campaigns only). */
+    adId?: string;
     /** promoted_object.object_store_url override (defaults to APP_STORE_URL). */
     storeUrl?: string;
     /**
@@ -85,6 +89,41 @@ export async function POST(req: NextRequest) {
     }
   }
 
+  // Update locations on app-install ad sets (keeps the rest of the targeting).
+  if (body.action === "set-geo") {
+    const countries = (body.countries ?? []).filter((c) => /^[A-Z]{2}$/.test(c));
+    if (!body.adsetIds?.length || !countries.length) return NextResponse.json({ error: "adsetIds and countries required" }, { status: 400 });
+    const out: Record<string, unknown> = {};
+    for (const id of body.adsetIds) {
+      try {
+        const cur = (await meta.metaGraph(id, "GET", { fields: "targeting,campaign{objective}" })) as { targeting: Record<string, unknown>; campaign: { objective: string } };
+        if (cur.campaign.objective !== "OUTCOME_APP_PROMOTION") {
+          out[id] = { error: `refusing: ${cur.campaign.objective}` };
+          continue;
+        }
+        const geo = { ...((cur.targeting.geo_locations as Record<string, unknown>) ?? {}), countries };
+        await meta.metaGraph(id, "POST", { targeting: { ...cur.targeting, geo_locations: geo } });
+        out[id] = ((await meta.metaGraph(id, "GET", { fields: "targeting" })) as { targeting: { geo_locations?: unknown } }).targeting.geo_locations;
+      } catch (e) {
+        out[id] = { error: err(e) };
+      }
+    }
+    return NextResponse.json(out);
+  }
+
+  // Delete one ad, only inside an app-promotion campaign (e.g. a placeholder).
+  if (body.action === "delete-ad") {
+    if (!body.adId) return NextResponse.json({ error: "adId required" }, { status: 400 });
+    try {
+      const a = (await meta.metaGraph(body.adId, "GET", { fields: "name,campaign{objective}" })) as { name: string; campaign: { objective: string } };
+      if (a.campaign.objective !== "OUTCOME_APP_PROMOTION") return NextResponse.json({ error: `refusing: ${a.name} is ${a.campaign.objective}` }, { status: 400 });
+      await meta.metaGraph(body.adId, "POST", { status: "DELETED" });
+      return NextResponse.json({ ok: true, deleted: a.name });
+    } catch (e) {
+      return NextResponse.json({ error: err(e) }, { status: 500 });
+    }
+  }
+
   if (body.action === "diag") {
     const out: Record<string, unknown> = {};
     for (const id of body.adsetIds ?? []) {
@@ -97,7 +136,7 @@ export async function POST(req: NextRequest) {
       }
     }
     for (const [k, path, fields] of [
-      ["campaign", body.campaignId, "name,objective,status,is_skadnetwork_attribution,special_ad_categories,buying_type"],
+      ["campaign", body.campaignId, "name,objective,status,effective_status,daily_budget,is_skadnetwork_attribution,special_ad_categories,buying_type"],
       ["app", body.appId, "name,supported_platforms,object_store_urls"],
     ] as const) {
       if (!path) continue;
