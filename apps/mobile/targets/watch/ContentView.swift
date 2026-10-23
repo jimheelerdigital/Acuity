@@ -26,6 +26,8 @@ struct ContentView: View {
     }
 
     private var needsPhone: some View {
+        // Scrolls so the caption never truncates on small watches (42mm).
+        ScrollView {
         VStack(spacing: 8) {
             Image(systemName: "iphone.and.arrow.forward")
                 .font(.title2)
@@ -37,7 +39,9 @@ struct ContentView: View {
                 .font(.caption2)
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
+                .fixedSize(horizontal: false, vertical: true)
         }
         .padding()
+        }
     }
 }
