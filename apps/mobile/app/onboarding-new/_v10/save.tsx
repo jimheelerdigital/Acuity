@@ -5,6 +5,7 @@ import Svg, { Path } from "react-native-svg";
 
 import { useAuth } from "@/contexts/auth-context";
 import { EmailCodeForm } from "@/components/auth/email-code-form";
+import { CreatorCodeField } from "@/components/onboarding/creator-code-field";
 import type { AuthLoading } from "@/components/auth/social-auth-buttons";
 
 import { FunnelHeader, Heading, LightScreen, PROGRESS, RippleAppIcon, V11 } from "../_v11/ui";
@@ -178,6 +179,7 @@ export default function V10Save() {
           <Text style={{ fontSize: 13, color: V11.ter, textAlign: "center", marginTop: 4 }}>
             Paid on the website? Use the same email.
           </Text>
+          <CreatorCodeField />
         </View>
       </ScrollView>
     </LightScreen>

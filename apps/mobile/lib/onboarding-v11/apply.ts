@@ -19,7 +19,8 @@ import { loadAnswers, saveAnswers } from "./answers";
  *   3. save the first name she asked Ripple to call her;
  *   4. save the check-in time and register the push token (permission was
  *      already asked while the debrief analyzed);
- *   5. create the habits she picked.
+ *   5. create the habits she picked;
+ *   6. send the creator code she entered, if any (creator referrals).
  *
  * Each step is best-effort and independent: a failed habit must never
  * block the paywall. The claim is retried by finishOnboarding() too.
@@ -62,6 +63,13 @@ export async function applyPendingSetup(): Promise<{ entryId: string | null }> {
       if (time) await registerPushTokenForReminderSlot().catch(() => "error");
     })(),
     (async () => {
+      // Creator referral (2026-10-22): ties the brand-new account to the
+      // creator whose code she typed on the save screen. The server rejects
+      // existing accounts, self-referrals and a second code on its own.
+      if (!a.creatorCode) return;
+      await api.post("/api/creators/code", { code: a.creatorCode }).catch(() => {});
+    })(),
+    (async () => {
       if (!a.pendingHabits?.length) return;
       const existing = await fetchHabits().catch(() => ({ habits: [], checks: [] }));
       const have = new Set(existing.habits.map((h) => h.name.trim().toLowerCase()));
@@ -76,6 +84,6 @@ export async function applyPendingSetup(): Promise<{ entryId: string | null }> {
     })(),
   ]);
 
-  await saveAnswers({ consentAgreedAt: undefined, pendingHabits: undefined, reminderPending: false });
+  await saveAnswers({ consentAgreedAt: undefined, pendingHabits: undefined, reminderPending: false, creatorCode: undefined });
   return { entryId };
 }
