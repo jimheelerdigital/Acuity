@@ -27,6 +27,7 @@ import {
 
 import { SegmentedTabs } from "@/components/acuity";
 import { ComparisonsCard } from "@/components/comparisons-card";
+import { HealthCorrelationsCard } from "@/components/health-correlations-card";
 import { BiggestMoves } from "@/components/insights/biggest-moves";
 import { LifeMapRadar } from "@/components/life-map-radar";
 import { LockedFeatureCard } from "@/components/locked-feature-card";
@@ -938,6 +939,8 @@ export default function InsightsTab() {
               <UserInsightsCard />
             )}
             <ComparisonsCard />
+            {/* Apple Health (1.9.6): renders only with 7+ paired days. */}
+            <HealthCorrelationsCard />
 
             {/* Mood chart — legacy 7-bar view, kept in the metrics drawer */}
             {moodEntries.length > 0 && (

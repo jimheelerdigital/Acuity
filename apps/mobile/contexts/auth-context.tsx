@@ -40,6 +40,7 @@ import {
 } from "@/lib/session-expiry";
 import { tokenBridge } from "@/lib/token-bridge";
 import { isQaForceV10, warnIfQaForceV10Active } from "@/lib/qa/force-v10";
+import { clearHealthState } from "@/lib/health";
 import { clearPlanDayState } from "@/lib/day-plan-store";
 import { clearWidgetData } from "@/lib/widget-data";
 import { notifyV10StateChanged } from "@/lib/onboarding-v10/state";
@@ -470,6 +471,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // Home-screen widget shows habit names — don't leave them up for
     // whoever uses this device next.
     await clearWidgetData();
+    // Apple Health sync is per person, not per phone.
+    await clearHealthState();
     // Plan my day's remembered time blocks belong to this user.
     await clearPlanDayState();
     // Clear device-local product-tour markers so a DIFFERENT user

@@ -22,6 +22,7 @@ import {
 } from "@acuity/shared";
 
 import { StickyBackButton } from "@/components/back-button";
+import { HealthRuleSection } from "@/components/habits/health-rule-section";
 import {
   ReminderTimePicker,
   useLocalTimezoneLabel,
@@ -548,6 +549,13 @@ export default function HabitDetailScreen() {
             );
           })}
         </View>
+
+        {/* Apple Health rule (1.9.6) */}
+        <HealthRuleSection
+          habit={habit}
+          onUpdated={(h) => setHabit(h)}
+          labelStyle={sectionLabel(tokens)}
+        />
 
         {/* Reminder */}
         <Text style={sectionLabel(tokens)}>Reminder</Text>
