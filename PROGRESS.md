@@ -7,6 +7,32 @@
 
 ---
 
+## [2026-10-23] — Server analytics were being rejected by PostHog (personal key used for capture)
+
+- **Requested by:** Jimmy ("look into it")
+- **Committed by:** Claude Code
+- **Commit hash:** (see git log: "fix(analytics): capture with the PostHog project key")
+
+### In plain English
+Every analytics event the server sends (trial started, subscription started, first recording, streak milestones and more) has been rejected by PostHog since at least June 16. The server was configured with the wrong kind of PostHog key: a personal key, which can read data but can't send events. The server now uses the project key, the same one the website already uses successfully. Events from before this fix are not recoverable.
+
+### Verified
+- Reproduced the exact production error: sending events with a personal key returns "API key is not valid: personal_api_key", while a project key returns Ok.
+- The site's public project key is valid on PostHog US (/flags returns 200), and the public bundle only references US hosts.
+- Vercel production has POSTHOG_API_KEY, POSTHOG_PROJECT_ID, NEXT_PUBLIC_POSTHOG_KEY and NEXT_PUBLIC_POSTHOG_HOST (values not read). POSTHOG_PROJECT_ID is unused in code.
+
+### Technical changes
+- lib/posthog.ts resolvePosthogConfig:
+  - Capture uses POSTHOG_API_KEY only if it is a project key (phc_); otherwise it uses NEXT_PUBLIC_POSTHOG_KEY.
+  - The host comes from POSTHOG_HOST or the client's absolute host, defaulting to US.
+  - Logs a warning once when a personal key is ignored.
+- Test: lib/posthog.test.ts.
+
+### Manual steps needed
+- Optional: rename the personal key in Vercel to POSTHOG_PERSONAL_API_KEY so it's clear it's only for the read API. Nothing breaks if left as is.
+
+---
+
 ## [2026-10-22] — Task groups: pick one from Siri / the Action Button, and manage them in the app
 
 - **Requested by:** Jimmy
