@@ -22,6 +22,13 @@
 - **Not included:** a watch-face complication (needs a new widget extension + a new bundle id/provisioning profile).
 - **Verified:** swiftc typecheck of every watch file against the watchOS 27 SDK (Swift 5 and 6 modes) and the phone sender against iOS. Simulator build + on-wrist QA pending.
 - **Generated, not committed:** targets/watch/Assets.xcassets (apple-targets builds it from `icon`/`colors` at prebuild).
+## [2026-10-23] — Fix: What's New catches people up on releases they skipped
+
+- **Requested by:** Jimmy ("Get it all into this build")
+- **Committed by:** Claude Code
+- **Why:** someone updating 1.9.3 → 1.9.6 only saw 1.9.6's items; 1.9.5's were never shown.
+- **What:** `catchUpRelease(from, current, platform)` (lib/whats-new-content.ts) combines every release in (from, current], newest first, de-duplicated, capped at the 3 newest. The sheet, tour, Home pill and Profile progress all use it; the "from" version is stored per running version (`whatsNew.from.<v>`). `compareVersion` moved to pure lib/semver.ts (re-exported by version-check).
+- **Tests:** apps/web/src/lib/evidence/whats-new-catch-up.test.ts (8). Mobile tsc unchanged at the 12-error baseline.
 
 ---
 
