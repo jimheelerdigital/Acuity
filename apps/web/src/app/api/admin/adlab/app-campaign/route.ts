@@ -180,7 +180,8 @@ export async function POST(req: NextRequest) {
           smart_promotion_type: "SMART_APP_PROMOTION",
           is_skadnetwork_attribution: true,
           daily_budget: String(budget),
-          bid_strategy: "LOWEST_COST_WITHOUT_CAP",
+          // No bid_strategy: Advantage+ app campaigns reject it (Meta picks
+          // "highest volume" itself).
           status: "PAUSED",
         });
         campaigns[group] = campaign.id as string;
