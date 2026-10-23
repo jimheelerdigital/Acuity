@@ -2,10 +2,12 @@
  * UGC creator outreach settings (2026-10-06, per Keenan). Every number the
  * pipeline uses lives here; no other file hardcodes one.
  *
- * What we buy: VIDEOS TO RUN AS ADS from Ripple's own accounts, not posts
- * to the creator's audience. Follower count never scores; on-camera quality
- * and persona fit do. Many cheap test videos first, more money only on the
- * winners.
+ * Deals are COMMISSION-ONLY (2026-10-23, per Keenan: the pay-per-video
+ * model is eliminated). Creators post with their own referral link and earn
+ * 25% for 12 months plus bonuses; every money number lives in
+ * lib/creators/config.ts and is paid through Creator payouts
+ * (/admin/creators). Nothing here pays or tracks a per-video fee. Follower
+ * count never scores; on-camera quality and persona fit do.
  */
 import type { Persona } from "@/lib/content-factory/brand";
 import { displayAnnual, displayMonthly } from "@/lib/pricing";
@@ -49,15 +51,9 @@ export const CREATOR_TYPES: Record<CreatorType, { label: string; description: st
 };
 
 export const MAX_FOLLOWERS = 20_000;
-export const MAX_FEE_PER_VIDEO = 100;
-/** Paid only when Keenan marks a video a winner. */
-export const WINNER_BONUS_PER_VIDEO = 50;
+/** Brief guidance: videos to post, and openings to film per video. */
 export const BUNDLE_SIZE = 3;
 export const HOOKS_PER_VIDEO = 2;
-export const USAGE_RIGHTS_MONTHS = 3;
-/** Per video per extra USAGE_RIGHTS_MONTHS, winners only. */
-export const RIGHTS_EXTENSION_FEE = 25;
-export const PAYMENT_TERMS = "paid on delivery, half upfront at most";
 
 export const WEEKLY_CREATOR_CAP = 10;
 export const MAX_SENDS_PER_DAY = 5;
@@ -74,12 +70,9 @@ export const DRY_RUN_PROFILES = 25;
 export const TARGET_COST_PER_TRIAL = 15;
 /** KILL list: a video that has spent this much with zero trials. */
 export const KILL_SPEND = 2 * TARGET_COST_PER_TRIAL;
-/** RIGHTS list window. */
-export const RIGHTS_WARNING_DAYS = 14;
 /** Warning: this many offers out with fewer than LOW_DEAL_COUNT deals. */
 export const LOW_DEAL_OFFERS = 40;
 export const LOW_DEAL_COUNT = 2;
-export const RAISED_FEE_SUGGESTION = 150;
 
 export const OUTREACH_FROM_EMAIL = "keenan@heelerdigital.com";
 /**

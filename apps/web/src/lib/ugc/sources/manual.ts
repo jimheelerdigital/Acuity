@@ -6,7 +6,7 @@
  * the same enrich → score → draft steps. Manual adds skip the
  * no-email/no-portfolio drop and the weekly cap (Keenan picked them).
  */
-import { MAX_FEE_PER_VIDEO, type Platform } from "@/lib/ugc/config";
+import type { Platform } from "@/lib/ugc/config";
 import {
   normalizeHandle,
   profileUrlFor,
@@ -36,17 +36,16 @@ export function parseManualHandle(input: ManualAddInput): { platform: Platform; 
   return { platform, handle };
 }
 
-/** Quoted rate → cost per video in cents, and whether it's under the cap. */
+/**
+ * A rate the creator quoted, kept as information only: deals are
+ * commission-only, so nothing filters, scores or pays on it. The draft uses
+ * it just to acknowledge they quoted a rate.
+ */
 export function quoteMath(quotedRate?: number | null, quotedVideos?: number | null) {
-  if (quotedRate == null || !(quotedRate > 0)) return { quotedRateCents: null, costPerVideoCents: null, underFeeCap: null };
+  if (quotedRate == null || !(quotedRate > 0)) return { quotedRateCents: null, costPerVideoCents: null };
   const videos = quotedVideos && quotedVideos > 0 ? quotedVideos : 1;
   const quotedRateCents = Math.round(quotedRate * 100);
-  const costPerVideoCents = Math.round(quotedRateCents / videos);
-  return {
-    quotedRateCents,
-    costPerVideoCents,
-    underFeeCap: costPerVideoCents <= MAX_FEE_PER_VIDEO * 100,
-  };
+  return { quotedRateCents, costPerVideoCents: Math.round(quotedRateCents / videos) };
 }
 
 /** Manual creators still waiting for their first pipeline run. */

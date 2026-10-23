@@ -27,7 +27,11 @@ export const dynamic = "force-dynamic";
 export const maxDuration = 300;
 
 /** Ripple: AI Voice Journal on the US App Store (iOS 1.9.0 live 2026-10-15). */
-const APP_STORE_URL = "https://apps.apple.com/app/id6762633410";
+// Must match the store URL registered on the Meta app EXACTLY
+// (GET /859310533882226 → object_store_urls.itunes). With the apps.apple.com
+// form Meta didn't tie the ad set to the iOS app and rejected it as "not an
+// iOS 14+ campaign" (code 3955009, 2026-10-23). Override per call with storeUrl.
+const APP_STORE_URL = "http://itunes.apple.com/app/id6762633410";
 
 type Group = "women" | "men";
 
@@ -52,6 +56,8 @@ export async function POST(req: NextRequest) {
     budgets?: Partial<Record<Group, number>>;
     ads?: { group: Group; sourceAdId: string }[];
     campaignId?: string;
+    /** promoted_object.object_store_url override (defaults to APP_STORE_URL). */
+    storeUrl?: string;
   };
   const err = (e: unknown) => meta.redactAccessToken(String(e)).slice(0, 500);
 
@@ -177,7 +183,7 @@ export async function POST(req: NextRequest) {
         billing_event: "IMPRESSIONS",
         optimization_goal: "APP_INSTALLS",
         bid_strategy: "LOWEST_COST_WITHOUT_CAP",
-        promoted_object: { application_id: body.appId, object_store_url: APP_STORE_URL },
+        promoted_object: { application_id: body.appId, object_store_url: body.storeUrl ?? APP_STORE_URL },
         targeting,
         // iOS 14+ campaigns: each ad set names its measurement (Apple's
         // SKAdNetwork); without it Meta rejects the ad set (2026-10-19).
