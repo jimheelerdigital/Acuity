@@ -1,11 +1,11 @@
 /**
  * Everything Keenan (or a job) does to a UGC creator after scoring: draft,
  * approve / edit / skip, mark sent by hand, status moves, deal → brief,
- * delivery and money tracking, and the daily send. Called from
+ * delivery and ad-performance tracking, and the daily send. Called from
  * /api/admin/ugc/action and the ugc-ops Inngest functions.
  *
- * Money: the system never pays anyone. It records what's owed and what
- * Keenan says he paid.
+ * No money here: deals are commission-only and paid through Creator payouts
+ * (lib/creators). The per-video fee model was eliminated 2026-10-23.
  */
 import type { Prisma, UgcStatus } from "@prisma/client";
 
@@ -13,13 +13,9 @@ import {
   BUNDLE_SIZE,
   FOLLOWUP_AFTER_DAYS,
   HOOKS_PER_VIDEO,
-  MAX_FEE_PER_VIDEO,
   MAX_SENDS_PER_DAY,
   OUTREACH_FROM_EMAIL,
   OUTREACH_SEND_ENABLED,
-  RIGHTS_EXTENSION_FEE,
-  USAGE_RIGHTS_MONTHS,
-  WINNER_BONUS_PER_VIDEO,
 } from "@/lib/ugc/config";
 import { rowToCandidate } from "@/lib/ugc/pipeline";
 import { isDoNotContact, setStatus } from "@/lib/ugc/status";
@@ -105,20 +101,12 @@ export async function moveStatus(creatorId: string, to: UgcStatus, note?: string
 // ─── Deal + brief ──────────────────────────────────────────────────────────
 
 /**
- * Mark a deal. Since 2026-10-22 deals are commission-only, so the per-video
- * fee is optional (legacy). setStatus("deal") issues the referral code and
- * sends the dashboard invite; the brief job starts from here.
+ * Mark a deal. Deals are commission-only (pay-per-video eliminated
+ * 2026-10-23): setStatus("deal") issues the referral code and sends the
+ * dashboard invite; the brief job starts from here.
  */
-export async function markDeal(creatorId: string, feePerVideo?: number) {
-  const fee = Number(feePerVideo);
-  const hasFee = Number.isFinite(fee) && fee > 0;
-  await setStatus(
-    creatorId,
-    "deal",
-    "keenan",
-    hasFee ? `$${fee}/video${fee > MAX_FEE_PER_VIDEO ? " (over cap)" : ""}` : "commission deal",
-    hasFee ? { agreedFeeCents: Math.round(fee * 100) } : {}
-  );
+export async function markDeal(creatorId: string) {
+  await setStatus(creatorId, "deal", "keenan", "commission deal");
   const { inngest } = await import("@/inngest/client");
   await inngest.send({ name: "ugc/brief.requested", data: { creatorId } });
 }
@@ -138,7 +126,6 @@ export async function generateBrief(creatorId: string): Promise<number> {
     displayName: row.displayName,
     persona: (row.persona as "midlife" | "ambitious" | null) ?? null,
     creatorType: row.creatorType,
-    feePerVideoCents: row.agreedFeeCents ?? MAX_FEE_PER_VIDEO * 100,
     credentials: row.credentials,
   };
   const { videos, costUsd } = await generateBriefVideos(bc);
@@ -166,7 +153,6 @@ export async function editBrief(briefId: string, body: string) {
       displayName: b.creator.displayName,
       persona: (b.creator.persona as "midlife" | "ambitious" | null) ?? null,
       creatorType: b.creator.creatorType,
-      feePerVideoCents: b.creator.agreedFeeCents ?? MAX_FEE_PER_VIDEO * 100,
       credentials: b.creator.credentials,
     },
     body
@@ -205,66 +191,27 @@ export async function approveBrief(briefId: string) {
   }
 }
 
-// ─── Delivery + money ──────────────────────────────────────────────────────
-
-export function addMonths(d: Date, months: number): Date {
-  const out = new Date(d);
-  out.setUTCMonth(out.getUTCMonth() + months);
-  return out;
-}
+// ─── Delivery + ad performance ─────────────────────────────────────────────
+// No money here: creators are paid commission through Creator payouts
+// (lib/creators). Videos only carry ad-performance figures and a winner flag
+// (the REHIRE list).
 
 export async function markDelivered(creatorId: string) {
   const prisma = await db();
-  const now = new Date();
   await prisma.ugcVideo.updateMany({
     where: { creatorId, deliveredAt: null },
-    data: { deliveredAt: now, rightsEndAt: addMonths(now, USAGE_RIGHTS_MONTHS) },
+    data: { deliveredAt: new Date() },
   });
   await setStatus(creatorId, "delivered", "keenan");
 }
 
-/** Keenan paid the fee (outside this system). Split evenly across the cuts. */
-export async function markPaid(creatorId: string, amount: number) {
-  const prisma = await db();
-  const cents = Math.round(amount * 100);
-  const cuts = await prisma.ugcVideo.findMany({ where: { creatorId } });
-  const per = cuts.length ? Math.round(cents / cuts.length) : 0;
-  await prisma.ugcVideo.updateMany({ where: { creatorId }, data: { feePaidCents: per } });
-  await setStatus(creatorId, "paid", "keenan", `$${amount} recorded as paid`, { feePaidCents: cents });
-}
-
-/** Winner flag. The bonus is owed once per video, whichever hook won. */
+/** Winner flag (feeds the REHIRE list). No bonus attached. */
 export async function setWinner(videoId: string, winner: boolean) {
   const prisma = await db();
-  const v = await prisma.ugcVideo.findUniqueOrThrow({ where: { id: videoId } });
-  const siblings = await prisma.ugcVideo.findMany({
-    where: { creatorId: v.creatorId, videoNumber: v.videoNumber, id: { not: v.id } },
-  });
-  const siblingOwes = siblings.some((s) => s.bonusOwedCents > 0);
-  await prisma.ugcVideo.update({
-    where: { id: videoId },
-    data: {
-      winner,
-      bonusOwedCents: winner && !siblingOwes ? WINNER_BONUS_PER_VIDEO * 100 : winner ? 0 : v.bonusPaidCents > 0 ? v.bonusOwedCents : 0,
-    },
-  });
+  await prisma.ugcVideo.update({ where: { id: videoId }, data: { winner } });
 }
 
-/** Extend usage rights by another block. Winners only. */
-export async function extendRights(videoId: string) {
-  const prisma = await db();
-  const v = await prisma.ugcVideo.findUniqueOrThrow({ where: { id: videoId } });
-  if (!v.winner) throw new Error("Only winners get a rights extension");
-  await prisma.ugcVideo.update({
-    where: { id: videoId },
-    data: {
-      rightsEndAt: addMonths(v.rightsEndAt ?? new Date(), USAGE_RIGHTS_MONTHS),
-      extensionOwedCents: v.extensionOwedCents + RIGHTS_EXTENSION_FEE * 100,
-    },
-  });
-}
-
-const VIDEO_FIELDS = ["adSpendCents", "trials", "paidConversions", "bonusPaidCents", "extensionPaidCents", "feePaidCents"] as const;
+const VIDEO_FIELDS = ["adSpendCents", "trials", "paidConversions"] as const;
 
 export async function updateVideoNumbers(videoId: string, patch: Partial<Record<(typeof VIDEO_FIELDS)[number], number | null>>) {
   const prisma = await db();
@@ -272,7 +219,7 @@ export async function updateVideoNumbers(videoId: string, patch: Partial<Record<
   for (const k of VIDEO_FIELDS) {
     if (k in patch) {
       const val = patch[k];
-      data[k] = val == null || Number.isNaN(val) ? (k.endsWith("Cents") && k !== "adSpendCents" ? 0 : null) : Math.round(val);
+      data[k] = val == null || Number.isNaN(val) ? null : Math.round(val);
     }
   }
   await prisma.ugcVideo.update({ where: { id: videoId }, data });

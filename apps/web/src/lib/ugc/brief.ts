@@ -15,11 +15,7 @@ import { claimsCheck, type ClaimsResult } from "@/lib/ugc/claims-check";
 import {
   BUNDLE_SIZE,
   HOOKS_PER_VIDEO,
-  PAYMENT_TERMS,
   PERSONAS,
-  RIGHTS_EXTENSION_FEE,
-  USAGE_RIGHTS_MONTHS,
-  WINNER_BONUS_PER_VIDEO,
   type CreatorType,
   type Persona,
 } from "@/lib/ugc/config";
@@ -44,7 +40,6 @@ export interface BriefCreator {
   displayName: string | null;
   persona: Persona | null;
   creatorType: CreatorType | null;
-  feePerVideoCents: number;
   credentials: string | null;
 }
 
@@ -54,10 +49,10 @@ export const PARTNERSHIP_LINE =
   'Every post with your link or code carries "#ad" or the paid-partnership label, plus the line "I earn a commission from this link."';
 
 /**
- * Money terms in the brief. Since 2026-10-22 every deal is commission-only
- * (lib/creators/config.ts); the fee argument is kept for older briefs.
+ * Money terms in the brief. Every deal is commission-only
+ * (lib/creators/config.ts); the per-video fee model was eliminated 2026-10-23.
  */
-export function moneyTerms(_feePerVideoCents?: number): string[] {
+export function moneyTerms(): string[] {
   return [
     `Commission: ${Math.round(COMMISSION_RATE * 100)}% of what each customer you send pays for their first ${COMMISSION_WINDOW_MONTHS} months. No upfront fee.`,
     `Boost bonus: $${BOOST_BONUS_CENTS / 100} each time we run one of your posts as an ad. We may run any post carrying your link as an ad for 12 months.`,
@@ -93,7 +88,7 @@ export function composeBrief(c: BriefCreator, videos: BriefVideo[]): string {
     ...(c.creatorType === "credentialed" ? [`- ${CREDENTIALED_LINE}`] : []),
     "",
     "Money:",
-    ...moneyTerms(c.feePerVideoCents).map((m) => `- ${m}`),
+    ...moneyTerms().map((m) => `- ${m}`),
   ].join("\n");
 }
 
@@ -128,9 +123,8 @@ export async function generateBriefVideos(c: BriefCreator): Promise<{ videos: Br
 }
 
 export async function checkBrief(c: BriefCreator, body: string): Promise<ClaimsResult> {
-  const fee = c.feePerVideoCents / 100;
   return claimsCheck("brief", body, {
-    allowedDollars: [...allowedDollars(), fee, fee * BUNDLE_SIZE],
+    allowedDollars: allowedDollars(),
     mustInclude: [PARTNERSHIP_LINE, ...(c.creatorType === "credentialed" ? [CREDENTIALED_LINE] : [])],
   });
 }

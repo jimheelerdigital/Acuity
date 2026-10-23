@@ -69,7 +69,7 @@ export default async function UgcReview({ searchParams }: { searchParams: { c?: 
               <p className="text-sm">{c.scoreReason}</p>
               <p className="text-xs text-acuity-text-ter">
                 {c.email ?? "no email (DM only)"} {c.portfolioUrl && <>· <a className="underline" href={c.portfolioUrl}>portfolio</a></>}
-                {c.costPerVideoCents ? ` · quoted $${(c.costPerVideoCents / 100).toFixed(0)}/video${c.underFeeCap ? "" : " (over cap)"}` : ""}
+                {c.costPerVideoCents ? " · quoted a per-video rate (deal is commission-only)" : ""}
                 {c.notes ? ` · notes: ${c.notes}` : ""}
               </p>
               {c.claimsNotes && <p className="text-xs text-amber-300">{c.claimsNotes}</p>}
