@@ -255,6 +255,12 @@
         }
       ],
       "expo-secure-store",
+      [
+        "expo-calendar",
+        {
+          "calendarPermission": "Ripple reads the titles and times of your calendar events so your entries can reference your day, and adds your Ripple tasks and planned time blocks to the calendar you choose."
+        }
+      ],
       "@react-native-community/datetimepicker",
       [
         "expo-av",

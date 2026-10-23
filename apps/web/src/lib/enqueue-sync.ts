@@ -150,7 +150,7 @@ export async function enqueueSyncForTask(
     // Set PENDING. Mobile drains the queue next foreground.
     await tx.task.update({
       where: { id: taskId },
-      data: { calendarSyncStatus: "PENDING" },
+      data: { calendarSyncStatus: "PENDING", calendarPendingSince: new Date() },
     });
 
     return { enqueued: true };
@@ -189,7 +189,7 @@ export async function enqueueSyncForLoadedTask(
 
   await tx.task.update({
     where: { id: task.id },
-    data: { calendarSyncStatus: "PENDING" },
+    data: { calendarSyncStatus: "PENDING", calendarPendingSince: new Date() },
   });
   return { enqueued: true };
 }

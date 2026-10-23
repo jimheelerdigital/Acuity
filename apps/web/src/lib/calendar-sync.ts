@@ -42,7 +42,7 @@ import type { Prisma, PrismaClient, Task } from "@prisma/client";
  * User.calendarConnectedProvider and Task.calendarProviderId
  * (latter omitted from slice C3, derived from User at apply time).
  */
-export type CalendarProviderId = "ios_eventkit" | "google" | "outlook";
+export type CalendarProviderId = "ios_eventkit" | "android_calendar" | "google" | "outlook";
 
 /**
  * What kind of calendar mutation does this op produce?
@@ -278,6 +278,7 @@ export async function applySyncResult(
         calendarEventId: result.providerEventId,
         calendarSyncedAt: new Date(),
         calendarSyncStatus: "SYNCED",
+        calendarPendingSince: null,
       },
     });
     return;
@@ -393,17 +394,21 @@ export const PENDING_ESCALATION_MS = 24 * 60 * 60 * 1000;
  * from a Prisma query and calls this; tests pass synthetic data.
  */
 export function selectStuckTaskIds(
-  pending: { id: string; calendarSyncedAt: Date | null; createdAt: Date }[],
+  pending: {
+    id: string;
+    calendarPendingSince?: Date | null;
+    calendarSyncedAt: Date | null;
+    createdAt: Date;
+  }[],
   now: Date,
   thresholdMs = PENDING_ESCALATION_MS
 ): string[] {
   const cutoff = now.getTime() - thresholdMs;
   return pending
     .filter((t) => {
-      // Use calendarSyncedAt if set (would be from a prior partial
-      // success that re-entered PENDING); otherwise the row's own
-      // createdAt as the start of the wait window.
-      const since = t.calendarSyncedAt ?? t.createdAt;
+      // When the task entered PENDING (2026-10-23). Rows queued before
+      // that column existed fall back to the old rule.
+      const since = t.calendarPendingSince ?? t.calendarSyncedAt ?? t.createdAt;
       return since.getTime() < cutoff;
     })
     .map((t) => t.id);
