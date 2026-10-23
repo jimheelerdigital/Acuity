@@ -253,6 +253,29 @@ From Friday through Sunday, OpenAI's ChatGPT 6.1 Sol writes every social post in
   - Each ChatGPT-written call now logs a ClaudeCallLog row (purpose "openai-writer", model gpt-6.1-sol), because callers' own rows hardcode the model they asked for.
 - First sample (10-22, flag on 15:49–16:03 UTC): "WHICH DRAGON IS YOURS?" (post cmvjqcjer0000vhvqag0hvemv). No fallback warnings in the prod logs.
 
+## [2026-10-23] — Stripe Connect live; creator dashboard in app colors; Connect button self-heals
+
+- **Requested by:** Keenan
+- **Committed by:** Claude Code
+- **Commit hash:** (see git log: "style: Put the creator dashboard in Ripple's app colors")
+
+### In plain English (for Keenan)
+Stripe Connect is switched on for the Ripple Stripe account, and Stripe payouts are turned on in production, so creators can connect Stripe and get paid once you approve a run. The creator dashboard now looks like the app: coral and violet glow, gradient name, coral buttons and colored earnings cards. The "Connect Stripe" error Tess saw came from a test account I created with the wrong (test) key; it's cleared, and the button now repairs itself if that ever happens again.
+
+### Technical changes (for Jimmy)
+- Stripe (live, acct_1TPqQjD9XJakJqj5): Connect activated by Keenan/Jimmy 10-23 (Marketplace, Express). Verified by creating then deleting a live Express account via API.
+- Vercel: `CREATOR_STRIPE_PAYOUTS=1` (production), redeployed via `vercel redeploy` of the current prod build.
+- `lib/creators/payouts.ts` connectOnboardingLink: a stored stripeAccountId the platform can't reach (403/404/account_invalid/resource_missing) is cleared and a fresh Express account is created.
+- `app/creators/page.tsx` + `creators-client.tsx`: hero gradient shell, avatar + gradient greeting, tinted link card with coral glow, primary Copy link, Stat accent bars, section dots.
+- Data: Tess's bad stripeAccountId (a Heeler Digital sandbox account) cleared; stray accounts acct_1UTj750N5bREN3mu (sandbox) and acct_1UTjM6Dclw9i3np8 (live) deleted.
+
+### Manual steps needed
+- None
+
+### Notes
+- Gotcha: apps/web/.env.local has a Stripe TEST key for the "Heeler Digital sandbox" account, not the live Ripple account. `source .env.local` after exporting the prod key overwrites it. For live Stripe calls, pull STRIPE_SECRET_KEY from Vercel production and export it AFTER sourcing .env.local.
+- Visually checked locally with headless Chromium (desktop 1280 + mobile 390) before shipping.
+
 ## [2026-10-22] — Creators pick their own code; creator admin in app colors; captions without #ad
 
 - **Requested by:** Keenan

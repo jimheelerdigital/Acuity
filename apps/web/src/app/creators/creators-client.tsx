@@ -72,12 +72,12 @@ export function RequestLinkForm() {
   );
 }
 
-export function CopyButton({ text, label = "Copy" }: { text: string; label?: string }) {
+export function CopyButton({ text, label = "Copy", primary }: { text: string; label?: string; primary?: boolean }) {
   const [copied, setCopied] = useState(false);
   return (
     <Button
       type="button"
-      variant="secondary"
+      variant={primary ? "primary" : "secondary"}
       size="sm"
       onClick={async () => {
         try {

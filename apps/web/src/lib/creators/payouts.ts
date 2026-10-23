@@ -300,6 +300,22 @@ export async function connectOnboardingLink(creatorId: string): Promise<string> 
     select: { id: true, email: true, stripeAccountId: true },
   });
   let accountId = c.stripeAccountId;
+  // A stored id this platform can't reach (deleted, or made with another
+  // Stripe key) would fail every time: forget it and start a fresh account.
+  if (accountId) {
+    try {
+      await stripe.accounts.retrieve(accountId);
+    } catch (err) {
+      const code = (err as { code?: string; statusCode?: number } | null) ?? {};
+      if (code.statusCode === 403 || code.statusCode === 404 || code.code === "account_invalid" || code.code === "resource_missing") {
+        safeLog.warn("creators.connect.stale-account-reset", { creatorId, accountId });
+        await prisma.ugcCreator.update({ where: { id: c.id }, data: { stripeAccountId: null, stripePayoutsEnabled: false } });
+        accountId = null;
+      } else {
+        throw err;
+      }
+    }
+  }
   if (!accountId) {
     const acct = await stripe.accounts.create({
       type: "express",

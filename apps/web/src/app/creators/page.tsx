@@ -47,8 +47,17 @@ function fmtDate(d: Date | string | null | undefined): string {
 
 function Shell({ children }: { children: ReactNode }) {
   return (
-    <div data-theme="dark" className="min-h-screen bg-acuity-bg font-sans text-acuity-text">
-      <main className="mx-auto flex w-full max-w-[880px] flex-col gap-6 px-4 py-10 sm:px-6 sm:py-14">{children}</main>
+    <div data-theme="dark" className="relative min-h-screen overflow-hidden bg-acuity-bg font-sans text-acuity-text">
+      {/* App hero atmosphere: coral + violet glow behind the header (DESIGN_SYSTEM heroGrad). */}
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-x-0 top-0 h-[560px]"
+        style={{
+          background:
+            "radial-gradient(55% 60% at 12% 0%, color-mix(in oklch, var(--acuity-primary), transparent 78%) 0%, transparent 70%), radial-gradient(50% 55% at 92% 4%, color-mix(in oklch, var(--acuity-secondary), transparent 76%) 0%, transparent 70%)",
+        }}
+      />
+      <main className="relative mx-auto flex w-full max-w-[880px] flex-col gap-6 px-4 py-10 sm:px-6 sm:py-14">{children}</main>
     </div>
   );
 }
@@ -56,18 +65,46 @@ function Shell({ children }: { children: ReactNode }) {
 function Section({ eyebrow, title, children }: { eyebrow: string; title?: string; children: ReactNode }) {
   return (
     <Card>
-      <div className={EYEBROW}>{eyebrow}</div>
+      <div className={`${EYEBROW} flex items-center gap-2`}>
+        <span className="h-1.5 w-1.5 rounded-full bg-acuity-grad-mix" />
+        {eyebrow}
+      </div>
       {title && <h2 className="mt-2 font-display text-[20px] font-bold tracking-[-0.3px]">{title}</h2>}
       <div className="mt-4">{children}</div>
     </Card>
   );
 }
 
-function Stat({ label, value, sub }: { label: string; value: string; sub?: string }) {
+function Stat({
+  label,
+  value,
+  sub,
+  accent = "quiet",
+}: {
+  label: string;
+  value: string;
+  sub?: string;
+  accent?: "primary" | "secondary" | "mix" | "quiet";
+}) {
+  const bar =
+    accent === "primary"
+      ? "bg-acuity-grad-primary"
+      : accent === "secondary"
+        ? "bg-acuity-grad-secondary"
+        : accent === "mix"
+          ? "bg-acuity-grad-mix"
+          : "bg-acuity-line-strong";
   return (
-    <div className="flex flex-col gap-1 rounded-acuity-md border border-acuity-line bg-acuity-bg-sub p-4">
+    <div className="relative flex flex-col gap-1 overflow-hidden rounded-acuity-md border border-acuity-line bg-acuity-bg-sub p-4">
+      <span aria-hidden className={`absolute inset-x-0 top-0 h-[3px] ${bar}`} />
       <div className={EYEBROW}>{label}</div>
-      <div className={`${NUM} text-[26px] font-bold tracking-[-0.6px]`}>{value}</div>
+      <div
+        className={`${NUM} text-[26px] font-bold tracking-[-0.6px] ${
+          accent === "mix" ? "bg-acuity-grad-mix bg-clip-text text-transparent" : ""
+        }`}
+      >
+        {value}
+      </div>
       {sub && <div className="text-[13px] text-acuity-text-ter">{sub}</div>}
     </div>
   );
@@ -204,7 +241,14 @@ export default async function CreatorsPage({
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <div className={EYEBROW}>Ripple creators</div>
-          <h1 className="mt-2 font-display text-[30px] font-extrabold tracking-[-0.8px] sm:text-[36px]">Hi {name}</h1>
+          <div className="mt-3 flex items-center gap-4">
+            <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-acuity-grad-mix text-[22px] font-bold text-white ring-2 ring-white/15">
+              {name.replace(/^@/, "").charAt(0).toUpperCase()}
+            </span>
+            <h1 className="font-display text-[32px] font-extrabold leading-none tracking-[-1px] sm:text-[40px]">
+              Hi <span className="bg-acuity-grad-mix bg-clip-text text-transparent">{name}</span>
+            </h1>
+          </div>
           <div className="mt-3 flex flex-wrap items-center gap-2">
             {agreed ? <Pill tone="good">Agreement accepted</Pill> : <Pill tone="warn">Agreement needed</Pill>}
             {payoutReady ? <Pill tone="good">Payouts set up</Pill> : <Pill tone="warn">Payouts not set up</Pill>}
@@ -226,17 +270,23 @@ export default async function CreatorsPage({
         </p>
       )}
 
-      <Card>
-        <div className={EYEBROW}>Your link</div>
+      <Card variant="tinted" className="relative isolate overflow-hidden">
+        <span
+          aria-hidden
+          className="pointer-events-none absolute -right-16 -top-16 -z-10 h-48 w-48 rounded-full bg-acuity-grad-primary opacity-25 blur-3xl"
+        />
+        <div className={`${EYEBROW} relative`}>Your link</div>
         <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="min-w-0">
-            <div className="truncate font-mono text-[17px] text-acuity-text">{link.replace("https://", "")}</div>
+            <div className="truncate font-display text-[22px] font-bold tracking-[-0.4px] text-acuity-text">
+              goripple.io/c/<span className="bg-acuity-grad-mix bg-clip-text text-transparent">{code}</span>
+            </div>
             <div className="mt-1 text-[14px] text-acuity-text-sec">
               Code <span className="font-mono font-bold tracking-[1.4px] text-acuity-text">{code}</span> for people who install the app first
             </div>
           </div>
           <div className="flex gap-2">
-            <CopyButton text={link} label="Copy link" />
+            <CopyButton text={link} label="Copy link" primary />
             <CopyButton text={code} label="Copy code" />
           </div>
         </div>
@@ -248,10 +298,10 @@ export default async function CreatorsPage({
       {/* Earnings */}
       <Section eyebrow="Earnings">
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-          <Stat label="Pending" value={formatCents(b.pending)} sub={`In the ${HOLD_DAYS}-day hold`} />
-          <Stat label="Payable" value={formatCents(b.payable)} sub={b.payable < 0 ? "Covered by future earnings" : "Ready for the next payout"} />
+          <Stat accent="secondary" label="Pending" value={formatCents(b.pending)} sub={`In the ${HOLD_DAYS}-day hold`} />
+          <Stat accent="primary" label="Payable" value={formatCents(b.payable)} sub={b.payable < 0 ? "Covered by future earnings" : "Ready for the next payout"} />
           <Stat label="Paid to date" value={formatCents(b.paidToDate)} />
-          <Stat label="Next payout" value={nextAmount} sub={fmtDate(nextDate)} />
+          <Stat accent="mix" label="Next payout" value={nextAmount} sub={fmtDate(nextDate)} />
         </div>
         {b.payable < 0 && (
           <p className="mt-4 text-[14px] text-acuity-text-sec">
