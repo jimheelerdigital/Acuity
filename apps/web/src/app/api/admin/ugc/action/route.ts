@@ -44,12 +44,12 @@ export async function POST(req: Request) {
       case "status": {
         const to = String(b.to) as UgcStatus;
         if (!ALL_STATUSES.includes(to)) throw new Error(`Unknown status ${to}`);
-        if (to === "deal") throw new Error('Use "deal" with a fee');
-        await A.moveStatus(id, to, b.note ? String(b.note) : undefined);
+        if (to === "deal") await A.markDeal(id); // code + invite + brief
+        else await A.moveStatus(id, to, b.note ? String(b.note) : undefined);
         break;
       }
       case "deal":
-        await A.markDeal(id, Number(b.feePerVideo));
+        await A.markDeal(id);
         break;
       case "brief-edit":
         result = await A.editBrief(String(b.briefId), String(b.body ?? ""));
@@ -63,14 +63,8 @@ export async function POST(req: Request) {
       case "delivered":
         await A.markDelivered(id);
         break;
-      case "paid":
-        await A.markPaid(id, Number(b.amount));
-        break;
       case "winner":
         await A.setWinner(String(b.videoId), Boolean(b.winner));
-        break;
-      case "extend-rights":
-        await A.extendRights(String(b.videoId));
         break;
       case "video-numbers": {
         const toCents = (v: unknown) => (num(v) == null ? null : Math.round(Number(v) * 100));
@@ -78,8 +72,6 @@ export async function POST(req: Request) {
         if ("adSpend" in b) patch.adSpendCents = toCents(b.adSpend);
         if ("trials" in b) patch.trials = num(b.trials);
         if ("paidConversions" in b) patch.paidConversions = num(b.paidConversions);
-        if ("bonusPaid" in b) patch.bonusPaidCents = toCents(b.bonusPaid);
-        if ("extensionPaid" in b) patch.extensionPaidCents = toCents(b.extensionPaid);
         await A.updateVideoNumbers(String(b.videoId), patch);
         break;
       }

@@ -1,17 +1,17 @@
 /**
  * One UGC creator: profile, score, drafts, status history, outreach log,
- * deal → brief → delivery → paid, and per-video tracking (winner flag,
- * rights, bonus, the hand-typed spend / trials / paid conversions, cost per
- * trial).
+ * deal → brief → delivery, and per-video ad tracking (winner flag, the
+ * hand-typed spend / trials / paid conversions, cost per trial). No money:
+ * creators are paid commission through Creator payouts (/admin/creators).
  */
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
-import { BUNDLE_SIZE, RIGHTS_EXTENSION_FEE, trackingUrl } from "@/lib/ugc/config";
-import { costPerTrial, isKill, rightsEndingSoon } from "@/lib/ugc/metrics";
+import { trackingUrl } from "@/lib/ugc/config";
+import { costPerTrial, isKill } from "@/lib/ugc/metrics";
 import { ALL_STATUSES } from "@/lib/ugc/status";
 
-import { ActionButton, CopyButton, DealForm, PaidForm, StatusSelect, VideoNumbers } from "../../ugc-client";
+import { ActionButton, CopyButton, DealForm, StatusSelect, VideoNumbers } from "../../ugc-client";
 
 export const dynamic = "force-dynamic";
 
@@ -30,10 +30,6 @@ export default async function UgcCreatorPage({ params }: { params: { id: string 
   });
   if (!c) notFound();
   const detail = (c.scoreDetail ?? {}) as Record<string, unknown>;
-  const owed =
-    (c.agreedFeeCents ?? 0) * BUNDLE_SIZE -
-    c.feePaidCents +
-    c.videos.reduce((s, v) => s + v.bonusOwedCents - v.bonusPaidCents + v.extensionOwedCents - v.extensionPaidCents, 0);
 
   return (
     <div className="min-h-screen bg-acuity-bg text-white p-6">
@@ -64,11 +60,10 @@ export default async function UgcCreatorPage({ params }: { params: { id: string 
             <StatusSelect creatorId={c.id} current={c.status} statuses={ALL_STATUSES} />
             {["replied", "negotiating", "contacted"].includes(c.status) && <DealForm creatorId={c.id} />}
             {c.status === "briefed" && <ActionButton body={{ action: "delivered", creatorId: c.id }} label="Mark delivered" tone="go" />}
-            {["delivered", "paid"].includes(c.status) && <PaidForm creatorId={c.id} />}
           </div>
-          <p className="text-sm">
-            Agreed fee: {c.agreedFeeCents ? `${usd(c.agreedFeeCents)}/video` : "—"} · fee paid {usd(c.feePaidCents)} · still owed{" "}
-            <b>{usd(Math.max(0, owed))}</b> <span className="text-acuity-text-ter">(the system never pays anyone; this is what you owe)</span>
+          <p className="text-sm text-acuity-text-sec">
+            Commission-only deal. Code, earnings and payouts live in{" "}
+            <Link className="underline" href={`/admin/creators/${c.id}`}>Creator payouts</Link>.
           </p>
         </section>
 
@@ -80,11 +75,10 @@ export default async function UgcCreatorPage({ params }: { params: { id: string 
                 <tr>
                   <th className="pr-3">Cut</th>
                   <th className="pr-3">Branch</th>
-                  <th className="pr-3">Rights end</th>
+                  <th className="pr-3">Delivered</th>
                   <th className="pr-3">Winner</th>
-                  <th className="pr-3">Bonus owed / paid</th>
                   <th className="pr-3">Cost / trial</th>
-                  <th>Spend · trials · paid · bonus paid · extension paid</th>
+                  <th>Spend · trials · paid</th>
                 </tr>
               </thead>
               <tbody>
@@ -98,21 +92,9 @@ export default async function UgcCreatorPage({ params }: { params: { id: string 
                         {isKill(v) && <span className="ml-1 text-red-400 text-xs">KILL</span>}
                       </td>
                       <td className="pr-3">{v.painBranch ?? "—"}</td>
-                      <td className="pr-3">
-                        {v.rightsEndAt?.toISOString().slice(0, 10) ?? "not delivered"}
-                        {rightsEndingSoon(v) && <span className="ml-1 text-amber-400 text-xs">soon</span>}
-                        {v.winner && v.rightsEndAt && (
-                          <div className="mt-1">
-                            <ActionButton body={{ action: "extend-rights", videoId: v.id }} label={`Extend (+$${RIGHTS_EXTENSION_FEE})`} confirm="Confirm extend" />
-                          </div>
-                        )}
-                        {v.extensionOwedCents > 0 && <div className="text-xs text-acuity-text-ter">ext. owed {usd(v.extensionOwedCents)}</div>}
-                      </td>
+                      <td className="pr-3">{v.deliveredAt?.toISOString().slice(0, 10) ?? "not yet"}</td>
                       <td className="pr-3">
                         <ActionButton body={{ action: "winner", videoId: v.id, winner: !v.winner }} label={v.winner ? "★ winner (undo)" : "Mark winner"} tone={v.winner ? "go" : "plain"} />
-                      </td>
-                      <td className="pr-3">
-                        {usd(v.bonusOwedCents)} / {usd(v.bonusPaidCents)}
                       </td>
                       <td className="pr-3">{cpt == null ? "—" : `$${cpt.toFixed(2)}`}</td>
                       <td>
@@ -121,8 +103,6 @@ export default async function UgcCreatorPage({ params }: { params: { id: string 
                           adSpend={v.adSpendCents == null ? null : v.adSpendCents / 100}
                           trials={v.trials}
                           paidConversions={v.paidConversions}
-                          bonusPaid={v.bonusPaidCents / 100}
-                          extensionPaid={v.extensionPaidCents / 100}
                         />
                       </td>
                     </tr>

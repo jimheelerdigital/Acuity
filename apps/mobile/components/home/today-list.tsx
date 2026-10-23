@@ -7,6 +7,7 @@ import { SwipeRow } from "@/components/swipe-row";
 import { useTheme } from "@/contexts/theme-context";
 import { api } from "@/lib/api";
 import { cachedGet, getCached, setCached, subscribeCached } from "@/lib/cache";
+import { deviceCalendarAvailable } from "@/lib/device-calendar";
 import { fireHaptic } from "@/lib/haptics";
 import {
   TODAY_LIMIT,
@@ -193,16 +194,31 @@ export function TodayList() {
         >
           Today{pressing.length > 0 ? ` · ${pressing.length}` : ""}
         </Text>
-        <Pressable
-          onPress={() => router.push("/(tabs)/tasks")}
-          hitSlop={8}
-          accessibilityRole="button"
-          accessibilityLabel="See all tasks"
-        >
-          <Text style={{ fontFamily: tokens.fontSans, fontSize: 13, color: tokens.primary }}>
-            {more > 0 ? `+${more} more` : "All tasks"}
-          </Text>
-        </Pressable>
+        <View style={{ flexDirection: "row", alignItems: "baseline", gap: 14 }}>
+          {/* Plan my day (1.9.6) — only on builds with the calendar module. */}
+          {pressing.length > 0 && deviceCalendarAvailable() ? (
+            <Pressable
+              onPress={() => router.push("/plan-day")}
+              hitSlop={8}
+              accessibilityRole="button"
+              accessibilityLabel="Plan my day"
+            >
+              <Text style={{ fontFamily: tokens.fontSans, fontSize: 13, color: tokens.primary }}>
+                Plan my day
+              </Text>
+            </Pressable>
+          ) : null}
+          <Pressable
+            onPress={() => router.push("/(tabs)/tasks")}
+            hitSlop={8}
+            accessibilityRole="button"
+            accessibilityLabel="See all tasks"
+          >
+            <Text style={{ fontFamily: tokens.fontSans, fontSize: 13, color: tokens.primary }}>
+              {more > 0 ? `+${more} more` : "All tasks"}
+            </Text>
+          </Pressable>
+        </View>
       </View>
 
       <View

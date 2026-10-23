@@ -27,7 +27,11 @@ export const dynamic = "force-dynamic";
 export const maxDuration = 300;
 
 /** Ripple: AI Voice Journal on the US App Store (iOS 1.9.0 live 2026-10-15). */
-const APP_STORE_URL = "https://apps.apple.com/app/id6762633410";
+// Must match the store URL registered on the Meta app EXACTLY
+// (GET /859310533882226 → object_store_urls.itunes). With the apps.apple.com
+// form Meta didn't tie the ad set to the iOS app and rejected it as "not an
+// iOS 14+ campaign" (code 3955009, 2026-10-23). Override per call with storeUrl.
+const APP_STORE_URL = "http://itunes.apple.com/app/id6762633410";
 
 type Group = "women" | "men";
 
@@ -43,7 +47,7 @@ export async function POST(req: NextRequest) {
   const meta = await import("@/lib/adlab/meta");
   const acct = meta.adAccountPath();
   const body = (await req.json().catch(() => ({}))) as {
-    action?: "apps" | "diag" | "create" | "add" | "fix-os" | "delete" | "activate";
+    action?: "apps" | "diag" | "create" | "add" | "fix-os" | "delete" | "activate" | "pause" | "set-geo" | "delete-ad";
     /** Ad set measurement for iOS 14+ campaigns: "SKADNETWORK" (default), "AEM", or "none". */
     attribution?: "SKADNETWORK" | "AEM" | "none";
     /** "add": existing app ad set per group. */
@@ -52,14 +56,87 @@ export async function POST(req: NextRequest) {
     budgets?: Partial<Record<Group, number>>;
     ads?: { group: Group; sourceAdId: string }[];
     campaignId?: string;
+    /** "diag": also read these ad sets' targeting/budget/status. "set-geo": ad sets to update. */
+    adsetIds?: string[];
+    /** "set-geo": country codes, e.g. ["US","CA","GB"]. */
+    countries?: string[];
+    /** "delete-ad": the ad to delete (app-promotion campaigns only). */
+    adId?: string;
+    /** promoted_object.object_store_url override (defaults to APP_STORE_URL). */
+    storeUrl?: string;
+    /**
+     * "aac" (2026-10-23): one Advantage+ app campaign PER GROUP (Women / Men),
+     * campaign budget, iOS 14+ with SKAdNetwork, location-only targeting —
+     * the setup Ads Manager accepted when the classic per-group ad sets were
+     * rejected with 3955009. Default is the classic single campaign.
+     */
+    mode?: "classic" | "aac";
   };
   const err = (e: unknown) => meta.redactAccessToken(String(e)).slice(0, 500);
 
   // Read-only: how Meta registered a campaign and the app (2026-10-19 debug).
+  // Pause an app-promotion campaign and its ad sets (never touches other objectives).
+  if (body.action === "pause") {
+    if (!body.campaignId) return NextResponse.json({ error: "campaignId required" }, { status: 400 });
+    try {
+      const c = (await meta.metaGraph(body.campaignId, "GET", { fields: "name,objective" })) as { name: string; objective: string };
+      if (c.objective !== "OUTCOME_APP_PROMOTION") return NextResponse.json({ error: `refusing: ${c.name} is ${c.objective}` }, { status: 400 });
+      await meta.setStatus(body.campaignId, "campaign", "PAUSED");
+      const check = await meta.metaGraph(body.campaignId, "GET", { fields: "name,status,effective_status" });
+      return NextResponse.json({ ok: true, campaign: check });
+    } catch (e) {
+      return NextResponse.json({ error: err(e) }, { status: 500 });
+    }
+  }
+
+  // Update locations on app-install ad sets (keeps the rest of the targeting).
+  if (body.action === "set-geo") {
+    const countries = (body.countries ?? []).filter((c) => /^[A-Z]{2}$/.test(c));
+    if (!body.adsetIds?.length || !countries.length) return NextResponse.json({ error: "adsetIds and countries required" }, { status: 400 });
+    const out: Record<string, unknown> = {};
+    for (const id of body.adsetIds) {
+      try {
+        const cur = (await meta.metaGraph(id, "GET", { fields: "targeting,campaign{objective}" })) as { targeting: Record<string, unknown>; campaign: { objective: string } };
+        if (cur.campaign.objective !== "OUTCOME_APP_PROMOTION") {
+          out[id] = { error: `refusing: ${cur.campaign.objective}` };
+          continue;
+        }
+        const geo = { ...((cur.targeting.geo_locations as Record<string, unknown>) ?? {}), countries };
+        await meta.metaGraph(id, "POST", { targeting: { ...cur.targeting, geo_locations: geo } });
+        out[id] = ((await meta.metaGraph(id, "GET", { fields: "targeting" })) as { targeting: { geo_locations?: unknown } }).targeting.geo_locations;
+      } catch (e) {
+        out[id] = { error: err(e) };
+      }
+    }
+    return NextResponse.json(out);
+  }
+
+  // Delete one ad, only inside an app-promotion campaign (e.g. a placeholder).
+  if (body.action === "delete-ad") {
+    if (!body.adId) return NextResponse.json({ error: "adId required" }, { status: 400 });
+    try {
+      const a = (await meta.metaGraph(body.adId, "GET", { fields: "name,campaign{objective}" })) as { name: string; campaign: { objective: string } };
+      if (a.campaign.objective !== "OUTCOME_APP_PROMOTION") return NextResponse.json({ error: `refusing: ${a.name} is ${a.campaign.objective}` }, { status: 400 });
+      await meta.metaGraph(body.adId, "POST", { status: "DELETED" });
+      return NextResponse.json({ ok: true, deleted: a.name });
+    } catch (e) {
+      return NextResponse.json({ error: err(e) }, { status: 500 });
+    }
+  }
+
   if (body.action === "diag") {
     const out: Record<string, unknown> = {};
+    for (const id of body.adsetIds ?? []) {
+      try {
+        out[`adset_${id}`] = await meta.metaGraph(id, "GET", {
+          fields: "name,status,effective_status,daily_budget,optimization_goal,billing_event,promoted_object,targeting,attribution_spec",
+        });
+      } catch (e) {
+        out[`adset_${id}`] = { error: err(e) };
+      }
+    }
     for (const [k, path, fields] of [
-      ["campaign", body.campaignId, "name,objective,status,is_skadnetwork_attribution,special_ad_categories,buying_type"],
+      ["campaign", body.campaignId, "name,objective,status,effective_status,daily_budget,is_skadnetwork_attribution,special_ad_categories,buying_type"],
       ["app", body.appId, "name,supported_platforms,object_store_urls"],
     ] as const) {
       if (!path) continue;
@@ -142,7 +219,54 @@ export async function POST(req: NextRequest) {
   const wanted = body.ads ?? [];
   try {
     const adsets: Partial<Record<Group, string>> = { ...(body.adsets ?? {}) };
-    if (!adding) {
+    if (!adding && body.mode === "aac") {
+      const campaigns: Partial<Record<Group, string>> = {};
+      steps.campaigns = campaigns;
+      for (const group of ["women", "men"] as Group[]) {
+        const budget = Math.round(Number(budgets[group]));
+        if (!budget || !wanted.some((a) => a.group === group)) continue;
+        const label = group === "women" ? "Women" : "Men";
+        const project = await prisma.adLabProject.findUniqueOrThrow({
+          where: { slug: group === "women" ? "ripple-women" : "ripple-men" },
+          select: { evergreenAdsetId: true },
+        });
+        // Advantage+ app campaigns take location only; copy the countries.
+        let geo: Record<string, unknown> = { countries: ["US", "CA", "GB"] };
+        if (project.evergreenAdsetId) {
+          const main = (await meta.metaGraph(project.evergreenAdsetId, "GET", { fields: "targeting" })) as { targeting: { geo_locations?: Record<string, unknown> } };
+          if (main.targeting.geo_locations) geo = main.targeting.geo_locations;
+        }
+        const campaign = await meta.metaGraph(`${acct}/campaigns`, "POST", {
+          name: `Ripple — App Installs | ${label}`,
+          objective: "OUTCOME_APP_PROMOTION",
+          buying_type: "AUCTION",
+          special_ad_categories: [],
+          // Graph v24+: no smart_promotion_type (Automated App Campaigns are
+          // retired, code 2490569). A campaign is "Advantage+" when it uses
+          // the automatic levers: campaign budget + Advantage+ audience +
+          // automatic placements — what Ads Manager built on 2026-10-23.
+          is_skadnetwork_attribution: true,
+          // iOS 14+ campaigns name the app on the CAMPAIGN (Ads Manager's
+          // "iOS 14+ campaign → App"); without it the ad set is rejected as
+          // "not an iOS 14+ campaign" (3955009).
+          promoted_object: { application_id: body.appId, object_store_url: body.storeUrl ?? APP_STORE_URL },
+          daily_budget: String(budget),
+          bid_strategy: "LOWEST_COST_WITHOUT_CAP",
+          status: "PAUSED",
+        });
+        campaigns[group] = campaign.id as string;
+        const set = await meta.metaGraph(`${acct}/adsets`, "POST", {
+          name: `Ripple — App Installs | ${label}`,
+          campaign_id: campaign.id,
+          billing_event: "IMPRESSIONS",
+          optimization_goal: "APP_INSTALLS",
+          promoted_object: { application_id: body.appId, object_store_url: body.storeUrl ?? APP_STORE_URL },
+          targeting: { geo_locations: geo, user_os: [IOS_OS], targeting_automation: { advantage_audience: 1 } },
+          status: "PAUSED",
+        });
+        adsets[group] = set.id as string;
+      }
+    } else if (!adding) {
     const campaign = await meta.metaGraph(`${acct}/campaigns`, "POST", {
       name: "Ripple — iOS App Installs",
       objective: "OUTCOME_APP_PROMOTION",
@@ -177,7 +301,7 @@ export async function POST(req: NextRequest) {
         billing_event: "IMPRESSIONS",
         optimization_goal: "APP_INSTALLS",
         bid_strategy: "LOWEST_COST_WITHOUT_CAP",
-        promoted_object: { application_id: body.appId, object_store_url: APP_STORE_URL },
+        promoted_object: { application_id: body.appId, object_store_url: body.storeUrl ?? APP_STORE_URL },
         targeting,
         // iOS 14+ campaigns: each ad set names its measurement (Apple's
         // SKAdNetwork); without it Meta rejects the ad set (2026-10-19).

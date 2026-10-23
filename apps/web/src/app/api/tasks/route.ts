@@ -42,9 +42,10 @@ export async function GET(req: NextRequest) {
       userId: userId,
       ...(all ? {} : { status: { not: "DONE" } }),
     },
-    // Explicit select — see open-tasks.tsx for context. Production
-    // DB doesn't yet have C3 calendar columns. Re-broaden once db
-    // push lands.
+    // Explicit select — see open-tasks.tsx for context. The C3
+    // calendar columns are live in production (verified 2026-10-23);
+    // calendarEventId lets Plan my day move a task's existing calendar
+    // event instead of adding a second one.
     select: {
       id: true,
       userId: true,
@@ -60,6 +61,7 @@ export async function GET(req: NextRequest) {
       snoozedUntil: true,
       completedAt: true,
       createdAt: true,
+      calendarEventId: true,
       entry: { select: { entryDate: true } },
     },
     orderBy: { createdAt: "desc" },

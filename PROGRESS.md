@@ -7,6 +7,98 @@
 
 ---
 
+## [2026-10-23] — Founder emails for every app download and every trial-to-paid conversion
+
+- **Requested by:** Keenan
+- **Committed by:** Claude Code
+- **Commit hash:** (see git log: "feat: Email founders on every app download and trial conversion")
+
+### In plain English (for Keenan)
+You and Jimmy now get an email for every app download (the first time someone opens the app, from version 1.9.5 on) and every time a free trial turns into a real paid charge, on the web or in the App Store / Google Play. Signups, trial starts and direct purchases already emailed you and still do.
+
+### Technical changes (for Jimmy)
+- `lib/founder-notifications.ts`: new notifyFoundersOfInstall; payment sources stripe_trial_converted / app_store_trial_converted / play_store_trial_converted ("Trial converted to paid").
+- `api/onboarding-events/route.ts`: on `app_first_open` (non-internal, non-bot) → install email (platform/version from X-Platform / X-App-Version, reinstall flag from the event value, install id = sessionToken).
+- BILLING-ADJACENT (Jimmy review): `api/stripe/webhook/route.ts` invoice.payment_succeeded (subscription_cycle) → if the subscription's only paid invoice is this one and it had a $0 trial invoice, send "Trial converted to paid"; `api/revenuecat/webhook/route.ts` storePurchaseFounderEmail also fires on RENEWAL with is_trial_conversion. Email-only; no billing state changes; both wrapped so failures are logged, never thrown.
+
+### Manual steps needed
+- None
+
+### Notes
+- Apple doesn't report downloads that are never opened, and app versions before 1.9.5 don't send app_first_open, so install emails start low and grow as people update.
+- The RC conversion email runs in the webhook's apply path (same as the existing App Store trial email).
+
+## [2026-10-23] — iOS app-install campaigns live; privacy page wording
+
+- **Requested by:** Keenan
+- **Committed by:** Claude Code
+- **Commit hash:** (see git log: "feat: Let the app-campaign tool set locations and delete placeholder ads" and the app-campaign commits before it)
+
+### In plain English (for Keenan)
+Two new Meta campaigns that optimize for iPhone app downloads are LIVE (Keenan said turn them on, 10-23 ~1:50pm CT; ads were in Meta review at that moment): "Ripple — App Installs | Women" at $60/day (therapyandthingss videos 4, 3 and 5) and "Ripple — App Installs | Men" at $25/day (Discipline comparison C1 and story C1), US/Canada/UK, each ad with an Install now button to the App Store. With the $115/day web ads that's $200/day. The privacy page also no longer calls Ripple a "nightly voice journal" (time-of-day rule); it now reads "a habit tracker, voice journal and insight app".
+
+### Technical changes (for Jimmy)
+- `app/privacy/page.tsx`: opening line uses the positioning category instead of "nightly voice journal… brain dumps".
+- `api/admin/adlab/app-campaign/route.ts`: store URL now Meta's registered `http://itunes.apple.com/app/id6762633410`; new actions `pause`, `set-geo`, `delete-ad` (all refuse non-app-promotion objects); `diag` reads ad sets (targeting, budget, status) and campaign budget/delivery; an `aac` create mode (kept, but see notes).
+- Meta (live, paused): Women campaign 120255308582170581 / ad set 120255308582180581; Men campaign 120255308594000581 / ad set 120255308593990581. Campaigns built by Keenan in Ads Manager (Advantage+ app campaign, iOS 14+ / SKAdNetwork, app 859310533882226), ads copied by the tool, placeholder ad deleted, geo set to US/CA/GB.
+- Meta app 859310533882226 renamed "Ripple" by Keenan; it receives SDK events (installs, activate) from 1.9.5.
+
+### Manual steps needed
+- [x] Activated 10-23 on Keenan's explicit yes (both campaigns ACTIVE; 5 ads IN_PROCESS review)
+- [ ] ~10-30: compare cost per paid trial (App Store trials) vs web campaigns; ≤$20 goal, $30 OK (Keenan / Claude)
+- [ ] Meta app settings: turn OFF "Log in-app events automatically" (the app already logs StartTrial/Subscribe; leaving it on double-counts) (Keenan)
+
+### Notes
+- Creating iOS app-install AD SETS through the Marketing API fails with 3955009 ("must be an iOS14+ campaign") under every variant tried (classic SKAN/none, smart_promotion_type, which is retired in v24 with code 2490569, v24 Advantage+ levers, campaign-level promoted_object). Ads Manager builds the same thing fine. Working path: build campaign + ad set in Ads Manager (campaign OFF), then the tool's `add` action copies ads in.
+- Budgets in this route are cents.
+- Events Manager → Facebook SDK: "Update the Facebook SDK for iOS" done; "Release the App" pending Meta's own check (a few days).
+
+## [2026-10-23] — Apple Health: read layer, Health & mood card, habit auto-complete (1.9.6)
+
+- **Requested by:** Jimmy ("health is a nice touch")
+- **Committed by:** Claude Code
+- **What:**
+  - Device layer: `@kingstinct/react-native-healthkit@16.1.0` (Nitro; nitro-modules 0.35.9 already present), read-only: steps, exercise minutes, sleep, HRV. lib/health.ts uploads the last 7 local days to the existing POST /api/health/snapshots on foreground (30-min throttle). lib/health-aggregate.ts (pure): sleep counted toward the wake-up day with iPhone/Watch overlap merged; missing data is null, never 0. No background delivery, no write access.
+  - Profile → Apple Health screen (connect, what's read, sync now, stop syncing). Cleared on sign-out.
+  - Insights → "Health & mood" card (mobile counterpart of the web card). Server fix: entries are now grouped by the user's local day (was UTC, which put US evening entries on the next day's numbers).
+  - Habit auto-complete: `Habit.autoRule` (steps or exercise minutes ≥ preset), shared parse/eval in @acuity/shared, server checks habits off with source "HEALTH" after each snapshot upload (additive, never overwrites a manual/debrief check, respects active days). Habit detail gets the preset chips.
+- **Prod DB:** docs/migrations/2026-10-23-habit-auto-rule.sql must be applied BEFORE this web code deploys (Prisma reads every Habit column on create).
+- **Tests:** habits-health-autocheck.test.ts (6), health-snapshots-device.test.ts (10). Web tsc clean for touched files; mobile tsc at the 12 baseline.
+## [2026-10-23] — Plan my day (1.9.6)
+
+- **Requested by:** Jimmy ("plan my day is awesome", priority #2)
+- **Committed by:** Claude Code
+- **What:** Tasks tab (calendar button) and Home TODAY card ("Plan my day") open a preview that fits the TODAY list (overdue → due today → high priority) into free time on today's phone calendar, inside a workday (default 9 AM–6 PM, adjustable, remembered). Blocks default to 30 min (tap to cycle 15/30/45/60/90); tasks can be left out; what doesn't fit is listed. "Add to calendar" writes one event per task: an existing auto-added event is moved, otherwise one is created and linked via /sync-result.
+  - lib/plan-day.ts (pure scheduler), lib/day-plan-store.ts (blocks + workday, cleared on sign-out), app/plan-day.tsx.
+  - Calendar sync keeps a planned block when the task changes (calendar-op `eventForOp`); checking a task off now only adds the ✓ and never moves the event.
+  - GET /api/tasks now returns `calendarEventId` (column verified live in production).
+- **Pro:** uses the calendar connection (canSyncCalendar); free users see the existing calendar upgrade card.
+- **Tests:** apps/web/src/lib/evidence/plan-my-day.test.ts (16). Mobile tsc at the 12-error baseline.
+## [2026-10-23] — Apple Watch app back in, polished (1.9.6)
+
+- **Requested by:** Jimmy ("Get it all into this build" — Watch is priority #1)
+- **Committed by:** Claude Code
+- **What:** restores the watch target, WatchConnectivity sender and its app.json plugin (held out of 1.9.0 in ab3f692d; contents from feat/watch-polish, unchanged since). Polish on top:
+  - Uploads use the phone's direct-to-storage flow (upload-url → PUT → /api/record JSON) instead of multipart, so the 4.5MB Vercel cap no longer applies.
+  - Queue no longer jams: 400/413/415 recordings are dropped; 401 clears the token and keeps the recording.
+  - Background retry (`.backgroundTask(.appRefresh)`) while anything is queued, plus a drain on every foreground.
+  - Token moved from UserDefaults to the watch Keychain (one-time migration).
+  - Watch asks the phone for a token when it opens signed out (phone answers via `didReceiveMessage`), so signing in on the phone no longer needs a background/foreground cycle.
+  - Haptics (start/stop/success/failure/click) and VoiceOver labels on the orb, timer, queue note, task/habit/goal rows.
+  - Growth shows goals even when the habits list fails.
+- **Not included:** a watch-face complication (needs a new widget extension + a new bundle id/provisioning profile).
+- **Verified:** swiftc typecheck of every watch file against the watchOS 27 SDK (Swift 5 and 6 modes) and the phone sender against iOS. Simulator build + on-wrist QA pending.
+- **Generated, not committed:** targets/watch/Assets.xcassets (apple-targets builds it from `icon`/`colors` at prebuild).
+## [2026-10-23] — Fix: What's New catches people up on releases they skipped
+
+- **Requested by:** Jimmy ("Get it all into this build")
+- **Committed by:** Claude Code
+- **Why:** someone updating 1.9.3 → 1.9.6 only saw 1.9.6's items; 1.9.5's were never shown.
+- **What:** `catchUpRelease(from, current, platform)` (lib/whats-new-content.ts) combines every release in (from, current], newest first, de-duplicated, capped at the 3 newest. The sheet, tour, Home pill and Profile progress all use it; the "from" version is stored per running version (`whatsNew.from.<v>`). `compareVersion` moved to pure lib/semver.ts (re-exported by version-check).
+- **Tests:** apps/web/src/lib/evidence/whats-new-catch-up.test.ts (8). Mobile tsc unchanged at the 12-error baseline.
+
+---
+
 ## [2026-10-22] — Fix: no "new trial" email for App Store trials started in the app
 
 - **Requested by:** Keenan
@@ -252,6 +344,70 @@ From Friday through Sunday, OpenAI's ChatGPT 6.1 Sol writes every social post in
   - FeatureFlag `writer_override_now` forces the swap outside the window, for sample runs. It's off, and is turned on only briefly for samples.
   - Each ChatGPT-written call now logs a ClaudeCallLog row (purpose "openai-writer", model gpt-6.1-sol), because callers' own rows hardcode the model they asked for.
 - First sample (10-22, flag on 15:49–16:03 UTC): "WHICH DRAGON IS YOURS?" (post cmvjqcjer0000vhvqag0hvemv). No fallback warnings in the prod logs.
+
+## [2026-10-23] — Web funnel sends people straight to the app (no web debrief)
+
+- **Requested by:** Keenan
+- **Committed by:** Claude Code
+- **Commit hash:** (see git log: "feat: Skip the web debrief and send paid funnel users to the app")
+
+### In plain English (for Keenan)
+After someone pays in the web funnel, they go straight to "Get the app": no web debrief and no password (neither the password screen nor the optional password box). They download the app and tap the emailed one-tap sign-in link. Before: they were asked to do their first debrief in the browser. That debrief didn't carry into the app, and in-app browsers (Instagram, Facebook) almost always block the microphone.  Also: the creator funnel banner is now a small light toast, and the old pay-per-video creator fees are gone (separate commits).
+
+### Technical changes (for Jimmy)
+- `components/funnel-v9.tsx`: removed the PasswordStep screen and the LoginCard password box on Get the app (one-tap email link only); removed the `paid && !debrief` FunnelFirstDebrief branch in the download step and the now-unused firstDebriefPrefill helper + imports. A debrief saved by an older version of the page (sessionStorage outcome) still switches GetTheApp's copy.
+- `components/funnel-first-debrief.tsx` kept (still imported by the older onboarding-funnel.tsx, which isn't served while funnel_test_only is on).
+- Verified 2026-10-23: test signup keenan+paywalltest1 via goripple.io/c/TESS50 → CreatorReferral TESS50 / web_cookie, utm creator-tess50; no commission yet because the card-up trial's first charge is Oct 30 (correct).
+
+### Manual steps needed
+- None
+
+### Notes
+- Funnel change for ALL funnel traffic (ads too); Keenan asked for it directly on 10-23 (Friday).
+
+## [2026-10-23] — Pay-per-video creator fees removed (commission only)
+
+- **Requested by:** Keenan
+- **Committed by:** Claude Code
+- **Commit hash:** (see git log: "refactor: Remove pay-per-video creator fees")
+
+### In plain English (for Keenan)
+The older "pay creators per video" setup is gone. There are no more per-video fees, $50 winner bonuses, usage-rights extensions or "owed / paid" money tracking in the UGC outreach tool. Creators now earn only through the commission program (25% for 12 months, the $100 boost bonus and the monthly milestones), all handled in Creator payouts. Marking a deal no longer asks for a fee. Ad performance tracking (spend, trials, the stop-at-$30 rule) stays.
+
+### Technical changes (for Jimmy)
+- `lib/ugc/config.ts`: removed MAX_FEE_PER_VIDEO, WINNER_BONUS_PER_VIDEO, RIGHTS_EXTENSION_FEE, USAGE_RIGHTS_MONTHS, PAYMENT_TERMS, RAISED_FEE_SUGGESTION, RIGHTS_WARNING_DAYS; kept BUNDLE_SIZE / HOOKS_PER_VIDEO (brief content) and TARGET_COST_PER_TRIAL / KILL_SPEND.
+- `lib/ugc/actions.ts`: markDeal(creatorId) takes no fee; fee-paid / rights-extension / winner-bonus actions removed; video figures are adSpend / trials / paidConversions only.
+- `api/admin/ugc/action/route.ts`: removed "paid" + "extend-rights"; status move to "deal" runs the deal step.
+- `draft.ts` / `brief.ts`: allowed dollars = commission figures + Ripple prices; quoted rates get a commission-only reply.
+- `sources/manual.ts`, `metrics.ts`, `digest.ts`, `admin/ugc/*`: fee cap, paid totals, RIGHTS list, rate column and money inputs removed.
+- Schema untouched: agreedFeeCents, feePaidCents and the UgcVideo bonus/extension/rightsEndAt columns stay in the DB, unused (dropping them would be destructive).
+
+### Manual steps needed
+- None
+
+### Notes
+- The winner flag stays (no money) because the REHIRE list uses it.
+
+## [2026-10-23] — Creator links go to the sign-up funnel
+
+- **Requested by:** Keenan
+- **Committed by:** Claude Code
+- **Commit hash:** (see git log: "feat: Send creator links into the sign-up funnel")
+
+### In plain English (for Keenan)
+A creator's link (goripple.io/c/CODE) now drops people into the sign-up funnel, the same place the ads send them, instead of the homepage. They see a slim "Sent by Tess · your code TESS50 is saved" bar at the top of the funnel. Nobody else sees any change: the bar only appears for people who came through a creator link.
+
+### Technical changes (for Jimmy)
+- `app/c/[code]/route.ts`: redirect to `/start` (which forwards to the live funnel variant) instead of `/with/<CODE>`; adds utm_source=creator, utm_medium=referral, utm_campaign=creator-<code> when absent (reporting only; credit still comes from the rp_click cookie read in bootstrapNewUser).
+- New `components/creators/creator-funnel-banner.tsx` (reads the rp_creator cookie) and `app/start/layout.tsx` + `app/start-test/layout.tsx` to show it.
+- `/with/<CODE>` page and the store-email step stay in place but nothing links to them now.
+
+### Manual steps needed
+- None
+
+### Notes
+- Funnel signups go through /api/auth/signup, /api/auth/mobile-magic-link or NextAuth, all of which call bootstrapNewUser → attributeNewUser, so the cookie credits the creator.
+- Funnel change outside the Monday window, but it only affects creator-link visitors (no creators are live yet); ad traffic is unchanged.
 
 ## [2026-10-23] — Stripe Connect live; creator dashboard in app colors; Connect button self-heals
 

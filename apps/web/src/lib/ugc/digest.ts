@@ -146,8 +146,8 @@ ${btn(`${BASE}/admin/ugc/review?b=${b.id}#brief-${b.id}`, "Review brief", "#2563
   parts.push(`<h2 style="font-size:16px;margin:20px 0 8px">Status</h2>
 <p style="font-size:13px;line-height:1.6">Ready to send: <b>${d.ready}</b>${OUTREACH_SEND_ENABLED ? "" : " (sending is off — copy from the review page)"}<br>
 Replies this week: <b>${d.replies.length}</b>${d.replies.length ? ` (${d.replies.map((r) => "@" + esc(r.handle)).join(", ")}) — check your inbox` : ""}<br>
-Offers sent: ${o.offersSent} · reply rate ${o.replyRate == null ? "—" : Math.round(o.replyRate * 100) + "%"} · deals ${o.deals} · paid ${usd(o.paidCents / 100)} · avg cost per trial ${o.avgCostPerTrial == null ? "—" : usd(o.avgCostPerTrial)}<br>
-KILL list: ${d.dash.kill.length} · rights ending in 14 days: ${d.dash.rights.length} · rehire: ${d.dash.rehire.length}</p>
+Offers sent: ${o.offersSent} · reply rate ${o.replyRate == null ? "—" : Math.round(o.replyRate * 100) + "%"} · deals ${o.deals} · avg cost per trial ${o.avgCostPerTrial == null ? "—" : usd(o.avgCostPerTrial)}<br>
+KILL list: ${d.dash.kill.length} · rehire: ${d.dash.rehire.length}</p>
 <p>${btn(`${BASE}/admin/ugc`, "Open UGC dashboard", "#111827")}</p>`);
 
   await send(`UGC creators: ${d.queued.length} to review${failed.length || d.stuck.length ? " ⚠ pipeline problems" : ""}`, wrap("UGC creators — weekly", parts.join("")));

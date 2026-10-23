@@ -190,6 +190,14 @@ function describePaymentSource(source: string): {
       return { label: "RevenueCat Funnel (redeemed in app)", headline: "Funnel conversion" };
     case "web_redemption":
       return { label: "Web purchase link (redeemed in app)", headline: "New payment" };
+    // First real charge after the free trial (2026-10-23, per Keenan: "an
+    // email upon every conversion").
+    case "stripe_trial_converted":
+      return { label: "Web (Stripe), first charge after the trial", headline: "Trial converted to paid" };
+    case "app_store_trial_converted":
+      return { label: "App Store, first charge after the trial", headline: "Trial converted to paid" };
+    case "play_store_trial_converted":
+      return { label: "Google Play, first charge after the trial", headline: "Trial converted to paid" };
     default:
       return { label: "Direct", headline: "New payment" };
   }
@@ -243,5 +251,52 @@ export async function notifyFoundersOfPayment(params: {
     if (error) throw new Error(`${error.name}: ${error.message}`);
   } catch (err) {
     console.error("[founder-notification] Payment email failed:", err instanceof Error ? err.message : err);
+  }
+}
+
+
+/**
+ * Founder email for every app download (2026-10-23, per Keenan: "send me an
+ * email upon every app download"). Fired when the app reports app_first_open,
+ * which it sends once per install from app 1.9.5 on (older versions don't
+ * send it, and Apple doesn't tell us about downloads that are never opened).
+ * Internal/test devices are skipped by the caller. Never throws.
+ */
+export async function notifyFoundersOfInstall(params: {
+  platform: string | null;
+  appVersion: string | null;
+  reinstall: boolean;
+  installId: string | null;
+  timestamp: Date;
+}): Promise<void> {
+  if (process.env.FOUNDER_NOTIFICATIONS_ENABLED === "false") return;
+  const { platform, appVersion, reinstall, installId, timestamp } = params;
+  const device = platform === "ios" ? "iPhone" : platform === "android" ? "Android" : "Unknown device";
+  const headline = reinstall ? "App re-downloaded" : "New app download";
+  try {
+    const { getResendClient } = await import("@/lib/resend");
+    const timeStr = timestamp.toLocaleString("en-US", { timeZone: "America/Chicago", dateStyle: "medium", timeStyle: "short" });
+    const { error } = await getResendClient().emails.send({
+      from: EMAIL_FROM,
+      to: FOUNDER_NOTIFICATION_RECIPIENTS,
+      replyTo: REPLY_TO,
+      subject: `\u{1F4F2} ${headline} — ${device}${appVersion ? ` (${appVersion})` : ""}`,
+      html: `
+        <div style="font-family:-apple-system,BlinkMacSystemFont,sans-serif;max-width:480px;margin:0 auto;padding:24px;">
+          <h2 style="color:#C4451C;margin:0 0 16px;">${headline}</h2>
+          <table style="width:100%;border-collapse:collapse;">
+            <tr><td style="padding:8px 0;color:#666;">Device</td><td style="padding:8px 0;font-weight:600;">${device}</td></tr>
+            <tr><td style="padding:8px 0;color:#666;">App version</td><td style="padding:8px 0;font-weight:600;">${appVersion ?? "unknown"}</td></tr>
+            <tr><td style="padding:8px 0;color:#666;">Reinstall</td><td style="padding:8px 0;">${reinstall ? "Yes (installed before on this phone)" : "No"}</td></tr>
+            <tr><td style="padding:8px 0;color:#666;">Time</td><td style="padding:8px 0;">${timeStr}</td></tr>
+            ${installId ? `<tr><td style="padding:8px 0;color:#666;">Install id</td><td style="padding:8px 0;font-family:monospace;font-size:12px;">${installId}</td></tr>` : ""}
+          </table>
+          <p style="margin-top:16px;color:#888;font-size:12px;">Sent when the app opens for the first time (app 1.9.5+). Which ad brought them in isn't knowable per person on iPhone; see Meta for app-ad installs.</p>
+        </div>
+      `,
+    });
+    if (error) throw new Error(`${error.name}: ${error.message}`);
+  } catch (err) {
+    console.error("[founder-notification] Install email failed:", err instanceof Error ? err.message : err);
   }
 }

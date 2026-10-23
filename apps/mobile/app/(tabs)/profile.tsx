@@ -506,6 +506,15 @@ export default function ProfileTab() {
             sublabel="Send tasks to your iOS calendar"
             onPress={() => router.push("/integrations")}
           />
+          {/* Apple Health (1.9.6): read-only daily totals. iOS only. */}
+          {Platform.OS === "ios" ? (
+            <MenuItem
+              icon="heart-outline"
+              label="Apple Health"
+              sublabel="Sleep and steps next to your mood"
+              onPress={() => router.push("/health" as never)}
+            />
+          ) : null}
           {/* Habits moved into the Growth tab (Habits|Goals toggle).
               The standalone Profile entry and /habits route are retired. */}
           {/* Export — manual Markdown/Obsidian export. Sits in the Data

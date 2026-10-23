@@ -2,8 +2,8 @@
  * goripple.io/c/<CODE> — a creator's referral link (creator platform,
  * 2026-10-22). Logs the click, drops the first-party rp_click cookie (90
  * days; Road 1 of attribution, read at signup by lib/creators/attribution),
- * and sends the visitor to the normal landing page with the creator banner
- * (/with/<CODE>). Unknown codes go to the homepage — never a 404 from a post.
+ * and sends the visitor into the sign-up funnel (/start), where a slim
+ * banner shows "Sent by <name> · your code is saved". Unknown codes go to the homepage — never a 404 from a post.
  *
  * Separate from /u/<code> (paid UGC ad tracking via UTMs), which is unchanged.
  */
@@ -29,8 +29,14 @@ export async function GET(req: NextRequest, { params }: { params: { code: string
   const code = creator.referralCode;
   const { prisma } = await import("@/lib/prisma");
 
-  const dest = new URL(`/with/${code}`, req.nextUrl.origin);
+  // Into the sign-up funnel, same door as paid ads (/start forwards to the
+  // live funnel variant). UTMs are for funnel reporting only; credit comes
+  // from the rp_click cookie (Keenan 2026-10-23: "send people to the funnel").
+  const dest = new URL("/start", req.nextUrl.origin);
   req.nextUrl.searchParams.forEach((v, k) => dest.searchParams.set(k, v));
+  if (!dest.searchParams.has("utm_source")) dest.searchParams.set("utm_source", "creator");
+  if (!dest.searchParams.has("utm_medium")) dest.searchParams.set("utm_medium", "referral");
+  if (!dest.searchParams.has("utm_campaign")) dest.searchParams.set("utm_campaign", `creator-${code.toLowerCase()}`);
   const res = NextResponse.redirect(dest, 302);
 
   const ua = req.headers.get("user-agent") ?? "";

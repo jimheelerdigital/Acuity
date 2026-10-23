@@ -1,5 +1,7 @@
 import type { Ionicons } from "@expo/vector-icons";
 
+import { compareVersion } from "./semver";
+
 /**
  * What's New content, bundled with the app (1.9.1).
  *
@@ -54,6 +56,26 @@ export const WHATS_NEW_RELEASES: WhatsNewRelease[] = [
     // 1.9.6 (2026-10-23). User-facing only.
     version: "1.9.6",
     items: [
+      {
+        id: "apple-watch",
+        icon: "watch-outline",
+        title: "Ripple on your Apple Watch",
+        body: "Record an entry from your wrist, even with no signal: it uploads when you're back in range. Check off tasks and habits there too. Open Ripple on your phone once and your watch connects.",
+        platform: "ios",
+      },
+      {
+        id: "plan-my-day",
+        icon: "time-outline",
+        title: "Plan my day",
+        body: "Tap Plan my day on the Today card. Ripple fits your most pressing tasks around today's meetings; adjust the times, then add them to your calendar in one tap. Pro.",
+      },
+      {
+        id: "apple-health",
+        icon: "heart-outline",
+        title: "Apple Health",
+        body: "Profile \u2192 Apple Health. See how sleep and steps line up with your mood, and let habits like 10,000 steps check themselves off.",
+        platform: "ios",
+      },
       {
         id: "calendar-connect",
         icon: "calendar-outline",
@@ -199,6 +221,49 @@ export const WHATS_NEW_RELEASES: WhatsNewRelease[] = [
     ],
   },
 ];
+
+/**
+ * Most releases a catch-up sheet combines. Someone coming from a very old
+ * build (or "0.0.0", a pre-1.8 upgrade) sees the newest few, not every
+ * release ever — the full history stays in Profile → What's New.
+ */
+export const MAX_CATCH_UP_RELEASES = 3;
+
+/**
+ * Catch-up (1.9.6): everything new since the version they last saw.
+ * Combines every release with from < version <= current, newest release
+ * first (each release keeps its own item order), filtered to the platform,
+ * de-duplicated by item id (the newest release's copy wins). Labelled with
+ * `current`. Null when nothing applies.
+ *
+ * Before this, someone jumping 1.9.3 → 1.9.6 only saw 1.9.6's items and
+ * never heard about 1.9.5.
+ */
+export function catchUpRelease(
+  from: string,
+  current: string,
+  platform: "ios" | "android",
+  maxReleases = MAX_CATCH_UP_RELEASES
+): WhatsNewRelease | null {
+  const releases = WHATS_NEW_RELEASES.filter(
+    (r) =>
+      compareVersion(from, r.version) === -1 &&
+      compareVersion(r.version, current) !== 1
+  )
+    .sort((a, b) => compareVersion(b.version, a.version))
+    .slice(0, Math.max(1, maxReleases));
+  const seen = new Set<string>();
+  const items: WhatsNewItem[] = [];
+  for (const r of releases) {
+    for (const i of r.items) {
+      if (i.platform && i.platform !== platform) continue;
+      if (seen.has(i.id)) continue;
+      seen.add(i.id);
+      items.push(i);
+    }
+  }
+  return items.length > 0 ? { version: current, items } : null;
+}
 
 /** The entry for exactly this app version, filtered to the platform. */
 export function releaseFor(

@@ -261,6 +261,14 @@
           "calendarPermission": "Ripple reads the titles and times of your calendar events so your entries can reference your day, and adds your Ripple tasks and planned time blocks to the calendar you choose."
         }
       ],
+      [
+        "@kingstinct/react-native-healthkit",
+        {
+          "NSHealthShareUsageDescription": "Ripple reads your daily steps, exercise minutes, sleep and heart rate variability to show how they line up with your mood, and to check off habits like a daily step goal. Only daily totals are shared.",
+          "NSHealthUpdateUsageDescription": false,
+          "background": false
+        }
+      ],
       "@react-native-community/datetimepicker",
       [
         "expo-av",
@@ -319,6 +327,7 @@
       "./plugins/with-remove-ad-id.js",
       "./plugins/with-folly-mobile-flag.js",
       "./plugins/with-app-intents.js",
+      "./plugins/with-watch-connectivity.js",
       "@bacons/apple-targets",
       [
         "react-native-android-widget",

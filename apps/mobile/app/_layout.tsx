@@ -45,6 +45,7 @@ import { TourProvider } from "@/components/tour/TourProvider";
 import { useAchievementQueue } from "@/hooks/use-achievement-queue";
 import { ScreenFrame } from "@/components/keyboard/screen-frame";
 import { runCalendarSync } from "@/lib/calendar-sync-client";
+import { syncHealth } from "@/lib/health";
 import { requestMetaTracking, setMetaUserId, startMetaSdk } from "@/lib/meta-sdk";
 import { startSiriTaskGroupsPublisher } from "@/lib/siri-shortcuts-data";
 import { reapplyRemindersIfNeeded } from "@/lib/notifications-boot";
@@ -196,11 +197,14 @@ function AuthGate() {
     // Calendar (2026-10-23): write waiting tasks to the phone's calendar
     // and share today's event titles/times. No-op unless connected.
     void runCalendarSync();
+    // Apple Health (1.9.6): last week's daily totals. No-op unless connected.
+    void syncHealth();
     const sub = AppState.addEventListener("change", (next) => {
       if (next === "active") {
         void reapplyRemindersIfNeeded(userId);
         void flushWidgetCompletions();
         void runCalendarSync();
+        void syncHealth();
       }
     });
     return () => {
@@ -461,6 +465,13 @@ function ThemedApp() {
         />
         <Stack.Screen
           name="task-groups"
+          options={{
+            headerShown: false,
+            presentation: "modal",
+          }}
+        />
+        <Stack.Screen
+          name="plan-day"
           options={{
             headerShown: false,
             presentation: "modal",

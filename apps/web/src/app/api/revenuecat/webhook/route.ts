@@ -312,13 +312,17 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
  */
 async function storePurchaseFounderEmail(event: RcWebhookEvent, userId: string): Promise<void> {
   try {
-    if ((event.type ?? "").trim().toUpperCase() !== "INITIAL_PURCHASE") return;
+    const type = (event.type ?? "").trim().toUpperCase();
+    // INITIAL_PURCHASE = trial start / purchase; RENEWAL with
+    // is_trial_conversion = the first real charge after the free trial.
+    const converted = type === "RENEWAL" && event.is_trial_conversion === true;
+    if (type !== "INITIAL_PURCHASE" && !converted) return;
     const store = (event.store ?? "").toUpperCase();
     if (store !== "APP_STORE" && store !== "PLAY_STORE") return;
     if ((event.environment ?? "").toUpperCase() === "SANDBOX") return;
     const { prisma } = await import("@/lib/prisma");
     const u = await prisma.user.findUnique({ where: { id: userId }, select: { email: true, appleOriginalTransactionId: true } });
-    if (!u || u.appleOriginalTransactionId) return;
+    if (!u || (!converted && u.appleOriginalTransactionId)) return;
     const trial = (event.period_type ?? "").toUpperCase() === "TRIAL";
     const prefix = store === "APP_STORE" ? "app_store" : "play_store";
     const { notifyFoundersOfPayment } = await import("@/lib/founder-notifications");
@@ -326,7 +330,7 @@ async function storePurchaseFounderEmail(event: RcWebhookEvent, userId: string):
       userId,
       email: u.email ?? "unknown",
       plan: /annual|year/i.test(event.product_id ?? "") ? "yearly" : "monthly",
-      source: `${prefix}_${trial ? "trial" : "purchase"}`,
+      source: converted ? `${prefix}_trial_converted` : `${prefix}_${trial ? "trial" : "purchase"}`,
       timestamp: new Date(),
     });
   } catch (err) {

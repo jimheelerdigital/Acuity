@@ -725,6 +725,34 @@ export async function POST(req: NextRequest) {
               context: "invoice.payment_succeeded.renewal",
             });
           }
+          // Founder email when a free trial turns into its first real charge
+          // (2026-10-23, per Keenan: "an email upon every conversion"). The
+          // subscription's earlier invoice was the $0 trial one; this is the
+          // first paid one. Stripe webhook dedup (StripeEvent) keeps it once.
+          if (payingUser && invoice.amount_paid > 0 && sub) {
+            try {
+              const prior = await stripe.invoices.list({ subscription: sub, limit: 10 });
+              const paid = prior.data.filter((i) => i.status === "paid" && i.amount_paid > 0);
+              const hadTrial = prior.data.some((i) => i.billing_reason === "subscription_create" && i.amount_paid === 0);
+              if (hadTrial && paid.length === 1 && paid[0].id === invoice.id) {
+                const u = await prisma.user.findUnique({ where: { id: payingUser.id }, select: { email: true } });
+                const interval = invoice.lines.data[0]?.price?.recurring?.interval ?? null;
+                const { notifyFoundersOfPayment } = await import("@/lib/founder-notifications");
+                await notifyFoundersOfPayment({
+                  userId: payingUser.id,
+                  email: u?.email ?? "unknown",
+                  plan: planLabel(interval) === "annual" ? "yearly" : "monthly",
+                  source: "stripe_trial_converted",
+                  timestamp: new Date(),
+                });
+              }
+            } catch (err) {
+              safeLog.warn("stripe-webhook.trial-converted-email-failed", {
+                invoiceId: invoice.id,
+                err: err instanceof Error ? err.message : String(err),
+              });
+            }
+          }
         } catch (err) {
           safeLog.warn("stripe-webhook.renewal-telemetry-failed", {
             customerId,

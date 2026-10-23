@@ -1,7 +1,8 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
 import { api } from "@/lib/api";
-import { plannedEventFor, type DrainOp } from "@/lib/calendar-op";
+import { eventForOp, eventTitle, type DrainOp } from "@/lib/calendar-op";
+import { loadPlannedBlocks } from "@/lib/day-plan-store";
 import {
   calendarPermission,
   createEvent,
@@ -64,8 +65,23 @@ async function report(body: Record<string, unknown>): Promise<void> {
 
 async function drainTasks(): Promise<void> {
   const { ops } = await api.get<{ ops: DrainOp[] }>("/api/integrations/calendar/drain");
+  if (ops.length === 0) return;
+  const blocks = await loadPlannedBlocks();
   for (const op of ops) {
-    const planned = plannedEventFor(op);
+    // Checking a task off only marks its event ✓ — it never moves it
+    // (a planned 2 PM block stays at 2 PM).
+    if (op.kind === "complete" && op.providerEventId) {
+      try {
+        if (await eventExists(op.providerEventId)) {
+          await updateEvent(op.providerEventId, { title: eventTitle(op.taskTitle, true) });
+          await report({ taskId: op.taskId, ok: true, providerEventId: op.providerEventId });
+          continue;
+        }
+      } catch {
+        // fall through to the full write below
+      }
+    }
+    const planned = eventForOp(op, blocks[op.taskId] ?? null);
     if (!planned) {
       await report({ taskId: op.taskId, ok: false, retryable: false, reason: "no_due_date" });
       continue;
