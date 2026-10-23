@@ -55,8 +55,9 @@ export default function PrivacyPage() {
         <div className="mt-10 space-y-10 text-[15px] leading-relaxed">
           <section>
             <p>
-              Ripple is a nightly voice journal that uses AI to extract
-              insights from your spoken brain dumps. This Privacy Policy
+              Ripple is a habit tracker, voice journal and insight app
+              that uses AI to turn what you say into tasks, habits and
+              patterns. This Privacy Policy
               explains what data we collect, why we collect it, who we
               share it with, how long we keep it, the lawful basis for
               each processing activity, and how to exercise your

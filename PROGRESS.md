@@ -7,22 +7,24 @@
 
 ---
 
-## [2026-10-23] — iOS app-install campaigns built (paused) for Monday
+## [2026-10-23] — iOS app-install campaigns live; privacy page wording
 
 - **Requested by:** Keenan
 - **Committed by:** Claude Code
 - **Commit hash:** (see git log: "feat: Let the app-campaign tool set locations and delete placeholder ads" and the app-campaign commits before it)
 
 ### In plain English (for Keenan)
-Two new Meta campaigns that optimize for iPhone app downloads are built and paused, ready for Monday: "Ripple — App Installs | Women" at $60/day (therapyandthingss videos 4, 3 and 5) and "Ripple — App Installs | Men" at $25/day (Discipline comparison C1 and story C1), US/Canada/UK, each ad with an Install now button to the App Store. With the $115/day web ads that's $200/day. They only go on after Keenan's yes on Monday.
+Two new Meta campaigns that optimize for iPhone app downloads are LIVE (Keenan said turn them on, 10-23 ~1:50pm CT; ads were in Meta review at that moment): "Ripple — App Installs | Women" at $60/day (therapyandthingss videos 4, 3 and 5) and "Ripple — App Installs | Men" at $25/day (Discipline comparison C1 and story C1), US/Canada/UK, each ad with an Install now button to the App Store. With the $115/day web ads that's $200/day. The privacy page also no longer calls Ripple a "nightly voice journal" (time-of-day rule); it now reads "a habit tracker, voice journal and insight app".
 
 ### Technical changes (for Jimmy)
+- `app/privacy/page.tsx`: opening line uses the positioning category instead of "nightly voice journal… brain dumps".
 - `api/admin/adlab/app-campaign/route.ts`: store URL now Meta's registered `http://itunes.apple.com/app/id6762633410`; new actions `pause`, `set-geo`, `delete-ad` (all refuse non-app-promotion objects); `diag` reads ad sets (targeting, budget, status) and campaign budget/delivery; an `aac` create mode (kept, but see notes).
 - Meta (live, paused): Women campaign 120255308582170581 / ad set 120255308582180581; Men campaign 120255308594000581 / ad set 120255308593990581. Campaigns built by Keenan in Ads Manager (Advantage+ app campaign, iOS 14+ / SKAdNetwork, app 859310533882226), ads copied by the tool, placeholder ad deleted, geo set to US/CA/GB.
 - Meta app 859310533882226 renamed "Ripple" by Keenan; it receives SDK events (installs, activate) from 1.9.5.
 
 ### Manual steps needed
-- [ ] Monday 10-26: Keenan's yes, then activate both (app-campaign action "activate" per campaignId) (Keenan / Claude)
+- [x] Activated 10-23 on Keenan's explicit yes (both campaigns ACTIVE; 5 ads IN_PROCESS review)
+- [ ] ~10-30: compare cost per paid trial (App Store trials) vs web campaigns; ≤$20 goal, $30 OK (Keenan / Claude)
 - [ ] Meta app settings: turn OFF "Log in-app events automatically" (the app already logs StartTrial/Subscribe; leaving it on double-counts) (Keenan)
 
 ### Notes
