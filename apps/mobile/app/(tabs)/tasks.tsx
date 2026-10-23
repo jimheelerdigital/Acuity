@@ -608,6 +608,17 @@ export default function TasksTab() {
                 </Text>
               )}
             </View>
+            {/* Plan my day (1.9.6): fit today's tasks around the calendar. */}
+            <Pressable
+              onPress={() => router.push("/plan-day")}
+              hitSlop={10}
+              accessibilityRole="button"
+              accessibilityLabel="Plan my day"
+              className="ml-3 h-11 w-11 items-center justify-center rounded-full"
+              style={{ backgroundColor: tokens.bgInset }}
+            >
+              <Ionicons name="calendar-outline" size={20} color={tokens.textSec} />
+            </Pressable>
             {/* Manage groups (2026-10-22): add, rename, reorder, delete. */}
             <Pressable
               onPress={() => router.push("/task-groups")}
