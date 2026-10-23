@@ -35,7 +35,8 @@ const MOBILE = join(REPO, "apps", "mobile");
  *   1.9.5 — first built with all of them. expo-calendar (2026-10-23) came
  *           after every 1.9.5 binary, so an OTA to 1.9.5 must only reach
  *           it lazily (lib/device-calendar.ts).
- *   1.9.6 — first built with expo-calendar. Add a line here if a native
+ *   1.9.6 — first built with expo-calendar, @kingstinct/react-native-healthkit
+ *           and the Apple Watch target. Add a line here if a native
  *           package is added after the first 1.9.6 binary.
  */
 const MISSING_FROM_OLDEST_BINARY: Record<string, string[]> = {

@@ -1,5 +1,5 @@
 import { api } from "@/lib/api";
-import { currentStreak, type HabitLike } from "@acuity/shared";
+import { currentStreak, type HabitHealthRule, type HabitLike } from "@acuity/shared";
 
 /**
  * Habits client.
@@ -22,6 +22,8 @@ export interface Habit extends HabitLike {
   archivedAt: string | null;
   sortOrder: number;
   createdAt: string;
+  /** 1.9.6: optional Apple Health rule ("10,000 steps"). Null = none. */
+  autoRule?: HabitHealthRule | null;
 }
 
 /** The one self-completing habit: doing your daily Ripple debrief. */
@@ -124,7 +126,12 @@ export function streakFor(
  */
 export async function updateHabit(
   id: string,
-  fields: { name?: string; daysActive?: number[]; description?: string }
+  fields: {
+    name?: string;
+    daysActive?: number[];
+    description?: string;
+    autoRule?: HabitHealthRule | null;
+  }
 ): Promise<Habit | null> {
   const res = await api.patch<{ habit: Habit }>(`/api/habits/${id}`, fields);
   return res?.habit ?? null;

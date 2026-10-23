@@ -13,4 +13,5 @@ export * from "./revenuecat";
 export * from "./pricing-plans";
 export * from "./evidence";
 export * from "./habits";
+export * from "./habit-health-rule";
 export * from "./roadmap";

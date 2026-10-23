@@ -1,6 +1,11 @@
+import { Prisma } from "@prisma/client";
 import { NextRequest, NextResponse } from "next/server";
 
-import { MAX_ACTIVE_HABITS } from "@acuity/shared";
+import {
+  MAX_ACTIVE_HABITS,
+  parseHealthRule,
+  type HabitHealthRule,
+} from "@acuity/shared";
 import { getAnySessionUserId } from "@/lib/mobile-auth";
 
 /**
@@ -30,6 +35,7 @@ const HABIT_SELECT = {
   description: true,
   type: true,
   daysActive: true,
+  autoRule: true,
   archivedAt: true,
   sortOrder: true,
   createdAt: true,
@@ -53,6 +59,7 @@ export async function PATCH(
     daysActive?: unknown;
     archived?: unknown;
     description?: unknown;
+    autoRule?: unknown;
   } | null;
 
   // Restore (unarchive): { archived: false }. Handled first because it targets
@@ -108,8 +115,12 @@ export async function PATCH(
     return NextResponse.json({ habit });
   }
 
-  const data: { name?: string; daysActive?: number[]; description?: string | null } =
-    {};
+  const data: {
+    name?: string;
+    daysActive?: number[];
+    description?: string | null;
+    autoRule?: HabitHealthRule | typeof Prisma.DbNull;
+  } = {};
 
   if (body?.name !== undefined) {
     const name = typeof body.name === "string" ? body.name.trim() : "";
@@ -145,10 +156,25 @@ export async function PATCH(
     data.daysActive = Array.from(new Set(parsed)).sort();
   }
 
+  if (body?.autoRule !== undefined) {
+    // 1.9.6 Apple Health rule. null clears it; anything else must be a
+    // valid rule (metric + threshold in range), never stored as-is.
+    if (body.autoRule === null) {
+      data.autoRule = Prisma.DbNull;
+    } else {
+      const rule = parseHealthRule(body.autoRule);
+      if (!rule) {
+        return NextResponse.json({ error: "Invalid autoRule" }, { status: 400 });
+      }
+      data.autoRule = rule;
+    }
+  }
+
   if (
     data.name === undefined &&
     data.daysActive === undefined &&
-    data.description === undefined
+    data.description === undefined &&
+    data.autoRule === undefined
   ) {
     return NextResponse.json(
       { error: "Nothing to update" },
