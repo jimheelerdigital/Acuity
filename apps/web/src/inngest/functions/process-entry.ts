@@ -370,14 +370,23 @@ export const processEntryFn = inngest.createFunction(
       return { entryId, canceled: true, canceledAt: "during-download" };
     }
 
-    // ── FREE / PRO branch ────────────────────────────────────────────
-    // v1.1 free-tier redesign: after the transcript is persisted, fork
-    // on the user's entitlement. PRO/TRIAL/PAST_DUE run the full
-    // extraction pipeline (steps 3–8 below). FREE/expired-trial gets a
-    // one-sentence Haiku summary, recording-stats, streak, then exits
-    // without extraction/embedding/memory/lifemap. See docs/v1-1/
-    // free-tier-phase2-plan.md slice 2.
-    const entitlement = await step.run("compute-entitlement", async () => {
+    // ── Entitlement + pre-extract context + Claude extraction: ONE step ──
+    // Speed (2026-10-23, Miro "Speed up processing"). The processing
+    // timeline (docs/processing-timeline.md) showed a median 11.2 s between
+    // the transcript landing and Claude starting, over 57 entries. Almost
+    // none of that was work: it was SIX step boundaries in a row
+    // (compute-entitlement, three parallel context reads, a cancel check, a
+    // status flip), and every boundary is a fresh Inngest → Vercel
+    // invocation. They now run inline in this one step. A retry after a
+    // Claude failure re-runs the cheap reads, which is fine.
+    //
+    // New step id on purpose: a run that started on the old code skips its
+    // memoized old steps and just runs this one, instead of reading an old
+    // "extract" output in the new shape.
+    const prep = await step.run("prepare-and-extract", async () => {
+      // FREE / PRO fork. v1.1 free-tier redesign: PRO/TRIAL/PAST_DUE run
+      // the full extraction; FREE/expired-trial gets a one-sentence Haiku
+      // summary below and exits. See docs/v1-1/free-tier-phase2-plan.md.
       const user = await prisma.user.findUniqueOrThrow({
         where: { id: userId },
         select: {
@@ -387,14 +396,131 @@ export const processEntryFn = inngest.createFunction(
         },
       });
       const { entitlementsFor } = await import("@/lib/entitlements");
-      const e = entitlementsFor(user);
+      if (!entitlementsFor(user).canExtractEntries) {
+        return { kind: "free" as const };
+      }
+
+      // Cancellation gate before Claude (Slice C Stage 3, 2026-05-16):
+      // Claude is the most expensive call in the pipeline.
+      const gate = await prisma.entry.findUnique({
+        where: { id: entryId },
+        select: { canceledAt: true, status: true, createdAt: true },
+      });
+      if (gate?.canceledAt) {
+        if (
+          gate.status !== "FAILED" &&
+          gate.status !== "COMPLETE" &&
+          gate.status !== "PARTIAL"
+        ) {
+          await prisma.entry.update({
+            where: { id: entryId },
+            data: { status: "FAILED", errorMessage: "__canceled_by_user__" },
+          });
+        }
+        return { kind: "canceled" as const };
+      }
+
+      // Context reads, in parallel (different tables, no shared writes),
+      // plus the status flip so polling clients see EXTRACTING
+      // (2026-05-30 P0: don't show TRANSCRIBING for the Claude window).
+      //   - buildMemoryContext: UserMemory + recent entries, grounds the prompt.
+      //   - fetchCalendarContext: events around createdAt (connected
+      //     calendars only); kept for the post-extract event matcher.
+      //   - dispositional theme flag: persist writes themePromptVersion.
+      // Path B (v1.3.3): very short entries skip memory + calendar.
+      const SHORT_ENTRY_CHARS = 140;
+      const isShortEntry = transcriptLength < SHORT_ENTRY_CHARS;
+      const [memoryContext, calendarContext, useDispositional] = await Promise.all([
+        (async () => {
+          if (isShortEntry) return "";
+          const { buildMemoryContext } = await import("@/lib/memory");
+          return buildMemoryContext(userId);
+        })(),
+        (async () => {
+          if (isShortEntry || !gate) return { events: [], promptBlock: "" };
+          const { fetchCalendarContext } = await import("@/lib/calendar/context");
+          return fetchCalendarContext(userId, gate.createdAt);
+        })(),
+        (async () => {
+          const { isEnabled } = await import("@/lib/feature-flags");
+          return isEnabled(userId, "v1_1_dispositional_themes");
+        })(),
+        prisma.entry.update({
+          where: { id: entryId },
+          data: { status: "EXTRACTING" },
+        }),
+      ]);
+
+      // Claude extraction. Same prompt + parser as the sync pipeline
+      // (`lib/pipeline.ts`). A goal-card entry (Entry.goalId) splices the
+      // goal into the prompt so the extractor anchors to it.
+      const { markPhase } = await import("@/lib/processing-timeline");
+      await markPhase(prisma, entryId, "extract_start");
+      const entry = await prisma.entry.findUniqueOrThrow({
+        where: { id: entryId },
+        select: {
+          transcript: true,
+          goalId: true,
+          dimensionContext: true,
+        },
+      });
+      const transcript = entry.transcript ?? "";
+      let goalContext: { title: string; description: string | null } | null =
+        null;
+      if (entry.goalId) {
+        const goal = await prisma.goal.findFirst({
+          where: { id: entry.goalId, userId },
+          select: { title: true, description: true },
+        });
+        if (goal) goalContext = goal;
+      }
+      // Task groups: ensure defaults + fetch names for the prompt's
+      // group classifier enum. Same behavior as the sync pipeline.
+      const { ensureDefaultTaskGroups } = await import("@/lib/task-groups");
+      await ensureDefaultTaskGroups(prisma, userId);
+      const taskGroupRows = await prisma.taskGroup.findMany({
+        where: { userId },
+        orderBy: { order: "asc" },
+        select: { name: true },
+      });
+      const taskGroupNames = taskGroupRows.map((g) => g.name);
+
+      // Active habits for auto-check (empty when flag off / none). Listed
+      // in the prompt so the model can only tick a habit the user has.
+      const { habitsEnabled, fetchActiveHabits } = await import(
+        "@/lib/habits-autocheck"
+      );
+      const activeHabits = habitsEnabled()
+        ? await fetchActiveHabits(prisma, userId)
+        : [];
+
+      const { extractFromTranscript } = await import("@/lib/pipeline");
+      const todayISO = new Date().toISOString().split("T")[0];
+      const extraction = await extractFromTranscript(
+        transcript,
+        todayISO,
+        memoryContext || undefined,
+        goalContext,
+        taskGroupNames,
+        entry.dimensionContext ?? null,
+        useDispositional,
+        calendarContext.promptBlock,
+        activeHabits.map((h) => ({ name: h.name, description: h.description })),
+        userId
+      );
+      await markPhase(prisma, entryId, "extract_done");
       return {
-        canExtractEntries: e.canExtractEntries,
-        isPostTrialFree: e.isPostTrialFree,
+        kind: "extracted" as const,
+        extraction,
+        calendarEvents: calendarContext.events,
+        useDispositional,
       };
     });
+    if (prep.kind === "canceled") {
+      return { entryId, canceled: true, canceledAt: "before-extract" };
+    }
 
-    if (!entitlement.canExtractEntries) {
+    if (prep.kind === "free") {
       // FREE branch — one-sentence Haiku summary then short-circuit.
       // Each substep is its own step.run so retry isolation is per-
       // substep (a Haiku transient failure doesn't replay the streak
@@ -527,205 +653,34 @@ export const processEntryFn = inngest.createFunction(
     }
 
     // ── PRO/TRIAL path ───────────────────────────────────────────────
-
-    // Step 3: pre-extract context reads. All three are independent
-    // (different tables, no shared mutation), so they fan out via
-    // Promise.all. Inngest supports Promise.all of step.run() — each
-    // sub-step is checkpointed independently, retries are per-step.
-    // Speed: was ~3 × sub-second serial → now max(individual latencies)
-    // ≈ 1 × sub-second. Modest absolute win but a quick latency-floor
-    // reduction with zero behavioral change.
-    //
-    //   - buildMemoryContext: UserMemory rows + recent entries summary
-    //     used to ground the extraction prompt.
-    //   - fetchCalendarContext: events around the recording's
-    //     createdAt for connected-calendar users; no-op otherwise.
-    //     Held in closure for the post-extract linkedEventIds matcher.
-    //   - readDispositionalFlag: V5 theme prompt-variant gate. Lifted
-    //     out of step.run("extract") W-B 2026-05-03 so persist can
-    //     write Entry.themePromptVersion without re-reading.
-    // Path B (v1.3.3): trim prompt context for very short entries. A
-    // sub-~25-word transcript almost never references a calendar event
-    // and doesn't need deep memory grounding — skip those reads + their
-    // prompt blocks (saves a Google Calendar call + a UserMemory read +
-    // tokens) with no quality loss on one-liners.
-    const SHORT_ENTRY_CHARS = 140;
-    const isShortEntry = transcriptLength < SHORT_ENTRY_CHARS;
-    const [memoryContext, calendarContext, useDispositional] =
-      await Promise.all([
-        step.run("build-memory-context", async () => {
-          if (isShortEntry) return "";
-          const { buildMemoryContext } = await import("@/lib/memory");
-          return buildMemoryContext(userId);
-        }),
-        step.run("fetch-calendar-context", async () => {
-          if (isShortEntry) return { events: [], promptBlock: "" };
-          const { fetchCalendarContext } = await import(
-            "@/lib/calendar/context"
-          );
-          const entry = await prisma.entry.findUnique({
-            where: { id: entryId },
-            select: { createdAt: true },
-          });
-          if (!entry) return { events: [], promptBlock: "" };
-          return fetchCalendarContext(userId, entry.createdAt);
-        }),
-        step.run("read-dispositional-flag", async () => {
-          const { isEnabled } = await import("@/lib/feature-flags");
-          return isEnabled(userId, "v1_1_dispositional_themes");
-        }),
-      ]);
-
-    // Cancellation gate before Claude extract (Slice C Stage 3,
-    // 2026-05-16). Claude is the most expensive call in the pipeline.
-    // If the user canceled while Whisper was running, catch it here
-    // before spending the Claude call. Same FAILED + marker pattern
-    // as the gate before transcribe.
-    const canceledBeforeExtract = await step.run(
-      "cancel-check-before-extract",
-      async () => {
-        const entry = await prisma.entry.findUnique({
-          where: { id: entryId },
-          select: { canceledAt: true, status: true },
-        });
-        if (!entry?.canceledAt) return false;
-        if (
-          entry.status === "FAILED" ||
-          entry.status === "COMPLETE" ||
-          entry.status === "PARTIAL"
-        ) {
-          return true;
-        }
-        await prisma.entry.update({
-          where: { id: entryId },
-          data: {
-            status: "FAILED",
-            errorMessage: "__canceled_by_user__",
-          },
-        });
-        return true;
-      }
-    );
-    if (canceledBeforeExtract) {
-      return { entryId, canceled: true, canceledAt: "before-extract" };
-    }
-
-    // Flip status to EXTRACTING so the client polling
-    // /api/entries/:id sees the actual phase the pipeline is in
-    // instead of "TRANSCRIBING" for the entire Claude window. Was
-    // previously left as TRANSCRIBING until persist-extraction
-    // (line ~615) wrote PERSISTING. Lying about the phase made the
-    // UI feel slower than the underlying pipeline (2026-05-30 P0).
-    await step.run("set-extracting-status", async () => {
-      await prisma.entry.update({
-        where: { id: entryId },
-        data: { status: "EXTRACTING" },
-      });
-    });
-
-    // Step 4: extract structured data via Claude. Uses the exact same
-    // prompt + parser as the sync pipeline (`lib/pipeline.ts`). When
-    // the entry was recorded from a goal card (Entry.goalId set), we
-    // fetch the goal and splice its title/description into the prompt
-    // so the extractor anchors the entry to it.
-    const extraction = await step.run("extract", async () => {
-      const { markPhase } = await import("@/lib/processing-timeline");
-      await markPhase(prisma, entryId, "extract_start");
-      const entry = await prisma.entry.findUniqueOrThrow({
-        where: { id: entryId },
-        select: {
-          transcript: true,
-          goalId: true,
-          dimensionContext: true,
-        },
-      });
-      const transcript = entry.transcript ?? "";
-      let goalContext: { title: string; description: string | null } | null =
-        null;
-      if (entry.goalId) {
-        const goal = await prisma.goal.findFirst({
-          where: { id: entry.goalId, userId },
-          select: { title: true, description: true },
-        });
-        if (goal) goalContext = goal;
-      }
-      // Task groups: ensure defaults + fetch names for the prompt's
-      // group classifier enum. Same behavior as the sync pipeline.
-      const { ensureDefaultTaskGroups } = await import("@/lib/task-groups");
-      await ensureDefaultTaskGroups(prisma, userId);
-      const taskGroupRows = await prisma.taskGroup.findMany({
-        where: { userId },
-        orderBy: { order: "asc" },
-        select: { name: true },
-      });
-      const taskGroupNames = taskGroupRows.map((g) => g.name);
-
-      // Active habits for auto-check (empty when flag off / none). Listed
-      // in the prompt so the model can only tick a habit the user has.
-      const { habitsEnabled, fetchActiveHabits } = await import(
-        "@/lib/habits-autocheck"
-      );
-      const activeHabits = habitsEnabled()
-        ? await fetchActiveHabits(prisma, userId)
-        : [];
-
-      const { extractFromTranscript } = await import("@/lib/pipeline");
-      const todayISO = new Date().toISOString().split("T")[0];
-      const result = await extractFromTranscript(
-        transcript,
-        todayISO,
-        memoryContext || undefined,
-        goalContext,
-        taskGroupNames,
-        entry.dimensionContext ?? null,
-        useDispositional,
-        calendarContext.promptBlock,
-        activeHabits.map((h) => ({ name: h.name, description: h.description })),
-        userId
-      );
-      await markPhase(prisma, entryId, "extract_done");
-      return result;
-    });
-
-    // Cancellation gate before persist-extraction (Slice C Stage 3,
-    // 2026-05-16). At this point the Claude call has already
-    // completed — the extraction result is in memory. If the user
-    // canceled between Whisper finishing and Claude finishing, we
-    // catch it here before writing the extraction's task/goal/theme
-    // rows to the DB. The Whisper transcript is already persisted
-    // (line 155-158) so the user keeps their words; only the AI-
-    // extracted side-effects are skipped.
-    const canceledBeforePersist = await step.run(
-      "cancel-check-before-persist",
-      async () => {
-        const entry = await prisma.entry.findUnique({
-          where: { id: entryId },
-          select: { canceledAt: true, status: true },
-        });
-        if (!entry?.canceledAt) return false;
-        if (
-          entry.status === "FAILED" ||
-          entry.status === "COMPLETE" ||
-          entry.status === "PARTIAL"
-        ) {
-          return true;
-        }
-        await prisma.entry.update({
-          where: { id: entryId },
-          data: {
-            status: "FAILED",
-            errorMessage: "__canceled_by_user__",
-          },
-        });
-        return true;
-      }
-    );
-    if (canceledBeforePersist) {
-      return { entryId, canceled: true, canceledAt: "before-persist" };
-    }
+    // Context reads + Claude extraction already ran in prepare-and-extract.
+    const { extraction, calendarEvents, useDispositional } = prep;
 
     // Step 5: persist extraction + create Tasks/Goals in one transaction.
-    await step.run("persist-extraction", async () => {
+    // The cancellation gate (Slice C Stage 3) now runs inline here instead
+    // of as its own step: one fewer Inngest round trip before the user sees
+    // results (2026-10-23). If the user canceled while Claude ran, the
+    // extraction's tasks/goals/themes are not written; the transcript was
+    // persisted earlier, so they keep their words. Same step id as before so
+    // a run that already persisted never persists twice.
+    const persisted = await step.run("persist-extraction", async () => {
+      const gate = await prisma.entry.findUnique({
+        where: { id: entryId },
+        select: { canceledAt: true, status: true },
+      });
+      if (gate?.canceledAt) {
+        if (
+          gate.status !== "FAILED" &&
+          gate.status !== "COMPLETE" &&
+          gate.status !== "PARTIAL"
+        ) {
+          await prisma.entry.update({
+            where: { id: entryId },
+            data: { status: "FAILED", errorMessage: "__canceled_by_user__" },
+          });
+        }
+        return { canceled: true };
+      }
       await prisma.entry.update({
         where: { id: entryId },
         data: { status: "PERSISTING" },
@@ -852,7 +807,12 @@ export const processEntryFn = inngest.createFunction(
       });
       const { markPhase } = await import("@/lib/processing-timeline");
       await markPhase(prisma, entryId, "persist_done");
+      return { canceled: false };
     });
+    // Runs memoized on the old code return undefined here: not canceled.
+    if (persisted?.canceled) {
+      return { entryId, canceled: true, canceledAt: "before-persist" };
+    }
 
     // ── Debrief → habit auto-check-off (fail-soft) ────────────────────────
     // Mirror of the block in apps/web/src/lib/pipeline.ts. If the debrief
@@ -949,7 +909,7 @@ export const processEntryFn = inngest.createFunction(
       // calendar isn't connected. Edit reprocess: preserve manual
       // link/unlink choices through the edit by skipping the
       // auto-linker entirely.
-      calendarContext.events.length > 0 && !skipTranscribe
+      calendarEvents.length > 0 && !skipTranscribe
         ? step.run("link-calendar-events", async () => {
         try {
           const { inferLinkedEventIds } = await import("@/lib/calendar/context");
@@ -959,7 +919,7 @@ export const processEntryFn = inngest.createFunction(
           });
           if (!entry) return;
           const text = `${entry.summary ?? ""}\n${entry.transcript ?? ""}`;
-          const linkedEventIds = inferLinkedEventIds(text, calendarContext.events);
+          const linkedEventIds = inferLinkedEventIds(text, calendarEvents);
           if (linkedEventIds.length > 0) {
             await prisma.entry.update({
               where: { id: entryId },

@@ -70,3 +70,20 @@ transcript 549 chars.
 2. Claude extraction (`extract_ms`) dominates for long transcripts → prompt
    size / max_tokens / streaming-first-token UX.
 3. Whisper (`whisper_ms`) scales with audio length; verbose_json adds cost.
+
+## Baseline + first change (2026-10-23)
+
+57 PRO entries (10/16–10/23), medians in seconds: queue 2.8, whisper 4.9,
+pre_extract 11.2, extract 21.3, persist 5.8 → **to_results 46.7** (p90 69.1).
+ClaudeCallLog `entry_extraction`, 83 calls: 19.3 s median (p90 35.2 s),
+~2.7k tokens in, ~1.25k out.
+
+Hypothesis 1 confirmed: pre_extract was step boundaries, not work.
+Change: entitlement + context reads + cancel check + status flip + Claude
+now run inside ONE step (`prepare-and-extract`); the pre-persist cancel
+check runs inside `persist-extraction`. Re-run the query above a few days
+after deploy and compare pre_extract_p50 and to_results_p50.
+
+Next lever is Claude itself (~1.25k output tokens at ~65 tok/s): a smaller
+output schema or a faster model. Both change output quality, so they are a
+product call, not a refactor.
