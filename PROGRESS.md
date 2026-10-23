@@ -7,6 +7,29 @@
 
 ---
 
+## [2026-10-22] — Fix: no "new trial" email for App Store trials started in the app
+
+- **Requested by:** Keenan
+- **Committed by:** Claude Code
+- **Commit hash:** (see git log: "fix: Email founders when an App Store trial starts via RevenueCat")
+
+### In plain English (for Keenan)
+When someone starts a paid trial inside the iPhone app, like Bre from the UGC ad tonight, you weren't getting the "conversion" email. The app now buys through RevenueCat, and RevenueCat's purchase notices never sent that email; only the old purchase path did. From now on, every new App Store or Google Play trial or purchase sends you a "Paid trial started (App Store)" or "Mobile IAP upgrade" email.
+
+### Technical changes (for Jimmy)
+- apps/web/src/app/api/revenuecat/webhook/route.ts: storePurchaseFounderEmail runs after a successful set-status write.
+  - It fires on INITIAL_PURCHASE with store APP_STORE / PLAY_STORE, skips SANDBOX, and skips users with appleOriginalTransactionId (the old verify-receipt path already emailed them).
+  - Once per event via the RevenueCatEvent dedup row. Never throws.
+- apps/web/src/lib/founder-notifications.ts: new sources app_store_trial / app_store_purchase / play_store_trial / play_store_purchase.
+- route.test.ts: 15/15 pass.
+
+### Manual steps needed
+- [ ] Review the webhook change (touches the billing webhook, notification only) (Jimmy)
+
+### Notes
+- Root cause: RC_SOURCE_OF_TRUTH has been live in production for about 24 days, so RC's webhook writes App Store trials. App 1.9 buys through the RC SDK and never calls /api/iap/verify-receipt, the only Apple path that emailed founders. Every in-app trial since then sent no founder email.
+- Bre (brpuga94@gmail.com, UGC @therapyandthings video4) started her App Store trial 10-23 02:06 UTC. No backfill email was sent.
+
 ## [2026-10-22] — ChatGPT test: 2 of 3 Mythicals posts per day, the third stays Claude
 
 - **Requested by:** Keenan

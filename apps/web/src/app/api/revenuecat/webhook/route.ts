@@ -283,6 +283,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   // email, referral, trial reminder). After the write so a failed write's
   // retry can't run them twice — the dedup row makes them once-per-event.
   await webBillingEffects(event, user.id);
+  await storePurchaseFounderEmail(event, user.id);
 
   safeLog.info("revenuecat.webhook.applied", {
     eventId: event.id ?? null,
@@ -298,6 +299,39 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     action: "set-status",
     nextStatus: decision.nextStatus,
   });
+}
+
+/**
+ * Founder email for App Store / Play purchases made through the RevenueCat
+ * SDK (2026-10-22, per Keenan: an App Store paid trial from a UGC ad sent no
+ * "conversion" email). App 1.9+ buys through RC, so these never hit
+ * /api/iap/verify-receipt (the old path that emailed). Once per event (the
+ * RevenueCatEvent dedup row above). Skips sandbox, and skips accounts the old
+ * receipt path already handled (appleOriginalTransactionId set), so a
+ * mirrored pre-1.9 purchase never emails twice. Never throws.
+ */
+async function storePurchaseFounderEmail(event: RcWebhookEvent, userId: string): Promise<void> {
+  try {
+    if ((event.type ?? "").trim().toUpperCase() !== "INITIAL_PURCHASE") return;
+    const store = (event.store ?? "").toUpperCase();
+    if (store !== "APP_STORE" && store !== "PLAY_STORE") return;
+    if ((event.environment ?? "").toUpperCase() === "SANDBOX") return;
+    const { prisma } = await import("@/lib/prisma");
+    const u = await prisma.user.findUnique({ where: { id: userId }, select: { email: true, appleOriginalTransactionId: true } });
+    if (!u || u.appleOriginalTransactionId) return;
+    const trial = (event.period_type ?? "").toUpperCase() === "TRIAL";
+    const prefix = store === "APP_STORE" ? "app_store" : "play_store";
+    const { notifyFoundersOfPayment } = await import("@/lib/founder-notifications");
+    await notifyFoundersOfPayment({
+      userId,
+      email: u.email ?? "unknown",
+      plan: /annual|year/i.test(event.product_id ?? "") ? "yearly" : "monthly",
+      source: `${prefix}_${trial ? "trial" : "purchase"}`,
+      timestamp: new Date(),
+    });
+  } catch (err) {
+    safeLog.warn("revenuecat.webhook.founder-email-failed", { err: err instanceof Error ? err.message : String(err) });
+  }
 }
 
 /**

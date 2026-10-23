@@ -174,6 +174,16 @@ function describePaymentSource(source: string): {
         label: "Mobile IAP (Google Play)",
         headline: "Mobile IAP upgrade",
       };
+    // App Store / Play purchases bought through the RevenueCat SDK (app 1.9+),
+    // reported by the RevenueCat webhook (2026-10-22).
+    case "app_store_trial":
+      return { label: "App Store (in-app, via RevenueCat)", headline: "Paid trial started (App Store)" };
+    case "app_store_purchase":
+      return { label: "App Store (in-app, via RevenueCat)", headline: "Mobile IAP upgrade" };
+    case "play_store_trial":
+      return { label: "Google Play (in-app, via RevenueCat)", headline: "Paid trial started (Google Play)" };
+    case "play_store_purchase":
+      return { label: "Google Play (in-app, via RevenueCat)", headline: "Mobile IAP upgrade" };
     // RevenueCat Web Billing purchases made off goripple.io, attributed when
     // the buyer redeemed them in the app (RC webhook PURCHASE_REDEEMED).
     case "rc_funnel":
