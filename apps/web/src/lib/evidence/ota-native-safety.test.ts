@@ -32,12 +32,16 @@ const MOBILE = join(REPO, "apps", "mobile");
  *           keyboard controller (2026-10-19). A JS bundle that statically
  *           imports any of these must NOT ship as a 1.9.4 OTA; it needs a
  *           new runtime, which is why the keyboard work bumped to 1.9.5.
- *   1.9.5 — first built with all of them. Add a line here if a native
- *           package is added after the first 1.9.5 binary.
+ *   1.9.5 — first built with all of them. expo-calendar (2026-10-23) came
+ *           after every 1.9.5 binary, so an OTA to 1.9.5 must only reach
+ *           it lazily (lib/device-calendar.ts).
+ *   1.9.6 — first built with expo-calendar. Add a line here if a native
+ *           package is added after the first 1.9.6 binary.
  */
 const MISSING_FROM_OLDEST_BINARY: Record<string, string[]> = {
   "1.9.4": ["expo-image-picker", "expo-image-manipulator", "react-native-keyboard-controller"],
-  "1.9.5": [],
+  "1.9.5": ["expo-calendar"],
+  "1.9.6": [],
 };
 const APP_VERSION: string = JSON.parse(readFileSync(join(MOBILE, "app.json"), "utf8")).expo.version;
 const NOT_IN_OLDEST_BINARY = MISSING_FROM_OLDEST_BINARY[APP_VERSION] ?? [];

@@ -11,7 +11,7 @@
  *
  * Body shape:
  *   {
- *     "provider": "ios_eventkit" | "google" | "outlook",
+ *     "provider": "ios_eventkit" | "android_calendar" | "google" | "outlook",
  *     "targetCalendarId": "<provider-side calendar id>",
  *     "targetCalendarTitle"?: "<human-readable for UI>",
  *     "autoSendTasks"?: boolean,        // default false
@@ -38,7 +38,7 @@ import { safeLog } from "@/lib/safe-log";
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
-const VALID_PROVIDERS = ["ios_eventkit", "google", "outlook"] as const;
+const VALID_PROVIDERS = ["ios_eventkit", "android_calendar", "google", "outlook"] as const;
 const VALID_DURATIONS = ["ALL_DAY", "TIMED"] as const;
 
 export async function POST(req: NextRequest) {
@@ -125,5 +125,35 @@ export async function POST(req: NextRequest) {
     defaultEventDuration: user.defaultEventDuration,
   });
 
-  return NextResponse.json({ ok: true, calendar: user });
+  // Auto-add on (2026-10-23): queue the open tasks that are due today or
+  // later, so connecting fills the calendar instead of only catching tasks
+  // edited from now on. "Today" is taken a day wide to cover every US
+  // timezone; the phone writes each one and reports back via /sync-result.
+  let queued = 0;
+  if (user.autoSendTasks) {
+    const since = new Date(Date.now() - 36 * 60 * 60 * 1000);
+    const res = await prisma.task.updateMany({
+      where: {
+        userId,
+        status: { not: "DONE" },
+        dueDate: { gte: since },
+        calendarSyncStatus: { in: ["NOT_SYNCED", "FAILED"] },
+      },
+      data: { calendarSyncStatus: "PENDING", calendarPendingSince: new Date() },
+    });
+    queued = res.count;
+  }
+
+  // Same shape as GET /settings so the app can use it directly.
+  return NextResponse.json({
+    ok: true,
+    queued,
+    calendar: {
+      provider: user.calendarConnectedProvider,
+      connectedAt: user.calendarConnectedAt,
+      targetCalendarId: user.targetCalendarId,
+      autoSendTasks: user.autoSendTasks,
+      defaultEventDuration: user.defaultEventDuration,
+    },
+  });
 }

@@ -24,6 +24,7 @@ export interface CalendarContextEvent {
   endTime: Date | null;
   attendees: string[]; // display names or emails
   location: string | null;
+  allDay?: boolean;
 }
 
 export interface CalendarContext {
@@ -45,14 +46,18 @@ function normalizeAttendees(raw: unknown): string[] {
     .filter((s) => s.length > 0);
 }
 
-function formatTime(d: Date): string {
-  // 12-hour with leading zero stripped — matches casual reflection
-  // tone ("3pm" not "15:00").
-  return d.toLocaleTimeString("en-US", {
-    hour: "numeric",
-    minute: "2-digit",
-    hour12: true,
-  });
+/**
+ * 12-hour, in the USER's timezone (2026-10-23 fix: this used the server's
+ * zone, UTC on Vercel, so a 9am meeting reached the prompt as "1:00 PM").
+ * Bad or missing zone → America/Chicago, same default as the streak code.
+ */
+export function formatTime(d: Date, timeZone: string | null | undefined): string {
+  const opts: Intl.DateTimeFormatOptions = { hour: "numeric", minute: "2-digit", hour12: true };
+  try {
+    return d.toLocaleTimeString("en-US", { ...opts, timeZone: timeZone || "America/Chicago" });
+  } catch {
+    return d.toLocaleTimeString("en-US", { ...opts, timeZone: "America/Chicago" });
+  }
 }
 
 export async function fetchCalendarContext(
@@ -68,6 +73,10 @@ export async function fetchCalendarContext(
     recordedAt.getTime() + LOOKAHEAD_HOURS * 3600_000
   );
 
+  const owner = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { timezone: true },
+  });
   const rows = await prisma.calendarEvent.findMany({
     where: {
       userId,
@@ -83,6 +92,7 @@ export async function fetchCalendarContext(
       endTime: true,
       attendees: true,
       location: true,
+      allDay: true,
     },
   });
 
@@ -94,6 +104,7 @@ export async function fetchCalendarContext(
     endTime: r.endTime,
     attendees: normalizeAttendees(r.attendees),
     location: r.location,
+    allDay: r.allDay,
   }));
 
   if (events.length === 0) {
@@ -106,7 +117,7 @@ export async function fetchCalendarContext(
   // like "(no attendees)" noise.
   const lines = events.map((e) => {
     const title = e.summary?.trim() || "(no title)";
-    const time = formatTime(e.startTime);
+    const time = e.allDay ? "All day" : formatTime(e.startTime, owner?.timezone);
     const trailing: string[] = [];
     if (e.attendees.length > 0) {
       const first = e.attendees.slice(0, 3).join(", ");

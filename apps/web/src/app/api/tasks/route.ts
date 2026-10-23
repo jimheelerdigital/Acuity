@@ -4,6 +4,7 @@ import { enqueueSyncForTask } from "@/lib/enqueue-sync";
 import { getAnySessionUserId } from "@/lib/mobile-auth";
 import { enforceUserRateLimit } from "@/lib/rate-limit";
 import { safeLog } from "@/lib/safe-log";
+import { dispatchTaskAutoGroup } from "@/lib/task-auto-group";
 import { ensureDefaultTaskGroups } from "@/lib/task-groups";
 import {
   boundedText,
@@ -180,6 +181,14 @@ export async function POST(req: NextRequest) {
       action: "create",
       err: err instanceof Error ? err.message : "unknown",
     });
+  }
+
+  // Siri / Action Button adds (2026-10-22) send `autoGroup: true`. With
+  // no group chosen, AI files the task after this responds. Bounded and
+  // never throws (lib/task-auto-group.ts). App-created tasks don't ask:
+  // "Ungrouped" there is a choice the person made.
+  if (body.autoGroup === true && !groupId) {
+    await dispatchTaskAutoGroup(task.id, userId);
   }
 
   return NextResponse.json({ task }, { status: 201 });

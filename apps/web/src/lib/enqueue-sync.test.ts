@@ -52,6 +52,8 @@ describe("enqueueSyncForLoadedTask — happy paths", () => {
     expect(update).toHaveBeenCalledTimes(1);
     expect(update.mock.calls[0][0].data).toEqual({
       calendarSyncStatus: "PENDING",
+      // Stuck-task timer starts here (2026-10-23).
+      calendarPendingSince: expect.any(Date),
     });
   });
 

@@ -13,6 +13,29 @@ import type { ReleaseEmail } from "./release";
 
 export const RELEASE_EMAILS: ReleaseEmail[] = [
   {
+    version: "1.9.6",
+    platform: "ios",
+    subject: "Ripple 1.9.6: your calendar, connected",
+    preheader: "Tasks land on your calendar, entries know your day, and task groups are yours to shape.",
+    headline: "Ripple 1.9.6 is here",
+    intro: "This update connects Ripple to the place you already plan your day, and makes your task list fit how you actually live.",
+    features: [
+      {
+        title: "Connect your calendar",
+        pro: true,
+        body: "Go to <strong>Profile \u2192 Calendar</strong> and pick a calendar. Tasks with due dates land on it automatically, Google calendars on your phone included, and your entries can reference what your day actually looked like.",
+      },
+      {
+        title: "Make your own task groups",
+        body: "Tap the tag button on Tasks to add, rename, reorder or delete groups. Work, Kids, Side project: whatever fits.",
+      },
+      {
+        title: "Pick a group when you add a task",
+        body: "On iOS 26 and later, adding a task with Siri or the Action Button asks for the due date and the group on one card. Skip the group and Ripple picks one for you.",
+      },
+    ],
+  },
+  {
     version: "1.9.5",
     platform: "ios",
     subject: "Ripple 1.9.5: type it, snap it, check it off",

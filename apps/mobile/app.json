@@ -2,7 +2,7 @@
   "expo": {
     "name": "Ripple",
     "slug": "acuity",
-    "version": "1.9.5",
+    "version": "1.9.6",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "scheme": "acuity",
@@ -255,6 +255,12 @@
         }
       ],
       "expo-secure-store",
+      [
+        "expo-calendar",
+        {
+          "calendarPermission": "Ripple reads the titles and times of your calendar events so your entries can reference your day, and adds your Ripple tasks and planned time blocks to the calendar you choose."
+        }
+      ],
       "@react-native-community/datetimepicker",
       [
         "expo-av",

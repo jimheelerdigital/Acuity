@@ -608,6 +608,17 @@ export default function TasksTab() {
                 </Text>
               )}
             </View>
+            {/* Manage groups (2026-10-22): add, rename, reorder, delete. */}
+            <Pressable
+              onPress={() => router.push("/task-groups")}
+              hitSlop={10}
+              accessibilityRole="button"
+              accessibilityLabel="Manage task groups"
+              className="ml-3 h-11 w-11 items-center justify-center rounded-full"
+              style={{ backgroundColor: tokens.bgInset }}
+            >
+              <Ionicons name="pricetags-outline" size={20} color={tokens.textSec} />
+            </Pressable>
             {/* Manual task creation — opens the /task/new create modal. */}
             <Pressable
               onPress={() => router.push("/task/new")}
