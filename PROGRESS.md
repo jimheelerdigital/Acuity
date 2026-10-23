@@ -253,6 +253,29 @@ From Friday through Sunday, OpenAI's ChatGPT 6.1 Sol writes every social post in
   - Each ChatGPT-written call now logs a ClaudeCallLog row (purpose "openai-writer", model gpt-6.1-sol), because callers' own rows hardcode the model they asked for.
 - First sample (10-22, flag on 15:49–16:03 UTC): "WHICH DRAGON IS YOURS?" (post cmvjqcjer0000vhvqag0hvemv). No fallback warnings in the prod logs.
 
+## [2026-10-23] — Pay-per-video creator fees removed (commission only)
+
+- **Requested by:** Keenan
+- **Committed by:** Claude Code
+- **Commit hash:** (see git log: "refactor: Remove pay-per-video creator fees")
+
+### In plain English (for Keenan)
+The older "pay creators per video" setup is gone. There are no more per-video fees, $50 winner bonuses, usage-rights extensions or "owed / paid" money tracking in the UGC outreach tool. Creators now earn only through the commission program (25% for 12 months, the $100 boost bonus and the monthly milestones), all handled in Creator payouts. Marking a deal no longer asks for a fee. Ad performance tracking (spend, trials, the stop-at-$30 rule) stays.
+
+### Technical changes (for Jimmy)
+- `lib/ugc/config.ts`: removed MAX_FEE_PER_VIDEO, WINNER_BONUS_PER_VIDEO, RIGHTS_EXTENSION_FEE, USAGE_RIGHTS_MONTHS, PAYMENT_TERMS, RAISED_FEE_SUGGESTION, RIGHTS_WARNING_DAYS; kept BUNDLE_SIZE / HOOKS_PER_VIDEO (brief content) and TARGET_COST_PER_TRIAL / KILL_SPEND.
+- `lib/ugc/actions.ts`: markDeal(creatorId) takes no fee; fee-paid / rights-extension / winner-bonus actions removed; video figures are adSpend / trials / paidConversions only.
+- `api/admin/ugc/action/route.ts`: removed "paid" + "extend-rights"; status move to "deal" runs the deal step.
+- `draft.ts` / `brief.ts`: allowed dollars = commission figures + Ripple prices; quoted rates get a commission-only reply.
+- `sources/manual.ts`, `metrics.ts`, `digest.ts`, `admin/ugc/*`: fee cap, paid totals, RIGHTS list, rate column and money inputs removed.
+- Schema untouched: agreedFeeCents, feePaidCents and the UgcVideo bonus/extension/rightsEndAt columns stay in the DB, unused (dropping them would be destructive).
+
+### Manual steps needed
+- None
+
+### Notes
+- The winner flag stays (no money) because the REHIRE list uses it.
+
 ## [2026-10-23] — Creator links go to the sign-up funnel
 
 - **Requested by:** Keenan

@@ -16,14 +16,10 @@ import {
   DM_MAX_WORDS,
   EMAIL_MAX_WORDS,
   HOOKS_PER_VIDEO,
-  MAX_FEE_PER_VIDEO,
   OPT_OUT_LINE,
   PERSONAS,
-  RIGHTS_EXTENSION_FEE,
   RIPPLE_PRICING,
   SIGNATURE_BLOCK,
-  USAGE_RIGHTS_MONTHS,
-  WINNER_BONUS_PER_VIDEO,
 } from "@/lib/ugc/config";
 import {
   BOOST_BONUS_CENTS,
@@ -35,24 +31,19 @@ import {
 import { ACQUISITION_TERM_RULE, CLAIMS_RULE, PRODUCT_ONE_LINER, TIME_OF_DAY_RULE } from "@/lib/positioning";
 import type { Candidate } from "@/lib/ugc/sources/types";
 
-/** Every dollar figure a draft may mention. */
-export function allowedDollars(c?: Pick<Candidate, "costPerVideoCents" | "quotedRateCents"> | null): number[] {
+/**
+ * Every dollar figure a draft may mention: the commission deal's numbers and
+ * Ripple's prices. Deals are commission-only, so no per-video fee appears.
+ */
+export function allowedDollars(): number[] {
   const prices = RIPPLE_PRICING.match(/\d+(?:\.\d+)?/g)?.map(Number) ?? [];
   return [
-    // Commission deal (creator platform, 2026-10-22)
     BOOST_BONUS_CENTS / 100,
     PAYOUT_MIN_CENTS / 100,
     ...MILESTONE_TIERS.map((t) => t.bonusCents / 100),
     2.5,
     22.5,
-    // Legacy per-video figures (older drafts / deals)
-    MAX_FEE_PER_VIDEO,
-    WINNER_BONUS_PER_VIDEO,
-    RIGHTS_EXTENSION_FEE,
-    MAX_FEE_PER_VIDEO * BUNDLE_SIZE,
     ...prices,
-    ...(c?.quotedRateCents ? [c.quotedRateCents / 100] : []),
-    ...(c?.costPerVideoCents ? [c.costPerVideoCents / 100] : []),
   ];
 }
 
@@ -78,7 +69,7 @@ export function composeEmail(body: string): string {
 /** Email check on the full email as it would be sent. Words count everything above the signature. */
 export async function checkEmail(c: Candidate, subject: string, full: string): Promise<ClaimsResult> {
   const res = await claimsCheck("email", `${subject}\n\n${full}`, {
-    allowedDollars: allowedDollars(c),
+    allowedDollars: allowedDollars(),
     maxLinks: 1,
     mustInclude: [OPT_OUT_LINE, SIGNATURE_BLOCK],
   });
@@ -93,7 +84,7 @@ export async function checkEmail(c: Candidate, subject: string, full: string): P
 }
 
 export async function checkDm(c: Candidate, dm: string): Promise<ClaimsResult> {
-  return claimsCheck("dm", dm, { allowedDollars: allowedDollars(c), maxWords: DM_MAX_WORDS, maxLinks: 1 });
+  return claimsCheck("dm", dm, { allowedDollars: allowedDollars(), maxWords: DM_MAX_WORDS, maxLinks: 1 });
 }
 
 // Words creators put in display names that aren't names ("UGC Mairim" → "Hi UGC," in the 10-06 dry run).
@@ -110,8 +101,7 @@ function firstName(c: Candidate): string | null {
 
 function rateSituation(c: Candidate): string {
   if (!c.costPerVideoCents) return "They have NOT quoted a rate. Pitch the commission offer and ask if they'd like their link.";
-  const per = c.costPerVideoCents / 100;
-  return `They ALREADY quoted $${per} per video. Be straight with them: this is a commission deal with no flat fee, so it suits creators who'd post about Ripple anyway. Restate the commission briefly and ask if they'd like their link. Don't haggle on their rate.`;
+  return "They ALREADY quoted a per-video rate. Be straight with them: this is a commission deal with no flat fee, so it suits creators who'd post about Ripple anyway. Restate the commission briefly and ask if they'd like their link. Don't repeat or haggle on their number.";
 }
 
 const SYSTEM = `You write short cold outreach from Keenan, co-founder of Ripple, to one UGC creator. One person writing to one person. Plain text, no formatting, no emojis, no exclamation-mark gushing.

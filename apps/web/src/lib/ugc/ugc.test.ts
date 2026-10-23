@@ -11,7 +11,6 @@ vi.mock("@/lib/content-factory/jev", () => ({ askJev: vi.fn(async () => null), n
 import { contentIssues, formatIssues, strayPrices, withoutRuleLines, claimsCheck } from "./claims-check";
 import {
   KILL_SPEND,
-  MAX_FEE_PER_VIDEO,
   MAILING_ADDRESS,
   OPT_OUT_LINE,
   OUTREACH_SEND_ENABLED,
@@ -21,7 +20,7 @@ import {
 } from "./config";
 import { composeEmail, allowedDollars, followUpBody } from "./draft";
 import { applyTextSignals, cheapDropReason, findCredentials, findEmail, _test } from "./enrich";
-import { costPerTrial, groupStats, isKill, lowDealWarning, rightsEndingSoon } from "./metrics";
+import { costPerTrial, groupStats, isKill, lowDealWarning } from "./metrics";
 import { activePoints, pickQueue, reconcileTypePersona, selectForFinal } from "./score";
 import { parseManualHandle, quoteMath } from "./sources/manual";
 import { dedupeCandidates, type Candidate } from "./sources/types";
@@ -66,9 +65,9 @@ describe("sources", () => {
     expect(parseManualHandle({ handle: "https://www.tiktok.com/@momcreator?lang=en" })).toEqual({ platform: "tiktok", handle: "momcreator" });
     expect(() => parseManualHandle({ handle: "not a handle!" })).toThrow();
   });
-  it("quote math: per video and cap", () => {
-    expect(quoteMath(240, 3)).toEqual({ quotedRateCents: 24000, costPerVideoCents: 8000, underFeeCap: true });
-    expect(quoteMath(150)).toMatchObject({ costPerVideoCents: 15000, underFeeCap: false });
+  it("quote math: per video, information only (no fee cap)", () => {
+    expect(quoteMath(240, 3)).toEqual({ quotedRateCents: 24000, costPerVideoCents: 8000 });
+    expect(quoteMath(150)).toEqual({ quotedRateCents: 15000, costPerVideoCents: 15000 });
     expect(quoteMath(null).costPerVideoCents).toBeNull();
   });
 });
@@ -158,17 +157,19 @@ describe("drafts + brief", () => {
     expect(formatIssues(e, { allowedDollars: [], maxLinks: 1 })).toEqual([]);
     expect(followUpBody("Jane")).toContain("Ripple");
   });
-  it("allowed dollars include the offer and pricing", () => {
-    expect(allowedDollars()).toEqual(expect.arrayContaining([MAX_FEE_PER_VIDEO, 50, 25, 9.99, 89.99]));
+  it("allowed dollars: commission deal + pricing only, no per-video fees", () => {
+    expect(allowedDollars()).toEqual(expect.arrayContaining([100, 50, 150, 300, 25, 2.5, 22.5, 9.99, 89.99]));
+    expect(allowedDollars()).not.toContain(80);
   });
   it("brief has branches, two hooks, rules, money; credentialed line only for credentialed", () => {
     const videos = [1, 2, 3].map((n) => ({ n, painBranch: "load", hooks: ["a", "b"], talkingPoints: ["t"] }));
-    const base = { handle: "x", displayName: "Jane Doe", persona: "midlife" as const, feePerVideoCents: 8000, credentials: null };
+    const base = { handle: "x", displayName: "Jane Doe", persona: "midlife" as const, credentials: null };
     const b = composeBrief({ ...base, creatorType: "lookalike" }, videos);
     expect(b).toContain("[branch: load]");
     expect(b).toContain("Hook B: b");
     expect(b).toContain(PARTNERSHIP_LINE);
     expect(b).toContain("25% of what each customer you send pays");
+    expect(b).not.toMatch(/\$\d+ per video|winner bonus|usage rights/i);
     expect(b).not.toContain(CREDENTIALED_LINE);
     expect(composeBrief({ ...base, creatorType: "credentialed" }, videos)).toContain(CREDENTIALED_LINE);
   });
@@ -185,30 +186,28 @@ describe("gmail message", () => {
 });
 
 describe("metrics", () => {
-  it("cost per trial, kill, rights window", () => {
+  it("cost per trial, kill", () => {
     expect(costPerTrial({ adSpendCents: 4500, trials: 3 })).toBe(15);
     expect(costPerTrial({ adSpendCents: 4500, trials: 0 })).toBeNull();
     expect(isKill({ adSpendCents: 3000, trials: 0 })).toBe(true);
     expect(isKill({ adSpendCents: 2999, trials: 0 })).toBe(false);
-    const now = Date.parse("2026-10-06T00:00:00Z");
-    expect(rightsEndingSoon({ rightsEndAt: new Date("2026-10-15T00:00:00Z") }, now)).toBe(true);
-    expect(rightsEndingSoon({ rightsEndAt: new Date("2026-11-15T00:00:00Z") }, now)).toBe(false);
   });
   it("low-deal warning at 40 offers and under 2 deals", () => {
-    const s = { offersSent: 40, replied: 5, replyRate: 0.125, deals: 1, paidCents: 0, avgCostPerTrial: null };
-    expect(lowDealWarning(s)).toBe("Consider raising MAX_FEE_PER_VIDEO to 150.");
+    const s = { offersSent: 40, replied: 5, replyRate: 0.125, deals: 1, avgCostPerTrial: null };
+    expect(lowDealWarning(s)).toMatch(/Few deals/);
+    expect(lowDealWarning(s)).not.toMatch(/fee/i);
     expect(lowDealWarning({ ...s, deals: 2 })).toBeNull();
   });
   it("group stats count status milestones", () => {
     expect(reached("deal", "contacted")).toBe(true);
     expect(reached("skipped", "contacted")).toBe(false);
     const mk = (status: string, videos: object[] = []) =>
-      ({ status, contactedAt: null, repliedAt: null, feePaidCents: 0, videos }) as never;
-    const s = groupStats([mk("contacted"), mk("replied"), mk("paid", [{ adSpendCents: 3000, trials: 2, bonusPaidCents: 5000, extensionPaidCents: 0 }]), mk("queued")]);
+      ({ status, contactedAt: null, repliedAt: null, videos }) as never;
+    const s = groupStats([mk("contacted"), mk("replied"), mk("delivered", [{ adSpendCents: 3000, trials: 2 }]), mk("queued")]);
     expect(s.offersSent).toBe(3);
     expect(s.deals).toBe(1);
     expect(s.avgCostPerTrial).toBe(15);
-    expect(s.paidCents).toBe(5000);
+    expect(s).not.toHaveProperty("paidCents");
   });
 });
 
