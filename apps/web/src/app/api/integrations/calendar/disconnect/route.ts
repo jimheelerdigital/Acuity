@@ -71,6 +71,12 @@ export async function POST(req: NextRequest) {
       targetCalendarId: null,
     },
   });
+  // Nothing will drain these any more; without this they sat in PENDING
+  // and the stuck-task cron marked them FAILED a day later (2026-10-23).
+  await prisma.task.updateMany({
+    where: { userId, calendarSyncStatus: "PENDING" },
+    data: { calendarSyncStatus: "NOT_SYNCED", calendarPendingSince: null },
+  });
 
   safeLog.info("calendar.disconnect", {
     userId,

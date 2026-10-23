@@ -36,7 +36,7 @@ export const runtime = "nodejs";
 const DRAIN_BATCH_SIZE = 100;
 
 function isProviderId(s: unknown): s is CalendarProviderId {
-  return s === "ios_eventkit" || s === "google" || s === "outlook";
+  return s === "ios_eventkit" || s === "android_calendar" || s === "google" || s === "outlook";
 }
 
 function sanitizeTitle(raw: string): string {

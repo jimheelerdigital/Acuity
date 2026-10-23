@@ -4,6 +4,8 @@ import { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
+  Linking,
+  Platform,
   Pressable,
   ScrollView,
   Switch,
@@ -13,10 +15,20 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { StickyBackButton } from "@/components/back-button";
+import { CalendarPicker } from "@/components/calendar/calendar-picker";
 import { ProLockedCard } from "@/components/pro-locked-card";
 import { useAuth } from "@/contexts/auth-context";
 import { useTheme } from "@/contexts/theme-context";
 import { api } from "@/lib/api";
+import { runCalendarSync } from "@/lib/calendar-sync-client";
+import {
+  calendarPermission,
+  DEVICE_PROVIDER,
+  deviceCalendarAvailable,
+  requestCalendarPermission,
+  writableCalendars,
+  type DeviceCalendar,
+} from "@/lib/device-calendar";
 import { isFreeTierUser } from "@/lib/free-tier";
 import type { AcuityTokens } from "@/lib/theme/tokens";
 import { WARN_AMBER } from "@/lib/tone-colors";
@@ -27,8 +39,9 @@ import { WARN_AMBER } from "@/lib/tone-colors";
  *
  * Three states (mirrors apps/web/src/app/account/integrations-section.tsx):
  *   1. FREE post-trial → ProLockedCard for `calendar_connect_locked`
- *   2. PRO/TRIAL/PAST_DUE not yet connected → "Coming in next update"
- *      placeholder. Real EventKit connect flow ships in slice C6.
+ *   2. PRO/TRIAL/PAST_DUE not yet connected → Connect: ask for calendar
+ *      access, pick a calendar, choose auto-add (2026-10-23, "option a").
+ *      Builds without expo-calendar say "Update Ripple to connect".
  *   3. PRO/TRIAL/PAST_DUE already connected → live settings
  *      (autoSendTasks, defaultEventDuration, target calendar
  *      read-out) + disconnect button.
@@ -55,7 +68,8 @@ type FetchResult =
   | { kind: "connected"; calendar: CalendarState };
 
 const PROVIDER_LABEL: Record<string, string> = {
-  ios_eventkit: "Apple Calendar (iOS)",
+  ios_eventkit: "Apple Calendar",
+  android_calendar: "Phone calendar",
   google: "Google Calendar",
   outlook: "Outlook / Microsoft 365",
 };
@@ -171,7 +185,12 @@ function ConnectedOrPlaceholder({ tokens }: { tokens: AcuityTokens }) {
   }
 
   if (state.kind === "not-connected") {
-    return <ConnectPlaceholderCard tokens={tokens} />;
+    return (
+      <ConnectCard
+        tokens={tokens}
+        onConnected={(calendar) => setState({ kind: "connected", calendar })}
+      />
+    );
   }
 
   return (
@@ -184,7 +203,73 @@ function ConnectedOrPlaceholder({ tokens }: { tokens: AcuityTokens }) {
   );
 }
 
-function ConnectPlaceholderCard({ tokens }: { tokens: AcuityTokens }) {
+function ConnectCard({
+  tokens,
+  onConnected,
+}: {
+  tokens: AcuityTokens;
+  onConnected: (calendar: CalendarState) => void;
+}) {
+  const available = deviceCalendarAvailable();
+  const [step, setStep] = useState<"intro" | "pick">("intro");
+  const [calendars, setCalendars] = useState<DeviceCalendar[]>([]);
+  const [selected, setSelected] = useState<string | null>(null);
+  const [autoSend, setAutoSend] = useState(true);
+  const [busy, setBusy] = useState(false);
+  const phoneName = Platform.OS === "ios" ? "Apple Calendar" : "your phone's calendar";
+
+  async function start() {
+    if (busy) return;
+    setBusy(true);
+    try {
+      const perm = await requestCalendarPermission();
+      if (perm !== "granted") {
+        Alert.alert(
+          "Calendar access is off",
+          "Turn on calendar access for Ripple in Settings, then tap Connect again.",
+          [
+            { text: "Not now", style: "cancel" },
+            { text: "Open Settings", onPress: () => Linking.openSettings() },
+          ]
+        );
+        return;
+      }
+      const list = await writableCalendars();
+      setCalendars(list);
+      setSelected(list[0]?.id ?? null);
+      setStep("pick");
+    } catch (err) {
+      Alert.alert("Couldn't read your calendars", err instanceof Error ? err.message : "Try again.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function connect() {
+    if (!selected || busy) return;
+    setBusy(true);
+    try {
+      const res = await api.post<{ ok?: boolean; calendar?: CalendarState }>(
+        "/api/integrations/calendar/connect",
+        { provider: DEVICE_PROVIDER, targetCalendarId: selected, autoSendTasks: autoSend }
+      );
+      void runCalendarSync({ forceEvents: true });
+      onConnected(
+        res.calendar ?? {
+          provider: DEVICE_PROVIDER,
+          connectedAt: new Date().toISOString(),
+          targetCalendarId: selected,
+          autoSendTasks: autoSend,
+          defaultEventDuration: "TIMED",
+        }
+      );
+    } catch (err) {
+      Alert.alert("Couldn't connect", err instanceof Error ? err.message : "Try again.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
   return (
     <View
       className="rounded-2xl border p-5"
@@ -198,75 +283,163 @@ function ConnectPlaceholderCard({ tokens }: { tokens: AcuityTokens }) {
           <Ionicons name="calendar-outline" size={18} color={tokens.primary} />
         </View>
         <View className="flex-1">
-          <Text
-            className="text-base font-semibold"
-            style={{ color: tokens.text }}
-          >
-            Apple Calendar
+          <Text className="text-base font-semibold" style={{ color: tokens.text }}>
+            {Platform.OS === "ios" ? "Apple Calendar" : "Calendar"}
           </Text>
-          <Text
-            className="mt-1.5 text-sm leading-relaxed"
-            style={{ color: tokens.textSec }}
-          >
-            Reads your iOS calendar (which already aggregates your
-            Google and Outlook calendars) so Ripple can send tasks to
-            your real calendar and reference your meeting load in
-            reflections.
+          <Text className="mt-1.5 text-sm leading-relaxed" style={{ color: tokens.textSec }}>
+            Ripple puts your tasks on your calendar, and your entries can reference what your day actually
+            looked like. Works with any calendar on this phone, including Google and Outlook.
           </Text>
         </View>
       </View>
 
-      <View
-        className="mt-4 rounded-lg px-3 py-2"
-        style={{ backgroundColor: `${WARN_AMBER}1a` }}
-      >
-        <Text
-          className="text-xs font-semibold uppercase tracking-widest"
-          style={{ color: WARN_AMBER }}
+      {!available ? (
+        <View className="mt-4 rounded-lg px-3 py-2" style={{ backgroundColor: `${WARN_AMBER}1a` }}>
+          <Text className="text-xs font-semibold uppercase tracking-widest" style={{ color: WARN_AMBER }}>
+            Update Ripple to connect
+          </Text>
+          <Text className="mt-1 text-xs leading-relaxed" style={{ color: tokens.textSec }}>
+            Calendar connect needs the latest version of Ripple from the App Store.
+          </Text>
+        </View>
+      ) : step === "intro" ? (
+        <Pressable
+          onPress={start}
+          disabled={busy}
+          accessibilityRole="button"
+          className="mt-4 items-center rounded-xl py-3"
+          style={{ backgroundColor: tokens.primary, opacity: busy ? 0.6 : 1 }}
         >
-          Coming in next update
-        </Text>
-        <Text
-          className="mt-1 text-xs leading-relaxed"
-          style={{ color: tokens.textSec }}
-        >
-          Calendar connect ships in the next mobile release. Ripple
-          will request iOS calendar access only when you tap Connect
-          here — never at app launch.
-        </Text>
-      </View>
+          <Text className="text-sm font-semibold" style={{ color: "#FFFFFF" }}>
+            {busy ? "Opening…" : `Connect ${phoneName}`}
+          </Text>
+        </Pressable>
+      ) : (
+        <View className="mt-5 gap-4">
+          <View>
+            <Text className="mb-2 text-sm font-medium" style={{ color: tokens.text }}>
+              Which calendar should Ripple add to?
+            </Text>
+            <CalendarPicker calendars={calendars} selectedId={selected} onSelect={setSelected} tokens={tokens} />
+          </View>
+          <View className="flex-row items-start justify-between gap-4">
+            <View className="flex-1">
+              <Text className="text-sm font-medium" style={{ color: tokens.text }}>
+                Add tasks with due dates automatically
+              </Text>
+              <Text className="mt-1 text-xs leading-relaxed" style={{ color: tokens.textTer }}>
+                Includes your open tasks that are due today or later.
+              </Text>
+            </View>
+            <Switch
+              value={autoSend}
+              onValueChange={setAutoSend}
+              trackColor={{ false: tokens.bgInset, true: tokens.primary }}
+              thumbColor="#FFFFFF"
+            />
+          </View>
+          <Pressable
+            onPress={connect}
+            disabled={busy || !selected}
+            accessibilityRole="button"
+            className="items-center rounded-xl py-3"
+            style={{ backgroundColor: tokens.primary, opacity: busy || !selected ? 0.6 : 1 }}
+          >
+            <Text className="text-sm font-semibold" style={{ color: "#FFFFFF" }}>
+              {busy ? "Connecting…" : "Connect"}
+            </Text>
+          </Pressable>
+        </View>
+      )}
 
-      {/* v1.3.x device-calendars hint. iOS Calendar already aggregates
-          Google + Outlook when the user adds those accounts in
-          system Settings — once the EventKit connect ships, those
-          calendars surface automatically without a separate OAuth
-          per provider. */}
-      <View
-        className="mt-3 rounded-lg px-3 py-2"
-        style={{ backgroundColor: tokens.bgInset }}
-      >
-        <Text
-          className="text-[11px] leading-relaxed"
-          style={{ color: tokens.textSec }}
-        >
-          <Text style={{ fontWeight: "600", color: tokens.text }}>
-            Using Google Calendar?
-          </Text>{" "}
-          Add it in iOS Settings &rarr; Calendar &rarr; Accounts. Once
-          Apple Calendar is connected here, your Google events surface
-          automatically alongside iCloud.
-        </Text>
-      </View>
-
-      <Text
-        className="mt-4 text-[11px] leading-relaxed"
-        style={{ color: tokens.textQuiet }}
-      >
-        Ripple reads only event titles, times, and attendee counts.
-        Never location, notes, or attendee email addresses. Tasks
-        you send to your calendar use the &ldquo;Ripple:&rdquo; title
-        prefix so they&apos;re always identifiable.
+      <Text className="mt-4 text-[11px] leading-relaxed" style={{ color: tokens.textQuiet }}>
+        Ripple reads only event titles and times, never notes, locations or who&apos;s invited. Events Ripple
+        adds start with &ldquo;Ripple:&rdquo; so you can always spot them.
       </Text>
+    </View>
+  );
+}
+
+/** Target calendar row on the connected card: shows its name, lets you switch. */
+function TargetCalendarSection({
+  calendar,
+  tokens,
+  onChanged,
+}: {
+  calendar: CalendarState;
+  tokens: AcuityTokens;
+  onChanged: (next: CalendarState) => void;
+}) {
+  const [calendars, setCalendars] = useState<DeviceCalendar[] | null>(null);
+  const [open, setOpen] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const canRead = deviceCalendarAvailable() && calendar.provider === DEVICE_PROVIDER;
+
+  useEffect(() => {
+    if (!canRead) return;
+    let cancelled = false;
+    void calendarPermission().then(async (p) => {
+      if (p !== "granted" || cancelled) return;
+      const list = await writableCalendars().catch(() => []);
+      if (!cancelled) setCalendars(list);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [canRead]);
+
+  const current = calendars?.find((c) => c.id === calendar.targetCalendarId);
+
+  async function choose(id: string) {
+    if (id === calendar.targetCalendarId || saving) {
+      setOpen(false);
+      return;
+    }
+    setSaving(true);
+    try {
+      const res = await api.patch<{ ok: boolean; calendar: CalendarState }>(
+        "/api/integrations/calendar/settings",
+        { targetCalendarId: id }
+      );
+      onChanged({ ...calendar, ...res.calendar });
+      setOpen(false);
+    } catch (err) {
+      Alert.alert("Couldn't save", err instanceof Error ? err.message : "Try again.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <View className="mt-5 border-t pt-4" style={{ borderColor: tokens.line }}>
+      <View className="flex-row items-center justify-between">
+        <Text className="text-sm font-medium" style={{ color: tokens.text }}>
+          Adds to
+        </Text>
+        {calendars && calendars.length > 0 ? (
+          <Pressable onPress={() => setOpen((o) => !o)} hitSlop={8} accessibilityRole="button">
+            <Text className="text-xs font-semibold" style={{ color: tokens.primary }}>
+              {open ? "Done" : "Change"}
+            </Text>
+          </Pressable>
+        ) : null}
+      </View>
+      <Text className="mt-1 text-sm" style={{ color: tokens.textSec }}>
+        {current ? `${current.title}${current.source ? ` · ${current.source}` : ""}` : canRead ? "Your chosen calendar" : "—"}
+      </Text>
+      {open && calendars ? (
+        <View className="mt-3">
+          <CalendarPicker
+            calendars={calendars}
+            selectedId={calendar.targetCalendarId}
+            onSelect={choose}
+            tokens={tokens}
+          />
+          <Text className="mt-2 text-[11px] leading-relaxed" style={{ color: tokens.textQuiet }}>
+            New events go to the new calendar. Events already added stay where they are.
+          </Text>
+        </View>
+      ) : null}
     </View>
   );
 }
@@ -474,39 +647,7 @@ function ConnectedCard({
         </View>
       </View>
 
-      {/* targetCalendarId — read-only stub until C6 lands the EventKit list call */}
-      <View
-        className="mt-5 border-t pt-4"
-        style={{ borderColor: tokens.line }}
-      >
-        <Text
-          className="text-sm font-medium"
-          style={{ color: tokens.text }}
-        >
-          Target calendar
-        </Text>
-        <View
-          className="mt-2 rounded-md px-3 py-2"
-          style={{ backgroundColor: tokens.bgInset }}
-        >
-          <Text className="text-[10px]" style={{ color: tokens.textTer }}>
-            Currently syncing to:
-          </Text>
-          <Text
-            className="mt-0.5 font-mono text-xs"
-            style={{ color: tokens.text, fontFamily: tokens.fontMono }}
-          >
-            {calendar.targetCalendarId ?? "—"}
-          </Text>
-        </View>
-        <Text
-          className="mt-2 text-[11px] leading-relaxed"
-          style={{ color: tokens.textQuiet }}
-        >
-          Choose a different calendar in the next update, after Ripple
-          reads your calendar list directly.
-        </Text>
-      </View>
+      <TargetCalendarSection calendar={calendar} tokens={tokens} onChanged={onUpdate} />
 
       {/* Disconnect */}
       <View

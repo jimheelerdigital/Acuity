@@ -28,6 +28,42 @@ After you name a task from Siri or the Action Button, iOS 26 shows one card with
 
 ### Notes
 - The card is checked against Apple's API (local Xcode 27 SDK typecheck at iOS 16.4 and 17 targets) but not yet on a device. Verify it from the Action Button on TestFlight.
+## [2026-10-23] — Calendar, option A: the phone's own calendar (Apple / Android, Google accounts included)
+
+- **Requested by:** Jimmy ("option a"; "can we make google cal available as well")
+- **Committed by:** Claude Code
+- **Commit hash:** (see git log: "feat(calendar): connect the phone's calendar")
+
+### In plain English
+Profile → Calendar now connects for real. Ripple asks for calendar access, you pick which calendar it adds to (grouped by account, so a Google calendar on the phone is right there), and choose whether tasks with due dates go on automatically. From then on, every time the app opens it writes waiting tasks to that calendar and shares the titles and times of your events (nothing else), so your entries can reference your real day. Android works the same way, through the phone's calendar, which includes Google.
+
+### Technical changes
+- Mobile:
+  - expo-calendar plus a permission string.
+  - lib/device-calendar.ts (guarded with requireOptionalNativeModule).
+  - lib/calendar-op.ts (pure op → event mapping).
+  - lib/calendar-sync-client.ts (drain → write → /sync-result, and event upload throttled to every 30 min).
+  - _layout runs it on sign-in and on every foreground.
+  - integrations.tsx: real connect flow + calendar picker (components/calendar/calendar-picker.tsx) + change calendar.
+- Web:
+  - POST /api/integrations/calendar/events: snapshot upsert into CalendarEvent, prefixed "device:", and removes events the phone dropped.
+  - Provider `android_calendar`.
+  - Connect queues open tasks due today or later and returns the settings shape.
+  - Disconnect un-queues PENDING tasks.
+- Fixes:
+  - Prompt event times now use the user's timezone.
+  - The stuck-task cron measures from the new `Task.calendarPendingSince` (it was createdAt, which failed old tasks within 30 minutes).
+  - All-day events are labelled as such.
+- Schema: Task.calendarPendingSince, CalendarEvent.allDay (docs/migrations/2026-10-23-calendar-phone.sql).
+- Test: evidence/apple-calendar.test.ts; enqueue-sync test updated.
+
+### Manual steps needed
+- **Before merging:** apply docs/migrations/2026-10-23-calendar-phone.sql to production.
+- **At release:** enable the `calendar_integrations` flag for PRO.
+- Needs the next native build (expo-calendar).
+
+---
+
 ## [2026-10-23] — Release announcement emails: one template, one send script
 
 - **Requested by:** Jimmy (Miro: "Formalize email cadence to announce product releases")
