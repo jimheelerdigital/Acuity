@@ -182,6 +182,10 @@ export async function POST(req: NextRequest) {
           // the automatic levers: campaign budget + Advantage+ audience +
           // automatic placements — what Ads Manager built on 2026-10-23.
           is_skadnetwork_attribution: true,
+          // iOS 14+ campaigns name the app on the CAMPAIGN (Ads Manager's
+          // "iOS 14+ campaign → App"); without it the ad set is rejected as
+          // "not an iOS 14+ campaign" (3955009).
+          promoted_object: { application_id: body.appId, object_store_url: body.storeUrl ?? APP_STORE_URL },
           daily_budget: String(budget),
           bid_strategy: "LOWEST_COST_WITHOUT_CAP",
           status: "PAUSED",
