@@ -7,6 +7,20 @@
 
 ---
 
+## [2026-10-23] — Apple Health: read layer, Health & mood card, habit auto-complete (1.9.6)
+
+- **Requested by:** Jimmy ("health is a nice touch")
+- **Committed by:** Claude Code
+- **What:**
+  - Device layer: `@kingstinct/react-native-healthkit@16.1.0` (Nitro; nitro-modules 0.35.9 already present), read-only: steps, exercise minutes, sleep, HRV. lib/health.ts uploads the last 7 local days to the existing POST /api/health/snapshots on foreground (30-min throttle). lib/health-aggregate.ts (pure): sleep counted toward the wake-up day with iPhone/Watch overlap merged; missing data is null, never 0. No background delivery, no write access.
+  - Profile → Apple Health screen (connect, what's read, sync now, stop syncing). Cleared on sign-out.
+  - Insights → "Health & mood" card (mobile counterpart of the web card). Server fix: entries are now grouped by the user's local day (was UTC, which put US evening entries on the next day's numbers).
+  - Habit auto-complete: `Habit.autoRule` (steps or exercise minutes ≥ preset), shared parse/eval in @acuity/shared, server checks habits off with source "HEALTH" after each snapshot upload (additive, never overwrites a manual/debrief check, respects active days). Habit detail gets the preset chips.
+- **Prod DB:** docs/migrations/2026-10-23-habit-auto-rule.sql must be applied BEFORE this web code deploys (Prisma reads every Habit column on create).
+- **Tests:** habits-health-autocheck.test.ts (6), health-snapshots-device.test.ts (10). Web tsc clean for touched files; mobile tsc at the 12 baseline.
+
+---
+
 ## [2026-10-22] — Fix: no "new trial" email for App Store trials started in the app
 
 - **Requested by:** Keenan

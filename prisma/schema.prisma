@@ -3151,6 +3151,11 @@ model Habit {
   // every day; an empty array means "no expected days", which is how a
   // habit is paused without losing its history.
   daysActive Int[]     @default([0, 1, 2, 3, 4, 5, 6])
+  // Optional Apple Health rule (1.9.6): { metric: "steps"|"activeMinutes",
+  // comparator: ">=", threshold }. When a day's HealthSnapshot meets it the
+  // habit is checked off with source "HEALTH". Shape lives in
+  // @acuity/shared habit-health-rule.ts (parseHealthRule).
+  autoRule   Json?
   // Soft delete. Archiving keeps the check history — a streak the user
   // built is theirs, and hard-deleting it to tidy a list is destructive.
   archivedAt DateTime?
@@ -3186,6 +3191,8 @@ model HabitCheck {
   //               debrief evidenced the habit. `entryId` points at the
   //               source entry so the UI can show "checked from your
   //               debrief" and the check clears if that entry is deleted.
+  //   "HEALTH"  — auto-created when the day's Apple Health totals met the
+  //               habit's autoRule (1.9.6). Never overwrites another source.
   source    String   @default("MANUAL")
   entryId   String?
   entry     Entry?   @relation(fields: [entryId], references: [id], onDelete: SetNull)

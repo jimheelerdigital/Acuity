@@ -15,8 +15,11 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 
 import { gateFeatureFlag } from "@/lib/feature-flags";
+import { habitsEnabled } from "@/lib/habits-autocheck";
+import { applyHealthHabitChecks } from "@/lib/habits-health-autocheck";
 import { getAnySessionUserId } from "@/lib/mobile-auth";
 import { enforceUserRateLimit } from "@/lib/rate-limit";
+import { safeLog } from "@/lib/safe-log";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -83,5 +86,19 @@ export async function POST(req: NextRequest) {
     data: { healthConnectedAt: new Date() },
   });
 
-  return NextResponse.json({ written });
+  // 1.9.6: habits with an Apple Health rule check themselves off for the
+  // days this upload covers. Best-effort — never fails the upload.
+  let habitChecks = 0;
+  if (habitsEnabled()) {
+    try {
+      habitChecks = await applyHealthHabitChecks(prisma, userId, parsed.data.snapshots);
+    } catch (err) {
+      safeLog.warn("health.snapshots.habit_autocheck_failed", {
+        userId,
+        err: err instanceof Error ? err.message : String(err),
+      });
+    }
+  }
+
+  return NextResponse.json({ written, habitChecks });
 }

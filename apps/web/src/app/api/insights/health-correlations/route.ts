@@ -19,6 +19,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import { gateFeatureFlag } from "@/lib/feature-flags";
+import { localDateForTimezone } from "@/lib/habits-autocheck";
 import { getAnySessionUserId } from "@/lib/mobile-auth";
 
 export const dynamic = "force-dynamic";
@@ -46,7 +47,7 @@ export async function GET(req: NextRequest) {
 
   const windowStart = new Date(Date.now() - WINDOW_DAYS * 24 * 60 * 60 * 1000);
 
-  const [entries, snapshots] = await Promise.all([
+  const [entries, snapshots, user] = await Promise.all([
     prisma.entry.findMany({
       where: {
         userId,
@@ -59,17 +60,19 @@ export async function GET(req: NextRequest) {
     prisma.healthSnapshot.findMany({
       where: { userId, date: { gte: windowStart } },
     }),
+    prisma.user.findUnique({ where: { id: userId }, select: { timezone: true } }),
   ]);
 
   if (snapshots.length === 0 || entries.length === 0) {
     return NextResponse.json({ correlations: [] });
   }
 
-  // Group entry mood by calendar day (UTC); HealthSnapshot is already
-  // per-day so join is a simple key-lookup.
+  // Group entry mood by the user's LOCAL calendar day. HealthSnapshot
+  // dates are local days (the phone sends YYYY-MM-DD), so keying entries
+  // by UTC put every US evening entry on the next day's health numbers.
   const moodByDay = new Map<string, { sum: number; count: number }>();
   for (const e of entries) {
-    const key = e.createdAt.toISOString().slice(0, 10);
+    const key = localDateForTimezone(user?.timezone, e.createdAt);
     const bucket = moodByDay.get(key) ?? { sum: 0, count: 0 };
     bucket.sum += e.moodScore ?? 0;
     bucket.count += 1;
