@@ -55,6 +55,26 @@ export const WHATS_NEW_RELEASES: WhatsNewRelease[] = [
     version: "1.9.6",
     items: [
       {
+        id: "apple-watch",
+        icon: "watch-outline",
+        title: "Ripple on your Apple Watch",
+        body: "Record an entry from your wrist, even with no signal: it uploads when you're back in range. Check off tasks and habits there too. Open Ripple on your phone once and your watch connects.",
+        platform: "ios",
+      },
+      {
+        id: "plan-my-day",
+        icon: "time-outline",
+        title: "Plan my day",
+        body: "Tap Plan my day on the Today card. Ripple fits your most pressing tasks around today's meetings; adjust the times, then add them to your calendar in one tap. Pro.",
+      },
+      {
+        id: "apple-health",
+        icon: "heart-outline",
+        title: "Apple Health",
+        body: "Profile \u2192 Apple Health. See how sleep and steps line up with your mood, and let habits like 10,000 steps check themselves off.",
+        platform: "ios",
+      },
+      {
         id: "calendar-connect",
         icon: "calendar-outline",
         title: "Connect your calendar",
