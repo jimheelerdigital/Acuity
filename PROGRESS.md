@@ -7,6 +7,29 @@
 
 ---
 
+## [2026-10-23] — iOS app-install campaigns built (paused) for Monday
+
+- **Requested by:** Keenan
+- **Committed by:** Claude Code
+- **Commit hash:** (see git log: "feat: Let the app-campaign tool set locations and delete placeholder ads" and the app-campaign commits before it)
+
+### In plain English (for Keenan)
+Two new Meta campaigns that optimize for iPhone app downloads are built and paused, ready for Monday: "Ripple — App Installs | Women" at $60/day (therapyandthingss videos 4, 3 and 5) and "Ripple — App Installs | Men" at $25/day (Discipline comparison C1 and story C1), US/Canada/UK, each ad with an Install now button to the App Store. With the $115/day web ads that's $200/day. They only go on after Keenan's yes on Monday.
+
+### Technical changes (for Jimmy)
+- `api/admin/adlab/app-campaign/route.ts`: store URL now Meta's registered `http://itunes.apple.com/app/id6762633410`; new actions `pause`, `set-geo`, `delete-ad` (all refuse non-app-promotion objects); `diag` reads ad sets (targeting, budget, status) and campaign budget/delivery; an `aac` create mode (kept, but see notes).
+- Meta (live, paused): Women campaign 120255308582170581 / ad set 120255308582180581; Men campaign 120255308594000581 / ad set 120255308593990581. Campaigns built by Keenan in Ads Manager (Advantage+ app campaign, iOS 14+ / SKAdNetwork, app 859310533882226), ads copied by the tool, placeholder ad deleted, geo set to US/CA/GB.
+- Meta app 859310533882226 renamed "Ripple" by Keenan; it receives SDK events (installs, activate) from 1.9.5.
+
+### Manual steps needed
+- [ ] Monday 10-26: Keenan's yes, then activate both (app-campaign action "activate" per campaignId) (Keenan / Claude)
+- [ ] Meta app settings: turn OFF "Log in-app events automatically" (the app already logs StartTrial/Subscribe; leaving it on double-counts) (Keenan)
+
+### Notes
+- Creating iOS app-install AD SETS through the Marketing API fails with 3955009 ("must be an iOS14+ campaign") under every variant tried (classic SKAN/none, smart_promotion_type, which is retired in v24 with code 2490569, v24 Advantage+ levers, campaign-level promoted_object). Ads Manager builds the same thing fine. Working path: build campaign + ad set in Ads Manager (campaign OFF), then the tool's `add` action copies ads in.
+- Budgets in this route are cents.
+- Events Manager → Facebook SDK: "Update the Facebook SDK for iOS" done; "Release the App" pending Meta's own check (a few days).
+
 ## [2026-10-23] — Apple Health: read layer, Health & mood card, habit auto-complete (1.9.6)
 
 - **Requested by:** Jimmy ("health is a nice touch")
