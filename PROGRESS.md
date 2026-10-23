@@ -7,6 +7,29 @@
 
 ---
 
+## [2026-10-23] — Faster entry processing: fewer Inngest round trips before results
+
+- **Requested by:** Jimmy (Miro: "Speed up processing")
+- **Committed by:** Claude Code
+- **Commit hash:** (see git log: "perf(processing): one step from transcript to Claude")
+
+### In plain English
+A week of timing data showed a median of 47 s from saving an entry to seeing results. About 11 s of that was the system handing work between steps, not doing anything. Those hand-offs are now collapsed into one step, plus one more before results are saved. Expect roughly 8–10 s faster; we'll measure it after deploy.
+
+### Technical changes
+- apps/web/src/inngest/functions/process-entry.ts:
+  - `prepare-and-extract` replaces compute-entitlement, build-memory-context, fetch-calendar-context, read-dispositional-flag, cancel-check-before-extract, set-extracting-status and extract.
+  - The FREE fork and the cancel gate are unchanged in order.
+  - persist-extraction does the cancel gate inline (same step id, so no double persist).
+  - The new step id means runs in flight at deploy re-run cleanly.
+- docs/processing-timeline.md: baseline numbers + what changed.
+- Test: evidence/processing-speed.test.ts.
+
+### Manual steps needed
+- None.
+
+---
+
 ## [2026-10-22] — ChatGPT test: 2 of 3 Mythicals posts per day, the third stays Claude
 
 - **Requested by:** Keenan
