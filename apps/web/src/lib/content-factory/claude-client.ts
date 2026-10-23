@@ -127,11 +127,13 @@ async function writerFlagOn(): Promise<boolean> {
  * posts chatgpt only ... then 1 is our normal post"). The 08 UTC Mythicals
  * run (the 5pm CT post) stays fully on Claude: writing, caption and clip
  * prompts. writerScope marks a run as forced-Claude for everything it calls.
+ * 2026-10-23, per Keenan: "go back to claude only for our mythicals
+ * posting/script writing please. no more chatgpt" — every Mythicals run
+ * (any mythic-* lane, any hour) is now Claude. Ripple stays in the test.
  */
 export const writerScope = new AsyncLocalStorage<{ forceClaude: boolean }>();
-export const CLAUDE_CONTROL = { lane: "mythic-picks", hourUtc: 8 };
-export function isClaudeControlRun(lane: string | null | undefined, hourUtc: number): boolean {
-  return lane === CLAUDE_CONTROL.lane && hourUtc === CLAUDE_CONTROL.hourUtc;
+export function isClaudeControlRun(lane: string | null | undefined, _hourUtc: number): boolean {
+  return !!lane && lane.startsWith("mythic");
 }
 
 /** True while ChatGPT is the writer (dated window or the manual flag). */

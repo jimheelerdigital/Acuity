@@ -7,6 +7,25 @@
 
 ---
 
+## [2026-10-23] — Mythicals back to Claude for all writing
+
+- **Requested by:** Keenan
+- **Committed by:** Claude Code
+- **Commit hash:** (see git log: "content: Move all Mythicals writing back to Claude")
+
+### In plain English (for Keenan)
+ChatGPT no longer writes anything for Legendary Mythicals. All three daily posts (titles, options, scenes, captions and the animation prompts) are written by Claude again, starting with the next run after this deploys. Ripple posts stay on ChatGPT until the test ends Monday 10-26.
+
+### Technical changes (for Jimmy)
+- `apps/web/src/lib/content-factory/claude-client.ts`: `isClaudeControlRun` now returns true for any `mythic*` lane at any hour (was only `mythic-picks` at 08 UTC); `CLAUDE_CONTROL` const removed. Its three callers (carousel-daily writerScope, caption-writer, carousel-post-video gptMotionPrompt gate) now force Claude for every Mythicals post.
+
+### Manual steps needed
+- None
+
+### Notes
+- WRITER_OVERRIDE window (10-23→10-26) still applies to Ripple; delete the whole override once the Ripple test is judged Monday.
+- The Mythicals ChatGPT-vs-Claude comparison now only has the 10-23 posts (05 + 06 UTC = ChatGPT, 08 UTC = Claude).
+
 ## [2026-10-23] — Founder emails for every app download and every trial-to-paid conversion
 
 - **Requested by:** Keenan
