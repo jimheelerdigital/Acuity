@@ -29,8 +29,7 @@ import { MoodAvatar } from "@/components/mood-avatar";
 import { FunnelEntryIntro } from "@/components/funnel-entry-intro";
 import { PayInBrowserButton, PaywallTrustLine } from "@/components/pay-in-browser";
 import { PasswordStep, passwordStepDone } from "@/components/funnel-password-step";
-import { FunnelFirstDebrief, firstDebriefOutcome, type FirstDebriefOutcome } from "@/components/funnel-first-debrief";
-import { joinNatural, sentenceCase, type FirstDebriefPrefill } from "@/lib/first-debrief-prefill";
+import { firstDebriefOutcome, type FirstDebriefOutcome } from "@/components/funnel-first-debrief";
 import type { AdMatch } from "@/lib/funnel-ad-match";
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
@@ -801,20 +800,6 @@ function weekPicks(C: V9Config, answers: Answers) {
 }
 const weekTasks = (C: V9Config, answers: Answers) => weekPicks(C, answers).map((it) => it.task);
 
-/** Her plate answer + up to three week-list picks, for the first debrief
- *  (2026-10-18, lib/first-debrief-prefill.ts). */
-function firstDebriefPrefill(C: V9Config, answers: Answers): FirstDebriefPrefill {
-  const plateStep = C.steps.find((s) => s.id === "plate" && s.kind === "multi") as Extract<V9Step, { kind: "multi" }> | undefined;
-  const picked = answers.multi["plate"] ?? [];
-  const labels = plateStep
-    ? picked.map((id) => plateStep.options.find((o) => o.id === id)?.label).filter((l): l is string => !!l)
-    : [];
-  return {
-    said: joinNatural(labels.map(sentenceCase)) || null,
-    saidKind: "plate",
-    lines: weekTasks(C, answers).slice(0, 3),
-  };
-}
 const weekChips = (C: V9Config, answers: Answers) => weekPicks(C, answers).map((it) => it.chip);
 
 const statementSteps = (C: V9Config) => C.steps.filter((s): s is Extract<V9Step, { kind: "statement" }> => s.kind === "statement");
@@ -1941,9 +1926,8 @@ function DownloadScreen({ answers, firstName, paid, track }: ViewProps) {
   const [gaveUp, setGaveUp] = useState(false);
   // Password step between checkout and the app (2026-09-30).
   const [pwDone, setPwDone] = useState(() => (typeof window === "undefined" ? false : passwordStepDone()));
-  // First debrief right after payment, no waiting (2026-10-04).
-  const C = useV9();
-  const [debrief, setDebrief] = useState<FirstDebriefOutcome | null>(() => (typeof window === "undefined" ? null : firstDebriefOutcome()));
+  // A debrief saved by an earlier version of this page still changes the copy.
+  const [debrief] = useState<FirstDebriefOutcome | null>(() => (typeof window === "undefined" ? null : firstDebriefOutcome()));
   useEffect(() => {
     if (!returning) return;
     const t = window.setTimeout(() => setGaveUp(true), 10_000);
@@ -1967,17 +1951,11 @@ function DownloadScreen({ answers, firstName, paid, track }: ViewProps) {
       </div>
     );
   }
-  if (paid && !debrief) {
-    return (
-      <FunnelFirstDebrief
-        brand={C.brand === "bwk" ? "bwk" : "ripple"}
-        firstName={firstName}
-        prefill={firstDebriefPrefill(C, answers)}
-        track={track}
-        onDone={setDebrief}
-      />
-    );
-  }
+  // Web first debrief removed 2026-10-23 (Keenan): a debrief recorded here
+  // didn't reach the app and in-app browsers almost always block the mic.
+  // After payment everyone goes straight to the app (password, then Get the
+  // app), where the first debrief happens. FunnelFirstDebrief is kept for the
+  // older funnel only.
   if (!pwDone) return <PasswordStep onDone={() => setPwDone(true)} track={track} />;
   return <GetTheApp answers={answers} firstName={firstName} paid={paid} track={track} debriefSaved={debrief === "voice" || debrief === "text"} />;
 }
