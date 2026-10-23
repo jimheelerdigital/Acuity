@@ -15,14 +15,24 @@ describe("What's New 1.9.6", () => {
     expect(app.expo.version).toBe("1.9.6");
   });
 
-  it("covers calendar and task groups; the Siri card is iOS-only", () => {
+  it("covers Watch, Plan my day, Health, calendar and task groups; iOS-only items stay off Android", () => {
     const ids = WHATS_NEW_RELEASES[0].items.map((i) => i.id);
-    expect(ids).toEqual(["calendar-connect", "task-group-card", "manage-groups"]);
-    expect(releaseFor("1.9.6", "android")!.items.map((i) => i.id)).not.toContain("task-group-card");
+    expect(ids).toEqual([
+      "apple-watch",
+      "plan-my-day",
+      "apple-health",
+      "calendar-connect",
+      "task-group-card",
+      "manage-groups",
+    ]);
+    const android = releaseFor("1.9.6", "android")!.items.map((i) => i.id);
+    for (const iosOnly of ["apple-watch", "apple-health", "task-group-card"]) {
+      expect(android).not.toContain(iosOnly);
+    }
   });
 
   it("makes no speed claim and no plumbing talk", () => {
     const copy = JSON.stringify(WHATS_NEW_RELEASES[0]);
-    expect(copy).not.toMatch(/faster|sooner|revenuecat|analytics|inngest|eventkit/i);
+    expect(copy).not.toMatch(/faster|sooner|revenuecat|analytics|inngest|eventkit|healthkit|watchconnectivity/i);
   });
 });

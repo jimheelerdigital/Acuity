@@ -7,6 +7,31 @@
 
 ---
 
+## [2026-10-23] — Plan my day (1.9.6)
+
+- **Requested by:** Jimmy ("plan my day is awesome", priority #2)
+- **Committed by:** Claude Code
+- **What:** Tasks tab (calendar button) and Home TODAY card ("Plan my day") open a preview that fits the TODAY list (overdue → due today → high priority) into free time on today's phone calendar, inside a workday (default 9 AM–6 PM, adjustable, remembered). Blocks default to 30 min (tap to cycle 15/30/45/60/90); tasks can be left out; what doesn't fit is listed. "Add to calendar" writes one event per task: an existing auto-added event is moved, otherwise one is created and linked via /sync-result.
+  - lib/plan-day.ts (pure scheduler), lib/day-plan-store.ts (blocks + workday, cleared on sign-out), app/plan-day.tsx.
+  - Calendar sync keeps a planned block when the task changes (calendar-op `eventForOp`); checking a task off now only adds the ✓ and never moves the event.
+  - GET /api/tasks now returns `calendarEventId` (column verified live in production).
+- **Pro:** uses the calendar connection (canSyncCalendar); free users see the existing calendar upgrade card.
+- **Tests:** apps/web/src/lib/evidence/plan-my-day.test.ts (16). Mobile tsc at the 12-error baseline.
+## [2026-10-23] — Apple Watch app back in, polished (1.9.6)
+
+- **Requested by:** Jimmy ("Get it all into this build" — Watch is priority #1)
+- **Committed by:** Claude Code
+- **What:** restores the watch target, WatchConnectivity sender and its app.json plugin (held out of 1.9.0 in ab3f692d; contents from feat/watch-polish, unchanged since). Polish on top:
+  - Uploads use the phone's direct-to-storage flow (upload-url → PUT → /api/record JSON) instead of multipart, so the 4.5MB Vercel cap no longer applies.
+  - Queue no longer jams: 400/413/415 recordings are dropped; 401 clears the token and keeps the recording.
+  - Background retry (`.backgroundTask(.appRefresh)`) while anything is queued, plus a drain on every foreground.
+  - Token moved from UserDefaults to the watch Keychain (one-time migration).
+  - Watch asks the phone for a token when it opens signed out (phone answers via `didReceiveMessage`), so signing in on the phone no longer needs a background/foreground cycle.
+  - Haptics (start/stop/success/failure/click) and VoiceOver labels on the orb, timer, queue note, task/habit/goal rows.
+  - Growth shows goals even when the habits list fails.
+- **Not included:** a watch-face complication (needs a new widget extension + a new bundle id/provisioning profile).
+- **Verified:** swiftc typecheck of every watch file against the watchOS 27 SDK (Swift 5 and 6 modes) and the phone sender against iOS. Simulator build + on-wrist QA pending.
+- **Generated, not committed:** targets/watch/Assets.xcassets (apple-targets builds it from `icon`/`colors` at prebuild).
 ## [2026-10-23] — Fix: What's New catches people up on releases they skipped
 
 - **Requested by:** Jimmy ("Get it all into this build")
