@@ -20,9 +20,8 @@ const r195 = WHATS_NEW_RELEASES.find((r) => r.version === "1.9.5");
 const ctx = { hasOpenTasks: true, hasTaskRow: true };
 
 describe("What's New 1.9.5", () => {
-  it("exists and is the newest entry", () => {
+  it("exists", () => {
     expect(r195).toBeTruthy();
-    expect(WHATS_NEW_RELEASES[0].version).toBe("1.9.5");
   });
 
   it("covers the notable features", () => {

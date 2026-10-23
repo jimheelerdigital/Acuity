@@ -51,6 +51,31 @@ export type WhatsNewRelease = {
 
 export const WHATS_NEW_RELEASES: WhatsNewRelease[] = [
   {
+    // 1.9.6 (2026-10-23). User-facing only.
+    version: "1.9.6",
+    items: [
+      {
+        id: "calendar-connect",
+        icon: "calendar-outline",
+        title: "Connect your calendar",
+        body: "Profile \u2192 Calendar. Your tasks with due dates land on the calendar you pick, Google calendars on your phone included, and your entries can reference what your day actually looked like. Pro.",
+      },
+      {
+        id: "task-group-card",
+        icon: "pricetags-outline",
+        title: "Pick a group when you add a task",
+        body: "On iOS 26 and later, adding a task with Siri or the Action Button asks for the due date and the group on one card. Skip the group and Ripple picks one.",
+        platform: "ios",
+      },
+      {
+        id: "manage-groups",
+        icon: "albums-outline",
+        title: "Make your own task groups",
+        body: "Tap the tag button on Tasks to add, rename, reorder or delete groups. Work, Kids, Side project: whatever fits.",
+      },
+    ],
+  },
+  {
     // 1.9.5 (2026-10-22). App Store users come from 1.9.3 (1.9.4 never
     // shipped), so this covers everything since then. User-facing only:
     // nothing about billing plumbing / analytics.
