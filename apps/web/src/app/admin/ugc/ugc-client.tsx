@@ -193,42 +193,20 @@ export function ManualAddForm() {
   );
 }
 
+/** Commission-only deal: issues the code, sends the dashboard invite, writes the brief. */
 export function DealForm({ creatorId }: { creatorId: string }) {
-  const [fee, setFee] = useState("");
   const [msg, setMsg] = useState<string | null>(null);
   return (
     <span className="inline-flex items-center gap-2">
-      <input className={`${INPUT} w-28`} placeholder="$ / video (opt.)" value={fee} onChange={(e) => setFee(e.target.value)} />
       <button
         className={`${BTN} ${TONES.go}`}
         onClick={async () => {
-          const r = await post({ action: "deal", creatorId, feePerVideo: fee });
+          const r = await post({ action: "deal", creatorId });
           setMsg(r.error ?? "Deal marked: code issued, dashboard invite sent, brief being written");
           if (!r.error) setTimeout(() => window.location.reload(), 1200);
         }}
       >
         Mark deal
-      </button>
-      {msg && <span className="text-xs text-acuity-text-ter">{msg}</span>}
-    </span>
-  );
-}
-
-export function PaidForm({ creatorId }: { creatorId: string }) {
-  const [amt, setAmt] = useState("");
-  const [msg, setMsg] = useState<string | null>(null);
-  return (
-    <span className="inline-flex items-center gap-2">
-      <input className={`${INPUT} w-24`} placeholder="$ paid" value={amt} onChange={(e) => setAmt(e.target.value)} />
-      <button
-        className={`${BTN} ${TONES.plain}`}
-        onClick={async () => {
-          const r = await post({ action: "paid", creatorId, amount: amt });
-          setMsg(r.error ?? "Recorded");
-          if (!r.error) window.location.reload();
-        }}
-      >
-        Record fee paid
       </button>
       {msg && <span className="text-xs text-acuity-text-ter">{msg}</span>}
     </span>
@@ -264,22 +242,16 @@ export function VideoNumbers({
   adSpend,
   trials,
   paidConversions,
-  bonusPaid,
-  extensionPaid,
 }: {
   videoId: string;
   adSpend: number | null;
   trials: number | null;
   paidConversions: number | null;
-  bonusPaid: number;
-  extensionPaid: number;
 }) {
   const [f, setF] = useState({
     adSpend: adSpend?.toString() ?? "",
     trials: trials?.toString() ?? "",
     paidConversions: paidConversions?.toString() ?? "",
-    bonusPaid: bonusPaid ? bonusPaid.toString() : "",
-    extensionPaid: extensionPaid ? extensionPaid.toString() : "",
   });
   const [msg, setMsg] = useState<string | null>(null);
   const set = (k: keyof typeof f) => (e: { target: { value: string } }) => setF({ ...f, [k]: e.target.value });
@@ -288,8 +260,6 @@ export function VideoNumbers({
       <input className={`${INPUT} w-20`} placeholder="spend $" value={f.adSpend} onChange={set("adSpend")} />
       <input className={`${INPUT} w-16`} placeholder="trials" value={f.trials} onChange={set("trials")} />
       <input className={`${INPUT} w-16`} placeholder="paid" value={f.paidConversions} onChange={set("paidConversions")} />
-      <input className={`${INPUT} w-20`} placeholder="bonus paid $" value={f.bonusPaid} onChange={set("bonusPaid")} />
-      <input className={`${INPUT} w-20`} placeholder="ext. paid $" value={f.extensionPaid} onChange={set("extensionPaid")} />
       <button
         className={`${BTN} ${TONES.plain}`}
         onClick={async () => {

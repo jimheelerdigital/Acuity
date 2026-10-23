@@ -327,6 +327,7 @@
       "./plugins/with-remove-ad-id.js",
       "./plugins/with-folly-mobile-flag.js",
       "./plugins/with-app-intents.js",
+      "./plugins/with-watch-connectivity.js",
       "@bacons/apple-targets",
       [
         "react-native-android-widget",

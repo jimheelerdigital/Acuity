@@ -15,11 +15,24 @@ export const RELEASE_EMAILS: ReleaseEmail[] = [
   {
     version: "1.9.6",
     platform: "ios",
-    subject: "Ripple 1.9.6: your calendar, connected",
-    preheader: "Tasks land on your calendar, entries know your day, and task groups are yours to shape.",
+    subject: "Ripple 1.9.6: on your wrist, in your calendar",
+    preheader: "Ripple on Apple Watch, Plan my day, Apple Health, and your calendar, connected.",
     headline: "Ripple 1.9.6 is here",
-    intro: "This update connects Ripple to the place you already plan your day, and makes your task list fit how you actually live.",
+    intro: "This update takes Ripple to your wrist and into the places you already plan and track your day.",
     features: [
+      {
+        title: "Ripple on your Apple Watch",
+        body: "Record an entry from your wrist, even with no signal: it uploads when you're back in range. Check off tasks and habits there too. Open Ripple on your phone once and your watch connects.",
+      },
+      {
+        title: "Plan my day",
+        pro: true,
+        body: "Tap <strong>Plan my day</strong> on the Today card. Ripple fits your most pressing tasks around today's meetings; adjust the times, then add them to your calendar in one tap.",
+      },
+      {
+        title: "Apple Health",
+        body: "Go to <strong>Profile \u2192 Apple Health</strong>. See how sleep and steps line up with your mood, and let habits like 10,000 steps check themselves off.",
+      },
       {
         title: "Connect your calendar",
         pro: true,

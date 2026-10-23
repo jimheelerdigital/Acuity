@@ -3,7 +3,11 @@ import Constants from "expo-constants";
 import { useEffect, useState } from "react";
 import { Platform } from "react-native";
 
-import { releaseFor, type WhatsNewRelease } from "@/lib/whats-new-content";
+import {
+  catchUpRelease,
+  releaseFor,
+  type WhatsNewRelease,
+} from "@/lib/whats-new-content";
 
 /**
  * What's New progress for the running version (1.9.1).
@@ -18,6 +22,11 @@ import { releaseFor, type WhatsNewRelease } from "@/lib/whats-new-content";
  * Home pill rule: eligible, within 7 days of eligibleAt, not dismissed,
  * and not everything explored. Profile → What's New is always there; its
  * dot shows while eligible and not everything is explored.
+ *
+ * 1.9.6 catch-up: `release` covers everything since the version they
+ * updated FROM (stored per running version when the sheet first shows),
+ * so a 1.9.3 → 1.9.6 jump tours 1.9.5's features too. No stored "from"
+ * → just this version's own entry (fresh installs, older behaviour).
  *
  * Module store + subscribers so the sheet, page, pill and Profile row stay
  * in step without a context provider. Per device (AsyncStorage).
@@ -41,12 +50,18 @@ const keys = (v: string) => ({
   explored: `whatsNew.explored.${v}`,
   eligibleAt: `whatsNew.eligibleAt.${v}`,
   pillDismissed: `whatsNew.pillDismissed.${v}`,
+  from: `whatsNew.from.${v}`,
 });
+
+function releaseSince(from: string | null): WhatsNewRelease | null {
+  if (!version) return null;
+  return (from && catchUpRelease(from, version, platform)) || releaseFor(version, platform);
+}
 
 let state: WhatsNewState = {
   loaded: false,
   version,
-  release: version ? releaseFor(version, platform) : null,
+  release: releaseSince(null),
   explored: [],
   eligibleAt: null,
   pillDismissed: false,
@@ -68,10 +83,11 @@ export function loadWhatsNewState(): Promise<void> {
     }
     const k = keys(version);
     try {
-      const [explored, eligibleAt, dismissed] = await Promise.all([
+      const [explored, eligibleAt, dismissed, from] = await Promise.all([
         AsyncStorage.getItem(k.explored),
         AsyncStorage.getItem(k.eligibleAt),
         AsyncStorage.getItem(k.pillDismissed),
+        AsyncStorage.getItem(k.from),
       ]);
       let ids: string[] = [];
       try {
@@ -86,6 +102,8 @@ export function loadWhatsNewState(): Promise<void> {
         explored: ids,
         eligibleAt: Number.isFinite(at) ? at : null,
         pillDismissed: dismissed === "1",
+        // A setCatchUpFrom that ran before this load finished wins.
+        release: catchUpFromSet ? state.release : releaseSince(from),
       });
     } catch {
       set({ loaded: true });
@@ -108,6 +126,23 @@ function markExploredNow(itemId: string): void {
   const explored = [...state.explored, itemId];
   set({ explored });
   AsyncStorage.setItem(keys(version).explored, JSON.stringify(explored)).catch(() => {});
+}
+
+let catchUpFromSet = false;
+
+/**
+ * Called by checkWhatsNew when the update sheet is about to show, with the
+ * version they updated from. Stored once per running version (the first
+ * sheet decides), so later launches keep the same catch-up list.
+ */
+export function setCatchUpFrom(from: string): void {
+  if (!version) return;
+  catchUpFromSet = true;
+  set({ release: releaseSince(from) });
+  const k = keys(version).from;
+  AsyncStorage.getItem(k)
+    .then((existing) => (existing ? undefined : AsyncStorage.setItem(k, from)))
+    .catch(() => {});
 }
 
 /** Called when this version's update sheet is shown (an actual update). */

@@ -3,10 +3,8 @@ import Constants from "expo-constants";
 import { Platform } from "react-native";
 
 import { compareVersion, type VersionCheckConfig } from "@/lib/version-check";
-import {
-  WHATS_NEW_RELEASES,
-  type WhatsNewItem,
-} from "@/lib/whats-new-content";
+import { catchUpRelease, type WhatsNewItem } from "@/lib/whats-new-content";
+import { setCatchUpFrom } from "@/lib/whats-new-state";
 
 /**
  * "What's New" client (Ripple 1.8, workstream 4).
@@ -59,24 +57,16 @@ const NONE: WhatsNewResult = {
 };
 
 /**
- * Newest bundled release with seen < version <= current, filtered to this
- * platform. Null when there's nothing to show.
+ * Bundled items for everything new since `seen` (1.9.6 catch-up): every
+ * release with seen < version <= current, newest first, platform-filtered,
+ * de-duplicated. Null when there's nothing to show.
  */
 export function bundledWhatsNew(
   seen: string,
   current: string,
   platform: "ios" | "android"
 ): WhatsNewItem[] | null {
-  const release = WHATS_NEW_RELEASES.filter(
-    (r) =>
-      compareVersion(seen, r.version) === -1 &&
-      compareVersion(r.version, current) !== 1
-  ).sort((a, b) => compareVersion(b.version, a.version))[0];
-  if (!release) return null;
-  const items = release.items.filter(
-    (i) => !i.platform || i.platform === platform
-  );
-  return items.length > 0 ? items : null;
+  return catchUpRelease(seen, current, platform)?.items ?? null;
 }
 
 function abortableFetch(url: string, timeoutMs: number): Promise<Response> {
@@ -152,6 +142,9 @@ export async function checkWhatsNew(): Promise<WhatsNewResult> {
 
   const items = bundledWhatsNew(seen, current, platform);
   if (items) {
+    // The tour, Home pill and Profile page cover the same catch-up items
+    // even after `seen` is bumped to `current` on dismiss.
+    setCatchUpFrom(seen);
     return { shouldShow: true, version: current, notes: null, items };
   }
 

@@ -471,6 +471,13 @@ function ThemedApp() {
           }}
         />
         <Stack.Screen
+          name="plan-day"
+          options={{
+            headerShown: false,
+            presentation: "modal",
+          }}
+        />
+        <Stack.Screen
           name="goal/new"
           options={{
             headerShown: false,

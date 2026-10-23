@@ -1,6 +1,6 @@
 /**
  * UGC creator outreach dashboard (2026-10-06, per Keenan). Stats by persona
- * and creator type, the KILL / REHIRE / RIGHTS lists, the low-deal warning,
+ * and creator type, the KILL / REHIRE lists, the low-deal warning,
  * manual add, run buttons, and the creators table (filter by status,
  * persona, type). Server-rendered; the admin layout gates access.
  */
@@ -12,7 +12,6 @@ import {
   OUTREACH_FROM_EMAIL,
   OUTREACH_SEND_ENABLED,
   PERSONAS,
-  RIGHTS_WARNING_DAYS,
   trackingUrl,
 } from "@/lib/ugc/config";
 import { mailboxStatus } from "@/lib/ugc/gmail";
@@ -33,7 +32,6 @@ function StatsRow({ label, s }: { label: string; s: GroupStats }) {
       <td className="pr-4">{s.offersSent}</td>
       <td className="pr-4">{pct(s.replyRate)}</td>
       <td className="pr-4">{s.deals}</td>
-      <td className="pr-4">{usd(s.paidCents)}</td>
       <td>{s.avgCostPerTrial == null ? "—" : `$${s.avgCostPerTrial.toFixed(2)}`}</td>
     </tr>
   );
@@ -98,7 +96,6 @@ export default async function UgcDashboard({
                 <th className="pr-4">Offers sent</th>
                 <th className="pr-4">Reply rate</th>
                 <th className="pr-4">Deals</th>
-                <th className="pr-4">Paid to creators</th>
                 <th>Avg cost per trial</th>
               </tr>
             </thead>
@@ -114,7 +111,7 @@ export default async function UgcDashboard({
           </table>
         </section>
 
-        <section className="grid gap-4 lg:grid-cols-3">
+        <section className="grid gap-4 lg:grid-cols-2">
           <div className="rounded-lg border border-acuity-line bg-acuity-card-bg p-4">
             <h2 className="font-semibold">KILL ({d.kill.length})</h2>
             <p className="text-xs text-acuity-text-ter mb-2">Spent ${KILL_SPEND}+ with zero trials. Turn these ads off.</p>
@@ -131,17 +128,6 @@ export default async function UgcDashboard({
             {d.rehire.map((c) => (
               <p key={c.id} className="text-sm">
                 <Link className="underline" href={`/admin/ugc/creators/${c.id}`}>@{c.handle}</Link> · {c.videos.filter((v) => v.winner).length} winning cut(s)
-              </p>
-            ))}
-          </div>
-          <div className="rounded-lg border border-acuity-line bg-acuity-card-bg p-4">
-            <h2 className="font-semibold">RIGHTS ({d.rights.length})</h2>
-            <p className="text-xs text-acuity-text-ter mb-2">Usage rights end within {RIGHTS_WARNING_DAYS} days. Extend winners only.</p>
-            {d.rights.map((v) => (
-              <p key={v.id} className="text-sm">
-                <Link className="underline" href={`/admin/ugc/creators/${v.creatorId}`}>@{v.creator.handle}</Link> video {v.videoNumber}
-                {v.hookVersion} · ends {v.rightsEndAt?.toISOString().slice(0, 10)} ·{" "}
-                {v.winner ? <b className="text-emerald-400">winner</b> : <span className="text-acuity-text-ter">not a winner</span>}
               </p>
             ))}
           </div>
@@ -188,7 +174,6 @@ export default async function UgcDashboard({
                   <th className="p-2">Persona</th>
                   <th className="p-2">Type</th>
                   <th className="p-2">Score</th>
-                  <th className="p-2">Rate</th>
                   <th className="p-2">Tracking link</th>
                   <th className="p-2">Tracked signups / trials</th>
                   <th className="p-2">Best cost/trial</th>
@@ -208,9 +193,6 @@ export default async function UgcDashboard({
                       <td className="p-2">{c.persona ?? "—"}</td>
                       <td className="p-2">{c.creatorType ?? "—"}</td>
                       <td className="p-2">{c.score ?? "—"}</td>
-                      <td className="p-2">
-                        {c.agreedFeeCents ? `${usd(c.agreedFeeCents)}/video` : c.costPerVideoCents ? `quoted ${usd(c.costPerVideoCents)}${c.underFeeCap ? "" : " (over cap)"}` : "—"}
-                      </td>
                       <td className="p-2 text-xs">{trackingUrl(c.trackingCode).replace("https://", "")}</td>
                       <td className="p-2">{t ? `${t.signups} / ${t.trials}` : "—"}</td>
                       <td className="p-2">{cpts.length ? `$${Math.min(...cpts).toFixed(2)}` : "—"}</td>
@@ -219,7 +201,7 @@ export default async function UgcDashboard({
                 })}
                 {d.shown.length === 0 && (
                   <tr>
-                    <td colSpan={9} className="p-4 text-acuity-text-ter">No creators yet. Start with a dry run.</td>
+                    <td colSpan={8} className="p-4 text-acuity-text-ter">No creators yet. Start with a dry run.</td>
                   </tr>
                 )}
               </tbody>

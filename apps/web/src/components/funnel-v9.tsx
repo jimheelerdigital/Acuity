@@ -28,9 +28,7 @@ import { consumeTestArrival } from "@/lib/funnel-split-shared";
 import { MoodAvatar } from "@/components/mood-avatar";
 import { FunnelEntryIntro } from "@/components/funnel-entry-intro";
 import { PayInBrowserButton, PaywallTrustLine } from "@/components/pay-in-browser";
-import { PasswordStep, passwordStepDone } from "@/components/funnel-password-step";
-import { FunnelFirstDebrief, firstDebriefOutcome, type FirstDebriefOutcome } from "@/components/funnel-first-debrief";
-import { joinNatural, sentenceCase, type FirstDebriefPrefill } from "@/lib/first-debrief-prefill";
+import { firstDebriefOutcome, type FirstDebriefOutcome } from "@/components/funnel-first-debrief";
 import type { AdMatch } from "@/lib/funnel-ad-match";
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
@@ -801,20 +799,6 @@ function weekPicks(C: V9Config, answers: Answers) {
 }
 const weekTasks = (C: V9Config, answers: Answers) => weekPicks(C, answers).map((it) => it.task);
 
-/** Her plate answer + up to three week-list picks, for the first debrief
- *  (2026-10-18, lib/first-debrief-prefill.ts). */
-function firstDebriefPrefill(C: V9Config, answers: Answers): FirstDebriefPrefill {
-  const plateStep = C.steps.find((s) => s.id === "plate" && s.kind === "multi") as Extract<V9Step, { kind: "multi" }> | undefined;
-  const picked = answers.multi["plate"] ?? [];
-  const labels = plateStep
-    ? picked.map((id) => plateStep.options.find((o) => o.id === id)?.label).filter((l): l is string => !!l)
-    : [];
-  return {
-    said: joinNatural(labels.map(sentenceCase)) || null,
-    saidKind: "plate",
-    lines: weekTasks(C, answers).slice(0, 3),
-  };
-}
 const weekChips = (C: V9Config, answers: Answers) => weekPicks(C, answers).map((it) => it.chip);
 
 const statementSteps = (C: V9Config) => C.steps.filter((s): s is Extract<V9Step, { kind: "statement" }> => s.kind === "statement");
@@ -1939,11 +1923,8 @@ function DownloadScreen({ answers, firstName, paid, track }: ViewProps) {
     }
   });
   const [gaveUp, setGaveUp] = useState(false);
-  // Password step between checkout and the app (2026-09-30).
-  const [pwDone, setPwDone] = useState(() => (typeof window === "undefined" ? false : passwordStepDone()));
-  // First debrief right after payment, no waiting (2026-10-04).
-  const C = useV9();
-  const [debrief, setDebrief] = useState<FirstDebriefOutcome | null>(() => (typeof window === "undefined" ? null : firstDebriefOutcome()));
+  // A debrief saved by an earlier version of this page still changes the copy.
+  const [debrief] = useState<FirstDebriefOutcome | null>(() => (typeof window === "undefined" ? null : firstDebriefOutcome()));
   useEffect(() => {
     if (!returning) return;
     const t = window.setTimeout(() => setGaveUp(true), 10_000);
@@ -1967,18 +1948,12 @@ function DownloadScreen({ answers, firstName, paid, track }: ViewProps) {
       </div>
     );
   }
-  if (paid && !debrief) {
-    return (
-      <FunnelFirstDebrief
-        brand={C.brand === "bwk" ? "bwk" : "ripple"}
-        firstName={firstName}
-        prefill={firstDebriefPrefill(C, answers)}
-        track={track}
-        onDone={setDebrief}
-      />
-    );
-  }
-  if (!pwDone) return <PasswordStep onDone={() => setPwDone(true)} track={track} />;
+  // Web first debrief removed 2026-10-23 (Keenan): a debrief recorded here
+  // didn't reach the app and in-app browsers almost always block the mic.
+  // After payment everyone goes straight to Get the app, where the first
+  // debrief happens. No password step either (removed 2026-10-23): the
+  // emailed one-tap link signs her into the app. FunnelFirstDebrief is kept for the
+  // older funnel only.
   return <GetTheApp answers={answers} firstName={firstName} paid={paid} track={track} debriefSaved={debrief === "voice" || debrief === "text"} />;
 }
 
@@ -2081,69 +2056,11 @@ function GetTheApp({
             Don&rsquo;t create a new account in the app. If it asks you to sign up, tap <strong>Already have an account? Sign in</strong>, then <strong>Email me a link</strong>.
           </p>
         </div>
-        {answers.email && <LoginCard email={answers.email} track={track} />}
       </div>
     </div>
   );
 }
 
-/** "Your login" (2026-09-28): the standard web-to-app success-page step.
- *  Shows the email she'll sign in with and lets her set a password for the
- *  app's email + password sign-in (the email-gate account has a random one). */
-function LoginCard({ email, track }: { email: string; track: ViewProps["track"] }) {
-  const [pw, setPw] = useState("");
-  const [state, setState] = useState<"idle" | "saving" | "saved" | "error">("idle");
-  const [msg, setMsg] = useState<string | null>(null);
-  // Set on the password step just before this screen: say so, don't ask again.
-  useEffect(() => {
-    try {
-      if (sessionStorage.getItem("acuity_pw_step_done") === "1") {
-        setState("saved");
-        setMsg("Use your email and password in the app, or the link we emailed you.");
-      }
-    } catch {}
-  }, []);
-  const save = async () => {
-    setState("saving");
-    setMsg(null);
-    try {
-      const res = await fetch("/api/account/set-password", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ password: pw }),
-      });
-      const body = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(body.error ?? "Couldn't save that. Try again.");
-      track("funnel_v9_password_set", body.needsVerification ? "needs_verify" : "verified");
-      setMsg("Saved. Use it with your email in the app.");
-      setState("saved");
-    } catch (e) {
-      setMsg(e instanceof Error ? e.message : "Couldn't save that. Try again.");
-      setState("error");
-    }
-  };
-  return (
-    <div className="card rounded-3xl p-5">
-      <StepBadge n={3} icon={KeyRound} title="Your login" text={`You sign in with ${email}. Want a password too? The link works without one.`} />
-      {state !== "saved" && (
-        <div className="mt-4 flex gap-2">
-          <input
-            type="password"
-            value={pw}
-            onChange={(e) => setPw(e.target.value)}
-            placeholder="Create a password (8+ characters)"
-            autoComplete="new-password"
-            className="min-w-0 flex-1 rounded-full border border-acuity-line bg-transparent px-4 py-3 text-[15px] outline-none focus:border-acuity-primary"
-          />
-          <button onClick={save} disabled={pw.length < 8 || state === "saving"} className="shrink-0 rounded-full soft px-4 py-3 text-[14px] font-semibold disabled:opacity-40">
-            {state === "saving" ? "Saving…" : "Save"}
-          </button>
-        </div>
-      )}
-      {msg && <p className="mt-3 text-[13px] leading-relaxed text-acuity-text-sec">{msg}</p>}
-    </div>
-  );
-}
 
 function StepBadge({ n, icon: Icon, title, text }: { n: number; icon: LucideIcon; title: string; text: string }) {
   return (

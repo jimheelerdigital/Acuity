@@ -49,3 +49,26 @@ export function plannedEventFor(op: DrainOp): PlannedEvent | null {
   const end = new Date(day.y, day.m, day.d, TIMED_START_HOUR + 1, 0, 0);
   return { title, start, end, allDay: false };
 }
+
+/** A Plan my day time block remembered on the phone (lib/day-plan-store.ts). */
+export type StoredBlock = { day: string; start: string; end: string };
+
+/**
+ * Plan my day (1.9.6): a task the person planned into a time block keeps
+ * that block when the server sends it again (title edit, completion) —
+ * otherwise it would jump back to an all-day / 9 AM event. The block is
+ * dropped once its due date moves to a later day than the block.
+ */
+export function eventForOp(op: DrainOp, block: StoredBlock | null): PlannedEvent | null {
+  const title = eventTitle(op.taskTitle, op.kind === "complete");
+  if (block) {
+    const due = op.dueDateISO ? op.dueDateISO.slice(0, 10) : null;
+    const start = new Date(block.start);
+    const end = new Date(block.end);
+    const valid = Number.isFinite(start.getTime()) && Number.isFinite(end.getTime()) && end > start;
+    if (valid && (due === null || due <= block.day)) {
+      return { title, start, end, allDay: false };
+    }
+  }
+  return plannedEventFor(op);
+}
