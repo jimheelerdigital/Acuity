@@ -177,22 +177,23 @@ export async function POST(req: NextRequest) {
           objective: "OUTCOME_APP_PROMOTION",
           buying_type: "AUCTION",
           special_ad_categories: [],
-          smart_promotion_type: "SMART_APP_PROMOTION",
+          // Graph v24+: no smart_promotion_type (Automated App Campaigns are
+          // retired, code 2490569). A campaign is "Advantage+" when it uses
+          // the automatic levers: campaign budget + Advantage+ audience +
+          // automatic placements — what Ads Manager built on 2026-10-23.
           is_skadnetwork_attribution: true,
-          // No bid_strategy or daily_budget on the campaign: Meta rejects both
-          // for Advantage+ app campaigns ("Invalid campaign param … AAA ad").
-          // The budget goes on the single ad set below.
+          daily_budget: String(budget),
+          bid_strategy: "LOWEST_COST_WITHOUT_CAP",
           status: "PAUSED",
         });
         campaigns[group] = campaign.id as string;
         const set = await meta.metaGraph(`${acct}/adsets`, "POST", {
           name: `Ripple — App Installs | ${label}`,
           campaign_id: campaign.id,
-          daily_budget: String(budget),
           billing_event: "IMPRESSIONS",
           optimization_goal: "APP_INSTALLS",
           promoted_object: { application_id: body.appId, object_store_url: body.storeUrl ?? APP_STORE_URL },
-          targeting: { geo_locations: geo },
+          targeting: { geo_locations: geo, user_os: [IOS_OS], targeting_automation: { advantage_audience: 1 } },
           status: "PAUSED",
         });
         adsets[group] = set.id as string;
