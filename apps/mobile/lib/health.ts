@@ -26,8 +26,8 @@ import {
  * 30 minutes.
  */
 
-const ENABLED_KEY = "ripple.health.enabled";
-const SYNCED_AT_KEY = "ripple.health.syncedAt";
+const ENABLED_KEY = "healthSync.enabled";
+const SYNCED_AT_KEY = "healthSync.syncedAt";
 const SYNC_EVERY_MS = 30 * 60 * 1000;
 const DAYS = 7;
 
