@@ -31,6 +31,9 @@ export interface V11Answers {
   pendingHabits?: string[];
   /** A reminder time was chosen but not yet saved to the account. */
   reminderPending?: boolean;
+  /** Creator referral code typed on the save screen (validated). Sent to
+   *  POST /api/creators/code right after sign-up, then cleared. */
+  creatorCode?: string;
 }
 
 const EMPTY: V11Answers = { carrying: [] };
