@@ -7,6 +7,26 @@
 
 ---
 
+## [2026-10-23] — Fix: Mythicals "Claude" posts were secretly written by ChatGPT
+
+- **Requested by:** Keenan
+- **Committed by:** Claude Code
+- **Commit hash:** (see git log: "fix: Keep every Mythicals prompt off ChatGPT")
+
+### In plain English (for Keenan)
+The 5pm "Claude control" Mythicals post was actually written by ChatGPT the whole test, because the switch that was meant to keep it on Claude got lost partway through each run. Now any Mythicals writing is refused by the ChatGPT path, so Mythicals is truly back on Claude. Today's missing 5pm post was a ChatGPT run that gave up after its titles kept getting flagged as near-duplicates.
+
+### Technical changes (for Jimmy)
+- `apps/web/src/lib/content-factory/claude-client.ts` overrideActive: returns false when system+messages match /mythic|fantasy/i.
+- Root cause: `writerScope` (AsyncLocalStorage) set around the Inngest handler is not visible inside `step.run` callbacks, so forceClaude was always undefined there. ClaudeCallLog proof: 08 UTC 10-23 run = only `openai-writer` calls.
+
+### Manual steps needed
+- None
+
+### Notes
+- Monday's "ChatGPT vs Claude control" Mythicals comparison is invalid: all Mythicals posts 10-23 were ChatGPT-written. Compare against the prior week instead.
+- Don't rely on AsyncLocalStorage across Inngest steps; carry the decision in data (lane, prompt) instead.
+
 ## [2026-10-23] — Mythicals back to Claude for all writing
 
 - **Requested by:** Keenan

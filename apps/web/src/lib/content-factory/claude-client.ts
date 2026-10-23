@@ -205,6 +205,11 @@ async function overrideActive(params: CreateParams, model: string): Promise<bool
   void model;
   if ((params.effort ?? "high") === "low") return false;
   if ((params as { tools?: unknown[] }).tools?.length) return false;
+  // Mythicals is Claude-only (2026-10-23). writerScope does NOT survive
+  // Inngest step.run (steps run outside the handler's async context), so
+  // the 08 UTC "Claude control" run was ChatGPT all along. Decide from the
+  // prompt itself: every Mythicals prompt is about mythic/fantasy content.
+  if (/mythic|fantasy/i.test(JSON.stringify([params.system ?? "", params.messages]))) return false;
   const hasImage = params.messages.some(
     (m) => Array.isArray(m.content) && m.content.some((b) => (b as { type?: string }).type !== "text")
   );
