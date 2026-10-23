@@ -47,7 +47,7 @@ export async function POST(req: NextRequest) {
   const meta = await import("@/lib/adlab/meta");
   const acct = meta.adAccountPath();
   const body = (await req.json().catch(() => ({}))) as {
-    action?: "apps" | "diag" | "create" | "add" | "fix-os" | "delete" | "activate";
+    action?: "apps" | "diag" | "create" | "add" | "fix-os" | "delete" | "activate" | "pause";
     /** Ad set measurement for iOS 14+ campaigns: "SKADNETWORK" (default), "AEM", or "none". */
     attribution?: "SKADNETWORK" | "AEM" | "none";
     /** "add": existing app ad set per group. */
@@ -56,6 +56,8 @@ export async function POST(req: NextRequest) {
     budgets?: Partial<Record<Group, number>>;
     ads?: { group: Group; sourceAdId: string }[];
     campaignId?: string;
+    /** "diag": also read these ad sets' targeting/budget/status. */
+    adsetIds?: string[];
     /** promoted_object.object_store_url override (defaults to APP_STORE_URL). */
     storeUrl?: string;
     /**
@@ -69,8 +71,31 @@ export async function POST(req: NextRequest) {
   const err = (e: unknown) => meta.redactAccessToken(String(e)).slice(0, 500);
 
   // Read-only: how Meta registered a campaign and the app (2026-10-19 debug).
+  // Pause an app-promotion campaign and its ad sets (never touches other objectives).
+  if (body.action === "pause") {
+    if (!body.campaignId) return NextResponse.json({ error: "campaignId required" }, { status: 400 });
+    try {
+      const c = (await meta.metaGraph(body.campaignId, "GET", { fields: "name,objective" })) as { name: string; objective: string };
+      if (c.objective !== "OUTCOME_APP_PROMOTION") return NextResponse.json({ error: `refusing: ${c.name} is ${c.objective}` }, { status: 400 });
+      await meta.setStatus(body.campaignId, "campaign", "PAUSED");
+      const check = await meta.metaGraph(body.campaignId, "GET", { fields: "name,status,effective_status" });
+      return NextResponse.json({ ok: true, campaign: check });
+    } catch (e) {
+      return NextResponse.json({ error: err(e) }, { status: 500 });
+    }
+  }
+
   if (body.action === "diag") {
     const out: Record<string, unknown> = {};
+    for (const id of body.adsetIds ?? []) {
+      try {
+        out[`adset_${id}`] = await meta.metaGraph(id, "GET", {
+          fields: "name,status,effective_status,daily_budget,optimization_goal,billing_event,promoted_object,targeting,attribution_spec",
+        });
+      } catch (e) {
+        out[`adset_${id}`] = { error: err(e) };
+      }
+    }
     for (const [k, path, fields] of [
       ["campaign", body.campaignId, "name,objective,status,is_skadnetwork_attribution,special_ad_categories,buying_type"],
       ["app", body.appId, "name,supported_platforms,object_store_urls"],
