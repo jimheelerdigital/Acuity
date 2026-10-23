@@ -253,6 +253,27 @@ From Friday through Sunday, OpenAI's ChatGPT 6.1 Sol writes every social post in
   - Each ChatGPT-written call now logs a ClaudeCallLog row (purpose "openai-writer", model gpt-6.1-sol), because callers' own rows hardcode the model they asked for.
 - First sample (10-22, flag on 15:49–16:03 UTC): "WHICH DRAGON IS YOURS?" (post cmvjqcjer0000vhvqag0hvemv). No fallback warnings in the prod logs.
 
+## [2026-10-23] — Creator links go to the sign-up funnel
+
+- **Requested by:** Keenan
+- **Committed by:** Claude Code
+- **Commit hash:** (see git log: "feat: Send creator links into the sign-up funnel")
+
+### In plain English (for Keenan)
+A creator's link (goripple.io/c/CODE) now drops people into the sign-up funnel, the same place the ads send them, instead of the homepage. They see a slim "Sent by Tess · your code TESS50 is saved" bar at the top of the funnel. Nobody else sees any change: the bar only appears for people who came through a creator link.
+
+### Technical changes (for Jimmy)
+- `app/c/[code]/route.ts`: redirect to `/start` (which forwards to the live funnel variant) instead of `/with/<CODE>`; adds utm_source=creator, utm_medium=referral, utm_campaign=creator-<code> when absent (reporting only; credit still comes from the rp_click cookie read in bootstrapNewUser).
+- New `components/creators/creator-funnel-banner.tsx` (reads the rp_creator cookie) and `app/start/layout.tsx` + `app/start-test/layout.tsx` to show it.
+- `/with/<CODE>` page and the store-email step stay in place but nothing links to them now.
+
+### Manual steps needed
+- None
+
+### Notes
+- Funnel signups go through /api/auth/signup, /api/auth/mobile-magic-link or NextAuth, all of which call bootstrapNewUser → attributeNewUser, so the cookie credits the creator.
+- Funnel change outside the Monday window, but it only affects creator-link visitors (no creators are live yet); ad traffic is unchanged.
+
 ## [2026-10-23] — Stripe Connect live; creator dashboard in app colors; Connect button self-heals
 
 - **Requested by:** Keenan
