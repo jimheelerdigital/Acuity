@@ -28,6 +28,50 @@ After you name a task from Siri or the Action Button, iOS 26 shows one card with
 
 ### Notes
 - The card is checked against Apple's API (local Xcode 27 SDK typecheck at iOS 16.4 and 17 targets) but not yet on a device. Verify it from the Action Button on TestFlight.
+## [2026-10-23] — Release announcement emails: one template, one send script
+
+- **Requested by:** Jimmy (Miro: "Formalize email cadence to announce product releases")
+- **Committed by:** Claude Code
+- **Commit hash:** (see git log: "feat(email): reusable release announcement")
+
+### In plain English
+Each release used to need its own email file and send script. Now a release is one short entry (headline, features, small items) and the same template and script send it. The 1.9.5 email is written and ready. Nothing has been sent.
+
+### Technical changes
+- apps/web/src/emails/announcements/release.ts: generic template (iOS → App Store, Android → Google Play).
+- apps/web/src/emails/announcements/releases.ts: RELEASE_EMAILS, with the 1.9.5 entry. Cadence note at the top.
+- apps/web/scripts/release-announce-send.ts:
+  - Modes: `<version>` dry-run / test / preview / live --yes.
+  - Live sends are claimed in TrialEmailLog (`release_<version>`) before sending, so a re-run never double-sends.
+  - iOS release gate: refuses unless the App Store's public lookup shows that version live.
+- Test: release.test.ts.
+
+### Manual steps needed
+- Jimmy: confirm the cadence (one email per store release with user-facing changes, sent the day it's live).
+- When 1.9.5 is live: dry-run → test → live --yes.
+
+---
+
+## [2026-10-23] — Faster entry processing: fewer Inngest round trips before results
+
+- **Requested by:** Jimmy (Miro: "Speed up processing")
+- **Committed by:** Claude Code
+- **Commit hash:** (see git log: "perf(processing): one step from transcript to Claude")
+
+### In plain English
+A week of timing data showed a median of 47 s from saving an entry to seeing results. About 11 s of that was the system handing work between steps, not doing anything. Those hand-offs are now collapsed into one step, plus one more before results are saved. Expect roughly 8–10 s faster; we'll measure it after deploy.
+
+### Technical changes
+- apps/web/src/inngest/functions/process-entry.ts:
+  - `prepare-and-extract` replaces compute-entitlement, build-memory-context, fetch-calendar-context, read-dispositional-flag, cancel-check-before-extract, set-extracting-status and extract.
+  - The FREE fork and the cancel gate are unchanged in order.
+  - persist-extraction does the cancel gate inline (same step id, so no double persist).
+  - The new step id means runs in flight at deploy re-run cleanly.
+- docs/processing-timeline.md: baseline numbers + what changed.
+- Test: evidence/processing-speed.test.ts.
+
+### Manual steps needed
+- None.
 
 ---
 
