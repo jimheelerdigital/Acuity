@@ -14,8 +14,8 @@ import { localYmd } from "@/lib/today-tasks";
  * just means a later edit puts the event back on its due date.
  */
 
-const BLOCKS_KEY = "ripple.planDay.blocks";
-const SETTINGS_KEY = "ripple.planDay.settings";
+const BLOCKS_KEY = "planDay.blocks";
+const SETTINGS_KEY = "planDay.settings";
 
 type BlockMap = Record<string, StoredBlock>;
 
