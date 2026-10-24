@@ -7,6 +7,15 @@
 
 ---
 
+## [2026-10-24] — Fix: recovery email orchestrator timing out every tick
+
+- **Requested by:** Jimmy (open item: /api/inngest 300s timeouts)
+- **Committed by:** Claude Code
+- **Root cause (traced with the new `[inngest.invoke]` log line, #123):** `recovery-email-orchestrator` runs one step over ~700 candidates per tick. Each candidate cost 3 serial DB round-trips (24h throttle check, then sendTrialEmail's user + dedup lookups), even when the email was sent long ago or its key is switched off. The step hit Vercel's 300s limit on every run, and the retries chained into a timeout every ~5 minutes. Emails late in the step order (keep momentum, milestones, never-recorded drip) were the ones that never got reached.
+- **Fix:** two queries per tick snapshot "already sent (user, key)" and "emailed in the last 24h". trySend skips disabled keys and already-sent emails with no DB work, and the throttle is a set lookup. sendTrialEmail still re-checks before every real send. Same rules, same caps.
+
+---
+
 ## [2026-10-24] — Creator payments hardening (review of 10/22–23)
 
 - **Requested by:** Jimmy ("fix 1–4", before the 1.9.6 build)
