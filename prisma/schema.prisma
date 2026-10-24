@@ -3801,6 +3801,8 @@ enum CreatorPayoutRail {
 enum CreatorPayoutStatus {
   previewed
   approved
+  /// Claimed by an execute; a Stripe transfer may already exist (2026-10-24).
+  sending
   sent
   failed
 }

@@ -83,6 +83,24 @@ export async function isSelfReferral(
   return false;
 }
 
+/** Any sign the account already has (or had) a subscription. PURE. */
+export function alreadySubscribed(u: {
+  subscriptionStatus?: string | null;
+  subscriptionSource?: string | null;
+  stripeSubscriptionId?: string | null;
+  appleOriginalTransactionId?: string | null;
+  googlePurchaseToken?: string | null;
+}): boolean {
+  return Boolean(
+    u.subscriptionSource ||
+      u.stripeSubscriptionId ||
+      u.appleOriginalTransactionId ||
+      u.googlePurchaseToken ||
+      (u.subscriptionStatus ?? "").toUpperCase() === "PRO" ||
+      (u.subscriptionStatus ?? "").toUpperCase() === "PAST_DUE"
+  );
+}
+
 /**
  * Write the one referral record for an account. Rejects an existing record,
  * an account that isn't new (or already paid), and self-referrals.
@@ -100,7 +118,18 @@ export async function writeReferral(params: {
     const [user, creator, existing] = await Promise.all([
       prisma.user.findUnique({
         where: { id: userId },
-        select: { id: true, email: true, createdAt: true, pushToken: true, stripeCustomerId: true },
+        select: {
+          id: true,
+          email: true,
+          createdAt: true,
+          pushToken: true,
+          stripeCustomerId: true,
+          subscriptionStatus: true,
+          subscriptionSource: true,
+          stripeSubscriptionId: true,
+          appleOriginalTransactionId: true,
+          googlePurchaseToken: true,
+        },
       }),
       prisma.ugcCreator.findUnique({
         where: { id: creatorId },
@@ -115,8 +144,13 @@ export async function writeReferral(params: {
     if (source !== "admin") {
       const age = Date.now() - user.createdAt.getTime();
       if (age > NEW_ACCOUNT_MAX_AGE_MS) return { ok: false, reason: "not_new" };
-      const paid = await prisma.creatorRevenueEvent.count({ where: { userId } });
-      if (paid > 0) return { ok: false, reason: "not_new" };
+      // Already subscribed (paid OR in a store/Stripe trial) before the
+      // referral → not the creator's customer. (The old check counted
+      // CreatorRevenueEvent rows, which only exist for referred users, so
+      // it could never fire.) Every legitimate road runs before the
+      // paywall: web cookie / email at signup, the app code right after
+      // the account exists.
+      if (alreadySubscribed(user)) return { ok: false, reason: "not_new" };
     }
 
     if (await isSelfReferral(creator, user)) {

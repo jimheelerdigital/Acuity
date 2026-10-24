@@ -104,6 +104,11 @@ export const limiters = {
   /** Public waitlist signups — spam + email-bomb target. */
   waitlist: buildLimiter("waitlist", 3, "1 h"),
   /**
+   * Founder "new app download" email (app_first_open). The endpoint is
+   * public, so cap how many emails one IP can trigger.
+   */
+  installEmailByIp: buildLimiter("install-email-ip", 3, "1 h"),
+  /**
    * IP-based signup cap. The authByEmail limiter (5/hr) keys on the
    * email address, so an attacker rotating across email providers
    * (gmail, outlook, proton, custom domains) can still farm trials at

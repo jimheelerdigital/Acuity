@@ -594,7 +594,7 @@ async function PayoutsTab() {
                       <div className="text-xs text-acuity-text-ter">{p.creator.paypalEmail}</div>
                     )}
                   </td>
-                  <td className={`p-2 ${p.status === "failed" ? "text-amber-400" : ""}`}>{p.status}</td>
+                  <td className={`p-2 ${p.status === "failed" || p.status === "sending" ? "text-amber-400" : ""}`}>{p.status}</td>
                   <td className="p-2">{day(p.sentAt)}</td>
                   <td className="p-2 text-xs">{p.error ?? p.externalId ?? ""}</td>
                   <td className="p-2">

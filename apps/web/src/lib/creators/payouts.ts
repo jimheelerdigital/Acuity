@@ -178,49 +178,98 @@ export interface ExecuteResult {
 }
 
 /**
- * Execute an approved run. Stripe Connect payouts transfer now (idempotency
- * key = payout id); PayPal / manual ones are left approved for Keenan to send
- * by hand and mark sent.
+ * Execute an approved run. Stripe Connect payouts transfer now; PayPal /
+ * manual ones are left approved for Keenan to send by hand and mark sent.
+ *
+ * Never pays twice (2026-10-24 review):
+ *   - Each payout is CLAIMED first (approved → sending, one atomic update),
+ *     so two clicks / two runs can't both work on it.
+ *   - Before creating a transfer we look for one already made for this
+ *     payout (transfer_group = payout id). Stripe idempotency keys expire
+ *     after 24h, so they alone don't protect a retry days later.
+ *   - Once money has moved the payout is never marked "failed" (which an
+ *     admin could reset and re-send). If recording it fails it stays
+ *     "sending" with the transfer id, and the next execute settles it
+ *     without a second transfer.
  */
 export async function executeRun(runKey: string): Promise<ExecuteResult> {
   const out: ExecuteResult = { sent: [], manual: [], failed: [] };
   const payouts = await prisma.creatorPayout.findMany({
-    where: { runKey, status: "approved" },
+    where: { runKey, status: { in: ["approved", "sending"] } },
     include: { creator: { select: { stripeAccountId: true, stripePayoutsEnabled: true } } },
   });
   for (const p of payouts) {
     if (p.rail !== "stripe_connect") {
-      out.manual.push(p.id);
+      if (p.status === "approved") out.manual.push(p.id);
       continue;
     }
+    // Claim. A "sending" row was claimed by an earlier, interrupted run.
+    if (p.status === "approved") {
+      const claimed = await prisma.creatorPayout.updateMany({
+        where: { id: p.id, status: "approved" },
+        data: { status: "sending", error: null },
+      });
+      if (claimed.count === 0) continue; // another run has it
+    }
+
+    let transferId: string | null = null;
     try {
-      if (!stripePayoutsEnabled()) throw new Error("Stripe payouts are off (CREATOR_STRIPE_PAYOUTS)");
-      if (!p.creator.stripeAccountId || !p.creator.stripePayoutsEnabled) {
-        throw new Error("creator's Stripe account is not ready");
-      }
-      const amount = await revalidatedAmount(p.id);
-      if (amount < PAYOUT_MIN_CENTS) throw new Error("payable total changed since preview; re-preview the run");
       const { stripe } = await import("@/lib/stripe");
-      const transfer = await stripe.transfers.create(
-        {
-          amount,
-          currency: "usd",
-          destination: p.creator.stripeAccountId,
-          description: `Ripple creator payout ${p.runKey}`,
-          metadata: { payoutId: p.id, creatorId: p.creatorId },
-        },
-        { idempotencyKey: `creator-payout-${p.id}` }
-      );
-      await settlePayout(p.id, transfer.id);
-      out.sent.push(p.id);
+      const group = transferGroupFor(p.id);
+      const existing = await stripe.transfers.list({ transfer_group: group, limit: 1 });
+      if (existing.data[0]) {
+        transferId = existing.data[0].id;
+      } else {
+        if (!stripePayoutsEnabled()) throw new Error("Stripe payouts are off (CREATOR_STRIPE_PAYOUTS)");
+        if (!p.creator.stripeAccountId || !p.creator.stripePayoutsEnabled) {
+          throw new Error("creator's Stripe account is not ready");
+        }
+        const amount = await revalidatedAmount(p.id);
+        if (amount < PAYOUT_MIN_CENTS) throw new Error("payable total changed since preview; re-preview the run");
+        const transfer = await stripe.transfers.create(
+          {
+            amount,
+            currency: "usd",
+            destination: p.creator.stripeAccountId,
+            transfer_group: group,
+            description: `Ripple creator payout ${p.runKey}`,
+            metadata: { payoutId: p.id, creatorId: p.creatorId },
+          },
+          { idempotencyKey: `creator-payout-${p.id}` }
+        );
+        transferId = transfer.id;
+      }
     } catch (err) {
+      // Nothing was sent: safe to mark failed (Reset → re-approve).
       const msg = err instanceof Error ? err.message : String(err);
       await prisma.creatorPayout.update({ where: { id: p.id }, data: { status: "failed", error: msg } });
       safeLog.error("creators.payout.failed", err, { payoutId: p.id });
       out.failed.push({ payoutId: p.id, error: msg });
+      continue;
+    }
+
+    try {
+      await settlePayout(p.id, transferId);
+      out.sent.push(p.id);
+    } catch (err) {
+      // Money moved; only the bookkeeping failed. Stay "sending" with the
+      // transfer id so the next execute settles it (no second transfer).
+      const msg = err instanceof Error ? err.message : String(err);
+      await prisma.creatorPayout
+        .update({
+          where: { id: p.id },
+          data: { externalId: transferId, error: `sent as ${transferId}, not yet recorded: ${msg}` },
+        })
+        .catch(() => {});
+      safeLog.error("creators.payout.settle-failed", err, { payoutId: p.id, transferId });
+      out.failed.push({ payoutId: p.id, error: `sent (${transferId}) but not recorded yet: run execute again` });
     }
   }
   return out;
+}
+
+export function transferGroupFor(payoutId: string): string {
+  return `creator-payout-${payoutId}`;
 }
 
 /** Recheck that every covered row is still payable; returns the total. */
@@ -248,6 +297,7 @@ export async function markPayoutSentManually(payoutId: string, externalRef: stri
 /** Write the payout ledger row, mark covered rows paid, email the statement. */
 async function settlePayout(payoutId: string, externalId: string): Promise<void> {
   const p = await prisma.creatorPayout.findUniqueOrThrow({ where: { id: payoutId } });
+  if (p.status === "sent") return; // already recorded (a repeated execute)
   const ids = p.entryIds as string[];
   const now = new Date();
   await prisma.$transaction([
