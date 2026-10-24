@@ -235,5 +235,14 @@ export async function PUT(req: NextRequest, ctx: unknown) {
 }
 
 export async function POST(req: NextRequest, ctx: unknown) {
+  // Which function/step each invocation runs (2026-10-24). Vercel's timeout
+  // log line carries only the request id, so without this a 300s timeout
+  // can't be traced back to the Inngest function that caused it.
+  const fnId = req.nextUrl.searchParams.get("fnId");
+  if (fnId) {
+    console.log(
+      `[inngest.invoke] fn=${fnId} step=${req.nextUrl.searchParams.get("stepId") ?? "-"}`
+    );
+  }
   return handler.POST(req, ctx);
 }
