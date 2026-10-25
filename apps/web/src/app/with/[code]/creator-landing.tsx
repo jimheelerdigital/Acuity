@@ -74,7 +74,7 @@ export function CreatorLanding({ code, name, children }: { code: string; name: s
   return (
     <div onClickCapture={onClickCapture}>
       <div className="bg-[#1B1815] px-4 py-2.5 text-center text-[14px] font-semibold text-[#FBF6EF]">
-        Sent by {name} <span aria-hidden="true">·</span> your code{" "}
+        Referred by {name} <span aria-hidden="true">·</span> your code{" "}
         <span className="rounded-full bg-[#FBF6EF]/10 px-2 py-0.5 font-mono tracking-[1.4px]">{code}</span> is saved
       </div>
       {children}
