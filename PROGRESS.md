@@ -7,6 +7,14 @@
 
 ---
 
+## [2026-10-25] feat(referrals): "Were you referred by Tess?" pre-filled from a recent link tap
+
+- Gap: someone taps goripple.io/c/<CODE> on an iPhone and installs from the App Store. The install carries nothing, so no credit.
+- New: GET /api/creators/suggest (no auth) returns the referrer whose link was tapped from the same IP (hashed, same hash as /c/<code>) in the last 24h. The sign-up referral row then shows "Were you referred by Tess? Yes / No". Yes fills the code and goes through the normal Road 2 POST after sign-up. A suggestion alone never credits anyone, because shared IPs make it a guess.
+- The /c/<code> route now uses the shared hashIp().
+- Index migration docs/migrations/2026-10-25-creator-click-iphash-index.sql is written but NOT yet applied. The table has 4 rows, so it isn't urgent.
+- Tests: lib/creators/suggest.test.ts.
+
 ## [2026-10-25] fix(flags): feature flag cache expires after 30s (was: never on a warm instance)
 
 - Symptom: Jimmy's calendar connect kept returning 404 "Not found" after a calendar_integrations per-user override was written to production.

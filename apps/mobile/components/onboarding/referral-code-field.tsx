@@ -62,6 +62,9 @@ export function ReferralCodeField({ colors = DEFAULT_COLORS }: { colors?: Referr
   // the first render's empty value clears the stored code before the
   // restore below can load it.
   const [restored, setRestored] = useState(false);
+  // A referral link tapped from this network shortly before install
+  // (GET /api/creators/suggest). Only pre-fills; the person confirms.
+  const [suggestion, setSuggestion] = useState<{ code: string; firstName: string } | null>(null);
 
   // Restore a code typed before a cold start / back-navigation.
   useEffect(() => {
@@ -70,7 +73,14 @@ export function ReferralCodeField({ colors = DEFAULT_COLORS }: { colors?: Referr
         if (a.creatorCode) {
           setOpen(true);
           setValue(a.creatorCode);
+          return;
         }
+        void fetch(`${api.baseUrl()}/api/creators/suggest`)
+          .then((r) => r.json() as Promise<{ code?: string; firstName?: string }>)
+          .then((j) => {
+            if (j.code) setSuggestion({ code: j.code, firstName: j.firstName ?? "your friend" });
+          })
+          .catch(() => {});
       })
       .finally(() => setRestored(true));
   }, []);
@@ -106,6 +116,48 @@ export function ReferralCodeField({ colors = DEFAULT_COLORS }: { colors?: Referr
     }, 450);
     return () => clearTimeout(t);
   }, [value, restored]);
+
+  if (!open && suggestion) {
+    return (
+      <View
+        style={{
+          borderWidth: 1,
+          borderColor: c.line,
+          borderRadius: 14,
+          paddingHorizontal: 14,
+          paddingVertical: 12,
+          backgroundColor: c.inputBg,
+          gap: 10,
+        }}
+      >
+        <Text style={{ fontSize: 15, color: c.text }}>
+          Were you referred by <Text style={{ fontWeight: "600" }}>{suggestion.firstName}</Text>?
+        </Text>
+        <View style={{ flexDirection: "row", gap: 10 }}>
+          <Pressable
+            onPress={() => {
+              setValue(suggestion.code);
+              setOpen(true);
+              setSuggestion(null);
+            }}
+            accessibilityRole="button"
+            accessibilityLabel={`Yes, ${suggestion.firstName} referred me`}
+            style={{ flex: 1, alignItems: "center", paddingVertical: 10, borderRadius: 12, backgroundColor: c.accent }}
+          >
+            <Text style={{ fontSize: 15, color: "#ffffff", fontWeight: "600" }}>Yes</Text>
+          </Pressable>
+          <Pressable
+            onPress={() => setSuggestion(null)}
+            accessibilityRole="button"
+            accessibilityLabel="No"
+            style={{ flex: 1, alignItems: "center", paddingVertical: 10, borderRadius: 12, borderWidth: 1, borderColor: c.line }}
+          >
+            <Text style={{ fontSize: 15, color: c.text, fontWeight: "600" }}>No</Text>
+          </Pressable>
+        </View>
+      </View>
+    );
+  }
 
   if (!open) {
     return (
