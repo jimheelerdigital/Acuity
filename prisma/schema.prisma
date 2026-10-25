@@ -3852,6 +3852,7 @@ model CreatorReferralClick {
 
   @@index([creatorId, createdAt])
   @@index([capturedEmail])
+  @@index([ipHash, createdAt])
 }
 
 /// The permanent customer → creator link. One per account, written once.

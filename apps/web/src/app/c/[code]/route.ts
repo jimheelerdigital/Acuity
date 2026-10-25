@@ -7,12 +7,13 @@
  *
  * Separate from /u/<code> (paid UGC ad tracking via UTMs), which is unchanged.
  */
-import { createHash, randomUUID } from "node:crypto";
+import { randomUUID } from "node:crypto";
 
 import { NextRequest, NextResponse } from "next/server";
 
 import { CLICK_COOKIE, CLICK_COOKIE_DAYS, CODE_COOKIE, cookieDomainFor } from "@/lib/creators/config";
 import { firstNameOf } from "@/lib/creators/money";
+import { hashIp } from "@/lib/creators/suggest";
 import { safeLog } from "@/lib/safe-log";
 
 export const dynamic = "force-dynamic";
@@ -56,9 +57,7 @@ export async function GET(req: NextRequest, { params }: { params: { code: string
       data: {
         creatorId: creator.id,
         clickId,
-        ipHash: ip
-          ? createHash("sha256").update(`${process.env.NEXTAUTH_SECRET ?? ""}:${ip}`).digest("hex").slice(0, 32)
-          : null,
+        ipHash: hashIp(ip),
         userAgent: ua.slice(0, 400) || null,
         referrer: req.headers.get("referer")?.slice(0, 400) ?? null,
         utm: Object.keys(utm).length ? utm : undefined,
