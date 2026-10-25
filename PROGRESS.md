@@ -13,6 +13,12 @@
 - Root cause: lib/feature-flags.ts cached flags and per-user overrides at module scope with no expiry. On a warm serverless instance, a DB change (or an admin-page toggle, whose resetFeatureFlagCache() only clears the instance that served it) was invisible until the instance recycled. That would also have delayed enabling calendar_integrations for everyone at release.
 - Fix: the cache now resets after FLAG_CACHE_TTL_MS (30s), and still dedups within a request.
 - Test: feature-flags-cache.test.ts (fails on the old code, passes now).
+## [2026-10-25] feat(mobile): "Were you referred?" asked up front + theme-aware back buttons
+
+- Referral field (was "Did a creator send you?") moved from below the email form, where it was collapsed and nobody saw it, to a visible "Were you referred? / Add code" row ABOVE the Apple/Google buttons on the onboarding save screen. Jimmy, 2026-10-25: never saw it, and doesn't want "creator" used in user-facing copy.
+- All user-facing copy now says "referred" / "referral code", not "creator": the mobile field, the /api/creators/code messages, and the web funnel banner ("Referred by Tess · code TESS saved"). Internal names are unchanged.
+- The (auth)/sign-up screen still has no referral field. It's AUTH-CRITICAL and needs manual OAuth verification, so it's a follow-up.
+- BackButton / StickyBackButton use theme tokens instead of the hardcoded dark pill left over from the dark-only theme. Integrations now uses an inline back button, because the sticky one landed on the title when the screen opened in a sheet.
 
 ## [2026-10-25] — Creators get free Ripple Pro automatically
 

@@ -34,7 +34,7 @@ export function CreatorFunnelBanner() {
       } catch {
         /* private mode: show it anyway */
       }
-      setInfo({ code, name: name || "a creator" });
+      setInfo({ code, name: name || "a friend" });
       const show = setTimeout(() => setVisible(true), 300);
       const hide = setTimeout(() => {
         setVisible(false);
@@ -74,7 +74,7 @@ export function CreatorFunnelBanner() {
           </svg>
         </span>
         <span>
-          Sent by <b className="font-semibold text-[#121216]">{info.name}</b>
+          Referred by <b className="font-semibold text-[#121216]">{info.name}</b>
           <span aria-hidden> · </span>
           code <b className="font-semibold tracking-[1px] text-[#D9704E]">{info.code}</b> saved
         </span>
