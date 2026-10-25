@@ -328,6 +328,26 @@ async function CreatorsTab({ sp }: { sp: SP }) {
         </section>
       )}
 
+      <section className="neo-glass rounded-2xl p-5">
+        <h2 className="text-sm font-semibold">Add a creator</h2>
+        <p className="mb-3 mt-1 text-xs text-acuity-text-ter">
+          For someone who said yes. Adds them, gives them their code (yours if it's free, otherwise a random one) and emails their dashboard invite.
+        </p>
+        <FormAction
+          body={{ action: "add-creator" }}
+          fields={[
+            { name: "handle", placeholder: "@instagram handle", width: "w-44" },
+            { name: "firstName", placeholder: "First name", width: "w-32" },
+            { name: "email", placeholder: "Email", width: "w-56", type: "email" },
+            { name: "code", placeholder: "Code (optional, e.g. GRACE)", width: "w-52" },
+          ]}
+          required={["handle", "firstName", "email"]}
+          label="Add & send invite"
+          tone="go"
+          confirm
+        />
+      </section>
+
       <section className="space-y-4">
         <div className="flex flex-wrap items-center gap-3">
           <h2 className="mr-auto font-display text-[20px] font-bold tracking-[-0.3px]">

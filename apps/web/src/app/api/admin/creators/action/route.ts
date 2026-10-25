@@ -40,6 +40,20 @@ export async function POST(req: NextRequest) {
   try {
     let result: unknown = null;
     switch (action) {
+      case "add-creator": {
+        const { addCreatorDirect } = await import("@/lib/creators/admin");
+        result = await addCreatorDirect({
+          handle: need(str(b.handle), "handle"),
+          email: need(str(b.email), "email"),
+          firstName: need(str(b.firstName), "firstName"),
+          platform: str(b.platform) ?? undefined,
+          code: str(b.code) ?? undefined,
+          sendInvite: true,
+          by,
+        });
+        await audit("add-creator", { handle: b.handle, email: b.email, result });
+        break;
+      }
       case "issue-code": {
         const { issueReferralCode } = await import("@/lib/creators/admin");
         result = await issueReferralCode(need(str(b.creatorId), "creatorId"), { force: true });

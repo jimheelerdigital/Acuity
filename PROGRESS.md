@@ -7,6 +7,26 @@
 
 ---
 
+## [2026-10-25] — "Add a creator" form on Creator payouts
+
+- **Requested by:** Keenan
+- **Committed by:** Claude Code
+- **Commit hash:** (see git log: "feat: Add creators straight into the program from Creator payouts")
+
+### In plain English (for Keenan)
+When a creator says yes in DMs, you now add them on the Creator payouts page with their Instagram handle, first name, email and (optionally) the code they want. One click adds them, gives them their code and emails their dashboard invite, where they accept the agreement and connect Stripe. The old UGC "Add creator" form had no email field and ran the old AI scoring, so invites couldn't go out from it.
+
+### Technical changes (for Jimmy)
+- `lib/creators/admin.ts`: addCreatorDirect (upsert UgcCreator by platform+handle, status deal + status event, issueReferralCode, optional setCustomCode, onCreatorDeal resend).
+- `api/admin/creators/action/route.ts`: action `add-creator` (audited).
+- `admin/creators/page.tsx`: "Add a creator" form (confirm click) above the creators list.
+
+### Manual steps needed
+- None
+
+### Notes
+- A taken/blocked custom code falls back to the random code; the creator can still pick their own on the dashboard.
+
 ## [2026-10-23] — Fix: Mythicals "Claude" posts were secretly written by ChatGPT
 
 - **Requested by:** Keenan

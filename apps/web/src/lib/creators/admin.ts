@@ -147,3 +147,74 @@ export async function reconcileStripe(): Promise<Array<{ creatorId: string; ledg
   }
   return gaps;
 }
+
+
+/**
+ * Add a creator straight into the program (2026-10-25, per Keenan): for
+ * creators who said yes in DMs. Creates or updates the creator by handle,
+ * sets their email + first name, marks them "deal", issues their code (custom
+ * if given and available, else random) and, unless told not to, emails the
+ * dashboard invite. Skips the old outreach scoring/drafting entirely.
+ */
+export async function addCreatorDirect(input: {
+  handle: string;
+  email: string;
+  firstName: string;
+  platform?: string;
+  code?: string;
+  sendInvite?: boolean;
+  by: string;
+}): Promise<{ creatorId: string; code: string; invited: boolean; codeNote?: string }> {
+  const raw = input.handle.trim();
+  const platform = input.platform === "tiktok" || /tiktok\.com/i.test(raw) ? "tiktok" : "instagram";
+  const handle = raw.replace(/\?.*$/, "").replace(/^https?:\/\/[^/]+\//i, "").replace(/^@/, "").replace(/\/$/, "").toLowerCase();
+  if (!/^[a-z0-9._]{1,40}$/.test(handle)) throw new Error(`Not a valid handle: "${input.handle}"`);
+  const email = input.email.trim().toLowerCase();
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) throw new Error("Enter a valid email");
+  const firstName = input.firstName.trim().slice(0, 40);
+  if (!firstName) throw new Error("First name required");
+
+  const { newTrackingCode } = await import("@/lib/ugc/status");
+  const existing = await prisma.ugcCreator.findUnique({ where: { platform_handle: { platform, handle } }, select: { id: true, status: true } });
+  const creator = existing
+    ? await prisma.ugcCreator.update({
+        where: { id: existing.id },
+        data: { email, firstName, displayName: firstName, status: "deal" },
+        select: { id: true },
+      })
+    : await prisma.ugcCreator.create({
+        data: {
+          platform,
+          handle,
+          source: "manual",
+          trackingCode: newTrackingCode(),
+          status: "deal",
+          email,
+          firstName,
+          displayName: firstName,
+          notes: "Added from Creator payouts (said yes in DMs)",
+        },
+        select: { id: true },
+      });
+  if (!existing || existing.status !== "deal") {
+    await prisma.ugcStatusEvent.create({
+      data: { creatorId: creator.id, from: existing?.status ?? null, to: "deal", by: input.by, note: "added to the creator program" },
+    });
+  }
+
+  let code = await issueReferralCode(creator.id, { force: true });
+  let codeNote: string | undefined;
+  if (input.code?.trim()) {
+    const { setCustomCode } = await import("./codes");
+    const r = await setCustomCode(creator.id, input.code, `admin:${input.by}`);
+    if (r.ok) code = r.code;
+    else codeNote = `Custom code not used (${r.message}). They got ${code} and can pick their own on the dashboard.`;
+  }
+
+  let invited = false;
+  if (input.sendInvite !== false) {
+    await onCreatorDeal(creator.id, { resend: true });
+    invited = true;
+  }
+  return { creatorId: creator.id, code, invited, codeNote };
+}
