@@ -7,6 +7,13 @@
 
 ---
 
+## [2026-10-25] fix(ios): 1.9.6 upload rejected for missing NSHealthUpdateUsageDescription
+
+- Build 193 (1.9.6) archived fine with the new HealthKit profile, but App Store Connect rejected the upload: "Info.plist is missing NSHealthUpdateUsageDescription". The healthkit plugin had `NSHealthUpdateUsageDescription: false` (which removes the key). Ripple only requests read access, but Apple requires the string because the HealthKit binary references write APIs.
+- Fix: an honest string saying Ripple only reads from Health and never writes. The app still requests read types only, so users never see a write prompt.
+- Also fixed the ATT prompt still saying "Acuity", changing it to "Ripple".
+- Guard: ios-permission-strings.test now flags any plugin `…UsageDescription: false` (it previously only matched `…permission` keys) and any permission string containing "Acuity". Confirmed the test fails on the old app.json.
+
 ## [2026-10-24] — Fix: recovery email orchestrator timing out every tick
 
 - **Requested by:** Jimmy (open item: /api/inngest 300s timeouts)
