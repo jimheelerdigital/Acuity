@@ -171,7 +171,12 @@ export async function POST(req: NextRequest) {
     });
     if (newlyInternal) await flagSessionInternal(prisma, sessionToken, verifiedUserId);
     // Founder email on every app download (2026-10-23, per Keenan).
-    if (event === "app_first_open" && !internal) {
+    // The endpoint is public, so the email only goes out for the FIRST
+    // app_first_open of an install id (the app sends its install id as
+    // sessionToken) and at most 3 per IP per hour. A replayed or scripted
+    // call still logs the event but can't flood the inbox or burn the
+    // Resend quota that sign-in codes share.
+    if (event === "app_first_open" && !internal && (await shouldEmailInstall(prisma, req, sessionToken))) {
       let meta: Record<string, unknown> = {};
       try {
         meta = body.value ? (JSON.parse(body.value) as Record<string, unknown>) : {};
@@ -192,4 +197,21 @@ export async function POST(req: NextRequest) {
   }
 
   return new Response(null, { status: 204 });
+}
+
+/** First app_first_open for this install id, and the IP is under its cap. */
+async function shouldEmailInstall(
+  prisma: import("@prisma/client").PrismaClient,
+  req: NextRequest,
+  sessionToken: string | null
+): Promise<boolean> {
+  if (!sessionToken) return false;
+  // The row for THIS call was just written, so "first" means exactly one.
+  const seen = await prisma.onboardingEvent.count({
+    where: { event: "app_first_open", sessionToken },
+  });
+  if (seen > 1) return false;
+  const { checkRateLimit, identifierFromRequest, limiters } = await import("@/lib/rate-limit");
+  const rl = await checkRateLimit(limiters.installEmailByIp, identifierFromRequest(req, "install-email"));
+  return rl.success;
 }

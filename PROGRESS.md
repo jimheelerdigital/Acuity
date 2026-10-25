@@ -26,6 +26,35 @@ When a creator says yes in DMs, you now add them on the Creator payouts page wit
 
 ### Notes
 - A taken/blocked custom code falls back to the random code; the creator can still pick their own on the dashboard.
+## [2026-10-25] fix(ios): 1.9.6 upload rejected for missing NSHealthUpdateUsageDescription
+
+- Build 193 (1.9.6) archived fine with the new HealthKit profile, but App Store Connect rejected the upload: "Info.plist is missing NSHealthUpdateUsageDescription". The healthkit plugin had `NSHealthUpdateUsageDescription: false` (which removes the key). Ripple only requests read access, but Apple requires the string because the HealthKit binary references write APIs.
+- Fix: an honest string saying Ripple only reads from Health and never writes. The app still requests read types only, so users never see a write prompt.
+- Also fixed the ATT prompt still saying "Acuity", changing it to "Ripple".
+- Guard: ios-permission-strings.test now flags any plugin `…UsageDescription: false` (it previously only matched `…permission` keys) and any permission string containing "Acuity". Confirmed the test fails on the old app.json.
+
+## [2026-10-24] — Fix: recovery email orchestrator timing out every tick
+
+- **Requested by:** Jimmy (open item: /api/inngest 300s timeouts)
+- **Committed by:** Claude Code
+- **Root cause (traced with the new `[inngest.invoke]` log line, #123):** `recovery-email-orchestrator` runs one step over ~700 candidates per tick. Each candidate cost 3 serial DB round-trips (24h throttle check, then sendTrialEmail's user + dedup lookups), even when the email was sent long ago or its key is switched off. The step hit Vercel's 300s limit on every run, and the retries chained into a timeout every ~5 minutes. Emails late in the step order (keep momentum, milestones, never-recorded drip) were the ones that never got reached.
+- **Fix:** two queries per tick snapshot "already sent (user, key)" and "emailed in the last 24h". trySend skips disabled keys and already-sent emails with no DB work, and the throttle is a set lookup. sendTrialEmail still re-checks before every real send. Same rules, same caps.
+
+---
+
+## [2026-10-24] — Creator payments hardening (review of 10/22–23)
+
+- **Requested by:** Jimmy ("fix 1–4", before the 1.9.6 build)
+- **Committed by:** Claude Code
+- **What:**
+  1. App-download founder email: only the first app_first_open per install id, max 3 per IP per hour (new `installEmailByIp` limiter), header values length-capped and HTML-escaped. The payment email's address is escaped too.
+  2. Payouts can't pay twice: each payout is claimed (approved → new `sending` state) before any transfer; an existing transfer for the payout is looked up by `transfer_group` before creating one (idempotency keys expire after 24h); once money moved a payout is never marked "failed", and a re-run settles it without a second transfer. `settlePayout` is a no-op on a sent payout.
+  3. "New accounts only": `alreadySubscribed()` checks the user's real subscription state (status PRO/PAST_DUE, subscriptionSource, Stripe sub, Apple/Google ids). The old check counted CreatorRevenueEvent rows, which only exist for referred users, so it never fired. All legitimate roads still pass (the web funnel signs the user in before checkout).
+  4. Prod data: the TESS50 test creator's 4 ledger rows ($122.50) voided and the creator put on payout hold. No pending/payable creator rows remain.
+- **Prod DB:** docs/migrations/2026-10-24-creator-payout-sending.sql applied (enum value `sending`), before this deploy.
+- **Tests:** lib/creators/hardening.test.ts; creators + onboarding-events suites pass.
+
+---
 
 ## [2026-10-23] — Fix: Mythicals "Claude" posts were secretly written by ChatGPT
 

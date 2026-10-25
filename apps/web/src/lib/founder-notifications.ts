@@ -12,6 +12,8 @@
 
 import "server-only";
 
+import { escapeHtml } from "@/lib/escape-html";
+
 const FOUNDER_NOTIFICATION_RECIPIENTS = [
   "keenan@heelerdigital.com",
   "jim@heelerdigital.com",
@@ -240,7 +242,7 @@ export async function notifyFoundersOfPayment(params: {
         <div style="font-family:-apple-system,BlinkMacSystemFont,sans-serif;max-width:480px;margin:0 auto;padding:24px;">
           <h2 style="color:#C4451C;margin:0 0 16px;">${headline}</h2>
           <table style="width:100%;border-collapse:collapse;">
-            <tr><td style="padding:8px 0;color:#666;">Email</td><td style="padding:8px 0;font-weight:600;">${email}</td></tr>
+            <tr><td style="padding:8px 0;color:#666;">Email</td><td style="padding:8px 0;font-weight:600;">${escapeHtml(email)}</td></tr>
             <tr><td style="padding:8px 0;color:#666;">Plan</td><td style="padding:8px 0;font-weight:600;">${plan}</td></tr>
             <tr><td style="padding:8px 0;color:#666;">Source</td><td style="padding:8px 0;font-weight:600;">${label}</td></tr>
             <tr><td style="padding:8px 0;color:#666;">Time</td><td style="padding:8px 0;">${timeStr}</td></tr>
@@ -270,7 +272,11 @@ export async function notifyFoundersOfInstall(params: {
   timestamp: Date;
 }): Promise<void> {
   if (process.env.FOUNDER_NOTIFICATIONS_ENABLED === "false") return;
-  const { platform, appVersion, reinstall, installId, timestamp } = params;
+  const { platform, reinstall, timestamp } = params;
+  // Both come from request headers / body on a public endpoint: cap the
+  // length and escape before they touch the subject or HTML.
+  const appVersion = params.appVersion ? params.appVersion.slice(0, 20) : null;
+  const installId = params.installId ? params.installId.slice(0, 64) : null;
   const device = platform === "ios" ? "iPhone" : platform === "android" ? "Android" : "Unknown device";
   const headline = reinstall ? "App re-downloaded" : "New app download";
   try {
@@ -280,16 +286,16 @@ export async function notifyFoundersOfInstall(params: {
       from: EMAIL_FROM,
       to: FOUNDER_NOTIFICATION_RECIPIENTS,
       replyTo: REPLY_TO,
-      subject: `\u{1F4F2} ${headline} — ${device}${appVersion ? ` (${appVersion})` : ""}`,
+      subject: `\u{1F4F2} ${headline} — ${device}${appVersion ? ` (${appVersion.replace(/[^\w.\-]/g, "")})` : ""}`,
       html: `
         <div style="font-family:-apple-system,BlinkMacSystemFont,sans-serif;max-width:480px;margin:0 auto;padding:24px;">
           <h2 style="color:#C4451C;margin:0 0 16px;">${headline}</h2>
           <table style="width:100%;border-collapse:collapse;">
             <tr><td style="padding:8px 0;color:#666;">Device</td><td style="padding:8px 0;font-weight:600;">${device}</td></tr>
-            <tr><td style="padding:8px 0;color:#666;">App version</td><td style="padding:8px 0;font-weight:600;">${appVersion ?? "unknown"}</td></tr>
+            <tr><td style="padding:8px 0;color:#666;">App version</td><td style="padding:8px 0;font-weight:600;">${escapeHtml(appVersion ?? "unknown")}</td></tr>
             <tr><td style="padding:8px 0;color:#666;">Reinstall</td><td style="padding:8px 0;">${reinstall ? "Yes (installed before on this phone)" : "No"}</td></tr>
             <tr><td style="padding:8px 0;color:#666;">Time</td><td style="padding:8px 0;">${timeStr}</td></tr>
-            ${installId ? `<tr><td style="padding:8px 0;color:#666;">Install id</td><td style="padding:8px 0;font-family:monospace;font-size:12px;">${installId}</td></tr>` : ""}
+            ${installId ? `<tr><td style="padding:8px 0;color:#666;">Install id</td><td style="padding:8px 0;font-family:monospace;font-size:12px;">${escapeHtml(installId)}</td></tr>` : ""}
           </table>
           <p style="margin-top:16px;color:#888;font-size:12px;">Sent when the app opens for the first time (app 1.9.5+). Which ad brought them in isn't knowable per person on iPhone; see Meta for app-ad installs.</p>
         </div>

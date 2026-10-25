@@ -16,7 +16,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { Avatar, SubscriptionPill } from "@/components/acuity";
 import { fetchCatalog, type CatalogResponse } from "@/lib/achievements-api";
 import { api } from "@/lib/api";
-import type { EntryDTO } from "@acuity/shared";
+import { CALENDAR_INTEGRATION_ENABLED, type EntryDTO } from "@acuity/shared";
 import { AppearanceCard } from "@/components/appearance/appearance-card";
 import { TrialStatusCard } from "@/components/TrialStatusCard";
 import { HapticsRow } from "@/components/appearance/haptics-row";
@@ -544,16 +544,23 @@ export default function ProfileTab() {
               user signs in via web if needed and lands directly on
               the connect card. Distinct from the iOS EventKit
               outbound row above. */}
-          <MenuItem
-            icon="link-outline"
-            label="Connect Google Calendar"
-            sublabel="Ripple reads your day to ground reflections — opens on web"
-            onPress={() => {
-              const base =
-                process.env.EXPO_PUBLIC_API_URL ?? "https://goripple.io";
-              void Linking.openURL(`${base}/account#calendar`);
-            }}
-          />
+          {/* Hidden while the Google sign-in path is switched off
+              (CALENDAR_INTEGRATION_ENABLED in @acuity/shared): the web
+              page it opens can't connect yet, so the row led nowhere
+              (2026-10-24). Phone calendar (Profile → Calendar) covers
+              Google calendars synced to the phone meanwhile. */}
+          {CALENDAR_INTEGRATION_ENABLED ? (
+            <MenuItem
+              icon="link-outline"
+              label="Connect Google Calendar"
+              sublabel="Ripple reads your day to ground reflections — opens on web"
+              onPress={() => {
+                const base =
+                  process.env.EXPO_PUBLIC_API_URL ?? "https://goripple.io";
+                void Linking.openURL(`${base}/account#calendar`);
+              }}
+            />
+          ) : null}
         </SettingsGroup>
 
         {/* SUPPORT group */}

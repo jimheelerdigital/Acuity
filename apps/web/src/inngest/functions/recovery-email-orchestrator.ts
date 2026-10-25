@@ -86,14 +86,31 @@ export const recoveryEmailOrchestratorFn = inngest.createFunction(
         dailyBudget--;
       }
 
+      // ── Per-tick snapshots (2026-10-24) ──
+      // This step was timing out at Vercel's 300s on every tick: ~700
+      // candidates each cost 3 serial DB round-trips (throttle check, then
+      // sendTrialEmail's user + dedup lookups) even when the email had been
+      // sent long ago or the key is switched off. Two queries up front
+      // answer "already sent?" and "emailed in the last 24h?" for everyone;
+      // sendTrialEmail still re-checks before a real send.
+      const { isEmailEnabled } = await import("@/lib/email-enabled");
+      const throttleCutoff = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+      const [allLogs, recentLogs] = await Promise.all([
+        prisma.trialEmailLog.findMany({ select: { userId: true, emailKey: true } }),
+        prisma.trialEmailLog.findMany({
+          where: { sentAt: { gte: throttleCutoff } },
+          select: { userId: true },
+          distinct: ["userId"],
+        }),
+      ]);
+      const alreadySent = new Set(allLogs.map((l) => `${l.userId}|${l.emailKey}`));
+      const recentlyEmailed = new Set(
+        recentLogs.map((l) => l.userId).filter((id): id is string => !!id)
+      );
+
       // ── Helper: check 24h per-user throttle ──
-      async function isThrottled(userId: string): Promise<boolean> {
-        const cutoff = new Date(now.getTime() - 24 * 60 * 60 * 1000);
-        const recent = await prisma.trialEmailLog.findFirst({
-          where: { userId, sentAt: { gte: cutoff } },
-          select: { id: true },
-        });
-        return !!recent;
+      function isThrottled(userId: string): boolean {
+        return recentlyEmailed.has(userId);
       }
 
       // ── Helper: check if user has a specific onboarding event ──
@@ -114,6 +131,11 @@ export const recoveryEmailOrchestratorFn = inngest.createFunction(
         emailKey: TrialEmailKey,
         opts?: { replyTo?: string; skipThrottle?: boolean }
       ): Promise<boolean> {
+        // No DB work for a switched-off key or an email already sent.
+        if (!isEmailEnabled(emailKey) || alreadySent.has(`${userId}|${emailKey}`)) {
+          skipped++;
+          return false;
+        }
         if (config.dryRun) {
           dryRunCounts[emailKey] = (dryRunCounts[emailKey] ?? 0) + 1;
           return false;
@@ -122,7 +144,7 @@ export const recoveryEmailOrchestratorFn = inngest.createFunction(
           rateLimited++;
           return false;
         }
-        if (!opts?.skipThrottle && (await isThrottled(userId))) {
+        if (!opts?.skipThrottle && isThrottled(userId)) {
           throttled++;
           return false;
         }
@@ -131,6 +153,8 @@ export const recoveryEmailOrchestratorFn = inngest.createFunction(
           sent++;
           sentByKey[emailKey] = (sentByKey[emailKey] ?? 0) + 1;
           consumeBudget();
+          alreadySent.add(`${userId}|${emailKey}`);
+          recentlyEmailed.add(userId);
           return true;
         }
         skipped++;
@@ -613,10 +637,7 @@ export const recoveryEmailOrchestratorFn = inngest.createFunction(
           if (!hasGlobalBudget() && !config.dryRun) break;
           if (isInternalEmail(u.email)) continue;
           const ageH = (now.getTime() - firstSignIn.get(u.id)!.getTime()) / 3600_000;
-          const sent1 = await prisma.trialEmailLog.findUnique({
-            where: { userId_emailKey: { userId: u.id, emailKey: "app_first_record_1" } },
-            select: { id: true },
-          });
+          const sent1 = alreadySent.has(`${u.id}|app_first_record_1`);
           // skipThrottle (2026-10-01): she just opened the app; this is the moment,
           // so it isn't held back by a "get the app" email sent earlier that day.
           if (!sent1 && ageH >= 0.5 && ageH < 48) await trySend(u.id, "app_first_record_1", { skipThrottle: true });

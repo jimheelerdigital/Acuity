@@ -25,7 +25,12 @@ type PluginEntry = string | [string, Record<string, unknown>];
 describe("iOS permission strings (apps/mobile/app.json)", () => {
   const plugins: PluginEntry[] = app.plugins ?? [];
   const configs = plugins.filter((p): p is [string, Record<string, unknown>] => Array.isArray(p));
-  const PERMISSION_KEY = /permission$/i;
+  // Also covers raw Info.plist keys passed to plugins (…UsageDescription).
+  // Build 193 (1.9.6) was rejected at upload: @kingstinct/react-native-healthkit
+  // was configured with NSHealthUpdateUsageDescription: false, and App Store
+  // Connect requires that string because the HealthKit binary references write
+  // APIs, even though Ripple only requests read access.
+  const PERMISSION_KEY = /(permission|UsageDescription)$/i;
 
   it("declares the microphone, camera and photo strings in infoPlist", () => {
     const plist = app.ios?.infoPlist ?? {};
@@ -39,6 +44,16 @@ describe("iOS permission strings (apps/mobile/app.json)", () => {
         .map(([k]) => `${name}.${k}`)
     );
     expect(offenders).toEqual([]);
+  });
+
+  it("no permission string uses the old Acuity name", () => {
+    const strings = [
+      ...Object.values(app.ios?.infoPlist ?? {}),
+      ...configs.flatMap(([, cfg]) =>
+        Object.entries(cfg).filter(([k]) => PERMISSION_KEY.test(k)).map(([, v]) => v)
+      ),
+    ].filter((v): v is string => typeof v === "string");
+    expect(strings.filter((s) => /acuity/i.test(s))).toEqual([]);
   });
 
   it("every plugin's microphonePermission matches infoPlist's mic string", () => {
