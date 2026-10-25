@@ -7,6 +7,13 @@
 
 ---
 
+## [2026-10-25] fix(flags): feature flag cache expires after 30s (was: never on a warm instance)
+
+- Symptom: Jimmy's calendar connect kept returning 404 "Not found" after a calendar_integrations per-user override was written to production.
+- Root cause: lib/feature-flags.ts cached flags and per-user overrides at module scope with no expiry. On a warm serverless instance, a DB change (or an admin-page toggle, whose resetFeatureFlagCache() only clears the instance that served it) was invisible until the instance recycled. That would also have delayed enabling calendar_integrations for everyone at release.
+- Fix: the cache now resets after FLAG_CACHE_TTL_MS (30s), and still dedups within a request.
+- Test: feature-flags-cache.test.ts (fails on the old code, passes now).
+
 ## [2026-10-25] — Creators get free Ripple Pro automatically
 
 - **Requested by:** Keenan

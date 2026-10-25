@@ -74,15 +74,28 @@ type FlagCache = {
   overrides: Map<string, Map<string, boolean>>;
 };
 
-let flagCache: FlagCache | null = null;
+/**
+ * The cache lives at module scope, so on a warm serverless instance it
+ * outlives the request. It used to have no expiry: a flag or per-user
+ * override changed in the database (or from the admin page, whose
+ * resetFeatureFlagCache() only clears the ONE instance that served the
+ * admin request) stayed invisible on every other warm instance until it
+ * was recycled. Found 2026-10-25: a calendar_integrations override for
+ * Jimmy kept returning 404 after it was written. Entries now expire after
+ * FLAG_CACHE_TTL_MS, which still dedups the checks inside one request.
+ */
+export const FLAG_CACHE_TTL_MS = 30_000;
+
+let flagCache: (FlagCache & { loadedAt: number }) | null = null;
 
 export function resetFeatureFlagCache(): void {
   flagCache = null;
 }
 
 function getCache(): FlagCache {
-  if (!flagCache) {
-    flagCache = { flags: new Map(), overrides: new Map() };
+  const now = Date.now();
+  if (!flagCache || now - flagCache.loadedAt > FLAG_CACHE_TTL_MS) {
+    flagCache = { flags: new Map(), overrides: new Map(), loadedAt: now };
   }
   return flagCache;
 }
