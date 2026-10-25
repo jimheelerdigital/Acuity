@@ -164,7 +164,7 @@ export async function addCreatorDirect(input: {
   code?: string;
   sendInvite?: boolean;
   by: string;
-}): Promise<{ creatorId: string; code: string; invited: boolean; codeNote?: string }> {
+}): Promise<{ creatorId: string; code: string; invited: boolean; codeNote?: string; proNote: string }> {
   const raw = input.handle.trim();
   const platform = input.platform === "tiktok" || /tiktok\.com/i.test(raw) ? "tiktok" : "instagram";
   const handle = raw.replace(/\?.*$/, "").replace(/^https?:\/\/[^/]+\//i, "").replace(/^@/, "").replace(/\/$/, "").toLowerCase();
@@ -216,5 +216,54 @@ export async function addCreatorDirect(input: {
     await onCreatorDeal(creator.id, { resend: true });
     invited = true;
   }
-  return { creatorId: creator.id, code, invited, codeNote };
+  // Already has a Ripple account with this email? Free Pro now; otherwise it
+  // switches on when they sign up (bootstrapNewUser → autoGrantCreatorPerk).
+  const perk = await autoGrantCreatorPerk(email, `admin:${input.by}`);
+  const proNote = perk.granted
+    ? perk.alreadyPaying
+      ? "Ripple Pro is on. Heads-up: they were already paying for a subscription. It keeps billing until it's cancelled, so cancel/refund it by hand."
+      : "They already had a Ripple account, so Ripple Pro is on now."
+    : "Ripple Pro switches on automatically when they sign up with this email.";
+  return { creatorId: creator.id, code, invited, codeNote, proNote };
+}
+
+
+/**
+ * Free Ripple Pro for creators, automatically (2026-10-25, per Keenan: "any
+ * email that signs up for an affiliate program also gets a free account with
+ * Ripple Pro when they sign up with the same email").
+ *
+ * Called (a) from bootstrapNewUser for every new account, and (b) when a
+ * creator is added and already has a Ripple account. Matches a creator in the
+ * program (has a referral code) by email, then reuses grantCreatorPremium:
+ * durable comp PRO + marks the account as the creator's own (never a referral).
+ * Does NOT cancel an existing paid subscription; the caller is told so a
+ * founder can cancel/refund it by hand. Never throws.
+ */
+export async function autoGrantCreatorPerk(
+  email: string | null | undefined,
+  by: string
+): Promise<{ granted: boolean; creatorId?: string; alreadyPaying?: boolean }> {
+  try {
+    const e = (email ?? "").trim().toLowerCase();
+    if (!e) return { granted: false };
+    const creator = await prisma.ugcCreator.findFirst({
+      where: { email: e, referralCode: { not: null } },
+      select: { id: true },
+    });
+    if (!creator) return { granted: false };
+    const user = await prisma.user.findFirst({
+      where: { email: e },
+      select: { id: true, subscriptionStatus: true, subscriptionSource: true, stripeSubscriptionId: true },
+    });
+    if (!user) return { granted: false, creatorId: creator.id };
+    const alreadyPaying =
+      user.subscriptionStatus === "PRO" && user.subscriptionSource !== "comp" && Boolean(user.subscriptionSource || user.stripeSubscriptionId);
+    await grantCreatorPremium(creator.id, e, by);
+    safeLog.info("creators.perk.granted", { creatorId: creator.id, userId: user.id, alreadyPaying });
+    return { granted: true, creatorId: creator.id, alreadyPaying };
+  } catch (err) {
+    safeLog.warn("creators.perk.failed", { err: err instanceof Error ? err.message : String(err) });
+    return { granted: false };
+  }
 }

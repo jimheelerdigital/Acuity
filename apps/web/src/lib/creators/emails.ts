@@ -76,6 +76,7 @@ export async function sendDashboardLink(creatorId: string, kind: "invite" | "sig
       ? layout(`<p>Hi ${escapeHtml(c.name)},</p>
 <p>Your Ripple creator dashboard is ready. Your link is <a href="${link}">${link.replace("https://", "")}</a> and your code is <strong>${escapeHtml(c.referralCode ?? "")}</strong>.</p>
 <p>Before your first payout, two quick things in the dashboard: accept the creator agreement and connect Stripe so we can pay you. It takes about five minutes.</p>
+<p>Your Ripple Pro is free while you're working with us: download Ripple and sign up with this same email address (${escapeHtml(c.email)}) and Pro switches on automatically. If you sign in with Apple, choose to share your email rather than hide it.</p>
 ${button(url, "Open my dashboard")}
 <p style="color:#77737f;font-size:13px">This link signs you in for 7 days. You can always ask for a new one at ${SITE_URL.replace("https://", "")}/creators.</p>`)
       : layout(`<p>Hi ${escapeHtml(c.name)},</p><p>Here's your sign-in link for the Ripple creator dashboard.</p>${button(url, "Open my dashboard")}<p style="color:#77737f;font-size:13px">It works for 7 days. If you didn't ask for it, ignore this email.</p>`);

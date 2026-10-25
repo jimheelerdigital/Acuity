@@ -111,8 +111,10 @@ export function FormAction({
     setArmed(false);
     if (r.error) setState(r.error);
     else {
-      setState("Done");
-      window.location.reload();
+      // Actions can return { message } to show before the page refreshes.
+      const message = (r.result as { message?: string } | null)?.message;
+      setState(message ?? "Done");
+      setTimeout(() => window.location.reload(), message ? 8000 : 0);
     }
   }
   return (

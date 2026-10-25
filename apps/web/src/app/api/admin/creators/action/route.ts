@@ -42,7 +42,7 @@ export async function POST(req: NextRequest) {
     switch (action) {
       case "add-creator": {
         const { addCreatorDirect } = await import("@/lib/creators/admin");
-        result = await addCreatorDirect({
+        const added = await addCreatorDirect({
           handle: need(str(b.handle), "handle"),
           email: need(str(b.email), "email"),
           firstName: need(str(b.firstName), "firstName"),
@@ -51,6 +51,10 @@ export async function POST(req: NextRequest) {
           sendInvite: true,
           by,
         });
+        result = {
+          ...added,
+          message: [`Added with code ${added.code}. Dashboard invite sent.`, added.codeNote, added.proNote].filter(Boolean).join(" "),
+        };
         await audit("add-creator", { handle: b.handle, email: b.email, result });
         break;
       }

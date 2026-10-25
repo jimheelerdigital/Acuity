@@ -176,6 +176,15 @@ export async function bootstrapNewUser(params: {
     // logged inside; attribution is best-effort
   }
 
+  // Creators in the affiliate program get free Ripple Pro when they sign up
+  // with the email they joined with (2026-10-25). Never blocks signup.
+  try {
+    const { autoGrantCreatorPerk } = await import("@/lib/creators/admin");
+    await autoGrantCreatorPerk(email, "system:creator-signup");
+  } catch {
+    // logged inside
+  }
+
   await track(userId, "trial_started", {
     trialEndsAt: trialEndsAt.toISOString(),
     trialDays,

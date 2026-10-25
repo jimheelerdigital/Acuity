@@ -7,6 +7,28 @@
 
 ---
 
+## [2026-10-25] — Creators get free Ripple Pro automatically
+
+- **Requested by:** Keenan
+- **Committed by:** Claude Code
+- **Commit hash:** (see git log: "feat: Give creators free Ripple Pro automatically")
+
+### In plain English (for Keenan)
+Anyone in the creator program now gets free Ripple Pro automatically when they sign up for Ripple with the same email they joined with, on web or app, via email, Google or Apple (as long as they share their real email with Apple). If they already had a Ripple account when you add them, Pro switches on right away. The "Add a creator" form now tells you which happened, and warns you if they were already paying (that subscription isn't cancelled automatically). The invite email tells creators to sign up with the same email.
+
+### Technical changes (for Jimmy)
+- `lib/creators/admin.ts`: autoGrantCreatorPerk(email, by) → matches a UgcCreator with a referral code by email, reuses grantCreatorPremium (durable comp PRO + creator.userId + self fingerprints). addCreatorDirect calls it and returns proNote.
+- `lib/bootstrap-user.ts`: calls autoGrantCreatorPerk after attribution (try/catch, never blocks signup).
+- `lib/creators/emails.ts`: invite copy (same email; don't hide email with Apple).
+- `admin/creators/creators-client.tsx` FormAction shows a returned `message` for 8s before reloading; `api/admin/creators/action` add-creator returns that message.
+
+### Manual steps needed
+- None
+
+### Notes
+- Apple "Hide My Email" gives a relay address that won't match; the invite tells creators to share their email. Otherwise use "Grant free premium" on their admin page.
+- A creator who was already paying keeps being billed until cancelled; the add form flags it.
+
 ## [2026-10-25] — "Add a creator" form on Creator payouts
 
 - **Requested by:** Keenan
