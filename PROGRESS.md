@@ -21,7 +21,7 @@ A separate page, goripple.io/creator-desk, lets an assistant account (ChatGPT ag
 - Reuses addCreatorDirect / onCreatorDeal.
 
 ### Manual steps needed
-- [ ] Create the desk login (email + password) once Keenan confirms the address (Claude)
+- [x] Desk login created 10-26: keenan+chatgpt@heelerdigital.com (not admin, no password; Keenan sets one via Forgot password so it never passes through chat). Allowlist updated to that email.
 
 ### Notes
 - Deliberately not isAdmin: full admin would expose payouts, ledger, customer data and ad tools.

@@ -10,7 +10,7 @@ import "server-only";
  */
 import { prisma } from "@/lib/prisma";
 
-export const CREATOR_DESK_EMAILS = ["chatgpt123@gmail.com"];
+export const CREATOR_DESK_EMAILS = ["keenan+chatgpt@heelerdigital.com"];
 
 export async function canUseCreatorDesk(userId: string | null | undefined): Promise<boolean> {
   if (!userId) return false;
