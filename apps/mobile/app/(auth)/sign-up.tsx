@@ -18,12 +18,14 @@ import { Pressable, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { EmailCodeForm } from "@/components/auth/email-code-form";
+import { ReferralCodeField } from "@/components/onboarding/referral-code-field";
 import {
   SocialAuthButtons,
   type AuthLoading,
 } from "@/components/auth/social-auth-buttons";
 import { useAuth } from "@/contexts/auth-context";
 import { useTheme } from "@/contexts/theme-context";
+import { submitPendingReferral } from "@/lib/referral";
 import { WARN_AMBER } from "@/lib/tone-colors";
 import { KeyboardSafeView } from "@/components/keyboard/keyboard-safe-view";
 
@@ -37,6 +39,12 @@ export default function SignUpScreen() {
   const { tokens } = useTheme();
   const { setAuthenticatedUser } = useAuth();
   const [loading, setLoading] = useState<AuthLoading>(null);
+  // Referral code typed above the buttons (2026-10-25): sent once the
+  // account exists. The token is set synchronously by setAuthenticatedUser.
+  const onAuthenticated = (user: Parameters<typeof setAuthenticatedUser>[0], sessionToken?: string) => {
+    setAuthenticatedUser(user, sessionToken);
+    void submitPendingReferral();
+  };
 
   return (
     <SafeAreaView className="flex-1 px-6" style={{ backgroundColor: tokens.bg }}>
@@ -49,10 +57,26 @@ export default function SignUpScreen() {
             Your debriefs are saved to it, on every device.
           </Text>
 
+          <View style={{ marginBottom: 16 }}>
+            <ReferralCodeField
+              colors={{
+                text: tokens.text,
+                sec: tokens.textSec,
+                ter: tokens.textTer,
+                quiet: tokens.textTer,
+                line: tokens.line,
+                inputBg: tokens.cardBg,
+                good: tokens.good,
+                bad: WARN_AMBER,
+                accent: tokens.primary,
+              }}
+            />
+          </View>
+
           <SocialAuthButtons
             loading={loading}
             setLoading={setLoading}
-            onAuthenticated={setAuthenticatedUser}
+            onAuthenticated={onAuthenticated}
             tokens={tokens}
             appleButtonType={AppleAuthentication.AppleAuthenticationButtonType.SIGN_UP}
             appleBusyLabel="Creating account…"
@@ -82,7 +106,7 @@ export default function SignUpScreen() {
             loading={loading}
             setLoading={setLoading}
             submitLabel="Sign up with email"
-            onAuthenticated={(user, sessionToken) => setAuthenticatedUser(user, sessionToken)}
+            onAuthenticated={(user, sessionToken) => onAuthenticated(user, sessionToken)}
           />
 
           <Link href="/(auth)/sign-in" asChild>
