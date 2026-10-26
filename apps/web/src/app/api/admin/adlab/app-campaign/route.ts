@@ -47,7 +47,7 @@ export async function POST(req: NextRequest) {
   const meta = await import("@/lib/adlab/meta");
   const acct = meta.adAccountPath();
   const body = (await req.json().catch(() => ({}))) as {
-    action?: "apps" | "diag" | "create" | "add" | "fix-os" | "delete" | "activate" | "pause" | "set-geo" | "delete-ad";
+    action?: "apps" | "diag" | "create" | "add" | "fix-os" | "delete" | "activate" | "pause" | "set-geo" | "delete-ad" | "budget" | "pause-adset";
     /** Ad set measurement for iOS 14+ campaigns: "SKADNETWORK" (default), "AEM", or "none". */
     attribution?: "SKADNETWORK" | "AEM" | "none";
     /** "add": existing app ad set per group. */
@@ -62,6 +62,10 @@ export async function POST(req: NextRequest) {
     countries?: string[];
     /** "delete-ad": the ad to delete (app-promotion campaigns only). */
     adId?: string;
+    /** "budget": daily budgets to set, in cents. */
+    budgetTargets?: { id: string; type: "campaign" | "adset"; dailyBudgetCents: number }[];
+    /** "pause-adset": the ad set to pause. */
+    pauseAdsetId?: string;
     /** promoted_object.object_store_url override (defaults to APP_STORE_URL). */
     storeUrl?: string;
     /**
@@ -109,6 +113,41 @@ export async function POST(req: NextRequest) {
       }
     }
     return NextResponse.json(out);
+  }
+
+  // Set daily budgets on specific campaigns / ad sets (any objective; Keenan's
+  // explicit budget changes, 2026-10-26). Returns before → after for each.
+  if (body.action === "budget") {
+    const targets = body.budgetTargets ?? [];
+    if (!targets.length) return NextResponse.json({ error: "budgetTargets required" }, { status: 400 });
+    const out: Record<string, unknown> = {};
+    for (const t of targets) {
+      const cents = Math.round(Number(t.dailyBudgetCents));
+      if (!t.id || !(cents >= 100)) {
+        out[t.id ?? "?"] = { error: "bad target" };
+        continue;
+      }
+      try {
+        const before = (await meta.metaGraph(t.id, "GET", { fields: "name,daily_budget" })) as { name: string; daily_budget?: string };
+        await meta.metaGraph(t.id, "POST", { daily_budget: String(cents) });
+        const after = (await meta.metaGraph(t.id, "GET", { fields: "name,daily_budget,effective_status" })) as { name: string; daily_budget?: string; effective_status: string };
+        out[t.id] = { name: after.name, before: before.daily_budget, after: after.daily_budget, status: after.effective_status };
+      } catch (e) {
+        out[t.id] = { error: err(e) };
+      }
+    }
+    return NextResponse.json(out);
+  }
+
+  if (body.action === "pause-adset") {
+    if (!body.pauseAdsetId) return NextResponse.json({ error: "pauseAdsetId required" }, { status: 400 });
+    try {
+      await meta.setStatus(body.pauseAdsetId, "adset", "PAUSED");
+      const a = await meta.metaGraph(body.pauseAdsetId, "GET", { fields: "name,status,effective_status" });
+      return NextResponse.json({ ok: true, adset: a });
+    } catch (e) {
+      return NextResponse.json({ error: err(e) }, { status: 500 });
+    }
   }
 
   // Delete one ad, only inside an app-promotion campaign (e.g. a placeholder).
