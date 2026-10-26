@@ -7,6 +7,28 @@
 
 ---
 
+## [2026-10-26] — Paywall win-back emails replace the old recovery emails
+
+- **Requested by:** Keenan
+- **Committed by:** Claude Code
+- **Commit hash:** (see git log: "feat: Win back people who leave the paywall")
+
+### In plain English (for Keenan)
+Anyone who reaches a paywall (in the app or on the web) and leaves without starting the free week now gets three emails from Keenan. First, about an hour later, "Your 4 to-dos are saved", quoting the to-dos from their own first debrief. Second, the next day, "How the free week works" ($0 today, see the end date up front, cancel in 2 taps, first charge on day 7). Third, two days after that, a plain note asking what stopped them, with replies landing in Keenan's inbox. The button opens Ripple already signed in, straight back to the free week. The two old recovery emails (0 trials from 109 sends since Oct 12) are switched off.
+
+### Technical changes (for Jimmy)
+- New `emails/trial/paywall-winback.ts` (paywall_winback_1/2/3, 2 Jev variants each) + tests; new `lib/paywall-winback.ts` (eligibility/timing, PAYWALL_WINBACK_START 2026-10-26T17:00Z) + tests.
+- `emails/trial/types.ts` (keys; TrialVars.firstDebriefTasks / firstDebriefSummary), `registry.ts`, `lib/trial-emails.ts` (first-debrief tasks, signInUrl, replyTo keenan@heelerdigital.com for these keys).
+- `inngest/functions/recovery-email-orchestrator.ts`: section 2a; paywall views from v10_paywall_viewed / funnel_v9_paywall_viewed / funnel_savings_viewed / funnel_checkout_started; skips PRO, any Stripe sub, apple/google_play/comp sources, payment_completed, internal/admin; #1 ≥45 min after last paywall view, #2 ≥24h after #1, #3 ≥48h after #2.
+- `lib/email-enabled.ts`: paywall_winback_* on; recovery_checkout_abandoned + recovery_signup_no_checkout off.
+
+### Manual steps needed
+- None
+
+### Notes
+- We send no trial-ending reminder for App Store trials, so the copy promises "you see the end date before you confirm, cancel any time before day 7" rather than a reminder email.
+- Forward-only from the deploy: no backlog blast.
+
 ## [2026-10-26] — Creator desk for the ChatGPT agent (add creators only)
 
 - **Requested by:** Keenan

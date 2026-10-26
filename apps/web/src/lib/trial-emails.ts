@@ -316,6 +316,43 @@ export async function sendTrialEmail(
     );
   }
 
+  // Paywall win-back (2026-10-26): her own first debrief quoted back, and a
+  // one-tap signed-in link that opens the app on the paywall. Best-effort:
+  // the templates fall back to generic copy / goripple.io/open.
+  if (emailKey.startsWith("paywall_winback_")) {
+    try {
+      const first = await prisma.entry.findFirst({
+        where: { userId: user.id, status: "COMPLETE" },
+        orderBy: { createdAt: "asc" },
+        select: { id: true, summary: true },
+      });
+      if (first) {
+        const tasks = await prisma.task.findMany({
+          where: { entryId: first.id },
+          orderBy: { createdAt: "asc" },
+          take: 3,
+          select: { title: true, text: true },
+        });
+        vars.firstDebriefTasks = tasks
+          .map((t) => (t.title ?? t.text ?? "").trim())
+          .filter(Boolean)
+          .map((t) => (t.length > 70 ? `${t.slice(0, 67).trimEnd()}…` : t));
+        vars.firstDebriefSummary = first.summary ?? null;
+        if (!vars.firstDebriefTaskCount) {
+          vars.firstDebriefTaskCount = await prisma.task.count({ where: { entryId: first.id } });
+        }
+      }
+    } catch (err) {
+      safeLog.warn("trial-email.winback_debrief_failed", { userId: user.id, err: err instanceof Error ? err.message : String(err) });
+    }
+    try {
+      const { createAppSignInUrl } = await import("@/lib/app-access");
+      vars.signInUrl = await createAppSignInUrl(user.email);
+    } catch (err) {
+      safeLog.error("trial-email.sign_in_link_failed", err as Error, { emailKey, userId: user.id });
+    }
+  }
+
   if (emailKey === "free_week_offer" || emailKey === "free_week_followup") {
     const { freeWeekUrl } = await import("@/lib/free-week");
     vars.freeWeekUrl = freeWeekUrl(user.id, emailKey);
@@ -337,7 +374,8 @@ export async function sendTrialEmail(
     const { sendEmailOrThrow } = await import("@/lib/resend");
     const sendResp = await sendEmailOrThrow({
       from: LIFECYCLE_FROM,
-      replyTo: opts.replyTo ?? undefined,
+      // Win-back replies ("what stopped you?") go straight to Keenan.
+      replyTo: opts.replyTo ?? (emailKey.startsWith("paywall_winback_") ? "keenan@heelerdigital.com" : undefined),
       to: user.email,
       subject,
       html,

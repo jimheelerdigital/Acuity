@@ -111,8 +111,17 @@ export const EMAIL_ENABLED: Record<string, boolean> = {
   // Back ON 2026-10-12 (Keenan: "reinstate the changes to the recovery
   // emails to what they were prior"). They were off 10-06 → 10-12 for the
   // no-card free week; paid trials from people coming back later fell to 0.
-  recovery_checkout_abandoned: true, // hit Stripe checkout, didn't finish (30m–2h)
-  recovery_signup_no_checkout: true, // funnel account, never went to checkout (1–4h)
+  // OFF 2026-10-26: 0 trials from 109 sends Oct 12–26; replaced by
+  // paywall_winback_* (below). Code kept.
+  recovery_checkout_abandoned: false, // hit Stripe checkout, didn't finish (30m–2h)
+  recovery_signup_no_checkout: false, // funnel account, never went to checkout (1–4h)
+
+  // ── ON 2026-10-26 — paywall win-back (emails/trial/paywall-winback.ts) ─
+  // App or web paywall reached, left without a trial: her own debrief back
+  // (~45 min), how the free week works (+24h), Keenan asks why (+48h).
+  paywall_winback_1: true,
+  paywall_winback_2: true,
+  paywall_winback_3: true,
 
   // ── OFF 2026-10-12 — no-card free week (lib/free-week.ts) ───
   // Gave Pro away free instead of starting card trials. Links already sent

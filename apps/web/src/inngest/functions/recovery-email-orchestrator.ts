@@ -242,6 +242,80 @@ export const recoveryEmailOrchestratorFn = inngest.createFunction(
       }
 
       // ═══════════════════════════════════════════════════════════
+      // 2a. PAYWALL WIN-BACK (2026-10-26, per Keenan; replaces #1 and #2,
+      //     both keys now off: 0 trials from 109 sends Oct 12–26).
+      //     Reached a paywall (app hard paywall or web funnel paywall /
+      //     checkout) and left without a trial. #1 ≥45 min after the last
+      //     paywall view, #2 +24h, #3 +48h (lib/paywall-winback.ts).
+      //     Forward-only from PAYWALL_WINBACK_START, last 7 days.
+      // ═══════════════════════════════════════════════════════════
+      if (hasGlobalBudget() || config.dryRun) {
+        const {
+          PAYWALL_EVENTS,
+          PAYWALL_WINBACK_START,
+          WINBACK_MAX_AGE_MS,
+          isWinbackEligible,
+          nextWinbackStep,
+        } = await import("@/lib/paywall-winback");
+        const { isInternalEmail } = await import("@/lib/internal-traffic");
+        const since = new Date(Math.max(PAYWALL_WINBACK_START.getTime(), now.getTime() - WINBACK_MAX_AGE_MS));
+        const views = await prisma.onboardingEvent.groupBy({
+          by: ["userId"],
+          where: { event: { in: [...PAYWALL_EVENTS] }, createdAt: { gte: since }, userId: { not: null } },
+          _max: { createdAt: true },
+        });
+        const ids = views.map((v) => v.userId).filter((id): id is string => !!id);
+        if (ids.length) {
+          const [users, payments, logs] = await Promise.all([
+            prisma.user.findMany({
+              where: { id: { in: ids } },
+              select: { id: true, email: true, isAdmin: true, createdAt: true, subscriptionStatus: true, subscriptionSource: true, stripeSubscriptionId: true },
+            }),
+            prisma.onboardingEvent.findMany({
+              where: { userId: { in: ids }, event: "funnel_payment_completed" },
+              select: { userId: true },
+              distinct: ["userId"],
+            }),
+            prisma.trialEmailLog.findMany({
+              where: { userId: { in: ids }, emailKey: { in: ["paywall_winback_1", "paywall_winback_2", "paywall_winback_3"] } },
+              select: { userId: true, emailKey: true, sentAt: true },
+            }),
+          ]);
+          const paidIds = new Set(payments.map((p) => p.userId));
+          const lastView = new Map(views.map((v) => [v.userId, v._max.createdAt]));
+          const sentBy = new Map<string, Partial<Record<"paywall_winback_1" | "paywall_winback_2" | "paywall_winback_3", Date>>>();
+          for (const l of logs) {
+            if (!l.userId) continue;
+            const m = sentBy.get(l.userId) ?? {};
+            m[l.emailKey as "paywall_winback_1"] = l.sentAt;
+            sentBy.set(l.userId, m);
+          }
+          for (const u of users) {
+            if (!hasGlobalBudget() && !config.dryRun) break;
+            const last = lastView.get(u.id);
+            if (!last) continue;
+            const eligible = isWinbackEligible({
+              isAdmin: u.isAdmin,
+              internal: isInternalEmail(u.email),
+              subscriptionStatus: u.subscriptionStatus,
+              subscriptionSource: u.subscriptionSource,
+              stripeSubscriptionId: u.stripeSubscriptionId,
+              paid: paidIds.has(u.id),
+            });
+            if (!eligible) continue;
+            const key = nextWinbackStep({ now, lastPaywallAt: last, sent: sentBy.get(u.id) ?? {} });
+            if (!key) continue;
+            await trySend(u.id, key, {
+              // #1 lands ~45 min after the paywall: a brand-new account may
+              // already have had its welcome email, so don't let the 24h
+              // throttle push the win-back to tomorrow.
+              skipThrottle: key === "paywall_winback_1" && now.getTime() - u.createdAt.getTime() < 24 * 3600_000,
+            });
+          }
+        }
+      }
+
+      // ═══════════════════════════════════════════════════════════
       // 2b. NO-CARD FREE WEEK (2026-10-06, per Keenan; lib/free-week.ts)
       //    Replaces #1 and #2 above (both keys now off in email-enabled).
       //    Offer: web-funnel free-plan signups since 09-24 that can still

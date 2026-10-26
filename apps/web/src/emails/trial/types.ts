@@ -31,6 +31,10 @@ export interface TrialVars {
   /** Signed /free-week claim link (lib/free-week.ts). Set only for the
    *  free_week_offer / free_week_followup emails. */
   freeWeekUrl?: string | null;
+  /** Paywall win-back only (2026-10-26): up to 3 to-dos from her FIRST
+   *  completed debrief (raw text, escaped by the template) and its summary. */
+  firstDebriefTasks?: string[];
+  firstDebriefSummary?: string | null;
   /** Failed-payment follow-ups only (2026-10-18): Stripe's hosted page for
    *  the open invoice, the amount formatted, and whether it was the first
    *  charge after the trial. Set by sendTrialEmail from a live Stripe read. */
@@ -122,4 +126,7 @@ export type TrialEmailKey =
   | "free_week_followup"
   | "day2_nudge"
   | "payment_failed_2d"
-  | "payment_failed_5d";
+  | "payment_failed_5d"
+  | "paywall_winback_1"
+  | "paywall_winback_2"
+  | "paywall_winback_3";

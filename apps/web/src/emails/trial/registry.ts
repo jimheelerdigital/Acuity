@@ -66,6 +66,7 @@ import { paymentFailed2d, paymentFailed5d } from "./payment-failed-followup";
 import { cardTrialTryOnce, cardTrialWeekSoFar } from "./card-trial-day5";
 import { trialCancelled } from "./trial-cancelled";
 import { freeWeekFollowup, freeWeekOffer } from "./free-week";
+import { paywallWinback1, paywallWinback2, paywallWinback3 } from "./paywall-winback";
 
 export const TRIAL_EMAIL_TEMPLATES: Record<TrialEmailKey, TrialEmailTemplate> =
   {
@@ -129,6 +130,9 @@ export const TRIAL_EMAIL_TEMPLATES: Record<TrialEmailKey, TrialEmailTemplate> =
     day2_nudge: day2Nudge,
     payment_failed_2d: paymentFailed2d,
     payment_failed_5d: paymentFailed5d,
+    paywall_winback_1: paywallWinback1,
+    paywall_winback_2: paywallWinback2,
+    paywall_winback_3: paywallWinback3,
   };
 
 export type { TrialEmailKey, TrialEmailTemplate } from "./types";
