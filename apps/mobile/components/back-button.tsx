@@ -3,6 +3,8 @@ import { ChevronLeft } from "lucide-react-native";
 import { Pressable, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import { useTheme } from "@/contexts/theme-context";
+
 /**
  * Mobile BackButton — circular, ~40px diameter, Lucide ChevronLeft.
  *
@@ -25,7 +27,10 @@ export function BackButton({
   accessibilityLabel?: string;
 }) {
   const router = useRouter();
+  const { tokens } = useTheme();
   const handlePress = onPress ?? (() => router.back());
+  // Theme-aware (2026-10-25): the hardcoded dark pill was left over from
+  // the old dark-only theme and looked wrong on the light theme.
   return (
     <Pressable
       onPress={handlePress}
@@ -37,13 +42,13 @@ export function BackButton({
         width: 40,
         borderRadius: 20,
         borderWidth: 1,
-        borderColor: "rgba(255,255,255,0.08)",
-        backgroundColor: "rgba(30,30,46,0.8)",
+        borderColor: tokens.line,
+        backgroundColor: tokens.cardBg,
         alignItems: "center",
         justifyContent: "center",
       }}
     >
-      <ChevronLeft size={20} color="#E4E4E7" />
+      <ChevronLeft size={20} color={tokens.text} />
     </Pressable>
   );
 }
@@ -86,6 +91,7 @@ export function StickyBackButton({
 }) {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const { tokens } = useTheme();
   const handlePress = onPress ?? (() => router.back());
   return (
     <View
@@ -108,17 +114,17 @@ export function StickyBackButton({
           width: 40,
           borderRadius: 20,
           borderWidth: 1,
-          borderColor: "rgba(255,255,255,0.1)",
-          backgroundColor: "rgba(11,11,18,0.88)",
+          borderColor: tokens.line,
+          backgroundColor: tokens.cardBg,
           alignItems: "center",
           justifyContent: "center",
           shadowColor: "#000",
           shadowOffset: { width: 0, height: 4 },
           shadowRadius: 12,
-          shadowOpacity: 0.3,
+          shadowOpacity: 0.12,
         }}
       >
-        <ChevronLeft size={20} color="#E4E4E7" />
+        <ChevronLeft size={20} color={tokens.text} />
       </Pressable>
     </View>
   );

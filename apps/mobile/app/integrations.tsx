@@ -14,7 +14,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-import { StickyBackButton } from "@/components/back-button";
+import { BackButton } from "@/components/back-button";
 import { CalendarPicker } from "@/components/calendar/calendar-picker";
 import { ProLockedCard } from "@/components/pro-locked-card";
 import { useAuth } from "@/contexts/auth-context";
@@ -86,14 +86,19 @@ export default function IntegrationsScreen() {
       edges={["top"]}
     >
       <Stack.Screen options={{ headerShown: false }} />
-      <StickyBackButton accessibilityLabel="Back to Profile" />
       <ScrollView
         contentContainerStyle={{
           paddingHorizontal: 20,
-          paddingTop: 80,
+          paddingTop: 12,
           paddingBottom: 40,
         }}
       >
+        {/* Inline, not the floating sticky button (2026-10-25): this screen
+            can open inside a sheet, where the safe-area inset the sticky
+            button positions itself by is wrong and it landed on the title. */}
+        <View style={{ marginBottom: 16 }}>
+          <BackButton accessibilityLabel="Back to Profile" />
+        </View>
         <View className="mb-6">
           <Text
             className="text-2xl font-bold"

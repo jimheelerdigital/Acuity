@@ -22,11 +22,11 @@ export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
 const MESSAGES: Record<string, string> = {
-  invalid: "That code doesn't match a Ripple creator. Check the spelling and try again.",
-  already_referred: "Your account is already linked to a creator.",
-  not_new: "Creator codes only work on new accounts.",
-  self_referral: "Creators can't use their own code.",
-  unknown_creator: "That code doesn't match a Ripple creator. Check the spelling and try again.",
+  invalid: "We couldn't find that referral code. Check the spelling and try again.",
+  already_referred: "Your account already has a referral.",
+  not_new: "Referral codes only work on new accounts.",
+  self_referral: "You can't use your own referral code.",
+  unknown_creator: "We couldn't find that referral code. Check the spelling and try again.",
   no_user: "Please sign in and try again.",
   error: "Something went wrong. Please try again.",
 };

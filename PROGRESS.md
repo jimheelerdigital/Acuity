@@ -25,6 +25,26 @@ A separate page, goripple.io/creator-desk, lets an assistant account (ChatGPT ag
 
 ### Notes
 - Deliberately not isAdmin: full admin would expose payouts, ledger, customer data and ad tools.
+## [2026-10-25] feat(referrals): "Were you referred by Tess?" pre-filled from a recent link tap
+
+- Gap: someone taps goripple.io/c/<CODE> on an iPhone and installs from the App Store. The install carries nothing, so no credit.
+- New: GET /api/creators/suggest (no auth) returns the referrer whose link was tapped from the same IP (hashed, same hash as /c/<code>) in the last 24h. The sign-up referral row then shows "Were you referred by Tess? Yes / No". Yes fills the code and goes through the normal Road 2 POST after sign-up. A suggestion alone never credits anyone, because shared IPs make it a guess.
+- The /c/<code> route now uses the shared hashIp().
+- Index migration docs/migrations/2026-10-25-creator-click-iphash-index.sql is written but NOT yet applied. The table has 4 rows, so it isn't urgent.
+- Tests: lib/creators/suggest.test.ts.
+
+## [2026-10-25] fix(flags): feature flag cache expires after 30s (was: never on a warm instance)
+
+- Symptom: Jimmy's calendar connect kept returning 404 "Not found" after a calendar_integrations per-user override was written to production.
+- Root cause: lib/feature-flags.ts cached flags and per-user overrides at module scope with no expiry. On a warm serverless instance, a DB change (or an admin-page toggle, whose resetFeatureFlagCache() only clears the instance that served it) was invisible until the instance recycled. That would also have delayed enabling calendar_integrations for everyone at release.
+- Fix: the cache now resets after FLAG_CACHE_TTL_MS (30s), and still dedups within a request.
+- Test: feature-flags-cache.test.ts (fails on the old code, passes now).
+## [2026-10-25] feat(mobile): "Were you referred?" asked up front + theme-aware back buttons
+
+- Referral field (was "Did a creator send you?") moved from below the email form, where it was collapsed and nobody saw it, to a visible "Were you referred? / Add code" row ABOVE the Apple/Google buttons on the onboarding save screen. Jimmy, 2026-10-25: never saw it, and doesn't want "creator" used in user-facing copy.
+- All user-facing copy now says "referred" / "referral code", not "creator": the mobile field, the /api/creators/code messages, and the web funnel banner ("Referred by Tess · code TESS saved"). Internal names are unchanged.
+- The (auth)/sign-up screen still has no referral field. It's AUTH-CRITICAL and needs manual OAuth verification, so it's a follow-up.
+- BackButton / StickyBackButton use theme tokens instead of the hardcoded dark pill left over from the dark-only theme. Integrations now uses an inline back button, because the sticky one landed on the title when the screen opened in a sheet.
 
 ## [2026-10-25] — Creators get free Ripple Pro automatically
 
