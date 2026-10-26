@@ -7,6 +7,25 @@
 
 ---
 
+## [2026-10-26] — Creator desk for the ChatGPT agent (add creators only)
+
+- **Requested by:** Keenan
+- **Committed by:** Claude Code
+- **Commit hash:** (see git log: "feat: Add a creator desk with add-and-invite access only")
+
+### In plain English (for Keenan)
+A separate page, goripple.io/creator-desk, lets an assistant account (ChatGPT agent) add creators who said yes: handle, first name, email and code. Each one gets their code, the dashboard invite and free Pro on sign-up. It can also resend an invite and see who has accepted the agreement and set up payouts. It can't see money, payouts, customers, flags or ads, and it isn't a full admin.
+
+### Technical changes (for Jimmy)
+- New `lib/creators/desk.ts` (CREATOR_DESK_EMAILS allowlist + full admins), `app/creator-desk/page.tsx` + `desk-client.tsx`, `api/creator-desk/route.ts` (actions add / resend, session + allowlist, userWrite rate limit, audit log entries creators.desk-*).
+- Reuses addCreatorDirect / onCreatorDeal.
+
+### Manual steps needed
+- [ ] Create the desk login (email + password) once Keenan confirms the address (Claude)
+
+### Notes
+- Deliberately not isAdmin: full admin would expose payouts, ledger, customer data and ad tools.
+
 ## [2026-10-25] — Creators get free Ripple Pro automatically
 
 - **Requested by:** Keenan
