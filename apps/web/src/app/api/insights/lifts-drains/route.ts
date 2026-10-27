@@ -53,6 +53,7 @@ export async function GET(req: NextRequest) {
       select: {
         createdAt: true,
         moodScore: true,
+        energy: true,
         themes: true,
         entityMentions: {
           where: { person: { archived: false } },
@@ -74,11 +75,15 @@ export async function GET(req: NextRequest) {
   const local = (d: Date) => localDateForTimezone(tz, d);
 
   // Entries → one MoodDay per local day.
-  const byDay = new Map<string, { moods: number[]; themes: string[]; people: string[] }>();
+  const byDay = new Map<
+    string,
+    { moods: number[]; energies: number[]; themes: string[]; people: string[] }
+  >();
   for (const e of entries) {
     const key = local(e.createdAt);
-    const b = byDay.get(key) ?? { moods: [], themes: [], people: [] };
+    const b = byDay.get(key) ?? { moods: [], energies: [], themes: [], people: [] };
     b.moods.push(e.moodScore as number);
+    if (typeof e.energy === "number") b.energies.push(e.energy);
     b.themes.push(...(e.themes ?? []));
     for (const m of e.entityMentions) b.people.push(m.person.displayName);
     byDay.set(key, b);
@@ -86,6 +91,9 @@ export async function GET(req: NextRequest) {
   const days: MoodDay[] = [...byDay.entries()].map(([date, b]) => ({
     date,
     mood: b.moods.reduce((a, x) => a + x, 0) / b.moods.length,
+    energy: b.energies.length
+      ? b.energies.reduce((a, x) => a + x, 0) / b.energies.length
+      : null,
     themes: b.themes,
     people: b.people,
   }));

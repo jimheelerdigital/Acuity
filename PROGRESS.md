@@ -506,6 +506,31 @@ The reflection Ripple writes after each entry is switched off until a lawyer has
 
 ### Manual steps needed
 - None. To turn it on after counsel signs off: add a FeatureFlag row `entry_reflection` (enabled, requiredTier PRO).
+## [2026-10-27] Quick wins: paywall button, lower unlocks, energy in lifts & drains
+
+- **Requested by:** Jimmy ("go build 1-8")
+- **Committed by:** Claude Code
+
+### In plain English
+- The "Subscribe in app" / "Continue" button on the paywall screen was showing at about 30% strength, so its white text was hard to read. It's now full strength.
+- Pattern Insights now unlocks at 5 entries (was 7), and the Theme Map at 7 entries plus 3 recurring themes (was 10). Today that newly unlocks Pattern Insights for 7 active users and the Theme Map for 4.
+- "What lifts you, what drains you" now covers energy as well as mood. For example: "On days Gym came up, your energy tended to be higher (8 vs 5)."
+
+### Technical changes
+- **Paywall:** `apps/mobile/app/paywall.tsx` was spreading `tokens.glowPrimary` (with `opacity: 0.3`) into the button style array. It now maps it to shadow props, the same way subscribe.tsx does. No other glow or shadow spreads exist in the app.
+- **Unlock thresholds:**
+  - `packages/shared/src/userProgression.ts` gains `PATTERN_INSIGHTS_MIN_ENTRIES=5`, `THEME_MAP_MIN_ENTRIES=7` and `THEME_MAP_MIN_THEMES=3`, used by the unlock check, the next-unlock progress and the locked-card copy.
+  - The Theme Map screens and LockedState (web + mobile) had their own hard-coded `10`; they now read the shared constant.
+  - Pinned by `apps/web/src/lib/unlock-thresholds.test.ts`.
+  - Side effect: "Your first read" now covers entries 3–4 (it hides once Pattern Insights unlocks).
+- **Energy in lifts & drains:**
+  - `apps/web/src/lib/lifts-drains.ts` compares mood and energy with the same thresholds. Energy needs 10+ energy-scored days of its own.
+  - When both qualify, the factor shows once, ranked by the larger gap, with both numbers in the sentence (`also`).
+  - The route selects `Entry.energy`. The mobile card footer now reads "Mood and energy out of 10".
+  - 4 new tests.
+
+### Manual steps needed
+- None.
 
 ## [2026-10-27] — Fixed web payers getting stuck before the app, and added a real-spend table for every Meta campaign
 

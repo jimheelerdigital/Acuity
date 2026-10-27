@@ -23,6 +23,8 @@ import { api } from "@/lib/api";
 type Factor = {
   kind: "theme" | "person" | "habit" | "calendar";
   label: string;
+  /** "mood" | "energy" (energy added 2026-10-27; older servers omit it). */
+  metric?: "mood" | "energy";
   direction: "lift" | "drain";
   withAvg: number;
   withoutAvg: number;
@@ -71,7 +73,7 @@ export function LiftsDrainsCard({
           {title}
         </Text>
         {items.map((f) => (
-          <View key={`${f.kind}-${f.label}`} className="flex-row items-start mb-3">
+          <View key={`${f.kind}-${f.label}-${f.metric ?? "mood"}`} className="flex-row items-start mb-3">
             <Ionicons name={ICON[f.kind]} size={18} color={color} style={{ marginTop: 1 }} />
             <View className="flex-1 ml-3">
               <Text className="text-sm" style={{ color: tokens.text, lineHeight: 20 }}>
@@ -100,7 +102,7 @@ export function LiftsDrainsCard({
       {section("Lifts", data.lifts, tokens.primary)}
       {section("Drains", data.drains, tokens.textSec)}
       <Text className="text-[11px]" style={{ color: tokens.textTer }}>
-        Mood out of 10, from your last 60 days of entries. Patterns, not proof.
+        Mood and energy out of 10, from your last 60 days of entries. Patterns, not proof.
       </Text>
     </View>
   );
