@@ -571,6 +571,33 @@ Once a week, Insights can show one moment from about a month ago that connects t
 - **Stable per week:** every window is anchored to Monday 00:00 UTC, and ties rotate by ISO week.
 - **Safety:** skips moodScore ≤ 3, and anything where the summary, snippet, theme name or transcript matches CRISIS_PATTERN (from open-loops). The mood clause appears only when mood is ≥1 point higher; it never says "lower".
 - `apps/mobile/components/insights/callback-card.tsx`: `CallbackCard` (no props). Not wired into the Insights tab.
+## [2026-10-27] fix(life-audit): wait for 7 debriefs, never ship a thin audit
+
+- **Requested by:** Jimmy (backlog item 8)
+- **Committed by:** Claude Code
+
+### In plain English
+The Life Audit used to go out the night before the trial ended, whatever someone had recorded. Under 7 entries, Ripple sent a fill-in-the-blanks version instead: 239 of the 245 audits ever made.
+
+Now it waits:
+- It's written once you have 7 debriefs from your first 30 days, the night your trial ends or as soon as you reach 7 after that.
+- If you never reach 7 in the first month, there's no audit.
+- Nobody gets a second audit: the 42 people in the current window who already have one keep it.
+- Screens that said "Your Day 7 Life Audit is ready" or "is coming" now say "Your Life Audit unlocks after 7 debriefs."
+
+### Technical changes
+- New `apps/web/src/lib/life-audit-eligibility.ts`: pure `decideLifeAudit`.
+  - **Dispatch:** trial ending or ended, entitled (canGenerateNewLifeAudit), 7+ COMPLETE entries with entryDate in [signup, signup+30d]. The period runs from signup to min(now, signup+30d).
+  - **Defer:** otherwise, until signup+30d plus 1 day of grace.
+  - **Skip:** if any QUEUED/GENERATING/COMPLETE audit exists, or after 2 FAILED runs.
+- `day-7-audit-cron.ts`: the scan is no longer limited to status TRIAL (deferred users may have converted or expired). Each user goes through decideLifeAudit; a per-reason tally is logged.
+- `generate-life-audit.ts`: the degraded onFailure fallback is removed; onFailure now marks the row FAILED and never overwrites COMPLETE. `buildDegradedAudit` and `DEGRADED_CLOSING` are deleted from `lib/prompts/life-audit.ts`. The generation prompt is unchanged.
+- `POST /api/life-audit`: returns 409 `not_enough_entries` under 7 instead of creating a row. It has no client callers.
+- `packages/shared/src/userProgression.ts`:
+  - The `lifeAudit` unlock now needs 7+ entries from the first 30 days (it was 1 entry).
+  - nextUnlock and lockedFeatureCopy are rewritten with honest copy; the label is "Life Audit".
+- Copy: home focus card (web and mobile) and the 14-day milestone (web and mobile) drop "Day 7"; the web onboarding step 7 says "7 debriefs" instead of "Day 7".
+- Tests: life-audit-eligibility.test.ts (14). Full web suite 1780/1780; web tsc 0; mobile tsc 12.
 
 ### Manual steps needed
 - None.

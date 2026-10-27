@@ -4,7 +4,6 @@ import { NonRetriableError } from "inngest";
 
 import { inngest } from "@/inngest/client";
 import {
-  buildDegradedAudit,
   buildLifeAuditUserMessage,
   LIFE_AUDIT_SYSTEM_PROMPT,
   MIN_ENTRIES_FOR_AUDIT,
@@ -29,18 +28,18 @@ export const generateLifeAuditFn = inngest.createFunction(
     triggers: [{ event: "life-audit/generation.requested" }],
     // BACKGROUND tier (Decisions 2026-04-19 #3): the user isn't watching.
     // Audit runs the night before trialEndsAt; up to ~14 min of retry
-    // backoff is fine. The degraded-fallback path in onFailure fires
-    // after retries are exhausted.
+    // backoff is fine. After retries are exhausted onFailure marks the row
+    // FAILED; the dispatcher retries a FAILED audit at most once more.
+    //
+    // 2026-10-27: the degraded (template, no-Claude) fallback is GONE. It
+    // shipped 239 of 245 audits ever produced, all built from <7 entries.
+    // The dispatcher now waits until a user has 7+ entries
+    // (lib/life-audit-eligibility.ts), so a failure here means a real
+    // generator problem, not thin data, and we'd rather show nothing than
+    // filler.
     retries: 3,
     concurrency: { key: "event.data.userId", limit: 1 },
     onFailure: async ({ event, error }) => {
-      // After all retries exhausted, drop a degraded-template audit
-      // so the user still has something to read when they hit the
-      // paywall. IMPLEMENTATION_PLAN_PAYWALL.md §7.3 — the invariant
-      // is "a user never hits the paywall without having read their
-      // Life Audit." No Claude call here — the whole point of the
-      // fallback is to survive Claude-down / rate-limit / garbage-
-      // output scenarios.
       const originalData = (event.data as { event?: { data?: unknown } })?.event
         ?.data as GenerateLifeAuditEventData | undefined;
       const lifeAuditId = originalData?.lifeAuditId;
@@ -49,66 +48,19 @@ export const generateLifeAuditFn = inngest.createFunction(
 
       const { prisma } = await import("@/lib/prisma");
       try {
-        const audit = await prisma.lifeAudit.findUnique({
-          where: { id: lifeAuditId },
-          select: { periodStart: true, periodEnd: true },
-        });
-        if (!audit) return;
-
-        const entries = await prisma.entry.findMany({
-          where: {
-            userId,
-            status: "COMPLETE",
-            entryDate: { gte: audit.periodStart, lte: audit.periodEnd },
-          },
-          orderBy: { entryDate: "asc" },
-          select: {
-            entryDate: true,
-            summary: true,
-            mood: true,
-            moodScore: true,
-            themes: true,
-            wins: true,
-            blockers: true,
-          },
-        });
-
-        const fallback = buildDegradedAudit({
-          entries,
-          periodStart: audit.periodStart,
-          periodEnd: audit.periodEnd,
-        });
-
-        await prisma.lifeAudit.update({
-          where: { id: lifeAuditId },
+        // Never overwrite a COMPLETE audit; otherwise record the failure.
+        await prisma.lifeAudit.updateMany({
+          where: { id: lifeAuditId, status: { not: "COMPLETE" } },
           data: {
-            narrative: fallback.narrative,
-            closingLetter: fallback.closingLetter,
-            themesArc: fallback.themesArc as object,
-            moodArc: fallback.moodArc,
-            status: "COMPLETE",
-            degraded: true,
+            status: "FAILED",
             errorMessage: truncateForUi(
-              `Generator exhausted retries: ${error?.message ?? "unknown"}`
+              `Generator failed: ${error?.message ?? "unknown"}`
             ),
           },
         });
-
-        safeLog.warn("life-audit.degraded_fallback_shipped", {
-          lifeAuditId,
-          userId,
-          entryCount: entries.length,
-        });
-
-        const { track } = await import("@/lib/posthog");
-        await track(userId, "life_audit_generated", {
-          lifeAuditId,
-          kind: "TRIAL_DAY_14",
-          entryCount: entries.length,
-          degraded: true,
-        });
+        safeLog.warn("life-audit.failed", { lifeAuditId, userId });
       } catch (err) {
-        safeLog.error("life-audit.degraded_fallback_failed", err, {
+        safeLog.error("life-audit.mark_failed_failed", err, {
           lifeAuditId,
           userId,
         });

@@ -170,7 +170,7 @@ const UNLOCK_LABELS: Record<UnlockKey, string> = {
   patternInsights: "Pattern Insights",
   themeMap: "Theme Map",
   weeklyReport: "Weekly Report",
-  lifeAudit: "Day 7 Life Audit",
+  lifeAudit: "Life Audit",
 };
 
 export function userProgression(input: UserProgressionInput): UserProgression {
@@ -208,7 +208,12 @@ export function userProgression(input: UserProgressionInput): UserProgression {
       entriesCount >= THEME_MAP_MIN_ENTRIES &&
       themesDetected >= THEME_MAP_MIN_THEMES,
     weeklyReport: dayOfTrial >= 7 && entriesInLast7Days >= 3,
-    lifeAudit: dayOfTrial >= 7 && entriesCount >= 1,
+    // 2026-10-27, wait-for-data: the audit is generated only once there
+    // are 7+ entries from the first 30 days (server:
+    // apps/web/src/lib/life-audit-eligibility.ts). Unlocking at 1 entry told
+    // people "Your Day 7 Life Audit is ready" when none existed or it was a
+    // thin template.
+    lifeAudit: dayOfTrial >= 7 && lifeAuditDataReady(entries, user.createdAt),
   };
 
   // ─── What's next ──────────────────────────────────────────────
@@ -507,15 +512,22 @@ function pickNextUnlock(args: {
 
   if (!unlocked.lifeAudit) {
     const dayGap = Math.max(0, 7 - dayOfTrial);
-    candidates.push({
-      key: "lifeAudit",
-      condition:
-        dayGap > 0
-          ? `${dayGap} day${dayGap === 1 ? "" : "s"} until your Life Audit`
-          : recordMore(1),
-      progress: { current: dayOfTrial, target: 7 },
-      distance: dayGap,
-    });
+    const entryGap = Math.max(0, LIFE_AUDIT_MIN_ENTRIES - entriesCount);
+    // Only promise it while it can still happen (first 30 days).
+    if (dayOfTrial <= LIFE_AUDIT_WINDOW_DAYS) {
+      candidates.push({
+        key: "lifeAudit",
+        condition:
+          entryGap > 0
+            ? `${recordMore(entryGap)} to unlock your Life Audit`
+            : `${dayGap} day${dayGap === 1 ? "" : "s"} until your Life Audit`,
+        progress:
+          entryGap > 0
+            ? { current: entriesCount, target: LIFE_AUDIT_MIN_ENTRIES }
+            : { current: dayOfTrial, target: 7 },
+        distance: Math.max(dayGap, entryGap),
+      });
+    }
   }
 
   if (candidates.length === 0) return null;
@@ -535,6 +547,25 @@ function pickNextUnlock(args: {
     condition: best.condition,
     progress: best.progress,
   };
+}
+
+/** Mirrors apps/web/src/lib/life-audit-eligibility.ts. */
+const LIFE_AUDIT_MIN_ENTRIES = 7;
+const LIFE_AUDIT_WINDOW_DAYS = 30;
+
+/** 7+ entries dated within the first 30 days after signup. */
+function lifeAuditDataReady(
+  entries: { createdAt: Date }[],
+  createdAt: Date
+): boolean {
+  const windowEnd = createdAt.getTime() + LIFE_AUDIT_WINDOW_DAYS * DAY_MS;
+  let n = 0;
+  for (const e of entries) {
+    if (e.createdAt.getTime() <= windowEnd && ++n >= LIFE_AUDIT_MIN_ENTRIES) {
+      return true;
+    }
+  }
+  return false;
 }
 
 function recordMore(n: number, scope?: string): string {
@@ -613,14 +644,29 @@ export function lockedFeatureCopy(
       };
     }
     case "lifeAudit": {
+      // 2026-10-27, wait-for-data: the audit needs 7 debriefs from the first
+      // 30 days; it's generated the night after both are true.
       const dayGap = Math.max(0, 7 - progression.dayOfTrial);
+      const entryGap = Math.max(0, LIFE_AUDIT_MIN_ENTRIES - progression.entriesCount);
+      if (entryGap > 0 && progression.dayOfTrial > LIFE_AUDIT_WINDOW_DAYS) {
+        return {
+          headline: "Life Audit",
+          body: "The Life Audit is written from your first month of debriefs, and there weren't quite enough of them for a real one.",
+          progress: { current: progression.entriesCount, target: LIFE_AUDIT_MIN_ENTRIES },
+        };
+      }
       return {
-        headline: "Your Day 7 Life Audit is coming.",
+        headline: `Your Life Audit unlocks after ${LIFE_AUDIT_MIN_ENTRIES} debriefs.`,
         body:
-          dayGap > 0
-            ? `This is the long-form letter Ripple writes about your first week. It lands in ${dayGap} day${dayGap === 1 ? "" : "s"}.`
-            : `You're on day ${progression.dayOfTrial}. Your Life Audit should be generating — if it hasn't appeared, try recording one more entry.`,
-        progress: { current: progression.dayOfTrial, target: 7 },
+          entryGap > 0
+            ? `It's the long-form letter Ripple writes from your own entries. ${entryGap} more debrief${entryGap === 1 ? "" : "s"} and it's on its way.`
+            : dayGap > 0
+              ? `You have enough debriefs. It arrives in ${dayGap} day${dayGap === 1 ? "" : "s"}.`
+              : "You have enough debriefs. Ripple writes it overnight.",
+        progress:
+          entryGap > 0
+            ? { current: progression.entriesCount, target: LIFE_AUDIT_MIN_ENTRIES }
+            : { current: progression.dayOfTrial, target: 7 },
       };
     }
   }

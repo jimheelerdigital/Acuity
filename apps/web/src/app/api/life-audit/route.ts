@@ -23,6 +23,7 @@ import { NextResponse } from "next/server";
 
 import { getAuthOptions } from "@/lib/auth";
 import { inngest } from "@/inngest/client";
+import { AUDIT_MIN_ENTRIES, auditWindowEnd } from "@/lib/life-audit-eligibility";
 import { requireEntitlement } from "@/lib/paywall";
 import {
   checkRateLimit,
@@ -98,13 +99,15 @@ export async function POST() {
     );
   }
 
-  // Period: signup → trialEndsAt (or now, if trialEndsAt is null —
-  // shouldn't happen post-§1.6 but defensive).
+  // Period (2026-10-27, wait-for-data): signup → the earlier of now and
+  // signup + 30 days, the same window the dispatcher counts entries in
+  // (lib/life-audit-eligibility.ts). Under 7 entries we refuse up front
+  // instead of creating a row the generator would reject.
   const periodStart = user.createdAt;
-  const periodEnd = user.trialEndsAt ?? new Date();
+  const windowEnd = auditWindowEnd(user.createdAt);
+  const nowDate = new Date();
+  const periodEnd = nowDate < windowEnd ? nowDate : windowEnd;
 
-  // Count entries up front so we can populate entryCount on the row.
-  // The Inngest function will re-verify + reject below threshold.
   const entryCount = await prisma.entry.count({
     where: {
       userId,
@@ -112,6 +115,17 @@ export async function POST() {
       entryDate: { gte: periodStart, lte: periodEnd },
     },
   });
+  if (entryCount < AUDIT_MIN_ENTRIES) {
+    return NextResponse.json(
+      {
+        error: "not_enough_entries",
+        message: `Your Life Audit unlocks after ${AUDIT_MIN_ENTRIES} debriefs.`,
+        have: entryCount,
+        need: AUDIT_MIN_ENTRIES,
+      },
+      { status: 409 }
+    );
+  }
 
   const audit = await prisma.lifeAudit.create({
     data: {

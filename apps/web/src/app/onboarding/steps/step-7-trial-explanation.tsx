@@ -1,7 +1,7 @@
 /**
  * Step 7 — How the trial works.
  *
- * Sets expectation for the 7-day trial + Day 7 Life Audit + Month 2
+ * Sets expectation for the 7-day trial + the Life Audit (after 7 debriefs) + Month 2
  * transition. Tone comes from IMPLEMENTATION_PLAN_PAYWALL §4.2 —
  * continuation-not-gate language, the paywall is soft, your entries
  * and insights remain visible regardless of whether you subscribe.
@@ -35,9 +35,9 @@ export function Step7TrialExplanation() {
           body="Night one — thirty seconds is fine. Tomorrow the dashboard will already have a little bit of the shape of you on it."
         />
         <TimelineRow
-          marker="Day 7"
+          marker="7 debriefs"
           title="You get a Life Audit."
-          body="A long-form letter. Not a summary. Written from your own entries by our flagship model — the one we save for the moments that deserve the extra thought. Names the pattern that showed up. Hard to produce any other way than by sitting with a week of honest notes."
+          body="After your first seven debriefs, a long-form letter. Not a summary. Written from your own entries by our flagship model — the one we save for the moments that deserve the extra thought. Names the pattern that showed up. Hard to produce any other way than by sitting with a week of honest notes."
         />
         <TimelineRow
           marker="After"
