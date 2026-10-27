@@ -342,6 +342,13 @@ export async function POST(
     return [tasksCount, goalsCount] as const;
   });
 
+  // Calendar (2026-10-27): createMany skips the per-task enqueue, so
+  // queue the committed dated tasks for a connected calendar. Non-fatal.
+  if (tasksCreated > 0) {
+    const { enqueueEntryTasksForCalendar } = await import("@/lib/enqueue-sync");
+    await enqueueEntryTasksForCalendar(prisma, userId, entry.id);
+  }
+
   // Analytics — extraction signal-to-noise over time.
   try {
     const { track } = await import("@/lib/posthog");

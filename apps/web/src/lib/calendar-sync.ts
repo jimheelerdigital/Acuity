@@ -44,6 +44,22 @@ import type { Prisma, PrismaClient, Task } from "@prisma/client";
  */
 export type CalendarProviderId = "ios_eventkit" | "android_calendar" | "google" | "outlook";
 
+export const CALENDAR_PROVIDER_IDS: readonly CalendarProviderId[] = [
+  "ios_eventkit",
+  "android_calendar",
+  "google",
+  "outlook",
+];
+
+export function isCalendarProviderId(
+  value: string | null | undefined
+): value is CalendarProviderId {
+  return (
+    typeof value === "string" &&
+    (CALENDAR_PROVIDER_IDS as readonly string[]).includes(value)
+  );
+}
+
 /**
  * What kind of calendar mutation does this op produce?
  *   - upsert: create-or-update. Used for new tasks with dueDate, and
@@ -176,15 +192,13 @@ export function planSyncOp(
   user: UserForPlanning,
   ctx: PlanContext = {}
 ): CalendarSyncOp | null {
-  // Provider must be set + recognized.
+  // Provider must be set + recognized. android_calendar was missing here
+  // (2026-10-27), so Android users got the connect catch-up and then no
+  // further edits or completions.
   const provider = task // eslint-disable-line @typescript-eslint/no-unused-vars
     ? user.calendarConnectedProvider
     : null;
-  if (
-    provider !== "ios_eventkit" &&
-    provider !== "google" &&
-    provider !== "outlook"
-  ) {
+  if (!isCalendarProviderId(provider)) {
     return null;
   }
   if (!user.targetCalendarId) return null;

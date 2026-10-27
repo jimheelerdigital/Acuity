@@ -3,6 +3,7 @@ import "server-only";
 import type { Prisma, PrismaClient, Task, User } from "@prisma/client";
 
 import {
+  isCalendarProviderId,
   planSyncOp,
   type CalendarSyncOpKind,
   type TaskForPlanning,
@@ -192,4 +193,64 @@ export async function enqueueSyncForLoadedTask(
     data: { calendarSyncStatus: "PENDING", calendarPendingSince: new Date() },
   });
   return { enqueued: true };
+}
+
+/** How far back a due date may be and still get queued (matches connect). */
+export const ENTRY_TASK_DUE_WINDOW_MS = 36 * 60 * 60 * 1000;
+
+/**
+ * Queue the dated tasks a recording just created (2026-10-27).
+ *
+ * Tasks extracted from an entry are written with `createMany`, which
+ * skips the per-task `enqueueSyncForTask` the /api/tasks routes use, so
+ * they never reached the calendar (92% of dated tasks come from
+ * entries). Same rule as the connect catch-up: open, due within the
+ * last 36h or later, not yet synced, and only for a connected user with
+ * a target calendar and auto-add on.
+ *
+ * Call it AFTER the creating transaction commits, with the top-level
+ * client: inside the transaction the rows aren't visible yet, and a
+ * failed statement would abort the extraction. Never throws; the
+ * extraction must succeed even if this doesn't.
+ */
+export async function enqueueEntryTasksForCalendar(
+  db: Pick<PrismaClient, "user" | "task">,
+  userId: string,
+  entryId: string
+): Promise<number> {
+  try {
+    const user = await db.user.findUnique({
+      where: { id: userId },
+      select: {
+        calendarConnectedProvider: true,
+        targetCalendarId: true,
+        autoSendTasks: true,
+      },
+    });
+    if (
+      !user ||
+      !isCalendarProviderId(user.calendarConnectedProvider) ||
+      !user.targetCalendarId ||
+      !user.autoSendTasks
+    ) {
+      return 0;
+    }
+    const res = await db.task.updateMany({
+      where: {
+        userId,
+        entryId,
+        status: { not: "DONE" },
+        dueDate: { gte: new Date(Date.now() - ENTRY_TASK_DUE_WINDOW_MS) },
+        calendarSyncStatus: "NOT_SYNCED",
+      },
+      data: { calendarSyncStatus: "PENDING", calendarPendingSince: new Date() },
+    });
+    return res.count;
+  } catch (err) {
+    console.warn(
+      "[enqueue-sync] entry tasks not queued for calendar (non-fatal):",
+      err instanceof Error ? err.message : err
+    );
+    return 0;
+  }
 }

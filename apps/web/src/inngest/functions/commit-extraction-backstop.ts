@@ -31,6 +31,7 @@ export const commitExtractionBackstopFn = inngest.createFunction(
   async () => {
     const { prisma } = await import("@/lib/prisma");
     const { commitExtractedItems } = await import("@/lib/commit-extraction");
+    const { enqueueEntryTasksForCalendar } = await import("@/lib/enqueue-sync");
     const cutoff = new Date(Date.now() - SEVEN_DAYS_MS);
 
     const candidates = await prisma.entry.findMany({
@@ -74,6 +75,8 @@ export const commitExtractionBackstopFn = inngest.createFunction(
         });
         if (!didCommit) continue;
         committed += 1;
+        // Calendar (2026-10-27): queue any still-upcoming dated tasks.
+        await enqueueEntryTasksForCalendar(prisma, e.userId, e.id);
         // Analytics — fire-and-forget (non-fatal).
         await prisma.onboardingEvent
           .create({
