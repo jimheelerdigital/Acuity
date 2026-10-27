@@ -7,6 +7,42 @@
 
 ---
 
+## [2026-10-27] feat(insights): Ripple Wrapped — monthly + year-end recap
+
+- **Requested by:** Jimmy (Insights v2)
+- **Committed by:** Claude Code
+
+### In plain English
+In the first week of each month, Insights offers "Your October, wrapped". From Dec 15 to Jan 7 it offers "Your 2026, wrapped". Tapping it opens a card-by-card recap:
+- how many debriefs, over how many days, and minutes of talking;
+- the top 3 things on your mind;
+- your longest habit streak;
+- to-dos captured just by talking, and how many are done;
+- a win worth remembering;
+- who came up most (first name only);
+- your mood week by week, or month by month for the year.
+
+It only appears when there's enough to say: 4+ debriefs in the month, or 12+ in the year. There's a Share button. It shares a short text summary, which is shown first. No transcript content, no win, no habit names. A person's first name is included only if you turn it on.
+
+### Technical changes
+- `packages/shared/src/wrapped.ts`: period parse/range/label, `wrappedPeriodForCard` (days 1–7 → last month; Dec 15–Jan 7 → the year), `WrappedSummary`, and `wrappedShareText` (the privacy rule lives here). Exported from the shared index.
+- `apps/web/src/lib/wrapped.ts`: pure `computeWrapped`, deterministic, no AI. Per-section thresholds:
+  - themes: in 2+ entries each;
+  - habit run: 3+ days, counted inside the period on expected days only;
+  - tasks: captured from recordings;
+  - win: the most repeated, else the most recent;
+  - person: 3+ mentions;
+  - mood arc: 2+ buckets;
+  - minutes: when half or more of the entries have audio.
+- `GET /api/insights/wrapped?period=YYYY-MM|YYYY` (getAnySessionUserId). Converts timestamps to the user's timezone before bucketing, and returns 400 for periods that haven't started.
+- App: `components/insights/wrapped-card.tsx` (`WrappedCard`, no props) and the `app/insights/wrapped.tsx` screen.
+  - Sharing uses RN `Share` with text. No image: react-native-view-shot isn't installed, and an image share would need it in a native build.
+- Tests: `apps/web/src/lib/wrapped.test.ts` (15).
+- Real data: 28 users have 4+ October debriefs, so they would see October's Wrapped on Nov 1–7.
+
+### Manual steps needed
+- None. Not yet placed on the Insights tab (wired in separately).
+
 ## [2026-10-27] fix(watch): checked-off tasks strike through instead of vanishing
 
 - **Requested by:** Jimmy
