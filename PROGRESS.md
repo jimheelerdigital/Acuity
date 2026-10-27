@@ -7,6 +7,28 @@
 
 ---
 
+## [2026-10-27] feat(insights): what lifts you, what drains you
+
+- **Requested by:** Jimmy (Insights v2)
+- **Committed by:** Claude Code
+
+### In plain English
+A new Insights card compares your mood on days something happened against days it didn't. "Something" can be a topic coming up, a person you mentioned, a habit you did or skipped, or a busy calendar day. It shows up to 3 things that tend to lift your mood and up to 3 that tend to drain it, with the numbers and how many days each is based on. Correlation wording only ("tended to be higher"), and nothing at all until there's enough data.
+
+### Technical changes
+- `apps/web/src/lib/lifts-drains.ts` (pure, plus a test with 9 cases).
+  - The mood used is the average Entry.moodScore per local day over the last 60 days.
+  - Thresholds: 10+ scored days, 4+ days on each side, a gap of 0.75+ points (1–10), max 3 per side.
+  - A theme and a person with the same name are deduped. Habits are compared only on expected days since creation (and before archive).
+  - Calendar counts 3+ timed events as a busy day. It only applies with a connected calendar, from the first stored event onward.
+- `GET /api/insights/lifts-drains`: getAnySessionUserId, plus `requireEntitlement("canExtractEntries")` (PRO + trial). Cache 30 min.
+- `apps/mobile/components/insights/lifts-drains-card.tsx`: `LiftsDrainsCard({ progression })`. Renders only after Pattern Insights unlocks (7 entries) and when there's a finding. Not wired into insights.tsx yet.
+- Apple Health is deliberately excluded; the Health & mood card already covers it.
+- No AI, no schema change. Today about 6 users have 10+ scored days in 60.
+
+### Manual steps needed
+- None.
+
 ## [2026-10-27] fix(watch): checked-off tasks strike through instead of vanishing
 
 - **Requested by:** Jimmy
