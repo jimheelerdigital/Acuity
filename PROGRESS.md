@@ -9,6 +9,25 @@
 
 
 
+## [2026-10-27] — App funnel dashboard: removed the fake "skipped the paywall" row
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** see git log
+
+### In plain English (for Keenan)
+The App funnel page said 16 people "skipped" the paywall with "Keep building". That was wrong: the app's paywall has no skip, and "Keep building" is the button on the results screen. The row now reads "Left at the paywall (no trial)": everyone who saw the paywall and didn't start a trial. The page's notes no longer say each install isn't tracked; the iPhone app has tracked it since 1.9.5.
+
+### Technical changes (for Jimmy)
+- apps/web/src/lib/admin/app-funnel.ts: the "skip" branch (v10_keep_building_tapped / v10_save_later ∩ paywall) is replaced by "left" = paywall people − store trials.
+- apps/web/src/app/admin/tabs/AppFunnelTab.tsx: stale "coming in 1.9.4" notes updated (install id ships in 1.9.5+; only Android 1.9.0 and older builds lack it).
+
+### Manual steps needed
+None
+
+### Notes
+- v10_keep_building_tapped fires on the reveal screen (apps/mobile/app/onboarding-new/_v10/reveal.tsx), before the account screen and the paywall. Never read it as a paywall outcome.
+
 ## [2026-10-27] — Mythicals clips: no surprise fire, lava or background additions
 
 - **Requested by:** Keenan

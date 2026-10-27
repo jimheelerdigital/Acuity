@@ -10,7 +10,8 @@
  *
  * Two paths:
  *   - New installs (onboarding): questions → recording → reveal → paywall →
- *     skip ("Keep building") or an App Store / Play trial.
+ *     an App Store / Play trial, or leave. The paywall is hard: there is no
+ *     skip ("Keep building" is the button on the results screen, before it).
  *   - Web payers (welcome): welcome screens → habit → tour.
  */
 import type { PrismaClient } from "@prisma/client";
@@ -96,11 +97,10 @@ export async function getAppFunnel(prisma: PrismaClient, start: Date, end: Date)
   // The paywall comes after sign-in, so everyone who saw it is identifiable.
   const paywallAll = peopleWhere(is("v10_paywall_viewed"));
 
-  // Paywall outcomes. No purchase events yet (Jimmy is adding them), so a
-  // store trial is read from the user record (subscriptionSource apple /
-  // google). Skip = "Keep building" / "Later".
+  // Paywall outcomes. A store trial is read from the user record
+  // (subscriptionSource apple / google). The paywall is hard (2026-10-27,
+  // Keenan: "it's paywall or nothing"), so everyone else at it left.
   const paywallSet = paywallAll;
-  const skipped = peopleWhere((e) => e.event === "v10_keep_building_tapped" || e.event === "v10_save_later");
   const userIds = [...paywallSet].filter((id) => id.startsWith("c")); // cuid user ids
   const storeUsers = userIds.length
     ? await prisma.user.findMany({
@@ -110,10 +110,10 @@ export async function getAppFunnel(prisma: PrismaClient, start: Date, end: Date)
     : [];
   const bought = new Set(storeUsers.map((u) => u.id));
   const trialSet = new Set([...paywallSet].filter((id) => bought.has(id)));
-  const skipSet = new Set([...skipped].filter((id) => paywallSet.has(id) && !bought.has(id)));
+  const leftSet = new Set([...paywallSet].filter((id) => !bought.has(id)));
   stages.push(
     { key: "trial", label: "Started an App Store / Play trial", set: trialSet, views: trialSet.size, branch: true, group: "core" },
-    { key: "skip", label: "Skipped (“Keep building” / “Later”)", set: skipSet, views: skipSet.size, branch: true, group: "core" },
+    { key: "left", label: "Left at the paywall (no trial)", set: leftSet, views: leftSet.size, branch: true, group: "core" },
   );
 
   // Percentages run on views: most onboarding happens before sign-in with no

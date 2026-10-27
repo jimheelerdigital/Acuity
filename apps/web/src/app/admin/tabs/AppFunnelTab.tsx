@@ -55,7 +55,7 @@ export default function AppFunnelTab({ start, end }: { start: string; end: strin
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
       <div style={{ ...card, padding: 14, fontSize: 12, color: "var(--acuity-text-sec)", lineHeight: 1.5 }}>
-        New app installs, from the first onboarding question to the paywall. Older app versions skip the questions, so they&rsquo;re a separate section; both paths meet at &ldquo;Tapped start recording&rdquo;. Counts are times each step happened (most onboarding runs before sign-in, without a per-person id yet; retries count again). The paywall and its outcomes are people. Red = more than 30% lost since the step before.
+        New app installs, from the first onboarding question to the paywall. Older app versions skip the questions, so they&rsquo;re a separate section; both paths meet at &ldquo;Tapped start recording&rdquo;. Counts are times each step happened (retries count again; app 1.9.5+ tags each install, but Android and older builds don&rsquo;t). The paywall and its outcomes are people. Red = more than 30% lost since the step before.
         {data.biggestDrop && (
           <> Biggest drop: <b style={{ color: "var(--acuity-text)" }}>{data.biggestDrop.from} → {data.biggestDrop.to}</b> ({data.biggestDrop.lost} fewer, {data.biggestDrop.pct}%).</>
         )}
@@ -70,7 +70,7 @@ export default function AppFunnelTab({ start, end }: { start: string; end: strin
         <div style={H}>Recording to paywall (every app version)</div>
         {data.steps.some((s) => s.group === "core" && s.views) ? <Bars steps={data.steps.filter((s) => s.group === "core")} /> : <div style={{ color: "var(--acuity-text-ter)", fontSize: 13 }}>No onboarding recordings in this range.</div>}
         <div style={{ fontSize: 11, color: "rgba(255,255,255,0.3)", marginTop: 12, lineHeight: 1.5 }}>
-          App Store / Play trials come from the user record until the app logs purchase events (coming with Jimmy&rsquo;s 1.9.4). People who left the paywall without either show in neither row.
+          The paywall has no skip: everyone who saw it either started an App Store / Play trial (read from their account) or left.
         </div>
       </div>
 
@@ -94,7 +94,7 @@ export default function AppFunnelTab({ start, end }: { start: string; end: strin
             </div>
           ))}
           <div style={{ fontSize: 11, color: "rgba(255,255,255,0.3)", marginTop: 8, lineHeight: 1.5 }}>
-            Views, not people: the app doesn&rsquo;t tag anonymous screens with a per-install id yet ({data.totals.unlinkedEvents} of {data.totals.events} events in range). Exact once 1.9.4 ships.
+            Views, not people: {data.totals.unlinkedEvents} of {data.totals.events} events in range carry no install id (Android 1.9.0 and older builds).
           </div>
         </div>
 
