@@ -6,6 +6,7 @@ import { describe, expect, it } from "vitest";
 // (it gives `eas update` the same env as a store build). Tested here
 // because the web suite is the one CI runs.
 import {
+  exportPlatformFlags,
   findMissing,
   newExportId,
   parseArgs,
@@ -59,6 +60,11 @@ describe("ota.mjs", () => {
     expect(() => parseArgs([])).toThrow(/--message/);
     expect(parseArgs(["--dry-run"]).dryRun).toBe(true);
     expect(() => parseArgs(["--dry-run", "--platform", "web"])).toThrow(/platform/);
+  });
+
+  it("exports iOS + Android (never web) for --platform all", () => {
+    expect(exportPlatformFlags("all")).toBe("--platform ios --platform android");
+    expect(exportPlatformFlags("ios")).toBe("--platform ios");
   });
 
   it("shell-quotes values with quotes", () => {
