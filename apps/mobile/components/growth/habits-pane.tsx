@@ -506,10 +506,19 @@ function HabitRow({
           ) : null}
         </View>
 
+        {/* Per-habit streak, same flame + count as the widget rows
+            (Keenan, 2026-10-27). Was a muted "5d" that read as a label. */}
         {streak > 0 ? (
-          <Text style={{ fontFamily: tokens.fontMono, fontSize: 12, color: tokens.textTer }}>
-            {streak}d
-          </Text>
+          <View
+            accessible
+            accessibilityLabel={`${streak}-day streak`}
+            style={{ flexDirection: "row", alignItems: "center", gap: 3 }}
+          >
+            <Ionicons name="flame" size={14} color={tokens.primary} />
+            <Text style={{ fontFamily: tokens.fontSans, fontSize: 13, fontWeight: "600", color: tokens.textSec }}>
+              {streak}
+            </Text>
+          </View>
         ) : null}
         <Pressable
           onPress={onOpen}
