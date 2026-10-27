@@ -9,8 +9,8 @@ import type { WidgetSnapshot } from "./snapshot";
 
 /**
  * Android home-screen widget: the same content as the iOS widget
- * (targets/widget/index.swift) — streak plus today's habits, and a tap
- * anywhere starts a check-in.
+ * (targets/widget/index.swift) — streak plus today's habits (each with its
+ * own streak). A tap opens Habits, or starts a check-in when there are none.
  *
  * Android draws widgets with RemoteViews, so this is built from
  * react-native-android-widget primitives (FlexWidget / TextWidget), not
@@ -18,8 +18,9 @@ import type { WidgetSnapshot } from "./snapshot";
  * small layout, wide sizes add the habit list (like iOS small vs medium).
  */
 
-/** Same deep link the iOS widget uses → recorder, auto-starting. */
+/** Same deep links the iOS widget uses: recorder (auto-start) and Habits. */
 export const RECORD_URI = "acuity://record?autostart=1";
+export const HABITS_URI = "acuity://habits";
 
 const CORAL: HexColor = "#ED9672";
 
@@ -150,12 +151,20 @@ function MediumLayout({
                 text={h.done ? "●" : "○"}
                 style={{ fontSize: 14, color: h.done ? c.accent : c.textSec }}
               />
-              <TextWidget
-                text={h.name}
-                maxLines={1}
-                truncate="END"
-                style={{ fontSize: 14, color: h.done ? c.textSec : c.text }}
-              />
+              <FlexWidget style={{ flex: 1 }}>
+                <TextWidget
+                  text={h.name}
+                  maxLines={1}
+                  truncate="END"
+                  style={{ fontSize: 14, color: h.done ? c.textSec : c.text }}
+                />
+              </FlexWidget>
+              {(h.streak ?? 0) > 0 ? (
+                <TextWidget
+                  text={`🔥${h.streak}`}
+                  style={{ fontSize: 12, fontWeight: "600", color: c.textSec }}
+                />
+              ) : null}
             </FlexWidget>
           ))
         )}
@@ -178,11 +187,14 @@ function Root({
   // ~22dp per habit row after padding; never fewer than 1, never more than 4
   // (matches iOS medium).
   const maxRows = Math.max(1, Math.min(4, Math.floor((height - 32) / 22)));
+  // With habits on it, a tap opens Habits (Keenan, 2026-10-27); with
+  // none yet, it still starts a check-in.
+  const hasHabits = (s?.habits.length ?? 0) > 0;
   return (
     <FlexWidget
       clickAction="OPEN_URI"
-      clickActionData={{ uri: RECORD_URI }}
-      accessibilityLabel="Ripple: start a check-in"
+      clickActionData={{ uri: hasHabits ? HABITS_URI : RECORD_URI }}
+      accessibilityLabel={hasHabits ? "Ripple: open habits" : "Ripple: start a check-in"}
       style={{
         height: "match_parent",
         width: "match_parent",

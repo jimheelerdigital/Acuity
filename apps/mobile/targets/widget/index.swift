@@ -12,8 +12,10 @@ import Security
 //   • setString(key) -> UserDefaults String   -> defaults.string(forKey:)
 //   • setArray(key)  -> JSON Data([[String:Any]]) -> defaults.data(forKey:)
 //
-// Tapping the widget deep-links into the recorder via acuity://record?autostart=1
-// (iOS won't give a widget the mic; the tap brings the app forward to record).
+// Tapping the widget opens Habits (acuity://habits) when it lists habits
+// (Keenan, 2026-10-27); with none yet it deep-links into the recorder via
+// acuity://record?autostart=1 (iOS won't give a widget the mic; the tap
+// brings the app forward to record).
 
 private let APP_GROUP = "group.com.heelerdigital.acuity"
 
@@ -28,10 +30,18 @@ private func markWidgetPlaced() {
     }
 }
 private let RECORD_URL = URL(string: "acuity://record?autostart=1")!
+private let HABITS_URL = URL(string: "acuity://habits")!
+
+private func tapURL(_ entry: RippleEntry) -> URL {
+    entry.habits.isEmpty ? RECORD_URL : HABITS_URL
+}
 
 struct HabitItem: Decodable {
     let name: String
     let done: Int
+    // This habit's own current streak (2026-10-27). Optional: data written
+    // by an older app version has no per-habit streak.
+    let streak: Int?
 }
 
 struct RippleEntry: TimelineEntry {
@@ -54,8 +64,8 @@ private func readEntry() -> RippleEntry {
 struct Provider: TimelineProvider {
     func placeholder(in context: Context) -> RippleEntry {
         RippleEntry(date: Date(), streak: 5,
-                    habits: [HabitItem(name: "Daily Reflection", done: 1),
-                             HabitItem(name: "Stretch", done: 0)])
+                    habits: [HabitItem(name: "Daily Reflection", done: 1, streak: 5),
+                             HabitItem(name: "Stretch", done: 0, streak: 2)])
     }
 
     func getSnapshot(in context: Context, completion: @escaping (RippleEntry) -> Void) {
@@ -122,6 +132,18 @@ struct MediumView: View {
                         Text(h.name).font(.system(size: 14)).lineLimit(1)
                             .strikethrough(h.done == 1, color: .secondary)
                             .foregroundColor(h.done == 1 ? .secondary : .primary)
+                        Spacer(minLength: 4)
+                        if let s = h.streak, s > 0 {
+                            HStack(spacing: 2) {
+                                Image(systemName: "flame.fill")
+                                    .font(.system(size: 10))
+                                    .foregroundColor(accent)
+                                Text("\(s)")
+                                    .font(.system(size: 12, weight: .semibold, design: .rounded))
+                                    .foregroundColor(.secondary)
+                            }
+                            .accessibilityLabel("\(s)-day streak")
+                        }
                     }
                 }
                 if entry.habits.isEmpty {
@@ -192,22 +214,22 @@ struct RippleWidgetEntryView: View {
         switch family {
         case .accessoryCircular:
             CircularView(entry: entry)
-                .widgetURL(RECORD_URL)
+                .widgetURL(tapURL(entry))
                 .containerBackground(for: .widget) { AccessoryWidgetBackground() }
         case .accessoryRectangular:
             RectangularView(entry: entry)
-                .widgetURL(RECORD_URL)
+                .widgetURL(tapURL(entry))
                 .containerBackground(for: .widget) { Color.clear }
         case .accessoryInline:
             InlineView(entry: entry)
-                .widgetURL(RECORD_URL)
+                .widgetURL(tapURL(entry))
         case .systemSmall:
             SmallView(entry: entry)
-                .widgetURL(RECORD_URL)
+                .widgetURL(tapURL(entry))
                 .containerBackground(for: .widget) { Color(.systemBackground) }
         default:
             MediumView(entry: entry)
-                .widgetURL(RECORD_URL)
+                .widgetURL(tapURL(entry))
                 .containerBackground(for: .widget) { Color(.systemBackground) }
         }
     }
@@ -220,7 +242,7 @@ struct RippleWidget: Widget {
             RippleWidgetEntryView(entry: entry)
         }
         .configurationDisplayName("Ripple")
-        .description("Your streak and today's habits. Tap to record.")
+        .description("Your streak and today's habits. Tap to open Habits.")
         .supportedFamilies([
             .systemSmall,
             .systemMedium,

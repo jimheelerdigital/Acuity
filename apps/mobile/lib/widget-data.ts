@@ -50,7 +50,11 @@ export function publishHabitsToWidget(
       const { streak, habitsToday, today } = computeWidgetData(habits, checks);
       void publishAndroidWidget({
         streak,
-        habits: habitsToday.map((h) => ({ name: h.name, done: h.done === 1 })),
+        habits: habitsToday.map((h) => ({
+          name: h.name,
+          done: h.done === 1,
+          streak: h.streak,
+        })),
         localDate: today,
       }).catch(() => {});
     } catch {
@@ -81,15 +85,13 @@ function computeWidgetData(habits: Habit[], checks: HabitCheckRow[]) {
   const today = todayLocalDate();
   const byHabit = checksByHabit(checks);
   const due = habits.filter((h) => !h.archivedAt && isExpectedOn(h, today));
+  // Per-habit streak on each widget row (Keenan, 2026-10-27).
   const habitsToday = due.map((h) => ({
     name: h.name,
     done: byHabit.get(h.id)?.has(today) ? 1 : 0,
+    streak: currentStreak(h, byHabit.get(h.id) ?? new Set(), today),
   }));
-  const streak = due.reduce(
-    (max, h) =>
-      Math.max(max, currentStreak(h, byHabit.get(h.id) ?? new Set(), today)),
-    0
-  );
+  const streak = habitsToday.reduce((max, h) => Math.max(max, h.streak), 0);
   return { today, habitsToday, streak };
 }
 

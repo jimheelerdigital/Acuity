@@ -7,6 +7,23 @@
 
 ---
 
+## [2026-10-27] feat(widget): habits widget opens Habits; each habit shows its streak
+
+- **Requested by:** Keenan (via Jimmy)
+- **Committed by:** Claude Code
+
+### In plain English
+Tapping the habits widget now opens your Habits instead of starting a recording. If you have no habits yet it still starts a check-in. Each habit row on the widget shows its own streak (🔥 + days). The big number is still your best streak.
+
+### Technical changes
+- `lib/widget-data.ts`: every `habitsToday` item carries `streak` (shared `currentStreak`). The headline streak is derived from those values.
+- iOS `targets/widget/index.swift`: `HabitItem.streak` is optional, so data from an older app version still decodes. The medium rows get a trailing flame + count. `widgetURL` is `acuity://habits` when there are habits, otherwise the recorder (all 5 families). Typecheck passes against the iOS 17 SDK (Xcode-beta).
+- Android `lib/android-widget`: the snapshot gets an optional `streak`. Rows show 🔥n. The tap goes to Habits when there are habits.
+- **Shipping:** the iOS widget is native, so it waits for the next EAS build. The JS side (data plus the Android widget) can go by OTA; old iOS widgets ignore the extra field.
+
+### Manual steps needed
+- None.
+
 ## [2026-10-27] feat(admin): send release emails from /admin/release-email
 
 - **Requested by:** Jimmy

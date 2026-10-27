@@ -16,6 +16,8 @@ const KEY = "ripple.androidWidget.v1";
 export interface WidgetHabit {
   name: string;
   done: boolean;
+  /** This habit's current streak in days (absent in older snapshots). */
+  streak?: number;
 }
 
 export interface WidgetSnapshot {
@@ -42,7 +44,11 @@ export async function readWidgetSnapshot(): Promise<WidgetSnapshot | null> {
       streak: parsed.streak,
       habits: parsed.habits
         .filter((h): h is WidgetHabit => !!h && typeof h.name === "string")
-        .map((h) => ({ name: h.name, done: !!h.done })),
+        .map((h) => ({
+          name: h.name,
+          done: !!h.done,
+          ...(typeof h.streak === "number" ? { streak: h.streak } : {}),
+        })),
       localDate: typeof parsed.localDate === "string" ? parsed.localDate : "",
     };
   } catch {
