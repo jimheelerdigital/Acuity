@@ -79,6 +79,11 @@ export function initSentry() {
     }
     return;
   }
+  // Set only by scripts/ota.mjs, a fresh id per OTA export. The script
+  // refuses to publish unless this id is inlined in the bundle, proving
+  // the build env reached the bundler (2026-10-27). Undefined in store
+  // builds. Also tags events with the OTA they came from.
+  const otaExportId = process.env.EXPO_PUBLIC_OTA_EXPORT_ID;
   Sentry.init({
     dsn: DSN,
     environment: ENVIRONMENT,
@@ -97,6 +102,7 @@ export function initSentry() {
     // builds ahead of the Sentry UI pages.
     enabled: true,
   });
+  if (otaExportId) Sentry.setTag("ota_export", otaExportId);
 
   // One-shot launch canary. Confirms DSN + network + ingest on the
   // very first open of a fresh install; if this event shows up in

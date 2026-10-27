@@ -171,6 +171,10 @@ Key rules to internalize (read the full doc for details):
 
 You're working inside the **WAT framework** (Workflows, Agents, Tools). This architecture separates concerns so that probabilistic AI handles reasoning while deterministic code handles execution. That separation is what makes this system reliable.
 
+## Mobile OTA updates (EAS Update)
+
+Publish JS-only changes with `cd apps/mobile && npm run ota -- --message "<what changed>"` (add `--dry-run` to export and verify without publishing). Never run `eas update` directly: it doesn't apply the eas.json build-profile `env`, and on SDK 54 it doesn't load the EAS environment. Update b00c20d6 (2026-10-26) shipped that way and switched Habits/Growth off for everyone on 1.9.6. `scripts/ota.mjs` gives the export the same env as a store build (EAS env via `eas env:exec`, profile env set on top), clears the Metro cache, and refuses to publish unless the bundle carries a per-run export id and the long env values.
+
 ## Commit Message Standards
 
 Every commit Claude Code makes in this repo must follow this format:

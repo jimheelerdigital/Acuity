@@ -7,7 +7,8 @@
     "dev": "expo start",
     "android": "expo run:android",
     "ios": "expo run:ios",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "ota": "node scripts/ota.mjs"
   },
   "dependencies": {
     "@acuity/shared": "*",
