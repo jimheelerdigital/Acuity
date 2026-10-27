@@ -566,6 +566,12 @@ export const carouselPostVideoFn = inngest.createFunction(
           const planned = s.imagePrompt.match(/^MOTION:\s*(.+)$/m)?.[1]?.trim() ?? "";
           const g = await groundMythicMotion({ imageUrl: baseUrl, motion: planned, seconds: clipSec(i), isCover: i === 0 });
           imagePrompt = planned ? s.imagePrompt.replace(/^MOTION:\s*.+$/m, `MOTION: ${g.motion}`) : `${s.imagePrompt}\nMOTION: ${g.motion}`;
+          // The clip's "Scene:" line comes from the first line of the prompt;
+          // swap in what the picture really shows so Kling isn't told about
+          // anything the image left out.
+          if (g.source === "grounded" && g.visible) {
+            imagePrompt = imagePrompt.replace(/^[^\n]*/, `A breathtaking, hyper-real cinematic film still, vertical composition: ${g.visible}.`);
+          }
           await up(
             `living/${postId}/motion-${i}.json`,
             Buffer.from(JSON.stringify({ planned, grounded: g.motion, sees: g.visible, source: g.source }, null, 1)),
@@ -576,6 +582,7 @@ export const carouselPostVideoFn = inngest.createFunction(
         const basePrompt = livingMotionPrompt(imagePrompt, {
           person: s.person,
           action: plan.brand === "mythicals" || !!plan.lane?.startsWith("pick-"),
+          grounded: plan.brand === "mythicals",
           realistic: !!plan.lane?.startsWith("pick-"),
           calm: plan.lane === "pick-bwk",
           selfie:

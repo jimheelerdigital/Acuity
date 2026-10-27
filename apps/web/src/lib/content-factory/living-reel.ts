@@ -38,6 +38,34 @@ function ffmpegPath(): string | null {
 }
 
 /**
+ * The Mythicals "measured" direction (2026-10-13 best-era recipe). Once the
+ * motion is grounded in the start frame (2026-10-27), fire, lava and other
+ * effects are allowed only when the motion itself names them: the general
+ * "a dragon may breathe fire ... flames licking along a blade" permission
+ * made Kling add a fireball behind two paladins and lava pouring from a
+ * chimera's mouth on "which twins are you and your best friend?".
+ */
+export function measuredMythicLine(motion: string | undefined, grounded: boolean): string {
+  const firesItself = /\b(fire|flame|flames|breath|breathes|breathing\s+(fire|frost|ice)|frost|ice|lightning|lava|molten|sparks?)\b/i.test(motion ?? "");
+  const base =
+    "Keep it MEASURED and real: the subject holds its pose and comes alive in one clear, natural movement at real-world speed (breathing, a slow head turn, a powerful wingbeat, a warrior turning his blade so it catches the light, a few heavy steps).";
+  const rules =
+    "Nothing fast or frantic: no attacks, no charging, no lunging, no whip pans, no morphing, no cartoon auras or energy blasts. A creature never holds or uses a weapon. WEAPONS ARE RIGID, UNCHANGING OBJECTS (2026-10-16): a hero may swing or strike through the air, but every weapon keeps its exact shape, size, head, blade and handle on the same side for the whole clip, like a solid metal object; it never bends, morphs, flips or changes, and it never hits the ground. The camera makes a slow, gentle push-in or stays steady.";
+  if (!grounded) {
+    return `${base} A dragon may breathe a long, powerful jet of fire or ice from between its open jaws in the direction they point, into the sky or landscape, never at a person and never down its own chest. Small effects bring it to life and blend into the scene's light: glowing runes or eyes, embers and sparks drifting, flames licking along armor or a blade, frost mist curling, faint lightning across horns or steel. The air and scene move gently (cloak and mane stir, smoke and mist drift, embers float). ${rules}`;
+  }
+  return [
+    base,
+    firesItself
+      ? "Any fire, frost or lightning is exactly what the Action names, coming from where it names, never at a person and never down a creature's own chest."
+      : "No fire, fireballs, explosions, lava, beams or projectiles: the Action names none.",
+    "Only glows and effects already in the picture may brighten or drift (eyes, runes, embers, mist). Nothing pours, drips or spills from a mouth, and nothing new arrives in the sky or background.",
+    "The air and scene move gently (cloak and mane stir, smoke and mist drift).",
+    rules,
+  ].join(" ");
+}
+
+/**
  * Motion prompt for one slide, built from the scene sentence of its stored
  * image prompt. Per the animate-cover lessons (v9/v12), the model executes
  * any verb it is given, so the prompt only asks for movement that already
@@ -45,7 +73,15 @@ function ffmpegPath(): string | null {
  */
 export function livingMotionPrompt(
   imagePrompt: string,
-  opts: { person?: boolean; action?: boolean; realistic?: boolean; calm?: boolean; selfie?: "photo" | "toon" | "scenic" } = {}
+  opts: {
+    person?: boolean;
+    action?: boolean;
+    realistic?: boolean;
+    calm?: boolean;
+    selfie?: "photo" | "toon" | "scenic";
+    /** Mythicals: the MOTION line was written from the real start frame (mythic-motion.ts). */
+    grounded?: boolean;
+  } = {}
 ): string {
   // SELFIE story reels (2026-10-13, per Keenan: "the animations also look
   // pretty bad... there's not much going on in them"). The writer scripts
@@ -146,7 +182,7 @@ export function livingMotionPrompt(
           // can breathe fire, weapons can have effects, so can armor. gentle
           // push in is okay"): the 10-04/10-05 recipe (our best-animated posts,
           // ~16s avg watch, most shares), now on Kling 3 with sound.
-          "Keep it MEASURED and real: the subject holds its pose and comes alive in one clear, natural movement at real-world speed (breathing, a slow head turn, a powerful wingbeat, a warrior turning his blade so it catches the light, a few heavy steps). A dragon may breathe a long, powerful jet of fire or ice from between its open jaws in the direction they point, into the sky or landscape, never at a person and never down its own chest. Small effects bring it to life and blend into the scene's light: glowing runes or eyes, embers and sparks drifting, flames licking along armor or a blade, frost mist curling, faint lightning across horns or steel. The air and scene move gently (cloak and mane stir, smoke and mist drift, embers float). Nothing fast or frantic: no attacks, no charging, no lunging, no whip pans, no morphing, no cartoon auras or energy blasts. A creature never holds or uses a weapon. WEAPONS ARE RIGID, UNCHANGING OBJECTS (2026-10-16): a hero may swing or strike through the air, but every weapon keeps its exact shape, size, head, blade and handle on the same side for the whole clip, like a solid metal object; it never bends, morphs, flips or changes, and it never hits the ground. The camera makes a slow, gentle push-in or stays steady.",
+          measuredMythicLine(motion, !!opts.grounded),
       "Keep the subject's design, colors, armor and setting exactly as in the image. The subject stays in frame. No text, no new creatures or people, no scene cuts.",
     ]
       .filter(Boolean)

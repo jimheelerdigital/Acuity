@@ -20,3 +20,18 @@ describe("Mythicals motion phrase check (2026-10-27)", () => {
     expect(riskyMotion(SAFE_MYTHIC_MOTION)).toBeNull();
   });
 });
+
+describe("measured Mythicals wrapper once grounded (2026-10-27)", async () => {
+  const { measuredMythicLine } = await import("./living-reel");
+  it("forbids fire and lava when the motion names none", () => {
+    const line = measuredMythicLine("The left paladin sweeps his longsword through the air while his companion grips the shield", true);
+    expect(line).toMatch(/No fire, fireballs, explosions, lava/);
+    expect(line).not.toMatch(/A dragon may breathe/);
+  });
+  it("allows exactly the fire the motion names", () => {
+    expect(measuredMythicLine("The dragon breathes a long jet of fire into the sky", true)).toMatch(/exactly what the Action names/);
+  });
+  it("keeps the old line for ungrounded clips", () => {
+    expect(measuredMythicLine("anything", false)).toMatch(/A dragon may breathe/);
+  });
+});

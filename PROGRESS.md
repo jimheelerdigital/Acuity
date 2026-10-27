@@ -9,6 +9,26 @@
 
 
 
+## [2026-10-27] — Mythicals clips: no surprise fire, lava or background additions
+
+- **Requested by:** Keenan
+- **Committed by:** Claude Code
+- **Commit hash:** (this commit)
+
+### In plain English (for Keenan)
+After the picture check went live, the rebuilt "which twins" video was much better, but Kling still added a fireball behind the paladins and lava pouring from a chimera's mouth. Each clip's general instructions told it dragons may breathe fire and flames may lick along blades. Now fire, lava and similar effects only appear when that clip's own movement asks for them, and the video model is told what the picture really shows instead of the original scene text.
+
+### Technical changes (for Jimmy)
+- `apps/web/src/lib/content-factory/living-reel.ts`: new `measuredMythicLine(motion, grounded)`; `livingMotionPrompt` takes `grounded`. When grounded, the fire/ice permission is replaced by "only what the Action names" (or "no fire, fireballs, explosions, lava, beams or projectiles"), plus nothing pours from a mouth and nothing new arrives in the background. Ungrounded clips keep the old line.
+- `apps/web/src/inngest/functions/carousel-post-video.ts`: Mythicals passes `grounded: true`; when the check succeeds, the prompt's first line (the clip's Scene:) becomes Claude's description of what's visible.
+- Tests added to `mythic-motion.test.ts`.
+
+### Manual steps needed
+- None.
+
+### Notes
+- Seen on the first grounded rebuild of cmvqs4h91000b3rrsayi211cd: 4/6 clips clean, paladins got a fireball from nowhere, a chimera drooled lava. Both grounded motions named no fire, so the wrapper was the source.
+
 ## [2026-10-27] — Mythicals clips now checked against the real picture before animating
 
 - **Requested by:** Keenan
