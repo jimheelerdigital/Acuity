@@ -7,6 +7,30 @@
 
 ---
 
+## [2026-10-27] feat(insights): Follow-through report
+
+- **Requested by:** Jimmy (Insights v2)
+- **Committed by:** Claude Code
+
+### In plain English
+A new Insights card covers what you said you'd do versus what got done:
+- **Last 7 days vs the 7 before:** tasks captured (and how many came from your debriefs), plus tasks finished, with up/down.
+- **How long each task group typically takes to finish.**
+- **Tasks that keep coming up:** still open, and mentioned in more than one debrief. If there are none, it shows the open tasks from your debriefs that have waited longest.
+
+No AI. It shows only when you've captured 3+ tasks in the last 14 days; 35 users today.
+
+### Technical changes
+- `apps/web/src/lib/follow-through.ts` (pure) and its test file (11 tests).
+  - **Thresholds:** 3+ tasks in 14 days. A group's speed shows only with 3+ completions in 60 days (median days, top 3 groups).
+  - **"Repeated":** an open recording task whose title matches a task from ANOTHER recording. Normalized-token Jaccard >= 0.6, filler words dropped, at least one shared word of 4+ letters. Short titles must match exactly. No repeat is claimed if the match was completed after it was captured.
+  - **Fallback:** the oldest open recording tasks aged 7+ days, with no repeat claim.
+- `GET /api/insights/follow-through`: getAnySessionUserId, 60-day task window, `{ report | null }`, private max-age 300.
+- `apps/mobile/components/insights/follow-through-card.tsx` `FollowThroughCard` (no props). Self-contained; rows link to /task/[id]. Not wired into the Insights tab yet.
+
+### Manual steps needed
+- None.
+
 ## [2026-10-27] fix(watch): checked-off tasks strike through instead of vanishing
 
 - **Requested by:** Jimmy
