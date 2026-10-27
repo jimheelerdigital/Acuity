@@ -11,6 +11,7 @@ import {
   BarChart3,
 } from "lucide-react";
 // Recharts removed
+import { AllMetaSpend } from "./all-meta-spend";
 
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -317,6 +318,9 @@ export default function PerformancePage() {
           )}
         </div>
       </div>
+
+      {/* Every Meta campaign, not just AdLab ads (2026-10-27) */}
+      <AllMetaSpend from={from} to={to} />
 
       {/* ── Section 4: Summary Cards ── */}
       <div className="grid gap-3 grid-cols-2 sm:grid-cols-5 lg:grid-cols-10 mb-8">
