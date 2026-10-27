@@ -29,6 +29,7 @@ import { SegmentedTabs } from "@/components/acuity";
 import { ComparisonsCard } from "@/components/comparisons-card";
 import { HealthCorrelationsCard } from "@/components/health-correlations-card";
 import { BiggestMoves } from "@/components/insights/biggest-moves";
+import { CallbackCard } from "@/components/insights/callback-card";
 import { EmergingPatternsCard } from "@/components/insights/emerging-patterns-card";
 import { FirstReadCard } from "@/components/insights/first-read-card";
 import { FollowThroughCard } from "@/components/insights/follow-through-card";
@@ -323,6 +324,8 @@ export default function InsightsTab() {
         <WrappedCard />
         <EmergingPatternsCard progression={progression} />
         <FirstReadCard progression={progression} />
+        {/* "From a month ago" (2026-10-27): rotates weekly; hides without a match. */}
+        <CallbackCard />
 
         {/* ─── 1. LIFE MATRIX — hero ─────────────────────────────────── */}
         {/* §B.2.2 — billing gate (FREE post-trial) takes precedence

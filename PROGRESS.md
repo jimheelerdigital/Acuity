@@ -489,6 +489,37 @@ When someone reaches the paywall or opens checkout and leaves without starting a
 - Keenan chose the app download over a link back to web checkout. If she signs up in the app with Sign in with Apple hide-my-email, she gets a second account. The free web account is left empty, which is harmless; the Apple duplicate catch covers payers.
 - Changed on a Tuesday at Keenan's direct request (Monday-only rule waived).
 
+
+## [2026-10-27] feat: backlog items 1–8 integrated (+ "From a month ago" wired in)
+
+- **Requested by:** Jimmy ("go build 1-8")
+- **Committed by:** Claude Code
+
+### In plain English
+One branch carries:
+- the paywall button fix
+- lower unlocks (Pattern Insights at 5 entries, Theme Map at 7)
+- energy in "lifts & drains"
+- the new reports on the website
+- "From a month ago"
+- Life Audit waits for 7 debriefs
+- habit streak freezes
+- dismissing a task removes its calendar event
+- the reflection pause (#144)
+
+### Technical changes
+- See each component commit's PROGRESS entry.
+- Integration fixes:
+  - The web-reports refactor moved lifts-drains row loading into `lib/insights-reports-data.ts`. Energy was re-applied there.
+  - `CallbackCard` is wired into `app/(tabs)/insights.tsx` after `FirstReadCard`.
+- Checks (cloud):
+  - Full web suite 1847/1847.
+  - Web tsc 0.
+  - Mobile tsc 12 (baseline).
+
+### Manual steps needed
+- Apply `docs/migrations/2026-10-27-calendar-delete-queue.sql` (CalendarDeletion) BEFORE deploying.
+
 ## [2026-10-27] fix(entries): pause the per-entry reflection pending legal review
 
 - **Requested by:** Jimmy ("nobody has reviewed it and if there's risk let's pause that")
