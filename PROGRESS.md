@@ -7,6 +7,27 @@
 
 ---
 
+
+## [2026-10-27] feat(insights): "Your first read" for new users
+
+- **Requested by:** Jimmy (Insights v2)
+- **Committed by:** Claude Code
+
+### In plain English
+Once you have 3 debriefs, and until Pattern Insights unlocks at 7, Insights shows a small first report:
+- your mood and energy so far (with 3+ scored entries)
+- themes that came up more than once
+- the to-dos Ripple pulled from your recordings
+
+No AI.
+
+### Technical changes
+- `apps/web/src/lib/first-read.ts` (+ 6 tests). `GET /api/insights/first-read` (getAnySessionUserId). Reuses the emerging-patterns query from #49 (this branch is stacked on it).
+- `apps/mobile/components/insights/first-read-card.tsx`: `FirstReadCard({ progression })`. It gates on the progression the Insights tab already holds, so it never calls progression itself and can't swallow unlock celebrations.
+
+### Manual steps needed
+- None. Merge #49 first.
+
 ## [2026-10-27] feat(insights): "Starting to notice" in the iPhone app (PR #49, Phase B)
 
 - **Requested by:** Jimmy
