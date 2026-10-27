@@ -28,6 +28,7 @@ After the picture check went live, the rebuilt "which twins" video was much bett
 
 ### Notes
 - Seen on the first grounded rebuild of cmvqs4h91000b3rrsayi211cd: 4/6 clips clean, paladins got a fireball from nowhere, a chimera drooled lava. Both grounded motions named no fire, so the wrapper was the source.
+- Second rebuild (after af393ec1): fireball gone, 5/6 clean; the chimera still dripped lava because "lava cracks glow brighter" matched the fire check. The check now counts only fire MOVES (breathes/exhales/jet/stream of fire, frost or lightning; ignites). The post went out on its original 22:00 UTC slot with the second rebuild.
 
 ## [2026-10-27] — Mythicals clips now checked against the real picture before animating
 

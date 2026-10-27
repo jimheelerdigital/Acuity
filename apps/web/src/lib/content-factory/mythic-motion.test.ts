@@ -35,3 +35,16 @@ describe("measured Mythicals wrapper once grounded (2026-10-27)", async () => {
     expect(measuredMythicLine("anything", false)).toMatch(/A dragon may breathe/);
   });
 });
+
+describe("what counts as asking for fire", async () => {
+  const { measuredMythicLine } = await import("./living-reel");
+  it("treats glowing lava cracks or frosty scales as glows, not fire", () => {
+    expect(measuredMythicLine("The left chimera opens its jaws in a deep roar as its lava cracks glow brighter", true)).toMatch(/No fire, fireballs/);
+    expect(measuredMythicLine("Frost mist curls off the wyrm's ice-blue scales as it lifts its head", true)).toMatch(/No fire, fireballs/);
+  });
+  it("counts real fire moves", () => {
+    expect(measuredMythicLine("The dragon lifts its head and exhales a long jet of fire into the sky", true)).toMatch(/exactly what the Action names/);
+    expect(measuredMythicLine("The wyrm breathes a stream of frost across the valley", true)).toMatch(/exactly what the Action names/);
+    expect(measuredMythicLine("The blade ignites as he raises it", true)).toMatch(/exactly what the Action names/);
+  });
+});

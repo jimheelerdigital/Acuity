@@ -46,7 +46,10 @@ function ffmpegPath(): string | null {
  * chimera's mouth on "which twins are you and your best friend?".
  */
 export function measuredMythicLine(motion: string | undefined, grounded: boolean): string {
-  const firesItself = /\b(fire|flame|flames|breath|breathes|breathing\s+(fire|frost|ice)|frost|ice|lightning|lava|molten|sparks?)\b/i.test(motion ?? "");
+  // Only an actual fire move counts: glowing lava cracks or frosty scales
+  // are glows, not a request for fire (2026-10-27: "its lava cracks glow
+  // brighter" still got lava pouring down a chimera's chest).
+  const firesItself = /\b(breathes?|breathing|exhales?|unleashes?|spews?|jets?|streams?|blasts?|plumes?|torrent)\b[^.]{0,40}\b(fire|flames?|frost|ice|lightning)\b|\b(fire|flames?|frost|ice|lightning)\s+(jets?|streams?|pours?|bursts?|erupts?)\b|\bbreathes\s+fire\b|\bignites?\b|\bbursts?\s+into\s+flame/i.test(motion ?? "");
   const base =
     "Keep it MEASURED and real: the subject holds its pose and comes alive in one clear, natural movement at real-world speed (breathing, a slow head turn, a powerful wingbeat, a warrior turning his blade so it catches the light, a few heavy steps).";
   const rules =
