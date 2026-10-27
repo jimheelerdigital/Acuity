@@ -3,6 +3,11 @@
  * src/emails/announcements/releases.ts (generalised from
  * ripple-1-9-send.ts, 2026-10-23).
  *
+ * PREFER /admin/release-email (2026-10-27): same rails, the Resend key
+ * stays in Vercel, and the suppression list is read live from Resend
+ * (lib/release-announce.ts). This CLI needs RESEND_API_KEY locally plus a
+ * hand-exported suppression file.
+ *
  * Sends REAL email to REAL users. Hard stop between each stage:
  *
  *   1) dry-run  (default)  prints the recipient list. NOTHING is sent.

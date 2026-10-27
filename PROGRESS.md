@@ -7,6 +7,28 @@
 
 ---
 
+## [2026-10-27] feat(admin): send release emails from /admin/release-email
+
+- **Requested by:** Jimmy
+- **Committed by:** Claude Code
+
+### In plain English
+The release email can now be sent from a button in the admin area: check the audience, send yourself a test, then send it live. The email-service key never leaves Vercel, and people who bounced, complained or unsubscribed are left out automatically.
+
+### Technical changes
+- `lib/release-announce.ts`: shared logic.
+  - Suppression list read live from Resend (`GET /suppressions`, cursor paging). Throws if it can't be read, so nothing is sent.
+  - Audience: platform users, not unsubscribed, not suppressed.
+  - Test send.
+  - Live send: claim-before-send on TrialEmailLog `release_<version>` (unique, so a repeat is safe), ~2/s, and a deadline that returns `remaining`.
+- `POST /api/admin/release-email`: requireAdmin. Modes: dry-run, test (to the signed-in admin), live. Live requires the typed `SEND <version>`, is iOS-only, and is gated on the App Store lookup serving the version. maxDuration 300 with a 30s margin; 142 iOS recipients take ~85s. Audit-logged.
+- `/admin/release-email` page plus a link in the admin tools list.
+- The CLI script stays as is (header points to the admin page).
+- Tests: release-announce.test.ts (6).
+
+### Manual steps needed
+- None.
+
 ## [2026-10-27] fix(calendar): tasks from recordings reach the calendar
 
 - **Requested by:** Jimmy (pre-release calendar review)
