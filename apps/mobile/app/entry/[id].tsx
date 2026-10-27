@@ -6,6 +6,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
+  Linking,
   Modal,
   Pressable,
   Text,
@@ -498,6 +499,20 @@ export default function EntryDetailScreen() {
             >
               {entry.reflection}
             </Text>
+            {/* Passive crisis line (2026-10-27). The reflection's rules for
+                distressing entries assume 988 is visible, as it is on every
+                signed-in web page (CrisisFooter); the app had no equivalent
+                on this screen. Always shown, quietly, under the reflection. */}
+            <Pressable
+              onPress={() => void Linking.openURL("tel:988")}
+              accessibilityRole="link"
+              accessibilityLabel="Call or text 988, the Suicide and Crisis Lifeline"
+              hitSlop={8}
+            >
+              <Text style={{ fontFamily: tokens.fontSans, fontSize: 12, color: tokens.textTer }}>
+                Going through something heavy? Call or text 988, anytime.
+              </Text>
+            </Pressable>
           </View>
         </HeroCard>
       ) : null}
