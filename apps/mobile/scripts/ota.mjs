@@ -95,6 +95,16 @@ export function newExportId(now = new Date()) {
   return `ota-${stamp}-${Math.random().toString(36).slice(2, 8)}`;
 }
 
+/**
+ * `expo export --platform all` includes web (no web support here), while
+ * `eas update --platform all` means iOS + Android. Name both explicitly.
+ */
+export function exportPlatformFlags(platform) {
+  return platform === "all"
+    ? "--platform ios --platform android"
+    : `--platform ${platform}`;
+}
+
 export function shellQuote(s) {
   return `'${String(s).replace(/'/g, `'\\''`)}'`;
 }
@@ -136,7 +146,7 @@ function main() {
       "--non-interactive",
       // --clear: Metro caches transforms with env values inlined; a warm
       // cache can ship a previous run's env (seen 2026-10-27).
-      `env ${assigns} npx expo export --clear --platform ${args.platform} --output-dir ${shellQuote(outDir)}`,
+      `env ${assigns} npx expo export --clear ${exportPlatformFlags(args.platform)} --output-dir ${shellQuote(outDir)}`,
     ],
     { cwd: MOBILE_DIR, stdio: "inherit", env: childEnv }
   );
