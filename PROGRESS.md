@@ -557,6 +557,20 @@ Each card shows under exactly the same rules as the app. If no report has anythi
 - `app/insights/report-cards.tsx`: server-component cards.
 - `app/insights/wrapped/page.tsx` + `share-block.tsx`: copy-to-clipboard of `wrappedShareText`. A person's first name is included only if ticked (off by default); never transcript content or the win.
 - Checks: full web suite 1780/1780; web tsc 0; mobile tsc 12 (unchanged).
+## [2026-10-27] feat(insights): "From a month ago" callback card
+
+- **Requested by:** Jimmy ("go build 1-8", item 3)
+- **Committed by:** Claude Code
+
+### In plain English
+Once a week, Insights can show one moment from about a month ago that connects to what you talked about last week. For example: A month ago: "Started the new role." Last week, work came up again — and your mood's been higher. Tapping it opens that old entry. It only uses a win or the summary, never what you actually said word for word, and it never brings back a hard day.
+
+### Technical changes
+- `apps/web/src/lib/callback.ts` (+ 13 tests), `GET /api/insights/callback` (getAnySessionUserId, private cache 1h).
+- **Matching:** shared ThemeMention themeIds between entries 26–35 days before this ISO week and last week's entries. Deterministic. No AI and no embeddings: themes are already normalised, so this is cheap.
+- **Stable per week:** every window is anchored to Monday 00:00 UTC, and ties rotate by ISO week.
+- **Safety:** skips moodScore ≤ 3, and anything where the summary, snippet, theme name or transcript matches CRISIS_PATTERN (from open-loops). The mood clause appears only when mood is ≥1 point higher; it never says "lower".
+- `apps/mobile/components/insights/callback-card.tsx`: `CallbackCard` (no props). Not wired into the Insights tab.
 
 ### Manual steps needed
 - None.
