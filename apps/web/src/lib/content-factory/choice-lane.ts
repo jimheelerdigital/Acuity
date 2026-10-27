@@ -523,12 +523,26 @@ export async function pickChoiceCover(opts: ChoiceTopicOpts): Promise<ChoiceCove
       },
       senseCheck: (c) => coverSenseProblem(c.title),
     });
+  // Time budget (2026-10-27): this is ONE Inngest step (300s cap). A cover
+  // write takes 1.5-4 min, so a rewrite after an all-rejected first round
+  // blew the cap and every retry died the same way (the 06 UTC posts on
+  // 10-23 and 10-27 were lost). Rewrite only if it can finish in time; the
+  // fallback below always runs.
+  const t0 = Date.now();
+  const withinMs = <T,>(p: Promise<T>, ms: number) =>
+    Promise.race([p, new Promise<never>((_, rej) => setTimeout(() => rej(new Error(`cover rewrite timed out after ${ms}ms`)), ms))]);
   let covers = await write("");
   let ranked = covers.length ? await rank(covers) : null;
   const tried = [...covers];
-  if (!ranked) {
+  if (!ranked && Date.now() - t0 < 100_000) {
     const why = covers.map((c) => c.title).join(" | ");
-    covers = await write(`REJECTED (none read clearly to a fan in one glance): ${why}. Write five NEW covers that do.`);
+    covers = await withinMs(
+      write(`REJECTED (too close to a recent title, or not clear to a fan in one glance): ${why}. Write five NEW covers on a fresh angle that do.`),
+      Math.max(30_000, 210_000 - (Date.now() - t0))
+    ).catch((err) => {
+      console.warn(`[choice-lane] cover rewrite skipped: ${err instanceof Error ? err.message : err}`);
+      return [] as ChoiceCover[];
+    });
     tried.push(...covers);
     ranked = covers.length ? await rank(covers) : null;
   }

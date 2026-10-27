@@ -7,6 +7,25 @@
 
 ---
 
+## [2026-10-27] — Fix: Mythicals 3pm post kept getting dropped
+
+- **Requested by:** Keenan
+- **Committed by:** Claude Code
+- **Commit hash:** (see git log: "fix: Stop Mythicals cover picking from timing out")
+
+### In plain English (for Keenan)
+Some days Legendary Mythicals only got 2 posts because one run kept running out of time while picking its title. When every title it wrote was too close to a recent post, it started over, and the redo took so long the system killed the run. Now it only redoes the titles if there's time, and otherwise picks the best of what it already wrote, so the post always gets made.
+
+### Technical changes (for Jimmy)
+- `apps/web/src/lib/content-factory/choice-lane.ts` pickChoiceCover: time budget inside the 300s `choice-pick-cover` step. The rewrite only starts if the first round finished in under 100s, it is capped at what's left (≤210s total), and it is skipped on timeout. The existing "close is allowed" fallback rank always runs. The rewrite prompt now names near-duplicates as a rejection reason.
+
+### Manual steps needed
+- None
+
+### Notes
+- Evidence: ClaudeCallLog for 10-27 06 UTC shows near-duplicate batches at 06:01, 06:05, 06:09 and 06:10, then nothing (no cover rank, no choice-topic), which is the step dying at its cap on each retry. 10-23 06 UTC was the same.
+- Underlying pressure: recent Mythicals titles are mostly "you and your bro" duo posts, so new titles collide often. Worth watching for variety.
+
 ## [2026-10-26] — Paywall win-back emails replace the old recovery emails
 
 - **Requested by:** Keenan
