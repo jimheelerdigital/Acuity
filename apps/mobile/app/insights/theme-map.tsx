@@ -28,6 +28,7 @@ import {
 } from "./_theme-map/PlanetCallout";
 import { StarField } from "./_theme-map/StarField";
 import { hueForTheme, type OrbitalTheme } from "./_theme-map/types";
+import { THEME_MAP_MIN_ENTRIES } from "@acuity/shared";
 
 /**
  * Phase E polish 1 (2026-05-21) — orbital cosmos with filtered themes.
@@ -114,7 +115,8 @@ const TIME_OPTIONS: { key: TimeWindow; label: string }[] = [
   { key: "all", label: "All time" },
 ];
 
-const UNLOCK_THRESHOLD = 10;
+// Same number as progression.unlocked.themeMap (lowered to 7, 2026-10-27).
+const UNLOCK_THRESHOLD = THEME_MAP_MIN_ENTRIES;
 const MIN_MENTIONS = 2;
 const MAX_THEMES = 6;
 

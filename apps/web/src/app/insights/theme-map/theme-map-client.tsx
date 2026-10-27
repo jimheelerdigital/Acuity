@@ -14,6 +14,7 @@ import {
   type OrbitalTheme,
 } from "@/components/acuity";
 import { LockedState } from "@/components/theme-map/LockedState";
+import { THEME_MAP_MIN_ENTRIES } from "@acuity/shared";
 
 type SentimentBand = "positive" | "neutral" | "challenging";
 
@@ -69,7 +70,8 @@ const TIME_TABS = [
   { id: "all" as const, label: "All time" },
 ];
 
-const UNLOCK_THRESHOLD = 10;
+// Same number as progression.unlocked.themeMap (lowered to 7, 2026-10-27).
+const UNLOCK_THRESHOLD = THEME_MAP_MIN_ENTRIES;
 const MIN_MENTIONS_FOR_PLANET = 2;
 
 /**

@@ -14,7 +14,7 @@ import { api } from "@/lib/api";
  * has the minimum-data rules: 10+ scored days, 4+ days on each side, and
  * a gap of 0.75+ points).
  *
- * Shown once Pattern Insights unlocks (7 entries), matching the
+ * Shown once Pattern Insights unlocks (PATTERN_INSIGHTS_MIN_ENTRIES), matching the
  * UserInsightsCard next to it. Pro on the server (a 402 renders nothing).
  * Renders nothing when there's no finding. Apple Health findings stay
  * in the Health & mood card, so nothing here repeats them.

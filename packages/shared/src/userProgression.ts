@@ -138,6 +138,16 @@ export interface UserProgressionInput {
 const DAY_MS = 24 * 60 * 60 * 1000;
 const TRIAL_DAYS = 7;
 
+/**
+ * Unlock ladder thresholds. Lowered 2026-10-27 (Jimmy): 77% of active users
+ * had fewer than 7 entries and mostly saw locked cards. Every surface that
+ * shows these numbers (locked cards, progress bars, the Theme Map locked
+ * state on web + mobile) must read these constants, never a literal.
+ */
+export const PATTERN_INSIGHTS_MIN_ENTRIES = 5;
+export const THEME_MAP_MIN_ENTRIES = 7;
+export const THEME_MAP_MIN_THEMES = 3;
+
 // Priority order when multiple unlocks are equidistant — matches the
 // natural product flow (first data artifacts → insight layers → the
 // long-tail weekly/audit artifacts).
@@ -193,8 +203,10 @@ export function userProgression(input: UserProgressionInput): UserProgression {
   const unlocked: Record<UnlockKey, boolean> = {
     lifeMatrix: entriesCount >= 5 && dimensionsCovered >= 3,
     goalSuggestions: entriesCount >= 5,
-    patternInsights: entriesCount >= 7,
-    themeMap: entriesCount >= 10 && themesDetected >= 3,
+    patternInsights: entriesCount >= PATTERN_INSIGHTS_MIN_ENTRIES,
+    themeMap:
+      entriesCount >= THEME_MAP_MIN_ENTRIES &&
+      themesDetected >= THEME_MAP_MIN_THEMES,
     weeklyReport: dayOfTrial >= 7 && entriesInLast7Days >= 3,
     lifeAudit: dayOfTrial >= 7 && entriesCount >= 1,
   };
@@ -450,18 +462,18 @@ function pickNextUnlock(args: {
   }
 
   if (!unlocked.patternInsights) {
-    const gap = Math.max(0, 7 - entriesCount);
+    const gap = Math.max(0, PATTERN_INSIGHTS_MIN_ENTRIES - entriesCount);
     candidates.push({
       key: "patternInsights",
       condition: recordMore(gap),
-      progress: { current: entriesCount, target: 7 },
+      progress: { current: entriesCount, target: PATTERN_INSIGHTS_MIN_ENTRIES },
       distance: gap,
     });
   }
 
   if (!unlocked.themeMap) {
-    const entryGap = Math.max(0, 10 - entriesCount);
-    const themeGap = Math.max(0, 3 - themesDetected);
+    const entryGap = Math.max(0, THEME_MAP_MIN_ENTRIES - entriesCount);
+    const themeGap = Math.max(0, THEME_MAP_MIN_THEMES - themesDetected);
     candidates.push({
       key: "themeMap",
       condition:
@@ -470,8 +482,8 @@ function pickNextUnlock(args: {
           : `Keep recording — Ripple needs to see ${themeGap} more recurring theme${themeGap === 1 ? "" : "s"}`,
       progress:
         entryGap > 0
-          ? { current: entriesCount, target: 10 }
-          : { current: themesDetected, target: 3 },
+          ? { current: entriesCount, target: THEME_MAP_MIN_ENTRIES }
+          : { current: themesDetected, target: THEME_MAP_MIN_THEMES },
       distance: entryGap + themeGap,
     });
   }
@@ -567,22 +579,22 @@ export function lockedFeatureCopy(
     case "patternInsights": {
       return {
         headline: "Pattern insights open once Ripple has enough signal.",
-        body: `A week of entries is roughly when patterns emerge. You have ${progression.entriesCount} of 7.`,
-        progress: { current: progression.entriesCount, target: 7 },
+        body: `A handful of entries is when patterns start to show. You have ${progression.entriesCount} of ${PATTERN_INSIGHTS_MIN_ENTRIES}.`,
+        progress: { current: progression.entriesCount, target: PATTERN_INSIGHTS_MIN_ENTRIES },
       };
     }
     case "themeMap": {
-      const entryGap = Math.max(0, 10 - progression.entriesCount);
+      const entryGap = Math.max(0, THEME_MAP_MIN_ENTRIES - progression.entriesCount);
       return {
         headline: "Your Theme Map is still forming.",
         body:
           entryGap > 0
-            ? `Ripple needs 10 entries and 3 recurring themes before the map is meaningful. You have ${progression.entriesCount} of 10.`
+            ? `Ripple needs ${THEME_MAP_MIN_ENTRIES} entries and ${THEME_MAP_MIN_THEMES} recurring themes before the map is meaningful. You have ${progression.entriesCount} of ${THEME_MAP_MIN_ENTRIES}.`
             : `Ripple has ${progression.entriesCount} entries but only ${progression.themesDetected} recurring themes. Keep recording — themes repeat as you return to the same topics.`,
         progress:
           entryGap > 0
-            ? { current: progression.entriesCount, target: 10 }
-            : { current: progression.themesDetected, target: 3 },
+            ? { current: progression.entriesCount, target: THEME_MAP_MIN_ENTRIES }
+            : { current: progression.themesDetected, target: THEME_MAP_MIN_THEMES },
       };
     }
     case "weeklyReport": {
