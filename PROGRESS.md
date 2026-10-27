@@ -7,6 +7,22 @@
 
 ---
 
+## [2026-10-27] feat(insights): "Starting to notice" in the iPhone app (PR #49, Phase B)
+
+- **Requested by:** Jimmy
+- **Committed by:** Claude Code
+
+### In plain English
+The early "Starting to notice" card (themes that have come up in 2+ debriefs, hedged, no counts) now has an app version, for people between their 2nd entry and the Theme Map unlock.
+
+### Technical changes
+- `apps/web/src/lib/emerging-patterns-data.ts`: `loadEmergingThemeCandidates` (the group-by the web card ran inline), now shared by the web card and the new route. Tests: `emerging-patterns-data.test.ts`.
+- `GET /api/insights/emerging-patterns`: `{ themes: {label}[], copy }`. Mobile bearer or cookie auth. It does not call getUserProgression (that writes the snapshot and would swallow `recentlyUnlocked`); the caller applies the Theme Map gate from its own progression.
+- `apps/mobile/components/insights/emerging-patterns-card.tsx`: `EmergingPatternsCard({ progression })`. Renders nothing until progression is known, after the Theme Map unlocks, on error, or with nothing to say. Not yet wired into the Insights tab.
+
+### Manual steps needed
+- None.
+
 ## [2026-10-27] fix(watch): checked-off tasks strike through instead of vanishing
 
 - **Requested by:** Jimmy

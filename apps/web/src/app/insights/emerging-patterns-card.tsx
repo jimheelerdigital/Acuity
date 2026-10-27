@@ -1,10 +1,10 @@
 import { Card, ThemePill, themeKeyFor } from "@/components/acuity";
 import {
   MIN_ENTRIES_FOR_PEEK,
-  MIN_ENTRIES_PER_THEME,
   emergingPatternsCopy,
   selectEmergingThemes,
 } from "@/lib/emerging-patterns";
+import { loadEmergingThemeCandidates } from "@/lib/emerging-patterns-data";
 
 /**
  * The early-peek card on /insights. Server component — the data is one
@@ -41,34 +41,13 @@ export async function EmergingPatternsCard({
   if (themeMapUnlocked || entriesCount < MIN_ENTRIES_FOR_PEEK) return null;
 
   const { prisma } = await import("@/lib/prisma");
-
-  // ThemeMention is @@unique([themeId, entryId]), so this count is
-  // "distinct entries containing the theme" — exactly what the card
-  // claims — not a raw mention tally.
-  const rows = await prisma.themeMention.groupBy({
-    by: ["themeId"],
-    where: { theme: { is: { userId } } },
-    _count: { themeId: true },
-    having: { themeId: { _count: { gte: MIN_ENTRIES_PER_THEME } } },
-    orderBy: { _count: { themeId: "desc" } },
-    take: 8,
-  });
-
-  if (rows.length === 0) return null;
-
-  const themeRecords = await prisma.theme.findMany({
-    where: { id: { in: rows.map((r) => r.themeId) }, userId },
-    select: { id: true, name: true },
-  });
-  const nameById = new Map(themeRecords.map((t) => [t.id, t.name]));
+  const candidates = await loadEmergingThemeCandidates(prisma, userId);
+  if (candidates.length === 0) return null;
 
   const emerging = selectEmergingThemes({
     entriesCount,
     themeMapUnlocked,
-    themes: rows.map((r) => ({
-      label: nameById.get(r.themeId) ?? "",
-      entryCount: r._count?.themeId ?? 0,
-    })),
+    themes: candidates,
   });
 
   const copy = emergingPatternsCopy(emerging);
