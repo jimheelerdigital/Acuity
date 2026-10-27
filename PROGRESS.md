@@ -9,6 +9,27 @@
 
 
 
+## [2026-10-27] — Affiliate creators are labeled in the Users dashboard
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** see git log
+
+### In plain English (for Keenan)
+When an affiliate creator signs up for the app with their creator email, they get free Pro, and until now they looked like a normal new user. The admin Users list and each user's detail panel now show an amber "Affiliate @handle" tag on those accounts, so they don't get counted as customers or leads. Jillian Oasachuk's free account is tagged too.
+
+### Technical changes (for Jimmy)
+- New apps/web/src/lib/creators/affiliate-users.ts: `affiliateTagsForEmails()` matches account emails to UgcCreator.email (case-insensitive), plus a small EXTRA_AFFILIATE_EMAILS map (jillianoasachuk@simplyconnectedtherapy.ca).
+- apps/web/src/app/api/admin/users/route.ts and [id]/route.ts: return `affiliate: { handle } | null`.
+- apps/web/src/app/admin/tabs/UsersTab.tsx: AffiliatePill next to the name in the list and in the detail header.
+
+### Manual steps needed
+None
+
+### Notes
+- This is computed on read; there's no schema change. Any creator added later through the creator admin or the creator desk is tagged automatically once their email is on the creator record.
+- UgcCreator @therapyandthingss has no email on file, so their app account can't be matched automatically.
+
 ## [2026-10-27] — App funnel dashboard: removed the fake "skipped the paywall" row
 
 **Requested by:** Keenan

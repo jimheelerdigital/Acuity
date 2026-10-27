@@ -506,6 +506,9 @@ export async function GET(req: NextRequest) {
 
   const paidTrials = await paidTrialEnds(page.filter((u) => u.subscriptionStatus === "PRO").map((u) => u.id), now);
 
+  const { affiliateTagsForEmails } = await import("@/lib/creators/affiliate-users");
+  const affiliates = await affiliateTagsForEmails(page.map((u) => u.email));
+
   const mappedUsers = page.map((u) => {
     const entryCount = u._count.entries;
     const entriesThisWeek = u.entries.length;
@@ -531,6 +534,7 @@ export async function GET(req: NextRequest) {
       signupMethod: (u as Record<string, unknown>).signupMethod as string | null ?? null,
       subscriptionStatus: u.subscriptionStatus,
       planStatus,
+      affiliate: affiliates.get((u.email ?? "").toLowerCase()) ?? null,
       platform,
       lifecycle,
       entryCount,

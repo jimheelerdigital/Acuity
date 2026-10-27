@@ -7,6 +7,8 @@ type ListUser = {
   id: string;
   email: string;
   name: string | null;
+  /** Set when this account belongs to an affiliate creator. */
+  affiliate?: { handle: string | null } | null;
   createdAt: string;
   signupUtmSource: string | null;
   signupUtmMedium: string | null;
@@ -316,7 +318,10 @@ export default function UsersTab() {
                 >
                   {/* Name + Email */}
                   <td className="px-3 py-2.5 max-w-[200px]">
-                    <div className="text-xs font-medium text-acuity-text truncate">{firstName(u.name)}</div>
+                    <div className="text-xs font-medium text-acuity-text truncate">
+                      {firstName(u.name)}
+                      {u.affiliate && <AffiliatePill handle={u.affiliate.handle} />}
+                    </div>
                     <div className="text-[11px] text-acuity-text-ter truncate">{u.email}</div>
                   </td>
 
@@ -452,6 +457,15 @@ function SortHeader({ label, field, current, dir, onClick }: { label: string; fi
     <th className="px-3 py-3 cursor-pointer hover:text-acuity-text-ter select-none" onClick={() => onClick(field)}>
       {label} {active ? (dir === "desc" ? "↓" : "↑") : ""}
     </th>
+  );
+}
+
+/** Affiliate creator's own account: not a customer, not a lead. */
+function AffiliatePill({ handle }: { handle: string | null }) {
+  return (
+    <span className="ml-1.5 inline-block rounded-acuity-pill bg-amber-500/20 px-1.5 py-0.5 text-[10px] font-semibold text-amber-300 align-middle">
+      Affiliate{handle ? ` @${handle}` : ""}
+    </span>
   );
 }
 
@@ -645,6 +659,7 @@ function UserDetailModal({
               <div className="mt-1 flex flex-wrap gap-2 text-xs text-acuity-text-ter">
                 <span className="rounded-acuity-pill bg-acuity-bg-inset px-2 py-0.5 text-xs">{data.user.subscriptionStatus}</span>
                 {data.user.isAdmin && <span className="rounded-acuity-pill bg-purple-500/20 px-2 py-0.5 text-purple-300">admin</span>}
+                {data.user.affiliate && <AffiliatePill handle={data.user.affiliate.handle} />}
                 <span>signed up {new Date(data.user.createdAt).toLocaleDateString()}</span>
                 <span>last active {data.user.lastSeenAt ? formatTimeAgo(data.user.lastSeenAt) : "—"}</span>
               </div>

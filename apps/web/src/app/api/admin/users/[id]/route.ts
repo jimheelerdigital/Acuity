@@ -101,10 +101,14 @@ export async function GET(
     // Table may not exist yet
   }
 
+  const { affiliateTagsForEmails } = await import("@/lib/creators/affiliate-users");
+  const affiliate = (await affiliateTagsForEmails([user.email])).get((user.email ?? "").toLowerCase()) ?? null;
+
   return NextResponse.json({
     user: {
       id: user.id,
       email: user.email,
+      affiliate,
       createdAt: user.createdAt,
       lastSeenAt: user.lastSeenAt,
       subscriptionStatus: user.subscriptionStatus,
