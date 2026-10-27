@@ -316,9 +316,9 @@ export async function sendTrialEmail(
     );
   }
 
-  // Paywall win-back (2026-10-26): her own first debrief quoted back, and a
-  // one-tap signed-in link that opens the app on the paywall. Best-effort:
-  // the templates fall back to generic copy / goripple.io/open.
+  // Paywall win-back (2026-10-26): her own first debrief quoted back.
+  // Best-effort: the templates fall back to generic copy. The button is the
+  // app download (goripple.io/get), not a sign-in link, since 2026-10-27.
   if (emailKey.startsWith("paywall_winback_")) {
     try {
       const first = await prisma.entry.findFirst({
@@ -344,12 +344,6 @@ export async function sendTrialEmail(
       }
     } catch (err) {
       safeLog.warn("trial-email.winback_debrief_failed", { userId: user.id, err: err instanceof Error ? err.message : String(err) });
-    }
-    try {
-      const { createAppSignInUrl } = await import("@/lib/app-access");
-      vars.signInUrl = await createAppSignInUrl(user.email);
-    } catch (err) {
-      safeLog.error("trial-email.sign_in_link_failed", err as Error, { emailKey, userId: user.id });
     }
   }
 

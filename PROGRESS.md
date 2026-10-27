@@ -9,6 +9,32 @@
 
 
 
+## [2026-10-27] — Paywall win-back email within 10 minutes, sends people to the app download, and no 988 line on the paywall
+
+- **Requested by:** Keenan
+- **Committed by:** Claude Code
+- **Commit hash:** (see git log: "feat: Send the first paywall win-back email within 10 minutes")
+
+### In plain English (for Keenan)
+When someone reaches the paywall or opens checkout and leaves without starting a trial, the first "come back" email now goes out 5 to 10 minutes later instead of about 45 minutes to an hour later. The button in all three win-back emails now goes to the App Store or Google Play download, so she goes through the app's own onboarding and paywall again. The crisis-line sentence under the paywall's trial button is gone from every web funnel. The app and the signed-in website still show it.
+
+### Technical changes (for Jimmy)
+- `lib/paywall-winback.ts`: `WINBACK_QUIET_MS` 45 min → 5 min (test updated).
+- New `lib/paywall-winback-due.ts` `findDueWinbacks(now)`: the win-back candidate query, moved out of the orchestrator unchanged so both crons share it.
+- New Inngest function `inngest/functions/paywall-winback-fast.ts` (`paywall-winback-fast`, cron `*/5`): sends `paywall_winback_1` only. Same guards: dry run, daily cap, 24h throttle except accounts under 24h old. Registered in `app/api/inngest/route.ts`.
+- `recovery-email-orchestrator.ts` section 2a now calls `findDueWinbacks` and skips #1 (sends #2/#3 only), so the two crons never race on #1.
+- `emails/trial/paywall-winback.ts` `startUrl` → `/get?utm_source=email&utm_medium=email&utm_campaign=paywall_winback` (store redirect by device, click logged as `app_store_redirect`); `lib/trial-emails.ts` no longer mints a sign-in token for win-back keys.
+- `components/funnel-v9.tsx` and `components/onboarding-funnel.tsx`: removed the inline 988 line under the paywall. `crisis-footer.tsx` comment updated (footer still hidden on /start*).
+- Tests: paywall-winback + email template tests 10/10 pass; tsc clean on touched files.
+
+### Manual steps needed
+- [ ] After deploy, resync Inngest so the new 5-min cron registers: `curl -X PUT https://goripple.io/api/inngest` (Keenan / Claude)
+
+### Notes
+- The 5-min quiet period means someone still typing a card more than 5 minutes after opening checkout can get the email mid-checkout. Keenan chose speed over that edge case.
+- Keenan chose the app download over a link back to web checkout. If she signs up in the app with Sign in with Apple hide-my-email, she gets a second account. The free web account is left empty, which is harmless; the Apple duplicate catch covers payers.
+- Changed on a Tuesday at Keenan's direct request (Monday-only rule waived).
+
 ## [2026-10-27] — Fixed web payers getting stuck before the app, and added a real-spend table for every Meta campaign
 
 **Requested by:** Keenan

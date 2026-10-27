@@ -5,15 +5,18 @@
  * 109 sends Oct 12–26). Goes to people who reached a paywall (app hard
  * paywall or web funnel paywall/checkout) and left without starting a trial.
  *
- *   paywall_winback_1 — ~45 min after leaving: their own first debrief back
+ *   paywall_winback_1 — 5–10 min after leaving: their own first debrief back
  *                       (up to 3 to-dos + theme), "Start my free week".
  *   paywall_winback_2 — ~24h later: how the free week works, step by step.
  *   paywall_winback_3 — ~48h after #2: a plain note from Keenan asking what
  *                       stopped them (reply-to keenan@heelerdigital.com).
  *
- * The button is a one-tap signed-in link into the app (sendTrialEmail sets
- * signInUrl for these keys), which lands her back on the paywall; fallback
- * goripple.io/open. Two versions each, Jev picks (lib/email-jev.ts).
+ * The button goes to the app download (goripple.io/get: App Store on iPhone,
+ * Google Play on Android, click logged), and she goes through the in-app
+ * onboarding and paywall again (2026-10-27, Keenan: "push them right to app
+ * download to re-go through the in app funnel"). Was a signed-in link
+ * straight to the app's paywall. Two versions each, Jev picks
+ * (lib/email-jev.ts).
  */
 import { escapeHtml } from "@/lib/escape-html";
 import { displayAnnual, displayMonthly } from "@/lib/pricing";
@@ -22,7 +25,7 @@ import { button, h1, hi, men, para, row, trialCard, variant, withVariants } from
 import type { TrialEmailTemplate, TrialVars } from "./types";
 
 export function startUrl(v: TrialVars): string {
-  return v.signInUrl ?? `${v.appUrl}/open`;
+  return `${v.appUrl}/get?utm_source=email&utm_medium=email&utm_campaign=paywall_winback`;
 }
 
 const ZERO_TODAY = "$0 today. You see the date your free week ends before you confirm, and you can cancel any time before then.";

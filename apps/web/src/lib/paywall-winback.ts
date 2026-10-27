@@ -4,8 +4,9 @@
  *
  * Who: reached a paywall (app hard paywall `v10_paywall_viewed`, or the web
  * funnel paywall / checkout) and didn't start a trial.
- * When: #1 ≥45 min after their LATEST paywall view (and nothing paywall-ish
- * in the last 45 min: still deciding), #2 ≥24h after #1, #3 ≥48h after #2.
+ * When: #1 ≥5 min after their LATEST paywall view (and nothing paywall-ish
+ * in the last 5 min: still deciding; was 45 min until 2026-10-27, Keenan:
+ * "15 mins after is the latest"; sent by paywall-winback-fast every 5 min), #2 ≥24h after #1, #3 ≥48h after #2.
  * Only paywall views after PAYWALL_WINBACK_START (forward-only) and within
  * the last 7 days.
  */
@@ -19,7 +20,7 @@ export const PAYWALL_EVENTS = [
   "funnel_checkout_started",
 ] as const;
 
-export const WINBACK_QUIET_MS = 45 * 60_000;
+export const WINBACK_QUIET_MS = 5 * 60_000;
 export const WINBACK_MAX_AGE_MS = 7 * 24 * 3600_000;
 const H = 3600_000;
 

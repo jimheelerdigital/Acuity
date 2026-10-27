@@ -2449,7 +2449,6 @@ function SavingsScreen({ branch, answers: _answers, track, selectedPlan, onPlanC
           {/* Exactly what FREE gets (lib/entitlements.ts: record + one-line
               summary + history; extraction is Pro). */}
           <p className="text-[11px] text-center text-acuity-text-ter">Record debriefs and get a one-line summary. No card.</p>
-          <p className="text-[10px] text-acuity-text-quiet text-center mt-1">If you&rsquo;re in crisis, call or text 988 (Suicide &amp; Crisis Lifeline).</p>
         </div>
       </div>
     </div>

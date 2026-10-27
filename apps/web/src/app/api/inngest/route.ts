@@ -55,6 +55,7 @@ import { weeklyMetricsEmailFn } from "@/inngest/functions/weekly-metrics-email";
 import { waitlistReactivationFn } from "@/inngest/functions/waitlist-reactivation";
 import { cleanupTrySessionsFn } from "@/inngest/functions/cleanup-try-sessions";
 import { recoveryEmailOrchestratorFn } from "@/inngest/functions/recovery-email-orchestrator";
+import { paywallWinbackFastFn } from "@/inngest/functions/paywall-winback-fast";
 import { downloadReminderEmailFn } from "@/inngest/functions/download-reminder-email";
 import { achievementsNightlyFn } from "@/inngest/functions/achievements-nightly";
 import { notificationsTwiceDailyFn } from "@/inngest/functions/notifications-twice-daily";
@@ -158,6 +159,7 @@ const handler = serve({
     freeCapEvaluatorFn,
     cleanupTrySessionsFn,
     recoveryEmailOrchestratorFn,
+    paywallWinbackFastFn,
     downloadReminderEmailFn,
     achievementsNightlyFn,
     notificationsTwiceDailyFn,

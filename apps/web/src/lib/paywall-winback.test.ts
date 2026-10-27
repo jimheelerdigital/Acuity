@@ -24,9 +24,9 @@ describe("isWinbackEligible", () => {
 
 describe("nextWinbackStep", () => {
   const paywall = new Date(start + 2 * H);
-  it("waits 45 minutes after the last paywall view", () => {
-    expect(nextWinbackStep({ now: new Date(paywall.getTime() + 30 * 60_000), lastPaywallAt: paywall, sent: {} })).toBeNull();
-    expect(nextWinbackStep({ now: new Date(paywall.getTime() + 50 * 60_000), lastPaywallAt: paywall, sent: {} })).toBe("paywall_winback_1");
+  it("waits 5 minutes after the last paywall view", () => {
+    expect(nextWinbackStep({ now: new Date(paywall.getTime() + 4 * 60_000), lastPaywallAt: paywall, sent: {} })).toBeNull();
+    expect(nextWinbackStep({ now: new Date(paywall.getTime() + 6 * 60_000), lastPaywallAt: paywall, sent: {} })).toBe("paywall_winback_1");
   });
   it("sends #2 a day after #1 and #3 two days after #2", () => {
     const s1 = new Date(paywall.getTime() + H);

@@ -40,8 +40,10 @@ export function CrisisFooter() {
   }, []);
 
   // Not on the signup funnels (2026-09-26): once the email step signs her in,
-  // the bar covered the paywall and Stripe checkout. The funnels carry their
-  // own inline 988 line instead.
+  // the bar covered the paywall and Stripe checkout. The funnels' inline 988
+  // line under the paywall was removed 2026-10-27 (Keenan): it read as a
+  // mental-health product at the moment of decision. The app, the signed-in
+  // site and /support/crisis still carry it.
   if (status !== "authenticated" || dismissed || pathname?.startsWith("/admin") || pathname?.startsWith("/start") || pathname?.startsWith("/lm")) return null;
 
   const dismiss = () => {

@@ -44,11 +44,11 @@ describe("paywall win-back emails", () => {
     const html = v.html(base);
     expect(html).toContain("Call the dentist");
     expect(html).toContain("&lt;permission&gt;");
-    expect(html).toContain("https://goripple.io/app-signin?t=abc");
+    expect(html).toContain("https://goripple.io/get?utm_source=email&utm_medium=email&utm_campaign=paywall_winback");
     expect(html).toContain("$0 today");
     const fallback = v.html(noDebrief);
     expect(fallback).toContain("weekly report");
-    expect(fallback).toContain("https://goripple.io/open");
+    expect(fallback).not.toContain("app-signin");
     expect(v.subject(noDebrief)).toBe("Your Ripple is saved");
   });
 

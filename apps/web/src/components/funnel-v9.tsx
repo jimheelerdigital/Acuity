@@ -1715,7 +1715,6 @@ function PaywallScreen({ plan, setPlan, next, go, track, firstName, answers }: V
       >
         Continue with the free plan
       </button>
-      <p className="mt-1 text-center text-[11px] text-acuity-text-quiet">If you&rsquo;re in crisis, call or text 988 (Suicide &amp; Crisis Lifeline).</p>
 
       <BottomBar>
         <PrimaryButton
