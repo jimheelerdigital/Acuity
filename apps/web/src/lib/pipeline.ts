@@ -932,6 +932,15 @@ export async function processEntry({
       return { entry, tasks, tasksCreated, extraction };
     });
 
+    // Calendar (2026-10-27): extracted tasks skip the per-task enqueue,
+    // so queue this entry's dated tasks now that the rows are committed.
+    if (result.tasksCreated > 0) {
+      const { enqueueEntryTasksForCalendar } = await import(
+        "@/lib/enqueue-sync"
+      );
+      await enqueueEntryTasksForCalendar(prisma, userId, entryId);
+    }
+
     // ── Recording stats (drives trial onboarding sequence) ────────────────
     // Mirror of the process-entry.ts step.run("update-recording-stats")
     // block so sync-path entries (ENABLE_INNGEST_PIPELINE unset) also

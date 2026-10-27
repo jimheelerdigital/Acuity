@@ -14,7 +14,6 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import {
-  CALENDAR_INTEGRATION_ENABLED,
   DEFAULT_PRICING_CONFIG,
   LEGACY_TIER,
   V2_TIER,
@@ -656,13 +655,12 @@ export default function SubscribeScreen() {
             text="Life Matrix radar refreshed as you record"
             tokens={tokens}
           />
+          {/* Phone-calendar sync shipped in 1.9.6. CALENDAR_INTEGRATION_ENABLED
+              only gates the old Google sign-in path, so it no longer
+              decides this row (2026-10-27). */}
           <ValueRow
             icon="link-outline"
-            text={
-              CALENDAR_INTEGRATION_ENABLED
-                ? "Calendar sync — tasks land where you plan"
-                : "Calendar sync — coming soon"
-            }
+            text="Calendar sync — tasks land where you plan"
             tokens={tokens}
           />
           <ValueRow

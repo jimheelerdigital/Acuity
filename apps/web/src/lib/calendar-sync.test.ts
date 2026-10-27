@@ -52,6 +52,14 @@ describe("planSyncOp — gating", () => {
     expect(op).toBeNull();
   });
 
+  it("plans ops for Android phone calendars (android_calendar)", () => {
+    const op = planSyncOp(
+      baseTask(),
+      baseUser({ calendarConnectedProvider: "android_calendar" })
+    );
+    expect(op?.providerId).toBe("android_calendar");
+  });
+
   it("returns null when no target calendar selected", () => {
     const op = planSyncOp(baseTask(), baseUser({ targetCalendarId: null }));
     expect(op).toBeNull();

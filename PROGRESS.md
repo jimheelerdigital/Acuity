@@ -7,6 +7,25 @@
 
 ---
 
+## [2026-10-27] fix(calendar): tasks from recordings reach the calendar
+
+- **Requested by:** Jimmy (pre-release calendar review)
+- **Committed by:** Claude Code
+
+### In plain English
+Tasks Ripple pulls out of a recording (92% of dated tasks) never went to the connected calendar; only tasks typed or edited by hand did. They now go the moment the recording is saved. Android phone calendars also kept their first sync only; they now get edits and completions. The paywall stopped saying calendar sync is "coming soon".
+
+### Technical changes
+- `lib/enqueue-sync.ts` enqueueEntryTasksForCalendar: after the creating transaction commits, sets this entry's open, unsynced tasks due from 36h ago onward to PENDING. Same rule as the connect catch-up. Only runs for a connected user with a target calendar and auto-add on. Never throws.
+- Called from `lib/pipeline.ts` (sync auto-commit), `api/entries/[id]/extraction` (review commit) and `commit-extraction-backstop`.
+- `lib/calendar-sync.ts`: `isCalendarProviderId` / `CALENDAR_PROVIDER_IDS`. planSyncOp now accepts `android_calendar`.
+- `apps/mobile/app/subscribe.tsx`: the calendar row no longer keys off CALENDAR_INTEGRATION_ENABLED, which only gates the old Google sign-in path. Mobile copy ships with the release OTA.
+- Tests: enqueue-entry-tasks.test.ts (new); calendar-sync.test.ts (android case). Full web suite 1629/1629.
+- Known, unchanged: dismissing a task leaves its event behind. A delete sync needs a schema change, deferred by design in enqueue-sync. Snooze doesn't change dueDate, so the event correctly stays.
+
+### Manual steps needed
+- None. Server-side. It only affects users who have connected a calendar (1 today), and it starts mattering when calendar_integrations goes on at release.
+
 ## [2026-10-27] feat(web): release-notes pages + 1.9.6 email images
 
 - New /whats-new (index) and /whats-new/<version> pages. They read the same entries as the release email (src/emails/announcements/releases.ts), so the in-app What's New, the email and the web page say the same thing.
