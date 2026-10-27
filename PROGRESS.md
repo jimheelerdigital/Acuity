@@ -133,6 +133,27 @@ It only appears when there's enough to say: 4+ debriefs in the month, or 12+ in 
 
 ### Manual steps needed
 - None. Not yet placed on the Insights tab (wired in separately).
+## [2026-10-27] feat(insights): "How you talk" — shifts in your own feeling words
+
+- **Requested by:** Jimmy (Insights refresh)
+- **Committed by:** Claude Code
+
+### In plain English
+A new Insights card that shows up to 3 clear changes in the feeling words you use, last 30 days vs the 30 before. Examples: "You said 'stressed' 40% less than the month before", or "'Proud' came up 3 times in the last month, and not at all the month before." It only appears when both months have enough talking. Today 4 users qualify.
+
+### Technical changes
+- `apps/web/src/lib/how-you-talk.ts`: curated lexicon in 10 groups, counted per 1,000 words. A 3-word negation window ("not stressed" doesn't count). `EXCLUDED_TERMS` guard: crisis and self-harm words are never tracked.
+- Thresholds:
+  - Both periods need 600+ words and 3+ entries.
+  - A rise or fall needs 4+ uses in the busier month, a 40%+ change in rate, and at least 1 use per 1,000 words of difference.
+  - "New" or "gone" needs 3+ uses against 0 in the other month.
+  - Max 3 lines.
+- `GET /api/insights/how-you-talk` (getAnySessionUserId). Reads at most 240 entries from 60 days, transcripts capped at 20k chars, cached privately for 1h.
+- `apps/mobile/components/insights/how-you-talk-card.tsx` (`HowYouTalkCard`, no props). Not wired into the Insights tab yet.
+- Tests: how-you-talk.test.ts (8).
+
+### Manual steps needed
+- None.
 
 ## [2026-10-27] fix(watch): checked-off tasks strike through instead of vanishing
 
