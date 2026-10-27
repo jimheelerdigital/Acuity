@@ -47,7 +47,7 @@ export async function POST(req: NextRequest) {
   const meta = await import("@/lib/adlab/meta");
   const acct = meta.adAccountPath();
   const body = (await req.json().catch(() => ({}))) as {
-    action?: "apps" | "diag" | "create" | "add" | "fix-os" | "delete" | "activate" | "pause" | "set-geo" | "delete-ad" | "budget" | "pause-adset";
+    action?: "apps" | "diag" | "create" | "add" | "fix-os" | "delete" | "activate" | "pause" | "set-geo" | "delete-ad" | "budget" | "pause-adset" | "retarget";
     /** Ad set measurement for iOS 14+ campaigns: "SKADNETWORK" (default), "AEM", or "none". */
     attribution?: "SKADNETWORK" | "AEM" | "none";
     /** "add": existing app ad set per group. */
@@ -66,6 +66,8 @@ export async function POST(req: NextRequest) {
     budgetTargets?: { id: string; type: "campaign" | "adset"; dailyBudgetCents: number }[];
     /** "pause-adset": the ad set to pause. */
     pauseAdsetId?: string;
+    /** "retarget": web retargeting campaign (2026-10-27). */
+    retarget?: { budgetCents: number; sourceAdIds: string[]; days?: number; activate?: boolean };
     /** promoted_object.object_store_url override (defaults to APP_STORE_URL). */
     storeUrl?: string;
     /**
@@ -147,6 +149,82 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ ok: true, adset: a });
     } catch (e) {
       return NextResponse.json({ error: err(e) }, { status: 500 });
+    }
+  }
+
+  // Web retargeting (2026-10-27, per Keenan: "immediately run a $20 campaign
+  // for retargeting"). Audience: pixel CompleteRegistration / Lead /
+  // InitiateCheckout in the last N days, EXCLUDING Purchase (trial started).
+  // Optimizes for Purchase on the pixel; reuses existing ads' creatives.
+  if (body.action === "retarget") {
+    const r = body.retarget;
+    if (!r?.sourceAdIds?.length || !(r.budgetCents >= 500)) return NextResponse.json({ error: "retarget.sourceAdIds and budgetCents required" }, { status: 400 });
+    const out: Record<string, unknown> = {};
+    try {
+      const pixel = "869829585445303"; // the Ripple web pixel (all Ripple lanes share it)
+      const days = Math.min(Math.max(r.days ?? 30, 7), 180);
+      const ev = (name: string) => ({
+        event_sources: [{ id: pixel, type: "pixel" }],
+        retention_seconds: days * 86400,
+        filter: { operator: "and", filters: [{ field: "event", operator: "eq", value: name }] },
+      });
+      const rule = {
+        inclusions: { operator: "or", rules: [ev("CompleteRegistration"), ev("Lead"), ev("InitiateCheckout")] },
+        exclusions: { operator: "or", rules: [{ ...ev("Purchase"), retention_seconds: 180 * 86400 }] },
+      };
+      const aud = await meta.metaGraph(`${acct}/customaudiences`, "POST", {
+        name: `Ripple — Retarget: signed up, no trial (${days}d)`,
+        rule: JSON.stringify(rule),
+        prefill: "true",
+      });
+      out.audienceId = aud.id;
+      const status = r.activate ? "ACTIVE" : "PAUSED";
+      const campaign = await meta.metaGraph(`${acct}/campaigns`, "POST", {
+        name: "Ripple — Retargeting | signed up, no trial",
+        objective: "OUTCOME_SALES",
+        buying_type: "AUCTION",
+        special_ad_categories: [],
+        is_adset_budget_sharing_enabled: false,
+        status,
+      });
+      out.campaignId = campaign.id;
+      const set = await meta.metaGraph(`${acct}/adsets`, "POST", {
+        name: "Ripple — Retargeting | signed up, no trial",
+        campaign_id: campaign.id,
+        daily_budget: String(Math.round(r.budgetCents)),
+        billing_event: "IMPRESSIONS",
+        optimization_goal: "OFFSITE_CONVERSIONS",
+        bid_strategy: "LOWEST_COST_WITHOUT_CAP",
+        promoted_object: { pixel_id: pixel, custom_event_type: "PURCHASE" },
+        targeting: {
+          geo_locations: { countries: ["US", "CA", "GB"] },
+          age_min: 18,
+          age_max: 65,
+          custom_audiences: [{ id: aud.id }],
+          targeting_automation: { advantage_audience: 0 },
+        },
+        status,
+      });
+      out.adsetId = set.id;
+      const ads: unknown[] = [];
+      for (const src of r.sourceAdIds) {
+        try {
+          const a = (await meta.metaGraph(src, "GET", { fields: "name,creative{id}" })) as { name: string; creative: { id: string } };
+          const ad = await meta.metaGraph(`${acct}/ads`, "POST", {
+            name: `Retarget | ${a.name}`.slice(0, 200),
+            adset_id: set.id,
+            creative: { creative_id: a.creative.id },
+            status,
+          });
+          ads.push({ source: src, name: a.name, adId: ad.id });
+        } catch (e) {
+          ads.push({ source: src, error: err(e) });
+        }
+      }
+      out.ads = ads;
+      return NextResponse.json({ ok: true, status, ...out });
+    } catch (e) {
+      return NextResponse.json({ error: err(e), ...out }, { status: 500 });
     }
   }
 
