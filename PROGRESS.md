@@ -9,6 +9,28 @@
 
 
 
+## [2026-10-27] — Mythicals clips now checked against the real picture before animating
+
+- **Requested by:** Keenan
+- **Committed by:** Claude Code
+- **Commit hash:** (this commit)
+
+### In plain English (for Keenan)
+"Which beast would your bro turn into?" had glitchy animation because each clip's movement was written before its picture existed. Three pictures left out the "bro", but the video was still told to animate him, so he popped in mid-clip and the beast warped around him. One clip asked a flying wyvern to catch a falling rider, which the video model can't do, and the cover's torch flames tore loose. Now Claude looks at every Mythicals picture before it's animated and rewrites the movement to fit only what's actually in it, in the calm, measured style of our best posts. The rules that caused this post are fixed too.
+
+### Technical changes (for Jimmy)
+- New `apps/web/src/lib/content-factory/mythic-motion.ts`: `groundMythicMotion` (Claude vision on the base frame + planned MOTION → grounded one-sentence motion; 2 attempts; `riskyMotion` phrase check for catch/land/mount/appear/transform/rear/detached flames; falls back to `SAFE_MYTHIC_MOTION`; never throws). Tests: `mythic-motion.test.ts`.
+- `apps/web/src/inngest/functions/carousel-post-video.ts` prepare step: for brand mythicals, replaces the MOTION line with the grounded one before `livingMotionPrompt`, and writes `living/<postId>/motion-<i>.json` (planned, grounded, what it sees, source).
+- `apps/web/src/lib/content-factory/choice-lane.ts`: DUO_RULES scene (companion large in the foreground, never small or mid-air) and motion (measured; each figure moves on its own; no catches, landings, mounts or rearing), replacing the 2026-10-12 "full range of motion" rule. Cover motion: flames flicker in place.
+
+### Manual steps needed
+- [ ] After deploy, rebuild one Mythicals post video and check its `motion-*.json` shows `"source": "grounded"`. A local run can't test the vision call (the local Anthropic key is invalid; Claude runs in prod). (Claude Code, on "push it")
+
+### Notes
+- Root cause, from frames of all six clips: 3/6 images dropped the "smaller" companion the scene named, and the blind MOTION line animated him anyway → Kling conjured him mid-clip. Kling also can't do mid-air catches (matches the 10-01 storyboard finding).
+- The GPT motion writer (`gptMotionPrompt`) saw the image but only ran during the writer-swap test; Mythicals went back to Claude 10-23, so clips have been written blind since then.
+- Adds one Opus vision call per Mythicals clip (6/post, 3 posts/day). If Claude fails, the clip gets the safe ambient motion rather than the blind plan.
+
 ## [2026-10-27] — Legendary Mythicals: three quizzes, a "what would you buy?" question, and quiz lines back in captions
 
 - **Requested by:** Keenan

@@ -556,8 +556,24 @@ export const carouselPostVideoFn = inngest.createFunction(
           layerUrl = await up(`living/${postId}/layer-${i}.png`, built.layer, "image/png");
         }
         const baseUrl = await up(`living/${postId}/base-${i}.jpg`, base, "image/jpeg");
+        // Mythicals motion is checked against the real start frame
+        // (2026-10-27, mythic-motion.ts): the MOTION line was written before
+        // the picture existed, and animating things that aren't in it made
+        // Kling conjure and warp them. Logged beside the build.
+        let imagePrompt = s.imagePrompt;
+        if (plan.brand === "mythicals") {
+          const { groundMythicMotion } = await import("@/lib/content-factory/mythic-motion");
+          const planned = s.imagePrompt.match(/^MOTION:\s*(.+)$/m)?.[1]?.trim() ?? "";
+          const g = await groundMythicMotion({ imageUrl: baseUrl, motion: planned, seconds: clipSec(i), isCover: i === 0 });
+          imagePrompt = planned ? s.imagePrompt.replace(/^MOTION:\s*.+$/m, `MOTION: ${g.motion}`) : `${s.imagePrompt}\nMOTION: ${g.motion}`;
+          await up(
+            `living/${postId}/motion-${i}.json`,
+            Buffer.from(JSON.stringify({ planned, grounded: g.motion, sees: g.visible, source: g.source }, null, 1)),
+            "application/json"
+          );
+        }
         // Legendary Mythicals: the creature itself acts (action mode).
-        const basePrompt = livingMotionPrompt(s.imagePrompt, {
+        const basePrompt = livingMotionPrompt(imagePrompt, {
           person: s.person,
           action: plan.brand === "mythicals" || !!plan.lane?.startsWith("pick-"),
           realistic: !!plan.lane?.startsWith("pick-"),
