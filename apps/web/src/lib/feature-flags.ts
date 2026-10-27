@@ -65,6 +65,9 @@ export const FEATURE_FLAG_KEYS = [
   "data_export",
   "public_share_links",
   "v1_1_dispositional_themes",
+  // Per-entry reflection (PR #48). PAUSED 2026-10-27 pending legal review;
+  // no FeatureFlag row = off (isEnabled fails closed).
+  "entry_reflection",
 ] as const;
 
 export type FeatureFlagKey = (typeof FEATURE_FLAG_KEYS)[number];

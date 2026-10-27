@@ -489,6 +489,24 @@ When someone reaches the paywall or opens checkout and leaves without starting a
 - Keenan chose the app download over a link back to web checkout. If she signs up in the app with Sign in with Apple hide-my-email, she gets a second account. The free web account is left empty, which is harmless; the Apple duplicate catch covers payers.
 - Changed on a Tuesday at Keenan's direct request (Monday-only rule waived).
 
+## [2026-10-27] fix(entries): pause the per-entry reflection pending legal review
+
+- **Requested by:** Jimmy ("nobody has reviewed it and if there's risk let's pause that")
+- **Committed by:** Claude Code
+
+### In plain English
+The reflection Ripple writes after each entry is switched off until a lawyer has reviewed it. It was parked for legal review in September and merged today by mistake. No reflection was ever generated: the DB has 0 entries with one.
+
+### Technical changes
+- New flag `entry_reflection` in FEATURE_FLAG_KEYS. There's no FeatureFlag row, so `isEnabled` fails closed.
+- `extractFromTranscript(..., includeReflection=false)`. With it off, the system prompt drops the reflection schema line and guidance (`extractionSystemPromptFor`), and the result's reflection is null.
+- Both production callers (lib/pipeline.ts, process-entry) pass `isEnabled(userId, "entry_reflection")`. The try-recording routes use the default (off).
+- The app and web already render nothing when reflection is null, so build 198 needs no change.
+- Tests: entry-reflection-pause.test.ts (4). Full web suite 1770/1770. Web tsc 163, unchanged.
+
+### Manual steps needed
+- None. To turn it on after counsel signs off: add a FeatureFlag row `entry_reflection` (enabled, requiredTier PRO).
+
 ## [2026-10-27] — Fixed web payers getting stuck before the app, and added a real-spend table for every Meta campaign
 
 **Requested by:** Keenan

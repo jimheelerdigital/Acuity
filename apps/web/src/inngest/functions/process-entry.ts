@@ -506,7 +506,9 @@ export const processEntryFn = inngest.createFunction(
         useDispositional,
         calendarContext.promptBlock,
         activeHabits.map((h) => ({ name: h.name, description: h.description })),
-        userId
+        userId,
+        // Reflection paused pending legal review (flag off by default).
+        await (await import("@/lib/feature-flags")).isEnabled(userId, "entry_reflection")
       );
       await markPhase(prisma, entryId, "extract_done");
       return {
