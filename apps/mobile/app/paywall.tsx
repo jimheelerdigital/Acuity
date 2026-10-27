@@ -55,6 +55,17 @@ export default function PaywallScreen() {
 function LegacyPaywallScreen() {
   const router = useRouter();
   const { tokens } = useTheme();
+  // The glow as real RN shadow props (same mapping as subscribe.tsx). It
+  // used to be spread straight into the style array, and the token's
+  // `opacity: 0.3` then applied to the WHOLE button: a dim pill with a
+  // near-invisible white label on the live paywall (fixed 2026-10-27).
+  const glowStyle = {
+    shadowColor: tokens.glowPrimary.color,
+    shadowOffset: { width: 0, height: 0 },
+    shadowRadius: tokens.glowPrimary.radius,
+    shadowOpacity: Platform.OS === "ios" ? tokens.glowPrimary.opacity : 0,
+    elevation: Math.round(tokens.glowPrimary.radius / 2),
+  };
   const [opening, setOpening] = useState(false);
 
   // Phase 3a — surface in-app subscribe as the primary CTA on iOS
@@ -171,10 +182,7 @@ function LegacyPaywallScreen() {
                 onPress={openSubscribe}
                 disabled={opening}
                 className="rounded-full py-4 items-center"
-                style={[
-                  { backgroundColor: tokens.primary },
-                  tokens.glowPrimary,
-                ]}
+                style={[{ backgroundColor: tokens.primary }, glowStyle]}
               >
                 <Text
                   className="text-sm font-semibold"
@@ -213,7 +221,7 @@ function LegacyPaywallScreen() {
                   backgroundColor: tokens.primary,
                   opacity: opening ? 0.85 : 1,
                 },
-                tokens.glowPrimary,
+                glowStyle,
               ]}
             >
               {opening ? (
