@@ -470,6 +470,38 @@ export default function EntryDetailScreen() {
         </View>
       )}
 
+      {/* Ripple's reflection (PR #48): 2-3 warm sentences written to the
+          user. PRO only; null on FREE entries, older entries and while
+          re-processing, so the guard is required. Sits above the summary
+          because it's the part worth reading first. */}
+      {entry.reflection ? (
+        <HeroCard variant="secondary" padding={18}>
+          <View style={{ gap: 10 }}>
+            <Text
+              style={{
+                fontFamily: tokens.fontMono,
+                fontSize: 10,
+                fontWeight: "700",
+                letterSpacing: 1.4,
+                color: tokens.textSec,
+              }}
+            >
+              RIPPLE'S REFLECTION
+            </Text>
+            <Text
+              style={{
+                fontFamily: tokens.fontDisplay,
+                fontSize: 17,
+                lineHeight: 25,
+                color: tokens.text,
+              }}
+            >
+              {entry.reflection}
+            </Text>
+          </View>
+        </HeroCard>
+      ) : null}
+
       {/* AI summary in HeroCard with GradientText title */}
       {entry.summary && (
         <HeroCard variant="primary" padding={18}>

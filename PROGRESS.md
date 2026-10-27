@@ -7,6 +7,24 @@
 
 ---
 
+## [2026-10-27] feat(entries): Ripple's reflection in the iPhone app (PR #48, Phase B)
+
+- **Requested by:** Jimmy
+- **Committed by:** Claude Code
+
+### In plain English
+The short reflection Ripple writes back after each entry now shows in the app too, at the top of the entry screen, labeled "Ripple's reflection". Pro only, same as the web.
+
+### Technical changes
+- `apps/mobile/app/entry/[id].tsx`: HeroCard (secondary) above the AI summary, rendered only when `entry.reflection` is set.
+- `packages/shared/src/types.ts`: `EntryDTO.reflection?: string | null`.
+- `apps/web/src/app/api/entries/[id]/route.ts`: GET already returns every Entry column (include), so no read change. PATCH (transcript edit) now clears `reflection` with the other derived fields so a stale reflection never shows over an edited entry.
+- `entry-reflection.test.ts`: the "did not touch apps/mobile" guard is replaced by a test that the app only renders the reflection behind a null guard.
+
+### Manual steps needed
+- Apply `docs/migrations/2026-10-27-entry-reflection.sql` BEFORE this deploys. GET /api/entries/[id] selects every column, so without it entry pages fail.
+- Safety: the web relies on the always-on CrisisFooter (988) on every signed-in page; the app has no equivalent on the entry screen. Decide before shipping the app part.
+
 ## [2026-10-27] fix(watch): checked-off tasks strike through instead of vanishing
 
 - **Requested by:** Jimmy

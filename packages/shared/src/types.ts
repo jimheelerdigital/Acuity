@@ -202,6 +202,10 @@ export interface EntryDTO {
   id: string;
   transcript: string;
   summary: string | null;
+  // Ripple's 2-3 sentence reflection written to the user (PRO only).
+  // Null on FREE entries, on entries predating the column, and while
+  // an edited entry is re-processing.
+  reflection?: string | null;
   mood: Mood | null;
   moodScore: number | null;
   energy: number | null;

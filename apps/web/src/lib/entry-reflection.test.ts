@@ -268,29 +268,16 @@ describe("display is null-guarded for FREE and legacy entries", () => {
   });
 });
 
-describe("Phase A stayed in scope", () => {
-  it("did not touch apps/mobile", () => {
-    // Mobile display is a separate follow-up that ships with the next
-    // build; a mobile read of a column that isn't in prod yet would be
-    // a crash in a shipped binary.
-    const mobileDir = join(REPO, "apps", "mobile");
-    let hits = 0;
-    const walk = (dir: string) => {
-      for (const e of require("node:fs").readdirSync(dir, {
-        withFileTypes: true,
-      })) {
-        if (
-          ["node_modules", ".expo", "ios", "android", ".git"].includes(e.name)
-        )
-          continue;
-        const full = join(dir, e.name);
-        if (e.isDirectory()) walk(full);
-        else if (/\.(ts|tsx)$/.test(e.name)) {
-          if (readFileSync(full, "utf8").includes("entry.reflection")) hits++;
-        }
-      }
-    };
-    walk(mobileDir);
-    expect(hits).toBe(0);
+describe("mobile reads the reflection safely", () => {
+  it("the entry screen only renders it behind a null guard", () => {
+    // 2026-10-27: the reflection now shows in the app too (Phase B). The
+    // field is optional in EntryDTO and absent/null on FREE entries,
+    // older entries and while re-processing, so every read must guard.
+    const src = readFileSync(
+      join(REPO, "apps", "mobile", "app", "entry", "[id].tsx"),
+      "utf8"
+    );
+    expect(src).toContain("{entry.reflection ? (");
+    expect(src.match(/entry\.reflection/g)?.length).toBe(2);
   });
 });
