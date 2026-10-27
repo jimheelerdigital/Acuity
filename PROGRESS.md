@@ -601,6 +601,31 @@ Now it waits:
 
 ### Manual steps needed
 - None.
+## [2026-10-27] feat(habits): streak freezes
+
+- **Requested by:** Jimmy ("go build 1-8"; on the public roadmap as "Streak freezes")
+- **Committed by:** Claude Code
+
+### In plain English
+Keep a habit going for 7 scheduled days in a row and you bank a freeze, up to 2. If you miss a single scheduled day, a freeze is used automatically and your streak survives. That day shows ❄️ in the history, not a tick. A freeze covers one day, never two in a row. Habit detail (app and web) shows "❄️ N freezes saved" with a one-line explainer.
+
+### Technical changes
+- `packages/shared/src/habits.ts`:
+  - `streakState()` walks check history forward from the habit's createdAt (or its first check) and returns streak, best, freezesBanked and frozenDates.
+  - It's fully derived from existing HabitCheck rows: no schema change, no write path, no cron.
+  - `currentStreak` / `bestStreak` now delegate to it, so Habits rows, Home, the widgets, emails and insights all apply freezes the same way.
+  - Constants: `FREEZE_EARN_EVERY` = 7, `MAX_BANKED_FREEZES` = 2.
+- Mobile `app/habit/[id].tsx` and web `app/habits/[id]/habit-detail.tsx`: frozen cell state (❄️), a legend item, and a freezes card. Web `statsFor` returns `freezes` / `frozen`.
+- Rules:
+  - Unscheduled days are skipped.
+  - An unchecked today is in progress.
+  - The earn counter continues across a frozen day and resets on a break.
+  - Banked freezes survive a break.
+  - Freezes apply retroactively, because they're derived from history.
+- Tests: `evidence/habit-streak-freezes.test.ts` (10). The existing habits tests still pass. Full web suite 1776/1776; web tsc 0; mobile tsc 12 (unchanged).
+
+### Manual steps needed
+- None (no migration).
 
 ## [2026-10-27] — Fixed web payers getting stuck before the app, and added a real-spend table for every Meta campaign
 

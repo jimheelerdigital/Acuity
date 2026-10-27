@@ -49,48 +49,115 @@ export function isExpectedOn(habit: HabitLike, localDate: string): boolean {
   return habit.daysActive.includes(dow);
 }
 
+/** A habit banks one freeze per this many consecutive completed expected days. */
+export const FREEZE_EARN_EVERY = 7;
+/** Most freezes a habit can bank at once. */
+export const MAX_BANKED_FREEZES = 2;
+
+export interface StreakState {
+  /** Consecutive EXPECTED days completed (frozen days keep it alive but don't add). */
+  streak: number;
+  /** Longest such run in the window, with the same freeze rules. */
+  best: number;
+  /** Freezes banked right now (0..MAX_BANKED_FREEZES). */
+  freezesBanked: number;
+  /** Missed expected days a freeze covered (shown as ❄️, not ✓). */
+  frozenDates: Set<string>;
+}
+
 /**
- * Current streak, in consecutive EXPECTED days completed.
+ * Streak with freezes (2026-10-27), derived purely from check history: no
+ * stored state, no cron. The same history always gives the same answer, on
+ * web, mobile and the widget alike.
  *
- * ── Two decisions that make this honest ──────────────────────────────
+ * ── The rules ─────────────────────────────────────────────────────────
+ * - Days the habit is NOT expected are skipped, never a break (a
+ *   weekdays-only habit keeps its streak over the weekend).
+ * - TODAY unchecked is "in progress", never a miss.
+ * - Every FREEZE_EARN_EVERY consecutive completed expected days bank one
+ *   freeze, up to MAX_BANKED_FREEZES. The earn counter keeps going across a
+ *   frozen day and resets when the streak breaks.
+ * - A missed expected day uses a banked freeze automatically: the streak
+ *   survives, the day is frozen (it does NOT count as done).
+ * - A freeze covers ONE missed day. A miss right after a frozen day breaks
+ *   the streak even with a freeze left, so freezes can't paper over a lapse.
+ * - Banked freezes survive a break (they were earned).
  *
- * 1. Days the habit is NOT expected are SKIPPED, not broken. A
- *    weekdays-only habit must not lose its streak every Saturday — that
- *    would punish the user for the schedule they chose.
- *
- * 2. TODAY does not break a streak if it is still unchecked. The day is not
- *    over. Counting from today would show "0" every morning to someone on a
- *    30-day run, which is both wrong and demoralising. Today counts when
- *    checked; otherwise we start from the previous expected day.
- *
+ * The walk starts at the habit's createdAt when known, else the first check
+ * in the window, so days before the habit existed are never "missed".
+ */
+export function streakState(
+  habit: HabitLike & { createdAt?: string | Date | null },
+  checkedDates: ReadonlySet<string>,
+  today: string,
+  maxLookbackDays = 400
+): StreakState {
+  const windowStart = shiftDate(today, -(maxLookbackDays - 1));
+  let start = windowStart;
+  const created = habit.createdAt ? toLocalDate(habit.createdAt) : null;
+  if (created && created > start) start = created;
+  if (!created) {
+    let first: string | null = null;
+    for (const d of checkedDates) {
+      if (d >= windowStart && d <= today && (first === null || d < first)) first = d;
+    }
+    if (first === null) {
+      return { streak: 0, best: 0, freezesBanked: 0, frozenDates: new Set() };
+    }
+    start = first;
+  }
+
+  let streak = 0;
+  let best = 0;
+  let earn = 0;
+  let bank = 0;
+  let prevFrozen = false;
+  const frozenDates = new Set<string>();
+
+  for (let d = start; d <= today; d = shiftDate(d, 1)) {
+    if (!isExpectedOn(habit, d)) continue;
+    const done = checkedDates.has(d);
+    if (d === today && !done) break; // still in progress
+    if (done) {
+      streak += 1;
+      earn += 1;
+      if (earn % FREEZE_EARN_EVERY === 0) bank = Math.min(MAX_BANKED_FREEZES, bank + 1);
+      prevFrozen = false;
+      if (streak > best) best = streak;
+    } else if (bank > 0 && !prevFrozen && streak > 0) {
+      bank -= 1;
+      frozenDates.add(d);
+      prevFrozen = true;
+    } else {
+      streak = 0;
+      earn = 0;
+      prevFrozen = false;
+    }
+  }
+
+  return { streak, best, freezesBanked: bank, frozenDates };
+}
+
+function toLocalDate(v: string | Date): string {
+  if (typeof v === "string" && /^\d{4}-\d{2}-\d{2}$/.test(v)) return v;
+  const t = typeof v === "string" ? new Date(v) : v;
+  const p = (n: number) => String(n).padStart(2, "0");
+  return `${t.getFullYear()}-${p(t.getMonth() + 1)}-${p(t.getDate())}`;
+}
+
+/**
+ * Current streak, in consecutive EXPECTED days completed, with streak
+ * freezes applied (see streakState for the rules). Days the habit is not
+ * expected are skipped, and an unchecked TODAY never breaks the streak.
  * `checkedDates` is a set of `YYYY-MM-DD` the user completed.
  */
 export function currentStreak(
-  habit: HabitLike,
+  habit: HabitLike & { createdAt?: string | Date | null },
   checkedDates: ReadonlySet<string>,
   today: string,
   maxLookbackDays = 400
 ): number {
-  let streak = 0;
-  let cursor = today;
-
-  // If today is expected but not yet done, the streak is whatever ran up
-  // to the last expected day — the day is still in progress.
-  if (isExpectedOn(habit, today) && !checkedDates.has(today)) {
-    cursor = shiftDate(today, -1);
-  }
-
-  for (let i = 0; i < maxLookbackDays; i += 1) {
-    if (!isExpectedOn(habit, cursor)) {
-      cursor = shiftDate(cursor, -1);
-      continue;
-    }
-    if (!checkedDates.has(cursor)) break;
-    streak += 1;
-    cursor = shiftDate(cursor, -1);
-  }
-
-  return streak;
+  return streakState(habit, checkedDates, today, maxLookbackDays).streak;
 }
 
 /**
@@ -117,34 +184,17 @@ export function isPaused(habit: HabitLike): boolean {
 }
 
 /**
- * Longest run of consecutive EXPECTED days completed, over a lookback
- * window. Same rules as currentStreak: days the habit is not expected are
- * skipped (not counted as a break), so a weekdays-only habit is not
- * penalised for its own schedule.
+ * Longest run of consecutive EXPECTED days completed over the lookback
+ * window, with the same rules (and freezes) as currentStreak, so "best" can
+ * never be lower than "current".
  */
 export function bestStreak(
-  habit: HabitLike,
+  habit: HabitLike & { createdAt?: string | Date | null },
   checkedDates: ReadonlySet<string>,
   today: string,
   maxLookbackDays = 400
 ): number {
-  let best = 0;
-  let run = 0;
-  let cursor = today;
-  for (let i = 0; i < maxLookbackDays; i += 1) {
-    if (isExpectedOn(habit, cursor)) {
-      if (checkedDates.has(cursor)) {
-        run += 1;
-        if (run > best) best = run;
-      } else if (!(i === 0)) {
-        // Today unchecked is "in progress", not a break — it only resets
-        // the running count, which never lowers the best already found.
-        run = 0;
-      }
-    }
-    cursor = shiftDate(cursor, -1);
-  }
-  return best;
+  return streakState(habit, checkedDates, today, maxLookbackDays).best;
 }
 
 /**

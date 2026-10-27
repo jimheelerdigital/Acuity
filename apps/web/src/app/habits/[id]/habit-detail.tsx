@@ -4,7 +4,13 @@ import { ArrowLeft, Check, Trash2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
-import { dayOfWeek, isExpectedOn, shiftDate } from "@acuity/shared";
+import {
+  dayOfWeek,
+  FREEZE_EARN_EVERY,
+  isExpectedOn,
+  MAX_BANKED_FREEZES,
+  shiftDate,
+} from "@acuity/shared";
 import {
   archiveHabit,
   checksByHabit,
@@ -32,7 +38,8 @@ const HEATMAP_WEEKS = 5;
 // done — a completion was recorded (accent fill)
 // off — a non-scheduled day (solid grey fill)
 // untracked — a scheduled day with no completion (past OR future): left blank.
-type CellState = "done" | "off" | "untracked";
+// frozen = a missed scheduled day a streak freeze covered (2026-10-27).
+type CellState = "done" | "off" | "untracked" | "frozen";
 
 export function HabitDetail({ id }: { id: string }) {
   const router = useRouter();
@@ -76,7 +83,13 @@ export function HabitDetail({ id }: { id: string }) {
 
   const stats = useMemo(() => {
     if (!habit)
-      return { current: 0, best: 0, rate: { done: 0, expected: 0, pct: 0 } };
+      return {
+        current: 0,
+        best: 0,
+        freezes: 0,
+        frozen: new Set<string>(),
+        rate: { done: 0, expected: 0, pct: 0 },
+      };
     return statsFor(habit, checkSet, today);
   }, [habit, checkSet, today]);
 
@@ -99,6 +112,7 @@ export function HabitDetail({ id }: { id: string }) {
         const isToday = cursor === today;
         let state: CellState;
         if (checkSet.has(cursor)) state = "done";
+        else if (stats.frozen.has(cursor)) state = "frozen";
         else if (habit && isExpectedOn(habit, cursor)) state = "untracked";
         else state = "off";
         col.push({ date: cursor, day: Number(cursor.slice(8, 10)), state, isToday });
@@ -107,7 +121,7 @@ export function HabitDetail({ id }: { id: string }) {
       cols.push(col);
     }
     return cols;
-  }, [habit, checkSet, today]);
+  }, [habit, checkSet, today, stats.frozen]);
 
   const saveName = useCallback(async () => {
     if (!habit) return;
@@ -179,7 +193,9 @@ export function HabitDetail({ id }: { id: string }) {
         ? "bg-acuity-primary text-white"
         : state === "off"
           ? "bg-acuity-bg-inset-strong text-acuity-text-ter"
-          : "text-acuity-text-ter";
+          : state === "frozen"
+            ? "bg-acuity-bg-inset text-acuity-text-ter"
+            : "text-acuity-text-ter";
     const ring = isToday
       ? state === "done"
         ? " ring-2 ring-inset ring-acuity-secondary"
@@ -282,7 +298,9 @@ export function HabitDetail({ id }: { id: string }) {
           <div key={wi} className="flex gap-1.5">
             {week.map((c) => (
               <div key={c.date} className="flex-1">
-                <div className={cellClasses(c.state, c.isToday)}>{c.day}</div>
+                <div className={cellClasses(c.state, c.isToday)}>
+                  {c.state === "frozen" ? "❄️" : c.day}
+                </div>
               </div>
             ))}
           </div>
@@ -305,6 +323,19 @@ export function HabitDetail({ id }: { id: string }) {
           <span className="h-3 w-3 rounded-sm bg-acuity-bg-inset-strong" /> Off
           day
         </span>
+        <span className="inline-flex items-center gap-1.5">❄️ Freeze used</span>
+      </div>
+
+      {/* Streak freezes (2026-10-27) */}
+      <div className="mt-4 rounded-xl bg-acuity-bg-inset p-3">
+        <p className="text-sm font-semibold text-acuity-text">
+          ❄️ {stats.freezes} freeze{stats.freezes === 1 ? "" : "s"} saved
+        </p>
+        <p className="mt-1 text-xs text-acuity-text-sec">
+          Keep a {FREEZE_EARN_EVERY}-day run going and you&apos;ll bank a freeze for a
+          missed day (up to {MAX_BANKED_FREEZES}). A freeze covers one day, not two
+          in a row.
+        </p>
       </div>
 
       {/* Notes */}

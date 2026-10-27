@@ -13,12 +13,13 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import {
-  bestStreak,
   completionRate,
-  currentStreak,
   dayOfWeek,
+  FREEZE_EARN_EVERY,
   isExpectedOn,
+  MAX_BANKED_FREEZES,
   shiftDate,
+  streakState,
 } from "@acuity/shared";
 
 import { StickyBackButton } from "@/components/back-button";
@@ -68,7 +69,9 @@ const HEATMAP_WEEKS = 5;
 //  untracked — a scheduled day with no completion (past OR future): left
 //              blank, just the day number. One neutral state, no "missed"
 //              shaming and no future-specific styling.
-type CellState = "done" | "off" | "untracked";
+//  frozen    — a missed scheduled day a streak freeze covered (2026-10-27):
+//              shown with ❄️, never as done.
+type CellState = "done" | "off" | "untracked" | "frozen";
 
 function pad(n: number): string {
   return String(n).padStart(2, "0");
@@ -135,10 +138,22 @@ export default function HabitDetailScreen() {
 
   const stats = useMemo(() => {
     if (!habit)
-      return { current: 0, best: 0, rate: { done: 0, expected: 0, pct: 0 } };
+      return {
+        current: 0,
+        best: 0,
+        freezes: 0,
+        frozen: new Set<string>(),
+        rate: { done: 0, expected: 0, pct: 0 },
+      };
+    // Streak freezes (2026-10-27): one walk of the history gives current,
+    // best, banked freezes and which missed days a freeze covered — the
+    // same function the rows and widgets use (via currentStreak).
+    const st = streakState(habit, checkSet, today);
     return {
-      current: currentStreak(habit, checkSet, today),
-      best: bestStreak(habit, checkSet, today),
+      current: st.streak,
+      best: st.best,
+      freezes: st.freezesBanked,
+      frozen: st.frozenDates,
       rate: completionRate(habit, checkSet, today, 30),
     };
   }, [habit, checkSet, today]);
@@ -162,6 +177,7 @@ export default function HabitDetailScreen() {
         const isToday = cursor === today;
         let state: CellState;
         if (checkSet.has(cursor)) state = "done";
+        else if (stats.frozen.has(cursor)) state = "frozen";
         // Scheduled-but-not-done reads the same whether past or future:
         // blank. Only genuinely non-scheduled days get the grey "off" fill.
         else if (habit && isExpectedOn(habit, cursor)) state = "untracked";
@@ -174,7 +190,7 @@ export default function HabitDetailScreen() {
       cols.push(col);
     }
     return cols;
-  }, [habit, checkSet, today]);
+  }, [habit, checkSet, today, stats.frozen]);
 
   const rename = useCallback(() => {
     if (!habit) return;
@@ -341,6 +357,8 @@ export default function HabitDetailScreen() {
         return tokens.primary;
       case "off":
         return tokens.bgInsetStrong;
+      case "frozen":
+        return tokens.bgInset;
       default:
         return "transparent";
     }
@@ -439,7 +457,7 @@ export default function HabitDetailScreen() {
                           : cellText(c.state),
                     }}
                   >
-                    {c.day}
+                    {c.state === "frozen" ? "❄️" : c.day}
                   </Text>
                 </View>
               ))}
@@ -464,6 +482,27 @@ export default function HabitDetailScreen() {
           <Text style={{ color: tokens.textTer, fontSize: 12 }}>Not tracked</Text>
           <View style={{ width: 12, height: 12, borderRadius: 3, backgroundColor: tokens.bgInsetStrong, marginLeft: 12 }} />
           <Text style={{ color: tokens.textTer, fontSize: 12 }}>Off day</Text>
+          <Text style={{ fontSize: 11, marginLeft: 12 }}>❄️</Text>
+          <Text style={{ color: tokens.textTer, fontSize: 12 }}>Freeze used</Text>
+        </View>
+
+        {/* Streak freezes (2026-10-27) */}
+        <View
+          style={{
+            marginTop: 14,
+            padding: 12,
+            borderRadius: 12,
+            backgroundColor: tokens.bgInset,
+          }}
+          accessible
+          accessibilityLabel={`${stats.freezes} streak freeze${stats.freezes === 1 ? "" : "s"} saved`}
+        >
+          <Text style={{ color: tokens.text, fontSize: 14, fontWeight: "600" }}>
+            ❄️ {stats.freezes} freeze{stats.freezes === 1 ? "" : "s"} saved
+          </Text>
+          <Text style={{ color: tokens.textSec, fontSize: 12, marginTop: 4, lineHeight: 17 }}>
+            Keep a {FREEZE_EARN_EVERY}-day run going and you'll bank a freeze for a missed day (up to {MAX_BANKED_FREEZES}). A freeze covers one day, not two in a row.
+          </Text>
         </View>
 
         {/* Notes */}
