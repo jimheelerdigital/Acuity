@@ -25,6 +25,25 @@ Tasks Ripple pulls out of a recording (92% of dated tasks) never went to the con
 
 ### Manual steps needed
 - None. Server-side. It only affects users who have connected a calendar (1 today), and it starts mattering when calendar_integrations goes on at release.
+## [2026-10-27] fix(mobile): OTA updates get the same env as store builds
+
+- **Requested by:** Jimmy ("go env fix")
+- **Committed by:** Claude Code
+
+### In plain English
+App updates pushed over the air now always carry the same settings as the App Store build, and the tool refuses to publish one that doesn't. This is what switched Habits and Growth off on 10-26.
+
+### Technical changes
+- New `apps/mobile/scripts/ota.mjs` (`npm run ota`). It resolves the eas.json profile, including `extends`. It runs `eas env:exec <environment>` with the profile env set on top, then `expo export --clear`. It verifies every bundle, then runs `eas update --skip-bundler` on that exact output.
+- The verification is by value. Expo inlines a missing EXPO_PUBLIC_* as `undefined`, so its name never shows up; I checked this against a real export. The check needs a per-run export id and the DSN/RevenueCat key values.
+- `--clear`: a warm Metro cache served an earlier run's inlined env. I reproduced this on 10-27.
+- `lib/sentry.ts`: reads EXPO_PUBLIC_OTA_EXPORT_ID, the verification canary. It also tags Sentry events `ota_export`. Undefined in store builds.
+- Found along the way: the EAS production environment holds FACEBOOK_* and GOOGLE_ANDROID_CLIENT_ID. These aren't in eas.json, so raw `eas update` also lacked them. The script loads them.
+- Tests: apps/web/src/lib/evidence/ota-script.test.ts. Dry run on iOS passed (export id + 3 values inlined).
+- AGENTS.md / CLAUDE.md: never run `eas update` directly.
+
+### Manual steps needed
+- None.
 
 ## [2026-10-27] feat(web): release-notes pages + 1.9.6 email images
 
