@@ -139,6 +139,16 @@ export async function updateEvent(eventId: string, input: Partial<EventInput>): 
   });
 }
 
+/**
+ * Removes an event (a dismissed task's, 2026-10-27). An event that's
+ * already gone (the person deleted it) counts as done.
+ */
+export async function deleteEvent(eventId: string): Promise<void> {
+  if (!(await eventExists(eventId))) return;
+  const C = await cal();
+  await C.deleteEventAsync(eventId);
+}
+
 export async function eventExists(eventId: string): Promise<boolean> {
   const C = await cal();
   try {

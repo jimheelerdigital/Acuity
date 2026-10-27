@@ -119,9 +119,20 @@ export const drainPendingCalendarTasksFn = inngest.createFunction(
       return { escalated: result.count, scanned: candidates.length };
     });
 
+    // Queued event deletions (dismissed tasks) that no phone drained in a
+    // week: an old app version, or calendar access revoked. Drop them.
+    const expiredDeletions = await step.run("expire-calendar-deletions", async () => {
+      const { DELETION_TTL_MS } = await import("@/lib/calendar-deletion");
+      const res = await prisma.calendarDeletion.deleteMany({
+        where: { createdAt: { lt: new Date(now.getTime() - DELETION_TTL_MS) } },
+      });
+      return res.count;
+    });
+
     return {
       tick: now.toISOString(),
       ...escalated,
+      expiredDeletions,
     };
   }
 );

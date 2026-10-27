@@ -77,6 +77,8 @@ export async function POST(req: NextRequest) {
     where: { userId, calendarSyncStatus: "PENDING" },
     data: { calendarSyncStatus: "NOT_SYNCED", calendarPendingSince: null },
   });
+  // Queued event deletions for dismissed tasks can't run any more either.
+  await prisma.calendarDeletion.deleteMany({ where: { userId } });
 
   safeLog.info("calendar.disconnect", {
     userId,

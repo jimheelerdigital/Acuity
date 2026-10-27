@@ -626,6 +626,26 @@ Keep a habit going for 7 scheduled days in a row and you bank a freeze, up to 2.
 
 ### Manual steps needed
 - None (no migration).
+## [2026-10-27] fix(calendar): dismissing a task removes its calendar event
+
+- **Requested by:** Jimmy (backlog item 6)
+- **Committed by:** Claude Code
+
+### In plain English
+Before, dismissing a task left its event behind on your phone calendar. Now the event is removed the next time Ripple opens.
+
+### Technical changes
+- New table `CalendarDeletion`, a queue of event ids. Dismiss still hard-deletes the Task at once, so no list, count, widget, Siri, watch or insights query ever sees a dismissed task. Before the delete, it queues the event when the task has `calendarEventId` and a phone calendar is connected.
+- `lib/calendar-deletion.ts`: queue, op ids (`calendar-deletion:<id>`), drain ops, result handling. Success or a permanent failure removes the row; retryable failures give up after 5.
+- `GET /drain` returns delete ops (first) ONLY with `?supports=delete`. Older app JS would treat an unknown op as an upsert and recreate the event.
+- `POST /sync-result` routes deletion op ids to the queue (user-scoped).
+- Disconnect drops the user's rows. The calendar cron expires rows after 7 days.
+- Phone (JS only, OTA-able; expo-calendar is already in 1.9.6): `deleteEvent()` in device-calendar.ts. The drain asks with `supports=delete` and executes delete ops; an event that's already gone counts as done.
+- Tests: calendar-deletion.test.ts (12), drain/route.deletes.test.ts (2), tasks/route.dismiss.test.ts (1), sync-result/route.deletion.test.ts (2), disconnect assertion. Full web suite 1783/1783. Web tsc 0, mobile tsc 12 (unchanged).
+- Not covered: deleting a whole entry cascades its tasks without queueing their events. Out of scope.
+
+### Manual steps needed
+- Apply `docs/migrations/2026-10-27-calendar-delete-queue.sql` (creates the table and enables RLS) BEFORE deploying.
 
 ## [2026-10-27] — Fixed web payers getting stuck before the app, and added a real-spend table for every Meta campaign
 

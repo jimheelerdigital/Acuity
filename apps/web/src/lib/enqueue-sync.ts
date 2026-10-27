@@ -28,14 +28,9 @@ import {
  * the per-user PENDING set; the sync-result endpoint applies the
  * eventual outcome via `applySyncResult`.
  *
- * Phase A v1.1 limitation (intentional, scope-locked):
- *   - "delete" ops are NOT enqueued. When a Task is dismissed
- *     (`/api/tasks` PATCH action="dismiss"), the row is hard-
- *     deleted; the corresponding calendar event becomes an
- *     orphan (same pattern as disconnect). Document via UI copy
- *     in slice C5b. Proper delete-sync needs either a soft-delete
- *     column or a side-queue table — schema change deferred to
- *     post-launch.
+ * Deletes (2026-10-27): dismissing a task hard-deletes the row and
+ * queues its event's removal in a side table instead of a Task status,
+ * see lib/calendar-deletion.ts.
  */
 
 /** Action signaled by the calling /api/tasks branch. */

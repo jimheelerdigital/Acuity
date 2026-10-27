@@ -6,6 +6,7 @@ import { loadPlannedBlocks } from "@/lib/day-plan-store";
 import {
   calendarPermission,
   createEvent,
+  deleteEvent,
   DEVICE_PROVIDER,
   deviceCalendarAvailable,
   eventExists,
@@ -64,10 +65,30 @@ async function report(body: Record<string, unknown>): Promise<void> {
 }
 
 async function drainTasks(): Promise<void> {
-  const { ops } = await api.get<{ ops: DrainOp[] }>("/api/integrations/calendar/drain");
+  // `supports=delete`: this JS can remove a dismissed task's event. The
+  // server only sends delete ops to clients that say so (older JS would
+  // treat one as an upsert and recreate the event).
+  const { ops } = await api.get<{ ops: DrainOp[] }>(
+    "/api/integrations/calendar/drain?supports=delete"
+  );
   if (ops.length === 0) return;
   const blocks = await loadPlannedBlocks();
   for (const op of ops) {
+    if (op.kind === "delete") {
+      if (!op.providerEventId) {
+        await report({ taskId: op.taskId, ok: false, retryable: false, reason: "no_event_id" });
+        continue;
+      }
+      try {
+        await deleteEvent(op.providerEventId);
+        await report({ taskId: op.taskId, ok: true, providerEventId: op.providerEventId });
+      } catch (err) {
+        const reason = err instanceof Error ? err.message.slice(0, 300) : "unknown";
+        const permanent = /read.?only|not allowed|permission/i.test(reason);
+        await report({ taskId: op.taskId, ok: false, retryable: !permanent, reason });
+      }
+      continue;
+    }
     // Checking a task off only marks its event ✓ — it never moves it
     // (a planned 2 PM block stays at 2 PM).
     if (op.kind === "complete" && op.providerEventId) {

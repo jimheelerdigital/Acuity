@@ -53,6 +53,32 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Missing ok" }, { status: 400 });
   }
 
+  // Deletion ops (dismissed tasks, 2026-10-27) carry a queue id, not a
+  // task id. Ownership is enforced by the userId filter inside.
+  const { parseDeletionOpId, applyDeletionResult } = await import("@/lib/calendar-deletion");
+  const deletionId = parseDeletionOpId(body.taskId);
+  if (deletionId) {
+    if (body.ok === false && typeof body.retryable !== "boolean") {
+      return NextResponse.json({ error: "Missing retryable on ok=false" }, { status: 400 });
+    }
+    const { prisma } = await import("@/lib/prisma");
+    const applied = await applyDeletionResult(
+      prisma,
+      userId,
+      deletionId,
+      body.ok === true
+        ? { ok: true }
+        : {
+            ok: false,
+            retryable: body.retryable === true,
+            reason: typeof body.reason === "string" ? body.reason : "unknown",
+          }
+    );
+    // A row that's already gone (expired, or a duplicate report) is fine.
+    safeLog.info("calendar.sync-result.deletion", { userId, ok: body.ok, applied });
+    return NextResponse.json({ ok: true });
+  }
+
   let result: CalendarSyncOpResult;
   if (body.ok === true) {
     if (typeof body.providerEventId !== "string") {

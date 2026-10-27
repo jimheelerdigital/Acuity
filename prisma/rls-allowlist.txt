@@ -23,6 +23,7 @@ AdminInsight rls    # MRI diagnostic AI analysis (revenue/churn/MRI findings) â€
 BlogPrunerRun no-rls    # operational logging table for blog pruner cron, no PII â€” only stores blog post slugs, URLs, GSC coverage states, and timestamps
 BlogTopicQueue rls
 CalendarConnection rls
+CalendarDeletion rls    # queued phone-calendar event deletions for dismissed tasks; has userId, written only via service-role Prisma
 CalendarEvent rls    # user calendar events fetched via the EventKit / Google integration; has userId
 ClaudeCallLog rls
 ConsentRecord rls    # v1.4 append-only GDPR consent ledger (Art. 9 + 14-day withdrawal); has userId, written only via service-role Prisma

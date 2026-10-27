@@ -388,6 +388,7 @@ model User {
   lifeDimensions                UserLifeDimension[]
   calendarConnections           CalendarConnection[]
   calendarEvents                CalendarEvent[]
+  calendarDeletions             CalendarDeletion[]
   people                        Person[]
   claudeCallLogs                ClaudeCallLog[]
   // Preset template the user picked for their Life Matrix labels.
@@ -2270,6 +2271,25 @@ model UserLifeDimension {
 // (userId, externalEventId) is the upsert key — re-syncs are
 // idempotent. (userId, startTime) is the hot-read index for entry
 // pipeline lookups in slice 3.
+// A calendar event to remove from the user's phone calendar because its
+// task was dismissed (2026-10-27). The Task row is hard-deleted at once, as
+// before, so no task reader ever sees a "dismissed" task; this small queue
+// carries the event id until the phone confirms the delete via /drain +
+// /sync-result. Rows expire after 7 days (calendar cron) and are dropped on
+// disconnect.
+model CalendarDeletion {
+  id              String   @id @default(cuid())
+  userId          String
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  providerEventId String
+  attempts        Int      @default(0)
+  lastError       String?
+  createdAt       DateTime @default(now())
+
+  @@unique([userId, providerEventId])
+  @@index([createdAt])
+}
+
 model CalendarEvent {
   id              String    @id @default(cuid())
   userId          String
