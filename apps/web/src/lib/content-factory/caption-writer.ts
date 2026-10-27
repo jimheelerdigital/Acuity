@@ -131,23 +131,50 @@ interface WrittenCaption {
 }
 
 /**
- * Fixed quiz line on every Mythicals caption (2026-10-01, per Keenan: grow
- * the following through the quiz funnel first). Added in code, after the
+ * Quiz line on every Mythicals caption (2026-10-01, per Keenan: grow the
+ * following through the quiz funnel first). Added in code, after the
  * writer, because the writer is told never to market. The plain domain
  * reads on Instagram (where caption links don't click) and links on
- * Facebook/TikTok.
+ * Facebook/TikTok. OFF 2026-10-03 ("eliminate pushing people to quizzes for
+ * now"); back ON 2026-10-27 (per Keenan: "start having social captions push
+ * people to the quiz"), rotating across the three quizzes so it doesn't read
+ * the same on every post. /quiz is the picker page and the bio link.
  */
-const MYTHICALS_QUIZ_LINE =
-  "Which legendary creature are you? Take the free quiz at legendarymythicals.com/quiz";
-/**
- * OFF since 2026-10-03 (per Keenan: "eliminate pushing people to quizzes
- * for now on legendary mythicals in captions"). Flip to true to bring the
- * line back; while off, it is also stripped from captions already written.
- */
-const MYTHICALS_QUIZ_LINE_ON = false;
+export const MYTHICALS_QUIZ_LINES = [
+  "Which legendary creature are you? Take the free quiz at legendarymythicals.com/quiz",
+  "Which armor set was forged for you? Free quiz at legendarymythicals.com/quiz",
+  "Which legendary weapon is yours? Find out free at legendarymythicals.com/quiz",
+  "Beast, armor or weapon: find yours with the free quizzes at legendarymythicals.com/quiz",
+];
+/** The 2026-10-01 line, still recognized so old captions get the new rotation. */
+const LEGACY_QUIZ_LINE = "Which legendary creature are you? Take the free quiz at legendarymythicals.com/quiz";
+const MYTHICALS_QUIZ_LINE_ON = true;
 
-function stripQuizLine(caption: string): string {
-  return MYTHICALS_QUIZ_LINE_ON ? caption : caption.replace(`\n\n${MYTHICALS_QUIZ_LINE}`, "").replace(MYTHICALS_QUIZ_LINE, "").trim();
+/** Same caption → same line, so a rewrite or retry doesn't flip it. */
+function quizLineFor(caption: string): string {
+  let h = 7;
+  for (let i = 0; i < caption.length; i++) h = (h * 31 + caption.charCodeAt(i)) % 100003;
+  return MYTHICALS_QUIZ_LINES[h % MYTHICALS_QUIZ_LINES.length];
+}
+
+function removeQuizLines(caption: string): string {
+  let out = caption;
+  for (const line of [...MYTHICALS_QUIZ_LINES, LEGACY_QUIZ_LINE]) out = out.split(`\n\n${line}`).join("").split(line).join("");
+  return out.trim();
+}
+
+/**
+ * Applied to every saved caption at publish time: while the line is on, a
+ * Mythicals caption gets exactly one quiz line just above its hashtags;
+ * while off, any quiz line is stripped.
+ */
+export function applyQuizLine(caption: string, brand: string | null | undefined): string {
+  const bare = removeQuizLines(caption);
+  if (!MYTHICALS_QUIZ_LINE_ON || brand !== "mythicals") return MYTHICALS_QUIZ_LINE_ON ? caption : bare;
+  const paras = bare.split("\n\n");
+  const tagsAt = paras.length > 1 && /^#\S/.test(paras[paras.length - 1].trim()) ? paras.length - 1 : paras.length;
+  paras.splice(tagsAt, 0, quizLineFor(bare));
+  return paras.join("\n\n");
 }
 
 function assemble(
@@ -162,13 +189,8 @@ function assemble(
     )
     .filter((t) => t.length > 1 && !BANNED_TAGS.has(t) && !isHealthTag(t))
     .slice(0, 4);
-  return [
-    c.caption.trim(),
-    brand === "mythicals" && MYTHICALS_QUIZ_LINE_ON ? MYTHICALS_QUIZ_LINE : "",
-    tags.join(" "),
-  ]
-    .filter(Boolean)
-    .join("\n\n");
+  const joined = [c.caption.trim(), tags.join(" ")].filter(Boolean).join("\n\n");
+  return applyQuizLine(joined, brand);
 }
 
 export async function writeCaption(opts: {
@@ -381,10 +403,10 @@ export async function ensureWrittenCaption(
       },
     });
     if (!post) return null;
-    if (post.captionWrittenAt) return stripQuizLine(post.caption);
-
     const { laneBrand } = await import("@/lib/content-factory/social-publish");
     const brand = await laneBrand(post.lane);
+    if (post.captionWrittenAt) return applyQuizLine(post.caption, brand);
+
     // The Claude control post keeps a Claude caption (2026-10-22).
     const { writerScope, isClaudeControlRun } = await import("@/lib/content-factory/claude-client");
     const forceClaude = isClaudeControlRun(post.lane, post.createdAt.getUTCHours());
@@ -398,7 +420,7 @@ export async function ensureWrittenCaption(
         .slice(0, 10),
       question: existingQuestion(post.caption),
     }));
-    if (!written) return post.caption;
+    if (!written) return applyQuizLine(post.caption, brand);
 
     await prisma.carouselPost.update({
       where: { id: carouselPostId },

@@ -1,8 +1,8 @@
 /**
- * Legendary Mythicals quiz (2026-10-01, per Keenan): "Which Legendary
- * Creature Are You?" — 8 questions, 4 answers each, scored in code onto 12
- * archetypes. Every answer awards a point to three archetypes; the counts
- * are balanced so each archetype is reachable (8 points max each).
+ * Legendary Mythicals beasts (2026-10-01, per Keenan): the results of the
+ * "Which Legendary Creature Are You?" quiz. 12 at launch, 20 since
+ * 2026-10-27 (more variety). The questions and scoring live in quizzes.ts
+ * with the armor and weapon quizzes.
  */
 
 export type ArchetypeSlug =
@@ -17,7 +17,15 @@ export type ArchetypeSlug =
   | "qilin"
   | "manticore"
   | "leviathan"
-  | "sphinx";
+  | "sphinx"
+  | "hydra"
+  | "wyvern"
+  | "cerberus"
+  | "chimera"
+  | "kitsune"
+  | "behemoth"
+  | "obsidian-wyrm"
+  | "nightmare";
 
 export interface Archetype {
   slug: ArchetypeSlug;
@@ -193,113 +201,113 @@ export const ARCHETYPES: Record<ArchetypeSlug, Archetype> = {
     scene:
       "a giant winged sphinx of stone and gold resting on a desert dune before ancient ruins under a vast starry night sky, moonlight on its face",
   },
+  hydra: {
+    slug: "hydra",
+    name: "Hydra",
+    title: "The One Who Cannot Be Cut Down",
+    essence:
+      "Every setback makes you stronger. People keep trying to stop you, and every time they try there is more of you to deal with.",
+    strengths: ["Comes back harder", "Thinks on several fronts at once", "Impossible to wear down"],
+    weakness: "You fight on so many fronts that you forget to rest on any of them.",
+    lore: "The hero cut off one head and stepped back to rest. That was the last mistake he made.",
+    element: "swamp mist and venom",
+    scene:
+      "a colossal many-headed hydra with dark green scales rising from a misty black swamp at dusk, seven serpent heads raised against a storm sky, venom dripping, dead trees around it",
+  },
+  wyvern: {
+    slug: "wyvern",
+    name: "Wyvern",
+    title: "The Hunter of the High Peaks",
+    essence:
+      "Lean, fast and focused. You don't waste energy on show. You see what you want and you take it before anyone else moves.",
+    strengths: ["Razor focus", "Strikes at the right moment", "Thrives alone"],
+    weakness: "You'd rather go it alone than wait for anyone to catch up.",
+    lore: "Shepherds never saw it land. They only counted the flock in the morning.",
+    element: "mountain wind and frost",
+    scene:
+      "a sleek dark-bronze wyvern with huge leathery wings perched on a jagged snowy mountain spire, wings half open, wind tearing snow off the ridge, cold blue light",
+  },
+  cerberus: {
+    slug: "cerberus",
+    name: "Cerberus",
+    title: "The Guardian at the Gate",
+    essence:
+      "You protect your people like it's your whole purpose, because to you it is. Nobody gets past you to the people you love.",
+    strengths: ["Unbreakable loyalty", "Never off guard", "Terrifying when provoked"],
+    weakness: "You guard others so hard that nobody guards you.",
+    lore: "The gate to the underworld had no lock. It never needed one.",
+    element: "hellfire and obsidian",
+    scene:
+      "a colossal three-headed black hound with glowing ember eyes standing before a towering obsidian gate, rivers of fire glowing behind it, smoke curling around its paws",
+  },
+  chimera: {
+    slug: "chimera",
+    name: "Chimera",
+    title: "The One Nobody Can Label",
+    essence:
+      "You are three things at once and you refuse to pick one. People try to put you in a box, and you break every box they bring.",
+    strengths: ["Endlessly adaptable", "Many talents", "Thrives where others get stuck"],
+    weakness: "Pulled in so many directions that you rarely finish one.",
+    lore: "Every scholar who described it described a different beast. All of them were right.",
+    element: "fire, earth and storm",
+    scene:
+      "a massive chimera with a lion's body and mane, a goat head rising from its back and a serpent tail, standing on volcanic rocks breathing a plume of fire, ash falling in red light",
+  },
+  kitsune: {
+    slug: "kitsune",
+    name: "Kitsune",
+    title: "The Trickster Spirit",
+    essence:
+      "Clever, playful and always three moves ahead. People think they've figured you out right up until you show them another tail.",
+    strengths: ["Quick wit", "Reads people instantly", "Charming in any room"],
+    weakness: "You hide your real self behind the game.",
+    lore: "Each tail took a hundred years to grow. It has nine.",
+    element: "spirit fire and moonlight",
+    scene:
+      "a giant white nine-tailed fox spirit with glowing blue foxfire floating around its tails, standing on a moonlit shrine stairway lined with red torii gates, cherry petals in the air",
+  },
+  behemoth: {
+    slug: "behemoth",
+    name: "Behemoth",
+    title: "The Mountain That Walks",
+    essence:
+      "Steady, strong and impossible to push around. You carry weight that would crush other people and you barely slow down.",
+    strengths: ["Raw strength", "Rock-solid", "Patient as stone"],
+    weakness: "You carry everything yourself because you can.",
+    lore: "Armies built walls in its path. It walked through them like they were fog.",
+    element: "earth and stone",
+    scene:
+      "an immense horned behemoth with a hide like cracked stone and moss walking through a valley, ancient trees reaching only to its knees, dust rising, low golden sun",
+  },
+  "obsidian-wyrm": {
+    slug: "obsidian-wyrm",
+    name: "Obsidian Wyrm",
+    title: "The Ancient Fire",
+    essence:
+      "Old soul, slow burn. You don't start fires often, but when you do, everyone remembers.",
+    strengths: ["Unshakable composure", "Ancient patience", "A fury nobody forgets"],
+    weakness: "You hold grudges like you hold treasure.",
+    lore: "It slept beneath the mountain for a thousand years. The mountain was the only thing keeping it in.",
+    element: "lava and black glass",
+    scene:
+      "a colossal winged dragon with scales of black volcanic glass and glowing lava veins, wings spread wide, rising from a lava lake inside a cavern, molten light on its scales",
+  },
+  nightmare: {
+    slug: "nightmare",
+    name: "Nightmare",
+    title: "The Rider of the Dark",
+    essence:
+      "Intense, mysterious and impossible to forget. You don't need to be loud. People feel you before they see you.",
+    strengths: ["Magnetic presence", "Fearless in the dark", "Moves fast and leaves no trace"],
+    weakness: "You let people believe the dark is all there is to you.",
+    lore: "Travellers heard hooves on the road behind them. None of them turned around twice.",
+    element: "shadow fire and night",
+    scene:
+      "a towering black spectral warhorse with a mane and hooves of violet flame galloping across a misty moonlit moor, sparks rising from each hoofbeat",
+  },
 };
 
 export const ARCHETYPE_LIST: Archetype[] = Object.values(ARCHETYPES);
-
-export interface QuizQuestion {
-  q: string;
-  answers: { text: string; points: [ArchetypeSlug, ArchetypeSlug, ArchetypeSlug] }[];
-}
-
-export const QUIZ: QuizQuestion[] = [
-  {
-    q: "The night before a battle, you are…",
-    answers: [
-      { text: "Sharpening steel alone, saying nothing", points: ["shadow-fenrir", "basilisk", "sphinx"] },
-      { text: "Rallying everyone around the fire", points: ["storm-dragon", "griffin", "phoenix"] },
-      { text: "Studying the map until dawn", points: ["sphinx", "qilin", "leviathan"] },
-      { text: "Already gone, scouting the enemy camp", points: ["thunder-roc", "manticore", "kraken"] },
-    ],
-  },
-  {
-    q: "Your ideal home is…",
-    answers: [
-      { text: "A fortress on a storm-lashed cliff", points: ["storm-dragon", "thunder-roc", "griffin"] },
-      { text: "A hidden temple deep in a misty forest", points: ["qilin", "frost-kirin", "phoenix"] },
-      { text: "Somewhere no map has ever reached", points: ["kraken", "leviathan", "thunder-roc"] },
-      { text: "A city you quietly run from the shadows", points: ["basilisk", "manticore", "shadow-fenrir"] },
-    ],
-  },
-  {
-    q: "When someone betrays you, you…",
-    answers: [
-      { text: "Forgive them, once", points: ["qilin", "frost-kirin", "phoenix"] },
-      { text: "Never forget it", points: ["basilisk", "leviathan", "shadow-fenrir"] },
-      { text: "Hit back, immediately", points: ["manticore", "storm-dragon", "thunder-roc"] },
-      { text: "Simply outlast them", points: ["kraken", "sphinx", "frost-kirin"] },
-    ],
-  },
-  {
-    q: "Pick an element.",
-    answers: [
-      { text: "Fire", points: ["phoenix", "storm-dragon", "manticore"] },
-      { text: "Ice", points: ["frost-kirin", "shadow-fenrir", "qilin"] },
-      { text: "The deep sea", points: ["kraken", "leviathan", "basilisk"] },
-      { text: "Wind and sky", points: ["thunder-roc", "griffin", "sphinx"] },
-    ],
-  },
-  {
-    q: "What do people get wrong about you?",
-    answers: [
-      { text: "They think I'm cold. I'm just careful.", points: ["frost-kirin", "sphinx", "basilisk"] },
-      { text: "They think I'm reckless. I've done the math.", points: ["manticore", "thunder-roc", "kraken"] },
-      { text: "They underestimate how far I'd go for my people.", points: ["griffin", "shadow-fenrir", "phoenix"] },
-      { text: "They think I'm calm. They've never seen me angry.", points: ["leviathan", "storm-dragon", "qilin"] },
-    ],
-  },
-  {
-    q: "Choose your reward.",
-    answers: [
-      { text: "A crown", points: ["storm-dragon", "sphinx", "basilisk"] },
-      { text: "A legendary weapon", points: ["manticore", "griffin", "thunder-roc"] },
-      { text: "A second chance at something you lost", points: ["phoenix", "qilin", "frost-kirin"] },
-      { text: "Total freedom", points: ["kraken", "leviathan", "shadow-fenrir"] },
-    ],
-  },
-  {
-    q: "Your fighting style is…",
-    answers: [
-      { text: "Overwhelming force", points: ["storm-dragon", "kraken", "leviathan"] },
-      { text: "Speed nobody can follow", points: ["thunder-roc", "griffin", "manticore"] },
-      { text: "Patience, then one perfect strike", points: ["basilisk", "sphinx", "shadow-fenrir"] },
-      { text: "Winning without a fight", points: ["qilin", "frost-kirin", "phoenix"] },
-    ],
-  },
-  {
-    q: "How do you want to be remembered?",
-    answers: [
-      { text: "As the one who never fell", points: ["griffin", "leviathan", "frost-kirin"] },
-      { text: "As a mystery nobody solved", points: ["sphinx", "shadow-fenrir", "basilisk"] },
-      { text: "As the one who rose again", points: ["phoenix", "qilin", "griffin"] },
-      { text: "As a force of nature", points: ["kraken", "manticore", "storm-dragon"] },
-    ],
-  },
-];
-
-/**
- * Score answers (one answer index per question) → archetype slug. Ties go
- * to the archetype that scored first among the tied, then by a stable hash
- * of the answers so the same answers always give the same creature.
- */
-export function scoreQuiz(answers: number[]): ArchetypeSlug {
-  const totals = new Map<ArchetypeSlug, number>();
-  const firstHit = new Map<ArchetypeSlug, number>();
-  answers.forEach((a, qi) => {
-    const pts = QUIZ[qi]?.answers[a]?.points ?? [];
-    pts.forEach((slug) => {
-      totals.set(slug, (totals.get(slug) ?? 0) + 1);
-      if (!firstHit.has(slug)) firstHit.set(slug, qi);
-    });
-  });
-  const max = Math.max(0, ...totals.values());
-  const tied = [...totals.entries()].filter(([, v]) => v === max).map(([k]) => k);
-  if (tied.length === 0) return "storm-dragon";
-  if (tied.length === 1) return tied[0];
-  const hash = answers.reduce((h, a, i) => (h * 31 + a * 7 + i) % 9973, 7);
-  tied.sort((x, y) => (firstHit.get(x)! - firstHit.get(y)!) || x.localeCompare(y));
-  return tied[hash % tied.length];
-}
 
 export function isArchetypeSlug(s: string): s is ArchetypeSlug {
   return Object.prototype.hasOwnProperty.call(ARCHETYPES, s);

@@ -2,7 +2,7 @@
 
 import { useEffect } from "react";
 
-type BeaconType = "page_view" | "quiz_start" | "quiz_complete" | "result_view" | "share";
+type BeaconType = "page_view" | "quiz_start" | "quiz_complete" | "result_view" | "share" | "product_interest";
 
 /** Fire-and-forget analytics beacon to /api/mythicals/event (storage JSON). */
 export function beacon(type: BeaconType, data: Record<string, unknown> = {}): void {

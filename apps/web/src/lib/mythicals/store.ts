@@ -58,6 +58,7 @@ export type SiteEvent =
   | "quiz_complete"
   | "result_view"
   | "share"
+  | "product_interest"
   | "signup"
   | "checkout_start"
   | "order_paid"
@@ -78,6 +79,9 @@ export interface Subscriber {
   slug: string;
   at: string;
   source?: string;
+  /** "beast" | "armor" | "weapon" (2026-10-27); missing = beast. */
+  quiz?: string;
+  products?: string[];
 }
 
 export async function addSubscriber(sub: Subscriber): Promise<{ isNew: boolean }> {
@@ -87,6 +91,15 @@ export async function addSubscriber(sub: Subscriber): Promise<{ isNew: boolean }
   if (prev.split("\n").some((l) => l.includes(`"email":"${email}"`))) return { isNew: false };
   await writeText(path, `${prev}${JSON.stringify({ ...sub, email })}\n`, "application/x-ndjson");
   return { isNew: true };
+}
+
+/**
+ * Product waitlist (2026-10-27): every signup from the result page's "which
+ * would you want?" step, one line each (repeat signups kept, since each one
+ * is a vote). Email the list when a product launches.
+ */
+export async function addProductWaitlist(entry: { email: string; quiz: string; slug: string; products: string[] }): Promise<void> {
+  await appendLine(`${ROOT}/product-waitlist.jsonl`, { ...entry, email: entry.email.toLowerCase(), at: new Date().toISOString() });
 }
 
 export interface PortraitOrder {

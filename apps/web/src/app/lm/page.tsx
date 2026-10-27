@@ -79,14 +79,14 @@ export default function MythicalsHome() {
       <section id="creatures" className="mx-auto max-w-6xl scroll-mt-20 px-4 pt-10 sm:px-6">
         <div className="text-center">
           <p className="lm-eyebrow">The Bestiary</p>
-          <h2 className="font-lm-display mt-3 text-3xl text-[var(--lm-bone)] sm:text-4xl">Twelve Legends. One Is Yours.</h2>
+          <h2 className="font-lm-display mt-3 text-3xl text-[var(--lm-bone)] sm:text-4xl">Twenty Legends. One Is Yours.</h2>
           <div className="lm-rule mt-5 text-xs">◆</div>
         </div>
         <div className="mt-10 grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-4">
           {ARCHETYPE_LIST.map((a) => (
             <Link
               key={a.slug}
-              href={`${base}/quiz`}
+              href={`${base}/quiz/beast`}
               className="group relative aspect-[9/14] overflow-hidden rounded-xl border border-white/10 transition hover:border-[#d9a441]/50"
             >
               {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -115,14 +115,14 @@ export default function MythicalsHome() {
             <div className="absolute inset-0 bg-gradient-to-t from-[#0b0a09] to-transparent md:bg-gradient-to-r md:from-transparent md:to-[#0f0d0b]" />
           </div>
           <div className="p-7 sm:p-10">
-            <p className="lm-eyebrow">The Quiz</p>
-            <h2 className="font-lm-display mt-3 text-3xl text-[var(--lm-bone)]">Which Legendary Creature Are You?</h2>
+            <p className="lm-eyebrow">The Quizzes</p>
+            <h2 className="font-lm-display mt-3 text-3xl text-[var(--lm-bone)]">Find Your Beast, Your Armor and Your Weapon</h2>
             <p className="mt-4 leading-relaxed text-[var(--lm-dim)]">
-              Eight questions about how you fight, lead and love. Your creature, its strengths, its weakness and its lore,
-              plus a free HD phone wallpaper.
+              Three free quizzes about how you fight, lead and love. Get your result, its strengths, its weakness and its
+              lore, plus a free HD phone wallpaper.
             </p>
             <Link href={`${base}/quiz`} className="lm-btn-gold mt-7">
-              Take the quiz
+              Pick your quiz
             </Link>
           </div>
         </div>

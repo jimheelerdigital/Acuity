@@ -1,6 +1,6 @@
 import { createHmac } from "crypto";
 
-import { ARCHETYPES, archetypeEmailHeroUrl, archetypeImageUrl, type ArchetypeSlug } from "@/lib/mythicals/archetypes";
+import { QUIZZES, quizResult, resultEmailHeroUrl, resultImageUrl, resultPath, type QuizKind } from "@/lib/mythicals/quizzes";
 import { MYTHICALS_ORIGIN, PORTRAIT_PRICE_CENTS, shopLive } from "@/lib/mythicals/site";
 import type { PortraitOrder } from "@/lib/mythicals/store";
 
@@ -62,22 +62,50 @@ ${inner}
  * the portrait offer (or its waitlist while the shop is off). Table layout
  * so Gmail/Outlook render it the same; images are remote (Supabase public
  * bucket), so the email still reads if images are blocked.
+ * Since 2026-10-27 it serves all three quizzes; the offer box is the beast
+ * portrait (shop live) or the gear waitlist.
  */
-export function welcomeEmail(to: string, slug: ArchetypeSlug) {
-  const a = ARCHETYPES[slug];
-  const resultUrl = `${MYTHICALS_ORIGIN}/result/${slug}`;
-  const wallpaper = archetypeImageUrl(slug);
-  const live = shopLive();
+export function welcomeEmail(to: string, kind: QuizKind, slug: string, opts: { waitlist?: boolean } = {}) {
+  const a = quizResult(kind, slug)!;
+  const def = QUIZZES[kind];
+  const resultUrl = `${MYTHICALS_ORIGIN}${resultPath(kind, slug)}`;
+  const wallpaper = resultImageUrl(kind, slug);
+  const live = kind === "beast" && shopLive();
+  const lead = kind === "beast" ? "Your creature is" : def.resultLead;
+  const named = kind === "beast" ? `The ${a.name}` : a.name;
+  const offer = live
+    ? {
+        label: "Make it yours",
+        head: `A ${a.name} that is yours alone`,
+        body: "A one-of-a-kind portrait painted from your answers and named for you, with a lore card of its powers and legend. Delivered by email in minutes.",
+        cta: `Get my portrait &middot; $${(PORTRAIT_PRICE_CENTS / 100).toFixed(0)}`,
+        href: `${resultUrl}#portrait`,
+      }
+    : opts.waitlist
+      ? {
+          label: "You're on the list",
+          head: `${a.name} gear is in the forge`,
+          body: "You told us what you'd want with it on. We'll email you the moment it's ready.",
+          cta: "See your result",
+          href: resultUrl,
+        }
+      : {
+          label: "Coming soon",
+          head: `${a.name} gear`,
+          body: "Shirts, phone cases, desk mats and more are in the works. Tell us what you'd want and get first dibs.",
+          cta: "Tell us what you'd want",
+          href: `${resultUrl}#gear`,
+        };
   const html = `<!doctype html><html><head><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="dark"></head>
 <body style="margin:0;background:#0b0a09;font-family:Georgia,'Times New Roman',serif;color:${BONE}">
 <div style="display:none;max-height:0;overflow:hidden">${esc(a.title)}. Your wallpaper is inside.</div>
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#0b0a09"><tr><td align="center" style="padding:24px 12px">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;background:#0f0d0b;border:1px solid #2c261d;border-radius:14px;overflow:hidden">
 <tr><td align="center" style="padding:18px 24px;font-family:Helvetica,Arial,sans-serif;font-size:12px;letter-spacing:4px;text-transform:uppercase;color:${GOLD}">&#10022; Legendary Mythicals &#10022;</td></tr>
-<tr><td><a href="${resultUrl}"><img src="${archetypeEmailHeroUrl(slug, true)}" width="560" alt="The ${esc(a.name)}" style="display:block;width:100%;height:auto;border:0"></a></td></tr>
+<tr><td><a href="${resultUrl}"><img src="${resultEmailHeroUrl(kind, slug)}" width="560" alt="${esc(named)}" style="display:block;width:100%;height:auto;border:0"></a></td></tr>
 <tr><td align="center" style="padding:28px 24px 8px">
-<p style="margin:0 0 6px;font-family:Helvetica,Arial,sans-serif;font-size:12px;letter-spacing:3px;text-transform:uppercase;color:${DIM}">Your creature is</p>
-<h1 style="margin:0;font-size:34px;line-height:1.15;font-weight:normal;color:${BONE}">The ${esc(a.name)}</h1>
+<p style="margin:0 0 6px;font-family:Helvetica,Arial,sans-serif;font-size:12px;letter-spacing:3px;text-transform:uppercase;color:${DIM}">${esc(lead)}</p>
+<h1 style="margin:0;font-size:34px;line-height:1.15;font-weight:normal;color:${BONE}">${esc(named)}</h1>
 <p style="margin:10px 0 0;font-style:italic;font-size:17px;color:${GOLD}">${esc(a.title)}</p>
 <p style="margin:18px 0 18px;font-size:16px;line-height:1.65;color:${BONE}">${esc(a.essence)}</p>
 </td></tr>
@@ -92,19 +120,19 @@ ${card("The lore", `<p style="margin:0;font-size:15px;line-height:1.7;font-style
 <a href="${wallpaper}" style="display:inline-block;background:${GOLD};color:#0b0a09;text-decoration:none;font-family:Helvetica,Arial,sans-serif;font-weight:bold;font-size:14px;padding:12px 18px;border-radius:6px">Download wallpaper</a>
 </td></tr></table></td></tr>
 <tr><td style="padding:22px 24px 8px"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border:1px solid ${GOLD};border-radius:12px;background:#1a150d"><tr><td align="center" style="padding:24px 22px">
-<p style="margin:0 0 8px;font-family:Helvetica,Arial,sans-serif;font-size:11px;letter-spacing:2.5px;text-transform:uppercase;color:${GOLD}">${live ? "Make it yours" : "Coming soon"}</p>
-<p style="margin:0 0 10px;font-size:22px;line-height:1.3;color:${BONE}">A ${esc(a.name)} that is yours alone</p>
-<p style="margin:0 0 18px;font-size:15px;line-height:1.6;color:${DIM}">A one-of-a-kind portrait painted from your answers and named for you, with a lore card of its powers and legend.${live ? " Delivered by email in minutes." : " We will tell you the moment it opens."}</p>
-<a href="${resultUrl}#portrait" style="display:inline-block;background:${GOLD};color:#0b0a09;text-decoration:none;font-family:Helvetica,Arial,sans-serif;font-weight:bold;font-size:15px;padding:14px 24px;border-radius:6px">${live ? `Get my portrait &middot; $${(PORTRAIT_PRICE_CENTS / 100).toFixed(0)}` : "See your result page"}</a>
+<p style="margin:0 0 8px;font-family:Helvetica,Arial,sans-serif;font-size:11px;letter-spacing:2.5px;text-transform:uppercase;color:${GOLD}">${offer.label}</p>
+<p style="margin:0 0 10px;font-size:22px;line-height:1.3;color:${BONE}">${esc(offer.head)}</p>
+<p style="margin:0 0 18px;font-size:15px;line-height:1.6;color:${DIM}">${esc(offer.body)}</p>
+<a href="${offer.href}" style="display:inline-block;background:${GOLD};color:#0b0a09;text-decoration:none;font-family:Helvetica,Arial,sans-serif;font-weight:bold;font-size:15px;padding:14px 24px;border-radius:6px">${offer.cta}</a>
 </td></tr></table></td></tr>
 <tr><td align="center" style="padding:26px 24px 8px;font-size:15px;line-height:1.6;color:${DIM}">New legends every day on Instagram<br><a href="https://instagram.com/legendarymythicals" style="color:${GOLD};text-decoration:none;font-weight:bold">@legendarymythicals</a></td></tr>
-<tr><td align="center" style="padding:20px 24px 26px;font-family:Helvetica,Arial,sans-serif;font-size:11px;line-height:1.6;color:#6f685c">You got this because you asked for your creature profile at legendarymythicals.com. Images are AI-generated.<br><a href="${unsubscribeUrl(to)}" style="color:#6f685c">Unsubscribe</a></td></tr>
+<tr><td align="center" style="padding:20px 24px 26px;font-family:Helvetica,Arial,sans-serif;font-size:11px;line-height:1.6;color:#6f685c">You got this because you asked for your ${def.noun} profile at legendarymythicals.com. Images are AI-generated.<br><a href="${unsubscribeUrl(to)}" style="color:#6f685c">Unsubscribe</a></td></tr>
 </table></td></tr></table></body></html>`;
   return {
     from: FROM,
     to,
     replyTo: REPLY_TO,
-    subject: `You are the ${a.name}`,
+    subject: kind === "beast" ? `You are the ${a.name}` : kind === "armor" ? `Your armor: ${a.name}` : `Your legendary weapon: ${a.name}`,
     html,
     headers: { "List-Unsubscribe": `<${unsubscribeUrl(to)}>` },
   };

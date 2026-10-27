@@ -9,6 +9,36 @@
 
 
 
+## [2026-10-27] — Legendary Mythicals: three quizzes, a "what would you buy?" question, and quiz lines back in captions
+
+- **Requested by:** Keenan
+- **Committed by:** Claude Code
+- **Commit hash:** (this commit)
+
+### In plain English (for Keenan)
+legendarymythicals.com/quiz (the bio link) now lets people pick one of three quizzes: which legendary creature are you (now 20 creatures), which armor set is yours, and which legendary weapon is yours. Each run draws its questions at random, so retakes feel new. After the result, people are asked which products they'd actually want with it on (shirt, hoodie, phone case, mug, desk mat, poster, stickers, figurine). If they pick any, they can leave their email to hear when it drops. That gives us free data on what to sell before we make anything. Every Mythicals caption now ends with one of four rotating quiz lines.
+
+### Technical changes (for Jimmy)
+- New `apps/web/src/lib/mythicals/quizzes.ts`: quiz registry (beast/armor/weapon), question pools (18/14/14, draw 10/8/8), random draw, `?a=` encoding (pool index base36 + answer), scoring, image URL helpers. New `quiz-results.ts` (12 armor + 12 weapon results), `products.ts` (product keys).
+- `lib/mythicals/archetypes.ts`: +8 beasts (hydra, wyvern, cerberus, chimera, kitsune, behemoth, obsidian-wyrm, nightmare); `QUIZ`/`scoreQuiz` moved to quizzes.ts.
+- Routes: `/lm/quiz` is now the picker; new `/lm/quiz/[kind]`, `/lm/result/armor/[slug]`, `/lm/result/weapon/[slug]`. `/lm/result/[slug]` (beast) keeps its URL. Shared `components/mythicals/result-view.tsx`.
+- `components/mythicals/result-actions.tsx`: `ProductInterest` (multi-select → `product_interest` event → waitlist email step); `EmailCapture` sends quiz + products; `ShareButtons` takes per-quiz text.
+- `api/mythicals/subscribe`: any quiz; `source: "product_waitlist"` also appends to private `mythicals-data/mythicals-site/product-waitlist.jsonl` (new `addProductWaitlist` in store.ts). `api/mythicals/event` accepts `product_interest`, `quiz`, `products`, string `answers`.
+- `lib/mythicals/emails.ts` `welcomeEmail(to, kind, slug, { waitlist })`: all quizzes; the offer box is the portrait (beast + shop live), "you're on the list", or a gear teaser. Launch beasts keep their animated GIF; new results use the still.
+- `lib/content-factory/caption-writer.ts`: quiz line ON again (was off since 10-03), 4 rotating lines, `applyQuizLine` puts exactly one above the hashtags, including on captions written before this change.
+- Homepage copy (20 legends, three quizzes). Portrait box only shows when `MYTHICALS_SHOP_LIVE=1` (unchanged: off).
+- New scripts: `scripts/mythicals-quiz-images.ts` (gpt-image-2 high hero + OG 1200x630 + email 720x900, skips existing; 32 made, about $8) and `scripts/mythicals-quiz-stats.ts` (starts/finishes per quiz, product picks, waitlist).
+- Tests: `lib/mythicals/quizzes.test.ts` (balance: each result within 2 points in its pool; 20k random runs reach every result at 40%+ of an even share; URL round trip) and `content-factory/caption-quiz-line.test.ts`. 18/18 pass. Web tsc: no errors in touched files.
+
+### Manual steps needed
+- None. No schema change, no env vars. Bio link already points at /quiz.
+
+### Notes
+- Nothing reads `QUIZ`/`scoreQuiz` from archetypes.ts any more. Portrait checkout now gets `answers: []` (the shop is off; the prompt only used them loosely).
+- The site's events don't flag internal traffic. Local dev writes beacons to the live `mythicals-data` events file; I removed 8 of my localhost test lines from 2026-10-27.jsonl. Filter `host` starting `localhost` if testing again.
+- `lib/mythicals/store.ts` imports server-only Supabase, so scripts must use their own Supabase client (the first image run failed on this).
+- Next.js won't allow two different dynamic names at one level, so armor/weapon results use static folders (`result/armor/[slug]`) beside `result/[slug]`.
+
 ## [2026-10-27] — Paywall win-back email within 10 minutes, sends people to the app download, and no 988 line on the paywall
 
 - **Requested by:** Keenan
