@@ -7,6 +7,32 @@
 
 ---
 
+## [2026-10-27] feat(insights): Open loops — worries that keep coming up, goals gone quiet
+
+- **Requested by:** Jimmy (Insights v2)
+- **Committed by:** Claude Code
+
+### In plain English
+A new Insights card shows up to 3 open loops:
+- something that keeps coming up and has weighed on you, e.g. "Money has come up 3 weeks running";
+- a goal you haven't talked about in a while, e.g. "You haven't mentioned 'Run a half marathon' in 24 days".
+
+Tap one to open that theme or goal. When nothing qualifies, the card stays hidden.
+
+### Technical changes
+- `apps/web/src/lib/open-loops.ts` (pure, deterministic, no AI) + `open-loops.test.ts` (19 tests).
+  - **Worries:** a theme in 3+ distinct weeks OR 3+ debriefs spanning 14+ days, mentioned in the last 10 days, with 2+ NEGATIVE mentions. Recurrence counts all of a theme's mentions; looks back 90 days.
+  - **Quiet goals:** NOT_STARTED/IN_PROGRESS goals with an earlier mention, quiet for 21–120 days.
+  - Max 3 items: up to 2 worries, then goals.
+  - A conservative crisis/harm filter on theme names and goal titles means those are never shown.
+- `GET /api/insights/open-loops` (getAnySessionUserId; private cache 15 min).
+- `apps/mobile/components/insights/open-loops-card.tsx`: `OpenLoopsCard` (no props, fetches its own data, renders nothing when empty or on error). Not wired into the Insights tab yet.
+- Entry.blockers isn't used: it's free text that never repeats verbatim on prod data.
+- Prod today: ~35 users have a quiet goal; the stricter worry rule matches ~1. It grows with longer histories.
+
+### Manual steps needed
+- None.
+
 ## [2026-10-27] fix(watch): checked-off tasks strike through instead of vanishing
 
 - **Requested by:** Jimmy
