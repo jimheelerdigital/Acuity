@@ -182,6 +182,8 @@ export async function PATCH(
           reprocessingStartedAt: now,
           status: "QUEUED",
           summary: null,
+          // Derived from the old transcript; the reprocess writes a new one.
+          reflection: null,
           mood: null,
           moodScore: null,
           energy: null,

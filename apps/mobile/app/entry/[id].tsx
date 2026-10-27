@@ -6,6 +6,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
+  Linking,
   Modal,
   Pressable,
   Text,
@@ -469,6 +470,52 @@ export default function EntryDetailScreen() {
           ) : null}
         </View>
       )}
+
+      {/* Ripple's reflection (PR #48): 2-3 warm sentences written to the
+          user. PRO only; null on FREE entries, older entries and while
+          re-processing, so the guard is required. Sits above the summary
+          because it's the part worth reading first. */}
+      {entry.reflection ? (
+        <HeroCard variant="secondary" padding={18}>
+          <View style={{ gap: 10 }}>
+            <Text
+              style={{
+                fontFamily: tokens.fontMono,
+                fontSize: 10,
+                fontWeight: "700",
+                letterSpacing: 1.4,
+                color: tokens.textSec,
+              }}
+            >
+              RIPPLE'S REFLECTION
+            </Text>
+            <Text
+              style={{
+                fontFamily: tokens.fontDisplay,
+                fontSize: 17,
+                lineHeight: 25,
+                color: tokens.text,
+              }}
+            >
+              {entry.reflection}
+            </Text>
+            {/* Passive crisis line (2026-10-27). The reflection's rules for
+                distressing entries assume 988 is visible, as it is on every
+                signed-in web page (CrisisFooter); the app had no equivalent
+                on this screen. Always shown, quietly, under the reflection. */}
+            <Pressable
+              onPress={() => void Linking.openURL("tel:988")}
+              accessibilityRole="link"
+              accessibilityLabel="Call or text 988, the Suicide and Crisis Lifeline"
+              hitSlop={8}
+            >
+              <Text style={{ fontFamily: tokens.fontSans, fontSize: 12, color: tokens.textTer }}>
+                Going through something heavy? Call or text 988, anytime.
+              </Text>
+            </Pressable>
+          </View>
+        </HeroCard>
+      ) : null}
 
       {/* AI summary in HeroCard with GradientText title */}
       {entry.summary && (
