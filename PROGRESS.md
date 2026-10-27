@@ -528,6 +528,35 @@ The reflection Ripple writes after each entry is switched off until a lawyer has
   - When both qualify, the factor shows once, ranked by the larger gap, with both numbers in the sentence (`also`).
   - The route selects `Entry.energy`. The mobile card footer now reads "Mood and energy out of 10".
   - 4 new tests.
+## [2026-10-27] feat(web): the new Insights reports on goripple.io/insights
+
+- **Requested by:** Jimmy ("go build 1-8", item 2)
+- **Committed by:** Claude Code
+
+### In plain English
+The reports from the iPhone Insights tab now appear on the website too:
+- Follow-through
+- Open loops
+- What lifts you / what drains you
+- How you talk
+- Your first read
+- Ripple Wrapped: an entry card plus a full recap page at /insights/wrapped, with a "Copy to share" button
+
+Each card shows under exactly the same rules as the app. If no report has anything to say, the "Your reports" section doesn't appear at all.
+
+### Technical changes
+- `lib/insights-reports-data.ts`: one loader per report. Both the mobile API routes and the web page now use them, so the two can't drift. The six `/api/insights/*` routes were slimmed to auth + gate + loader; responses and cache headers are unchanged.
+- `lib/insights-reports-plan.ts` (+ 14 tests): the same gates as the app:
+  - first read only before Pattern Insights unlocks;
+  - lifts & drains only after the unlock and with `canExtractEntries`;
+  - plus fail-soft, the per-card show checks, copy helpers and the default Wrapped period.
+- Thresholds come from the user's progression (shared userProgression), so the threshold change flows through.
+- `app/insights/page.tsx`:
+  - all loaders run in parallel; each fails soft (one error hides that card only, and is logged as `insights.web_report_failed`);
+  - Wrapped and first read sit at the top; a "Your reports" grid sits after the featured cards.
+- `app/insights/report-cards.tsx`: server-component cards.
+- `app/insights/wrapped/page.tsx` + `share-block.tsx`: copy-to-clipboard of `wrappedShareText`. A person's first name is included only if ticked (off by default); never transcript content or the win.
+- Checks: full web suite 1780/1780; web tsc 0; mobile tsc 12 (unchanged).
 
 ### Manual steps needed
 - None.
