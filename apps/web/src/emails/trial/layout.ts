@@ -205,7 +205,7 @@ export function appAccessBlock(v: { signInUrl?: string | null }): string {
     <tr><td>${appStoreAndPlayButtons()}</td></tr>
     ${step(2, "Then tap this button <strong>on your phone</strong>. Ripple opens already signed in to your account. No password.")}
     <tr><td style="padding:6px 0 4px;">${primaryButton(v.signInUrl, "Open Ripple, signed in")}</td></tr>
-    <tr><td style="padding:4px 0 8px;font-size:14px;color:#6b7280;line-height:1.6;">Please don&rsquo;t create a new account in the app. Your membership is on this one. If the app asks you to sign up, tap <strong>Already have an account? Sign in</strong>, then <strong>Email me a link</strong>. This button works for 3 days.</td></tr>
+    <tr><td style="padding:4px 0 8px;font-size:14px;color:#6b7280;line-height:1.6;">If the button doesn&rsquo;t open the app, open Ripple yourself and tap <strong>I have an account &middot; Log in</strong> and enter this same email. We&rsquo;ll email you a code to type in. On Android, tap <strong>Already have an account? Sign in</strong>, enter this email, then <strong>Email me a sign-in link</strong>. Please don&rsquo;t start as new: your membership is on this account. This button works for 3 days.</td></tr>
   </table>`;
 }
 

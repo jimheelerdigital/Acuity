@@ -9,6 +9,32 @@
 
 
 
+## [2026-10-27] — Fixed web payers getting stuck before the app, and added a real-spend table for every Meta campaign
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** see git log (handoff fix + account spend commits)
+
+### In plain English (for Keenan)
+Since the web debrief and password were removed on Oct 23, none of the 4 real people who paid on the website got into the app. Before that, almost everyone did within minutes. The "get the app" screen and the sign-in emails told them to tap app buttons ("Email me a link") that the current iPhone app no longer has. The screen now shows their email and says exactly what to tap ("I have an account · Log in", then type the code), with separate wording for Android, which is still on the older app. The Performance page in AdLab also has a new "All Meta spend, every campaign" table. It covers UGC, app installs, retargeting and AdLab ads, and shows the cost per paid trial and per paying customer, with a keep/cut call for each campaign. The Oct 30 review will use it.
+
+### Technical changes (for Jimmy)
+- apps/web/src/components/funnel-v9.tsx: post-payment download step. Step 2 is now "Open Ripple and log in", with platform-specific labels (iOS 1.9.1+: "I have an account · Log in" → 6-digit code; Android 1.9.0: "Already have an account? Sign in" → "Email me a sign-in link"). The user's email is shown, and the auto-sent magic link is kept as a backup.
+- apps/web/src/emails/trial/layout.ts (appAccessBlock, used by every get-into-the-app email), apps/web/src/emails/magic-link.ts (funnelAppAccessEmail), apps/web/src/components/onboarding-funnel.tsx: same corrected instructions.
+- New apps/web/src/lib/adlab/account-spend.ts: Meta insights at level=adset for the whole ad account (paginated). Web outcomes are joined via User.signupUtmTerm = ad set id. App campaigns are blended: App Store trials started in the window (trialEndsAt − 7d) are split by spend share. Payer = trial ended + PRO + no billing failure (same rule as trial-quality.ts). Verdict: keep if $/payer ≤ $60, cut if over, "too early" under 5 ended trials.
+- New GET /api/admin/adlab/account-spend?days=N | since&until (admin or CRON_SECRET).
+- New apps/web/src/app/admin/adlab/performance/all-meta-spend.tsx, rendered at the top of /admin/adlab/performance (range capped at 90 days).
+- account-spend.test.ts (join, pagination, blending).
+
+### Manual steps needed
+- [ ] Open AdLab → Performance on a phone or laptop and check the new table loads with real spend (Keenan)
+- [ ] Optional: personally email the 3 stuck payers (amandagermain170, latricebross, vincentswifey1031) the new sign-in steps (Keenan)
+
+### Notes
+- Evidence: payers 10-18→10-22 signed into the app within 0–3.5h (7 of 8). Payers 10-24→10-26: 0 of 4. All got the magic-link emails (Resend: delivered), but none of the links was tapped. Pre-10-23 payers also left their magic-link tokens unused, so they signed in with the password they had chosen. Removing the password removed the path that actually worked.
+- Android is still on 1.9.0 (no email-code sign-in), so the Android copy names that build's buttons. Update it when Android ships 1.9.1+.
+- Account spend needs the production META_ACCESS_TOKEN (not pullable locally); verify through the deployed route.
+
 ## [2026-10-27] feat(insights): Insights v2 wired into the app
 
 - **Requested by:** Jimmy ("Everything you said is good. Get going")

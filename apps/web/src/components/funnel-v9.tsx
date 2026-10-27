@@ -2037,24 +2037,34 @@ function GetTheApp({
           </div>
         </div>
         <div className="card rounded-3xl p-5">
+          {/* 2026-10-27: 0 of 4 web payers reached the app after the web
+              debrief + password were removed (10-23). The old copy named app
+              buttons that 1.9.1+ no longer has. Lead with the in-app path
+              (Log in → email → 6-digit code); the email link is the backup. */}
           <StepBadge
             n={2}
             icon={Mail}
-            title="Tap the link in your email"
+            title="Open Ripple and log in"
             text={
-              sent
-                ? `We sent it to ${answers.email}. Tap it on your phone after installing and Ripple opens signed in, ready for your first debrief. No password.`
-                : "We're sending you a sign-in link. No password needed."
+              platform === "android"
+                ? "In the app, tap Already have an account? Sign in, enter this email, then tap Email me a sign-in link:"
+                : "In the app, tap I have an account · Log in, and enter this email:"
             }
           />
+          {answers.email && (
+            <p className="soft mt-3 rounded-2xl px-4 py-3 text-center text-[16px] font-semibold break-all">{answers.email}</p>
+          )}
+          <p className="mt-3 text-[14px] leading-relaxed text-acuity-text-sec">
+            {platform === "android" ? "Then tap the link we email you." : "We\u2019ll email you a code to type in."} No password. Please don&rsquo;t start as new: your membership is on this account.
+          </p>
+          <p className="mt-3 text-[13px] leading-relaxed text-acuity-text-sec">
+            {sent ? `We also emailed a one-tap sign-in link to ${answers.email}. Tapping it on your phone works too.` : "We're also emailing you a one-tap sign-in link."}
+          </p>
           {sent && answers.email && (
-            <button onClick={() => void sendLink(true)} className="mt-3 text-[13px] font-semibold text-acuity-primary">
-              Didn&rsquo;t get it? Send again
+            <button onClick={() => void sendLink(true)} className="mt-2 text-[13px] font-semibold text-acuity-primary">
+              Didn&rsquo;t get the email? Send again
             </button>
           )}
-          <p className="mt-3 text-[13px] leading-relaxed text-acuity-text-sec">
-            Don&rsquo;t create a new account in the app. If it asks you to sign up, tap <strong>Already have an account? Sign in</strong>, then <strong>Email me a link</strong>.
-          </p>
         </div>
       </div>
     </div>

@@ -2783,7 +2783,7 @@ function DownloadScreen({ track, paymentConfirmed, selectedPlan, answers }: {
             </p>
           )}
           <p className="mt-3 text-xs text-acuity-text-ter leading-relaxed">
-            Don&rsquo;t create a new account in the app. If it asks you to sign up, tap <strong>Already have an account? Sign in</strong>, then <strong>Email me a link</strong>.
+            Don&rsquo;t start as new in the app. Tap <strong>I have an account &middot; Log in</strong> and enter this same email to get a sign-in code. On Android, tap <strong>Already have an account? Sign in</strong>, then <strong>Email me a sign-in link</strong>.
           </p>
         </div>
 
