@@ -7,6 +7,13 @@
 
 ---
 
+## [2026-10-27] feat(web): release-notes pages + 1.9.6 email images
+
+- New /whats-new (index) and /whats-new/<version> pages. They read the same entries as the release email (src/emails/announcements/releases.ts), so the in-app What's New, the email and the web page say the same thing.
+- An iOS version only appears once the App Store's public lookup serves it, the same gate the email send script uses. Preview deployments show everything, so a page can be reviewed before launch. Logic and tests are in src/lib/releases/published(.test).ts.
+- 1.9.6 email gets three images (public/email/ripple-1-9-6/watch.jpg, plan.jpg, health.jpg). The watch image uses Jimmy's real watch screenshots.
+- /whats-new added to the sitemap.
+
 ## [2026-10-27] — Fix: Mythicals 3pm post kept getting dropped
 
 - **Requested by:** Keenan

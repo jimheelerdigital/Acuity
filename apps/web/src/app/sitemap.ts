@@ -122,6 +122,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const utilityPages: MetadataRoute.Sitemap = [
     { path: "/support", priority: 0.4 },
     { path: "/roadmap", priority: 0.4 },
+    { path: "/whats-new", priority: 0.4 },
     { path: "/privacy", priority: 0.3 },
     { path: "/terms", priority: 0.3 },
   ].map(({ path, priority }) => ({
