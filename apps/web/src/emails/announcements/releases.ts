@@ -22,15 +22,18 @@ export const RELEASE_EMAILS: ReleaseEmail[] = [
     features: [
       {
         title: "Ripple on your Apple Watch",
+        img: { src: "https://goripple.io/email/ripple-1-9-6/watch.jpg", alt: "Ripple on Apple Watch: recording, Tasks and Growth screens" },
         body: "Record an entry from your wrist, even with no signal: it uploads when you're back in range. Check off tasks and habits there too. Open Ripple on your phone once and your watch connects.",
       },
       {
         title: "Plan my day",
+        img: { src: "https://goripple.io/email/ripple-1-9-6/plan.jpg", alt: "Plan my day: tasks placed around the day's meetings" },
         pro: true,
         body: "Tap <strong>Plan my day</strong> on the Today card. Ripple fits your most pressing tasks around today's meetings; adjust the times, then add them to your calendar in one tap.",
       },
       {
         title: "Apple Health",
+        img: { src: "https://goripple.io/email/ripple-1-9-6/health.jpg", alt: "A step-goal habit checked off from Apple Health, and sleep next to mood" },
         body: "Go to <strong>Profile \u2192 Apple Health</strong>. See how sleep and steps line up with your mood, and let habits like 10,000 steps check themselves off.",
       },
       {
