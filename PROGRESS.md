@@ -9,6 +9,31 @@
 
 
 
+## [2026-10-27] — Creator platform audit: closed a payout-hijack gap in the creator desk
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** see git log
+
+### In plain English (for Keenan)
+We went through every part of the creator program, and nearly all of it works. The one real risk: the ChatGPT agent that adds creators could re-add an existing creator with a different email. That would send the creator's dashboard sign-in, and with it the ability to change where they get paid, to a stranger. The desk now refuses to do that, and only an admin can change a creator's email. Two smaller fixes: re-adding a creator no longer resets their progress, and free Pro for creators now works whatever capitalization their email uses.
+
+### Technical changes (for Jimmy)
+- apps/web/src/lib/creators/admin.ts `addCreatorDirect`: refuses an email change on an existing in-program creator when `by` starts with `desk:`; only sets status "deal" (and logs the status event) when the creator isn't already deal/briefed/delivered/paid.
+- `autoGrantCreatorPerk`: creator email lookup is case-insensitive.
+- 26 tests under src/lib/creators pass; the creator test suites overall (53 tests) passed before the change.
+
+### Manual steps needed
+- [ ] Add @therapyandthingss properly (email + code) via Admin → Creators → Add creator. She was added by hand before the platform existed and can't log in or be paid (Keenan)
+- [ ] Nudge Ariel, Natalie, Dianna and Grace to accept the creator agreement and set up payouts before the 11-06 payout run (Keenan)
+- [ ] 10-30: confirm a commission row appears when keenan+paywalltest1's trial charges; it's the first real end-to-end commission (Claude)
+
+### Notes
+- Not changed: the banned-word check in money.ts matches inside words (blocks IDEAL, OFFICE, SALEM...). Low priority.
+- Open question: App Store commissions are 25% of the price after tax and before Apple's 15% cut. Confirm that matches the agreement's "net revenue".
+- The test creator zz_ripple_test_creator uses keenan@heelerdigital.com, so a creator sign-in for that address opens the test dashboard.
+- CREATOR_STRIPE_PAYOUTS is set in Vercel production.
+
 ## [2026-10-27] — Affiliate creators are labeled in the Users dashboard
 
 **Requested by:** Keenan

@@ -175,11 +175,21 @@ export async function addCreatorDirect(input: {
   if (!firstName) throw new Error("First name required");
 
   const { newTrackingCode } = await import("@/lib/ugc/status");
-  const existing = await prisma.ugcCreator.findUnique({ where: { platform_handle: { platform, handle } }, select: { id: true, status: true } });
+  const existing = await prisma.ugcCreator.findUnique({
+    where: { platform_handle: { platform, handle } },
+    select: { id: true, status: true, email: true, referralCode: true },
+  });
+  // Audit 2026-10-27: re-adding a handle that's already in the program with a
+  // different email would re-point its dashboard sign-in (and so its payout
+  // details) at the new address. Only a full admin may do that.
+  if (existing?.referralCode && existing.email && existing.email.toLowerCase() !== email && input.by.startsWith("desk:")) {
+    throw new Error(`@${handle} is already in the program with a different email. Ask Keenan to change it in admin.`);
+  }
   const creator = existing
     ? await prisma.ugcCreator.update({
         where: { id: existing.id },
-        data: { email, firstName, displayName: firstName, status: "deal" },
+        // Never move a creator who is further along (briefed/delivered/paid) back to "deal".
+        data: { email, firstName, displayName: firstName, ...(DEAL_OR_LATER.has(existing.status) ? {} : { status: "deal" as const }) },
         select: { id: true },
       })
     : await prisma.ugcCreator.create({
@@ -196,7 +206,7 @@ export async function addCreatorDirect(input: {
         },
         select: { id: true },
       });
-  if (!existing || existing.status !== "deal") {
+  if (!existing || !DEAL_OR_LATER.has(existing.status)) {
     await prisma.ugcStatusEvent.create({
       data: { creatorId: creator.id, from: existing?.status ?? null, to: "deal", by: input.by, note: "added to the creator program" },
     });
@@ -248,7 +258,7 @@ export async function autoGrantCreatorPerk(
     const e = (email ?? "").trim().toLowerCase();
     if (!e) return { granted: false };
     const creator = await prisma.ugcCreator.findFirst({
-      where: { email: e, referralCode: { not: null } },
+      where: { email: { equals: e, mode: "insensitive" }, referralCode: { not: null } },
       select: { id: true },
     });
     if (!creator) return { granted: false };
