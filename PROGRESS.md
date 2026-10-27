@@ -8,6 +8,26 @@
 ---
 
 
+
+## [2026-10-27] feat(insights): Insights v2 wired into the app
+
+- **Requested by:** Jimmy ("Everything you said is good. Get going")
+- **Committed by:** Claude Code
+
+### In plain English
+The Insights tab gets eight new pieces. Each one appears only when there's enough data to say something true.
+- Top of the tab: Ripple Wrapped (first week of each month and late December), "Starting to notice" (entries 2–9) and "Your first read" (entries 3–6).
+- Above the metrics drawer: Follow-through, Open loops, What lifts you / what drains you, and How you talk.
+- Each entry shows Ripple's reflection, Pro only, with a quiet 988 line under it.
+
+### Technical changes
+- Merges #49, #137, #48, #138, #139, #140, #141 and #142 (see each PR), plus `app/(tabs)/insights.tsx` wiring.
+- The report cards sit outside the collapsed "Metrics & observations" drawer so they're visible.
+- Checks: full web suite 1765/1765; web tsc 163 / mobile tsc 12, both unchanged; `ota.mjs --dry-run --platform all` passes.
+
+### Manual steps needed
+- Apply `docs/migrations/2026-10-27-entry-reflection.sql` (Entry.reflection) BEFORE this deploys.
+
 ## [2026-10-27] feat(insights): "Your first read" for new users
 ## [2026-10-27] feat(insights): Follow-through report
 ## [2026-10-27] feat(insights): what lifts you, what drains you
