@@ -88,11 +88,20 @@ struct RippleAPI {
 
     /// PATCH /api/tasks { id, action: "complete" } — the app's own contract.
     func completeTask(id: String) async throws {
+        try await patchTask(id: id, action: "complete")
+    }
+
+    /// PATCH /api/tasks { id, action: "reopen" } — undo a completion.
+    func reopenTask(id: String) async throws {
+        try await patchTask(id: id, action: "reopen")
+    }
+
+    private func patchTask(id: String, action: String) async throws {
         var req = request("/api/tasks")
         req.httpMethod = "PATCH"
         req.setValue("application/json", forHTTPHeaderField: "Content-Type")
         req.httpBody = try JSONSerialization.data(
-            withJSONObject: ["id": id, "action": "complete"]
+            withJSONObject: ["id": id, "action": action]
         )
         let (_, resp) = try await URLSession.shared.data(for: req)
         try Self.ensureOK(resp)

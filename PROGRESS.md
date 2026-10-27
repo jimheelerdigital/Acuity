@@ -7,6 +7,23 @@
 
 ---
 
+## [2026-10-27] fix(watch): checked-off tasks strike through instead of vanishing
+
+- **Requested by:** Jimmy
+- **Committed by:** Claude Code
+
+### In plain English
+Checking off a task on the Apple Watch now strikes it through with a filled check, like the phone. Before, it disappeared. Tap it again to un-check it.
+
+### Technical changes
+- `targets/watch/TasksView.swift`: the `doneIds` set; rows render a filled check + strikethrough; tapping again reopens. Optimistic, and reverts on failure. Done rows clear on the next load (the server returns open tasks only).
+- `targets/watch/RippleAPI.swift`: `reopenTask` (PATCH action "reopen"). complete/reopen share `patchTask`.
+- Typecheck of the whole watch target passes against the watchOS SDK (Xcode-beta).
+- Native, so it ships in the resubmitted 1.9.6 build.
+
+### Manual steps needed
+- None.
+
 ## [2026-10-27] feat(widget): habits widget opens Habits; each habit shows its streak
 
 - **Requested by:** Keenan (via Jimmy)
