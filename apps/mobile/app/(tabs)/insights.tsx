@@ -29,6 +29,13 @@ import { SegmentedTabs } from "@/components/acuity";
 import { ComparisonsCard } from "@/components/comparisons-card";
 import { HealthCorrelationsCard } from "@/components/health-correlations-card";
 import { BiggestMoves } from "@/components/insights/biggest-moves";
+import { EmergingPatternsCard } from "@/components/insights/emerging-patterns-card";
+import { FirstReadCard } from "@/components/insights/first-read-card";
+import { FollowThroughCard } from "@/components/insights/follow-through-card";
+import { HowYouTalkCard } from "@/components/insights/how-you-talk-card";
+import { LiftsDrainsCard } from "@/components/insights/lifts-drains-card";
+import { OpenLoopsCard } from "@/components/insights/open-loops-card";
+import { WrappedCard } from "@/components/insights/wrapped-card";
 import { LifeMapRadar } from "@/components/life-map-radar";
 import { LockedFeatureCard } from "@/components/locked-feature-card";
 import { MoodIcon } from "@/components/mood-icon";
@@ -307,6 +314,15 @@ export default function InsightsTab() {
             Your life, decoded.
           </Text>
         </View>
+
+        {/* ─── 0. INSIGHTS V2 (2026-10-27) — time-boxed + early-days cards.
+            Each renders nothing unless it applies: Wrapped only in the
+            first week of a month (or Dec 15–Jan 7); "Starting to notice"
+            from entry 2 until the Theme Map unlocks; "Your first read"
+            from entry 3 until Pattern Insights unlocks. ─────────────── */}
+        <WrappedCard />
+        <EmergingPatternsCard progression={progression} />
+        <FirstReadCard progression={progression} />
 
         {/* ─── 1. LIFE MATRIX — hero ─────────────────────────────────── */}
         {/* §B.2.2 — billing gate (FREE post-trial) takes precedence
@@ -902,6 +918,14 @@ export default function InsightsTab() {
           </>
           )}
         </View>
+
+        {/* ─── 6b. REPORTS (Insights v2, 2026-10-27) — kept OUT of the
+            collapsed metrics drawer so people actually see them. Each card
+            hides itself below its own minimum-data threshold. ───────── */}
+        <FollowThroughCard />
+        <OpenLoopsCard />
+        <LiftsDrainsCard progression={progression} />
+        <HowYouTalkCard />
 
         {/* ─── 7. METRICS — collapsible at the bottom ─────────────── */}
         <Pressable

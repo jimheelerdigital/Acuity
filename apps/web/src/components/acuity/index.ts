@@ -51,4 +51,10 @@ export {
   type SubscriptionPillProps,
   type SubscriptionStatus,
 } from "./SubscriptionPill";
-export { ThemePill, type ThemePillProps, type ThemeKey } from "./ThemePill";
+export {
+  ThemePill,
+  CANONICAL_THEME_KEYS,
+  themeKeyFor,
+  type ThemePillProps,
+  type ThemeKey,
+} from "./ThemePill";

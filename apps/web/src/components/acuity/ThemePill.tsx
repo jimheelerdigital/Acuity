@@ -35,6 +35,38 @@ export type ThemeKey =
   | "solitude"
   | "other";
 
+/**
+ * The 9 canonical theme keys, in DESIGN_SYSTEM.md §2.8 order. `other` is
+ * excluded — it is the fallback, not a canonical hue.
+ *
+ * Lives here rather than at a call site because it was already being
+ * hand-declared per-consumer, which is the same drift §2.6 documents for
+ * the amber warning token ("re-declaring #FBBF24 at six call sites caused
+ * drift"). One source, one place to edit.
+ */
+export const CANONICAL_THEME_KEYS: ReadonlyArray<ThemeKey> = [
+  "career",
+  "family",
+  "health",
+  "avoidance",
+  "money",
+  "relationships",
+  "sleep",
+  "growth",
+  "solitude",
+];
+
+/**
+ * Map a free-text theme string onto a canonical hue key, falling back to
+ * `other` for anything user-generated that isn't in the table.
+ */
+export function themeKeyFor(name: string): ThemeKey {
+  const k = name.toLowerCase().trim();
+  return (CANONICAL_THEME_KEYS as readonly string[]).includes(k)
+    ? (k as ThemeKey)
+    : "other";
+}
+
 interface ThemeColors {
   dotTop: string;
   dotBottom: string;

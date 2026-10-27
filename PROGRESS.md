@@ -7,6 +7,174 @@
 
 ---
 
+
+
+## [2026-10-27] feat(insights): Insights v2 wired into the app
+
+- **Requested by:** Jimmy ("Everything you said is good. Get going")
+- **Committed by:** Claude Code
+
+### In plain English
+The Insights tab gets eight new pieces. Each one appears only when there's enough data to say something true.
+- Top of the tab: Ripple Wrapped (first week of each month and late December), "Starting to notice" (entries 2–9) and "Your first read" (entries 3–6).
+- Above the metrics drawer: Follow-through, Open loops, What lifts you / what drains you, and How you talk.
+- Each entry shows Ripple's reflection, Pro only, with a quiet 988 line under it.
+
+### Technical changes
+- Merges #49, #137, #48, #138, #139, #140, #141 and #142 (see each PR), plus `app/(tabs)/insights.tsx` wiring.
+- The report cards sit outside the collapsed "Metrics & observations" drawer so they're visible.
+- Checks: full web suite 1765/1765; web tsc 163 / mobile tsc 12, both unchanged; `ota.mjs --dry-run --platform all` passes.
+
+### Manual steps needed
+- Apply `docs/migrations/2026-10-27-entry-reflection.sql` (Entry.reflection) BEFORE this deploys.
+
+## [2026-10-27] feat(insights): "Your first read" for new users
+## [2026-10-27] feat(insights): Follow-through report
+## [2026-10-27] feat(insights): what lifts you, what drains you
+## [2026-10-27] feat(insights): Open loops — worries that keep coming up, goals gone quiet
+## [2026-10-27] feat(insights): Ripple Wrapped — monthly + year-end recap
+
+- **Requested by:** Jimmy (Insights v2)
+- **Committed by:** Claude Code
+
+### In plain English
+Once you have 3 debriefs, and until Pattern Insights unlocks at 7, Insights shows a small first report:
+- your mood and energy so far (with 3+ scored entries)
+- themes that came up more than once
+- the to-dos Ripple pulled from your recordings
+
+No AI.
+
+### Technical changes
+- `apps/web/src/lib/first-read.ts` (+ 6 tests). `GET /api/insights/first-read` (getAnySessionUserId). Reuses the emerging-patterns query from #49 (this branch is stacked on it).
+- `apps/mobile/components/insights/first-read-card.tsx`: `FirstReadCard({ progression })`. It gates on the progression the Insights tab already holds, so it never calls progression itself and can't swallow unlock celebrations.
+
+### Manual steps needed
+- None. Merge #49 first.
+
+## [2026-10-27] feat(insights): "Starting to notice" in the iPhone app (PR #49, Phase B)
+## [2026-10-27] feat(entries): Ripple's reflection in the iPhone app (PR #48, Phase B)
+
+- **Requested by:** Jimmy
+- **Committed by:** Claude Code
+
+### In plain English
+The early "Starting to notice" card (themes that have come up in 2+ debriefs, hedged, no counts) now has an app version, for people between their 2nd entry and the Theme Map unlock.
+
+### Technical changes
+- `apps/web/src/lib/emerging-patterns-data.ts`: `loadEmergingThemeCandidates` (the group-by the web card ran inline), now shared by the web card and the new route. Tests: `emerging-patterns-data.test.ts`.
+- `GET /api/insights/emerging-patterns`: `{ themes: {label}[], copy }`. Mobile bearer or cookie auth. It does not call getUserProgression (that writes the snapshot and would swallow `recentlyUnlocked`); the caller applies the Theme Map gate from its own progression.
+- `apps/mobile/components/insights/emerging-patterns-card.tsx`: `EmergingPatternsCard({ progression })`. Renders nothing until progression is known, after the Theme Map unlocks, on error, or with nothing to say. Not yet wired into the Insights tab.
+
+### Manual steps needed
+- None.
+The short reflection Ripple writes back after each entry now shows in the app too, at the top of the entry screen, labeled "Ripple's reflection". Pro only, same as the web.
+
+### Technical changes
+- `apps/mobile/app/entry/[id].tsx`: HeroCard (secondary) above the AI summary, rendered only when `entry.reflection` is set.
+- `packages/shared/src/types.ts`: `EntryDTO.reflection?: string | null`.
+- `apps/web/src/app/api/entries/[id]/route.ts`: GET already returns every Entry column (include), so no read change. PATCH (transcript edit) now clears `reflection` with the other derived fields so a stale reflection never shows over an edited entry.
+- `entry-reflection.test.ts`: the "did not touch apps/mobile" guard is replaced by a test that the app only renders the reflection behind a null guard.
+
+### Manual steps needed
+- Apply `docs/migrations/2026-10-27-entry-reflection.sql` BEFORE this deploys. GET /api/entries/[id] selects every column, so without it entry pages fail.
+- Safety: the web relies on the always-on CrisisFooter (988) on every signed-in page; the app has no equivalent on the entry screen. Decide before shipping the app part.
+A new Insights card covers what you said you'd do versus what got done:
+- **Last 7 days vs the 7 before:** tasks captured (and how many came from your debriefs), plus tasks finished, with up/down.
+- **How long each task group typically takes to finish.**
+- **Tasks that keep coming up:** still open, and mentioned in more than one debrief. If there are none, it shows the open tasks from your debriefs that have waited longest.
+
+No AI. It shows only when you've captured 3+ tasks in the last 14 days; 35 users today.
+
+### Technical changes
+- `apps/web/src/lib/follow-through.ts` (pure) and its test file (11 tests).
+  - **Thresholds:** 3+ tasks in 14 days. A group's speed shows only with 3+ completions in 60 days (median days, top 3 groups).
+  - **"Repeated":** an open recording task whose title matches a task from ANOTHER recording. Normalized-token Jaccard >= 0.6, filler words dropped, at least one shared word of 4+ letters. Short titles must match exactly. No repeat is claimed if the match was completed after it was captured.
+  - **Fallback:** the oldest open recording tasks aged 7+ days, with no repeat claim.
+- `GET /api/insights/follow-through`: getAnySessionUserId, 60-day task window, `{ report | null }`, private max-age 300.
+- `apps/mobile/components/insights/follow-through-card.tsx` `FollowThroughCard` (no props). Self-contained; rows link to /task/[id]. Not wired into the Insights tab yet.
+A new Insights card compares your mood on days something happened against days it didn't. "Something" can be a topic coming up, a person you mentioned, a habit you did or skipped, or a busy calendar day. It shows up to 3 things that tend to lift your mood and up to 3 that tend to drain it, with the numbers and how many days each is based on. Correlation wording only ("tended to be higher"), and nothing at all until there's enough data.
+
+### Technical changes
+- `apps/web/src/lib/lifts-drains.ts` (pure, plus a test with 9 cases).
+  - The mood used is the average Entry.moodScore per local day over the last 60 days.
+  - Thresholds: 10+ scored days, 4+ days on each side, a gap of 0.75+ points (1–10), max 3 per side.
+  - A theme and a person with the same name are deduped. Habits are compared only on expected days since creation (and before archive).
+  - Calendar counts 3+ timed events as a busy day. It only applies with a connected calendar, from the first stored event onward.
+- `GET /api/insights/lifts-drains`: getAnySessionUserId, plus `requireEntitlement("canExtractEntries")` (PRO + trial). Cache 30 min.
+- `apps/mobile/components/insights/lifts-drains-card.tsx`: `LiftsDrainsCard({ progression })`. Renders only after Pattern Insights unlocks (7 entries) and when there's a finding. Not wired into insights.tsx yet.
+- Apple Health is deliberately excluded; the Health & mood card already covers it.
+- No AI, no schema change. Today about 6 users have 10+ scored days in 60.
+A new Insights card shows up to 3 open loops:
+- something that keeps coming up and has weighed on you, e.g. "Money has come up 3 weeks running";
+- a goal you haven't talked about in a while, e.g. "You haven't mentioned 'Run a half marathon' in 24 days".
+
+Tap one to open that theme or goal. When nothing qualifies, the card stays hidden.
+
+### Technical changes
+- `apps/web/src/lib/open-loops.ts` (pure, deterministic, no AI) + `open-loops.test.ts` (19 tests).
+  - **Worries:** a theme in 3+ distinct weeks OR 3+ debriefs spanning 14+ days, mentioned in the last 10 days, with 2+ NEGATIVE mentions. Recurrence counts all of a theme's mentions; looks back 90 days.
+  - **Quiet goals:** NOT_STARTED/IN_PROGRESS goals with an earlier mention, quiet for 21–120 days.
+  - Max 3 items: up to 2 worries, then goals.
+  - A conservative crisis/harm filter on theme names and goal titles means those are never shown.
+- `GET /api/insights/open-loops` (getAnySessionUserId; private cache 15 min).
+- `apps/mobile/components/insights/open-loops-card.tsx`: `OpenLoopsCard` (no props, fetches its own data, renders nothing when empty or on error). Not wired into the Insights tab yet.
+- Entry.blockers isn't used: it's free text that never repeats verbatim on prod data.
+- Prod today: ~35 users have a quiet goal; the stricter worry rule matches ~1. It grows with longer histories.
+
+### Manual steps needed
+- None.
+In the first week of each month, Insights offers "Your October, wrapped". From Dec 15 to Jan 7 it offers "Your 2026, wrapped". Tapping it opens a card-by-card recap:
+- how many debriefs, over how many days, and minutes of talking;
+- the top 3 things on your mind;
+- your longest habit streak;
+- to-dos captured just by talking, and how many are done;
+- a win worth remembering;
+- who came up most (first name only);
+- your mood week by week, or month by month for the year.
+
+It only appears when there's enough to say: 4+ debriefs in the month, or 12+ in the year. There's a Share button. It shares a short text summary, which is shown first. No transcript content, no win, no habit names. A person's first name is included only if you turn it on.
+
+### Technical changes
+- `packages/shared/src/wrapped.ts`: period parse/range/label, `wrappedPeriodForCard` (days 1–7 → last month; Dec 15–Jan 7 → the year), `WrappedSummary`, and `wrappedShareText` (the privacy rule lives here). Exported from the shared index.
+- `apps/web/src/lib/wrapped.ts`: pure `computeWrapped`, deterministic, no AI. Per-section thresholds:
+  - themes: in 2+ entries each;
+  - habit run: 3+ days, counted inside the period on expected days only;
+  - tasks: captured from recordings;
+  - win: the most repeated, else the most recent;
+  - person: 3+ mentions;
+  - mood arc: 2+ buckets;
+  - minutes: when half or more of the entries have audio.
+- `GET /api/insights/wrapped?period=YYYY-MM|YYYY` (getAnySessionUserId). Converts timestamps to the user's timezone before bucketing, and returns 400 for periods that haven't started.
+- App: `components/insights/wrapped-card.tsx` (`WrappedCard`, no props) and the `app/insights/wrapped.tsx` screen.
+  - Sharing uses RN `Share` with text. No image: react-native-view-shot isn't installed, and an image share would need it in a native build.
+- Tests: `apps/web/src/lib/wrapped.test.ts` (15).
+- Real data: 28 users have 4+ October debriefs, so they would see October's Wrapped on Nov 1–7.
+
+### Manual steps needed
+- None. Not yet placed on the Insights tab (wired in separately).
+## [2026-10-27] feat(insights): "How you talk" — shifts in your own feeling words
+
+- **Requested by:** Jimmy (Insights refresh)
+- **Committed by:** Claude Code
+
+### In plain English
+A new Insights card that shows up to 3 clear changes in the feeling words you use, last 30 days vs the 30 before. Examples: "You said 'stressed' 40% less than the month before", or "'Proud' came up 3 times in the last month, and not at all the month before." It only appears when both months have enough talking. Today 4 users qualify.
+
+### Technical changes
+- `apps/web/src/lib/how-you-talk.ts`: curated lexicon in 10 groups, counted per 1,000 words. A 3-word negation window ("not stressed" doesn't count). `EXCLUDED_TERMS` guard: crisis and self-harm words are never tracked.
+- Thresholds:
+  - Both periods need 600+ words and 3+ entries.
+  - A rise or fall needs 4+ uses in the busier month, a 40%+ change in rate, and at least 1 use per 1,000 words of difference.
+  - "New" or "gone" needs 3+ uses against 0 in the other month.
+  - Max 3 lines.
+- `GET /api/insights/how-you-talk` (getAnySessionUserId). Reads at most 240 entries from 60 days, transcripts capped at 20k chars, cached privately for 1h.
+- `apps/mobile/components/insights/how-you-talk-card.tsx` (`HowYouTalkCard`, no props). Not wired into the Insights tab yet.
+- Tests: how-you-talk.test.ts (8).
+
+### Manual steps needed
+- None.
+
 ## [2026-10-27] fix(watch): checked-off tasks strike through instead of vanishing
 
 - **Requested by:** Jimmy
@@ -9473,10 +9641,16 @@ The /start-bwk paywall now quotes a real 5-star App Store review, "The task mana
 
 ## [2026-09-24] — Weekly audit system: reviewed against spec, verified on real data, fixed failure-email crash
 ## [2026-09-24] — Siri voice actions (1.7): add habit/task, check off a habit, start a check-in — all by voice
+## [2026-08-29] — Ripple starts noticing patterns at entry 2 instead of entry 10
 
 **Requested by:** Jimmy
 **Committed by:** Claude Code
-**Commit hash:** (this commit)
+**Commit hash:** aade6426
+## [2026-08-29] — Ripple now writes you one warm observation after each entry
+
+**Requested by:** Jimmy
+**Committed by:** Claude Code
+**Commit hash:** 046a8248
 
 ### In plain English (for Keenan)
 The automated weekly business audit (emails a full report every Saturday 9pm Central) was already built earlier today. Jimmy asked to build it, so instead of rebuilding, we reviewed the whole thing against the spec, ran the metrics collector against the real database to prove it works, and fixed one bug. It's ready to go live as soon as the API keys are added in GitHub — see the handoff Jimmy has.
@@ -12561,6 +12735,31 @@ None — no cron/trigger changes, so no Inngest resync needed.
 ### Notes
 - The example numbers in the prompts use honest arithmetic (US average lifespan ~78: at 30 → ~2,500 weekends, at 45 → ~1,700), with "about/on average" hedges required — the prompts ban invented statistics
 - Only the memento lanes vary length for now; the other 9 lanes keep their fixed formats
+The Theme Map stays locked until someone has ten entries, which means the first week or two feels like nothing is happening. There's now a small card on the Insights page that shows up much earlier: once a subject has come up in two different debriefs, Ripple says so — gently. "Sleep has come up in more than one of your debriefs. It's early, so this might be nothing — but Ripple noticed."
+
+The wording is deliberately unsure of itself, because with two entries it genuinely is. It never quotes a count, never tells anyone what to do, and it quietly disappears the moment the real Theme Map unlocks. If nothing has come up twice yet, the card simply isn't there — no empty box, no "keep recording" nudge.
+
+### Technical changes (for Jimmy)
+- New `apps/web/src/lib/emerging-patterns.ts` — pure `selectEmergingThemes()` (returns `[]` for every hide case) + `emergingPatternsCopy()`; constants `MIN_ENTRIES_FOR_PEEK` 2, `MIN_ENTRIES_PER_THEME` 2, `MAX_EMERGING_THEMES` 2
+- New `apps/web/src/app/insights/emerging-patterns-card.tsx` — async server component; `themeMention.groupBy` with `having` on `_count >= 2`, then a `theme.findMany` for names
+- `apps/web/src/app/insights/page.tsx` — renders it above the featured cards, passing `progression.entriesCount` + `progression.unlocked.themeMap`
+- `apps/web/src/components/acuity/ThemePill.tsx` + `index.ts` — `CANONICAL_THEME_KEYS` and `themeKeyFor()` promoted out of the entry page and exported
+- `apps/web/src/app/entries/[id]/page.tsx` — drops its local copies, imports the shared ones
+- New `apps/web/src/lib/emerging-patterns.test.ts` — 22 tests
+- Untouched on purpose: `UNLOCK_THRESHOLD`, `MIN_MENTIONS_FOR_PLANET`, `unlocked.themeMap`, `apps/mobile`, schema, extraction, Inngest
+
+### Manual steps needed
+- [ ] Nobody: no env var, no schema change, no `db:push`, no Inngest resync
+
+### Notes
+- **`ThemeMention` is `@@unique([themeId, entryId])`**, so a `groupBy` count over it is already "distinct entries containing this theme" — not a raw mention tally. That is what makes the card's claim ("come up in more than one of your debriefs") literally true rather than approximately true. Using `UserMemory.recurringThemes.count` would have been the looser option.
+- **Returning `[]` for every hide case is deliberate**, so the caller has one condition and there is no empty state to design. An empty "no patterns yet" card on a 2-entry account is a nag with a chart on it — the exact thing the 2d76c829 email removal was about.
+- **The copy quotes no numbers.** "Seen 4 times" claims precision two entries have not earned and turns a gentle observation into a scoreboard. A test asserts the copy contains no digits at all.
+- **Kept Ripple in the third person, deviating from the brief's example wording.** The brief suggested "Something I'm starting to notice…", but there is no first-person Ripple voice anywhere in the product — every surface says "Ripple remembers" / "Ripple noticed". Introducing "I" on this card would have been a brand-voice change smuggled in via a feature ticket. Flagged in the PR for Jimmy to overrule if he wants it.
+- **Found and fixed a real copy bug while sampling output.** Theme names are stored lowercase by `normalizeThemeName`, so the sentence opened "sleep has come up…" and read like a rendering fault. Now sentence-cased on the first character only, so "self-care" and "9-to-5" survive; a label in second position stays as stored, since theme labels are not proper nouns.
+- **`CANONICAL_THEME_KEYS` was about to become a second hand-declared copy.** It lived as a local const in the entry page; the new card needed the same list. That is precisely the drift DESIGN_SYSTEM §2.6 documents for the amber token ("re-declaring `#FBBF24` at six call sites caused drift"), so it moved next to `ThemeKey` in `ThemePill.tsx` and both consumers import it.
+- **FREE users cannot see this card without a separate entitlement check.** Themes come from `recordThemesFromExtraction`, which only the PRO extraction path calls — the FREE branch returns a Haiku summary and exits first. No extraction, no `ThemeMention` rows, nothing to show. This matches the sibling cards on the hub, which gate on `progression.unlocked.*` only.
+- Baselines: web tsc **163 before, 163 after**; tests **734/734** across 44 files (712 + 22 new). `npx next build` exits 0.
 
 ## [2026-08-29] — Fixed text editing on the new-style posts (edits were producing blank images)
 
@@ -12739,6 +12938,38 @@ The content factory now makes three new kinds of posts every day, all in the sam
 - Quote scenes are constrained to exactly ONE repeatable natural motion with a locked camera (the ambient-lane hallucination lesson) — calmer motion also hides the self-dissolve at the loop point.
 - Quote posts encode 12-18s at maxrate 5M (Supabase 50MB lesson). Attempt 2 drops the source clip to the proven 5s in case the chosen model rejects 10s durations.
 - tsc baseline unchanged at 199 pre-existing errors — no new errors from this change.
+After each debrief, Ripple now writes back a short note — two or three sentences, in its own voice, saying what it noticed. Not a recap of your day (that already exists) and not a list of takeaways (that exists too). One observation, the way a friend who's been paying attention would say it. Once someone has a bit of history, it can connect things across entries: "the 4am wake-up and the Jordan meeting landing in the same week has shown up together before."
+
+This is deliberately not a "you haven't recorded lately" nudge. We removed an email in the past for exactly that reason, and the prompt now bans it in several different disguises — including the sneaky one where it praises you just for opening the app.
+
+It costs nothing extra: it rides along on the analysis we already run per entry, so no new AI call, no extra wait. It shows on the website today. Paid entries only — free entries skip the analysis step entirely, so they simply won't have one. The phone app shows it in a follow-up.
+
+### Technical changes (for Jimmy)
+- `prisma/schema.prisma` — `Entry.reflection String?` (additive nullable, no backfill)
+- `packages/shared/src/types.ts` — `ExtractionResult.reflection?: string | null`; new pure `normalizeReflection(value: unknown): string | null`
+- `apps/web/src/lib/pipeline.ts` — `REFLECTION_GUIDELINE` const + `"reflection"` in the extract JSON schema + `${REFLECTION_GUIDELINE}` interpolated into the guidelines block; parse via `normalizeReflection(parsed.reflection)`; sync-path Entry write
+- `apps/web/src/inngest/functions/process-entry.ts` — async-path Entry write
+- `apps/web/src/app/entries/[id]/page.tsx` — "Ripple noticed" tinted Card above the Summary section, null-guarded
+- `apps/web/src/lib/entry-reflection.test.ts` — 21 tests
+- Untouched on purpose: `apps/mobile` (Phase B), no new Inngest function, no second Claude call, no backfill
+
+### Manual steps needed
+- [ ] Jimmy: **merge to `main` first, then run `npm run db:push` FROM `main`** — never from this branch (CLAUDE.md corollary). The column is additive so the destructive-diff guard should pass clean
+- [ ] Jimmy: the guard could not be run from this machine — `npm run db:guard` failed with P1001 (can't reach `aws-1-us-west-2.pooler.supabase.com:5432`). Run it from the home network before pushing
+- [ ] Nobody: no env var, no Inngest resync, no backfill
+
+### Notes
+- **Two persistence paths, not one.** `pipeline.ts::processEntry` (sync) and `inngest/functions/process-entry.ts` (async, behind `ENABLE_INNGEST_PIPELINE`) both write the Entry. Writing the reflection in only one would make it appear or vanish depending on a flag the user cannot see. A test pins both.
+- **`normalizeReflection` lives in `@acuity/shared`, not inline in the parse.** pipeline.ts pulls the Anthropic SDK at module scope, so it can't be imported in the web vitest env. Putting the normaliser in shared makes the actual shipped function testable instead of a copy of it.
+- **Non-strings normalise to null, not `String(...)`.** If the model returned an array or object, `String()` would render "[object Object]" to a user in the warmest slot on the page.
+- **The prompt was tightened after seeing real output, not before.** Running the shipped prompt against three transcripts pre-merge produced, on a deliberately thin entry: *"even on a quiet, tired day, you still showed up."* That is praise for USING THE APP — the 2d76c829 failure in a friendlier register, and it passed every ban that existed at the time. Added an explicit clause banning praise for showing up/opening the app/speaking at all, with the correct alternative spelled out. Re-ran: the thin entry now returns *"Work showing up three times across your entries, and today it's still there — even when there's almost nothing left to say about it."*
+- **The same re-run fixed a second weakness.** With memory context available, the first version picked the smallest available observation (a nice moment with Marcus) and ignored an 8x recurring 4am-waking pattern sitting right there. After the edit it connects the 4am wake-up to the Jordan meeting — the pattern-awareness the feature is for.
+- **Reflections are PRO-only by construction, not by a flag.** The FREE branch returns a Haiku summary and returns before extraction, so there is no code path where a FREE entry gets one. Every reader must null-guard; so must legacy entries, which have no backfill.
+- **Two safety bullets added on request (2026-08-29):** a crisis clause (self-harm / suicidal thoughts / abuse / acute crisis must not be turned into a neat observation or pattern; one plain gentle non-clinical line, or fall back to a small neutral detail; never diagnose, advise or dramatize) and a no-invention clause (ground a pattern only when actually present; do not assert unexpressed feelings; never make the mood darker than the user made it).
+- **The crisis-advice gap was closed by prompt discipline alone (2026-08-29).** No detection, flag, branching, suppression, or crisis card was added — the 2026-04-21 decision in `crisis-footer.tsx` (passive resources only; false positives interrupt, false negatives create liability, hallucinating LLMs shouldn't be first-line response) stands. The fix works by telling the model **why** it doesn't need to help: the always-on CrisisFooter already carries 988 on every signed-in page, so a reflection reaching for help is a second, worse copy of a resource the user already has. That plus banning the exact failed sentence shapes (imperatives, "you're still here and that matters", announcing its own reaction) and a WORKED EXAMPLE with the bad output labelled WRONG. Re-ran the identical transcript three times: all three now return a flat say-back with zero advice, e.g. *"You sat in the car in the driveway for an hour tonight, and what was running through your mind while you sat there was that everyone would be better off if you weren't here anymore."*
+- **Checked for over-suppression, which is the obvious way a heavy safety clause backfires.** Benign entries are unaffected and if anything sharper — the pattern case now connects the moved Jordan meeting to both the Sunday-dread and 4am-waking patterns. A heavy-but-not-crisis grief entry stayed warm and specific without tipping into advice.
+- **Behavioural check of those clauses found a gap worth a product decision.** Ran three live transcripts through the shipped prompt. Abuse disclosure was exemplary — one plain line, took it seriously, and notably did NOT surface the 9x-negative "Ray" pattern. The invention-bait case correctly refused to fabricate a pattern. But the self-harm case returned *"That thought is worth talking to someone about tonight"* — which is **advice**, the thing the clause explicitly bans, and it arrives with no route to `/support/crisis`. There is no crisis-detection path on entries today (`scan-red-flags` is an admin/business scanner; `/support/crisis` is a static page), so the reflection is currently the only thing that would respond to a disclosure. Flagged for Jimmy rather than fixed unilaterally — the options (suppress the reflection entirely on crisis entries, or route to the existing crisis page) are a product call, not a prompt tweak.
+- Baselines: web tsc **163 before, 163 after** — identical error sets, verified by stashing and diffing. (The brief said 150; `main` has drifted up by 13 since PR #47. The stale-baseline pattern is now four for four — worth reading the number off `main` each time rather than off the brief.) Tests **733/733** across 44 files.
 
 ## [2026-08-28] — A page that shows you everything Ripple has picked up about you
 

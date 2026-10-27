@@ -14,7 +14,7 @@ import {
   HeroCard,
   SectionHeader,
   ThemePill,
-  type ThemeKey,
+  themeKeyFor,
 } from "@/components/acuity";
 
 import { EntryStatusGate } from "./entry-status-gate";
@@ -29,31 +29,6 @@ export const metadata = {
   robots: { index: false, follow: false },
 };
 
-const CANONICAL_THEME_KEYS: ReadonlyArray<ThemeKey> = [
-  "career",
-  "family",
-  "health",
-  "avoidance",
-  "money",
-  "relationships",
-  "sleep",
-  "growth",
-  "solitude",
-];
-
-/**
- * Map a free-text theme string to one of the canonical 9 hues for
- * `<ThemePill>`. Lowercase + lookup; falls through to `other` for
- * any user-generated theme that isn't in the canonical table. Matches
- * mobile's `hueForTheme()` fallback chain conceptually — full
- * FNV-1a hash-to-hue is deferred to slice 6b orbital work.
- */
-function themeKeyFor(name: string): ThemeKey {
-  const k = name.toLowerCase().trim();
-  return (CANONICAL_THEME_KEYS as readonly string[]).includes(k)
-    ? (k as ThemeKey)
-    : "other";
-}
 
 /**
  * Extract a pull-quote from the entry summary — first sentence,
@@ -175,6 +150,25 @@ export default async function EntryDetailPage({
         {isComplete && <ExtractionReview entryId={entry.id} />}
 
         <div className="space-y-8">
+          {/* Ripple's reflection — one warm observation written back to
+              the user. Null on every FREE entry (that branch exits before
+              extraction) and on every entry predating the column, so the
+              guard is load-bearing, not defensive habit. Sits above the
+              summary because it is the part worth reading first, and is
+              visually distinct so it never reads as more recap. */}
+          {isComplete && entry.reflection && (
+            <section>
+              <Card variant="tinted" radius="lg" padding={6}>
+                <p className="font-mono text-[10px] font-bold uppercase tracking-[1.4px] text-acuity-text-ter">
+                  Ripple noticed
+                </p>
+                <p className="mt-3 whitespace-pre-wrap font-display text-[17px] leading-relaxed text-acuity-text sm:text-lg">
+                  {entry.reflection}
+                </p>
+              </Card>
+            </section>
+          )}
+
           {isComplete && entry.summary && (
             <section>
               <SectionHeader label="Summary" />
