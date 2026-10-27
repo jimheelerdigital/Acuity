@@ -6,6 +6,7 @@ import { stripe } from "@/lib/stripe";
 import { safeLog } from "@/lib/safe-log";
 import { sendConversionEvent } from "@/lib/meta-capi";
 import { NOT_IAP_SOURCE_WHERE } from "@/lib/entitlements";
+import { invoiceSubscriptionId } from "@/lib/payment-failure";
 
 export const dynamic = "force-dynamic";
 // Explicit Node.js runtime. Stripe signature verification requires the
@@ -658,7 +659,7 @@ export async function POST(req: NextRequest) {
         break;
       }
 
-      const sub = invoice.subscription as string | null;
+      const sub = invoiceSubscriptionId(invoice);
       const periodEnd = invoice.lines.data[0]?.period?.end
         ? new Date(invoice.lines.data[0].period.end * 1000)
         : null;

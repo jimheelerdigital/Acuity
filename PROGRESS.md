@@ -73,6 +73,29 @@ App updates pushed over the air now always carry the same settings as the App St
 - An iOS version only appears once the App Store's public lookup serves it, the same gate the email send script uses. Preview deployments show everything, so a page can be reviewed before launch. Logic and tests are in src/lib/releases/published(.test).ts.
 - 1.9.6 email gets three images (public/email/ripple-1-9-6/watch.jpg, plan.jpg, health.jpg). The watch image uses Jimmy's real watch screenshots.
 - /whats-new added to the sitemap.
+## [2026-10-27] — Retargeting campaign, new UGC video live, and fixed missing "trial converted" emails
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** see git log (retarget + stripe fix commits)
+
+### In plain English (for Keenan)
+A $20/day ad campaign now shows Ripple again to people who gave their email or started checkout on the website in the last 30 days but never started a trial. It uses video 3, video 4 and the newest therapyandthings video. That newest video is also running in the women's web ads and the women's app-download ads. Separately, the "Trial converted to paid" email was never arriving for web subscribers, because Stripe changed where it puts one piece of information. That is fixed; at least two conversions were missed (shelleyann72@gmail.com on Oct 26 and spreadinsmilez@gmail.com on Oct 25, both $89.99 yearly).
+
+### Technical changes (for Jimmy)
+- apps/web/src/app/api/admin/adlab/app-campaign/route.ts: new `retarget` action. It creates a pixel custom audience (CompleteRegistration/Lead/InitiateCheckout in the last N days, excluding Purchase in the last 180 days), an OUTCOME_SALES campaign, an ad set (OFFSITE_CONVERSIONS on PURCHASE, US/CA/GB, Advantage audience off), and ads that reuse the source ads' creatives.
+- apps/web/src/lib/payment-failure.ts: new `invoiceSubscriptionId()` reads both `invoice.subscription` (old shape) and `invoice.parent.subscription_details.subscription`, the shape returned by the webhook endpoint's pinned API version 2026-04-22.dahlia. Used by `detectFirstPostTrialCharge` and by the Stripe webhook's `invoice.payment_succeeded` handler.
+- apps/web/src/app/api/stripe/webhook/route.ts: uses the helper. Before this, `sub` was always null, so the trial-converted founder email never fired, `stripeSubscriptionId` was never back-filled from invoices, and first-charge detection on failed payments always fell to the renewal copy.
+- payment-failure.test.ts: 3 tests for the helper.
+- Meta (no code): new UGC video ad 120255370712080581 in Women UGC registrations; copy 120255370716440581 in the women app-install ad set. Both are active.
+
+### Manual steps needed
+- [ ] Review the Stripe invoice-shape fix; it is payment code (Jimmy)
+- [ ] Check the retargeting campaign after 3-4 days. The audience may be small and Meta may under-deliver (Keenan)
+
+### Notes
+- The Stripe SDK is pinned to apiVersion 2024-06-20, but webhook payloads use the ENDPOINT's version (2026-04-22.dahlia), not the SDK's. Any field Stripe moved between those versions reads as undefined in webhook handlers. Audit other invoice/subscription fields if more silent no-ops show up.
+- Retargeting excludes Purchase only. App-store trial starts don't fire the web pixel, so someone who signed up on the web and then started a trial in the app can still see these ads.
 
 ## [2026-10-27] — Fix: Mythicals 3pm post kept getting dropped
 

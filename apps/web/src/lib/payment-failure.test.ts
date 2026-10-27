@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 import {
   detectFirstPostTrialCharge,
   findOpenInvoice,
+  invoiceSubscriptionId,
   isFirstPostTrialCharge,
   parsePaymentFailedEventValue,
   paymentFailedEventValue,
@@ -150,5 +151,17 @@ describe("payment-failed copy", () => {
     expect(formatAmount(8999, "usd")).toBe("$89.99");
     expect(formatAmount(null, "usd")).toBeNull();
     expect(formatAmount(500, null)).toBe("$5.00");
+  });
+});
+
+describe("invoiceSubscriptionId", () => {
+  it("reads the old top-level field", () => {
+    expect(invoiceSubscriptionId({ subscription: "sub_old" })).toBe("sub_old");
+  });
+  it("reads the 2026-04-22 parent.subscription_details shape", () => {
+    expect(invoiceSubscriptionId({ parent: { subscription_details: { subscription: "sub_new" } } })).toBe("sub_new");
+  });
+  it("returns null when neither is present", () => {
+    expect(invoiceSubscriptionId({ parent: null })).toBeNull();
   });
 });

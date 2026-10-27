@@ -60,13 +60,30 @@ type StripeLike = Pick<Stripe, "subscriptions" | "invoices">;
  * any API error → "not first charge" (the renewal copy is the safe default,
  * it makes no claim about a free week).
  */
+/**
+ * The subscription id on an invoice. Our webhook endpoint is pinned to Stripe
+ * API 2026-04-22, where `invoice.subscription` no longer exists and the id
+ * lives at `invoice.parent.subscription_details.subscription`. Reading only
+ * the old field returned null and silently skipped the trial-converted
+ * founder email (found 2026-10-27). Reads both shapes.
+ */
+export function invoiceSubscriptionId(invoice: unknown): string | null {
+  const inv = invoice as {
+    subscription?: string | { id?: string } | null;
+    parent?: { subscription_details?: { subscription?: string | { id?: string } | null } | null } | null;
+  };
+  const raw = inv.subscription ?? inv.parent?.subscription_details?.subscription ?? null;
+  if (!raw) return null;
+  return typeof raw === "string" ? raw : raw.id ?? null;
+}
+
 export async function detectFirstPostTrialCharge(
   stripe: StripeLike,
   invoice: Pick<Stripe.Invoice, "id" | "billing_reason" | "subscription">,
   now: Date = new Date()
 ): Promise<boolean> {
   if (invoice.billing_reason !== "subscription_cycle") return false;
-  const subId = typeof invoice.subscription === "string" ? invoice.subscription : invoice.subscription?.id ?? null;
+  const subId = invoiceSubscriptionId(invoice);
   if (!subId) return false;
   try {
     const [sub, paid] = await Promise.all([
