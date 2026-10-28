@@ -5,7 +5,7 @@
  */
 import { NextRequest, NextResponse } from "next/server";
 
-import { PTEST_COOKIE, isPriceTestOn, parsePriceArm, pickPriceArm } from "@/lib/price-test";
+import { PTEST_COOKIE, PTEST_SRC_COOKIE, isPriceTestOn, parsePriceArm, pickPriceArm } from "@/lib/price-test";
 
 export const dynamic = "force-dynamic";
 
@@ -17,8 +17,12 @@ export async function POST(req: NextRequest) {
   // charges the pinned price, exactly as a test visitor would be charged.
   const force = parsePriceArm(req.nextUrl.searchParams.get("force"));
   if (force) {
-    const res = NextResponse.json({ arm: force, on: await isPriceTestOn(), forced: true });
+    // Pinned visitors are tagged with where the pin came from (a campaign
+    // like "planners", else "preview") so they never count in the 50/50.
+    const src = (req.nextUrl.searchParams.get("src") ?? "preview").replace(/[^a-z0-9_-]/gi, "").slice(0, 24) || "preview";
+    const res = NextResponse.json({ arm: force, on: await isPriceTestOn(), forced: true, src });
     res.cookies.set(PTEST_COOKIE, force, { path: "/", maxAge: MAX_AGE, sameSite: "lax", secure: true });
+    res.cookies.set(PTEST_SRC_COOKIE, src, { path: "/", maxAge: MAX_AGE, sameSite: "lax", secure: true });
     return res;
   }
   const on = await isPriceTestOn();
@@ -30,6 +34,9 @@ export async function POST(req: NextRequest) {
   const { arm, fresh } = pickPriceArm(req.cookies.get(PTEST_COOKIE)?.value);
   const res = NextResponse.json({ arm, on: true, fresh });
   // Readable by the funnel (not httpOnly): the paywall shows this arm's price.
-  if (fresh) res.cookies.set(PTEST_COOKIE, arm, { path: "/", maxAge: MAX_AGE, sameSite: "lax", secure: true });
+  if (fresh) {
+    res.cookies.set(PTEST_COOKIE, arm, { path: "/", maxAge: MAX_AGE, sameSite: "lax", secure: true });
+    if (req.cookies.get(PTEST_SRC_COOKIE)) res.cookies.set(PTEST_SRC_COOKIE, "", { path: "/", maxAge: 0 });
+  }
   return res;
 }

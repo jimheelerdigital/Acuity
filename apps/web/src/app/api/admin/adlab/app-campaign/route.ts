@@ -47,7 +47,7 @@ export async function POST(req: NextRequest) {
   const meta = await import("@/lib/adlab/meta");
   const acct = meta.adAccountPath();
   const body = (await req.json().catch(() => ({}))) as {
-    action?: "apps" | "diag" | "create" | "add" | "fix-os" | "delete" | "activate" | "pause" | "set-geo" | "delete-ad" | "budget" | "pause-adset" | "retarget";
+    action?: "apps" | "diag" | "create" | "add" | "fix-os" | "delete" | "activate" | "pause" | "set-geo" | "delete-ad" | "budget" | "pause-adset" | "retarget" | "find-ads" | "clone-campaign";
     /** Ad set measurement for iOS 14+ campaigns: "SKADNETWORK" (default), "AEM", or "none". */
     attribution?: "SKADNETWORK" | "AEM" | "none";
     /** "add": existing app ad set per group. */
@@ -66,6 +66,10 @@ export async function POST(req: NextRequest) {
     budgetTargets?: { id: string; type: "campaign" | "adset"; dailyBudgetCents: number }[];
     /** "pause-adset": the ad set to pause. */
     pauseAdsetId?: string;
+    /** "find-ads": ads whose name contains this text. */
+    query?: string;
+    /** "clone-campaign": new web campaign from existing ads, links re-pointed (2026-10-27). */
+    clone?: { name: string; budgetCents: number; sourceAdIds: string[]; linkParams: string; activate?: boolean };
     /** "retarget": web retargeting campaign (2026-10-27). */
     retarget?: { budgetCents: number; sourceAdIds: string[]; days?: number; activate?: boolean };
     /** promoted_object.object_store_url override (defaults to APP_STORE_URL). */
@@ -149,6 +153,107 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ ok: true, adset: a });
     } catch (e) {
       return NextResponse.json({ error: err(e) }, { status: 500 });
+    }
+  }
+
+  // Find ads by name (read-only), with their ad set, targeting and link.
+  if (body.action === "find-ads") {
+    if (!body.query) return NextResponse.json({ error: "query required" }, { status: 400 });
+    try {
+      const res = (await meta.metaGraph(`${acct}/ads`, "GET", {
+        fields: "id,name,effective_status,adset{id,name,daily_budget,effective_status,targeting},campaign{id,name},creative{id,object_type,url_tags,object_story_spec}",
+        filtering: [{ field: "name", operator: "CONTAIN", value: body.query }],
+        limit: "100",
+      })) as { data?: unknown[] };
+      return NextResponse.json({ ads: res.data ?? [] });
+    } catch (e) {
+      return NextResponse.json({ error: err(e) }, { status: 500 });
+    }
+  }
+
+  // New web campaign from existing ads, with each ad's goripple.io link given
+  // extra params (2026-10-27, per Keenan: a $40/day "Planners" campaign sent
+  // only to the early bird price: linkParams "ptest=low&ptsrc=planners").
+  // One ad set per distinct source ad set (its targeting copied), budget split
+  // evenly; optimizes for Purchase on the Ripple pixel like the web lanes.
+  if (body.action === "clone-campaign") {
+    const c = body.clone;
+    if (!c?.name || !c.sourceAdIds?.length || !(c.budgetCents >= 500) || !c.linkParams) {
+      return NextResponse.json({ error: "clone.name, sourceAdIds, budgetCents, linkParams required" }, { status: 400 });
+    }
+    const pixel = "869829585445303";
+    const out: Record<string, unknown> = {};
+    try {
+      type Src = { id: string; name: string; adset: { id: string; targeting: Record<string, unknown> }; creative: { id: string } };
+      const srcs: Src[] = [];
+      for (const id of c.sourceAdIds) srcs.push((await meta.metaGraph(id, "GET", { fields: "id,name,adset{id,targeting},creative{id}" })) as unknown as Src);
+      const groups = new Map<string, Src[]>();
+      for (const s of srcs) groups.set(s.adset.id, [...(groups.get(s.adset.id) ?? []), s]);
+      const status = c.activate ? "ACTIVE" : "PAUSED";
+      const campaign = await meta.metaGraph(`${acct}/campaigns`, "POST", {
+        name: c.name,
+        objective: "OUTCOME_SALES",
+        buying_type: "AUCTION",
+        special_ad_categories: [],
+        is_adset_budget_sharing_enabled: false,
+        status,
+      });
+      out.campaignId = campaign.id;
+      const per = Math.round(c.budgetCents / groups.size);
+      const addParams = (url: string) => {
+        if (!/goripple\.io/.test(url)) return url;
+        const [base, hash] = url.split("#");
+        return `${base}${base.includes("?") ? "&" : "?"}${c.linkParams}${hash ? `#${hash}` : ""}`;
+      };
+      const adsets: unknown[] = [];
+      for (const [, group] of groups) {
+        const t = { ...group[0].adset.targeting };
+        const set = await meta.metaGraph(`${acct}/adsets`, "POST", {
+          name: `${c.name} | ${group[0].name}`.slice(0, 200),
+          campaign_id: campaign.id,
+          daily_budget: String(per),
+          billing_event: "IMPRESSIONS",
+          optimization_goal: "OFFSITE_CONVERSIONS",
+          bid_strategy: "LOWEST_COST_WITHOUT_CAP",
+          promoted_object: { pixel_id: pixel, custom_event_type: "PURCHASE" },
+          targeting: t,
+          status,
+        });
+        const ads: unknown[] = [];
+        for (const src of group) {
+          try {
+            const cr = (await meta.metaGraph(src.creative.id, "GET", { fields: "name,object_story_spec,url_tags,asset_feed_spec" })) as Record<string, unknown>;
+            // Re-point every goripple.io link in the creative spec.
+            const spec = JSON.parse(
+              JSON.stringify(cr.object_story_spec ?? {}).replace(/https?:\/\/(?:www\.)?goripple\.io[^"]*/g, (m) => addParams(m))
+            ) as Record<string, unknown>;
+            const vd = spec.video_data as Record<string, unknown> | undefined;
+            if (vd) delete vd.image_url; // Meta rejects image_url + image_hash together
+            const params: Record<string, unknown> = { name: `${c.name} | ${String(cr.name ?? src.name)}`.slice(0, 200), object_story_spec: spec };
+            if (cr.url_tags) params.url_tags = cr.url_tags;
+            if (cr.asset_feed_spec) {
+              params.asset_feed_spec = JSON.parse(
+                JSON.stringify(cr.asset_feed_spec).replace(/https?:\/\/(?:www\.)?goripple\.io[^"]*/g, (m) => addParams(m))
+              );
+            }
+            const newCr = await meta.metaGraph(`${acct}/adcreatives`, "POST", params);
+            const ad = await meta.metaGraph(`${acct}/ads`, "POST", {
+              name: `${c.name} | ${src.name}`.slice(0, 200),
+              adset_id: set.id,
+              creative: { creative_id: newCr.id },
+              status,
+            });
+            ads.push({ source: src.id, name: src.name, adId: ad.id, creativeId: newCr.id });
+          } catch (e) {
+            ads.push({ source: src.id, name: src.name, error: err(e) });
+          }
+        }
+        adsets.push({ adsetId: set.id, dailyBudgetCents: per, ads });
+      }
+      out.adsets = adsets;
+      return NextResponse.json({ ok: true, status, ...out });
+    } catch (e) {
+      return NextResponse.json({ error: err(e), ...out }, { status: 500 });
     }
   }
 

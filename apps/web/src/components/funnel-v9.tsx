@@ -44,7 +44,7 @@ import {
 import { fireFbq, waitForFbq } from "@/components/meta-pixel-events";
 import { purchaseEventId } from "@/lib/meta-event-ids";
 import { trackOnboardingEvent, captureUtmParams, type UtmParams } from "@/lib/track-onboarding";
-import { armPlanValueDollars, clientPriceArm, pricesForArm, type ArmPrices, type PriceArm } from "@/lib/price-test-shared";
+import { armPlanValueDollars, clientArmLabel, clientPriceArm, pricesForArm, type ArmPrices, type PriceArm } from "@/lib/price-test-shared";
 
 // Web price test (lib/price-test.ts): the arm lives in the rp_ptest cookie,
 // set by /api/funnel/price-arm when the funnel mounts. Every price shown and
@@ -252,8 +252,13 @@ export function FunnelV9({ brand = "ripple", adMatch }: { brand?: V9Brand; adMat
     if (consumeTestArrival()) track("funnel_split_arm", "test");
     // Price test: place her in an arm (or clear it when the test is off).
     // The arm is logged at the paywall, where she's signed in.
-    const ptest = new URLSearchParams(window.location.search).get("ptest");
-    fetch(`/api/funnel/price-arm${ptest === "low" || ptest === "std" ? `?force=${ptest}` : ""}`, { method: "POST" })
+    const qs = new URLSearchParams(window.location.search);
+    const ptest = qs.get("ptest");
+    const ptsrc = qs.get("ptsrc");
+    fetch(
+      `/api/funnel/price-arm${ptest === "low" || ptest === "std" ? `?force=${ptest}${ptsrc ? `&src=${encodeURIComponent(ptsrc)}` : ""}` : ""}`,
+      { method: "POST" }
+    )
       .then((r) => r.json())
       .then((d: { on?: boolean }) => setPriceArm({ arm: clientPriceArm(), on: !!d.on }))
       .catch(() => {});
@@ -1791,11 +1796,12 @@ function PaywallScreen({ plan, setPlan, next, go, track, firstName, answers }: V
   // the event carries her userId as well as the funnel session).
   useEffect(() => {
     if (!price.testOn) return;
+    const label = clientArmLabel(price.arm);
     try {
-      if (sessionStorage.getItem("rp_ptest_logged") === price.arm) return;
-      sessionStorage.setItem("rp_ptest_logged", price.arm);
+      if (sessionStorage.getItem("rp_ptest_logged") === label) return;
+      sessionStorage.setItem("rp_ptest_logged", label);
     } catch {}
-    track("funnel_price_arm", price.arm);
+    track("funnel_price_arm", label);
   }, [price.testOn, price.arm, track]);
   const pick = (p: Plan) => {
     setPlan(p);

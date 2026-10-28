@@ -12,6 +12,15 @@ import { displayTier, formatDollars } from "@/lib/pricing";
 
 export const PRICE_TEST_FLAG = "web_price_test";
 export const PTEST_COOKIE = "rp_ptest";
+/** Set when the arm was pinned by a link (?ptest=), e.g. "planners" or "preview". */
+export const PTEST_SRC_COOKIE = "rp_ptest_src";
+
+/** "low", or "low:planners" when pinned by a link: only plain arms count in the 50/50. */
+export function clientArmLabel(arm: PriceArm): string {
+  if (typeof document === "undefined") return arm;
+  const m = document.cookie.match(new RegExp(`(?:^|; )${PTEST_SRC_COOKIE}=([^;]+)`));
+  return m?.[1] ? `${arm}:${m[1]}` : arm;
+}
 export type PriceArm = "low" | "std";
 
 export const LOW_TIER = { monthlyCents: 699, annualCents: 3999 } as const;

@@ -68,6 +68,10 @@ export async function priceTestResults(since: Date, until: Date) {
     : [];
   const now = Date.now();
 
+  // Link-pinned visitors (e.g. "low:planners") are reported on their own.
+  const pinned = new Map<string, number>();
+  for (const e of armEvents) if (e.value?.includes(":")) pinned.set(e.value, (pinned.get(e.value) ?? 0) + 1);
+
   const arms: ArmResult[] = (["std", "low"] as const).map((arm) => {
     const price = pricesForArm(arm);
     const viewers = [...armByPerson.values()].filter((a) => a === arm).length;
@@ -101,5 +105,5 @@ export async function priceTestResults(since: Date, until: Date) {
       paidRateAssumed,
     };
   });
-  return { since: since.toISOString(), until: until.toISOString(), arms };
+  return { since: since.toISOString(), until: until.toISOString(), arms, pinnedPaywallViews: Object.fromEntries(pinned) };
 }

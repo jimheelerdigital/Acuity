@@ -9,6 +9,27 @@
 
 
 
+## [2026-10-27] — Ad tool can clone ads into a new campaign; link-pinned visitors kept out of the price test
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** see git log
+
+### In plain English (for Keenan)
+Groundwork for the new $40/day "Planners" campaign, which sends only to the early bird ($6.99/$39.99) price. The ad tool can now look up ads by name, and copy chosen ads into a new campaign with their links pointed at the early bird price. Visitors who arrive through such a link are tagged with where they came from, so they're reported on their own and don't skew the 50/50 price test.
+
+### Technical changes (for Jimmy)
+- apps/web/src/app/api/admin/adlab/app-campaign/route.ts: new `find-ads` (name CONTAIN, returns ad set targeting + creative spec) and `clone-campaign` (OUTCOME_SALES campaign, one ad set per distinct source ad set with copied targeting and an even budget split, PURCHASE on the Ripple pixel; creatives re-created with every goripple.io link given `linkParams`).
+- POST /api/funnel/price-arm: `?force=low&src=<campaign>` also sets an `rp_ptest_src` cookie (default "preview"); a fresh random assignment clears it.
+- funnel-v9: passes `?ptsrc=` through as `src`; the paywall logs `funnel_price_arm` as `low:planners` etc. when pinned.
+- lib/price-test-results.ts: plain "low"/"std" only in the 50/50; pinned labels reported as `pinnedPaywallViews`.
+
+### Manual steps needed
+None
+
+### Notes
+- Creative clone deletes `video_data.image_url` (Meta rejects image_url + image_hash together).
+
 ## [2026-10-27] — Paywall: animated planner comparison and cost card, yearly always highlighted
 
 **Requested by:** Keenan
