@@ -1,19 +1,20 @@
 import { describe, expect, it } from "vitest";
 
+import { measuredMythicLine } from "./living-reel";
 import { riskyMotion, SAFE_MYTHIC_MOTION } from "./mythic-motion";
 
-describe("Mythicals motion phrase check (2026-10-27)", () => {
-  it("flags the motions that broke 'which beast would your bro turn into?'", () => {
-    expect(riskyMotion("The wyvern rises under the falling rider and catches him on its back, its great wings snapping wide open")).toBeTruthy();
-    expect(riskyMotion("The bear rears onto its hind legs and roars as the knight raises his tower shield")).toBeTruthy();
-    expect(riskyMotion("The basilisk rises to full height and a warlord steps into frame")).toBeTruthy();
-    expect(riskyMotion("its crest grows wider and sprouts new spikes")).toBeTruthy();
+describe("Mythicals motion phrase check (loosened 2026-10-27)", () => {
+  it("still blocks the two hard limits: things appearing, and figures meeting mid-action", () => {
+    expect(riskyMotion("The wyvern rises under the falling rider and catches him on its back")).toBeTruthy();
+    expect(riskyMotion("A warlord steps into frame beside the basilisk")).toBeTruthy();
+    expect(riskyMotion("The rider leaps onto the dragon's back")).toBeTruthy();
+    expect(riskyMotion("A dragon emerges from the clouds behind them")).toBeTruthy();
   });
 
-  it("passes measured, best-era motions", () => {
-    expect(riskyMotion("The bear lifts its head and roars, dust drifting off the granite plates on its back, as a slow push-in brings it closer")).toBeNull();
-    expect(riskyMotion("The dragon opens its wings and beats them once, breathing a long jet of fire into the sky while embers drift")).toBeNull();
-    expect(riskyMotion("The knight tightens his grip on the shield as the beast beside him takes two heavy steps forward")).toBeNull();
+  it("allows bold action again", () => {
+    expect(riskyMotion("The bear rears onto its hind legs and roars as the knight raises his tower shield")).toBeNull();
+    expect(riskyMotion("The raider and the chimera charge forward a few heavy strides, the axe swinging overhead")).toBeNull();
+    expect(riskyMotion("The dragon spreads its wings wide and breathes a long jet of fire into the sky")).toBeNull();
   });
 
   it("keeps the fallback itself safe", () => {
@@ -21,30 +22,15 @@ describe("Mythicals motion phrase check (2026-10-27)", () => {
   });
 });
 
-describe("measured Mythicals wrapper once grounded (2026-10-27)", async () => {
-  const { measuredMythicLine } = await import("./living-reel");
-  it("forbids fire and lava when the motion names none", () => {
-    const line = measuredMythicLine("The left paladin sweeps his longsword through the air while his companion grips the shield", true);
-    expect(line).toMatch(/No fire, fireballs, explosions, lava/);
-    expect(line).not.toMatch(/A dragon may breathe/);
+describe("Mythicals clip direction around the Action", () => {
+  it("lets grounded clips follow the Action with powers, but nothing new arriving", () => {
+    const line = measuredMythicLine("The paladin swings his greatsword", true);
+    expect(line).toMatch(/full energy/);
+    expect(line).toMatch(/Nothing new arrives in the sky or background/);
+    expect(line).not.toMatch(/no charging/);
   });
-  it("allows exactly the fire the motion names", () => {
-    expect(measuredMythicLine("The dragon breathes a long jet of fire into the sky", true)).toMatch(/exactly what the Action names/);
-  });
-  it("keeps the old line for ungrounded clips", () => {
-    expect(measuredMythicLine("anything", false)).toMatch(/A dragon may breathe/);
-  });
-});
 
-describe("what counts as asking for fire", async () => {
-  const { measuredMythicLine } = await import("./living-reel");
-  it("treats glowing lava cracks or frosty scales as glows, not fire", () => {
-    expect(measuredMythicLine("The left chimera opens its jaws in a deep roar as its lava cracks glow brighter", true)).toMatch(/No fire, fireballs/);
-    expect(measuredMythicLine("Frost mist curls off the wyrm's ice-blue scales as it lifts its head", true)).toMatch(/No fire, fireballs/);
-  });
-  it("counts real fire moves", () => {
-    expect(measuredMythicLine("The dragon lifts its head and exhales a long jet of fire into the sky", true)).toMatch(/exactly what the Action names/);
-    expect(measuredMythicLine("The wyrm breathes a stream of frost across the valley", true)).toMatch(/exactly what the Action names/);
-    expect(measuredMythicLine("The blade ignites as he raises it", true)).toMatch(/exactly what the Action names/);
+  it("keeps the measured best-era line for ungrounded clips", () => {
+    expect(measuredMythicLine("anything", false)).toMatch(/A dragon may breathe/);
   });
 });

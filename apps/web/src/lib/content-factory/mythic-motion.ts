@@ -14,39 +14,35 @@
  *
  * The fix: before every Mythicals clip, Claude looks at the actual start
  * frame and rewrites the motion so it only moves what is really in the
- * picture, in the measured best-era style (2026-10-13). A phrase check backs
- * it up, and if both fail the clip gets a safe ambient motion instead of the
- * blind one.
+ * picture. Since the evening of 10-27 only two things are hard limits
+ * (nothing appears that isn't in the frame; no catches, landings or
+ * mounting), and bold action and powers are welcome otherwise (Keenan: "we
+ * need less stringent restrictions"). A phrase check backs it up; if both
+ * fail, the clip gets a safe ambient motion instead of the blind one.
  */
 
 import { contentAnthropic, lastJsonText, VISION_MODEL } from "./claude-client";
 
 const SYSTEM = `You direct short image-to-video clips (Kling) for Legendary Mythicals, an epic fantasy page. The image you are given is the EXACT first frame of the clip. You get the planned motion, written before the picture existed. Rewrite it so it works on THIS picture.
 
-Rules, and why (each one is a failure we have shipped):
-- Only animate what you can SEE in the frame. If the plan mentions a person, creature, rider, weapon or object that is not clearly visible, drop that part completely. Nothing enters the frame, appears, materializes or is revealed during the clip, because Kling invents it on the spot and warps everything around it.
-- ONE main movement by the main subject, measured and believable at real speed (a dragon lifts its head and breathes a jet of fire into the sky; wings open and beat once; a beast takes two or three heavy steps; a warrior shifts his stance and swings the blade through the air). Any second figure only makes small movements: breathing, a cloak or hair in the wind, a tighter grip, a slight turn of the head.
-- No interactions that need contact or timing between two figures: no catching, landing, mounting, leaping onto, grabbing, or one figure lifting another.
-- No big pose changes that show body parts the picture doesn't (rearing onto hind legs, standing up, turning fully around, folding into a new shape).
-- Nothing transforms or grows: armor, plates, scales, crests, horns, wings, tails and heads stay exactly as drawn, attached and unchanged. Glow may brighten (eyes, runes, embers).
-- Flames stay on their source (torch, brazier, blade, breath); they flicker and lean but never detach or float away.
-- A weapon keeps its exact shape and never hits the ground; a creature never holds a weapon.
-- Living atmosphere is welcome: mist, embers, dust, snow, rain, water, banners, cloaks. The camera is steady or makes one slow, gentle push-in.
+Rules (loosened 2026-10-27 per Keenan: "we need less stringent restrictions"; only the two that caused real glitches are hard limits):
+- HARD LIMIT: only animate what you can SEE in the frame. If the plan mentions a person, creature, rider, weapon or object that isn't clearly visible, drop that part. Nothing new enters, appears or materializes during the clip, because Kling invents it and warps everything around it.
+- HARD LIMIT: no catching, landing on, leaping onto or mounting another figure, and no one figure lifting another. Kling can't time two figures meeting.
+- Otherwise keep the plan's energy. Bold, cinematic action is welcome when the subject is in the picture: a beast rears up and roars, charges a few heavy strides, spreads its wings wide and beats them; a dragon breathes a long jet of fire; a warrior swings his blade or raises his shield; both figures can act at once.
+- Powers and effects are welcome on what's in the picture: fire breath, flames along a blade or armor, glowing runes and eyes, embers, frost, lightning across horns or steel.
+- A weapon keeps its shape; a creature doesn't hold a weapon. The camera is steady or makes a slow push-in.
+- If the plan already fits the picture, return it almost unchanged.
 
-Return only JSON: {"visible": "<the subjects you actually see, in a few words>", "motion": "<ONE sentence, 20-45 words, describing the movement>"}`;
+Return only JSON: {"visible": "<the subjects you actually see, in a few words>", "motion": "<ONE sentence, 20-50 words, describing the movement>"}`;
 
 /** Phrases that mean a rewrite still asks Kling for something it can't do. */
 const RISKY = [
   /\b(catch|catches|caught|catching)\b/i,
   /\b(lands?|landing)\s+(on|onto)\b/i,
-  /\b(leaps?|jumps?|climbs?|swings?)\s+(onto|on to|up onto)\b/i,
+  /\b(leaps?|jumps?|climbs?)\s+(onto|on to|up onto)\b/i,
   /\b(mounts?|mounting)\b/i,
-  /\b(appears?|appearing|emerges?|emerging|materiali[sz]es?|enters?\s+the\s+frame|steps?\s+into\s+(the\s+)?frame|comes?\s+into\s+view|is\s+revealed)\b/i,
-  /\b(transforms?|transforming|morphs?|morphing|turns?\s+into|grows?|growing|sprouts?|sprouting)\b/i,
-  /\b(rears?|rearing)\s+(up|onto|on)\b/i,
-  /\b(stands?\s+up|rises?\s+onto\s+its\s+hind\s+legs)\b/i,
-  /\b(flames?|fire)\b[^.]*\b(detach|break\s+free|fly\s+off|float\s+away|leap\s+off)\b/i,
-];
+  /\b(appears?|appearing|emerges?|emerging|materiali[sz]es?|enters?\s+the\s+frame|steps?\s+into\s+(the\s+)?frame|comes?\s+into\s+view)\b/i,
+]
 
 export function riskyMotion(motion: string): string | null {
   for (const re of RISKY) {

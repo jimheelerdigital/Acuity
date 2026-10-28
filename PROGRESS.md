@@ -9,6 +9,27 @@
 
 
 
+## [2026-10-27] — Mythicals: back to building videos without a video check, with looser motion rules
+
+- **Requested by:** Keenan
+- **Committed by:** Claude Code
+- **Commit hash:** (this commit)
+
+### In plain English (for Keenan)
+The clip-by-clip build with an audit and retakes is gone. It turned three slides into stills on its test post and cost 15 renders for one video. Videos build the way they did before: all clips at once, no retakes, every slide animated. The motion rules are looser too. Beasts can rear, charge, spread their wings and breathe fire again. The only hard rules left are the two that caused real glitches: nothing appears that isn't in the picture, and no one catches, lands on or climbs onto anyone else.
+
+### Technical changes (for Jimmy)
+- Reverted 6e160eef: removed `lib/content-factory/clip-audit.ts` (+ test) and `clipFrameStrip`; `carousel-post-video.ts` is back to waves of POST_VIDEO_WAVE with no audit, retakes or audit.json.
+- Kept picture-grounded motion (`mythic-motion.ts`), loosened: the SYSTEM prompt has two hard limits (only animate what's visible; no catch/land-on/leap-onto/mount), bold action and powers welcome; `RISKY` trimmed to those two.
+- `living-reel.ts` `measuredMythicLine`: grounded clips follow the Action "with its full energy", powers allowed, one limit (nothing new arrives in the sky or background). Ungrounded clips keep the 10-13 line.
+- `choice-lane.ts` DUO motion back to "one big, dynamic thing the two do at the same time", minus catches, leaps onto, landings and mounts. The duo scene rule (companion large in the foreground) stays.
+
+### Manual steps needed
+- None.
+
+### Notes
+- Live test of the audit (old bro post): 15 renders for 6 clips, 3 stills. Keenan: "it needs to always be animated" and "this just completely reinvented the wheel". Don't re-add a post-render video audit or still fallbacks.
+
 ## [2026-10-27] — Web paywall rebuilt around what she gets
 
 **Requested by:** Keenan
