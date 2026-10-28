@@ -182,13 +182,20 @@ export async function trackOnboardingEvent(
  * app_first_open — once per install (Keenan, 2026-10-20). Called at boot.
  * Carries the install id (as sessionToken), app version and platform, and
  * `reinstall: true` when the Keychain already held an id from an earlier
- * install of the app on this phone (see lib/install-id.ts).
+ * install of the app on this phone (see lib/install-id.ts), and
+ * `had_account: true` when the app launched already signed in (an update).
  */
 export async function trackFirstOpenOnce(): Promise<void> {
   try {
     const first = await claimFirstOpen();
     if (!first) return;
-    await trackOnboardingEvent("app_first_open", { metadata: { reinstall: first.reinstall } });
+    // had_account (2026-10-28): the install id is new in 1.9.5, so a signed-in
+    // user's first launch after an UPDATE also lands here. Flag it so the
+    // funnel doesn't count them as a new install that never saw onboarding.
+    const hadAccount = !!(await getToken().catch(() => null));
+    await trackOnboardingEvent("app_first_open", {
+      metadata: { reinstall: first.reinstall, had_account: hadAccount },
+    });
   } catch {
     // analytics only
   }

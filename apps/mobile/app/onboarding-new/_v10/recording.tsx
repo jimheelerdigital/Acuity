@@ -9,7 +9,7 @@ import Animated, {
   withTiming,
 } from "react-native-reanimated";
 
-import { FunnelHeader, LightScreen, PROGRESS, PrimaryButton, V11 } from "../_v11/ui";
+import { FunnelHeader, LightScreen, PROGRESS, PrimaryButton, TextButton, V11 } from "../_v11/ui";
 import {
   V10_RECORDING_CHIPS,
   V10_RECORDING_GUIDANCE,
@@ -142,6 +142,7 @@ export default function V10Recording() {
       const b = (await getV10Branch()) ?? "open";
       branchRef.current = b;
       if (mountedRef.current) setBranch(b);
+      trackV10("v10_record_viewed", { branch: b });
       // No auto-start (Keenan, 2026-10-15: people started talking before
       // they realised it was recording, or didn't realise it was). The
       // screen opens ready; tapping the orb or "Start recording" begins.
@@ -258,6 +259,14 @@ export default function V10Recording() {
     ? V10_RECORDING_CHIPS.find((c) => c.key === activeChip)!.label
     : V10_RECORDING_PROMPT;
 
+  // "Type it instead" (2026-10-28): back to the consent screen in type mode.
+  // dismissTo pops to it when it's in the stack, so the box she ticked stays
+  // ticked; if it isn't (resumed funnel), it opens fresh and she ticks it.
+  const typeInstead = () => {
+    trackV10("v10_record_type_instead", { branch });
+    router.dismissTo({ pathname: "/onboarding-new/consent", params: { mode: "type" } });
+  };
+
   return (
     <LightScreen>
       <FunnelHeader progress={PROGRESS.record} />
@@ -370,13 +379,16 @@ export default function V10Recording() {
           />
         ) : (
           !isRecording && !stopping ? (
-            <PrimaryButton
-              label="Start recording"
-              icon="none"
-              busy={starting}
-              onPress={() => void beginRecording()}
-              accessibilityLabel="Start recording"
-            />
+            <>
+              <PrimaryButton
+                label="Start recording"
+                icon="none"
+                busy={starting}
+                onPress={() => void beginRecording()}
+                accessibilityLabel="Start recording"
+              />
+              <TextButton label="Type it instead" onPress={typeInstead} />
+            </>
           ) : (
             <PrimaryButton
               label={elapsedMs >= MIN_TAKE_MS ? "I'm done" : "Keep going…"}

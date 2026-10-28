@@ -76,11 +76,14 @@ export const V10_UNIVERSAL_LINE =
 export const V10_START_CTA = "Start my debrief";
 
 /** Screen 3 top prompt (branch sub-prompt renders underneath). */
+// 2026-10-28 (Keenan's funnel review): 4 of the 14 who chose to talk reached
+// this screen and never started. A concrete, easy first prompt, and "a few
+// sentences" up front so it doesn't feel like a big ask.
 export const V10_RECORDING_PROMPT =
-  "What's been taking up the most space in your head?";
+  "Just say what's on your plate this week.";
 
 export const V10_RECORDING_GUIDANCE =
-  "Speak naturally. Pause, ramble, change subjects, stop whenever.";
+  "A few sentences is plenty. Ramble, jump around, stop whenever.";
 
 /**
  * Shown at ~20s and then STAYS. Not a countdown and not a minimum — the spec

@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Alert, Linking, Pressable, Text, TextInput, View } from "react-native";
 import { Audio } from "expo-av";
-import { router } from "expo-router";
+import { router, useLocalSearchParams } from "expo-router";
 import Animated, { FadeIn, FadeInDown } from "react-native-reanimated";
 import { ChevronDown, ChevronUp, Keyboard, Mic } from "lucide-react-native";
 
@@ -26,6 +26,8 @@ import { Body, Card, Checkbox, FunnelHeader, Heading, LightScreen, PROGRESS, Pri
  */
 export default function V11Consent() {
   const { user } = useAuth();
+  // "Type it instead" from the record screen arrives with ?mode=type.
+  const params = useLocalSearchParams<{ mode?: string }>();
   const [agreed, setAgreed] = useState(false);
   const [details, setDetails] = useState(false);
   const [mode, setMode] = useState<"talk" | "type">("talk");
@@ -33,6 +35,10 @@ export default function V11Consent() {
   const [micDenied, setMicDenied] = useState(false);
   const [text, setText] = useState("");
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (params.mode === "type") setMode("type");
+  }, [params.mode]);
 
   useEffect(() => {
     trackV11("consent", "viewed");
@@ -176,7 +182,7 @@ export default function V11Consent() {
                 onChangeText={setText}
                 multiline
                 editable={!busy}
-                placeholder="What's taking up the most space in your head?"
+                placeholder="What's on your plate this week? A few sentences is plenty."
                 placeholderTextColor={V11.quiet}
                 maxLength={10_000}
                 style={{ minHeight: 150, padding: 12, fontSize: 17, lineHeight: 24, color: V11.ink, textAlignVertical: "top" }}

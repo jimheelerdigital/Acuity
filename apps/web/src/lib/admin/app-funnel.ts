@@ -143,11 +143,16 @@ export async function getAppFunnel(prisma: PrismaClient, start: Date, end: Date)
     { label: "Denied the microphone", people: inCohort(peopleWhere((e, v) => e.event === "v10_mic_result" && v.result !== "granted")).size },
     { label: "Recording failed to start", people: inCohort(peopleWhere(is("v10_recording_start_failed"))).size },
     { label: "Processing failed (had to retry)", people: inCohort(peopleWhere(is("v10_processing_failed"))).size },
+    { label: "Switched to typing from the record screen", people: inCohort(peopleWhere(is("v10_record_type_instead"))).size },
   ];
 
   // ── Before sign-in: raw screen views (no per-person id yet) ─────────
   const raw = (name: string) => events.filter((e) => e.event === name).length;
+  const firstOpens = await getFirstOpens(prisma, start, end, events);
   const preSignIn = [
+    { label: "Opened the app for the first time (new to Ripple)", views: firstOpens.newInstalls },
+    { label: "…of those, reached the first screen", views: firstOpens.newReachedStart },
+    { label: "First open from someone who already had an account (left out)", views: firstOpens.existingAccounts },
     { label: "First screen views", views: raw("v10_start_viewed") },
     { label: "“This is me” screen views", views: raw("v10_recognition_viewed") },
     { label: "Tapped “I’m new”", views: raw("v10_start_new") },
@@ -174,5 +179,71 @@ export async function getAppFunnel(prisma: PrismaClient, start: Date, end: Date)
     if (lost > 0 && (!biggest || lost > biggest.lost)) biggest = { from: main[i - 1].label, to: main[i].label, lost, pct };
   }
 
-  return { steps, problems, preSignIn, welcome, biggestDrop: biggest, totals: { events: events.length, unlinkedEvents: unlinked } };
+  return { steps, problems, preSignIn, firstOpens, welcome, biggestDrop: biggest, totals: { events: events.length, unlinkedEvents: unlinked } };
+}
+
+/**
+ * app_first_open split into real new installs and people who already had an
+ * account (2026-10-28, Keenan's funnel review). The install id shipped in
+ * 1.9.5, so an existing user's first launch after updating also logs
+ * app_first_open, and the app routes them straight home: they never see the
+ * start screen. Counting them as installs made it look like ~1 in 5 new
+ * installs never reached the start screen. In fact every new install did.
+ *
+ * "Already had an account" = the event says so (`had_account`, sent from the
+ * app when it launches signed in, from the next release on), or the event's
+ * user was created before the first open (works for older rows too: a new
+ * install that signs up later gets userId backfilled, but its account is
+ * newer than the first open). This also covers a web payer opening the app
+ * for the first time, who goes to the welcome flow, not onboarding.
+ */
+export async function getFirstOpens(
+  prisma: PrismaClient,
+  start: Date,
+  end: Date,
+  funnelEvents: { event: string; userId: string | null; sessionToken: string | null }[],
+) {
+  const rows = (await prisma.onboardingEvent.findMany({
+    where: { createdAt: { gte: start, lte: end }, isBot: false, event: "app_first_open" },
+    select: { value: true, userId: true, sessionToken: true, createdAt: true },
+    orderBy: { createdAt: "asc" },
+  })) as { value: string | null; userId: string | null; sessionToken: string | null; createdAt: Date }[];
+  // One per install: an install occasionally logs app_first_open twice
+  // (seen once, Oct 20-27). Keep the earliest; a row with no id stands alone.
+  const seen = new Set<string>();
+  const opens = rows.filter((r) => {
+    if (!r.sessionToken) return true;
+    if (seen.has(r.sessionToken)) return false;
+    seen.add(r.sessionToken);
+    return true;
+  });
+
+  const ids = [...new Set(opens.map((o) => o.userId).filter((x): x is string => !!x))];
+  const users = ids.length
+    ? await prisma.user.findMany({ where: { id: { in: ids } }, select: { id: true, createdAt: true } })
+    : [];
+  const created = new Map(users.map((u) => [u.id, u.createdAt.getTime()]));
+
+  const reachedStart = new Set(
+    funnelEvents
+      .filter((e) => e.event === "v10_start_viewed" || e.event === "v10_start_new" || e.event === "v10_signin_from_funnel")
+      .flatMap((e) => [e.sessionToken, e.userId])
+      .filter((x): x is string => !!x),
+  );
+
+  let newInstalls = 0;
+  let newReachedStart = 0;
+  let existingAccounts = 0;
+  for (const o of opens) {
+    const meta = parse(o.value);
+    const accountAt = o.userId ? created.get(o.userId) : undefined;
+    const existing = meta.had_account === true || (accountAt !== undefined && accountAt < o.createdAt.getTime());
+    if (existing) {
+      existingAccounts++;
+      continue;
+    }
+    newInstalls++;
+    if ((o.sessionToken && reachedStart.has(o.sessionToken)) || (o.userId && reachedStart.has(o.userId))) newReachedStart++;
+  }
+  return { newInstalls, newReachedStart, existingAccounts };
 }
