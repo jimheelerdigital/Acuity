@@ -9,6 +9,25 @@
 
 
 
+## [2026-10-27] — $9.99 paywall: cost card compares planners + journal app + habit app vs Ripple
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** see git log
+
+### In plain English (for Keenan)
+The $9.99/$89.99 paywall now has its own cost card. Paper planners ($54.86 a year) plus a journaling app like Day One ($49.99) plus a habit tracker like Habitify ($39.99) come to $144.84 a year, crossed out, against Ripple at $89.99, "planner, journal and habit tracker in one app". The early bird group keeps the simpler card: two planners, $54.86, vs $39.99.
+
+### Technical changes (for Jimmy)
+- apps/web/src/components/funnel-v9.tsx: the cost card picks its rows by arm (planners only when Ripple's year is below $54.86, else planners + JOURNAL_APP_CENTS 4999 + HABIT_APP_CENTS 3999), and renders only when the total beats Ripple's yearly price.
+
+### Manual steps needed
+None
+
+### Notes
+- Keenan asked for "4.1 planners a year" on this arm. Not done: it's an invented figure, used only where the real one loses. The real app-stack comparison was offered and accepted instead.
+- App prices are published US prices as of Oct 2026 (Day One Silver $49.99/yr, Habitify Premium $39.99/yr). Re-check them if either changes.
+
 ## [2026-10-27] — Paywall: "Ripple beats a paper planner" comparison and planner-cost math
 
 **Requested by:** Keenan

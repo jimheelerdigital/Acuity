@@ -1625,6 +1625,9 @@ const PLANNER_VS_RIPPLE: [string, string][] = [
 /** Keenan's figures (2026-10-27): average planner $27.43, 2 bought a year. */
 const PLANNER_PRICE_CENTS = 2743;
 const PLANNERS_PER_YEAR_CENTS = PLANNER_PRICE_CENTS * 2;
+/** Published yearly prices, Oct 2026: Day One Silver $49.99, Habitify Premium $39.99 (US). */
+const JOURNAL_APP_CENTS = 4999;
+const HABIT_APP_CENTS = 3999;
 const formatCents = (c: number) => `$${(c / 100).toFixed(2)}`;
 
 function PaywallScreen({ plan, setPlan, next, go, track, firstName, answers }: ViewProps) {
@@ -1790,29 +1793,42 @@ function PaywallScreen({ plan, setPlan, next, go, track, firstName, answers }: V
         <p className="mt-4 text-center text-[13px] text-acuity-text-sec">Cancel before day 7 and you pay nothing.</p>
       </div>
 
-      {/* Planner cost vs Ripple. Only where Ripple's year is the cheaper one
-          (the early bird price); at $89.99 the comparison would work against us. */}
-      {price.annualCents < PLANNERS_PER_YEAR_CENTS && (
-        <div className="mt-5 card rounded-3xl p-5">
-          <div className="flex items-baseline justify-between gap-3 text-[14px]">
-            <p className="text-acuity-text-sec">Average paper planner</p>
-            <p className="tabular-nums">{formatCents(PLANNER_PRICE_CENTS)}</p>
+      {/* What she'd otherwise pay per year vs Ripple (2026-10-27, Keenan).
+          Early bird price: two planners already cost more. Normal price: the
+          planners plus the journaling and habit apps Ripple replaces. Every
+          number is real (planner figures per Keenan; app prices published). */}
+      {(() => {
+        const rows = price.annualCents < PLANNERS_PER_YEAR_CENTS
+          ? [{ label: "Paper planners (2 a year at $27.43)", cents: PLANNERS_PER_YEAR_CENTS }]
+          : [
+              { label: "Paper planners (2 a year at $27.43)", cents: PLANNERS_PER_YEAR_CENTS },
+              { label: "Journaling app (e.g. Day One)", cents: JOURNAL_APP_CENTS },
+              { label: "Habit tracker app (e.g. Habitify)", cents: HABIT_APP_CENTS },
+            ];
+        const total = rows.reduce((n, r) => n + r.cents, 0);
+        if (total <= price.annualCents) return null;
+        return (
+          <div className="mt-5 card rounded-3xl p-5">
+            {rows.map((r) => (
+              <div key={r.label} className="mt-1.5 first:mt-0 flex items-baseline justify-between gap-3 text-[14px]">
+                <p className="text-acuity-text-sec">{r.label}</p>
+                <p className="tabular-nums">{formatCents(r.cents)}</p>
+              </div>
+            ))}
+            <div className="mt-2 flex items-baseline justify-between gap-3 border-t border-acuity-line pt-2 text-[15px]">
+              <p className="font-semibold">{rows.length > 1 ? "All of that, per year" : "Planners, per year"}</p>
+              <p className={`tabular-nums font-semibold ${SLASH}`}>{formatCents(total)}</p>
+            </div>
+            <div className="mt-3 flex items-baseline justify-between gap-3 rounded-2xl grad px-4 py-3 text-white">
+              <p className="text-[15px] font-bold">{rows.length > 1 ? "Ripple, all in one" : "Ripple, per year"}</p>
+              <p className="text-[20px] font-bold tabular-nums">{price.annual}</p>
+            </div>
+            <p className="mt-2 text-center text-[12px] text-acuity-text-sec">
+              {rows.length > 1 ? "Planner, journal and habit tracker in one app." : "And it never runs out of pages."}
+            </p>
           </div>
-          <div className="mt-1.5 flex items-baseline justify-between gap-3 text-[14px]">
-            <p className="text-acuity-text-sec">Most people buy 2 a year</p>
-            <p className="tabular-nums">&times; 2</p>
-          </div>
-          <div className="mt-2 flex items-baseline justify-between gap-3 border-t border-acuity-line pt-2 text-[15px]">
-            <p className="font-semibold">Planners, per year</p>
-            <p className={`tabular-nums font-semibold ${SLASH}`}>{formatCents(PLANNERS_PER_YEAR_CENTS)}</p>
-          </div>
-          <div className="mt-3 flex items-baseline justify-between gap-3 rounded-2xl grad px-4 py-3 text-white">
-            <p className="text-[15px] font-bold">Ripple, per year</p>
-            <p className="text-[20px] font-bold tabular-nums">{price.annual}</p>
-          </div>
-          <p className="mt-2 text-center text-[12px] text-acuity-text-sec">And it never runs out of pages.</p>
-        </div>
-      )}
+        );
+      })()}
 
       <div className="mt-6 card rounded-3xl px-5 py-2">
         {C.faq.map((f, i) => (
