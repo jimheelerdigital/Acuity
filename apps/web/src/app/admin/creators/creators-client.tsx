@@ -154,6 +154,7 @@ interface RunPreview {
   runKey: string;
   cutoff: string;
   lines: PreviewLine[];
+  refundCheck?: { ok: boolean; refunds: number; errors: string[] };
 }
 
 /** Preview → select → approve → execute for one run. */
@@ -178,7 +179,14 @@ export function PayoutRunPanel({
     const p = r.result as RunPreview;
     setPreview(p);
     setSelected(new Set(p.lines.filter((l) => l.payoutId && l.status === "previewed").map((l) => l.payoutId!)));
-    setMsg(null);
+    const rc = p.refundCheck;
+    setMsg(
+      rc && !rc.ok
+        ? `Store refund check failed (${rc.errors.join("; ")}). Affected creators are held.`
+        : rc && rc.refunds > 0
+          ? `Store refund check clawed back ${rc.refunds} refunded payment(s); totals below include it.`
+          : null
+    );
   }
 
   async function approve() {

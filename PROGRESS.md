@@ -7,6 +7,22 @@
 
 ---
 
+## [2026-10-28] — Creator payments review, findings 5–8
+
+- **Requested by:** Jimmy ("fix 5–8", before the 11/06 first payout run)
+- **Committed by:** Claude Code (branch `feat/creator-review-5-8`, not deployed)
+- **What:**
+  5. Email capture can't claim strangers: the download email's store links now go through `goripple.io/c/get?t=<signed token>`; tapping a store button there (a POST, so mail scanners can't) marks the capture verified. Signup only matches verified captures. Old captures are unverified and no longer attribute.
+  6. RevenueCat PRODUCT_CHANGE no longer counts as a payment (RC docs: the charge comes as its own RENEWAL / INITIAL_PURCHASE).
+  7. Refunds RC never reports (earlier periods) are clawed back: Apple's REFUND / REFUND_REVERSED notifications hit the ledger directly, RC REFUND_REVERSED is handled, and a store refund check (Apple Refund History + Google voided purchases) runs daily and before preview / approve / execute. A payout is held if its customers' refunds can't be confirmed or a fresh clawback just landed. All refund paths share one key per transaction (`rc:refund:txn:<id>`).
+  8. RC Web Billing (RC_BILLING) payments now earn commission (store `rc_billing`). RC's STRIPE events stay skipped; cross-checks stop a transaction being counted from both Stripe and RC.
+- **Prod DB:** docs/migrations/2026-10-28-creator-review-5-8.sql (column `CreatorReferralClick.capturedEmailVerifiedAt`, enum values `rc_billing`, `refund_reversed`). NOT applied. Apply before deploying.
+- **After deploy:** Inngest resync (new `creators-store-refunds` daily job).
+- **Not covered:** RC Web Billing refunds of earlier periods (no documented per-transaction source).
+- **Tests:** lib/creators/review-5-8.test.ts (16); creators + apple/google IAP suites pass.
+
+---
+
 
 
 ## [2026-10-27] — One end-of-day founder email replaces per-signup emails

@@ -8,7 +8,10 @@ import "server-only";
  *
  *   Road 1 — web_cookie:  rp_click cookie from goripple.io/c/<CODE>, ≤ 90 days
  *   Road 2 — code:        code typed in app onboarding (POST /api/creators/code)
- *   Road 3 — email_match: email captured on the landing's store step, ≤ 30 days
+ *   Road 3 — email_match: email captured on the landing's store step, ≤ 30 days,
+ *                         and VERIFIED (the owner opened our email's link —
+ *                         lib/creators/email-capture). An unverified capture
+ *                         never attributes: the capture endpoint is public.
  *
  * Every function here is best-effort from the caller's point of view: a
  * failure is logged and never breaks signup.
@@ -279,6 +282,8 @@ export async function attributeNewUser(params: {
         where: {
           capturedEmail: params.email.trim().toLowerCase(),
           capturedEmailAt: { gte: since },
+          // Proof the person who captured it owns the inbox (finding 5).
+          capturedEmailVerifiedAt: { not: null },
         },
         orderBy: { capturedEmailAt: "asc" }, // first creator to capture wins
         select: { creatorId: true, clickId: true },

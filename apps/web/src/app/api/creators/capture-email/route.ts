@@ -2,9 +2,16 @@
  * POST /api/creators/capture-email { email, code }
  *
  * Road 3 of creator attribution: the landing's store step stores the email
- * against the visitor's click for 30 days (matched at signup by
- * lib/creators/attribution) and emails them the store links. If the visitor
- * has no click cookie (blocked / bot-filtered), a click row is created now.
+ * against the visitor's click and emails them the store links. If the
+ * visitor has no click cookie (blocked / bot-filtered), a click row is
+ * created now.
+ *
+ * The capture is UNVERIFIED here: this endpoint is unauthenticated, so the
+ * address proves nothing (finding 5, 2026-10-28). The email's links go
+ * through /c/get, and only when the inbox owner taps one does the capture
+ * become verified — and only verified captures match at signup (30 days,
+ * lib/creators/attribution). Capturing someone else's address therefore
+ * earns nothing unless that person opens our email and downloads from it.
  */
 import { randomUUID } from "node:crypto";
 
@@ -15,15 +22,14 @@ import {
   CLICK_COOKIE_DAYS,
   CREATOR_EMAIL_FROM,
   CREATOR_EMAIL_REPLY_TO,
+  SITE_URL,
   cookieDomainFor,
 } from "@/lib/creators/config";
+import { captureLinkUrl, signCaptureToken } from "@/lib/creators/email-capture";
 import { safeLog } from "@/lib/safe-log";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
-
-const APP_STORE_URL = "https://apps.apple.com/us/app/acuity-daily/id6762633410";
-const PLAY_URL = "https://play.google.com/store/apps/details?id=com.heelerdigital.acuity";
 
 export async function POST(req: NextRequest) {
   const body = (await req.json().catch(() => null)) as { email?: unknown; code?: unknown } | null;
@@ -51,7 +57,8 @@ export async function POST(req: NextRequest) {
   if (existing && existing.creatorId === creator.id) {
     await prisma.creatorReferralClick.update({
       where: { clickId: clickId! },
-      data: { capturedEmail: email, capturedEmailAt: now },
+      // A new address on this click starts unverified again.
+      data: { capturedEmail: email, capturedEmailAt: now, capturedEmailVerifiedAt: null },
     });
   } else {
     clickId = randomUUID();
@@ -69,7 +76,9 @@ export async function POST(req: NextRequest) {
 
   try {
     const { sendEmailOrThrow } = await import("@/lib/resend");
-    const play = `${PLAY_URL}&referrer=${encodeURIComponent(`utm_source=creator&utm_campaign=${code}`)}`;
+    const token = signCaptureToken({ clickId: clickId!, email });
+    const ios = captureLinkUrl(SITE_URL, token, "ios");
+    const play = captureLinkUrl(SITE_URL, token, "android");
     await sendEmailOrThrow({
       from: CREATOR_EMAIL_FROM,
       replyTo: CREATOR_EMAIL_REPLY_TO,
@@ -77,7 +86,7 @@ export async function POST(req: NextRequest) {
       subject: "Your Ripple download link",
       html: `<div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;font-size:15px;line-height:1.5;color:#1d1b22;max-width:480px">
 <p>Here's the link you asked for.</p>
-<p><a href="${APP_STORE_URL}">Ripple on the App Store (iPhone)</a><br/><a href="${play}">Ripple on Google Play (Android)</a></p>
+<p><a href="${ios}">Ripple on the App Store (iPhone)</a><br/><a href="${play}">Ripple on Google Play (Android)</a></p>
 <p>Use the same email when you create your account. If the app asks who sent you, your code is <strong>${code}</strong>.</p>
 <p style="color:#77737f;font-size:13px">You're getting this because you asked for it on goripple.io. We won't email you again unless you sign up.</p>
 </div>`,

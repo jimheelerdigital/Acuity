@@ -7,9 +7,9 @@
  *   - 14-day hold (the spec's "30-day" mentions were stale)
  *   - milestone bonuses $50 / $150 / $300 at 10 / 25 / 50 paying customers
  *     per calendar month, each tier paid separately ($500 at 50)
- *   - web payments come from our Stripe webhook; RevenueCat feeds App Store
- *     and Google Play only (its Stripe / RC Billing events are skipped so
- *     nothing is counted twice)
+ *   - Stripe Checkout payments come from our Stripe webhook; RevenueCat
+ *     feeds App Store, Google Play and (since 2026-10-28) RC Web Billing.
+ *     RC's STRIPE events are skipped so nothing is counted twice.
  */
 
 /** 25% of net revenue. */

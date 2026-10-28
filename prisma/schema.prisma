@@ -3795,6 +3795,8 @@ enum CreatorRevenueStore {
   app_store
   play_store
   stripe
+  /// RevenueCat Web Billing (RC_BILLING), 2026-10-28.
+  rc_billing
 }
 
 enum CreatorRevenueType {
@@ -3802,6 +3804,8 @@ enum CreatorRevenueType {
   refund
   dispute
   dispute_won
+  /// A store refund was reversed (App Store REFUND_REVERSED), 2026-10-28.
+  refund_reversed
 }
 
 enum CreatorLedgerType {
@@ -3876,6 +3880,9 @@ model CreatorReferralClick {
   /// "Drop your email and we'll send the link" (Road 3).
   capturedEmail   String?
   capturedEmailAt DateTime?
+  /// Set when the person opened the emailed link (proves they own the
+  /// inbox). Only verified captures attribute (2026-10-28).
+  capturedEmailVerifiedAt DateTime?
   createdAt       DateTime   @default(now())
 
   @@index([creatorId, createdAt])
