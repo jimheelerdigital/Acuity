@@ -7,7 +7,7 @@
  *
  * Pure (no React Native imports) so the web vitest suite can test it.
  */
-import { TOUR_STEP_INDEX } from "./steps";
+import { TOUR_STEP_INDEX, WHATS_NEW_STEP_INDEX } from "./steps";
 
 /** Written by app/welcome.tsx on finish; consumed by useTourTrigger on Home focus. */
 export const WELCOME_TOUR_KEY = "ripple.welcomeTour.v1";
@@ -52,8 +52,17 @@ export interface WelcomeTourCard {
  * Home → Entries → Tasks → Growth → Insights → done (back on Home).
  * Order per Jimmy, 2026-10-12. Each stop opens that tab (TourProvider's
  * per-step `before` navigates), and the dim is light so the page reads.
+ *
+ * iOS (2026-10-28, Jimmy: the Action Button, widgets and Siri are "an
+ * absolute game changer"; point people to them from the tour): three more
+ * stops on Set up Ripple everywhere (/setup) before the last card. Android
+ * has no Action Button or Siri and its setup cards have no tour targets, so
+ * it keeps the original stops.
  */
-export function welcomeTourCards(req: WelcomeTourRequest): WelcomeTourCard[] {
+export function welcomeTourCards(
+  req: WelcomeTourRequest,
+  opts: { setupStops?: boolean } = {}
+): WelcomeTourCard[] {
   const who = req.firstName ? `, ${req.firstName}` : "";
   const stops: Omit<WelcomeTourCard, "label" | "cta">[] = [
     {
@@ -81,6 +90,25 @@ export function welcomeTourCards(req: WelcomeTourRequest): WelcomeTourCard[] {
       title: "Patterns over time",
       body: "The more you debrief, the more Ripple shows you what keeps coming up, and how your weeks are going.",
     },
+    ...(opts.setupStops
+      ? [
+          {
+            target: WHATS_NEW_STEP_INDEX.actionButton,
+            title: "One press to talk",
+            body: "On iPhone 15 Pro and later, set the Action Button to Ripple. Press it from anywhere, even locked, and start talking.",
+          },
+          {
+            target: WHATS_NEW_STEP_INDEX.siri,
+            title: "Or just ask Siri",
+            body: "Say \"Hey Siri, start a debrief in Ripple.\" Nothing to set up.",
+          },
+          {
+            target: WHATS_NEW_STEP_INDEX.widgets,
+            title: "Keep it on your Home Screen",
+            body: "Add the Ripple widgets to see your streak, habits and today's tasks without opening the app.",
+          },
+        ]
+      : []),
   ];
   const n = stops.length;
   return [

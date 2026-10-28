@@ -66,9 +66,14 @@ export default function SetupScreen() {
       WHATS_NEW_STEP_INDEX.widgets,
       scrollTo(WHATS_NEW_STEP_INDEX.widgets)
     );
+    const offS = registerTourScroll(
+      WHATS_NEW_STEP_INDEX.siri,
+      scrollTo(WHATS_NEW_STEP_INDEX.siri)
+    );
     return () => {
       offA();
       offW();
+      offS();
     };
   }, []);
   const noteCardY = (idx: number) => (e: { nativeEvent: { layout: { y: number } } }) => {
@@ -123,7 +128,9 @@ export default function SetupScreen() {
             </AttachStep>
             </View>
 
-            {/* Siri */}
+            {/* Siri (tour target since 2026-10-28: the welcome tour stops here) */}
+            <View onLayout={noteCardY(WHATS_NEW_STEP_INDEX.siri)}>
+            <AttachStep index={WHATS_NEW_STEP_INDEX.siri} fill>
             <Card tokens={tokens} icon="mic-circle-outline" title="Siri" done={status?.siri}>
               <Text style={cardBody(tokens)}>
                 No setup needed — just say it:
@@ -135,6 +142,8 @@ export default function SetupScreen() {
                 can build your own automations around them.
               </Text>
             </Card>
+            </AttachStep>
+            </View>
 
             {/* Widgets */}
             <View onLayout={noteCardY(WHATS_NEW_STEP_INDEX.widgets)}>
