@@ -71,8 +71,18 @@ const who = (u: { name: string | null; email: string }) => {
   }`;
 };
 
-export async function buildDailySummary(at: Date = new Date()) {
-  const { start, end, label } = centralDayBounds(at);
+/**
+ * Summary for the Central-time day containing `at` (days=1), or for the
+ * `days` Central days ending that day (weekly: days=7, Sun → Sat).
+ */
+export async function buildDailySummary(at: Date = new Date(), days = 1, opts: { compare?: boolean; spend?: boolean } = {}) {
+  const today = centralDayBounds(at);
+  const first = centralDayBounds(new Date(at.getTime() - (days - 1) * 86400_000));
+  const start = first.start;
+  const end = today.end;
+  const weekly = days > 1;
+  const label = weekly ? `${first.label} – ${today.label}` : today.label;
+  const when = weekly ? "this week" : "today";
   const userSel = {
     id: true, name: true, email: true, signupMethod: true, signupUtmSource: true,
     signupUtmMedium: true, signupUtmCampaign: true, signupLandingPath: true,
@@ -165,18 +175,18 @@ export async function buildDailySummary(at: Date = new Date()) {
   }
   // Failed card charges today.
   const failed = (await prisma.user.findMany({ where: { stripeFirstFailureAt: { gte: start, lt: end } }, select: { email: true, isAdmin: true } })).filter(real);
-  if (failed.length) issues.push(`${failed.length} card charge${failed.length === 1 ? "" : "s"} failed today: ${failed.map((u) => escapeHtml(u.email!)).join(", ")}.`);
+  if (failed.length) issues.push(`${failed.length} card charge${failed.length === 1 ? "" : "s"} failed ${when}: ${failed.map((u) => escapeHtml(u.email!)).join(", ")}.`);
   // Debriefs that failed to process today.
   const failedEntries = await prisma.entry.count({ where: { status: "FAILED", createdAt: { gte: start, lt: end } } });
-  if (failedEntries) issues.push(`${failedEntries} debrief${failedEntries === 1 ? "" : "s"} failed to process today.`);
+  if (failedEntries) issues.push(`${failedEntries} debrief${failedEntries === 1 ? "" : "s"} failed to process ${when}.`);
   // Downloads that never became accounts.
   const appSignups = signups.filter((u) => (u.signupMethod ?? "").startsWith("mobile")).length;
-  if (downloads >= 3 && appSignups / downloads < 0.25) issues.push(`${downloads} app downloads but only ${appSignups} app account${appSignups === 1 ? "" : "s"}: most people who open the app leave before signing up.`);
+  if (downloads >= 3 * days && appSignups / downloads < 0.25) issues.push(`${downloads} app downloads but only ${appSignups} app account${appSignups === 1 ? "" : "s"}: most people who open the app leave before signing up.`);
   // Web traffic with no trials.
   const webSignups = signups.length - appSignups;
-  if (webSignups >= 8 && webTrialUsers.length === 0) issues.push(`${webSignups} web signups and no paid trials today. Worth checking the paywall and checkout.`);
+  if (webSignups >= 8 * days && webTrialUsers.length === 0) issues.push(`${webSignups} web signups and no paid trials ${when}. Worth checking the paywall and checkout.`);
   // Nothing at all usually means something is broken, not a slow day.
-  if (signups.length === 0) issues.push("No signups at all today. Check that the ads are delivering and the funnel loads.");
+  if (signups.length === 0) issues.push(`No signups at all ${when}. Check that the ads are delivering and the funnel loads.`);
 
   // Group by funnel.
   type Row = { signups: string[]; trials: string[] };
@@ -190,7 +200,71 @@ export async function buildDailySummary(at: Date = new Date()) {
   for (const u of appTrialUsers) row("App Store / Google Play trial").trials.push(who(u));
 
   const totalTrials = webTrialUsers.length + appTrialUsers.length;
-  const subject = `Ripple today: ${signups.length} signup${signups.length === 1 ? "" : "s"}, ${totalTrials} paid trial${totalTrials === 1 ? "" : "s"}${convUsers.length ? `, ${convUsers.length} converted` : ""}${issues.length ? ` · ${issues.length} to check` : ""}`;
+  // ── Ad spend (every Meta campaign; lib/adlab/account-spend.ts) ────────
+  let spendHtml = "";
+  let spendCents: number | null = null;
+  if (opts.spend !== false) {
+    try {
+      const { accountSpend } = await import("@/lib/adlab/account-spend");
+      const ymd = (d: Date) => d.toLocaleDateString("en-CA", { timeZone: TZ });
+      const a = await accountSpend(ymd(start), ymd(new Date(end.getTime() - 1)));
+      spendCents = a.totalSpendCents;
+      const usd = (c: number) => `$${(c / 100).toLocaleString("en-US", { maximumFractionDigits: 0 })}`;
+      const rows = a.campaigns
+        .filter((c) => c.spendCents > 0)
+        .map(
+          (c) => `<tr><td style="padding:4px 0">${escapeHtml(c.name)}</td><td style="padding:4px 0;text-align:right;white-space:nowrap">${usd(c.spendCents)}</td><td style="padding:4px 0 4px 10px;text-align:right;white-space:nowrap;color:#666">${
+            c.paidTrials ? `${Number.isInteger(c.paidTrials) ? c.paidTrials : c.paidTrials.toFixed(1)} trial${c.paidTrials === 1 ? "" : "s"} · ${usd(Math.round(c.spendCents / c.paidTrials))} each` : "no trials"
+          }</td></tr>`
+        )
+        .join("");
+      const perTrial = totalTrialsForSpend() ? usd(Math.round(a.totalSpendCents / totalTrialsForSpend())) : "–";
+      spendHtml = `
+      <div style="margin:18px 0;padding:14px 16px;border:1px solid #eee;border-radius:12px;font-size:13px">
+        <div style="display:flex;justify-content:space-between"><strong>Ad spend (Meta, all campaigns)</strong><strong>${usd(a.totalSpendCents)}</strong></div>
+        <div style="color:#666;margin-top:2px">Cost per paid trial, all sources: <strong style="color:#C4451C">${perTrial}</strong>. App campaigns are split by spend (Apple doesn't say which ad a trial came from).</div>
+        <table role="presentation" width="100%" style="margin-top:8px;border-collapse:collapse;font-size:12.5px">${rows || `<tr><td style="color:#999">No spend</td></tr>`}</table>
+      </div>`;
+    } catch (e) {
+      spendHtml = `<div style="margin:18px 0;color:#999;font-size:12px">Ad spend unavailable: ${escapeHtml(String(e).slice(0, 120))}</div>`;
+    }
+  }
+  function totalTrialsForSpend() {
+    return webTrialUsers.length + appTrialUsers.length;
+  }
+
+  // ── Weekly: vs the week before ──────────────────────────────────────
+  let compareHtml = "";
+  if (weekly && opts.compare !== false) {
+    try {
+      const prev = await buildDailySummary(new Date(at.getTime() - days * 86400_000), days, { compare: false, spend: true });
+      const cur = { signups: signups.length, trials: webTrialUsers.length + appTrialUsers.length, converted: convUsers.length, downloads, spend: spendCents };
+      const delta = (a: number | null, b: number | null, money = false) => {
+        if (a === null || b === null) return "";
+        const d = a - b;
+        const fmt = (n: number) => (money ? `$${Math.round(Math.abs(n) / 100)}` : String(Math.abs(n)));
+        return d === 0 ? `<span style="color:#888">same</span>` : `<span style="color:${d > 0 ? "#2F855A" : "#C53030"}">${d > 0 ? "▲" : "▼"} ${fmt(d)}</span>`;
+      };
+      const line = (l: string, a: number | null, b: number | null, money = false) =>
+        `<tr><td style="padding:3px 0">${l}</td><td style="text-align:right">${a === null ? "–" : money ? `$${Math.round(a / 100)}` : a}</td><td style="text-align:right;color:#888">${b === null ? "–" : money ? `$${Math.round(b / 100)}` : b}</td><td style="text-align:right;padding-left:10px">${delta(a, b, money)}</td></tr>`;
+      compareHtml = `
+      <div style="margin:18px 0;padding:14px 16px;border:1px solid #eee;border-radius:12px;font-size:13px">
+        <strong>vs the week before</strong>
+        <table role="presentation" width="100%" style="margin-top:6px;border-collapse:collapse;font-size:12.5px">
+          <tr style="color:#888"><td></td><td style="text-align:right">This week</td><td style="text-align:right">Last week</td><td></td></tr>
+          ${line("Signups", cur.signups, prev.counts.signups)}
+          ${line("Paid trials", cur.trials, prev.counts.trials)}
+          ${line("Trials → paid", cur.converted, prev.counts.converted)}
+          ${line("App downloads", cur.downloads, prev.counts.downloads)}
+          ${line("Ad spend", cur.spend, prev.counts.spend ?? null, true)}
+        </table>
+      </div>`;
+    } catch {
+      compareHtml = "";
+    }
+  }
+
+  const subject = `Ripple ${weekly ? "this week" : "today"}: ${signups.length} signup${signups.length === 1 ? "" : "s"}, ${totalTrials} paid trial${totalTrials === 1 ? "" : "s"}${convUsers.length ? `, ${convUsers.length} converted` : ""}${issues.length ? ` · ${issues.length} to check` : ""}`;
 
   const stat = (n: number, l: string) =>
     `<td style="padding:12px;text-align:center;background:#FFF4EF;border-radius:12px"><div style="font-size:26px;font-weight:700;color:#C4451C">${n}</div><div style="font-size:12px;color:#666">${l}</div></td>`;
@@ -202,31 +276,35 @@ export async function buildDailySummary(at: Date = new Date()) {
       ([name, r]) => `
       <div style="margin:18px 0;padding:14px 16px;border:1px solid #eee;border-radius:12px">
         <div style="font-weight:700;font-size:15px">${escapeHtml(name)}</div>
-        <div style="margin-top:8px;font-size:13px"><strong>Signups: ${r.signups.length}</strong>${list(r.signups)}</div>
+        <div style="margin-top:8px;font-size:13px"><strong>Signups: ${r.signups.length}</strong>${
+          weekly && r.signups.length > 15 ? `<div style="color:#888;margin-top:2px">Names are in the daily emails.</div>` : list(r.signups)
+        }</div>
         <div style="margin-top:8px;font-size:13px"><strong>Paid trials: ${r.trials.length}</strong>${list(r.trials)}</div>
       </div>`
     )
     .join("");
   const html = `
     <div style="font-family:-apple-system,BlinkMacSystemFont,sans-serif;max-width:560px;margin:0 auto;padding:24px;color:#1a1a1a">
-      <h2 style="margin:0 0 4px;color:#C4451C">Ripple today</h2>
+      <h2 style="margin:0 0 4px;color:#C4451C">Ripple ${weekly ? "this week" : "today"}</h2>
       <div style="color:#666;font-size:14px;margin-bottom:16px">${escapeHtml(label)} (Central time). Internal and admin accounts left out.</div>
       <table role="presentation" width="100%" cellspacing="6"><tr>
         ${stat(signups.length, "Signups")}${stat(totalTrials, "Paid trials started")}${stat(convUsers.length, "Trials → paid")}${stat(downloads, "App downloads")}
       </tr></table>
+      ${compareHtml}
+      ${spendHtml}
       ${convUsers.length ? `<div style="margin:18px 0;padding:14px 16px;border:1px solid #CDEBD8;background:#F2FBF5;border-radius:12px;font-size:13px"><strong>Trials that became paying customers: ${convUsers.length}</strong>${list(convUsers.map((u) => who({ name: u.name, email: u.email! })))}</div>` : ""}
       <div style="margin:18px 0;padding:14px 16px;border:1px solid ${issues.length ? "#F3D2C4" : "#CDEBD8"};background:${issues.length ? "#FFF6F2" : "#F2FBF5"};border-radius:12px;font-size:13px">
         <strong>${issues.length ? `Potential issues (${issues.length})` : "No issues spotted"}</strong>
         ${issues.length ? `<ul style="margin:6px 0 0;padding-left:18px">${issues.map((i) => `<li style="margin:4px 0">${i}</li>`).join("")}</ul>` : ""}
       </div>
       <h3 style="margin:22px 0 0;font-size:16px">By funnel</h3>
-      ${sections || `<div style="color:#999;margin-top:8px">No signups or trials today.</div>`}
+      ${sections || `<div style="color:#999;margin-top:8px">No signups or trials ${when}.</div>`}
     </div>`;
-  return { subject, html, counts: { signups: signups.length, trials: totalTrials, converted: convUsers.length, downloads, issues: issues.length }, label };
+  return { subject, html, counts: { signups: signups.length, trials: totalTrials, converted: convUsers.length, downloads, issues: issues.length, spend: spendCents }, label };
 }
 
-export async function sendDailySummary(at: Date = new Date()) {
-  const s = await buildDailySummary(at);
+export async function sendDailySummary(at: Date = new Date(), days = 1) {
+  const s = await buildDailySummary(at, days);
   const { getResendClient } = await import("@/lib/resend");
   const { error } = await getResendClient().emails.send({
     from: "hello@goripple.io",

@@ -77,6 +77,7 @@ import { scoreboardRefreshFn, performanceReportFn } from "@/inngest/functions/pe
 import { carouselDailyDigestFn } from "@/inngest/functions/carousel-daily-digest";
 import { weeklyBriefFn } from "@/inngest/functions/weekly-brief";
 import { founderDailySummaryFn } from "@/inngest/functions/founder-daily-summary";
+import { founderWeeklySummaryFn } from "@/inngest/functions/founder-weekly-summary";
 import { carouselAmbientVideoFn } from "@/inngest/functions/carousel-ambient-video";
 import { carouselQuoteLoopFn } from "@/inngest/functions/carousel-quote-loop";
 import { carouselMetricsRefreshFn } from "@/inngest/functions/carousel-metrics-refresh";
@@ -181,6 +182,7 @@ const handler = serve({
     carouselDailyDigestFn,
     weeklyBriefFn,
     founderDailySummaryFn,
+    founderWeeklySummaryFn,
     carouselAmbientVideoFn,
     carouselQuoteLoopFn,
     carouselMetricsRefreshFn,

@@ -9,6 +9,25 @@
 
 
 
+## [2026-10-28] — Weekly founder summary (Saturdays 11:59pm CT) and ad spend in both summaries
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** see git log
+
+### In plain English (for Keenan)
+Every Saturday at 11:59pm Central, you and Jim get a "Ripple this week" email covering Sunday through Saturday. It has the same numbers, funnels and issues as the nightly email, plus a "vs the week before" table (signups, paid trials, conversions, downloads, ad spend, with up/down arrows). Both the nightly and weekly emails now show ad spend: total Meta spend, cost per paid trial, and each campaign's spend with its trials. On busy weeks, the weekly email lists names only when a funnel has 15 or fewer signups; the rest are in the nightly emails.
+
+### Technical changes (for Jimmy)
+- lib/founder-daily-summary.ts: `buildDailySummary(at, days, { compare, spend })` covers N Central days ending at `at`. Spend comes from `accountSpend()` (lib/adlab/account-spend.ts, needs META_ACCESS_TOKEN, so it only works in prod). The weekly comparison re-runs the builder for the prior 7 days. Issue thresholds scale with the number of days.
+- New Inngest function `founder-weekly-summary` (cron `TZ=America/Chicago 59 23 * * 6`, event `founder/weekly-summary`); registered in api/inngest/route.ts.
+
+### Manual steps needed
+- [ ] Inngest resync after deploy (Claude)
+
+### Notes
+- Locally, spend shows "unavailable" (no Meta token on dev machines).
+
 ## [2026-10-27] — One end-of-day founder email replaces per-signup emails
 
 **Requested by:** Keenan
