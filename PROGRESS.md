@@ -9,6 +9,31 @@
 
 
 
+## [2026-10-28] — Apple Watch complication: Ripple on the watch face, tap to record
+
+**Requested by:** Jimmy
+**Committed by:** Claude Code
+**Commit hash:** see git log (branch feat/watch-complication)
+
+### In plain English (for Keenan)
+Ripple can now sit on an Apple Watch face. Tapping it opens the watch app and starts a voice debrief right away. When the person is signed in, it also shows today's habit progress (for example "2/3"); otherwise it shows a plain Ripple mic.
+
+### Technical changes (for Jimmy)
+- New `apps/mobile/targets/watch-widget/` (apple-targets `watch-widget`, product RippleComplication, bundle id `com.heelerdigital.acuity.watchkitapp.complication`, watchOS 11): `index.swift` (WidgetKit StaticConfiguration; accessoryCircular / Rectangular / Inline / Corner), `Info.plist`, hand-written `RippleComplication.entitlements`, `expo-target.config.js`. apple-targets embeds it in the watch app (Embed Foundation Extensions on RippleWatch). Checked with prebuild.
+- Data: the complication reads the watch app's session token from the watch Keychain (Keychain Sharing via the watch app's default access group `TEAMID.com.heelerdigital.acuity.watchkitapp`) and calls GET /api/habits itself. It counts habits due today (`daysActive`) checked for today's localDate, caches the last good count per day, refreshes about every 30 minutes, and adds a midnight entry that resets the count to 0.
+- No App Group (on purpose): App Groups don't bridge phone↔watch, and enabling the capability on watch bundle ids failed under the ASC API key before. Keychain Sharing is not a portal capability, and eas-cli skips `keychain-access-groups`.
+- New plugin `plugins/with-plain-extension-entitlements.js` (listed right after `@bacons/apple-targets` in app.json). It fixes an apple-targets v5 bug: a hand-written `.entitlements` file is parsed into a null-prototype object, which crashed prebuild with `val.hasOwnProperty is not a function`.
+- Watch app: `onOpenURL` handles `ripplewatch://record` → `RecordRouter.requestRecord()` (ignored when signed out), and the watch Info.plist registers the `ripplewatch` URL scheme. RecordRouter got a `pendingStart` flag that RecordView consumes in `onAppear`, so a cold launch from the complication (or the Action Button) still starts recording. `WidgetCenter.reloadAllTimelines()` runs when a token arrives or is revoked, after a habit check in Growth, and when the app goes to the background.
+
+### Manual steps needed
+- [ ] Register the new App ID before the next EAS build, if EAS can't create it with the API key (Jimmy): https://developer.apple.com/account/resources/identifiers/list → "+" → App IDs → App → Explicit Bundle ID `com.heelerdigital.acuity.watchkitapp.complication`, description "Ripple Watch Complication". Leave every capability unchecked (no App Groups needed). Continue → Register.
+- [ ] On-device test (Jimmy): add the Ripple complication to a watch face in all four slot types. Tap it and confirm recording starts, including from a cold launch. Check off a habit and confirm the count updates.
+
+### Notes
+- Not compiled here (Linux). Swift was reviewed by hand against watchOS 10+ WidgetKit APIs. Prebuild and the EAS appExtensions config were verified.
+- The team id `ZNF9ZJ4NVX` is hard-coded in index.swift for the Keychain group, the same way the iOS widget hard-codes it.
+- If the Keychain read ever fails on device, the complication just shows the branded mic and tapping it still records. The fallback would be an App Group on both watch bundle ids, which needs portal capability toggles.
+
 ## [2026-10-27] — One end-of-day founder email replaces per-signup emails
 
 **Requested by:** Keenan

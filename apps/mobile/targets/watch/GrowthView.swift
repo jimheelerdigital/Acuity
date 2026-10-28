@@ -1,4 +1,5 @@
 import SwiftUI
+import WidgetKit
 
 // Growth (watch) — mirrors the phone's "Growth" tab: Habits + Goals in one
 // scrolling screen. Fetches live from the API with the cached bearer token
@@ -100,6 +101,7 @@ struct GrowthView: View {
         do {
             try await api.checkHabit(id: habit.id, checked: true)
             Haptics.success()
+            WidgetCenter.shared.reloadAllTimelines() // complication habit count
         } catch {
             Haptics.failure()
             // Revert on failure so the user can retry.

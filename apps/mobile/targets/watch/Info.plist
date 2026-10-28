@@ -5,11 +5,25 @@
   file with GENERATE_INFOPLIST_FILE=YES, so Xcode merges these keys with the
   generated watchOS defaults. Only custom keys need to live here.
 
+  CFBundleURLTypes registers ripplewatch:// — the complication's widgetURL
+  (ripplewatch://record) that opens the record page.
+
   NSMicrophoneUsageDescription is REQUIRED — the wrist debrief records audio,
   and watchOS crashes an app that accesses the mic without this string.
 -->
 <plist version="1.0">
 <dict>
+    <key>CFBundleURLTypes</key>
+    <array>
+        <dict>
+            <key>CFBundleURLName</key>
+            <string>com.heelerdigital.acuity.watchkitapp</string>
+            <key>CFBundleURLSchemes</key>
+            <array>
+                <string>ripplewatch</string>
+            </array>
+        </dict>
+    </array>
     <key>NSMicrophoneUsageDescription</key>
     <string>Ripple uses the microphone to record your voice debrief from your wrist.</string>
 </dict>
