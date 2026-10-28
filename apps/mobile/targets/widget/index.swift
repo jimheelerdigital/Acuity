@@ -82,13 +82,38 @@ struct Provider: TimelineProvider {
     }
 }
 
-private let accent = Color("AccentColor")
+// ── Theme (2026-10-28) ───────────────────────────────────────────────
+// Widgets follow the palette the user picked in the app (coral, sunset,
+// citrus, cobalt). The app already writes the resolved colors to the App
+// Group for the watch (lib/widget-data.ts publishThemeToWatch → keys
+// themePrimary / themePrimaryHi / themeSecondary, "#rrggbb") and reloads
+// the widgets when they change. Before the app has written them (fresh
+// install, older app) we fall back to the bundled AccentColor (coral).
+
+private func colorFromHex(_ hex: String?) -> Color? {
+    guard var h = hex?.trimmingCharacters(in: .whitespaces), !h.isEmpty else { return nil }
+    if h.hasPrefix("#") { h.removeFirst() }
+    guard h.count == 6, let v = UInt32(h, radix: 16) else { return nil }
+    return Color(
+        red: Double((v >> 16) & 0xFF) / 255,
+        green: Double((v >> 8) & 0xFF) / 255,
+        blue: Double(v & 0xFF) / 255
+    )
+}
+
+private func themeColor(_ key: String) -> Color? {
+    colorFromHex(UserDefaults(suiteName: APP_GROUP)?.string(forKey: key))
+}
+
+/// The user's palette primary (falls back to the bundled coral).
+private var accent: Color { themeColor("themePrimary") ?? Color("AccentColor") }
+/// Lighter step of the primary, for the top of gradients.
+private var accentHi: Color { themeColor("themePrimaryHi") ?? accent.opacity(0.75) }
 
 /// Flame fill for the streak (Jimmy, 2026-10-28: "It's an achievement").
-private let flameGradient = LinearGradient(
-    colors: [Color(red: 1.0, green: 0.72, blue: 0.25), accent],
-    startPoint: .top, endPoint: .bottom
-)
+private var flameGradient: LinearGradient {
+    LinearGradient(colors: [accentHi, accent], startPoint: .top, endPoint: .bottom)
+}
 
 struct SmallView: View {
     let entry: RippleEntry

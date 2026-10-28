@@ -143,8 +143,11 @@ export function publishThemeToWatch(theme: {
     storage.set("themePrimaryHi", theme.primaryHi);
     storage.set("themeSecondary", theme.secondary);
     storage.set("themeAccent", theme.accent);
+    // The home-screen widgets read these too (2026-10-28: widgets follow the
+    // user's palette), so redraw them when the palette changes.
+    ExtensionStorage.reloadWidget();
   } catch {
-    // Best-effort; never break the app over watch theming.
+    // Best-effort; never break the app over watch or widget theming.
   }
 }
 
