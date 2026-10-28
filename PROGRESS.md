@@ -9,6 +9,26 @@
 
 
 
+## [2026-10-28] — Funnel dashboard: "Early bird vs normal price" view for the 10-day price test
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** see git log
+
+### In plain English (for Keenan)
+Admin → Funnel has a new "Early bird vs normal price" button. It shows the web price test side by side: how many people saw each paywall, started checkout and started a paid trial, the trial rate, how many picked yearly, how many trials became paying, and the number that decides the test, estimated first-year revenue per 100 paywall viewers. It counts the days ("Day 1 of 10") and says which price is ahead once each side has 30 viewers. The Planners campaigns (always early bird) get their own section so they don't skew the comparison, and a day-by-day table shows viewers and trials per group.
+
+### Technical changes (for Jimmy)
+- lib/price-test-results.ts rewritten: groups by full arm label (std, low, low:planners, low:planners-reg, *:preview); adds checkouts (funnel_checkout_started by user or session), annual %, `inSplit`, and a Central-time `daily` table. `pinnedPaywallViews` kept for back-compat.
+- GET /api/admin/price-test: since/until accept full ISO or YYYY-MM-DD; defaults to the test start (2026-10-28T00:20Z).
+- admin/tabs/FunnelAnalyticsTab.tsx: new `price` view (`PriceTestView`).
+
+### Manual steps needed
+None
+
+### Notes
+- At build time (day 1): 10 real paywall sessions, all tagged with a group. Normal 4 viewers / 1 trial, early bird 3 / 0, Planners 3 / 2. Far too early to read.
+
 ## [2026-10-28] — "Why wasn't Ripple for you?": one-tap answers, App Store cancellations included
 
 **Requested by:** Keenan

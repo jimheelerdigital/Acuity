@@ -8,7 +8,7 @@ import { useState, useEffect } from "react";
 // Since 2026-10-19 every ad visitor lands on the test funnels (/start-test,
 // /start-test-bwk; FeatureFlag funnel_test_only), so "live" (both test
 // funnels) is the default and the normal funnels live under the archive menu.
-type View = "live" | "cmp-ripple" | "cmp-bwk" | "cmp-all" | "ripple" | "bwk" | "test" | "testbwk" | "both" | "legacy";
+type View = "live" | "cmp-ripple" | "cmp-bwk" | "cmp-all" | "ripple" | "bwk" | "test" | "testbwk" | "both" | "legacy" | "price";
 type CompareMode = "live" | "cmp-ripple" | "cmp-bwk" | "cmp-all";
 type SplitFilter = "auto" | "on" | "off";
 type LegacyFlow = "v7" | "v6" | "v5" | "v4" | "v3" | "v2" | "v1" | "all";
@@ -476,6 +476,8 @@ export default function FunnelAnalyticsTab({ start, end }: { start: string; end:
           <button onClick={() => setView("test")} style={seg(view === "test")}>Ripple <span style={{ opacity: 0.6, fontWeight: 500 }}>/start-test</span></button>
           <button onClick={() => setView("testbwk")} style={seg(view === "testbwk")}>BWK <span style={{ opacity: 0.6, fontWeight: 500 }}>/start-test-bwk</span></button>
           <button onClick={() => setView("both")} style={seg(view === "both")}>Side by side</button>
+          <span style={{ fontSize: 11, color: "rgba(255,255,255,0.35)", margin: "0 4px 0 10px" }}>Tests:</span>
+          <button onClick={() => setView("price")} style={seg(view === "price")}>Early bird vs normal price</button>
         </div>
         <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
           <div style={{ display: "flex", gap: 4 }} title="Social in-app = sessions opened inside Instagram, Facebook or TikTok, where ad clicks land. All = includes crawler and link-preview visits.">
@@ -507,7 +509,9 @@ export default function FunnelAnalyticsTab({ start, end }: { start: string; end:
         </div>
       </div>
 
-      {view === "live" || view === "cmp-ripple" || view === "cmp-bwk" || view === "cmp-all"
+      {view === "price"
+        ? <PriceTestView />
+        : view === "live" || view === "cmp-ripple" || view === "cmp-bwk" || view === "cmp-all"
         ? <CompareView key={view} start={start} end={end} traffic={traffic} mode={view} />
         : view === "both"
         ? <SideBySide start={start} end={end} traffic={traffic} />
@@ -985,6 +989,133 @@ function SingleFunnel({ start, end, flow, traffic }: { start: string; end: strin
                   </tr>
                 );
               })}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+
+// ── Price test: early bird vs normal price (2026-10-28, per Keenan) ────────
+// Web funnel only. The 50/50 split started Oct 27, 7:25pm CT and runs ~10
+// days; Planners campaigns always see the early bird price and are shown as
+// their own rows, outside the comparison. Data: GET /api/admin/price-test
+// (lib/price-test-results.ts).
+
+const PRICE_TEST_START = "2026-10-28T00:20:00Z"; // Oct 27, 7:20pm CT
+const PRICE_TEST_DAYS = 10;
+
+function PriceTestView() {
+  const [data, setData] = useState<any>(null);
+  const [error, setError] = useState<string | null>(null);
+  useEffect(() => {
+    fetch(`/api/admin/price-test?since=${encodeURIComponent(PRICE_TEST_START)}`, { cache: "no-store" })
+      .then(async (r) => (r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`))))
+      .then(setData)
+      .catch((e) => setError(e.message));
+  }, []);
+  if (error) return <div style={{ color: "var(--acuity-bad)", padding: 40, textAlign: "center" }}>Error: {error}</div>;
+  if (!data) return <div style={{ color: "var(--acuity-text-ter)", padding: 40, textAlign: "center" }}>Loading price test...</div>;
+
+  const arms: any[] = data.arms ?? [];
+  const split = arms.filter((a) => a.inSplit);
+  const other = arms.filter((a) => !a.inSplit);
+  const std = split.find((a) => a.arm === "std");
+  const low = split.find((a) => a.arm === "low");
+  const startMs = new Date(PRICE_TEST_START).getTime();
+  const dayN = Math.min(PRICE_TEST_DAYS, Math.max(1, Math.ceil((Date.now() - startMs) / 86400000)));
+  const leader =
+    std && low && std.yr1Per100ViewersDollars != null && low.yr1Per100ViewersDollars != null && std.viewers >= 30 && low.viewers >= 30
+      ? low.yr1Per100ViewersDollars > std.yr1Per100ViewersDollars ? "Early bird" : "Normal price"
+      : null;
+
+  const card: React.CSSProperties = { background: "var(--acuity-card-bg)", borderRadius: 12, padding: 20 };
+  const th: React.CSSProperties = { textAlign: "right", padding: "6px 8px", fontSize: 11, fontWeight: 600, color: "var(--acuity-text-quiet)", whiteSpace: "nowrap" };
+  const td: React.CSSProperties = { textAlign: "right", padding: "8px", fontSize: 13, color: "var(--acuity-text)", fontVariantNumeric: "tabular-nums", whiteSpace: "nowrap" };
+  const pct = (v: number | null) => (v == null ? "—" : `${v}%`);
+  const usd = (v: number | null) => (v == null ? "—" : `$${v.toLocaleString()}`);
+
+  const Row = ({ a, muted }: { a: any; muted?: boolean }) => (
+    <tr style={{ borderTop: "1px solid var(--acuity-line)", opacity: muted ? 0.75 : 1 }}>
+      <td style={{ ...td, textAlign: "left", fontWeight: 600 }}>{a.label}</td>
+      <td style={td}>{a.viewers}</td>
+      <td style={td}>{a.checkouts}</td>
+      <td style={td}>{a.trials}</td>
+      <td style={{ ...td, fontWeight: 700 }}>{pct(a.trialRatePct)}</td>
+      <td style={td}>{pct(a.annualPct)}</td>
+      <td style={td}>{a.ended ? `${a.paid}/${a.ended}` : "—"}</td>
+      <td style={{ ...td, fontWeight: 700, color: "var(--acuity-primary)" }}>
+        {usd(a.yr1Per100ViewersDollars)}
+        {a.paidRateAssumed && a.trials ? <span style={{ fontSize: 10, color: "var(--acuity-text-quiet)", fontWeight: 500 }}> est.</span> : null}
+      </td>
+    </tr>
+  );
+  const Table = ({ rows, muted }: { rows: any[]; muted?: boolean }) => (
+    <div style={{ overflowX: "auto" }}>
+      <table style={{ width: "100%", borderCollapse: "collapse" }}>
+        <thead>
+          <tr>
+            <th style={{ ...th, textAlign: "left" }}>Group</th>
+            <th style={th}>Saw paywall</th>
+            <th style={th}>Started checkout</th>
+            <th style={th}>Paid trials</th>
+            <th style={th}>Trial rate</th>
+            <th style={th}>Chose yearly</th>
+            <th style={th}>Paid / ended</th>
+            <th style={th}>Yr-1 $ per 100 viewers</th>
+          </tr>
+        </thead>
+        <tbody>{rows.map((a) => <Row key={a.arm} a={a} muted={muted} />)}</tbody>
+      </table>
+    </div>
+  );
+
+  const dayKeys = arms.map((a) => a.arm);
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+      <div style={card}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", flexWrap: "wrap", gap: 8 }}>
+          <div style={{ fontSize: 15, fontWeight: 700, color: "var(--acuity-text)" }}>Early bird vs normal price <span style={{ fontSize: 11, fontWeight: 500, color: "var(--acuity-text-quiet)" }}>web funnel, 50/50 split</span></div>
+          <div style={{ fontSize: 12, color: "var(--acuity-text-ter)" }}>Day {dayN} of {PRICE_TEST_DAYS} · started Oct 27, 7:25pm CT</div>
+        </div>
+        <div style={{ marginTop: 6, fontSize: 12, color: "var(--acuity-text-ter)", lineHeight: 1.5 }}>
+          The deciding number is <strong style={{ color: "var(--acuity-text)" }}>first-year revenue per 100 paywall viewers</strong>: it weighs more trials at a lower price against fewer at a higher one. Until 5 trials in a group have ended, it uses an assumed 42% paid rate (marked est.).
+          {leader ? <> Ahead right now: <strong style={{ color: "var(--acuity-primary)" }}>{leader}</strong>.</> : <> Too early to call: each group needs at least 30 paywall viewers.</>}
+        </div>
+        <div style={{ marginTop: 14 }}><Table rows={split} /></div>
+      </div>
+
+      {other.length > 0 && (
+        <div style={card}>
+          <div style={{ fontSize: 13, fontWeight: 700, color: "var(--acuity-text)" }}>Always early bird (not in the 50/50)</div>
+          <div style={{ marginTop: 4, fontSize: 12, color: "var(--acuity-text-ter)" }}>The Planners campaigns and preview links pin the early bird price, so they're tracked separately.</div>
+          <div style={{ marginTop: 12 }}><Table rows={other} muted /></div>
+        </div>
+      )}
+
+      <div style={card}>
+        <div style={{ fontSize: 13, fontWeight: 700, color: "var(--acuity-text)" }}>Day by day</div>
+        <div style={{ marginTop: 4, fontSize: 12, color: "var(--acuity-text-ter)" }}>Paywall viewers / paid trials per day (Central time).</div>
+        <div style={{ overflowX: "auto", marginTop: 12 }}>
+          <table style={{ width: "100%", borderCollapse: "collapse" }}>
+            <thead>
+              <tr>
+                <th style={{ ...th, textAlign: "left" }}>Day</th>
+                {arms.map((a) => <th key={a.arm} style={th}>{a.label.replace(/ \(.*\)$/, "")}</th>)}
+              </tr>
+            </thead>
+            <tbody>
+              {(data.daily ?? []).map((d: any) => (
+                <tr key={d.day} style={{ borderTop: "1px solid var(--acuity-line)" }}>
+                  <td style={{ ...td, textAlign: "left" }}>{new Date(`${d.day}T12:00:00Z`).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" })}</td>
+                  {dayKeys.map((k) => {
+                    const c = d.byArm[k];
+                    return <td key={k} style={td}>{c ? `${c.viewers} / ${c.trials}` : "—"}</td>;
+                  })}
+                </tr>
+              ))}
             </tbody>
           </table>
         </div>

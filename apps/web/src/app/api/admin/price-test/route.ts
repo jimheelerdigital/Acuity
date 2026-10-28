@@ -17,8 +17,10 @@ export async function GET(req: NextRequest) {
     if (!guard.ok) return guard.response;
   }
   const sp = req.nextUrl.searchParams;
-  const since = new Date(`${sp.get("since") ?? "2026-11-02"}T05:00:00Z`);
-  const until = sp.get("until") ? new Date(`${sp.get("until")}T05:00:00Z`) : new Date();
+  // since/until: full ISO timestamps, or YYYY-MM-DD (Central midnight).
+  const parse = (v: string | null, fallback: Date) => (!v ? fallback : /^\d{4}-\d{2}-\d{2}$/.test(v) ? new Date(`${v}T05:00:00Z`) : new Date(v));
+  const since = parse(sp.get("since"), new Date("2026-10-28T00:20:00Z"));
+  const until = parse(sp.get("until"), new Date());
   const { priceTestResults } = await import("@/lib/price-test-results");
   return NextResponse.json(await priceTestResults(since, until));
 }
