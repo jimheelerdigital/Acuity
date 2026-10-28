@@ -45,7 +45,7 @@ import { TourProvider } from "@/components/tour/TourProvider";
 import { useAchievementQueue } from "@/hooks/use-achievement-queue";
 import { ScreenFrame } from "@/components/keyboard/screen-frame";
 import { runCalendarSync } from "@/lib/calendar-sync-client";
-import { syncHealth } from "@/lib/health";
+import { startHealthBackgroundSync, syncHealth } from "@/lib/health";
 import { requestMetaTracking, setMetaUserId, startMetaSdk } from "@/lib/meta-sdk";
 import { startSiriTaskGroupsPublisher } from "@/lib/siri-shortcuts-data";
 import { reapplyRemindersIfNeeded } from "@/lib/notifications-boot";
@@ -61,6 +61,13 @@ import { configureRevenueCat } from "@/lib/revenuecat";
 
 // Sentry init at module scope — idempotent on re-import.
 initSentry();
+
+// Apple Health background delivery (2026-10-28): subscribe at module scope,
+// not in a component effect, because iOS launches the app in the background
+// for a Health update and only this JS boot runs — no screen mounts for the
+// user. Queued wakes flush on subscribe and re-send today's totals so Health
+// habits check themselves off. No-op unless Health is connected. Idempotent.
+void startHealthBackgroundSync();
 
 // Slice H typography (2026-05-18): cap Dynamic Type scaling at 1.5×
 // so iOS "Larger Accessibility" sizes don't blow out our layouts.

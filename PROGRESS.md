@@ -9,6 +9,28 @@
 
 
 
+## [2026-10-28] — Apple Health habits check themselves off in the background
+
+**Requested by:** Jimmy
+**Committed by:** Claude Code
+**Commit hash:** see git log
+
+### In plain English
+A habit with a Health rule ("5,000 steps", "30 exercise minutes") no longer waits for the app to be opened. When new steps or exercise minutes land in Apple Health, iPhone wakes Ripple in the background (iOS decides when, at most hourly), Ripple re-sends today's and yesterday's totals, and the server checks the habit off. Profile → Apple Health says so in one line.
+
+### Technical changes
+- HealthKit background delivery via the library we already use (@kingstinct/react-native-healthkit 16.1): app.json healthkit plugin `background: true` adds the `com.apple.developer.healthkit.background-delivery` entitlement. `@react-native-healthkit/core`'s BackgroundDeliveryManager registers the HKObserverQueries natively at launch (no AppDelegate change), holds a 25s background task, and queues wakes until JS subscribes.
+- lib/health.ts: `startHealthBackgroundSync()` (called at module scope in app/_layout.tsx so it runs on a background launch) configures StepCount + AppleExerciseTime at hourly frequency once per install and subscribes; `syncHealthInBackground()` uploads 2 days to the existing POST /api/health/snapshots (same auth, same server autocheck). Skips while locked (Health unreadable), within 15 min of the last sync, or if any read failed (no blank overwrites). Disconnect / sign-out clears the background types. Shared `collectSnapshots()` replaces the inline reads in `syncHealth()` (foreground behaviour unchanged).
+- lib/health-aggregate.ts: pure `backgroundSyncDecision()` + constants, tested in apps/web/src/lib/evidence/health-snapshots-device.test.ts.
+- No server, schema or migration changes.
+
+### Manual steps needed
+- [ ] Jimmy: before the next iOS EAS build, confirm HealthKit is checked on identifier com.heelerdigital.acuity (https://developer.apple.com/account/resources/identifiers/list). The portal has no separate "Background Delivery" box: a profile with HealthKit already carries `com.apple.developer.healthkit.background-delivery`, and EAS capability sync skips that key (eas-cli 26 capabilityList maps only `com.apple.developer.healthkit`). So no build failure is expected. If the archive step fails with "provisioning profile doesn't include ... healthkit.background-delivery", regenerate the App Store provisioning profile and rebuild.
+
+### Notes
+- Not verified on a device yet: needs a build with the entitlement. Check by walking with the app closed but phone unlocked, then confirming a HEALTH HabitCheck row appears.
+- iOS doesn't wake an app the user force-quit from the app switcher, and Health data can't be read while the phone is locked; those wakes are skipped and the next one (or app open) catches up.
+
 ## [2026-10-27] — One end-of-day founder email replaces per-signup emails
 
 **Requested by:** Keenan
