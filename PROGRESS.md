@@ -9,6 +9,24 @@
 
 
 
+## [2026-10-27] — Paywall: red price slashes, "ends today" tag, coffee comparison
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 19e7bbc7
+
+### In plain English (for Keenan)
+In the early bird price group, the normal prices are crossed out in red, the early bird banner carries an "Ends today, <date>" tag, and the yearly plan says "Less than one coffee a month". The $9.99 group sees "About the price of two coffees a month". The yearly card keeps $3.33/month as the big number, per Keenan.
+
+### Technical changes (for Jimmy)
+- apps/web/src/components/funnel-v9.tsx: `SLASH` class (red line-through) on struck prices; `endsLabel` set after mount in the visitor's local date (no hydration mismatch); `coffeeLine` from the arm's per-month annual price (≤$5 one coffee, ≤$10 two coffees).
+
+### Manual steps needed
+None
+
+### Notes
+- Keenan (10-27): standard sales urgency is fine if it's industry-normal. The "ends today" date rolls each day by design. Keep claims literally true.
+
 ## [2026-10-27] — Paywall: "early bird" framing for the test price, and no more "Ripple Pro" wording
 
 **Requested by:** Keenan
