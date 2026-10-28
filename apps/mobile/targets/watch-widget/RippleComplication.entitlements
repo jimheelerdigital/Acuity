@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  Hand-written on purpose (see expo-target.config.js): an `entitlements` object
+  in the config would auto-add the main app's App Group to this target.
+
+  The watch app has no keychain-access-groups entitlement, so its Keychain
+  items (the session token, WatchKeychain.swift) live in its default access
+  group = its application identifier, TEAMID.com.heelerdigital.acuity.watchkitapp.
+  Listing that group here lets the complication read the token. Keychain
+  Sharing is not a Developer-portal capability; profiles allow TEAMID.*.
+-->
+<plist version="1.0">
+<dict>
+    <key>keychain-access-groups</key>
+    <array>
+        <string>$(AppIdentifierPrefix)com.heelerdigital.acuity.watchkitapp</string>
+    </array>
+</dict>
+</plist>

@@ -61,9 +61,13 @@ struct RecordView: View {
         .padding(.horizontal, 6)
         // Drain any queued recordings when the page appears (e.g. back in range).
         .task { await drainQueue() }
-        // Action Button / Siri intent asks to start a debrief.
+        // Action Button / Siri intent / complication tap asks to start a debrief.
         .onChange(of: router.recordTrigger) { _, _ in
-            if phase == .idle { Task { await beginRecording() } }
+            if router.consumePendingStart(), phase == .idle { Task { await beginRecording() } }
+        }
+        // Cold launch: the request landed before this view subscribed.
+        .onAppear {
+            if router.consumePendingStart(), phase == .idle { Task { await beginRecording() } }
         }
     }
 
