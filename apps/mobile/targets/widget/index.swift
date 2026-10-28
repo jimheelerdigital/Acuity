@@ -110,6 +110,19 @@ private var accent: Color { themeColor("themePrimary") ?? Color("AccentColor") }
 /// Lighter step of the primary, for the top of gradients.
 private var accentHi: Color { themeColor("themePrimaryHi") ?? accent.opacity(0.75) }
 
+/// Home-screen widget background (Jimmy, 2026-10-28: "Warm wash but not
+/// transitioning"): one flat, even tint of the user's palette over the
+/// system background. No gradient. Stronger in dark mode so it still reads.
+struct WarmWash: View {
+    @Environment(\.colorScheme) private var scheme
+    var body: some View {
+        ZStack {
+            Color(.systemBackground)
+            accent.opacity(scheme == .dark ? 0.20 : 0.13)
+        }
+    }
+}
+
 /// Flame fill for the streak (Jimmy, 2026-10-28: "It's an achievement").
 private var flameGradient: LinearGradient {
     LinearGradient(colors: [accentHi, accent], startPoint: .top, endPoint: .bottom)
@@ -159,7 +172,7 @@ struct MediumView: View {
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
 
             Rectangle()
-                .fill(Color.secondary.opacity(0.22))
+                .fill(accent.opacity(0.28))
                 .frame(width: 1)
                 .padding(.vertical, 10)
 
@@ -196,7 +209,7 @@ private struct HabitRow: View {
 
             Image(systemName: habit.done == 1 ? "checkmark.circle.fill" : "circle")
                 .font(.system(size: 19))
-                .foregroundColor(habit.done == 1 ? accent : Color.secondary.opacity(0.6))
+                .foregroundColor(habit.done == 1 ? accent : accent.opacity(0.6))
             Text(habit.name)
                 .font(.system(size: 17, weight: .medium))
                 .lineLimit(1)
@@ -308,11 +321,11 @@ struct RippleWidgetEntryView: View {
         case .systemSmall:
             SmallView(entry: entry)
                 .widgetURL(tapURL(entry))
-                .containerBackground(for: .widget) { Color(.systemBackground) }
+                .containerBackground(for: .widget) { WarmWash() }
         default:
             MediumView(entry: entry)
                 .widgetURL(tapURL(entry))
-                .containerBackground(for: .widget) { Color(.systemBackground) }
+                .containerBackground(for: .widget) { WarmWash() }
         }
     }
 }
@@ -894,12 +907,12 @@ struct RippleTodayWidgetEntryView: View {
         case .systemLarge:
             TodayListView(entry: entry, limit: TODAY_LIMIT, titleLines: 2)
                 .widgetURL(TASKS_URL)
-                .containerBackground(for: .widget) { Color(.systemBackground) }
+                .containerBackground(for: .widget) { WarmWash() }
         default:
             // Medium: 3 big rows (Jimmy, 10/19). "+N more" covers the rest.
             TodayListView(entry: entry, limit: MEDIUM_LIMIT)
                 .widgetURL(TASKS_URL)
-                .containerBackground(for: .widget) { Color(.systemBackground) }
+                .containerBackground(for: .widget) { WarmWash() }
         }
     }
 }
