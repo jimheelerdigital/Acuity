@@ -5,6 +5,9 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  BACKGROUND_MIN_GAP_MS,
+  BACKGROUND_SYNC_DAYS,
+  backgroundSyncDecision,
   buildSnapshots,
   byLocalDay,
   lastLocalDays,
@@ -73,5 +76,37 @@ describe("buildSnapshots", () => {
       hrv: new Map([["2026-10-23", 900]]),
     });
     expect(rows[0]).toEqual({ date: "2026-10-23", steps: 500000, activeMinutes: 1440, sleepHours: 24, avgHRV: 500 });
+  });
+});
+
+describe("backgroundSyncDecision", () => {
+  const now = at(23, 14).getTime();
+  const base = { enabled: true, running: false, protectedDataAvailable: true, lastSyncedAt: 0, now };
+
+  it("syncs when connected, unlocked and not synced recently", () => {
+    expect(backgroundSyncDecision(base)).toBe("sync");
+  });
+  it("does nothing when Health isn't connected on this phone", () => {
+    expect(backgroundSyncDecision({ ...base, enabled: false })).toBe("disabled");
+  });
+  it("shares one upload when a sync is already running", () => {
+    expect(backgroundSyncDecision({ ...base, running: true })).toBe("busy");
+  });
+  it("skips while the phone is locked (Health data is unreadable)", () => {
+    expect(backgroundSyncDecision({ ...base, protectedDataAvailable: false })).toBe("locked");
+  });
+  it("skips a second wake within 15 minutes", () => {
+    expect(
+      backgroundSyncDecision({ ...base, lastSyncedAt: now - BACKGROUND_MIN_GAP_MS + 1 })
+    ).toBe("too-soon");
+    expect(backgroundSyncDecision({ ...base, lastSyncedAt: now - BACKGROUND_MIN_GAP_MS })).toBe(
+      "sync"
+    );
+  });
+  it("treats a corrupt last-sync time as never synced", () => {
+    expect(backgroundSyncDecision({ ...base, lastSyncedAt: Number.NaN })).toBe("sync");
+  });
+  it("re-sends today and yesterday", () => {
+    expect(lastLocalDays(at(1, 0, 30), BACKGROUND_SYNC_DAYS)).toEqual(["2026-09-30", "2026-10-01"]);
   });
 });
