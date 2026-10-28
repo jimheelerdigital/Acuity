@@ -79,7 +79,6 @@ export const WHATS_NEW_STEP_INDEX = {
   widgets: TOUR_TOTAL_STEPS + 2, // Setup → Widgets card
   actionButton: TOUR_TOTAL_STEPS + 3, // Setup → Action Button card
   notifications: TOUR_TOTAL_STEPS + 4, // Notifications → master toggle
-  siri: TOUR_TOTAL_STEPS + 5, // Setup → Siri card (welcome tour, 2026-10-28)
 } as const;
 
 /** Screen each What's New target lives on (navigated to before measuring). */
@@ -89,5 +88,4 @@ export const WHATS_NEW_STEP_PATHS: Record<keyof typeof WHATS_NEW_STEP_INDEX, str
   widgets: "/setup",
   actionButton: "/setup",
   notifications: "/notification-preferences",
-  siri: "/setup",
 };

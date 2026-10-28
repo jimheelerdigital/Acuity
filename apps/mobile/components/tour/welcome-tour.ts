@@ -54,8 +54,8 @@ export interface WelcomeTourCard {
  * per-step `before` navigates), and the dim is light so the page reads.
  *
  * iOS (2026-10-28, Jimmy: the Action Button, widgets and Siri are "an
- * absolute game changer"; point people to them from the tour): three more
- * stops on Set up Ripple everywhere (/setup) before the last card. Android
+ * absolute game changer"; point people to them from the tour, ONE stop, not
+ * three): one stop on Set up Ripple everywhere (/setup) before the last card. Android
  * has no Action Button or Siri and its setup cards have no tour targets, so
  * it keeps the original stops.
  */
@@ -94,18 +94,8 @@ export function welcomeTourCards(
       ? [
           {
             target: WHATS_NEW_STEP_INDEX.actionButton,
-            title: "One press to talk",
-            body: "On iPhone 15 Pro and later, set the Action Button to Ripple. Press it from anywhere, even locked, and start talking.",
-          },
-          {
-            target: WHATS_NEW_STEP_INDEX.siri,
-            title: "Or just ask Siri",
-            body: "Say \"Hey Siri, start a debrief in Ripple.\" Nothing to set up.",
-          },
-          {
-            target: WHATS_NEW_STEP_INDEX.widgets,
-            title: "Keep it on your Home Screen",
-            body: "Add the Ripple widgets to see your streak, habits and today's tasks without opening the app.",
+            title: "Make Ripple one tap away",
+            body: "Press the Action Button, ask Siri, or tap a widget, and you're talking in a second. No unlocking, no hunting for the app. Set it up here, or anytime from Profile.",
           },
         ]
       : []),

@@ -149,7 +149,6 @@ const WHATS_NEW_BELOW = new Set<number>([
   WHATS_NEW_STEP_INDEX.widgets,
   WHATS_NEW_STEP_INDEX.actionButton,
   WHATS_NEW_STEP_INDEX.notifications,
-  WHATS_NEW_STEP_INDEX.siri,
 ]);
 const LAST_CLASSIC = TOUR_TOTAL_STEPS - 1;
 // Welcome tour gets the Set up Ripple everywhere stops on iOS (welcome-tour.ts).
