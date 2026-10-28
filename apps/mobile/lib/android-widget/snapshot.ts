@@ -56,6 +56,21 @@ export async function readWidgetSnapshot(): Promise<WidgetSnapshot | null> {
   }
 }
 
+const THEME_KEY = "ripple.androidWidget.theme.v1";
+
+/** The user's palette primary ("#rrggbb"), written when the theme changes. */
+export async function writeWidgetAccent(hex: string): Promise<void> {
+  await AsyncStorage.setItem(THEME_KEY, hex);
+}
+
+export async function readWidgetAccent(): Promise<string | null> {
+  try {
+    return await AsyncStorage.getItem(THEME_KEY);
+  } catch {
+    return null;
+  }
+}
+
 /** Clear on sign-out so the next person on the device never sees it. */
 export async function clearWidgetSnapshot(): Promise<void> {
   await AsyncStorage.removeItem(KEY);

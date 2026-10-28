@@ -22,6 +22,7 @@ import {
 import {
   clearAndroidWidget,
   publishAndroidWidget,
+  publishAndroidWidgetAccent,
 } from "@/lib/android-widget/update";
 
 /**
@@ -137,6 +138,8 @@ export function publishThemeToWatch(theme: {
   secondary: string;
   accent: string;
 }): void {
+  // Android widget follows the palette too (2026-10-28).
+  if (Platform.OS === "android") void publishAndroidWidgetAccent(theme.primary).catch(() => {});
   if (!storage) return;
   try {
     storage.set("themePrimary", theme.primary);

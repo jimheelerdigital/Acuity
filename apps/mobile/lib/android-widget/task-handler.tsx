@@ -1,7 +1,7 @@
 import type { WidgetTaskHandlerProps } from "react-native-android-widget";
 
 import { renderRippleWidget } from "./ripple-widget";
-import { ANDROID_WIDGET_NAME, readWidgetSnapshot } from "./snapshot";
+import { ANDROID_WIDGET_NAME, readWidgetAccent, readWidgetSnapshot } from "./snapshot";
 
 /**
  * Runs in a headless JS task when the launcher asks for the widget —
@@ -19,9 +19,9 @@ export async function rippleWidgetTaskHandler(
     case "WIDGET_ADDED":
     case "WIDGET_UPDATE":
     case "WIDGET_RESIZED": {
-      const snapshot = await readWidgetSnapshot();
+      const [snapshot, accent] = await Promise.all([readWidgetSnapshot(), readWidgetAccent()]);
       renderWidget(
-        renderRippleWidget(snapshot, widgetInfo.width, widgetInfo.height)
+        renderRippleWidget(snapshot, widgetInfo.width, widgetInfo.height, accent)
       );
       break;
     }
