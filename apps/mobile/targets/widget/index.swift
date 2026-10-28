@@ -160,7 +160,7 @@ struct MediumView: View {
         // vertical line. The system's widget margins provide the outer
         // padding, so none is added here.
         HStack(alignment: .center, spacing: 14) {
-            VStack(alignment: .leading, spacing: 10) {
+            VStack(alignment: .leading, spacing: 12) {
                 ForEach(Array(entry.habits.prefix(4).enumerated()), id: \.offset) { _, h in
                     HabitRow(habit: h, streakWidth: habitStreakWidth)
                 }
@@ -204,14 +204,14 @@ private struct HabitRow: View {
                     Color.clear.accessibilityHidden(true)
                 }
             }
-            .frame(width: streakWidth, height: 17, alignment: .trailing)
+            .frame(width: streakWidth, height: 18, alignment: .trailing)
             .opacity(streakWidth > 0 ? 1 : 0)
 
             Image(systemName: habit.done == 1 ? "checkmark.circle.fill" : "circle")
-                .font(.system(size: 19))
-                .foregroundColor(habit.done == 1 ? accent : accent.opacity(0.6))
+                .font(.system(size: 20, weight: .medium))
+                .foregroundColor(habit.done == 1 ? accent : accent.opacity(0.85))
             Text(habit.name)
-                .font(.system(size: 17, weight: .medium))
+                .font(.system(size: 18, weight: .semibold))
                 .lineLimit(1)
                 .strikethrough(habit.done == 1, color: .secondary)
                 .foregroundColor(habit.done == 1 ? .secondary : .primary)
