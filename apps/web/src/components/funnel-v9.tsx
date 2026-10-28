@@ -1660,11 +1660,61 @@ function PaywallScreen({ plan, setPlan, next, go, track, firstName, answers }: V
           <CircleCheck className="h-3.5 w-3.5 text-acuity-good" /> Your plan is ready{firstName ? `, ${firstName}` : ""}
         </span>
       </div>
+      {/* Order (2026-10-27, Keenan): why it's for her → what she gets → proof
+          → then the price. The CTA stays pinned at the bottom throughout. */}
       <Heading
-        title={<>Less to carry, <span className="grad-text">starting this week</span></>}
-        sub={<>For {plateLabel(answers.multi.plate ?? [], C.plateLabels)}. Ripple is free for your first 7 days.</>}
+        title={<>Less to carry.<br /><span className="grad-text">A clearer next step.</span></>}
+        sub={<>Talk through what&rsquo;s on your mind about {plateLabel(answers.multi.plate ?? [], C.plateLabels)}. Ripple turns it into your to-dos and next steps. No daily streak to keep up.</>}
       />
 
+      {/* What she'd actually get, shown, not listed (2026-10-27 rebuild). */}
+      <div className="card rounded-3xl p-5">
+        <p className="text-[11px] font-bold uppercase tracking-wide text-acuity-text-ter">Example debrief</p>
+        <p className="mt-2 text-[15px] italic leading-relaxed">&ldquo;{sample.said}&rdquo;</p>
+        <div className="mt-4 rounded-2xl soft p-4">
+          <p className="text-[12px] font-bold text-acuity-primary">Ripple hands back</p>
+          <div className="mt-2 space-y-1.5">
+            {sample.tasks.map((t) => (
+              <p key={t} className="flex items-start gap-2 text-[14px] leading-snug">
+                <CircleCheck className="mt-0.5 h-4 w-4 shrink-0 text-acuity-good" /> {t}
+              </p>
+            ))}
+          </div>
+          <p className="mt-3 text-[13px] text-acuity-text-sec">
+            <span className="font-semibold text-acuity-text">Mood:</span> {sample.mood}
+          </p>
+          <p className="mt-1 text-[13px] text-acuity-text-sec">
+            <span className="font-semibold text-acuity-text">Pattern:</span> {sample.pattern}
+          </p>
+        </div>
+      </div>
+
+
+      <div className="mt-5 grid grid-cols-3 gap-2">
+        {[
+          { icon: ListChecks, title: "Your to-do list", text: "Suggested from what you say" },
+          { icon: Repeat, title: "Your habits", text: "The ones you mention, kept track of" },
+          { icon: CalendarCheck, title: "Weekly report", text: "How your week actually went" },
+        ].map((b) => (
+          <div key={b.title} className="card rounded-2xl px-3 py-3.5 text-center">
+            <span className="mx-auto h-9 w-9 rounded-xl chip-ico flex items-center justify-center">
+              <b.icon className="h-[18px] w-[18px]" />
+            </span>
+            <p className="mt-2 text-[13px] font-semibold leading-tight">{b.title}</p>
+            <p className="mt-1 text-[11.5px] leading-snug text-acuity-text-sec">{b.text}</p>
+          </div>
+        ))}
+      </div>
+
+      <div className="mt-6">
+        <Stars />
+        <ReviewCard {...C.reviews[0]} className="mt-3 w-full" />
+      </div>
+
+      <div className="mt-8 mb-7 text-center">
+        <p className="text-[19px] font-bold tracking-tight">Free for your first 7 days</p>
+        <p className="mt-1 text-[13px] text-acuity-text-sec">$0 today &middot; reminder on day 4 &middot; cancel in 2 taps</p>
+      </div>
       <div className="space-y-3">
         <button onClick={() => pick("yearly")} className={`relative w-full text-left rounded-3xl px-5 pt-5 pb-4 transition ${plan === "yearly" ? "card card-sel" : "card"}`}>
           <span className="absolute -top-3 left-5 rounded-full grad px-3 py-1 text-[11px] font-bold text-white shadow">{earlyBird ? `EARLY BIRD · ${earlyBirdOffPct}% OFF${endsLabel ? ` · ENDS ${endsLabel.toUpperCase()}` : ""}` : `BEST VALUE · SAVE ${price.savingsPct}`}</span>
@@ -1699,42 +1749,6 @@ function PaywallScreen({ plan, setPlan, next, go, track, firstName, answers }: V
             </div>
           </div>
         </button>
-      </div>
-
-      {/* What she'd actually get, shown, not listed (2026-10-27 rebuild). */}
-      <div className="mt-5 card rounded-3xl p-5">
-        <p className="text-[11px] font-bold uppercase tracking-wide text-acuity-text-ter">Example debrief</p>
-        <p className="mt-2 text-[15px] italic leading-relaxed">&ldquo;{sample.said}&rdquo;</p>
-        <div className="mt-4 rounded-2xl soft p-4">
-          <p className="text-[12px] font-bold text-acuity-primary">Ripple hands back</p>
-          <div className="mt-2 space-y-1.5">
-            {sample.tasks.map((t) => (
-              <p key={t} className="flex items-start gap-2 text-[14px] leading-snug">
-                <CircleCheck className="mt-0.5 h-4 w-4 shrink-0 text-acuity-good" /> {t}
-              </p>
-            ))}
-          </div>
-          <p className="mt-3 text-[13px] text-acuity-text-sec">
-            <span className="font-semibold text-acuity-text">Mood:</span> {sample.mood}
-          </p>
-          <p className="mt-1 text-[13px] text-acuity-text-sec">
-            <span className="font-semibold text-acuity-text">Pattern:</span> {sample.pattern}
-          </p>
-        </div>
-        <p className="mt-3 text-[13px] text-acuity-text-sec">Plus the habits you mention and a weekly report of how your week went.</p>
-      </div>
-
-
-      <div className="mt-5 flex items-start gap-3 rounded-3xl soft px-5 py-4">
-        <Sprout className="mt-0.5 h-5 w-5 shrink-0 text-acuity-primary" />
-        <p className="text-[14px] leading-snug">
-          <span className="font-semibold">No streaks to keep up.</span> Talk to it whenever you need to sort things out. Ripple keeps track so you don&rsquo;t have to.
-        </p>
-      </div>
-
-      <div className="mt-6">
-        <Stars />
-        <ReviewCard {...C.reviews[0]} className="mt-3 w-full" />
       </div>
 
       <div className="mt-6 card rounded-3xl px-5 py-2">

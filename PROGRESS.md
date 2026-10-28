@@ -9,6 +9,24 @@
 
 
 
+## [2026-10-27] — Web paywall reordered: why it's for her first, price last
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** see git log
+
+### In plain English (for Keenan)
+The paywall now tells a story before it asks for money. Headline: "Less to carry. A clearer next step." Then a line built from her own answers that explains how it works and says there's no daily streak to keep up. Then the example of what Ripple hands back, three quick benefits (to-do list, habits, weekly report), and the review. Only after that comes "Free for your first 7 days", with the yearly and monthly plans. The "Start my free 7 days" button stays pinned at the bottom the whole time.
+
+### Technical changes (for Jimmy)
+- apps/web/src/components/funnel-v9.tsx (PaywallScreen): section order heading → example → 3-benefit grid → review → trial header + plans → FAQ. The separate no-streak card is folded into the heading sub. The benefit grid uses ListChecks / Repeat / CalendarCheck.
+
+### Manual steps needed
+None
+
+### Notes
+- Copy follows the 10-27 review: no "every task" or "tracks themselves" overpromises. Benefits say "Suggested from what you say" and "The ones you mention, kept track of".
+
 ## [2026-10-27] — Mythicals: back to building videos without a video check, with looser motion rules
 
 - **Requested by:** Keenan
