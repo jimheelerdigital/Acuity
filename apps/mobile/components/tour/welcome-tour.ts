@@ -94,7 +94,7 @@ export function welcomeTourCards(
       ? [
           {
             target: WHATS_NEW_STEP_INDEX.actionButton,
-            title: "Talk to Ripple from anywhere",
+            title: "Ripple beyond the app",
             body: "Press the Action Button, ask Siri, or tap a widget, and you're talking in a second. No unlocking, no hunting for the app. Set it up here, or anytime from Profile.",
           },
         ]
