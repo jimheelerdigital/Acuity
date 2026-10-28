@@ -1629,6 +1629,16 @@ function PaywallScreen({ plan, setPlan, next, go, track, firstName, answers }: V
   const normal = pricesForArm("std");
   const earlyBird = price.arm === "low" && normal.annualCents > price.annualCents;
   const earlyBirdOffPct = Math.round((1 - price.annualCents / normal.annualCents) * 100);
+  // "Ends today" in her own time zone (Keenan 2026-10-27: urgency is industry
+  // standard). Set after mount so the server render never disagrees.
+  const [endsLabel, setEndsLabel] = useState("");
+  useEffect(() => {
+    setEndsLabel(`today, ${new Date().toLocaleDateString("en-US", { month: "short", day: "numeric" })}`);
+  }, []);
+  // Value against something she already pays for.
+  const perMonthCents = Math.round(price.annualCents / 12);
+  const coffeeLine =
+    perMonthCents <= 500 ? "Less than one coffee a month" : perMonthCents <= 1000 ? "About the price of two coffees a month" : "";
   // Log which price she saw, once per browser session (signed in by now, so
   // the event carries her userId as well as the funnel session).
   useEffect(() => {
@@ -1659,7 +1669,10 @@ function PaywallScreen({ plan, setPlan, next, go, track, firstName, answers }: V
 
       {earlyBird && (
         <div className="mb-4 rounded-3xl grad px-5 py-4 text-white shadow">
-          <p className="text-[12px] font-bold uppercase tracking-wide opacity-90">Early bird price</p>
+          <div className="flex items-center justify-between gap-2">
+            <p className="text-[12px] font-bold uppercase tracking-wide opacity-90">Early bird price</p>
+            {endsLabel && <span className="rounded-full bg-white/25 px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-wide">Ends {endsLabel}</span>}
+          </div>
           <p className="mt-1 text-[15px] font-semibold leading-snug">
             You&rsquo;re early, so you get {price.annual}/year instead of {normal.annual}. Your price stays locked in for as long as you&rsquo;re a member.
           </p>
@@ -1674,12 +1687,13 @@ function PaywallScreen({ plan, setPlan, next, go, track, firstName, answers }: V
             <div className="flex-1">
               <p className="text-[16px] font-semibold">Yearly</p>
               <p className="text-[13px] text-acuity-text-sec tabular-nums">
-                {earlyBird && <span className="mr-1 line-through text-acuity-text-ter">{normal.annual}</span>}
+                {earlyBird && <span className={`mr-1 ${SLASH}`}>{normal.annual}</span>}
                 {price.annual} a year after your free week
               </p>
+              {coffeeLine && <p className="mt-0.5 text-[12px] font-semibold text-acuity-primary">{coffeeLine}</p>}
             </div>
             <div className="text-right">
-              {earlyBird && <p className="text-[13px] line-through text-acuity-text-ter tabular-nums">{normal.annualAsMonthly}</p>}
+              {earlyBird && <p className={`text-[13px] tabular-nums ${SLASH}`}>{normal.annualAsMonthly}</p>}
               <p className="text-[24px] font-bold tabular-nums leading-none">{price.annualAsMonthly}</p>
               <p className="text-[12px] text-acuity-text-ter">per month</p>
             </div>
@@ -1693,7 +1707,7 @@ function PaywallScreen({ plan, setPlan, next, go, track, firstName, answers }: V
               <p className="text-[13px] text-acuity-text-sec">Billed monthly after your free week</p>
             </div>
             <div className="text-right">
-              {earlyBird && <p className="text-[13px] line-through text-acuity-text-ter tabular-nums">{normal.monthly}</p>}
+              {earlyBird && <p className={`text-[13px] tabular-nums ${SLASH}`}>{normal.monthly}</p>}
               <p className="text-[24px] font-bold tabular-nums leading-none">{price.monthly}</p>
               <p className="text-[12px] text-acuity-text-ter">per month</p>
             </div>
@@ -1796,6 +1810,9 @@ function Radio({ on }: { on: boolean }) {
     </span>
   );
 }
+
+/** Red strike-through for the normal price next to an early bird price. */
+const SLASH = "line-through decoration-red-500 decoration-2 text-acuity-text-ter";
 
 function CheckoutScreen({ plan, go, track, onPaid }: ViewProps) {
   const price = useArmPrices();
