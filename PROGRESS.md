@@ -9,6 +9,24 @@
 
 
 
+## [2026-10-27] — Paywall comparison: planner handwriting easier to read
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** see git log
+
+### In plain English (for Keenan)
+The handwritten planner notes were hard to read. They're now bigger, in darker ink and a bit straighter, and the red scribble-out line is thinner and lighter, so you can read each note while still seeing it crossed out.
+
+### Technical changes (for Jimmy)
+- apps/web/src/components/funnel-v9.tsx: `.scrawl` text 13px → 15.5px semibold; darker `SCRAWL_STYLE` inks and smaller rotations; `.strike` 1.5px at 60% opacity.
+
+### Manual steps needed
+None
+
+### Notes
+None
+
 ## [2026-10-27] — Paywall comparison: messier paper, tidy app-style Ripple column
 
 **Requested by:** Keenan

@@ -170,8 +170,8 @@ const CSS = `
 @keyframes v9-ripple { 0% { transform: scale(.55); opacity: .55; } 100% { transform: scale(1.6); opacity: 0; } }
 @keyframes v9-float { 0% { transform: translate(var(--x0), -30px) rotate(var(--r)); opacity: 0; } 15% { opacity: 1; } 70% { opacity: 1; } 100% { transform: translate(0, 112px) rotate(0deg) scale(.6); opacity: 0; } }
 @keyframes v9-bar { from { width: 0; } }
-@keyframes v9-strike { from { background-size: 0% 2px; } to { background-size: 100% 2px; } }
-.v9 .strike { background-image: linear-gradient(rgb(239 68 68 / .85), rgb(239 68 68 / .85)); background-repeat: no-repeat; background-position: 0 58%; background-size: 0% 2px; -webkit-box-decoration-break: clone; box-decoration-break: clone; }
+@keyframes v9-strike { from { background-size: 0% 1.5px; } to { background-size: 100% 1.5px; } }
+.v9 .strike { background-image: linear-gradient(rgb(239 68 68 / .6), rgb(239 68 68 / .6)); background-repeat: no-repeat; background-position: 0 60%; background-size: 0% 1.5px; -webkit-box-decoration-break: clone; box-decoration-break: clone; }
 .v9 .on .strike { animation: v9-strike .5s ease-out both; animation-delay: var(--d, 0ms); }
 @keyframes v9-glow { 0%,100% { box-shadow: 0 0 0 0 color-mix(in oklch, var(--acuity-primary) 0%, transparent); } 50% { box-shadow: 0 0 0 6px color-mix(in oklch, var(--acuity-primary) 22%, transparent); } }
 .v9 .rv { opacity: 0; }
@@ -183,7 +183,7 @@ const CSS = `
 .v9 .scrawl { font-family: "Bradley Hand", "Segoe Print", "Comic Sans MS", "Chalkboard SE", cursive; }
 .v9 .dogear { position: absolute; right: 0; bottom: 0; width: 22px; height: 22px; background: linear-gradient(135deg, transparent 50%, #e4dcc6 50%); border-top-left-radius: 4px; }
 .v9 .stain { position: absolute; right: 8px; bottom: 10px; width: 54px; height: 54px; border-radius: 50%; border: 5px solid rgb(150 110 60 / .10); pointer-events: none; }
-@media (prefers-reduced-motion: reduce) { .v9 .rv, .v9 .rv-pop { opacity: 1 !important; animation: none !important; } .v9 .strike { background-size: 100% 2px; animation: none !important; } .v9 .glow { animation: none; } }
+@media (prefers-reduced-motion: reduce) { .v9 .rv, .v9 .rv-pop { opacity: 1 !important; animation: none !important; } .v9 .strike { background-size: 100% 1.5px; animation: none !important; } .v9 .glow { animation: none; } }
 @keyframes v9-card-in { from { opacity: 0; transform: translateY(24px) scale(.96); } to { opacity: 1; transform: none; } }
 .v9 .card-in { animation: v9-card-in .45s cubic-bezier(.2,.8,.2,1) both; }
 .v9 .fly-yes { transform: translateX(115%) rotate(10deg); opacity: 0; transition: transform .38s ease-in, opacity .38s ease-in; }
@@ -1705,11 +1705,11 @@ function CountUp({ cents, run, ms = 900 }: { cents: number; run: boolean; ms?: n
 const RIPPLE_ROW_ICONS = [Mic, Smartphone, Repeat, TrendingUp, RotateCcw];
 /** Hand-written mess: each planner note a little crooked, in a different pen. */
 const SCRAWL_STYLE = [
-  { rot: -2.5, x: 2, ink: "#5b6b8c" },
-  { rot: 1.8, x: 10, ink: "#6f6656" },
-  { rot: -1.2, x: 0, ink: "#7a5c5c" },
-  { rot: 2.4, x: 7, ink: "#5b6b8c" },
-  { rot: -2, x: 3, ink: "#6f6656" },
+  { rot: -1.4, x: 1, ink: "#33456b" },
+  { rot: 1.1, x: 6, ink: "#4a4236" },
+  { rot: -0.8, x: 0, ink: "#5a3a3a" },
+  { rot: 1.3, x: 4, ink: "#33456b" },
+  { rot: -1.1, x: 2, ink: "#4a4236" },
 ];
 
 function PlannerVsRipple() {
@@ -1733,7 +1733,7 @@ function PlannerVsRipple() {
             return (
               <div key={planner} className="flex min-h-[66px] items-start gap-1 py-1" style={{ transform: `rotate(${st.rot}deg) translateX(${st.x}px)` }}>
                 <X className="rv-pop mt-0.5 h-3.5 w-3.5 shrink-0 text-red-500" strokeWidth={3} style={{ "--d": `${300 + i * 170}ms` } as CSSProperties} />
-                <p className="scrawl text-[13px] leading-[1.2]" style={{ color: st.ink }}>
+                <p className="scrawl text-[15.5px] font-semibold leading-[1.25]" style={{ color: st.ink }}>
                   <span className="strike" style={{ "--d": `${400 + i * 170}ms` } as CSSProperties}>{planner}</span>
                 </p>
               </div>
