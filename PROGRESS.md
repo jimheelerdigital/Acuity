@@ -9,6 +9,24 @@
 
 
 
+## [2026-10-27] — Paywall comparison: messier paper, tidy app-style Ripple column
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** see git log
+
+### In plain English (for Keenan)
+The paper side was looking neater than Ripple's. Now the planner notes sit crooked, in mismatched pen colors, on a page with a coffee ring and a dog-eared corner, each one scribbled out. The Ripple side looks like a tidy app screen: five white tiles, each with an icon, a short bold title ("Just talk", "Always on you", "Tracks habits", "Your patterns", "Never runs out"), a one-line explanation, and a green check that pops in.
+
+### Technical changes (for Jimmy)
+- apps/web/src/components/funnel-v9.tsx: `SCRAWL_STYLE` (per-row rotation/offset/ink), `.dogear`, `RIPPLE_ROW_ICONS` (Mic, Smartphone, Repeat, TrendingUp, RotateCcw), `RIPPLE_TILES` titles/subs; Ripple column renders as white tiles inside the coral card.
+
+### Manual steps needed
+None
+
+### Notes
+- Tile titles are nowrap and kept to ≤14 characters so they fit a 390px phone.
+
 ## [2026-10-27] — Paywall: planner comparison back to side-by-side (scruffy paper vs bright Ripple)
 
 **Requested by:** Keenan

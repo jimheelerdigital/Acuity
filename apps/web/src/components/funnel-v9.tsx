@@ -181,6 +181,7 @@ const CSS = `
 .v9 .glow { animation: v9-glow 2.4s ease-in-out infinite; }
 .v9 .paper { background-color: #fbf7ec; background-image: repeating-linear-gradient(to bottom, transparent 0 21px, rgb(120 150 190 / .28) 21px 22px); border: 1px solid #e4dcc6; box-shadow: 0 2px 6px rgba(80,60,20,.08); color: #6f6656; }
 .v9 .scrawl { font-family: "Bradley Hand", "Segoe Print", "Comic Sans MS", "Chalkboard SE", cursive; }
+.v9 .dogear { position: absolute; right: 0; bottom: 0; width: 22px; height: 22px; background: linear-gradient(135deg, transparent 50%, #e4dcc6 50%); border-top-left-radius: 4px; }
 .v9 .stain { position: absolute; right: 8px; bottom: 10px; width: 54px; height: 54px; border-radius: 50%; border: 5px solid rgb(150 110 60 / .10); pointer-events: none; }
 @media (prefers-reduced-motion: reduce) { .v9 .rv, .v9 .rv-pop { opacity: 1 !important; animation: none !important; } .v9 .strike { background-size: 100% 2px; animation: none !important; } .v9 .glow { animation: none; } }
 @keyframes v9-card-in { from { opacity: 0; transform: translateY(24px) scale(.96); } to { opacity: 1; transform: none; } }
@@ -1640,6 +1641,14 @@ const PLANNER_VS_RIPPLE: [string, string][] = [
   ["Can't show you what keeps coming up", "Shows your patterns week to week"],
   ["Run out of pages, buy another", "Picks up right where you left off"],
 ];
+/** Ripple column tiles: short title + one small line (same order as above). */
+const RIPPLE_TILES: { title: string; sub: string }[] = [
+  { title: "Just talk", sub: "It writes the list" },
+  { title: "Always on you", sub: "Right on your phone" },
+  { title: "Tracks habits", sub: "From what you say" },
+  { title: "Your patterns", sub: "Week to week" },
+  { title: "Never runs out", sub: "Picks up anytime" },
+];
 /** Keenan's figures (2026-10-27): average planner $27.43, 2 bought a year. */
 const PLANNER_PRICE_CENTS = 2743;
 const PLANNERS_PER_YEAR_CENTS = PLANNER_PRICE_CENTS * 2;
@@ -1692,6 +1701,17 @@ function CountUp({ cents, run, ms = 900 }: { cents: number; run: boolean; ms?: n
   return <>{formatCents(run ? v : 0)}</>;
 }
 
+/** Ripple-side icons, one per PLANNER_VS_RIPPLE row. */
+const RIPPLE_ROW_ICONS = [Mic, Smartphone, Repeat, TrendingUp, RotateCcw];
+/** Hand-written mess: each planner note a little crooked, in a different pen. */
+const SCRAWL_STYLE = [
+  { rot: -2.5, x: 2, ink: "#5b6b8c" },
+  { rot: 1.8, x: 10, ink: "#6f6656" },
+  { rot: -1.2, x: 0, ink: "#7a5c5c" },
+  { rot: 2.4, x: 7, ink: "#5b6b8c" },
+  { rot: -2, x: 3, ink: "#6f6656" },
+];
+
 function PlannerVsRipple() {
   const [ref, on] = useInView<HTMLDivElement>();
   return (
@@ -1701,34 +1721,53 @@ function PlannerVsRipple() {
       </p>
       <p className="mt-1 text-center text-[13px] text-acuity-text-sec">Why people are switching</p>
       <div className="mt-4 grid grid-cols-2 gap-2.5">
-        {/* The planner: tired lined paper, scrawled notes, crossed out. */}
-        <div className="paper rv relative -rotate-1 rounded-xl px-3 pb-3 pt-9" style={{ "--d": "0ms" } as CSSProperties}>
-          <span className="absolute left-0 right-0 top-0 h-6 rounded-t-xl bg-[#e9e2cf] text-center text-[11px] font-bold uppercase tracking-wide leading-6 text-[#8a7f66]">
+        {/* The planner: crumpled lined paper, crooked notes in mixed pens, scribbled out. */}
+        <div className="paper rv relative -rotate-[1.5deg] rounded-lg px-2.5 pb-3 pt-9" style={{ "--d": "0ms" } as CSSProperties}>
+          <span className="absolute left-0 right-0 top-0 h-6 rounded-t-lg bg-[#e9e2cf] text-center text-[11px] font-bold uppercase tracking-wide leading-6 text-[#8a7f66]">
             Paper planner
           </span>
           <span className="stain" aria-hidden />
-          {PLANNER_VS_RIPPLE.map(([planner], i) => (
-            <div key={planner} className="flex min-h-[62px] items-start gap-1.5 py-1">
-              <X className="rv-pop mt-0.5 h-3.5 w-3.5 shrink-0 text-red-500" strokeWidth={3} style={{ "--d": `${300 + i * 170}ms` } as CSSProperties} />
-              <p className="scrawl text-[13px] leading-[1.25] text-[#6f6656]">
-                <span className="strike" style={{ "--d": `${400 + i * 170}ms` } as CSSProperties}>{planner}</span>
-              </p>
-            </div>
-          ))}
+          <span className="dogear" aria-hidden />
+          {PLANNER_VS_RIPPLE.map(([planner], i) => {
+            const st = SCRAWL_STYLE[i % SCRAWL_STYLE.length];
+            return (
+              <div key={planner} className="flex min-h-[66px] items-start gap-1 py-1" style={{ transform: `rotate(${st.rot}deg) translateX(${st.x}px)` }}>
+                <X className="rv-pop mt-0.5 h-3.5 w-3.5 shrink-0 text-red-500" strokeWidth={3} style={{ "--d": `${300 + i * 170}ms` } as CSSProperties} />
+                <p className="scrawl text-[13px] leading-[1.2]" style={{ color: st.ink }}>
+                  <span className="strike" style={{ "--d": `${400 + i * 170}ms` } as CSSProperties}>{planner}</span>
+                </p>
+              </div>
+            );
+          })}
         </div>
-        {/* Ripple: bright, does more. */}
-        <div className="rv relative overflow-hidden rounded-xl grad px-3 pb-3 pt-9 text-white shadow-lg" style={{ "--d": "150ms" } as CSSProperties}>
-          <span className="absolute left-0 right-0 top-0 flex h-6 items-center justify-center gap-1 bg-white/20 text-[11px] font-bold uppercase tracking-wide">
+        {/* Ripple: a clean, organized app view. */}
+        <div className="rv relative overflow-hidden rounded-2xl grad p-1.5 pt-8 shadow-lg" style={{ "--d": "150ms" } as CSSProperties}>
+          <span className="absolute left-0 right-0 top-0 flex h-7 items-center justify-center gap-1 text-[11px] font-bold uppercase tracking-wide text-white">
             <Sparkles className="h-3 w-3" /> Ripple
           </span>
-          {PLANNER_VS_RIPPLE.map(([planner, ripple], i) => (
-            <div key={planner} className="flex min-h-[62px] items-start gap-1.5 py-1">
-              <span className="rv-pop mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-white text-acuity-primary" style={{ "--d": `${700 + i * 170}ms` } as CSSProperties}>
-                <Check className="h-2.5 w-2.5" strokeWidth={4} />
-              </span>
-              <p className="rv text-[13.5px] font-semibold leading-[1.25]" style={{ "--d": `${700 + i * 170}ms` } as CSSProperties}>{ripple}</p>
-            </div>
-          ))}
+          <div className="space-y-1.5">
+            {PLANNER_VS_RIPPLE.map(([planner, ripple], i) => {
+              const Icon = RIPPLE_ROW_ICONS[i % RIPPLE_ROW_ICONS.length];
+              return (
+                <div
+                  key={planner}
+                  className="rv flex min-h-[64px] items-center gap-1.5 rounded-xl bg-white px-1.5 py-2 text-acuity-text shadow-sm"
+                  style={{ "--d": `${700 + i * 170}ms` } as CSSProperties}
+                >
+                  <span className="relative flex h-7 w-7 shrink-0 items-center justify-center rounded-lg chip-ico">
+                    <Icon className="h-3.5 w-3.5" />
+                    <span className="rv-pop absolute -right-1 -top-1 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-acuity-good text-white ring-2 ring-white" style={{ "--d": `${850 + i * 170}ms` } as CSSProperties}>
+                      <Check className="h-2 w-2" strokeWidth={4} />
+                    </span>
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <p className="whitespace-nowrap text-[13px] font-bold leading-tight">{RIPPLE_TILES[i]?.title ?? ripple}</p>
+                    <p className="mt-0.5 text-[11px] leading-tight text-acuity-text-sec">{RIPPLE_TILES[i]?.sub}</p>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
         </div>
       </div>
     </div>
