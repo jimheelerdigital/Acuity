@@ -9,6 +9,24 @@
 
 
 
+## [2026-10-27] — Paywall: planner comparison back to side-by-side (scruffy paper vs bright Ripple)
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** see git log
+
+### In plain English (for Keenan)
+"Paper planner vs Ripple" is side by side again. The planner column looks like a tired page of lined notebook paper: handwritten notes, a faint coffee ring, slightly crooked, and each note gets scribbled out in red. The Ripple column is a bright coral card with white check badges, and its answers pop in one by one after the planner notes are crossed out.
+
+### Technical changes (for Jimmy)
+- apps/web/src/components/funnel-v9.tsx: `PlannerVsRipple` rewritten as a 2-column grid. New CSS `.paper` (ruled background), `.scrawl` (system handwriting fonts, no web-font load) and `.stain`. `.strike` is now a background-size animation with `box-decoration-break: clone`, so it crosses every wrapped line. `.on .rv` animates children of an in-view container.
+
+### Manual steps needed
+None
+
+### Notes
+- The handwriting font depends on the device (Bradley Hand on iOS/macOS, Segoe Print on Windows, else a cursive fallback). There's no extra download.
+
 ## [2026-10-27] — Paywall: yearly price in bold, no blue click outline on the plans
 
 **Requested by:** Keenan

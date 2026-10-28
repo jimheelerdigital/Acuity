@@ -170,17 +170,19 @@ const CSS = `
 @keyframes v9-ripple { 0% { transform: scale(.55); opacity: .55; } 100% { transform: scale(1.6); opacity: 0; } }
 @keyframes v9-float { 0% { transform: translate(var(--x0), -30px) rotate(var(--r)); opacity: 0; } 15% { opacity: 1; } 70% { opacity: 1; } 100% { transform: translate(0, 112px) rotate(0deg) scale(.6); opacity: 0; } }
 @keyframes v9-bar { from { width: 0; } }
-@keyframes v9-strike { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+@keyframes v9-strike { from { background-size: 0% 2px; } to { background-size: 100% 2px; } }
+.v9 .strike { background-image: linear-gradient(rgb(239 68 68 / .85), rgb(239 68 68 / .85)); background-repeat: no-repeat; background-position: 0 58%; background-size: 0% 2px; -webkit-box-decoration-break: clone; box-decoration-break: clone; }
+.v9 .on .strike { animation: v9-strike .5s ease-out both; animation-delay: var(--d, 0ms); }
 @keyframes v9-glow { 0%,100% { box-shadow: 0 0 0 0 color-mix(in oklch, var(--acuity-primary) 0%, transparent); } 50% { box-shadow: 0 0 0 6px color-mix(in oklch, var(--acuity-primary) 22%, transparent); } }
 .v9 .rv { opacity: 0; }
-.v9 .rv.on { animation: v9-up .5s cubic-bezier(.2,.8,.2,1) both; animation-delay: var(--d, 0ms); }
+.v9 .rv.on, .v9 .on .rv { animation: v9-up .5s cubic-bezier(.2,.8,.2,1) both; animation-delay: var(--d, 0ms); }
 .v9 .rv-pop { opacity: 0; }
 .v9 .on .rv-pop { animation: v9-pop .45s cubic-bezier(.2,.8,.2,1) both; animation-delay: var(--d, 0ms); }
-.v9 .strike { position: relative; }
-.v9 .strike::after { content: ""; position: absolute; left: -2px; right: -2px; top: 52%; height: 2px; border-radius: 2px; background: rgb(239 68 68 / .85); transform: scaleX(0); transform-origin: left; }
-.v9 .on .strike::after { animation: v9-strike .45s ease-out both; animation-delay: var(--d, 0ms); }
 .v9 .glow { animation: v9-glow 2.4s ease-in-out infinite; }
-@media (prefers-reduced-motion: reduce) { .v9 .rv, .v9 .rv-pop { opacity: 1 !important; animation: none !important; } .v9 .strike::after { transform: scaleX(1); animation: none !important; } .v9 .glow { animation: none; } }
+.v9 .paper { background-color: #fbf7ec; background-image: repeating-linear-gradient(to bottom, transparent 0 21px, rgb(120 150 190 / .28) 21px 22px); border: 1px solid #e4dcc6; box-shadow: 0 2px 6px rgba(80,60,20,.08); color: #6f6656; }
+.v9 .scrawl { font-family: "Bradley Hand", "Segoe Print", "Comic Sans MS", "Chalkboard SE", cursive; }
+.v9 .stain { position: absolute; right: 8px; bottom: 10px; width: 54px; height: 54px; border-radius: 50%; border: 5px solid rgb(150 110 60 / .10); pointer-events: none; }
+@media (prefers-reduced-motion: reduce) { .v9 .rv, .v9 .rv-pop { opacity: 1 !important; animation: none !important; } .v9 .strike { background-size: 100% 2px; animation: none !important; } .v9 .glow { animation: none; } }
 @keyframes v9-card-in { from { opacity: 0; transform: translateY(24px) scale(.96); } to { opacity: 1; transform: none; } }
 .v9 .card-in { animation: v9-card-in .45s cubic-bezier(.2,.8,.2,1) both; }
 .v9 .fly-yes { transform: translateX(115%) rotate(10deg); opacity: 0; transition: transform .38s ease-in, opacity .38s ease-in; }
@@ -1693,33 +1695,41 @@ function CountUp({ cents, run, ms = 900 }: { cents: number; run: boolean; ms?: n
 function PlannerVsRipple() {
   const [ref, on] = useInView<HTMLDivElement>();
   return (
-    <div ref={ref} className={`card rounded-3xl p-5 ${on ? "on" : ""}`}>
+    <div ref={ref} className={`card rounded-3xl p-4 ${on ? "on" : ""}`}>
       <p className="text-center text-[22px] font-bold leading-tight tracking-tight">
         Paper planner <span className="text-acuity-text-ter font-semibold">vs</span> <span className="grad-text">Ripple</span>
       </p>
       <p className="mt-1 text-center text-[13px] text-acuity-text-sec">Why people are switching</p>
-      <div className="mt-5 space-y-3">
-        {PLANNER_VS_RIPPLE.map(([planner, ripple], i) => {
-          const d = { "--d": `${i * 160}ms` } as CSSProperties;
-          return (
-            <div key={planner} className={`rv ${on ? "on" : ""}`} style={d}>
-              <div className="flex items-center gap-2.5 px-1">
-                <span className="rv-pop flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-red-500/12 text-red-500" style={d}>
-                  <X className="h-3 w-3" strokeWidth={3} />
-                </span>
-                <p className="text-[13.5px] text-acuity-text-ter">
-                  <span className="strike" style={{ "--d": `${i * 160 + 250}ms` } as CSSProperties}>{planner}</span>
-                </p>
-              </div>
-              <div className="mt-1.5 flex items-center gap-2.5 rounded-2xl px-3 py-2.5" style={{ background: "var(--v9-tint)" }}>
-                <span className="rv-pop flex h-6 w-6 shrink-0 items-center justify-center rounded-full grad text-white shadow" style={{ "--d": `${i * 160 + 420}ms` } as CSSProperties}>
-                  <Check className="h-3.5 w-3.5" strokeWidth={3} />
-                </span>
-                <p className="text-[15px] font-semibold leading-snug">{ripple}</p>
-              </div>
+      <div className="mt-4 grid grid-cols-2 gap-2.5">
+        {/* The planner: tired lined paper, scrawled notes, crossed out. */}
+        <div className="paper rv relative -rotate-1 rounded-xl px-3 pb-3 pt-9" style={{ "--d": "0ms" } as CSSProperties}>
+          <span className="absolute left-0 right-0 top-0 h-6 rounded-t-xl bg-[#e9e2cf] text-center text-[11px] font-bold uppercase tracking-wide leading-6 text-[#8a7f66]">
+            Paper planner
+          </span>
+          <span className="stain" aria-hidden />
+          {PLANNER_VS_RIPPLE.map(([planner], i) => (
+            <div key={planner} className="flex min-h-[62px] items-start gap-1.5 py-1">
+              <X className="rv-pop mt-0.5 h-3.5 w-3.5 shrink-0 text-red-500" strokeWidth={3} style={{ "--d": `${300 + i * 170}ms` } as CSSProperties} />
+              <p className="scrawl text-[13px] leading-[1.25] text-[#6f6656]">
+                <span className="strike" style={{ "--d": `${400 + i * 170}ms` } as CSSProperties}>{planner}</span>
+              </p>
             </div>
-          );
-        })}
+          ))}
+        </div>
+        {/* Ripple: bright, does more. */}
+        <div className="rv relative overflow-hidden rounded-xl grad px-3 pb-3 pt-9 text-white shadow-lg" style={{ "--d": "150ms" } as CSSProperties}>
+          <span className="absolute left-0 right-0 top-0 flex h-6 items-center justify-center gap-1 bg-white/20 text-[11px] font-bold uppercase tracking-wide">
+            <Sparkles className="h-3 w-3" /> Ripple
+          </span>
+          {PLANNER_VS_RIPPLE.map(([planner, ripple], i) => (
+            <div key={planner} className="flex min-h-[62px] items-start gap-1.5 py-1">
+              <span className="rv-pop mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-white text-acuity-primary" style={{ "--d": `${700 + i * 170}ms` } as CSSProperties}>
+                <Check className="h-2.5 w-2.5" strokeWidth={4} />
+              </span>
+              <p className="rv text-[13.5px] font-semibold leading-[1.25]" style={{ "--d": `${700 + i * 170}ms` } as CSSProperties}>{ripple}</p>
+            </div>
+          ))}
+        </div>
       </div>
     </div>
   );
