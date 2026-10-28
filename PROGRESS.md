@@ -9,6 +9,25 @@
 
 
 
+## [2026-10-28] — Web funnel: reviews screen removed, reviews placed under the slider questions
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** see git log
+
+### In plain English (for Keenan)
+The full-screen "What they notice after a few weeks" reviews page is gone, so there's one less screen to tap through. Instead, a short five-star review now sits under each "Which sounds more like you?" slider question, matched to the topic. The lists question shows "The task manager is a lifesaver", the repeating-weeks question shows Sarah's Monday pattern, and the can't-name-it question shows Priya's.
+
+### Technical changes (for Jimmy)
+- apps/web/src/lib/funnel-v9-config.ts: `review` step removed from both step lists (women and men).
+- apps/web/src/components/funnel-v9.tsx: new `SliderReview` rendered after every slider step (topic match by quote, else rotation through `C.reviews`).
+
+### Manual steps needed
+None
+
+### Notes
+- The admin funnel tab's step labels renumber, since one screen fewer. Old sessions keep their step ids.
+
 ## [2026-10-28] — Weekly founder summary (Saturdays 11:59pm CT) and ad spend in both summaries
 
 **Requested by:** Keenan

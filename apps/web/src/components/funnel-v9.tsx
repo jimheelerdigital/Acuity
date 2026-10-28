@@ -499,7 +499,12 @@ function StepView(p: ViewProps) {
     case "week":
       return <WeekScreen {...p} step={step} />;
     case "slider":
-      return <SliderScreen {...p} step={step} />;
+      return (
+        <>
+          <SliderScreen {...p} step={step} />
+          <SliderReview stepId={step.id} />
+        </>
+      );
     case "statement":
       return <StatementScreen {...p} step={step} />;
     case "info":
@@ -581,6 +586,31 @@ function Stars({ label = true, size = "h-4 w-4" }: { label?: boolean; size?: str
 function initials(name: string) {
   if (name.toLowerCase().includes("app store")) return "";
   return name.split(/\s+/).map((w) => w[0]).join("").slice(0, 2).toUpperCase();
+}
+
+/** One short review under each slider question, in turn (2026-10-28, Keenan:
+ *  "sprinkle reviews throughout the funnel" instead of a reviews screen). */
+function SliderReview({ stepId }: { stepId: string }) {
+  const C = useV9();
+  // Matched to the question where it fits; other sliders take reviews in turn.
+  const byTopic: Record<string, RegExp> = { "s-lists": /never forget|task manager/i, "s-repeat": /every Monday|weekly report/i, "s-name": /never connected|bring up/i };
+  const sliders = C.steps.filter((s) => s.kind === "slider").map((s) => s.id);
+  const i = sliders.indexOf(stepId);
+  const r = C.reviews.find((x) => byTopic[stepId]?.test(x.quote)) ?? (i >= 0 && C.reviews.length ? C.reviews[i % C.reviews.length] : null);
+  if (!r) return null;
+  return (
+    <figure className="up mt-8 rounded-2xl soft px-4 py-3.5 text-left" style={{ animationDelay: "250ms" }}>
+      <div className="flex items-center gap-2">
+        <span className="flex text-acuity-warn">
+          {[0, 1, 2, 3, 4].map((k) => (
+            <Star key={k} className="h-3 w-3 fill-current" />
+          ))}
+        </span>
+        <figcaption className="text-[12px] font-semibold text-acuity-text-sec">{r.name}</figcaption>
+      </div>
+      <blockquote className="mt-1.5 text-[13.5px] leading-snug text-acuity-text-sec italic">&ldquo;{r.quote}&rdquo;</blockquote>
+    </figure>
+  );
 }
 
 function ReviewCard({ quote, name, className = "" }: { quote: string; name: string; className?: string }) {

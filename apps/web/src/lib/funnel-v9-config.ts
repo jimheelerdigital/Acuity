@@ -119,7 +119,7 @@ export const V9_STEPS: V9Step[] = [
       { id: "me", chip: "Time for me", task: "Block an hour for yourself" },
     ],
   },
-  { id: "review", kind: "info", screen: "review" },
+  // "review" screen removed 2026-10-28 (Keenan): reviews now sit under the slider questions.
   { id: "how", kind: "info", screen: "how" },
   { id: "st-talk", kind: "statement", statement: "Saying things out loud helps me sort them out.", mood: "talking" },
   {
@@ -422,7 +422,7 @@ export const BWK_V9_STEPS: V9Step[] = [
       { id: "followup", chip: "People to follow up with", task: "Follow up with people" },
     ],
   },
-  { id: "review", kind: "info", screen: "review" },
+  // "review" screen removed 2026-10-28 (Keenan): reviews now sit under the slider questions.
   { id: "how", kind: "info", screen: "how" },
   { id: "st-talk", kind: "statement", statement: "Saying it out loud helps me think straight.", mood: "talking" },
   {
