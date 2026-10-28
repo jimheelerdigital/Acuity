@@ -1624,6 +1624,11 @@ function PaywallScreen({ plan, setPlan, next, go, track, firstName, answers }: V
   const state = C.stateName({ plate: answers.multi.plate ?? [], sliders: answers.sliders, pileup: answers.single.pileup, said: answers.single });
   const price = useArmPrices();
   const after = plan === "yearly" ? `${price.annual}/year` : `${price.monthly}/month`;
+  // Price test, low arm (2026-10-27, Keenan): framed as an early bird price
+  // against the normal one, which is true: low-arm members keep it.
+  const normal = pricesForArm("std");
+  const earlyBird = price.arm === "low" && normal.annualCents > price.annualCents;
+  const earlyBirdOffPct = Math.round((1 - price.annualCents / normal.annualCents) * 100);
   // Log which price she saw, once per browser session (signed in by now, so
   // the event carries her userId as well as the funnel session).
   useEffect(() => {
@@ -1650,18 +1655,31 @@ function PaywallScreen({ plan, setPlan, next, go, track, firstName, answers }: V
           <CircleCheck className="h-3.5 w-3.5 text-acuity-good" /> Your plan is ready{firstName ? `, ${firstName}` : ""}
         </span>
       </div>
-      <Heading title={<>Try Ripple Pro <span className="grad-text">free for 7 days</span></>} sub={<>Made for <span className="font-semibold text-acuity-text">{state.name}</span>. $0 today, cancel any time.</>} />
+      <Heading title={<>Try Ripple <span className="grad-text">free for your first 7 days</span></>} sub={<>Made for <span className="font-semibold text-acuity-text">{state.name}</span>. $0 today, cancel any time.</>} />
+
+      {earlyBird && (
+        <div className="mb-4 rounded-3xl grad px-5 py-4 text-white shadow">
+          <p className="text-[12px] font-bold uppercase tracking-wide opacity-90">Early bird price</p>
+          <p className="mt-1 text-[15px] font-semibold leading-snug">
+            You&rsquo;re early, so you get {price.annual}/year instead of {normal.annual}. Your price stays locked in for as long as you&rsquo;re a member.
+          </p>
+        </div>
+      )}
 
       <div className="space-y-3">
         <button onClick={() => pick("yearly")} className={`relative w-full text-left rounded-3xl px-5 pt-5 pb-4 transition ${plan === "yearly" ? "card card-sel" : "card"}`}>
-          <span className="absolute -top-3 left-5 rounded-full grad px-3 py-1 text-[11px] font-bold text-white shadow">BEST VALUE · SAVE {price.savingsPct}</span>
+          <span className="absolute -top-3 left-5 rounded-full grad px-3 py-1 text-[11px] font-bold text-white shadow">{earlyBird ? `EARLY BIRD · ${earlyBirdOffPct}% OFF` : `BEST VALUE · SAVE ${price.savingsPct}`}</span>
           <div className="flex items-center justify-between gap-3">
             <Radio on={plan === "yearly"} />
             <div className="flex-1">
               <p className="text-[16px] font-semibold">Yearly</p>
-              <p className="text-[13px] text-acuity-text-sec tabular-nums">{price.annual} a year after your free week</p>
+              <p className="text-[13px] text-acuity-text-sec tabular-nums">
+                {earlyBird && <span className="mr-1 line-through text-acuity-text-ter">{normal.annual}</span>}
+                {price.annual} a year after your free week
+              </p>
             </div>
             <div className="text-right">
+              {earlyBird && <p className="text-[13px] line-through text-acuity-text-ter tabular-nums">{normal.annualAsMonthly}</p>}
               <p className="text-[24px] font-bold tabular-nums leading-none">{price.annualAsMonthly}</p>
               <p className="text-[12px] text-acuity-text-ter">per month</p>
             </div>
@@ -1675,6 +1693,7 @@ function PaywallScreen({ plan, setPlan, next, go, track, firstName, answers }: V
               <p className="text-[13px] text-acuity-text-sec">Billed monthly after your free week</p>
             </div>
             <div className="text-right">
+              {earlyBird && <p className="text-[13px] line-through text-acuity-text-ter tabular-nums">{normal.monthly}</p>}
               <p className="text-[24px] font-bold tabular-nums leading-none">{price.monthly}</p>
               <p className="text-[12px] text-acuity-text-ter">per month</p>
             </div>
@@ -1703,7 +1722,7 @@ function PaywallScreen({ plan, setPlan, next, go, track, firstName, answers }: V
       </div>
 
       <div className="mt-5 card rounded-3xl p-5 space-y-3.5">
-        <p className="text-[13px] font-bold">What Pro gives you</p>
+        <p className="text-[13px] font-bold">What you get</p>
         {PRO_FEATURES.map((f) => {
           const Icon = f.icon;
           return (
@@ -1903,7 +1922,7 @@ function CheckoutScreen({ plan, go, track, onPaid }: ViewProps) {
       <Heading title="Start your free week" />
       <div className="card rounded-3xl px-5 py-4 mb-4 flex items-center justify-between">
         <div>
-          <p className="text-[15px] font-semibold">Ripple Pro, {plan === "yearly" ? "yearly" : "monthly"}</p>
+          <p className="text-[15px] font-semibold">Ripple, {plan === "yearly" ? "yearly" : "monthly"}</p>
           <p className="text-[13px] text-acuity-text-sec tabular-nums">$0 today, then {plan === "yearly" ? `${price.annual}/year` : `${price.monthly}/month`}</p>
         </div>
         <button onClick={() => go("paywall")} className="text-[13px] font-semibold text-acuity-primary">Change</button>
@@ -2057,7 +2076,7 @@ function GetTheApp({
         sub={
           debriefSaved
             ? "Your first debrief is saved. Open Ripple to see the tasks and habits it pulled out, and keep going from there."
-            : `${paid ? "Your 7 free days of Ripple Pro have started." : "Your free Ripple account is ready."} Your first debrief happens in the app.`
+            : `${paid ? "Your 7 free days of Ripple have started." : "Your free Ripple account is ready."} Your first debrief happens in the app.`
         }
       />
       <div className="space-y-3">

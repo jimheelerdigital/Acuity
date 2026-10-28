@@ -9,6 +9,26 @@
 
 
 
+## [2026-10-27] — Paywall: "early bird" framing for the test price, and no more "Ripple Pro" wording
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** see git log
+
+### In plain English (for Keenan)
+In the $6.99/$39.99 price-test group, the web paywall now presents the price as an early bird deal. A coral banner says "you get $39.99/year instead of $89.99, and your price stays locked in for as long as you're a member". The normal prices are shown crossed out next to the early bird ones, and the yearly badge reads "EARLY BIRD · 56% OFF". For everyone, the paywall no longer talks about "Ripple Pro" as if there were a free version: the headline is "Try Ripple free for your first 7 days", and the feature list is "What you get".
+
+### Technical changes (for Jimmy)
+- apps/web/src/components/funnel-v9.tsx (PaywallScreen): when the arm is low and below the normal price, shows the early bird banner, struck-through normal prices from `pricesForArm("std")`, and the badge. Headline and feature-list copy changed; the checkout summary and download screen no longer say "Pro".
+- The started-test switch went live 2026-10-27 ~7:25pm CT (FeatureFlag web_price_test on, per Keenan: no need to wait for Monday).
+
+### Manual steps needed
+None
+
+### Notes
+- "Price stays locked in" is true: low-arm Stripe subscriptions keep their price after the test.
+- The "Continue with the free plan" link is still on the paywall; whether to remove it is waiting on Keenan.
+
 ## [2026-10-27] — Web price test built: $6.99/$39.99 vs $9.99/$89.99 (switched off until Mon 11-02)
 
 **Requested by:** Keenan
