@@ -9,6 +9,32 @@
 
 
 
+## [2026-10-28] — "Why wasn't Ripple for you?": one-tap answers, App Store cancellations included
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** see git log
+
+### In plain English (for Keenan)
+Lots of trials get cancelled the same day. The cancellation email existed for web trials, but only 2 of 17 people answered, because each answer opened an email they had to send. App Store cancellations got no email at all. Now:
+- Anyone who cancels a trial, on the web or in the App Store / Google Play, gets "why wasn't Ripple for you?" from Keenan.
+- Each answer is one tap ("I couldn't get into the app", "It wasn't what I expected", "It's too expensive", "I didn't have time to try it", "I was just looking around", "Something didn't work", "Something else"). The tap records the answer instantly and opens a thank-you page with an optional "what got in the way?" box.
+- The nightly founder email has a "Trial cancellations and why" section: who cancelled, whether it was within a day of signing up, their answer and their note.
+
+### Technical changes (for Jimmy)
+- New apps/web/src/lib/cancel-feedback.ts (CANCEL_REASONS, HMAC `why:` token signed with NEXTAUTH_SECRET) + test.
+- New /why page (records OnboardingEvent `cancel_reason`, deduped per reason) and POST /api/why (`cancel_reason_text`, ≤1000 chars, userWrite rate limit).
+- emails/trial/trial-cancelled.ts: answers link to /why (mailto fallback); subject "why wasn't Ripple for you?". TrialVars gets `whyUrl` (best-effort in buildTrialVars).
+- RevenueCat webhook: `storeTrialCancelledEmail` sends trial_cancelled on CANCELLATION + APP_STORE/PLAY_STORE + period_type TRIAL + cancel_reason UNSUBSCRIBE (not sandbox). It runs before the status-decision early return.
+- lib/founder-daily-summary.ts: cancellations-and-why section (TrialEmailLog trial_cancelled + cancel_reason events).
+
+### Manual steps needed
+None
+
+### Notes
+- RevenueCat showed ~24 cancellations in the 2 weeks before this. The App Store ones had no email.
+- Existing answers so far (mailto era): 2, both "It wasn't what I expected".
+
 ## [2026-10-28] — Second Planners campaign (optimizes for registrations); budgets rebalanced
 
 **Requested by:** Keenan

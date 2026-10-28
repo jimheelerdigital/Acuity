@@ -204,6 +204,36 @@ export async function buildDailySummary(at: Date = new Date(), days = 1, opts: {
   for (const u of appTrialUsers) row("App Store / Google Play trial").trials.push(who(u));
 
   const totalTrials = webTrialUsers.length + appTrialUsers.length;
+  // ── Trial cancellations and why (2026-10-28) ────────────────────────
+  // A cancellation = the "why wasn't Ripple for you?" email going out (web
+  // Stripe and App Store / Play, once per person).
+  const cancelLogs = await prisma.trialEmailLog.findMany({
+    where: { emailKey: "trial_cancelled", sentAt: { gte: start, lt: end } },
+    select: { userId: true },
+  });
+  const reasonEvents = await prisma.onboardingEvent.findMany({
+    where: { event: { in: ["cancel_reason", "cancel_reason_text"] }, createdAt: { gte: start, lt: end }, userId: { not: null } },
+    select: { userId: true, event: true, value: true },
+    orderBy: { createdAt: "asc" },
+  });
+  const cancelIds = [...new Set([...cancelLogs.map((c) => c.userId).filter((x): x is string => !!x), ...reasonEvents.map((r) => r.userId!)])];
+  const cancelUsers = cancelIds.length
+    ? (await prisma.user.findMany({ where: { id: { in: cancelIds } }, select: { id: true, name: true, email: true, isAdmin: true, createdAt: true } })).filter(real)
+    : [];
+  const { reasonLabel } = await import("@/lib/cancel-feedback");
+  const cancelledIds = new Set(cancelLogs.map((c) => c.userId).filter((x): x is string => !!x));
+  const cancelLines = cancelUsers.map((u) => {
+    const mine = reasonEvents.filter((r) => r.userId === u.id);
+    const reasons = mine.filter((r) => r.event === "cancel_reason").map((r) => reasonLabel(r.value ?? ""));
+    const notes = mine.filter((r) => r.event === "cancel_reason_text").map((r) => `&ldquo;${escapeHtml(r.value ?? "")}&rdquo;`);
+    const sameDay = cancelledIds.has(u.id) && Date.now() - u.createdAt.getTime() < 36 * 3600_000 ? " · cancelled within a day of signing up" : "";
+    const why = reasons.length || notes.length ? `<div style="margin-top:2px;color:#C4451C">${[...reasons, ...notes].join(" · ")}</div>` : `<div style="margin-top:2px;color:#999">no answer yet</div>`;
+    return `${who({ name: u.name, email: u.email! })}<span style="color:#888">${sameDay}</span>${why}`;
+  });
+  const cancelHtml = cancelLines.length
+    ? `<div style="margin:18px 0;padding:14px 16px;border:1px solid #eee;border-radius:12px;font-size:13px"><strong>Trial cancellations and why: ${cancelledIds.size}</strong><ul style="margin:6px 0 0;padding-left:18px">${cancelLines.map((l) => `<li style="margin:6px 0">${l}</li>`).join("")}</ul></div>`
+    : "";
+
   // ── Ad spend (every Meta campaign; lib/adlab/account-spend.ts) ────────
   let spendHtml = "";
   let spendCents: number | null = null;
@@ -296,6 +326,7 @@ export async function buildDailySummary(at: Date = new Date(), days = 1, opts: {
       </tr></table>
       ${compareHtml}
       ${spendHtml}
+      ${cancelHtml}
       ${convUsers.length ? `<div style="margin:18px 0;padding:14px 16px;border:1px solid #CDEBD8;background:#F2FBF5;border-radius:12px;font-size:13px"><strong>Trials that became paying customers: ${convUsers.length}</strong>${list(convUsers.map((u) => who({ name: u.name, email: u.email! })))}</div>` : ""}
       <div style="margin:18px 0;padding:14px 16px;border:1px solid ${issues.length ? "#F3D2C4" : "#CDEBD8"};background:${issues.length ? "#FFF6F2" : "#F2FBF5"};border-radius:12px;font-size:13px">
         <strong>${issues.length ? `Potential issues (${issues.length})` : "No issues spotted"}</strong>

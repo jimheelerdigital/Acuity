@@ -145,6 +145,14 @@ export async function buildTrialVars(
     foundingMemberNumber: user.foundingMemberNumber,
     unsubscribeUrl,
     lane: /bwk/i.test(user.signupLandingPath ?? "") ? "men" : "women",
+    whyUrl: await (async () => {
+      try {
+        const { signWhyToken } = await import("@/lib/cancel-feedback");
+        return `${origin()}/why?t=${encodeURIComponent(signWhyToken(user.id))}`;
+      } catch {
+        return undefined; // the template falls back to a prefilled reply
+      }
+    })(),
   };
 }
 

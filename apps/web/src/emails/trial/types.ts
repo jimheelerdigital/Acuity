@@ -8,6 +8,8 @@
 
 export interface TrialVars {
   firstName: string;
+  /** "Why wasn't Ripple for you?" one-tap base link (append &r=<reason>). lib/cancel-feedback.ts */
+  whyUrl?: string;
   appUrl: string;
   /** Pretty form ("April 24"). Orchestrator formats via Intl. */
   trialEndsAt: string;

@@ -213,6 +213,10 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   const user = await loadUser(event);
   const decision = decideRcWebhookAction(event, user);
 
+  // App Store / Play trial cancelled (2026-10-28, per Keenan): the same "why
+  // wasn't Ripple for you?" note the web gets. Runs whatever the status decision.
+  if (user) await storeTrialCancelledEmail(event, user.id);
+
   if (decision.action !== "set-status") {
     if (user) await webBillingEffects(event, user.id);
     safeLog.info(`revenuecat.webhook.${decision.action}`, {
@@ -310,6 +314,26 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
  * receipt path already handled (appleOriginalTransactionId set), so a
  * mirrored pre-1.9 purchase never emails twice. Never throws.
  */
+/**
+ * CANCELLATION of an App Store / Play subscription still in its free trial,
+ * by the customer (cancel_reason UNSUBSCRIBE; not billing errors or refunds).
+ * Sends trial_cancelled once per user (sendTrialEmail dedupes). Never throws.
+ */
+async function storeTrialCancelledEmail(event: RcWebhookEvent, userId: string): Promise<void> {
+  try {
+    if ((event.type ?? "").trim().toUpperCase() !== "CANCELLATION") return;
+    const store = (event.store ?? "").toUpperCase();
+    if (store !== "APP_STORE" && store !== "PLAY_STORE") return;
+    if ((event.environment ?? "").toUpperCase() === "SANDBOX") return;
+    if ((event.period_type ?? "").toUpperCase() !== "TRIAL") return;
+    if ((event.cancel_reason ?? "").toUpperCase() !== "UNSUBSCRIBE") return;
+    const { sendTrialEmail } = await import("@/lib/trial-emails");
+    await sendTrialEmail(userId, "trial_cancelled", { replyTo: "keenan@heelerdigital.com" });
+  } catch (err) {
+    safeLog.warn("revenuecat.webhook.trial-cancelled-email-failed", { err: err instanceof Error ? err.message : String(err) });
+  }
+}
+
 async function storePurchaseFounderEmail(event: RcWebhookEvent, userId: string): Promise<void> {
   try {
     const type = (event.type ?? "").trim().toUpperCase();
