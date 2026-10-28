@@ -82,80 +82,240 @@ struct Provider: TimelineProvider {
     }
 }
 
-private let accent = Color("AccentColor")
+// ── Theme (2026-10-28) ───────────────────────────────────────────────
+// Widgets follow the palette the user picked in the app (coral, sunset,
+// citrus, cobalt). The app already writes the resolved colors to the App
+// Group for the watch (lib/widget-data.ts publishThemeToWatch → keys
+// themePrimary / themePrimaryHi / themeSecondary, "#rrggbb") and reloads
+// the widgets when they change. Before the app has written them (fresh
+// install, older app) we fall back to Ripple coral.
 
-struct StreakBadge: View {
-    let streak: Int
+// ── Readability guard (2026-10-28) ──
+// A future free color picker can hand us any hex. A very light color would
+// make the wash invisible and coral-style labels unreadable; a very dark one
+// muddies it. So: the accent itself is kept out of the extremes, text drawn
+// in the accent gets a darker (light mode) or lighter (dark mode) shade when
+// needed, and the wash strength adapts. The four built-in palettes land
+// inside the safe range for fills; only citrus's text gets darkened.
+
+private struct RGB {
+    var r: Double, g: Double, b: Double
+    var color: Color { Color(red: r, green: g, blue: b) }
+    /// WCAG relative luminance, 0 (black) … 1 (white).
+    var luminance: Double {
+        func lin(_ c: Double) -> Double { c <= 0.03928 ? c / 12.92 : pow((c + 0.055) / 1.055, 2.4) }
+        return 0.2126 * lin(r) + 0.7152 * lin(g) + 0.0722 * lin(b)
+    }
+    /// Mix toward black (amount > 0) or white (amount < 0).
+    func shaded(_ amount: Double) -> RGB {
+        if amount >= 0 { return RGB(r: r * (1 - amount), g: g * (1 - amount), b: b * (1 - amount)) }
+        let t = -amount
+        return RGB(r: r + (1 - r) * t, g: g + (1 - g) * t, b: b + (1 - b) * t)
+    }
+    /// Darken until luminance <= target (or lighten until >= target).
+    func darkened(to target: Double) -> RGB {
+        var c = self; var i = 0
+        while c.luminance > target && i < 20 { c = c.shaded(0.06); i += 1 }
+        return c
+    }
+    func lightened(to target: Double) -> RGB {
+        var c = self; var i = 0
+        while c.luminance < target && i < 20 { c = c.shaded(-0.06); i += 1 }
+        return c
+    }
+}
+
+private func rgbFromHex(_ hex: String?) -> RGB? {
+    guard var h = hex?.trimmingCharacters(in: .whitespaces), !h.isEmpty else { return nil }
+    if h.hasPrefix("#") { h.removeFirst() }
+    guard h.count == 6, let v = UInt32(h, radix: 16) else { return nil }
+    return RGB(r: Double((v >> 16) & 0xFF) / 255, g: Double((v >> 8) & 0xFF) / 255, b: Double(v & 0xFF) / 255)
+}
+
+private func themeRGB(_ key: String) -> RGB? {
+    rgbFromHex(UserDefaults(suiteName: APP_GROUP)?.string(forKey: key))
+}
+
+/// Ripple coral (#FF8A65), used when the app hasn't written a palette yet.
+private let fallbackRGB = RGB(r: 1.0, g: 0.541, b: 0.396)
+
+/// The user's palette primary, kept out of the extremes.
+private var accentRGB: RGB {
+    let c = themeRGB("themePrimary") ?? fallbackRGB
+    if c.luminance > 0.70 { return c.darkened(to: 0.60) }
+    if c.luminance < 0.05 { return c.lightened(to: 0.10) }
+    return c
+}
+private var accent: Color { accentRGB.color }
+/// Lighter step of the primary, for the top of gradients.
+private var accentHi: Color { themeRGB("themePrimaryHi")?.color ?? accentRGB.shaded(-0.2).color }
+
+/// The accent as a TEXT color: darker on light backgrounds when the accent
+/// is light (citrus, pale custom colors), lighter on dark when it's dark.
+private func accentInkColor(_ scheme: ColorScheme) -> Color {
+    let c = accentRGB
+    if scheme == .dark { return (c.luminance < 0.25 ? c.lightened(to: 0.35) : c).color }
+    return (c.luminance > 0.42 ? c.darkened(to: 0.30) : c).color
+}
+
+/// Text in the accent color, readable whatever the palette.
+private struct AccentInk: ViewModifier {
+    @Environment(\.colorScheme) private var scheme
+    func body(content: Content) -> some View { content.foregroundColor(accentInkColor(scheme)) }
+}
+private extension View {
+    func accentInk() -> some View { modifier(AccentInk()) }
+}
+
+/// Wash strength: light colors need more to show, dark ones need more in
+/// dark mode; the built-in palettes get 13% (light) / 20% (dark).
+private func washOpacity(_ scheme: ColorScheme) -> Double {
+    let l = accentRGB.luminance
+    if scheme == .dark { return l < 0.12 ? 0.32 : 0.20 }
+    return l > 0.55 ? 0.22 : 0.13
+}
+
+/// Home-screen widget background (Jimmy, 2026-10-28: "Warm wash but not
+/// transitioning"): one flat, even tint of the user's palette over the
+/// system background. No gradient. Stronger in dark mode so it still reads.
+struct WarmWash: View {
+    @Environment(\.colorScheme) private var scheme
     var body: some View {
-        HStack(spacing: 4) {
-            Image(systemName: "flame.fill").foregroundColor(accent)
-            Text("\(streak)").font(.system(size: 30, weight: .bold, design: .rounded))
-            Text("day\(streak == 1 ? "" : "s")")
-                .font(.system(size: 13, weight: .medium))
-                .foregroundColor(.secondary)
-                .padding(.top, 8)
+        ZStack {
+            Color(.systemBackground)
+            accent.opacity(washOpacity(scheme))
         }
     }
+}
+
+/// Flame fill for the streak (Jimmy, 2026-10-28: "It's an achievement").
+private var flameGradient: LinearGradient {
+    LinearGradient(colors: [accentHi, accent], startPoint: .top, endPoint: .bottom)
 }
 
 struct SmallView: View {
     let entry: RippleEntry
     var remaining: Int { entry.habits.filter { $0.done == 0 }.count }
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            StreakBadge(streak: entry.streak)
-            Spacer()
+        VStack(spacing: 6) {
+            DailyStreakPanel(streak: entry.streak)
             if entry.habits.isEmpty {
                 Text("Tap to reflect").font(.system(size: 13, weight: .medium)).foregroundColor(.secondary)
             } else if remaining == 0 {
-                Text("All done today ✓").font(.system(size: 13, weight: .semibold)).foregroundColor(accent)
+                Text("All done today ✓").font(.system(size: 13, weight: .semibold)).accentInk()
             } else {
                 Text("\(remaining) habit\(remaining == 1 ? "" : "s") left")
                     .font(.system(size: 13, weight: .medium)).foregroundColor(.secondary)
             }
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
-        .padding(16)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 }
 
 struct MediumView: View {
     let entry: RippleEntry
+    /// Width of the per-habit streak column, so every check circle lines up
+    /// whether or not that habit has a streak. No column when none do.
+    private var habitStreakWidth: CGFloat {
+        entry.habits.prefix(4).contains { ($0.streak ?? 0) > 0 } ? 30 : 0
+    }
     var body: some View {
-        HStack(alignment: .top, spacing: 16) {
-            VStack(alignment: .leading) { StreakBadge(streak: entry.streak); Spacer() }
-            VStack(alignment: .leading, spacing: 6) {
+        // Jimmy, 2026-10-28: habits on the left, each habit's streak LEFT of
+        // its check circle; the daily streak on the right, set apart by a
+        // vertical line. The system's widget margins provide the outer
+        // padding, so none is added here.
+        HStack(alignment: .center, spacing: 14) {
+            VStack(alignment: .leading, spacing: 12) {
                 ForEach(Array(entry.habits.prefix(4).enumerated()), id: \.offset) { _, h in
-                    HStack(spacing: 8) {
-                        Image(systemName: h.done == 1 ? "checkmark.circle.fill" : "circle")
-                            .foregroundColor(h.done == 1 ? accent : .secondary)
-                        Text(h.name).font(.system(size: 14)).lineLimit(1)
-                            .strikethrough(h.done == 1, color: .secondary)
-                            .foregroundColor(h.done == 1 ? .secondary : .primary)
-                        Spacer(minLength: 4)
-                        if let s = h.streak, s > 0 {
-                            HStack(spacing: 2) {
-                                Image(systemName: "flame.fill")
-                                    .font(.system(size: 10))
-                                    .foregroundColor(accent)
-                                Text("\(s)")
-                                    .font(.system(size: 12, weight: .semibold, design: .rounded))
-                                    .foregroundColor(.secondary)
-                            }
-                            .accessibilityLabel("\(s)-day streak")
-                        }
-                    }
+                    HabitRow(habit: h, streakWidth: habitStreakWidth)
                 }
                 if entry.habits.isEmpty {
                     Text("Tap to start today's debrief")
                         .font(.system(size: 14, weight: .medium)).foregroundColor(.secondary)
                 }
-                Spacer()
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
+
+            Rectangle()
+                .fill(accent.opacity(0.28))
+                .frame(width: 1)
+                .padding(.vertical, 10)
+
+            DailyStreakPanel(streak: entry.streak)
+                .frame(width: 92)
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
-        .padding(16)
+    }
+}
+
+private struct HabitRow: View {
+    let habit: HabitItem
+    let streakWidth: CGFloat
+    var body: some View {
+        HStack(spacing: streakWidth > 0 ? 6 : 0) {
+            Group {
+                if let s = habit.streak, s > 0 {
+                    HStack(spacing: 1) {
+                        Image(systemName: "flame.fill")
+                            .font(.system(size: 12, weight: .bold))
+                            .foregroundStyle(flameGradient)
+                        Text("\(s)")
+                            .font(.system(size: 14, weight: .bold, design: .rounded))
+                            .foregroundColor(.secondary)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.7)
+                    }
+                    .accessibilityLabel("\(s)-day streak")
+                } else {
+                    Color.clear.accessibilityHidden(true)
+                }
+            }
+            .frame(width: streakWidth, height: 18, alignment: .trailing)
+            .opacity(streakWidth > 0 ? 1 : 0)
+
+            Image(systemName: habit.done == 1 ? "checkmark.circle.fill" : "circle")
+                .font(.system(size: 20, weight: .medium))
+                .foregroundColor(habit.done == 1 ? accent : accent.opacity(0.85))
+            Text(habit.name)
+                .font(.system(size: 18, weight: .semibold))
+                .lineLimit(1)
+                .strikethrough(habit.done == 1, color: .secondary)
+                .foregroundColor(habit.done == 1 ? .secondary : .primary)
+        }
+    }
+}
+
+/// Right side of the medium widget: "DAILY STREAK", a flame beside a big
+/// number, and "day(s)", centered as one group.
+private struct DailyStreakPanel: View {
+    let streak: Int
+    var body: some View {
+        VStack(spacing: 4) {
+            Text("DAILY STREAK")
+                .font(.system(size: 9, weight: .bold, design: .rounded))
+                .tracking(0.8)
+                .foregroundColor(.secondary)
+                .lineLimit(1)
+                .minimumScaleFactor(0.8)
+            HStack(alignment: .center, spacing: 3) {
+                Image(systemName: "flame.fill")
+                    .font(.system(size: 22, weight: .bold))
+                    .foregroundStyle(flameGradient)
+                    .widgetAccentable()
+                Text("\(streak)")
+                    .font(.system(size: 40, weight: .heavy, design: .rounded))
+                    .monospacedDigit()
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.5)
+                    .foregroundColor(.primary)
+            }
+            Text(streak == 1 ? "day" : "days")
+                .font(.system(size: 12, weight: .semibold, design: .rounded))
+                .accentInk()
+                .widgetAccentable()
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("Daily streak, \(streak) day\(streak == 1 ? "" : "s")")
     }
 }
 
@@ -226,11 +386,11 @@ struct RippleWidgetEntryView: View {
         case .systemSmall:
             SmallView(entry: entry)
                 .widgetURL(tapURL(entry))
-                .containerBackground(for: .widget) { Color(.systemBackground) }
+                .containerBackground(for: .widget) { WarmWash() }
         default:
             MediumView(entry: entry)
                 .widgetURL(tapURL(entry))
-                .containerBackground(for: .widget) { Color(.systemBackground) }
+                .containerBackground(for: .widget) { WarmWash() }
         }
     }
 }
@@ -731,7 +891,7 @@ struct TodayListView: View {
         let openCount = entry.rows.filter { !$0.done }.count
         VStack(alignment: .leading, spacing: 4) {
             HStack(alignment: .firstTextBaseline) {
-                Text("TODAY").font(.system(size: 12, weight: .heavy)).foregroundColor(accent)
+                Text("TODAY").font(.system(size: 12, weight: .heavy)).accentInk()
                 Spacer()
                 if entry.hasData && !entry.rows.isEmpty {
                     Text(more > 0 ? "+\(more) more" : "\(openCount) open")
@@ -812,12 +972,12 @@ struct RippleTodayWidgetEntryView: View {
         case .systemLarge:
             TodayListView(entry: entry, limit: TODAY_LIMIT, titleLines: 2)
                 .widgetURL(TASKS_URL)
-                .containerBackground(for: .widget) { Color(.systemBackground) }
+                .containerBackground(for: .widget) { WarmWash() }
         default:
             // Medium: 3 big rows (Jimmy, 10/19). "+N more" covers the rest.
             TodayListView(entry: entry, limit: MEDIUM_LIMIT)
                 .widgetURL(TASKS_URL)
-                .containerBackground(for: .widget) { Color(.systemBackground) }
+                .containerBackground(for: .widget) { WarmWash() }
         }
     }
 }

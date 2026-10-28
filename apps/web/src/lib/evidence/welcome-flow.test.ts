@@ -117,6 +117,15 @@ describe("welcome tour (last setup step, on the real tabs)", () => {
     expect(cards[5].body).toContain("9:00 PM");
   });
 
+  it("iOS: one Set up Ripple everywhere stop before the last card (2026-10-28)", () => {
+    const cards = welcomeTourCards(req, { setupStops: true });
+    // Setup's Action Button card is WHATS_NEW_STEP_INDEX.actionButton (10).
+    expect(cards.map((c) => c.target)).toEqual([0, 2, 3, 5, 4, 10, 0]);
+    expect(cards.slice(0, 6).map((c) => c.label)).toEqual([1, 2, 3, 4, 5, 6].map((n) => `Quick look · ${n} of 6`));
+    expect(cards[5].body).toMatch(/Action Button.*Siri.*widget/);
+    expect(cards[6].title).toBe("Talk to you soon, Jimmy");
+  });
+
   it("no check-in time: no promise of one", () => {
     const last = welcomeTourCards({ ...req, checkInTime: null })[5];
     expect(last.title).toBe("You're all set, Jimmy");

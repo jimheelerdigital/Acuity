@@ -19,6 +19,7 @@ describe("What's New 1.9.6", () => {
     const ids = WHATS_NEW_RELEASES[0].items.map((i) => i.id);
     expect(ids).toEqual([
       "apple-watch",
+      "widget-refresh",
       "plan-my-day",
       "apple-health",
       "calendar-connect",
@@ -26,7 +27,7 @@ describe("What's New 1.9.6", () => {
       "manage-groups",
     ]);
     const android = releaseFor("1.9.6", "android")!.items.map((i) => i.id);
-    for (const iosOnly of ["apple-watch", "apple-health", "task-group-card"]) {
+    for (const iosOnly of ["apple-watch", "widget-refresh", "apple-health", "task-group-card"]) {
       expect(android).not.toContain(iosOnly);
     }
   });

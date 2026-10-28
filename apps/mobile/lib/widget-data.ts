@@ -22,6 +22,7 @@ import {
 import {
   clearAndroidWidget,
   publishAndroidWidget,
+  publishAndroidWidgetAccent,
 } from "@/lib/android-widget/update";
 
 /**
@@ -137,14 +138,19 @@ export function publishThemeToWatch(theme: {
   secondary: string;
   accent: string;
 }): void {
+  // Android widget follows the palette too (2026-10-28).
+  if (Platform.OS === "android") void publishAndroidWidgetAccent(theme.primary).catch(() => {});
   if (!storage) return;
   try {
     storage.set("themePrimary", theme.primary);
     storage.set("themePrimaryHi", theme.primaryHi);
     storage.set("themeSecondary", theme.secondary);
     storage.set("themeAccent", theme.accent);
+    // The home-screen widgets read these too (2026-10-28: widgets follow the
+    // user's palette), so redraw them when the palette changes.
+    ExtensionStorage.reloadWidget();
   } catch {
-    // Best-effort; never break the app over watch theming.
+    // Best-effort; never break the app over watch or widget theming.
   }
 }
 

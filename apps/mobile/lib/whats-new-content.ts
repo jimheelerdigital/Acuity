@@ -64,6 +64,18 @@ export const WHATS_NEW_RELEASES: WhatsNewRelease[] = [
         platform: "ios",
       },
       {
+        id: "widget-refresh",
+        icon: "flame-outline",
+        title: "A fresh look for your widgets",
+        body: "Your streak now sits front and center, each habit shows its own streak, and the widgets take on the colors you picked in Ripple.",
+        platform: "ios",
+        tour: {
+          target: "widgets",
+          title: "Your streak, front and center",
+          body: "Add the Ripple widget to your Home Screen to see your daily streak and today's habits, in your colors.",
+        },
+      },
+      {
         id: "plan-my-day",
         icon: "time-outline",
         title: "Plan my day",

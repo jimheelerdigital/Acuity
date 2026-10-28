@@ -6,6 +6,7 @@ import { FlexWidget, TextWidget } from "react-native-android-widget";
 import type { HexColor } from "react-native-android-widget";
 
 import type { WidgetSnapshot } from "./snapshot";
+import { widgetColors, type WidgetColors } from "./theme";
 
 /**
  * Android home-screen widget: the same content as the iOS widget
@@ -22,28 +23,7 @@ import type { WidgetSnapshot } from "./snapshot";
 export const RECORD_URI = "acuity://record?autostart=1";
 export const HABITS_URI = "acuity://habits";
 
-const CORAL: HexColor = "#ED9672";
-
-interface Palette {
-  bg: HexColor;
-  text: HexColor;
-  textSec: HexColor;
-  accent: HexColor;
-}
-
-const LIGHT: Palette = {
-  bg: "#FFFFFF",
-  text: "#1A1A1A",
-  textSec: "#6B7280",
-  accent: CORAL,
-};
-
-const DARK: Palette = {
-  bg: "#1F1D1C",
-  text: "#F5F2F0",
-  textSec: "#A8A29E",
-  accent: CORAL,
-};
+type Palette = WidgetColors;
 
 /** Wider than this (dp) → medium layout with the habit list. */
 const MEDIUM_MIN_WIDTH = 250;
@@ -73,17 +53,36 @@ function statusLine(s: WidgetSnapshot | null): string {
   return `${left} habit${left === 1 ? "" : "s"} left`;
 }
 
-function StreakBadge({ streak, c }: { streak: number; c: Palette }) {
+/**
+ * "DAILY STREAK" header, flame beside a big number, "day(s)" under it,
+ * centered as one group (same panel as the iOS widget, 2026-10-28).
+ */
+function DailyStreakPanel({ streak, c }: { streak: number; c: Palette }) {
   return (
-    <FlexWidget style={{ flexDirection: "row", alignItems: "flex-end", flexGap: 4 }}>
-      <TextWidget text="🔥" style={{ fontSize: 22, color: c.accent }} />
+    <FlexWidget
+      style={{
+        height: "match_parent",
+        width: "match_parent",
+        flexDirection: "column",
+        alignItems: "center",
+        justifyContent: "center",
+        flexGap: 2,
+      }}
+    >
       <TextWidget
-        text={String(streak)}
-        style={{ fontSize: 30, fontWeight: "700", color: c.text }}
+        text="DAILY STREAK"
+        style={{ fontSize: 9, fontWeight: "700", letterSpacing: 0.08, color: c.textSec as HexColor }}
       />
+      <FlexWidget style={{ flexDirection: "row", alignItems: "center", flexGap: 2 }}>
+        <TextWidget text="🔥" style={{ fontSize: 20 }} />
+        <TextWidget
+          text={String(streak)}
+          style={{ fontSize: 38, fontWeight: "800", color: c.text as HexColor }}
+        />
+      </FlexWidget>
       <TextWidget
         text={streak === 1 ? "day" : "days"}
-        style={{ fontSize: 13, fontWeight: "500", color: c.textSec, paddingBottom: 5 }}
+        style={{ fontSize: 12, fontWeight: "600", color: c.accentInk as HexColor }}
       />
     </FlexWidget>
   );
@@ -97,22 +96,30 @@ function SmallLayout({ s, c }: { s: WidgetSnapshot | null; c: Palette }) {
         height: "match_parent",
         width: "match_parent",
         flexDirection: "column",
-        justifyContent: "space-between",
+        alignItems: "center",
       }}
     >
-      <StreakBadge streak={s?.streak ?? 0} c={c} />
+      <FlexWidget style={{ flex: 1, width: "match_parent" }}>
+        <DailyStreakPanel streak={s?.streak ?? 0} c={c} />
+      </FlexWidget>
       <TextWidget
         text={statusLine(s)}
         style={{
           fontSize: 13,
           fontWeight: allDone ? "600" : "500",
-          color: allDone ? c.accent : c.textSec,
+          color: (allDone ? c.accentInk : c.textSec) as HexColor,
         }}
       />
     </FlexWidget>
   );
 }
 
+/**
+ * Habits on the left, each habit's streak LEFT of its check circle (a
+ * fixed column so circles line up; none when no habit has a streak); the
+ * daily streak on the right, set apart by a vertical line (Jimmy,
+ * 2026-10-28, same as iOS).
+ */
 function MediumLayout({
   s,
   c,
@@ -123,51 +130,66 @@ function MediumLayout({
   maxRows: number;
 }) {
   const habits = (s?.habits ?? []).slice(0, maxRows);
+  const streakCol = habits.some((h) => (h.streak ?? 0) > 0) ? 30 : 0;
   return (
     <FlexWidget
       style={{
         height: "match_parent",
         width: "match_parent",
         flexDirection: "row",
-        flexGap: 16,
+        alignItems: "center",
+        flexGap: 12,
       }}
     >
-      <FlexWidget style={{ flexDirection: "column" }}>
-        <StreakBadge streak={s?.streak ?? 0} c={c} />
-      </FlexWidget>
-      <FlexWidget style={{ flex: 1, flexDirection: "column", flexGap: 6 }}>
+      <FlexWidget
+        style={{ flex: 1, height: "match_parent", flexDirection: "column", justifyContent: "center", flexGap: 9 }}
+      >
         {habits.length === 0 ? (
           <TextWidget
             text="Tap to start today's debrief"
-            style={{ fontSize: 14, fontWeight: "500", color: c.textSec }}
+            style={{ fontSize: 14, fontWeight: "500", color: c.textSec as HexColor }}
           />
         ) : (
           habits.map((h, i) => (
             <FlexWidget
               key={`${i}-${h.name}`}
-              style={{ flexDirection: "row", alignItems: "center", flexGap: 8 }}
+              style={{ flexDirection: "row", alignItems: "center", flexGap: streakCol ? 6 : 0 }}
             >
+              {streakCol ? (
+                <FlexWidget style={{ width: streakCol, flexDirection: "row", justifyContent: "flex-end" }}>
+                  {(h.streak ?? 0) > 0 ? (
+                    <TextWidget
+                      text={`🔥${h.streak}`}
+                      style={{ fontSize: 12, fontWeight: "700", color: c.textSec as HexColor }}
+                    />
+                  ) : null}
+                </FlexWidget>
+              ) : null}
               <TextWidget
                 text={h.done ? "●" : "○"}
-                style={{ fontSize: 14, color: h.done ? c.accent : c.textSec }}
+                style={{ fontSize: 17, color: (h.done ? c.accent : c.accentSoft) as HexColor }}
               />
-              <FlexWidget style={{ flex: 1 }}>
+              <FlexWidget style={{ flex: 1, marginLeft: 6 }}>
                 <TextWidget
                   text={h.name}
                   maxLines={1}
                   truncate="END"
-                  style={{ fontSize: 14, color: h.done ? c.textSec : c.text }}
+                  style={{
+                    fontSize: 16,
+                    fontWeight: "600",
+                    color: (h.done ? c.textSec : c.text) as HexColor,
+                  }}
                 />
               </FlexWidget>
-              {(h.streak ?? 0) > 0 ? (
-                <TextWidget
-                  text={`🔥${h.streak}`}
-                  style={{ fontSize: 12, fontWeight: "600", color: c.textSec }}
-                />
-              ) : null}
             </FlexWidget>
           ))
         )}
+      </FlexWidget>
+      <FlexWidget
+        style={{ width: 1, height: "match_parent", marginVertical: 8, backgroundColor: c.accentSoft as HexColor }}
+      />
+      <FlexWidget style={{ width: 92, height: "match_parent" }}>
+        <DailyStreakPanel streak={s?.streak ?? 0} c={c} />
       </FlexWidget>
     </FlexWidget>
   );
@@ -198,7 +220,7 @@ function Root({
       style={{
         height: "match_parent",
         width: "match_parent",
-        backgroundColor: c.bg,
+        backgroundColor: c.bg as HexColor,
         borderRadius: 22,
         padding: 16,
       }}
@@ -214,16 +236,18 @@ function Root({
 
 /**
  * Light + dark representations; the launcher picks based on the system
- * theme. `width`/`height` are the widget's current size in dp.
+ * theme. `width`/`height` are the widget's current size in dp; `accent` is
+ * the user's palette primary (null → Ripple coral).
  */
 export function renderRippleWidget(
   snapshot: WidgetSnapshot | null,
   width: number,
-  height: number
+  height: number,
+  accent: string | null = null
 ) {
   const s = forToday(snapshot);
   return {
-    light: <Root s={s} c={LIGHT} width={width} height={height} />,
-    dark: <Root s={s} c={DARK} width={width} height={height} />,
+    light: <Root s={s} c={widgetColors(accent, false)} width={width} height={height} />,
+    dark: <Root s={s} c={widgetColors(accent, true)} width={width} height={height} />,
   };
 }

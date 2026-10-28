@@ -7,7 +7,7 @@
  *
  * Pure (no React Native imports) so the web vitest suite can test it.
  */
-import { TOUR_STEP_INDEX } from "./steps";
+import { TOUR_STEP_INDEX, WHATS_NEW_STEP_INDEX } from "./steps";
 
 /** Written by app/welcome.tsx on finish; consumed by useTourTrigger on Home focus. */
 export const WELCOME_TOUR_KEY = "ripple.welcomeTour.v1";
@@ -52,8 +52,17 @@ export interface WelcomeTourCard {
  * Home → Entries → Tasks → Growth → Insights → done (back on Home).
  * Order per Jimmy, 2026-10-12. Each stop opens that tab (TourProvider's
  * per-step `before` navigates), and the dim is light so the page reads.
+ *
+ * iOS (2026-10-28, Jimmy: the Action Button, widgets and Siri are "an
+ * absolute game changer"; point people to them from the tour, ONE stop, not
+ * three): one stop on Set up Ripple everywhere (/setup) before the last card. Android
+ * has no Action Button or Siri and its setup cards have no tour targets, so
+ * it keeps the original stops.
  */
-export function welcomeTourCards(req: WelcomeTourRequest): WelcomeTourCard[] {
+export function welcomeTourCards(
+  req: WelcomeTourRequest,
+  opts: { setupStops?: boolean } = {}
+): WelcomeTourCard[] {
   const who = req.firstName ? `, ${req.firstName}` : "";
   const stops: Omit<WelcomeTourCard, "label" | "cta">[] = [
     {
@@ -81,6 +90,15 @@ export function welcomeTourCards(req: WelcomeTourRequest): WelcomeTourCard[] {
       title: "Patterns over time",
       body: "The more you debrief, the more Ripple shows you what keeps coming up, and how your weeks are going.",
     },
+    ...(opts.setupStops
+      ? [
+          {
+            target: WHATS_NEW_STEP_INDEX.actionButton,
+            title: "Ripple beyond the app",
+            body: "Press the Action Button, ask Siri, or tap a widget, and you're talking in a second. No unlocking, no hunting for the app. Set it up here, or anytime from Profile.",
+          },
+        ]
+      : []),
   ];
   const n = stops.length;
   return [

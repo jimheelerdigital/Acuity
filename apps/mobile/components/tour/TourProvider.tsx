@@ -6,6 +6,7 @@ import {
   type TourState,
 } from "react-native-spotlight-tour";
 import { useRouter } from "expo-router";
+import { Platform } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
 import { requestAchievementCheck } from "@/lib/achievement-bus";
@@ -150,6 +151,8 @@ const WHATS_NEW_BELOW = new Set<number>([
   WHATS_NEW_STEP_INDEX.notifications,
 ]);
 const LAST_CLASSIC = TOUR_TOTAL_STEPS - 1;
+// Welcome tour gets the Set up Ripple everywhere stops on iOS (welcome-tour.ts).
+const WELCOME_OPTS = { setupStops: Platform.OS === "ios" };
 export function useTourMode(): TourModeApi {
   return useContext(TourModeContext);
 }
@@ -360,6 +363,46 @@ export function TourProvider({ children }: { children: ReactNode }) {
     [showWhatsNewCard]
   );
 
+  // Welcome-mode card for whichever stop is showing (classic targets and,
+  // on iOS, the Set up Ripple everywhere targets). Null outside welcome mode.
+  const renderWelcome = useCallback(
+    (props: { goTo: (i: number) => void; stop: () => void }) => {
+      const req = welcomeReqRef.current;
+      if (!req) return null;
+      const cards = welcomeTourCards(req, WELCOME_OPTS);
+      const at = Math.min(welcomeCardRef.current, cards.length - 1);
+      const card = cards[at];
+      const isLast = at === cards.length - 1;
+      return (
+        <WelcomeTourCard
+          label={card.label}
+          title={card.title}
+          body={card.body}
+          cta={card.cta}
+          stop={at}
+          stops={cards.length - 1}
+          isFirst={at === 0}
+          isLast={isLast}
+          onNext={() => {
+            if (isLast) {
+              props.stop();
+              return;
+            }
+            welcomeCardRef.current = at + 1;
+            props.goTo(cards[at + 1].target);
+          }}
+          onBack={() => {
+            if (at === 0) return;
+            welcomeCardRef.current = at - 1;
+            props.goTo(cards[at - 1].target);
+          }}
+          onSkip={() => props.stop()}
+        />
+      );
+    },
+    []
+  );
+
   // Marks the current What's New card's item explored as its stop opens.
   const noteWhatsNewStop = useCallback(() => {
     const req = whatsNewReqRef.current;
@@ -423,39 +466,8 @@ export function TourProvider({ children }: { children: ReactNode }) {
         },
         render: (props) => {
           if (whatsNewReqRef.current) return renderWhatsNew(props);
-          const req = welcomeReqRef.current;
-          if (req) {
-            const cards = welcomeTourCards(req);
-            const at = Math.min(welcomeCardRef.current, cards.length - 1);
-            const card = cards[at];
-            const isLast = at === cards.length - 1;
-            return (
-              <WelcomeTourCard
-                label={card.label}
-                title={card.title}
-                body={card.body}
-                cta={card.cta}
-                stop={at}
-                stops={cards.length - 1}
-                isFirst={at === 0}
-                isLast={isLast}
-                onNext={() => {
-                  if (isLast) {
-                    props.stop();
-                    return;
-                  }
-                  welcomeCardRef.current = at + 1;
-                  props.goTo(cards[at + 1].target);
-                }}
-                onBack={() => {
-                  if (at === 0) return;
-                  welcomeCardRef.current = at - 1;
-                  props.goTo(cards[at - 1].target);
-                }}
-                onSkip={() => props.stop()}
-              />
-            );
-          }
+          const welcome = renderWelcome(props);
+          if (welcome) return welcome;
           // The steps array now also holds What's New targets (7+), so
           // spotlight's own isLast/next would walk past Settings. The
           // first-login tour ends at its last step.
@@ -477,17 +489,23 @@ export function TourProvider({ children }: { children: ReactNode }) {
             flip: true,
             shift: { padding: 16 },
             before: async () => {
+              if (welcomeReqRef.current) {
+                void trackOnboardingEvent("v10_welcome_tour_step", {
+                  value: String(welcomeCardRef.current + 1),
+                });
+              }
               noteWhatsNewStop();
               await goToPath(WHATS_NEW_PATH_BY_INDEX[idx] ?? HOME_PATH, false);
               // Bring the target near the top of a scrolling screen
               // (Setup) so it isn't measured half off-screen.
               await runTourScroll(idx);
             },
-            render: (props) => renderWhatsNew(props),
+            render: (props) =>
+              whatsNewReqRef.current ? renderWhatsNew(props) : renderWelcome(props) ?? <></>,
           })
         )
       ),
-    [router, goToPath, noteWhatsNewStop, renderWhatsNew]
+    [router, goToPath, noteWhatsNewStop, renderWhatsNew, renderWelcome]
   );
 
   const handleStop = useCallback(
@@ -502,7 +520,7 @@ export function TourProvider({ children }: { children: ReactNode }) {
       // Welcome mode walks its own sequence, so "last" is its last card.
       const welcomeReq = welcomeReqRef.current;
       const finished = welcomeReq
-        ? welcomeCardRef.current >= welcomeTourCards(welcomeReq).length - 1
+        ? welcomeCardRef.current >= welcomeTourCards(welcomeReq, WELCOME_OPTS).length - 1
         : state.index >= LAST_CLASSIC;
       if (welcomeReq) {
         void trackOnboardingEvent(finished ? "v10_welcome_tour_completed" : "v10_welcome_tour_skipped", {
