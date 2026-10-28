@@ -114,7 +114,7 @@ struct MediumView: View {
     /// Width of the per-habit streak column, so every check circle lines up
     /// whether or not that habit has a streak. No column when none do.
     private var habitStreakWidth: CGFloat {
-        entry.habits.prefix(4).contains { ($0.streak ?? 0) > 0 } ? 26 : 0
+        entry.habits.prefix(4).contains { ($0.streak ?? 0) > 0 } ? 30 : 0
     }
     var body: some View {
         // Jimmy, 2026-10-28: habits on the left, each habit's streak LEFT of
@@ -153,10 +153,10 @@ private struct HabitRow: View {
                 if let s = habit.streak, s > 0 {
                     HStack(spacing: 1) {
                         Image(systemName: "flame.fill")
-                            .font(.system(size: 10, weight: .bold))
+                            .font(.system(size: 12, weight: .bold))
                             .foregroundStyle(flameGradient)
                         Text("\(s)")
-                            .font(.system(size: 12, weight: .bold, design: .rounded))
+                            .font(.system(size: 14, weight: .bold, design: .rounded))
                             .foregroundColor(.secondary)
                             .lineLimit(1)
                             .minimumScaleFactor(0.7)
@@ -166,14 +166,14 @@ private struct HabitRow: View {
                     Color.clear.accessibilityHidden(true)
                 }
             }
-            .frame(width: streakWidth, height: 15, alignment: .trailing)
+            .frame(width: streakWidth, height: 17, alignment: .trailing)
             .opacity(streakWidth > 0 ? 1 : 0)
 
             Image(systemName: habit.done == 1 ? "checkmark.circle.fill" : "circle")
-                .font(.system(size: 17))
+                .font(.system(size: 19))
                 .foregroundColor(habit.done == 1 ? accent : Color.secondary.opacity(0.6))
             Text(habit.name)
-                .font(.system(size: 15, weight: .medium))
+                .font(.system(size: 17, weight: .medium))
                 .lineLimit(1)
                 .strikethrough(habit.done == 1, color: .secondary)
                 .foregroundColor(habit.done == 1 ? .secondary : .primary)
