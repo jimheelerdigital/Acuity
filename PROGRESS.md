@@ -9,6 +9,31 @@
 
 
 
+## [2026-10-28] — Ripple Wrapped shares as an image
+
+**Requested by:** Jimmy
+**Committed by:** Claude Code
+**Commit hash:** see git log
+
+### In plain English
+"Share my recap" on a Wrapped screen now shares a designed, story-sized picture (Ripple logo, your colors, the month or year, debrief count, top themes, longest streak, to-dos, mood direction) instead of a block of text. A half-size preview of the exact picture sits above the button. It shows the same facts the text share did and nothing more: no debrief text, no "biggest win", no habit name, and a person's first name only if the "Include <name>" switch is on. "Share as text instead" is still there, and if the picture can't be made the app shares the text automatically.
+
+### Technical changes
+- New `components/insights/wrapped-share-card.tsx` (`WrappedShareCard`, 360x640 pt, gradMix gradient, white lockup, ripple rings). Pure presentation; takes `tokens` as a prop so preview and capture render identically.
+- New `lib/wrapped-share.ts` (`shareWrapped`): lazily `require`s react-native-view-shot inside try/catch (its spec uses `TurboModuleRegistry.getEnforcing`, which throws on binaries without the module, and runtimeVersion is `appVersion`, so an OTA could reach 1.9.6), captures PNG (iOS at device scale = 1080x1920 on 3x; Android pinned to 1080x1920 px), copies it into `FileSystem.cacheDirectory` as `ripple-wrapped-<period>.png`, shares via expo-sharing; any failure falls back to RN `Share` with `wrappedShareText`.
+- `app/insights/wrapped.tsx`: off-screen full-size capture target (left -10000, hidden from accessibility), scaled preview in the Share section, busy state, "Share as text instead".
+- `packages/shared/src/wrapped.ts`: extracted `wrappedMoodTrend` (used by both the text and the image); `wrappedShareText` output unchanged (wrapped.test.ts 15/15 pass).
+- Dependency: `react-native-view-shot` 4.0.3 (the version Expo SDK 54's bundledNativeModules.json pins). expo-sharing ~14.0.8 was already a dependency. package-lock.json updated in-repo (additive: view-shot + html2canvas and its 4 small deps, which view-shot uses only on web).
+- No share analytics: Wrapped has no existing analytics event, and adding one needs a new name in the `/api/onboarding-events` whitelist. Left out on purpose.
+
+### Manual steps needed
+- [ ] Native module: ships only in the next EAS build (1.9.7). Until then (and on any 1.9.6 binary that gets this JS by OTA) the button falls back to the text share.
+- [ ] On the Mac, after pulling: `npm install` from the repo root (lockfile already updated; `npx expo install react-native-view-shot` should report it's already on the expected version), then `npx expo-doctor` to confirm.
+- [ ] Device test on 1.9.7: image share on iOS and Android, including Instagram Stories and Save Image; check the picture isn't blank (it's captured from an off-screen view).
+
+### Notes
+- Mobile `tsc --noEmit` stays at the baseline 12 errors. view-shot is typed locally in lib/wrapped-share.ts, so the check doesn't depend on node_modules having the package.
+
 ## [2026-10-27] — One end-of-day founder email replaces per-signup emails
 
 **Requested by:** Keenan
