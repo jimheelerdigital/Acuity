@@ -1667,21 +1667,10 @@ function PaywallScreen({ plan, setPlan, next, go, track, firstName, answers }: V
       </div>
       <Heading title={<>Try Ripple <span className="grad-text">free for your first 7 days</span></>} sub={<>Made for <span className="font-semibold text-acuity-text">{state.name}</span>. $0 today, cancel any time.</>} />
 
-      {earlyBird && (
-        <div className="mb-4 rounded-3xl grad px-5 py-4 text-white shadow">
-          <div className="flex items-center justify-between gap-2">
-            <p className="text-[12px] font-bold uppercase tracking-wide opacity-90">Early bird price</p>
-            {endsLabel && <span className="rounded-full bg-white/25 px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-wide">Ends {endsLabel}</span>}
-          </div>
-          <p className="mt-1 text-[15px] font-semibold leading-snug">
-            You&rsquo;re early, so you get {price.annual}/year instead of {normal.annual}. Your price stays locked in for as long as you&rsquo;re a member.
-          </p>
-        </div>
-      )}
 
       <div className="space-y-3">
         <button onClick={() => pick("yearly")} className={`relative w-full text-left rounded-3xl px-5 pt-5 pb-4 transition ${plan === "yearly" ? "card card-sel" : "card"}`}>
-          <span className="absolute -top-3 left-5 rounded-full grad px-3 py-1 text-[11px] font-bold text-white shadow">{earlyBird ? `EARLY BIRD · ${earlyBirdOffPct}% OFF` : `BEST VALUE · SAVE ${price.savingsPct}`}</span>
+          <span className="absolute -top-3 left-5 rounded-full grad px-3 py-1 text-[11px] font-bold text-white shadow">{earlyBird ? `EARLY BIRD · ${earlyBirdOffPct}% OFF${endsLabel ? ` · ENDS ${endsLabel.toUpperCase()}` : ""}` : `BEST VALUE · SAVE ${price.savingsPct}`}</span>
           <div className="flex items-center justify-between gap-3">
             <Radio on={plan === "yearly"} />
             <div className="flex-1">
@@ -1774,15 +1763,8 @@ function PaywallScreen({ plan, setPlan, next, go, track, firstName, answers }: V
         ))}
       </div>
 
-      <button
-        onClick={() => {
-          track("funnel_paywall_skip_selected");
-          go("download");
-        }}
-        className="mt-6 w-full py-2 text-[14px] font-medium text-acuity-text-ter underline-offset-4 hover:underline"
-      >
-        Continue with the free plan
-      </button>
+      {/* No free-plan escape (2026-10-27, Keenan: "there's no free version").
+          ~1 in 8 paywall viewers took it and almost none ever paid. */}
 
       <BottomBar>
         <PrimaryButton

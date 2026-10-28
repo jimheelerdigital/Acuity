@@ -9,6 +9,25 @@
 
 
 
+## [2026-10-27] — Paywall: removed the early bird banner and the "Continue with the free plan" link
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** see git log
+
+### In plain English (for Keenan)
+The big coral "early bird" box above the plans is gone, because it didn't look good. The deadline now sits in the yearly plan's badge ("EARLY BIRD · 56% OFF · ENDS TODAY, OCT 27"). The "Continue with the free plan" link is also gone, so the web paywall now offers only the 7-day free trial. About 1 in 8 paywall viewers used to take the free plan, and only 1–2 a month of them ever paid.
+
+### Technical changes (for Jimmy)
+- apps/web/src/components/funnel-v9.tsx: removed the early bird banner; `endsLabel` moved into the yearly badge; removed the paywall skip button (`funnel_paywall_skip_selected` no longer fires).
+
+### Manual steps needed
+None
+
+### Notes
+- Both price-test arms got the free-plan removal on the same day the test started, so the comparison stays fair. Free-week offer emails only target web free-plan signups, so that pool will now dry up.
+- Last 30 days before removal: 23 people took the free plan; of the 21 we could track, 1 later started a web paid trial, 1 started an App Store trial and 18 never paid.
+
 ## [2026-10-27] — Paywall: red price slashes, "ends today" tag, coffee comparison
 
 **Requested by:** Keenan
