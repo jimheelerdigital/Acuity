@@ -1668,7 +1668,20 @@ function PaywallScreen({ plan, setPlan, next, go, track, firstName, answers }: V
     setPlan(p);
     track("funnel_paywall_plan_selected", p);
   };
-  const sample = pickSample(answers.multi.plate ?? [], C);
+  // FAQ, reviews first (2026-10-27, Keenan: "Read our reviews").
+  const faqItems: { q: string; a: ReactNode }[] = [
+    {
+      q: "Read our reviews",
+      a: (
+        <div className="space-y-2.5">
+          {C.reviews.map((r) => (
+            <ReviewCard key={r.name} {...r} className="w-full" />
+          ))}
+        </div>
+      ),
+    },
+    ...C.faq,
+  ];
   return (
     <div className="enter">
       <div className="flex justify-center mb-3">
@@ -1683,31 +1696,8 @@ function PaywallScreen({ plan, setPlan, next, go, track, firstName, answers }: V
         sub={<>Talk through what&rsquo;s on your mind about {plateLabel(answers.multi.plate ?? [], C.plateLabels)}. Ripple turns it into your to-dos and next steps. No daily streak to keep up.</>}
       />
 
-      {/* What she'd actually get, shown, not listed (2026-10-27 rebuild). */}
-      <div className="card rounded-3xl p-5">
-        <p className="text-[11px] font-bold uppercase tracking-wide text-acuity-text-ter">Example debrief</p>
-        <p className="mt-2 text-[15px] italic leading-relaxed">&ldquo;{sample.said}&rdquo;</p>
-        <div className="mt-4 rounded-2xl soft p-4">
-          <p className="text-[12px] font-bold text-acuity-primary">Ripple hands back</p>
-          <div className="mt-2 space-y-1.5">
-            {sample.tasks.map((t) => (
-              <p key={t} className="flex items-start gap-2 text-[14px] leading-snug">
-                <CircleCheck className="mt-0.5 h-4 w-4 shrink-0 text-acuity-good" /> {t}
-              </p>
-            ))}
-          </div>
-          <p className="mt-3 text-[13px] text-acuity-text-sec">
-            <span className="font-semibold text-acuity-text">Mood:</span> {sample.mood}
-          </p>
-          <p className="mt-1 text-[13px] text-acuity-text-sec">
-            <span className="font-semibold text-acuity-text">Pattern:</span> {sample.pattern}
-          </p>
-        </div>
-      </div>
-
-
       {/* Planner vs Ripple (2026-10-27, Keenan): our best ads win on this. */}
-      <div className="mt-5 card rounded-3xl p-5">
+      <div className="card rounded-3xl p-5">
         <p className="text-center text-[17px] font-bold tracking-tight">Why Ripple beats a paper planner</p>
         <div className="mt-4 grid grid-cols-2 gap-x-3 text-[12px] font-bold uppercase tracking-wide">
           <p className="text-acuity-text-ter">Paper planner</p>
@@ -1727,9 +1717,49 @@ function PaywallScreen({ plan, setPlan, next, go, track, firstName, answers }: V
         </div>
       </div>
 
-      <div className="mt-6">
-        <Stars />
-        <ReviewCard {...C.reviews[0]} className="mt-3 w-full" />
+      {/* What her current system costs a year (2026-10-27, Keenan): no Ripple
+          price here; the plans come after. Planner figures per Keenan; app
+          prices are published (Day One Silver, Habitify Premium, US). */}
+      <div className="mt-5 card rounded-3xl p-5">
+        <p className="text-center text-[17px] font-bold tracking-tight">What your system costs now</p>
+        <div className="mt-4 space-y-1.5">
+          {[
+            { label: "Paper planner or journal (2 a year at $27.43)", cents: PLANNERS_PER_YEAR_CENTS },
+            { label: "Journaling app (e.g. Day One)", cents: JOURNAL_APP_CENTS },
+            { label: "Habit tracker app (e.g. Habitify)", cents: HABIT_APP_CENTS },
+          ].map((r) => (
+            <div key={r.label} className="flex items-baseline justify-between gap-3 text-[14px]">
+              <p className="text-acuity-text-sec">{r.label}</p>
+              <p className="tabular-nums">{formatCents(r.cents)}</p>
+            </div>
+          ))}
+        </div>
+        <div className="mt-2 flex items-baseline justify-between gap-3 border-t border-acuity-line pt-2 text-[15px]">
+          <p className="font-semibold">Per year, combined</p>
+          <p className="tabular-nums font-semibold">{formatCents(PLANNERS_PER_YEAR_CENTS + JOURNAL_APP_CENTS + HABIT_APP_CENTS)}</p>
+        </div>
+        <p className="mt-3 rounded-2xl soft px-4 py-3 text-center text-[14px] font-semibold">Ripple does all three, in one app.</p>
+      </div>
+
+      <div className="mt-5 card rounded-3xl px-4 py-5">
+        <div className="relative grid grid-cols-3">
+          <span className="absolute left-[16.6%] right-[16.6%] top-5 h-0.5 soft" />
+          <span className="absolute left-[16.6%] top-5 h-0.5 grad" style={{ width: "33.4%" }} />
+          {[
+            { label: "Today", text: "Full access. $0.", icon: Sparkles },
+            { label: "Day 4", text: "Reminder email", icon: Bell },
+            { label: "Day 7", text: "Plan starts", icon: CalendarCheck },
+          ].map((t, i) => (
+            <div key={t.label} className="relative flex flex-col items-center text-center">
+              <span className={`relative z-10 h-10 w-10 rounded-full flex items-center justify-center ${i === 0 ? "grad text-white" : "card text-acuity-primary"}`}>
+                <t.icon className="h-[18px] w-[18px]" />
+              </span>
+              <p className="mt-2 text-[13px] font-bold">{t.label}</p>
+              <p className="text-[12px] text-acuity-text-sec leading-tight">{t.text}</p>
+            </div>
+          ))}
+        </div>
+        <p className="mt-4 text-center text-[13px] text-acuity-text-sec">Cancel before day 7 and you pay nothing.</p>
       </div>
 
       <div className="mt-8 mb-7 text-center">
@@ -1772,72 +1802,27 @@ function PaywallScreen({ plan, setPlan, next, go, track, firstName, answers }: V
         </button>
       </div>
 
-      <div className="mt-5 card rounded-3xl px-4 py-5">
-        <div className="relative grid grid-cols-3">
-          <span className="absolute left-[16.6%] right-[16.6%] top-5 h-0.5 soft" />
-          <span className="absolute left-[16.6%] top-5 h-0.5 grad" style={{ width: "33.4%" }} />
-          {[
-            { label: "Today", text: "Full access. $0.", icon: Sparkles },
-            { label: "Day 4", text: "Reminder email", icon: Bell },
-            { label: "Day 7", text: "Plan starts", icon: CalendarCheck },
-          ].map((t, i) => (
-            <div key={t.label} className="relative flex flex-col items-center text-center">
-              <span className={`relative z-10 h-10 w-10 rounded-full flex items-center justify-center ${i === 0 ? "grad text-white" : "card text-acuity-primary"}`}>
-                <t.icon className="h-[18px] w-[18px]" />
-              </span>
-              <p className="mt-2 text-[13px] font-bold">{t.label}</p>
-              <p className="text-[12px] text-acuity-text-sec leading-tight">{t.text}</p>
-            </div>
-          ))}
-        </div>
-        <p className="mt-4 text-center text-[13px] text-acuity-text-sec">Cancel before day 7 and you pay nothing.</p>
+      {/* Reviews live in the FAQ now (2026-10-27, Keenan), first item. */}
+      <div className="mt-8 flex justify-center">
+        <span className="flex items-center gap-2 rounded-full card px-3.5 py-1.5 text-[13px] font-semibold">
+          <span className="flex">{[0, 1, 2, 3, 4].map((i) => <Star key={i} className="h-4 w-4 fill-amber-400 text-amber-400" />)}</span>
+          Loved on the App Store
+        </span>
       </div>
-
-      {/* What she'd otherwise pay per year vs Ripple (2026-10-27, Keenan).
-          Early bird price: two planners already cost more. Normal price: the
-          planners plus the journaling and habit apps Ripple replaces. Every
-          number is real (planner figures per Keenan; app prices published). */}
-      {(() => {
-        const rows = price.annualCents < PLANNERS_PER_YEAR_CENTS
-          ? [{ label: "Paper planners (2 a year at $27.43)", cents: PLANNERS_PER_YEAR_CENTS }]
-          : [
-              { label: "Paper planners (2 a year at $27.43)", cents: PLANNERS_PER_YEAR_CENTS },
-              { label: "Journaling app (e.g. Day One)", cents: JOURNAL_APP_CENTS },
-              { label: "Habit tracker app (e.g. Habitify)", cents: HABIT_APP_CENTS },
-            ];
-        const total = rows.reduce((n, r) => n + r.cents, 0);
-        if (total <= price.annualCents) return null;
-        return (
-          <div className="mt-5 card rounded-3xl p-5">
-            {rows.map((r) => (
-              <div key={r.label} className="mt-1.5 first:mt-0 flex items-baseline justify-between gap-3 text-[14px]">
-                <p className="text-acuity-text-sec">{r.label}</p>
-                <p className="tabular-nums">{formatCents(r.cents)}</p>
-              </div>
-            ))}
-            <div className="mt-2 flex items-baseline justify-between gap-3 border-t border-acuity-line pt-2 text-[15px]">
-              <p className="font-semibold">{rows.length > 1 ? "All of that, per year" : "Planners, per year"}</p>
-              <p className={`tabular-nums font-semibold ${SLASH}`}>{formatCents(total)}</p>
-            </div>
-            <div className="mt-3 flex items-baseline justify-between gap-3 rounded-2xl grad px-4 py-3 text-white">
-              <p className="text-[15px] font-bold">{rows.length > 1 ? "Ripple, all in one" : "Ripple, per year"}</p>
-              <p className="text-[20px] font-bold tabular-nums">{price.annual}</p>
-            </div>
-            <p className="mt-2 text-center text-[12px] text-acuity-text-sec">
-              {rows.length > 1 ? "Planner, journal and habit tracker in one app." : "And it never runs out of pages."}
-            </p>
-          </div>
-        );
-      })()}
-
-      <div className="mt-6 card rounded-3xl px-5 py-2">
-        {C.faq.map((f, i) => (
-          <div key={f.q} className={i < C.faq.length - 1 ? "border-b border-acuity-line" : ""}>
-            <button onClick={() => setOpen(open === i ? null : i)} className="w-full py-3.5 text-left text-[15px] font-semibold flex items-center justify-between gap-3">
+      <div className="mt-3 card rounded-3xl px-5 py-2">
+        {faqItems.map((f, i) => (
+          <div key={f.q} className={i < faqItems.length - 1 ? "border-b border-acuity-line" : ""}>
+            <button
+              onClick={() => {
+                setOpen(open === i ? null : i);
+                if (i === 0 && open !== 0) track("funnel_paywall_reviews_opened");
+              }}
+              className="w-full py-3.5 text-left text-[15px] font-semibold flex items-center justify-between gap-3"
+            >
               {f.q}
               <ChevronRight className={`h-4 w-4 shrink-0 text-acuity-text-ter transition ${open === i ? "rotate-90" : ""}`} />
             </button>
-            {open === i && <p className="up pb-3.5 text-[14px] text-acuity-text-sec leading-relaxed">{f.a}</p>}
+            {open === i && <div className="up pb-3.5 text-[14px] text-acuity-text-sec leading-relaxed">{f.a}</div>}
           </div>
         ))}
       </div>

@@ -9,6 +9,24 @@
 
 
 
+## [2026-10-27] — Web paywall simplified: planner comparison → system cost → timeline → plans → reviews
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** see git log
+
+### In plain English (for Keenan)
+The paywall had too much on it, so it's now a clear sequence: the headline, "Why Ripple beats a paper planner", "What your system costs now" (a paper planner or journal, a journaling app like Day One and a habit tracker app like Habitify: $144.84 a year combined, then "Ripple does all three, in one app", with no Ripple price yet), the free-week timeline, and only then "Free for your first 7 days" with the plans. At the bottom, a star badge sits above the FAQ, and the FAQ opens with "Read our reviews". The example debrief and the separate review card are gone.
+
+### Technical changes (for Jimmy)
+- apps/web/src/components/funnel-v9.tsx (PaywallScreen): new section order; system-cost card for both arms (planners 5486 + JOURNAL_APP_CENTS + HABIT_APP_CENTS, no price comparison); per-arm cost card and example card removed; `faqItems` = "Read our reviews" (all C.reviews as ReviewCard) + C.faq; FAQ answers render in a div; new event `funnel_paywall_reviews_opened`.
+
+### Manual steps needed
+None
+
+### Notes
+- The badge reads "Loved on the App Store" with five stars, not "5 stars on the App Store". The real rating is about 4.8 from 9 ratings, so "5 stars" would be untrue.
+
 ## [2026-10-27] — $9.99 paywall: cost card compares planners + journal app + habit app vs Ripple
 
 **Requested by:** Keenan
