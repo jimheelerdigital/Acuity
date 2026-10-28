@@ -9,6 +9,25 @@
 
 
 
+## [2026-10-28] — Funnel dashboard: "New vs old paywall" before/after view
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** see git log
+
+### In plain English (for Keenan)
+Admin → Funnel has a "New vs old paywall" button. It compares the old paywall (the 7 days before Oct 28) with the rebuilt one (Oct 28 onward): how many saw the paywall (in total and per day), started checkout and started a paid trial, the conversion at each step, and how many chose yearly. Green/red arrows show the change versus the old paywall. Because the price test started the same evening, a third row ("new paywall, normal price only") compares the new design at the same $9.99/$89.99 price as before.
+
+### Technical changes (for Jimmy)
+- New apps/web/src/lib/paywall-compare.ts (windows: old 7 days before 2026-10-28T05:00Z, new since then, plus the std arm from priceTestResults) and GET /api/admin/paywall-compare.
+- admin/tabs/FunnelAnalyticsTab.tsx: `paywall` view (`PaywallCompareView`).
+
+### Manual steps needed
+None
+
+### Notes
+- Old paywall baseline (Oct 21–27): 90 viewers, 26 checkouts, 7 paid trials, 7.8% paywall→trial, 14% yearly. The first hours of the new one: 6 viewers, 3 trials, all yearly. Far too few to read yet.
+
 ## [2026-10-28] — Funnel dashboard: "Early bird vs normal price" view for the 10-day price test
 
 **Requested by:** Keenan

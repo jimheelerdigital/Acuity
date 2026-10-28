@@ -8,7 +8,7 @@ import { useState, useEffect } from "react";
 // Since 2026-10-19 every ad visitor lands on the test funnels (/start-test,
 // /start-test-bwk; FeatureFlag funnel_test_only), so "live" (both test
 // funnels) is the default and the normal funnels live under the archive menu.
-type View = "live" | "cmp-ripple" | "cmp-bwk" | "cmp-all" | "ripple" | "bwk" | "test" | "testbwk" | "both" | "legacy" | "price";
+type View = "live" | "cmp-ripple" | "cmp-bwk" | "cmp-all" | "ripple" | "bwk" | "test" | "testbwk" | "both" | "legacy" | "price" | "paywall";
 type CompareMode = "live" | "cmp-ripple" | "cmp-bwk" | "cmp-all";
 type SplitFilter = "auto" | "on" | "off";
 type LegacyFlow = "v7" | "v6" | "v5" | "v4" | "v3" | "v2" | "v1" | "all";
@@ -478,6 +478,7 @@ export default function FunnelAnalyticsTab({ start, end }: { start: string; end:
           <button onClick={() => setView("both")} style={seg(view === "both")}>Side by side</button>
           <span style={{ fontSize: 11, color: "rgba(255,255,255,0.35)", margin: "0 4px 0 10px" }}>Tests:</span>
           <button onClick={() => setView("price")} style={seg(view === "price")}>Early bird vs normal price</button>
+          <button onClick={() => setView("paywall")} style={seg(view === "paywall")}>New vs old paywall</button>
         </div>
         <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
           <div style={{ display: "flex", gap: 4 }} title="Social in-app = sessions opened inside Instagram, Facebook or TikTok, where ad clicks land. All = includes crawler and link-preview visits.">
@@ -511,6 +512,8 @@ export default function FunnelAnalyticsTab({ start, end }: { start: string; end:
 
       {view === "price"
         ? <PriceTestView />
+        : view === "paywall"
+        ? <PaywallCompareView />
         : view === "live" || view === "cmp-ripple" || view === "cmp-bwk" || view === "cmp-all"
         ? <CompareView key={view} start={start} end={end} traffic={traffic} mode={view} />
         : view === "both"
@@ -1119,6 +1122,87 @@ function PriceTestView() {
             </tbody>
           </table>
         </div>
+      </div>
+    </div>
+  );
+}
+
+
+// ── New vs old paywall (2026-10-28, per Keenan) ────────────────────────────
+// The web paywall was rebuilt Oct 27 evening (planner comparison, system cost,
+// reviews in the FAQ). Old = the 7 days before Oct 28; new = Oct 28 on. The
+// price test started the same evening, so "normal price only" is the fair
+// read. Data: GET /api/admin/paywall-compare (lib/paywall-compare.ts).
+
+function PaywallCompareView() {
+  const [data, setData] = useState<any>(null);
+  const [error, setError] = useState<string | null>(null);
+  useEffect(() => {
+    fetch("/api/admin/paywall-compare", { cache: "no-store" })
+      .then(async (r) => (r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`))))
+      .then(setData)
+      .catch((e) => setError(e.message));
+  }, []);
+  if (error) return <div style={{ color: "var(--acuity-bad)", padding: 40, textAlign: "center" }}>Error: {error}</div>;
+  if (!data) return <div style={{ color: "var(--acuity-text-ter)", padding: 40, textAlign: "center" }}>Loading paywall comparison...</div>;
+  const w: any[] = data.windows ?? [];
+  const old = w.find((x) => x.key === "old");
+  const card: React.CSSProperties = { background: "var(--acuity-card-bg)", borderRadius: 12, padding: 20 };
+  const th: React.CSSProperties = { textAlign: "right", padding: "6px 8px", fontSize: 11, fontWeight: 600, color: "var(--acuity-text-quiet)", whiteSpace: "nowrap" };
+  const td: React.CSSProperties = { textAlign: "right", padding: "8px", fontSize: 13, color: "var(--acuity-text)", fontVariantNumeric: "tabular-nums", whiteSpace: "nowrap" };
+  const pct = (v: number | null) => (v == null ? "—" : `${v}%`);
+  const vs = (v: number | null, base: number | null) => {
+    if (v == null || base == null || base === 0) return null;
+    const d = Math.round((v - base) * 10) / 10;
+    return <span style={{ fontSize: 10, marginLeft: 4, color: d >= 0 ? "var(--acuity-good, #4ade80)" : "var(--acuity-bad, #f87171)" }}>{d >= 0 ? "▲" : "▼"}{Math.abs(d)}</span>;
+  };
+  const metric = (x: any, k: string) => (
+    <>
+      {pct(x[k])}
+      {x.key !== "old" ? vs(x[k], old?.[k] ?? null) : null}
+    </>
+  );
+  const enough = w.filter((x) => x.key !== "old").every((x) => x.viewers >= 40);
+  return (
+    <div style={card}>
+      <div style={{ fontSize: 15, fontWeight: 700, color: "var(--acuity-text)" }}>New vs old paywall <span style={{ fontSize: 11, fontWeight: 500, color: "var(--acuity-text-quiet)" }}>web funnel</span></div>
+      <div style={{ marginTop: 6, fontSize: 12, color: "var(--acuity-text-ter)", lineHeight: 1.5 }}>
+        Old = the 7 days before Oct 28. New = Oct 28 onward. The price test started the same evening, so <strong style={{ color: "var(--acuity-text)" }}>&ldquo;New paywall, normal price only&rdquo;</strong> is the apples-to-apples row: same price as before, new design. Arrows are percentage points vs the old paywall.
+        {enough ? null : <> Still early: wait for 40+ viewers on the new paywall before reading much into it.</>}
+      </div>
+      <div style={{ overflowX: "auto", marginTop: 14 }}>
+        <table style={{ width: "100%", borderCollapse: "collapse" }}>
+          <thead>
+            <tr>
+              <th style={{ ...th, textAlign: "left" }}>Paywall</th>
+              <th style={th}>Days</th>
+              <th style={th}>Saw paywall</th>
+              <th style={th}>Per day</th>
+              <th style={th}>Started checkout</th>
+              <th style={th}>Paid trials</th>
+              <th style={th}>Paywall → checkout</th>
+              <th style={th}>Checkout → trial</th>
+              <th style={th}>Paywall → trial</th>
+              <th style={th}>Chose yearly</th>
+            </tr>
+          </thead>
+          <tbody>
+            {w.map((x) => (
+              <tr key={x.key} style={{ borderTop: "1px solid var(--acuity-line)" }}>
+                <td style={{ ...td, textAlign: "left", fontWeight: 600 }}>{x.label}</td>
+                <td style={td}>{x.days}</td>
+                <td style={td}>{x.viewers}</td>
+                <td style={td}>{x.viewersPerDay}</td>
+                <td style={td}>{x.checkouts}</td>
+                <td style={td}>{x.trials}</td>
+                <td style={td}>{metric(x, "checkoutRatePct")}</td>
+                <td style={td}>{metric(x, "checkoutToTrialPct")}</td>
+                <td style={{ ...td, fontWeight: 700, color: "var(--acuity-primary)" }}>{metric(x, "trialRatePct")}</td>
+                <td style={td}>{metric(x, "annualPct")}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
       </div>
     </div>
   );
