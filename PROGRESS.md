@@ -9,6 +9,26 @@
 
 
 
+## [2026-10-27] — Web paywall rebuilt around what she gets
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** see git log
+
+### In plain English (for Keenan)
+The web paywall now reads from the buyer's side. The headline is the outcome ("Less to carry, starting this week"), and the line under it names what she said is on her plate ("For your kids, work and the house") and that the first 7 days are free. The prices are right below. Then comes a real example: something a person might say, and what Ripple hands back (to-dos, a mood, a pattern). That replaces the feature list. Next is a reassurance about her biggest fear, quitting another app ("No streaks to keep up..."), then one strong review and the FAQ. The button now says "Start my free 7 days". The day 4 / day 7 timeline box is gone; the same promise sits under the button.
+
+### Technical changes (for Jimmy)
+- apps/web/src/components/funnel-v9.tsx (PaywallScreen): new heading using `plateLabel(answers.multi.plate, C.plateLabels)`; example card from `pickSample()` (the existing V9_SAMPLES used by the "How Ripple works" screen); reassurance card; one review (`C.reviews[0]`) instead of the carousel. Removed the timeline card, the PRO_FEATURES list and the "Made for <state>" sub. CTA label changed.
+- Order: heading → plans → example → reassurance → review → FAQ, so prices stay above the fold on a phone.
+
+### Manual steps needed
+None
+
+### Notes
+- Changed during the price test, but equally for both arms, so the price comparison holds. Any overall conversion change this week mixes price and design; judge the redesign on the std arm against the prior weeks.
+- The example card is labeled "Example debrief". The web funnel has no real debrief before the paywall anymore.
+
 ## [2026-10-27] — Paywall: removed the early bird banner and the "Continue with the free plan" link
 
 **Requested by:** Keenan

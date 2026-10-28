@@ -1621,7 +1621,6 @@ function PaywallScreen({ plan, setPlan, next, go, track, firstName, answers }: V
   useEffect(() => {
     loadStripeJs().catch(() => {});
   }, []);
-  const state = C.stateName({ plate: answers.multi.plate ?? [], sliders: answers.sliders, pileup: answers.single.pileup, said: answers.single });
   const price = useArmPrices();
   const after = plan === "yearly" ? `${price.annual}/year` : `${price.monthly}/month`;
   // Price test, low arm (2026-10-27, Keenan): framed as an early bird price
@@ -1653,11 +1652,7 @@ function PaywallScreen({ plan, setPlan, next, go, track, firstName, answers }: V
     setPlan(p);
     track("funnel_paywall_plan_selected", p);
   };
-  const timeline = [
-    { label: "Today", text: "Full access. $0.", icon: Sparkles },
-    { label: "Day 4", text: "Reminder email", icon: Bell },
-    { label: "Day 7", text: `Plan starts`, icon: CalendarCheck },
-  ];
+  const sample = pickSample(answers.multi.plate ?? [], C);
   return (
     <div className="enter">
       <div className="flex justify-center mb-3">
@@ -1665,8 +1660,10 @@ function PaywallScreen({ plan, setPlan, next, go, track, firstName, answers }: V
           <CircleCheck className="h-3.5 w-3.5 text-acuity-good" /> Your plan is ready{firstName ? `, ${firstName}` : ""}
         </span>
       </div>
-      <Heading title={<>Try Ripple <span className="grad-text">free for your first 7 days</span></>} sub={<>Made for <span className="font-semibold text-acuity-text">{state.name}</span>. $0 today, cancel any time.</>} />
-
+      <Heading
+        title={<>Less to carry, <span className="grad-text">starting this week</span></>}
+        sub={<>For {plateLabel(answers.multi.plate ?? [], C.plateLabels)}. Ripple is free for your first 7 days.</>}
+      />
 
       <div className="space-y-3">
         <button onClick={() => pick("yearly")} className={`relative w-full text-left rounded-3xl px-5 pt-5 pb-4 transition ${plan === "yearly" ? "card card-sel" : "card"}`}>
@@ -1704,51 +1701,40 @@ function PaywallScreen({ plan, setPlan, next, go, track, firstName, answers }: V
         </button>
       </div>
 
-      <div className="mt-5 card rounded-3xl px-4 py-5">
-        <div className="relative grid grid-cols-3">
-          <span className="absolute left-[16.6%] right-[16.6%] top-5 h-0.5 soft" />
-          <span className="absolute left-[16.6%] top-5 h-0.5 grad" style={{ width: "33.4%" }} />
-          {timeline.map((t, i) => {
-            const Icon = t.icon;
-            return (
-              <div key={t.label} className="relative flex flex-col items-center text-center">
-                <span className={`relative z-10 h-10 w-10 rounded-full flex items-center justify-center ${i === 0 ? "grad text-white" : "card text-acuity-primary"}`}>
-                  <Icon className="h-[18px] w-[18px]" />
-                </span>
-                <p className="mt-2 text-[13px] font-bold">{t.label}</p>
-                <p className="text-[12px] text-acuity-text-sec leading-tight">{t.text}</p>
-              </div>
-            );
-          })}
+      {/* What she'd actually get, shown, not listed (2026-10-27 rebuild). */}
+      <div className="mt-5 card rounded-3xl p-5">
+        <p className="text-[11px] font-bold uppercase tracking-wide text-acuity-text-ter">Example debrief</p>
+        <p className="mt-2 text-[15px] italic leading-relaxed">&ldquo;{sample.said}&rdquo;</p>
+        <div className="mt-4 rounded-2xl soft p-4">
+          <p className="text-[12px] font-bold text-acuity-primary">Ripple hands back</p>
+          <div className="mt-2 space-y-1.5">
+            {sample.tasks.map((t) => (
+              <p key={t} className="flex items-start gap-2 text-[14px] leading-snug">
+                <CircleCheck className="mt-0.5 h-4 w-4 shrink-0 text-acuity-good" /> {t}
+              </p>
+            ))}
+          </div>
+          <p className="mt-3 text-[13px] text-acuity-text-sec">
+            <span className="font-semibold text-acuity-text">Mood:</span> {sample.mood}
+          </p>
+          <p className="mt-1 text-[13px] text-acuity-text-sec">
+            <span className="font-semibold text-acuity-text">Pattern:</span> {sample.pattern}
+          </p>
         </div>
-        <p className="mt-4 text-center text-[13px] text-acuity-text-sec">Cancel before day 7 and you pay nothing.</p>
+        <p className="mt-3 text-[13px] text-acuity-text-sec">Plus the habits you mention and a weekly report of how your week went.</p>
       </div>
 
-      <div className="mt-5 card rounded-3xl p-5 space-y-3.5">
-        <p className="text-[13px] font-bold">What you get</p>
-        {PRO_FEATURES.map((f) => {
-          const Icon = f.icon;
-          return (
-            <div key={f.title} className="flex gap-3">
-              <span className="h-9 w-9 shrink-0 rounded-xl chip-ico flex items-center justify-center">
-                <Icon className="h-[18px] w-[18px]" />
-              </span>
-              <div>
-                <p className="text-[15px] font-semibold leading-tight">{f.title}</p>
-                <p className="text-[13px] text-acuity-text-sec leading-snug">{f.text}</p>
-              </div>
-            </div>
-          );
-        })}
+
+      <div className="mt-5 flex items-start gap-3 rounded-3xl soft px-5 py-4">
+        <Sprout className="mt-0.5 h-5 w-5 shrink-0 text-acuity-primary" />
+        <p className="text-[14px] leading-snug">
+          <span className="font-semibold">No streaks to keep up.</span> Talk to it whenever you need to sort things out. Ripple keeps track so you don&rsquo;t have to.
+        </p>
       </div>
 
       <div className="mt-6">
         <Stars />
-        <div className="mt-3 snap noscroll -mx-5 px-5 flex gap-3 overflow-x-auto pb-1">
-          {C.reviews.map((r) => (
-            <ReviewCard key={r.name} {...r} className="w-[84%] shrink-0" />
-          ))}
-        </div>
+        <ReviewCard {...C.reviews[0]} className="mt-3 w-full" />
       </div>
 
       <div className="mt-6 card rounded-3xl px-5 py-2">
@@ -1773,10 +1759,10 @@ function PaywallScreen({ plan, setPlan, next, go, track, firstName, answers }: V
             next();
           }}
         >
-          Start my 7-day free trial
+          Start my free 7 days
         </PrimaryButton>
         <p className="mt-2 text-center text-[12px] text-acuity-text-sec tabular-nums">
-          <span className="font-semibold text-acuity-text">$0 today.</span> Then {after}, renews automatically. Cancel any time.
+          <span className="font-semibold text-acuity-text">$0 today.</span> Then {after}, renews automatically.
         </p>
         <PaywallTrustLine className="mt-1" />
         <PayInBrowserButton interval={plan} funnel={C.path} track={track} className="mt-3" />
