@@ -67,10 +67,25 @@ export async function GET(req: NextRequest) {
     },
   });
 
+  // Google Calendar direct sign-in (2026-10-28). `googleDirectAvailable`
+  // tells the app whether to offer "Connect Google Calendar" (feature
+  // flag, fails closed); `google` is the stored connection, if any —
+  // status "needs_reconnect" after Google revoked access.
+  const { isEnabled } = await import("@/lib/feature-flags");
+  const { GOOGLE_DIRECT_FLAG, googleConnectionStatus } = await import(
+    "@/lib/calendar/google-direct"
+  );
+  const [googleDirectAvailable, google] = await Promise.all([
+    isEnabled(userId, GOOGLE_DIRECT_FLAG).catch(() => false),
+    googleConnectionStatus(prisma, userId).catch(() => null),
+  ]);
+
   if (!user || !user.calendarConnectedProvider) {
     return NextResponse.json({
       connected: false,
       calendar: null,
+      googleDirectAvailable,
+      google,
     });
   }
 
@@ -83,6 +98,8 @@ export async function GET(req: NextRequest) {
       autoSendTasks: user.autoSendTasks,
       defaultEventDuration: user.defaultEventDuration,
     },
+    googleDirectAvailable,
+    google,
   });
 }
 

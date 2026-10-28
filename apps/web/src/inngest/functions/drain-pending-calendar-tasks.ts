@@ -129,10 +129,37 @@ export const drainPendingCalendarTasksFn = inngest.createFunction(
       return res.count;
     });
 
+    // Google Calendar direct (2026-10-28): the server is the executor for
+    // these people, so re-request a drain for anyone with queued work
+    // (retryable failures, or a drain request that was lost). The drain
+    // function applies the flag + entitlement gates and debounces.
+    const googleUserIds = await step.run("find-google-queues", async () => {
+      const users = await prisma.user.findMany({
+        where: {
+          calendarConnectedProvider: "google",
+          OR: [
+            { tasks: { some: { calendarSyncStatus: "PENDING" } } },
+            { calendarDeletions: { some: {} } },
+          ],
+        },
+        select: { id: true },
+        take: 500,
+      });
+      return users.map((u) => u.id);
+    });
+    if (googleUserIds.length > 0) {
+      const { GOOGLE_DRAIN_EVENT } = await import("@/lib/calendar/server-drain-request");
+      await step.sendEvent(
+        "request-google-drains",
+        googleUserIds.map((userId) => ({ name: GOOGLE_DRAIN_EVENT, data: { userId } }))
+      );
+    }
+
     return {
       tick: now.toISOString(),
       ...escalated,
       expiredDeletions,
+      googleDrainsRequested: googleUserIds.length,
     };
   }
 );

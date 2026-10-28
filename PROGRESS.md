@@ -9,6 +9,29 @@
 
 
 
+## [2026-10-28] — Google Calendar direct sign-in (branch feat/gcal-direct, flag off)
+
+**Requested by:** Jimmy
+**Committed by:** Claude Code
+**Commit hash:** see git log
+
+### In plain English
+People can connect Google Calendar by signing in with Google (web /account, or the app's calendar settings, which opens the same web sign-in). Ripple then puts their dated tasks on their primary Google Calendar from the server: no phone needs to be open, so it works for Android and web-only users. Checking a task off marks its event ✓; dismissing it removes the event. Hidden behind the `calendar_google_direct` feature flag until Google verifies the calendar.events scope.
+
+### Technical changes
+- New provider path through the existing queue: tasks still go PENDING via lib/enqueue-sync.ts, dismissals still go to CalendarDeletion. For provider "google" the server drains (new Inngest fn `google-calendar-drain`, event `calendar/google.drain-requested`, debounced 10s per user; the 30-min calendar cron re-requests drains for anyone with queued work). GET /drain returns no ops for server providers.
+- lib/calendar/google-direct.ts: OAuth (scope `calendar.events` + openid/email), HMAC state (reuses oauth.ts signer, `purpose` field), tokens AES-256-GCM-encrypted in CalendarConnection (provider "google"), refresh, revoke, `markGoogleDisconnected` (invalid_grant / 401 after refresh / insufficientPermissions → tokens wiped, queue released, UI shows Reconnect).
+- lib/calendar/google-calendar-executor.ts: `GoogleCalendarExecutor implements CalendarSyncExecutor`; deterministic event id per task (`ripple` + sha256(taskId)), insert→409→PATCH idempotent upsert, PATCH-only ✓ on complete, DELETE (404/410 = done). `applySyncResult` gained an optional `expectedPendingSince` guard so an edit made mid-write stays PENDING.
+- Routes: GET /api/integrations/calendar/google/start (302, or `?format=json&return=app` → `{url}`), GET /api/integrations/calendar/google/callback. /connect rejects provider "google"; connecting a phone calendar or disconnecting revokes + deletes the Google grant. /settings returns `googleDirectAvailable` + `google`. Data export strips CalendarConnection tokens.
+- Web /account Integrations card: Connect / Reconnect Google Calendar, `?gcal=` status messages, "Connected as …". Mobile app/integrations.tsx: Google card via expo-web-browser `openAuthSessionAsync` → `acuity://integrations` (JS only, OTA-able).
+- Schema: CalendarConnection.accountEmail, .grantedScopes. SQL in docs/migrations/2026-10-28-calendar-google-direct.sql (NOT applied; also inserts the flag row, off).
+- Tests: google-direct.test.ts, google-calendar-executor.test.ts (mocked fetch), google/google-routes.test.ts, calendar-deletion additions.
+
+### Before turning it on (Jimmy)
+- Apply the SQL; add redirect URI `https://goripple.io/api/integrations/calendar/google/callback` to the Google OAuth client; enable the Google Calendar API; add the calendar.events scope to the consent screen and submit for verification. Env: GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, NEXTAUTH_SECRET, NEXTAUTH_URL (all already set for sign-in), Inngest keys already set.
+
+---
+
 ## [2026-10-27] — One end-of-day founder email replaces per-signup emails
 
 **Requested by:** Keenan

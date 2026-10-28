@@ -6,6 +6,7 @@ import { generateContentFn } from "@/inngest/functions/content-factory";
 import { backfillExtractionsFn } from "@/inngest/functions/backfill-extractions";
 import { day7AuditCronFn } from "@/inngest/functions/day-7-audit-cron";
 import { drainPendingCalendarTasksFn } from "@/inngest/functions/drain-pending-calendar-tasks";
+import { googleCalendarDrainFn } from "@/inngest/functions/google-calendar-drain";
 import { freeCapEvaluatorFn } from "@/inngest/functions/free-cap-evaluator";
 import { generateLifeAuditFn } from "@/inngest/functions/generate-life-audit";
 import { generateWeeklyReportFn } from "@/inngest/functions/generate-weekly-report";
@@ -156,6 +157,7 @@ const handler = serve({
     weeklyMetricsEmailFn,
     waitlistReactivationFn,
     drainPendingCalendarTasksFn,
+    googleCalendarDrainFn,
     backfillExtractionsFn,
     freeCapEvaluatorFn,
     cleanupTrySessionsFn,

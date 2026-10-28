@@ -11,6 +11,7 @@ import { TrialStatusCard } from "./_components/trial-status-card";
 import {
   IntegrationsSection,
   type CalendarConnectionSummary,
+  type GoogleDirectSummary,
 } from "./integrations-section";
 import { LifeDimensionsSection } from "./life-dimensions-section";
 import { NotificationPreferencesSection } from "./notification-preferences-section";
@@ -42,6 +43,10 @@ interface Props {
    *  user hasn't connected; non-null renders the connected state
    *  card in IntegrationsSection. */
   calendarConnection: CalendarConnectionSummary | null;
+  /** Google Calendar direct sign-in (2026-10-28): flag + stored connection. */
+  googleDirect: GoogleDirectSummary;
+  /** `?gcal=` status from the Google Calendar direct callback. */
+  googleDirectFlash: string | null;
   /** Slice 5 — count of pre-60d entries that haven't been
    *  extracted. Drives the "Process older entries (N remaining)"
    *  card visibility. Zero or non-PRO hides it. */
@@ -86,6 +91,8 @@ export default function AccountClient({
   monthlyEmailEnabled,
   isProLocked,
   calendarConnection,
+  googleDirect,
+  googleDirectFlash,
   olderBackfillCount,
   backfillInFlight,
   justUpgraded,
@@ -197,6 +204,8 @@ export default function AccountClient({
           <IntegrationsSection
             isProLocked={isProLocked}
             connection={calendarConnection}
+            googleDirect={googleDirect}
+            googleDirectFlash={googleDirectFlash}
           />
         </div>
 

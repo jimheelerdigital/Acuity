@@ -6,6 +6,8 @@
  *      Single billing-gate card. CTA opens Safari to /upgrade.
  *
  *   2. PRO/TRIAL/PAST_DUE not yet connected → "Connect on iOS" card
+ *      (or, with the calendar_google_direct flag, 2026-10-28, a
+ *      "Connect Google Calendar" card that starts the web OAuth flow)
  *      Web is informational only in v1.1 — Phase A connect happens
  *      via iOS EventKit (proxies Google + Outlook + iCloud through
  *      the OS account integration). Web Google OAuth is Phase B.
@@ -34,8 +36,30 @@ export interface CalendarConnectionSummary {
   defaultEventDuration: string; // "ALL_DAY" | "TIMED"
 }
 
+/** Google Calendar direct sign-in (2026-10-28). */
+export interface GoogleDirectSummary {
+  /** calendar_google_direct flag on for this person. */
+  available: boolean;
+  /** Stored connection; status needs_reconnect after Google revoked access. */
+  connection: { email: string | null; status: "connected" | "needs_reconnect" } | null;
+}
+
+const GOOGLE_START_HREF = "/api/integrations/calendar/google/start";
+
+const GOOGLE_FLASH: Record<string, { tone: "good" | "bad"; text: string }> = {
+  connected: { tone: "good", text: "Google Calendar connected. Your tasks with due dates will show up there in a few seconds." },
+  denied: { tone: "bad", text: "Google Calendar wasn't connected: access was declined." },
+  scope: { tone: "bad", text: "Ripple needs permission to add events. Connect again and leave calendar access ticked." },
+  no_token: { tone: "bad", text: "Google didn't finish the connection. Please try again." },
+  in_use: { tone: "bad", text: "That Google account is already connected to a different Ripple account." },
+  unavailable: { tone: "bad", text: "Google Calendar connect isn't available on your account yet." },
+  locked: { tone: "bad", text: "Calendar sync is part of Ripple Pro." },
+  error: { tone: "bad", text: "Something went wrong connecting Google Calendar. Please try again." },
+};
+
 const PROVIDER_LABEL: Record<string, string> = {
   ios_eventkit: "Apple Calendar (iOS)",
+  android_calendar: "Phone calendar (Android)",
   google: "Google Calendar",
   outlook: "Outlook / Microsoft 365",
 };
@@ -43,9 +67,13 @@ const PROVIDER_LABEL: Record<string, string> = {
 export function IntegrationsSection({
   isProLocked,
   connection,
+  googleDirect = { available: false, connection: null },
+  googleDirectFlash = null,
 }: {
   isProLocked: boolean;
   connection: CalendarConnectionSummary | null;
+  googleDirect?: GoogleDirectSummary;
+  googleDirectFlash?: string | null;
 }) {
   // FREE post-trial: paywall card, no connect surface.
   if (isProLocked) {
@@ -75,14 +103,24 @@ export function IntegrationsSection({
         up where you already plan your day.
       </p>
 
+      {googleDirectFlash && GOOGLE_FLASH[googleDirectFlash] ? (
+        <GoogleFlash flash={GOOGLE_FLASH[googleDirectFlash]} />
+      ) : null}
+
       {/* Kill switch (D1a): not-connected users see "Coming soon"; already-
-          connected users keep their connected-state card. */}
-      {!CALENDAR_INTEGRATION_ENABLED && !isConnected ? (
+          connected users keep their connected-state card. Google direct
+          sign-in (flag-gated) is offered instead of "Coming soon". */}
+      {isConnected ? (
+        <ConnectedStateCard
+          connection={connection!}
+          googleEmail={googleDirect.connection?.email ?? null}
+        />
+      ) : googleDirect.available ? (
+        <GoogleConnectCard needsReconnect={googleDirect.connection?.status === "needs_reconnect"} />
+      ) : !CALENDAR_INTEGRATION_ENABLED ? (
         <CalendarComingSoonCard />
-      ) : !isConnected ? (
-        <ConnectOnMobileCard />
       ) : (
-        <ConnectedStateCard connection={connection!} />
+        <ConnectOnMobileCard />
       )}
     </section>
   );
@@ -126,10 +164,60 @@ function ConnectOnMobileCard() {
   );
 }
 
+function GoogleFlash({ flash }: { flash: { tone: "good" | "bad"; text: string } }) {
+  return (
+    <p
+      role="status"
+      className={
+        flash.tone === "good"
+          ? "mt-4 rounded-md bg-emerald-500/10 px-3 py-2 text-xs text-emerald-700 dark:text-emerald-300"
+          : "mt-4 rounded-md bg-red-500/10 px-3 py-2 text-xs text-red-700 dark:text-red-300"
+      }
+    >
+      {flash.text}
+    </p>
+  );
+}
+
+function GoogleConnectCard({ needsReconnect }: { needsReconnect: boolean }) {
+  return (
+    <div className="mt-5 rounded-lg border border-zinc-200 dark:border-white/10 p-5">
+      <h3 className="text-sm font-semibold text-zinc-900 dark:text-zinc-50">
+        Google Calendar
+      </h3>
+      {needsReconnect ? (
+        <p className="mt-2 rounded-md bg-amber-500/10 px-3 py-2 text-xs text-amber-700 dark:text-amber-300">
+          Google stopped Ripple&apos;s access to your calendar, so tasks aren&apos;t
+          being added. Reconnect to pick up where you left off.
+        </p>
+      ) : null}
+      <p className="mt-2 text-xs text-zinc-500 dark:text-zinc-400 leading-relaxed">
+        Sign in with Google and Ripple adds your tasks with due dates to your
+        primary Google Calendar, from any device, no phone needed. Ripple can
+        only add, change and remove the events it creates; it doesn&apos;t
+        read your other events.
+      </p>
+      {/* A plain link, not fetch: the route 302s to Google's consent page. */}
+      <a
+        href={GOOGLE_START_HREF}
+        className="mt-4 inline-flex items-center rounded-md bg-zinc-900 px-3 py-2 text-xs font-semibold text-white hover:bg-zinc-700 dark:bg-white dark:text-zinc-900 dark:hover:bg-zinc-200"
+      >
+        {needsReconnect ? "Reconnect Google Calendar" : "Connect Google Calendar"}
+      </a>
+      <p className="mt-3 text-[11px] text-zinc-400 dark:text-zinc-500">
+        Prefer Apple Calendar or your phone&apos;s calendar? Connect from the
+        Ripple app: Profile → Integrations.
+      </p>
+    </div>
+  );
+}
+
 function ConnectedStateCard({
   connection,
+  googleEmail,
 }: {
   connection: CalendarConnectionSummary;
+  googleEmail: string | null;
 }) {
   const provider = connection.provider ?? "unknown";
   const providerLabel = PROVIDER_LABEL[provider] ?? provider;
@@ -157,6 +245,7 @@ function ConnectedStateCard({
           {connectedDate && (
             <p className="mt-0.5 text-xs text-zinc-500 dark:text-zinc-400">
               Connected {connectedDate}
+              {provider === "google" && googleEmail ? ` as ${googleEmail}` : ""}
             </p>
           )}
         </div>
@@ -169,6 +258,13 @@ function ConnectedStateCard({
         initialAutoSendTasks={connection.autoSendTasks}
         initialDefaultEventDuration={initialDuration}
         targetCalendarId={connection.targetCalendarId}
+        {...(provider === "google"
+          ? {
+              targetCalendarLabel: "Your primary Google Calendar",
+              targetCalendarNote:
+                "Disconnecting also removes Ripple's access in your Google account. Events already added stay.",
+            }
+          : {})}
       />
     </div>
   );

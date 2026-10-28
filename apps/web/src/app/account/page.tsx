@@ -7,6 +7,7 @@ import { canManageWebSubscription } from "@/lib/billing/web-manage";
 import { entitlementsFor } from "@/lib/entitlements";
 
 import AccountClient from "./account-client";
+import type { GoogleDirectSummary } from "./integrations-section";
 
 export const dynamic = "force-dynamic";
 
@@ -30,6 +31,9 @@ export default async function AccountPage({
     // Slice 4 v1.2 Calendar Integration — connect/callback redirect
     // hands status via ?calendar=connected|denied|error|no_token.
     calendar?: string;
+    // Google Calendar direct sign-in (2026-10-28) —
+    // /api/integrations/calendar/google/callback hands status via ?gcal=.
+    gcal?: string;
   };
 }) {
   const session = await getServerSession(getAuthOptions());
@@ -123,6 +127,22 @@ export default async function AccountPage({
         }
       : null;
 
+  // Google Calendar direct sign-in (2026-10-28): whether to offer the
+  // connect button (feature flag, fails closed) and the stored connection
+  // (email + needs-reconnect after Google revoked access).
+  let googleDirect: GoogleDirectSummary = { available: false, connection: null };
+  if (user && !isProLocked) {
+    const { isEnabled } = await import("@/lib/feature-flags");
+    const { GOOGLE_DIRECT_FLAG, googleConnectionStatus } = await import(
+      "@/lib/calendar/google-direct"
+    );
+    const [available, connection] = await Promise.all([
+      isEnabled(userId, GOOGLE_DIRECT_FLAG).catch(() => false),
+      googleConnectionStatus(prisma, userId).catch(() => null),
+    ]);
+    googleDirect = { available, connection };
+  }
+
   // Backfill in-flight indicator — Inngest's per-user concurrency=1
   // means a stale startedAt with no completedAt past the worst-case
   // run-time (~5min for the 60-day window) is the signal. We render
@@ -158,6 +178,8 @@ export default async function AccountPage({
         monthlyEmailEnabled={user?.monthlyEmailEnabled ?? true}
         isProLocked={isProLocked}
         calendarConnection={calendarConnection}
+        googleDirect={googleDirect}
+        googleDirectFlash={searchParams?.gcal ?? null}
         olderBackfillCount={olderBackfillCount}
         backfillInFlight={backfillInFlight}
         justUpgraded={searchParams?.upgrade === "success"}

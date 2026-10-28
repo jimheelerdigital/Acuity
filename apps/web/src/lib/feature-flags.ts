@@ -68,6 +68,9 @@ export const FEATURE_FLAG_KEYS = [
   // Per-entry reflection (PR #48). PAUSED 2026-10-27 pending legal review;
   // no FeatureFlag row = off (isEnabled fails closed).
   "entry_reflection",
+  // Google Calendar direct sign-in (2026-10-28). Off until Google verifies
+  // the calendar.events scope; turn on per user with an override to test.
+  "calendar_google_direct",
 ] as const;
 
 export type FeatureFlagKey = (typeof FEATURE_FLAG_KEYS)[number];

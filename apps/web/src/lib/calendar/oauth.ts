@@ -95,6 +95,45 @@ function stateKey(): Buffer {
 }
 
 /**
+ * Sign any JSON payload with HMAC-SHA256 under NEXTAUTH_SECRET. Returns
+ * `base64url(body).base64url(sig)`. The payload must carry `issuedAt`
+ * (ms) so verifyStatePayload can expire it. Shared with the Google
+ * Calendar direct sign-in flow (lib/calendar/google-direct.ts), which
+ * adds a `purpose` field so its states can't be replayed here.
+ */
+export function signStatePayload(payload: Record<string, unknown> & { issuedAt: number }): string {
+  const body = Buffer.from(JSON.stringify(payload), "utf8").toString("base64url");
+  const sig = createHmac("sha256", stateKey()).update(body).digest("base64url");
+  return `${body}.${sig}`;
+}
+
+/**
+ * Verify a state signed by signStatePayload. Returns the payload, or null
+ * on tamper / expiry (older than `ttlMs`) / shape errors.
+ */
+export function verifyStatePayload(
+  state: string,
+  ttlMs: number = STATE_TTL_MS
+): Record<string, unknown> | null {
+  try {
+    const parts = state.split(".");
+    if (parts.length !== 2) return null;
+    const [body, sig] = parts;
+    const expected = createHmac("sha256", stateKey()).update(body).digest();
+    const actual = Buffer.from(sig, "base64url");
+    if (expected.length !== actual.length) return null;
+    if (!timingSafeEqual(expected, actual)) return null;
+    const payload = JSON.parse(Buffer.from(body, "base64url").toString("utf8")) as unknown;
+    if (!payload || typeof payload !== "object") return null;
+    const issuedAt = (payload as { issuedAt?: unknown }).issuedAt;
+    if (typeof issuedAt !== "number" || Date.now() - issuedAt > ttlMs) return null;
+    return payload as Record<string, unknown>;
+  } catch {
+    return null;
+  }
+}
+
+/**
  * Sign a state payload with HMAC-SHA256. Returns the base64url string
  * to embed in the auth URL.
  */
@@ -104,33 +143,18 @@ export function signState(userId: string): string {
     issuedAt: Date.now(),
     nonce: randomBytes(8).toString("hex"),
   };
-  const body = Buffer.from(JSON.stringify(payload), "utf8").toString("base64url");
-  const sig = createHmac("sha256", stateKey()).update(body).digest("base64url");
-  return `${body}.${sig}`;
+  return signStatePayload({ ...payload });
 }
 
 /**
  * Verify a state string returned by Google. Returns the userId on
- * success, null on tamper / expiry / shape errors.
+ * success, null on tamper / expiry / shape errors. States minted for
+ * another flow (they carry a `purpose`) are rejected.
  */
 export function verifyState(state: string): string | null {
-  try {
-    const parts = state.split(".");
-    if (parts.length !== 2) return null;
-    const [body, sig] = parts;
-    const expected = createHmac("sha256", stateKey()).update(body).digest();
-    const actual = Buffer.from(sig, "base64url");
-    if (expected.length !== actual.length) return null;
-    if (!timingSafeEqual(expected, actual)) return null;
-    const payload = JSON.parse(
-      Buffer.from(body, "base64url").toString("utf8")
-    ) as StatePayload;
-    if (Date.now() - payload.issuedAt > STATE_TTL_MS) return null;
-    if (!payload.userId) return null;
-    return payload.userId;
-  } catch {
-    return null;
-  }
+  const payload = verifyStatePayload(state);
+  if (!payload || payload.purpose !== undefined) return null;
+  return typeof payload.userId === "string" && payload.userId ? payload.userId : null;
 }
 
 /**

@@ -247,10 +247,15 @@ export async function PATCH(req: NextRequest) {
       // task itself is still hard-deleted, so no reader ever sees it.
       const withEvent = await prisma.task.findFirst({
         where: { id: body.id, userId },
-        select: { calendarEventId: true },
+        select: { calendarEventId: true, calendarSyncStatus: true },
       });
       const { queueCalendarDeletion } = await import("@/lib/calendar-deletion");
-      await queueCalendarDeletion(prisma, userId, withEvent?.calendarEventId);
+      await queueCalendarDeletion(
+        prisma,
+        userId,
+        withEvent?.calendarEventId,
+        withEvent ? { id: body.id, calendarSyncStatus: withEvent.calendarSyncStatus } : undefined
+      );
       await prisma.task.delete({ where: { id: body.id } });
       return NextResponse.json({ success: true });
     }
