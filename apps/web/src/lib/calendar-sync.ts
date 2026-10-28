@@ -61,6 +61,22 @@ export function isCalendarProviderId(
 }
 
 /**
+ * Providers whose writes the SERVER executes (2026-10-28). Their queue is
+ * drained by lib/calendar/google-calendar-executor.ts (Inngest), never by
+ * the phone; GET /drain returns no ops for them. Phone providers
+ * (ios_eventkit, android_calendar) keep Option α: the phone drains.
+ */
+export const SERVER_CALENDAR_PROVIDERS: ReadonlySet<CalendarProviderId> = new Set<CalendarProviderId>([
+  "google",
+]);
+
+export function isServerCalendarProvider(
+  value: string | null | undefined
+): value is CalendarProviderId {
+  return isCalendarProviderId(value) && SERVER_CALENDAR_PROVIDERS.has(value);
+}
+
+/**
  * What kind of calendar mutation does this op produce?
  *   - upsert: create-or-update. Used for new tasks with dueDate, and
  *     for any subsequent edit (title/dueDate/time change) on a task
@@ -255,6 +271,39 @@ export function planSyncOp(
   };
 }
 
+/** The Task columns a queued (PENDING) op is built from. */
+export type QueuedTaskRow = Pick<
+  Task,
+  "id" | "title" | "text" | "status" | "dueDate" | "calendarEventId"
+>;
+
+/**
+ * Project a PENDING task to its op. Shared by GET /drain (phone executor)
+ * and the server executor so both see the same shape. The kind is derived
+ * from the task's current status: DONE → complete, otherwise upsert.
+ */
+export function queuedTaskOp(
+  t: QueuedTaskRow,
+  ctx: {
+    userId: string;
+    providerId: CalendarProviderId;
+    targetCalendarId: string;
+    defaultEventDuration: string;
+  }
+): CalendarSyncOp {
+  return {
+    taskId: t.id,
+    userId: ctx.userId,
+    kind: t.status === "DONE" ? "complete" : "upsert",
+    providerEventId: t.calendarEventId,
+    providerId: ctx.providerId,
+    targetCalendarId: ctx.targetCalendarId,
+    taskTitle: sanitizeTaskTitle(t.title ?? t.text ?? "(untitled)"),
+    dueDateISO: t.dueDate ? t.dueDate.toISOString() : null,
+    duration: ctx.defaultEventDuration === "ALL_DAY" ? "ALL_DAY" : "TIMED",
+  };
+}
+
 /**
  * Strip newlines and cap title length. Defense against:
  *   - Calendar app rendering newlines as separate lines / titles.
@@ -282,9 +331,36 @@ function sanitizeTaskTitle(raw: string): string {
  * inside the route's own transaction when desired.
  */
 export async function applySyncResult(
-  tx: PrismaClient | Prisma.TransactionClient,
-  result: CalendarSyncOpResult
+  tx: PrismaClient | Prisma.TransactionClient | Pick<PrismaClient, "task">,
+  result: CalendarSyncOpResult,
+  opts: {
+    /**
+     * Server executor (2026-10-28): the task's calendarPendingSince when the
+     * op was read. If it changed (the task was edited and re-queued while
+     * the provider call was in flight), record the event id but leave the
+     * task PENDING so the next run writes the edit.
+     */
+    expectedPendingSince?: Date | null;
+  } = {}
 ): Promise<void> {
+  if (result.ok && opts.expectedPendingSince !== undefined) {
+    const res = await tx.task.updateMany({
+      where: { id: result.taskId, calendarPendingSince: opts.expectedPendingSince },
+      data: {
+        calendarEventId: result.providerEventId,
+        calendarSyncedAt: new Date(),
+        calendarSyncStatus: "SYNCED",
+        calendarPendingSince: null,
+      },
+    });
+    if (res.count === 0) {
+      await tx.task.updateMany({
+        where: { id: result.taskId },
+        data: { calendarEventId: result.providerEventId },
+      });
+    }
+    return;
+  }
   if (result.ok) {
     await tx.task.update({
       where: { id: result.taskId },

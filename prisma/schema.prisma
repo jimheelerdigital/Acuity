@@ -2335,6 +2335,14 @@ model CalendarConnection {
   // refresh, etc.) — /account shows a "Reconnect" CTA.
   lastErrorAt       DateTime?
   lastError         String?
+  // Google Calendar direct sign-in (2026-10-28, provider "google"). The
+  // connecting Google account's address, shown as "Connected as …", and
+  // the scopes Google actually granted (space-separated; the user can
+  // untick calendar.events on the consent screen). accessToken and
+  // refreshToken hold AES-256-GCM ciphertext (lib/calendar/encryption.ts),
+  // never plaintext.
+  accountEmail      String?
+  grantedScopes     String?
   createdAt         DateTime  @default(now())
   updatedAt         DateTime  @updatedAt
 
