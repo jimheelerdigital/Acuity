@@ -748,6 +748,8 @@ export async function POST(req: NextRequest) {
                   source: "stripe_trial_converted",
                   timestamp: new Date(),
                 });
+                // For the end-of-day summary (lib/founder-daily-summary.ts).
+                await logServerFunnelEvent(prisma, { userId: payingUser.id, event: "trial_converted", value: "stripe", context: "invoice.payment_succeeded.trial_converted" });
               }
             } catch (err) {
               safeLog.warn("stripe-webhook.trial-converted-email-failed", {

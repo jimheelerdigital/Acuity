@@ -9,6 +9,33 @@
 
 
 
+## [2026-10-27] — One end-of-day founder email replaces per-signup emails
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** see git log
+
+### In plain English (for Keenan)
+You and Jim no longer get an email for every signup. Instead, one "Ripple today" email arrives at 11:59pm Central with:
+- signups, paid trials started, trials that became paying customers, and app downloads
+- every funnel (women's Meta ads, men's, the Planners campaign, creator links, the app, organic), with the names of who signed up and who started a paid trial, including the plan and whether it was the early bird price
+- a "Potential issues" box: web payers who never opened the app, failed card charges, debriefs that failed to process, app downloads that don't become accounts, a day of web signups with no trials, or no signups at all
+
+Affiliate creators are labeled. The real-time emails for paid trials, conversions and app downloads still send as before.
+
+### Technical changes (for Jimmy)
+- New apps/web/src/lib/founder-daily-summary.ts (`buildDailySummary`, `sendDailySummary`, `centralDayBounds`, `funnelOf`).
+- New Inngest function `founder-daily-summary` (cron `TZ=America/Chicago 59 23 * * *`, plus event `founder/daily-summary` with optional `{ at }`); registered in api/inngest/route.ts.
+- lib/founder-notifications.ts: `notifyFoundersOfSignup` returns early unless `FOUNDER_SIGNUP_EMAILS=on`.
+- New `trial_converted` OnboardingEvent: Stripe webhook (first paid invoice after trial) and RevenueCat webhook (RENEWAL with is_trial_conversion). Web conversions are also derived from a user's first `:renewal` funnel event, so the history counts too.
+
+### Manual steps needed
+- [ ] Inngest resync after deploy so the new cron registers (Claude, done via PUT /api/inngest)
+
+### Notes
+- Verified tonight: the Stripe conversion fix from this morning works. jesscollins1127@gmail.com's first charge after her trial sent the "Trial converted to paid" email at 5:42pm CT.
+- App Store trials for a day are inferred from trialEndsAt = that day + 7. Trials of a different length (e.g. Jessie's 30 days) land on another day.
+
 ## [2026-10-27] — Paywall comparison: planner handwriting easier to read
 
 **Requested by:** Keenan

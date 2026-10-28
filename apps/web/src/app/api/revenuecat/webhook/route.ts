@@ -325,6 +325,10 @@ async function storePurchaseFounderEmail(event: RcWebhookEvent, userId: string):
     if (!u || (!converted && u.appleOriginalTransactionId)) return;
     const trial = (event.period_type ?? "").toUpperCase() === "TRIAL";
     const prefix = store === "APP_STORE" ? "app_store" : "play_store";
+    if (converted) {
+      // For the end-of-day summary (lib/founder-daily-summary.ts).
+      await prisma.onboardingEvent.create({ data: { userId, event: "trial_converted", value: prefix } }).catch(() => {});
+    }
     const { notifyFoundersOfPayment } = await import("@/lib/founder-notifications");
     await notifyFoundersOfPayment({
       userId,

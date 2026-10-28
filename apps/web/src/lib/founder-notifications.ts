@@ -41,6 +41,9 @@ export async function notifyFoundersOfSignup(params: {
 }): Promise<void> {
   // Env toggle — default enabled
   if (process.env.FOUNDER_NOTIFICATIONS_ENABLED === "false") return;
+  // Per-signup emails are replaced by the 11:59pm summary (2026-10-27, per
+  // Keenan). FOUNDER_SIGNUP_EMAILS=on brings them back.
+  if (process.env.FOUNDER_SIGNUP_EMAILS !== "on") return;
 
   const { userId, name, email, signupMethod, timestamp, campaign, branch, paymentStatus, utmSource, utmMedium, utmCampaign } = params;
 
