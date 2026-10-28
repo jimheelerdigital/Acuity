@@ -17,6 +17,8 @@ describe("getFirstOpens", () => {
           { value: '{"reinstall":false,"had_account":true}', userId: null, sessionToken: "i3", createdAt: t("2026-10-22T10:00:00Z") },
           // new install, anonymous, never reached start
           { value: '{"reinstall":false,"had_account":false}', userId: null, sessionToken: "i4", createdAt: t("2026-10-22T10:00:00Z") },
+          // the same install logging a second first open: counted once
+          { value: '{"reinstall":false,"had_account":false}', userId: null, sessionToken: "i4", createdAt: t("2026-10-22T11:00:00Z") },
         ]),
       },
       user: {

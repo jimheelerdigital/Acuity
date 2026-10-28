@@ -203,10 +203,20 @@ export async function getFirstOpens(
   end: Date,
   funnelEvents: { event: string; userId: string | null; sessionToken: string | null }[],
 ) {
-  const opens = (await prisma.onboardingEvent.findMany({
+  const rows = (await prisma.onboardingEvent.findMany({
     where: { createdAt: { gte: start, lte: end }, isBot: false, event: "app_first_open" },
     select: { value: true, userId: true, sessionToken: true, createdAt: true },
+    orderBy: { createdAt: "asc" },
   })) as { value: string | null; userId: string | null; sessionToken: string | null; createdAt: Date }[];
+  // One per install: an install occasionally logs app_first_open twice
+  // (seen once, Oct 20-27). Keep the earliest; a row with no id stands alone.
+  const seen = new Set<string>();
+  const opens = rows.filter((r) => {
+    if (!r.sessionToken) return true;
+    if (seen.has(r.sessionToken)) return false;
+    seen.add(r.sessionToken);
+    return true;
+  });
 
   const ids = [...new Set(opens.map((o) => o.userId).filter((x): x is string => !!x))];
   const users = ids.length
