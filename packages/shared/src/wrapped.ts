@@ -104,6 +104,19 @@ export interface WrappedSummary {
 }
 
 /**
+ * The shareable mood summary: a direction word, never the scores. Used by
+ * the share text and the share image. Null with fewer than two buckets.
+ */
+export function wrappedMoodTrend(
+  w: Pick<WrappedSummary, "moodArc">
+): "trending up" | "a tougher stretch lately" | "pretty steady" | null {
+  if (!w.moodArc || w.moodArc.length < 2) return null;
+  const first = w.moodArc[0].avg;
+  const last = w.moodArc[w.moodArc.length - 1].avg;
+  return last - first >= 0.5 ? "trending up" : first - last >= 0.5 ? "a tougher stretch lately" : "pretty steady";
+}
+
+/**
  * Text for the share sheet. Privacy rule: counts, top themes and the mood
  * trend only. Never transcript content, never the biggest win (it's lifted
  * from what the user said), never a habit's name (habits can be personal),
@@ -126,10 +139,8 @@ export function wrappedShareText(
   if (w.tasks) {
     lines.push(`${w.tasks.captured} to-dos captured just by talking, ${w.tasks.completed} done`);
   }
-  if (w.moodArc && w.moodArc.length >= 2) {
-    const first = w.moodArc[0].avg;
-    const last = w.moodArc[w.moodArc.length - 1].avg;
-    const trend = last - first >= 0.5 ? "trending up" : first - last >= 0.5 ? "a tougher stretch lately" : "pretty steady";
+  const trend = wrappedMoodTrend(w);
+  if (trend) {
     lines.push(`Mood: ${trend}`);
   }
   if (opts.includePerson && w.person) {
