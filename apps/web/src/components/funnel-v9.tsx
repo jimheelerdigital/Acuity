@@ -37,7 +37,7 @@ import {
   Activity, ArrowRight, Baby, BatteryLow, Bell, Brain, Briefcase, CalendarCheck, CalendarClock,
   CalendarDays, CalendarRange, Car, Check, ChevronLeft, ChevronRight, CircleCheck, Compass,
   Eye, Footprints, Heart, HeartHandshake, Home, Hourglass, Keyboard, KeyRound, Layers,
-  LineChart, ListChecks, ListTodo, Lock, Mail, Mic, Moon, Repeat, RotateCcw, ShieldCheck, Smartphone, Sparkles, Sprout, Waves,
+  LineChart, ListChecks, ListTodo, Lock, Mail, Mic, Moon, Repeat, RotateCcw, ShieldCheck, Smartphone, Sparkles, Sprout, Waves, X,
   Star, Sunrise, Target, TrendingUp, User, Users, Zap, Dumbbell, Wallet, Rocket, Flame, Truck, type LucideIcon,
 } from "lucide-react";
 
@@ -1614,6 +1614,19 @@ const PRO_FEATURES: { icon: LucideIcon; title: string; text: string }[] = [
   { icon: Bell, title: "Your weekly report", text: "The story of your week, written from your own words." },
 ];
 
+/** Paper planner vs Ripple, for the paywall comparison (2026-10-27). */
+const PLANNER_VS_RIPPLE: [string, string][] = [
+  ["You write every task out by hand", "Just talk. Ripple writes the list"],
+  ["Left in a bag or a drawer by February", "On your phone, always with you"],
+  ["Habits tracked with checkboxes you forget", "Tracks the habits you mention"],
+  ["Can't show you what keeps coming up", "Shows your patterns week to week"],
+  ["Run out of pages, buy another", "Picks up right where you left off"],
+];
+/** Keenan's figures (2026-10-27): average planner $27.43, 2 bought a year. */
+const PLANNER_PRICE_CENTS = 2743;
+const PLANNERS_PER_YEAR_CENTS = PLANNER_PRICE_CENTS * 2;
+const formatCents = (c: number) => `$${(c / 100).toFixed(2)}`;
+
 function PaywallScreen({ plan, setPlan, next, go, track, firstName, answers }: ViewProps) {
   const C = useV9();
   const [open, setOpen] = useState<number | null>(null);
@@ -1690,20 +1703,25 @@ function PaywallScreen({ plan, setPlan, next, go, track, firstName, answers }: V
       </div>
 
 
-      <div className="mt-5 grid grid-cols-3 gap-2">
-        {[
-          { icon: ListChecks, title: "Your to-do list", text: "Suggested from what you say" },
-          { icon: Repeat, title: "Your habits", text: "The ones you mention, kept track of" },
-          { icon: CalendarCheck, title: "Weekly report", text: "How your week actually went" },
-        ].map((b) => (
-          <div key={b.title} className="card rounded-2xl px-3 py-3.5 text-center">
-            <span className="mx-auto h-9 w-9 rounded-xl chip-ico flex items-center justify-center">
-              <b.icon className="h-[18px] w-[18px]" />
-            </span>
-            <p className="mt-2 text-[13px] font-semibold leading-tight">{b.title}</p>
-            <p className="mt-1 text-[11.5px] leading-snug text-acuity-text-sec">{b.text}</p>
-          </div>
-        ))}
+      {/* Planner vs Ripple (2026-10-27, Keenan): our best ads win on this. */}
+      <div className="mt-5 card rounded-3xl p-5">
+        <p className="text-center text-[17px] font-bold tracking-tight">Why Ripple beats a paper planner</p>
+        <div className="mt-4 grid grid-cols-2 gap-x-3 text-[12px] font-bold uppercase tracking-wide">
+          <p className="text-acuity-text-ter">Paper planner</p>
+          <p className="text-acuity-primary">Ripple</p>
+        </div>
+        <div className="mt-2 divide-y divide-acuity-line">
+          {PLANNER_VS_RIPPLE.map(([planner, ripple]) => (
+            <div key={planner} className="grid grid-cols-2 gap-x-3 py-2.5">
+              <p className="flex items-start gap-1.5 text-[13px] leading-snug text-acuity-text-sec">
+                <X className="mt-0.5 h-3.5 w-3.5 shrink-0 text-red-500" /> {planner}
+              </p>
+              <p className="flex items-start gap-1.5 text-[13px] font-medium leading-snug">
+                <Check className="mt-0.5 h-3.5 w-3.5 shrink-0 text-acuity-good" /> {ripple}
+              </p>
+            </div>
+          ))}
+        </div>
       </div>
 
       <div className="mt-6">
@@ -1750,6 +1768,51 @@ function PaywallScreen({ plan, setPlan, next, go, track, firstName, answers }: V
           </div>
         </button>
       </div>
+
+      <div className="mt-5 card rounded-3xl px-4 py-5">
+        <div className="relative grid grid-cols-3">
+          <span className="absolute left-[16.6%] right-[16.6%] top-5 h-0.5 soft" />
+          <span className="absolute left-[16.6%] top-5 h-0.5 grad" style={{ width: "33.4%" }} />
+          {[
+            { label: "Today", text: "Full access. $0.", icon: Sparkles },
+            { label: "Day 4", text: "Reminder email", icon: Bell },
+            { label: "Day 7", text: "Plan starts", icon: CalendarCheck },
+          ].map((t, i) => (
+            <div key={t.label} className="relative flex flex-col items-center text-center">
+              <span className={`relative z-10 h-10 w-10 rounded-full flex items-center justify-center ${i === 0 ? "grad text-white" : "card text-acuity-primary"}`}>
+                <t.icon className="h-[18px] w-[18px]" />
+              </span>
+              <p className="mt-2 text-[13px] font-bold">{t.label}</p>
+              <p className="text-[12px] text-acuity-text-sec leading-tight">{t.text}</p>
+            </div>
+          ))}
+        </div>
+        <p className="mt-4 text-center text-[13px] text-acuity-text-sec">Cancel before day 7 and you pay nothing.</p>
+      </div>
+
+      {/* Planner cost vs Ripple. Only where Ripple's year is the cheaper one
+          (the early bird price); at $89.99 the comparison would work against us. */}
+      {price.annualCents < PLANNERS_PER_YEAR_CENTS && (
+        <div className="mt-5 card rounded-3xl p-5">
+          <div className="flex items-baseline justify-between gap-3 text-[14px]">
+            <p className="text-acuity-text-sec">Average paper planner</p>
+            <p className="tabular-nums">{formatCents(PLANNER_PRICE_CENTS)}</p>
+          </div>
+          <div className="mt-1.5 flex items-baseline justify-between gap-3 text-[14px]">
+            <p className="text-acuity-text-sec">Most people buy 2 a year</p>
+            <p className="tabular-nums">&times; 2</p>
+          </div>
+          <div className="mt-2 flex items-baseline justify-between gap-3 border-t border-acuity-line pt-2 text-[15px]">
+            <p className="font-semibold">Planners, per year</p>
+            <p className={`tabular-nums font-semibold ${SLASH}`}>{formatCents(PLANNERS_PER_YEAR_CENTS)}</p>
+          </div>
+          <div className="mt-3 flex items-baseline justify-between gap-3 rounded-2xl grad px-4 py-3 text-white">
+            <p className="text-[15px] font-bold">Ripple, per year</p>
+            <p className="text-[20px] font-bold tabular-nums">{price.annual}</p>
+          </div>
+          <p className="mt-2 text-center text-[12px] text-acuity-text-sec">And it never runs out of pages.</p>
+        </div>
+      )}
 
       <div className="mt-6 card rounded-3xl px-5 py-2">
         {C.faq.map((f, i) => (

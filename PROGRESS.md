@@ -9,6 +9,24 @@
 
 
 
+## [2026-10-27] — Paywall: "Ripple beats a paper planner" comparison and planner-cost math
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** see git log
+
+### In plain English (for Keenan)
+Our best ads win on "better than a paper planner", so the paywall now makes that case. A side-by-side card ("Why Ripple beats a paper planner") shows five planner frustrations, each crossed in red, against what Ripple does instead. Under the plans, the Today / Day 4 / Day 7 timeline is back. Below it, in the early bird price group, a cost card shows: average planner $27.43 × 2 a year = $54.86 (crossed out), against Ripple at $39.99 a year, "and it never runs out of pages". The $9.99 group doesn't see the cost card, because $89.99 is more than two planners.
+
+### Technical changes (for Jimmy)
+- apps/web/src/components/funnel-v9.tsx: `PLANNER_VS_RIPPLE` rows + comparison card (it replaces the 3-benefit grid, whose points it covers); timeline card restored under the plans; planner cost card rendered only when `price.annualCents < PLANNERS_PER_YEAR_CENTS` (5486). `PLANNER_PRICE_CENTS = 2743` per Keenan.
+
+### Manual steps needed
+- [ ] Keep a source on file for "$27.43 average planner, 2 bought a year" in case it's ever challenged (Keenan)
+
+### Notes
+- If the price test ends at $9.99/$89.99, the cost card disappears on its own. If $39.99 wins, it stays.
+
 ## [2026-10-27] — Web paywall reordered: why it's for her first, price last
 
 **Requested by:** Keenan
