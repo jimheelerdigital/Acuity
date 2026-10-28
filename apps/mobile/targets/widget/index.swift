@@ -84,53 +84,18 @@ struct Provider: TimelineProvider {
 
 private let accent = Color("AccentColor")
 
-/// The streak as the hero of the home-screen widgets (Jimmy, 2026-10-28:
-/// "It's an achievement"): a tinted tile filling the height, a gradient
-/// flame over a big rounded number, centered, with "day streak" under it.
+/// Flame fill for the streak (Jimmy, 2026-10-28: "It's an achievement").
 private let flameGradient = LinearGradient(
     colors: [Color(red: 1.0, green: 0.72, blue: 0.25), accent],
     startPoint: .top, endPoint: .bottom
 )
 
-struct StreakHero: View {
-    let streak: Int
-    var numberSize: CGFloat = 52
-    var tile: Bool = true
-    var body: some View {
-        VStack(spacing: 0) {
-            Image(systemName: "flame.fill")
-                .font(.system(size: numberSize * 0.55, weight: .bold))
-                .foregroundStyle(flameGradient)
-                .widgetAccentable()
-            Text("\(streak)")
-                .font(.system(size: numberSize, weight: .heavy, design: .rounded))
-                .minimumScaleFactor(0.5)
-                .lineLimit(1)
-                .foregroundColor(.primary)
-                .padding(.top, -2)
-            Text("day streak")
-                .font(.system(size: 12, weight: .semibold, design: .rounded))
-                .textCase(.uppercase)
-                .tracking(0.6)
-                .foregroundColor(accent)
-                .widgetAccentable()
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(
-            RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .fill(accent.opacity(tile ? 0.12 : 0))
-        )
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel("\(streak)-day streak")
-    }
-}
-
 struct SmallView: View {
     let entry: RippleEntry
     var remaining: Int { entry.habits.filter { $0.done == 0 }.count }
     var body: some View {
-        VStack(spacing: 8) {
-            StreakHero(streak: entry.streak, numberSize: 44)
+        VStack(spacing: 6) {
+            DailyStreakPanel(streak: entry.streak)
             if entry.habits.isEmpty {
                 Text("Tap to reflect").font(.system(size: 13, weight: .medium)).foregroundColor(.secondary)
             } else if remaining == 0 {
@@ -141,63 +106,113 @@ struct SmallView: View {
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .padding(12)
     }
 }
 
 struct MediumView: View {
     let entry: RippleEntry
-    /// Width of the per-habit streak column, so the check circles line up
-    /// whether or not a habit has a streak.
-    private let habitStreakWidth: CGFloat = 30
+    /// Width of the per-habit streak column, so every check circle lines up
+    /// whether or not that habit has a streak. No column when none do.
+    private var habitStreakWidth: CGFloat {
+        entry.habits.prefix(4).contains { ($0.streak ?? 0) > 0 } ? 24 : 0
+    }
     var body: some View {
-        // Jimmy, 2026-10-28: habits on the left with each habit's streak to
-        // the LEFT of its check circle; the overall streak big on the right,
-        // set apart by a vertical line.
-        HStack(alignment: .center, spacing: 12) {
-            VStack(alignment: .leading, spacing: 8) {
-                Spacer(minLength: 0)
+        // Jimmy, 2026-10-28: habits on the left, each habit's streak LEFT of
+        // its check circle; the daily streak on the right, set apart by a
+        // vertical line. The system's widget margins provide the outer
+        // padding, so none is added here.
+        HStack(alignment: .center, spacing: 14) {
+            VStack(alignment: .leading, spacing: 9) {
                 ForEach(Array(entry.habits.prefix(4).enumerated()), id: \.offset) { _, h in
-                    HStack(spacing: 6) {
-                        HStack(spacing: 1) {
-                            if let s = h.streak, s > 0 {
-                                Image(systemName: "flame.fill")
-                                    .font(.system(size: 10))
-                                    .foregroundStyle(flameGradient)
-                                Text("\(s)")
-                                    .font(.system(size: 12, weight: .bold, design: .rounded))
-                                    .foregroundColor(.secondary)
-                                    .minimumScaleFactor(0.7)
-                                    .lineLimit(1)
-                            }
-                        }
-                        .frame(width: habitStreakWidth, alignment: .trailing)
-                        .accessibilityLabel(h.streak.map { $0 > 0 ? "\($0)-day streak" : "" } ?? "")
-                        Image(systemName: h.done == 1 ? "checkmark.circle.fill" : "circle")
-                            .foregroundColor(h.done == 1 ? accent : .secondary)
-                        Text(h.name).font(.system(size: 14)).lineLimit(1)
-                            .strikethrough(h.done == 1, color: .secondary)
-                            .foregroundColor(h.done == 1 ? .secondary : .primary)
-                    }
+                    HabitRow(habit: h, streakWidth: habitStreakWidth)
                 }
                 if entry.habits.isEmpty {
                     Text("Tap to start today's debrief")
                         .font(.system(size: 14, weight: .medium)).foregroundColor(.secondary)
                 }
-                Spacer(minLength: 0)
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
 
             Rectangle()
-                .fill(Color.secondary.opacity(0.25))
+                .fill(Color.secondary.opacity(0.22))
                 .frame(width: 1)
-                .padding(.vertical, 6)
+                .padding(.vertical, 10)
 
-            StreakHero(streak: entry.streak, numberSize: 56, tile: false)
-                .frame(width: 96)
+            DailyStreakPanel(streak: entry.streak)
+                .frame(width: 92)
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
-        .padding(12)
+    }
+}
+
+private struct HabitRow: View {
+    let habit: HabitItem
+    let streakWidth: CGFloat
+    var body: some View {
+        HStack(spacing: streakWidth > 0 ? 6 : 0) {
+            Group {
+                if let s = habit.streak, s > 0 {
+                    HStack(spacing: 1) {
+                        Image(systemName: "flame.fill")
+                            .font(.system(size: 9, weight: .bold))
+                            .foregroundStyle(flameGradient)
+                        Text("\(s)")
+                            .font(.system(size: 11, weight: .bold, design: .rounded))
+                            .foregroundColor(.secondary)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.7)
+                    }
+                    .accessibilityLabel("\(s)-day streak")
+                } else {
+                    Color.clear.accessibilityHidden(true)
+                }
+            }
+            .frame(width: streakWidth, height: 14, alignment: .trailing)
+            .opacity(streakWidth > 0 ? 1 : 0)
+
+            Image(systemName: habit.done == 1 ? "checkmark.circle.fill" : "circle")
+                .font(.system(size: 16))
+                .foregroundColor(habit.done == 1 ? accent : Color.secondary.opacity(0.6))
+            Text(habit.name)
+                .font(.system(size: 14, weight: .medium))
+                .lineLimit(1)
+                .strikethrough(habit.done == 1, color: .secondary)
+                .foregroundColor(habit.done == 1 ? .secondary : .primary)
+        }
+    }
+}
+
+/// Right side of the medium widget: "DAILY STREAK", a flame beside a big
+/// number, and "day(s)", centered as one group.
+private struct DailyStreakPanel: View {
+    let streak: Int
+    var body: some View {
+        VStack(spacing: 4) {
+            Text("DAILY STREAK")
+                .font(.system(size: 9, weight: .bold, design: .rounded))
+                .tracking(0.8)
+                .foregroundColor(.secondary)
+                .lineLimit(1)
+                .minimumScaleFactor(0.8)
+            HStack(alignment: .center, spacing: 3) {
+                Image(systemName: "flame.fill")
+                    .font(.system(size: 22, weight: .bold))
+                    .foregroundStyle(flameGradient)
+                    .widgetAccentable()
+                Text("\(streak)")
+                    .font(.system(size: 40, weight: .heavy, design: .rounded))
+                    .monospacedDigit()
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.5)
+                    .foregroundColor(.primary)
+            }
+            Text(streak == 1 ? "day" : "days")
+                .font(.system(size: 12, weight: .semibold, design: .rounded))
+                .foregroundColor(accent)
+                .widgetAccentable()
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("Daily streak, \(streak) day\(streak == 1 ? "" : "s")")
     }
 }
 
