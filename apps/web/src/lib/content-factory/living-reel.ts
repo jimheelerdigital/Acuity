@@ -411,6 +411,31 @@ function withTempDir<T>(fn: (dir: string) => Promise<T>): Promise<T> {
   return fn(dir).finally(() => fs.rmSync(dir, { recursive: true, force: true }));
 }
 
+/**
+ * Six frames spread across a clip, side by side in one JPEG (2026-10-27):
+ * what the Mythicals clip audit (clip-audit.ts) looks at, left to right in
+ * time. The first frame is the start frame.
+ */
+export async function clipFrameStrip(clip: Buffer, frames = 6): Promise<Buffer> {
+  return withTempDir(async (dir) => {
+    const src = path.join(dir, "clip.mp4");
+    const out = path.join(dir, "strip.jpg");
+    fs.writeFileSync(src, clip);
+    const info = await new Promise<string>((resolve) => {
+      const proc = spawn(ffmpegPath() ?? "ffmpeg", ["-i", src]);
+      let err = "";
+      proc.stderr.on("data", (d) => (err += d.toString()));
+      proc.on("close", () => resolve(err));
+      proc.on("error", () => resolve(err));
+    });
+    const d = info.match(/Duration: (\d+):(\d+):([\d.]+)/);
+    const secs = d ? +d[1] * 3600 + +d[2] * 60 + +d[3] : 6;
+    const fps = Math.max(0.2, (frames - 0.5) / Math.max(1, secs));
+    await runFfmpeg(["-i", src, "-vf", `fps=${fps.toFixed(3)},scale=256:-2,tile=${frames}x1`, "-frames:v", "1", "-q:v", "4", out]);
+    return fs.readFileSync(out);
+  });
+}
+
 const SEGMENT_ENCODE = ["-c:v", "libx264", "-preset", "veryfast", "-crf", "18", "-pix_fmt", "yuv420p", "-r", "30"];
 /** One audio format for every segment, so they concatenate with a stream copy. */
 const SEGMENT_AUDIO = ["-c:a", "aac", "-b:a", "192k", "-ar", "44100", "-ac", "2"];

@@ -9,6 +9,27 @@
 
 
 
+## [2026-10-27] — Mythicals videos built one clip at a time, each audited, failures re-rendered alone
+
+- **Requested by:** Keenan
+- **Committed by:** Claude Code
+- **Commit hash:** (this commit)
+
+### In plain English (for Keenan)
+Mythicals videos are now built one clip at a time. As each clip comes back, Claude checks six frames from it for glitches: things appearing from nowhere, morphing, surprise fire, weapons changing shape, subjects leaving the frame. A clip that fails is re-rendered on its own, with the problem named so the video model avoids it. It gets up to two retakes, and if it still fails, that one slide ships as a still image instead of a glitch. Every render is counted per post.
+
+### Technical changes (for Jimmy)
+- New `apps/web/src/lib/content-factory/clip-audit.ts`: `auditMythicClip` (Claude vision on a 6-frame strip + the requested motion → pass/problem; fails open) and `retakePrompt`. Test: `clip-audit.test.ts`.
+- `apps/web/src/lib/content-factory/living-reel.ts`: `clipFrameStrip(clip)` (ffmpeg-static, 6 frames tiled).
+- `apps/web/src/inngest/functions/carousel-post-video.ts`: Mythicals wave size 1; after each clip, an `audit-<w>[-t<take>]` step; failed clips re-submitted (max 2 retakes, step ids suffixed `-t1`/`-t2`, first take keeps its old ids); out-of-retakes → still. Writes `living/<postId>/audit.json` (clipsNeeded, rendersTotal, per-slide renders, verdicts, shipped clip/still). Other brands unchanged.
+
+### Manual steps needed
+- None.
+
+### Notes
+- Sequential building makes a Mythicals video about 15-25 min instead of about 8 (concurrency is 1, so later posts queue). It still finishes hours before the first slot.
+- Each audit is one Opus vision call per take. Kling cost grows only with retakes.
+
 ## [2026-10-27] — Creator platform audit: closed a payout-hijack gap in the creator desk
 
 **Requested by:** Keenan

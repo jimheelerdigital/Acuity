@@ -516,7 +516,7 @@ export const carouselPostVideoFn = inngest.createFunction(
           LIVING_CLIP_SEC;
 
     // ── 2. Base frame (+ rebuilt layer) per animated slide ───────────
-    const prepared: Record<number, { baseUrl: string; layerUrl: string; prompt: string }> = {};
+    const prepared: Record<number, { baseUrl: string; layerUrl: string; prompt: string; motion?: string }> = {};
     for (const i of liveIdx) {
       const s = plan.slides[i] as Extract<PlannedSlide, { mode: "live" }>;
       prepared[i] = await step.run(`prepare-${i}`, async () => {
@@ -616,7 +616,8 @@ export const carouselPostVideoFn = inngest.createFunction(
           const { writeShotSheet, SUBTLE_MOTION_RULES } = await import("@/lib/content-factory/shot-sheet");
           sheet = await writeShotSheet({ mode: "single", seconds: clipSec(i), sound: soundOn, imageUrl: baseUrl, brief: prompt, constraints: SUBTLE_MOTION_RULES });
         }
-        return { baseUrl, layerUrl, prompt: sheet ?? (soundOn ? `${prompt}\n\n${MYTHICALS_SOUND_LINE}` : prompt) };
+        const motion = imagePrompt.match(/^MOTION:\s*(.+)$/m)?.[1]?.trim();
+        return { baseUrl, layerUrl, prompt: sheet ?? (soundOn ? `${prompt}\n\n${MYTHICALS_SOUND_LINE}` : prompt), motion };
       });
     }
 
@@ -649,89 +650,152 @@ export const carouselPostVideoFn = inngest.createFunction(
     // Out of Higgsfield credits (2026-10-02): stop submitting for this post
     // and ship stills on purpose (the health check won't rebuild it).
     let noCredits = false;
-    for (let w = 0; !cached && w * POST_VIDEO_WAVE < liveIdx.length; w++) {
-      let remaining = liveIdx.slice(w * POST_VIDEO_WAVE, (w + 1) * POST_VIDEO_WAVE);
-      for (const i of remaining) clips[i] = null;
-      // Primary model first; whatever it doesn't deliver in time (failed
-      // submit, failed clip, or still queued) goes to the fallback once.
-      for (let a = 0; a < attemptModels.length && remaining.length > 0 && !noCredits; a++) {
-        const model = attemptModels[a];
-        const batch = remaining;
-        const jobs = await step.run(`submit-${w}-${a}`, async () => {
-          const { submitCoverVideo } = await import("@/lib/content-factory/animate-cover");
-          const errors: string[] = [];
-          const submitted = await Promise.all(
-            batch.map(async (i) => {
-              try {
-                const id = await submitCoverVideo({
-                  startImageUrl: prepared[i].baseUrl,
-                  prompt: prepared[i].prompt,
-                  duration: clipSec(i),
-                  model,
-                  sound: soundOn && model.startsWith("kling-video/v3.0/"),
-                });
-                return { i, id: id as string | null, model };
-              } catch (err) {
-                errors.push(`slide ${i} ${model}: ${err instanceof Error ? err.message : err}`);
-                return { i, id: null as string | null, model };
-              }
-            })
-          );
-          // Submit log beside the build (ops scripts can read Storage, not Inngest logs).
-          const { supabase } = await import("@/lib/supabase.server");
-          await supabase.storage
-            .from("content-factory")
-            .upload(
-              `living/${postId}/submit-${w}-${a}.json`,
-              Buffer.from(JSON.stringify({ at: new Date().toISOString(), submitted, errors }, null, 1)),
-              { contentType: "application/json", upsert: true }
-            );
-          const { noteSubmitWave } = await import("@/lib/content-factory/post-video");
-          const creditsOut = await noteSubmitWave(submitted.filter((j) => j.id).length, errors);
-          return { submitted, creditsOut };
-        });
-        if (jobs.creditsOut) {
-          noCredits = true;
-          logger.warn(`[post-video] Higgsfield is out of credits — ${postId} ships as stills`);
-          break;
-        }
-        let pending = jobs.submitted.filter((j) => j.id);
-        const rounds = POST_VIDEO_ROUNDS[a] ?? 20;
-        for (let round = 0; round < rounds && pending.length > 0; round++) {
-          await step.sleep(`wait-${w}-${a}-${round}`, "30s");
-          const results = await step.run(`poll-${w}-${a}-${round}`, async () => {
-            const { checkCoverVideo } = await import("@/lib/content-factory/animate-cover");
-            return Promise.all(
-              pending.map(async (j) => {
+    // Mythicals: one clip at a time, each audited as soon as it comes back
+    // and re-rendered on its own if it fails (2026-10-27, per Keenan: "make
+    // the builds frame by frame ... audit the post before moving to the next
+    // frame. if it needs rebuilding, rebuild just those images"). Up to two
+    // retakes; a clip that still fails ships as a still. Other brands keep
+    // their waves and no audit.
+    const auditing = plan.brand === "mythicals";
+    const waveSize = auditing ? 1 : POST_VIDEO_WAVE;
+    const MAX_RETAKES = auditing ? 2 : 0;
+    const renders: Record<number, number> = {};
+    const verdicts: Record<number, { take: number; pass: boolean; problem?: string; skipped?: boolean }[]> = {};
+    const lastProblem: Record<number, string> = {};
+    for (let w = 0; !cached && w * waveSize < liveIdx.length; w++) {
+      let todo = liveIdx.slice(w * waveSize, (w + 1) * waveSize);
+      for (let take = 0; take <= MAX_RETAKES && todo.length > 0 && !noCredits; take++) {
+        // Step ids keep their pre-audit names on the first take.
+        const sfx = take ? `-t${take}` : "";
+        let remaining = todo;
+        for (const i of remaining) clips[i] = null;
+        // Primary model first; whatever it doesn't deliver in time (failed
+        // submit, failed clip, or still queued) goes to the fallback once.
+        for (let a = 0; a < attemptModels.length && remaining.length > 0 && !noCredits; a++) {
+          const model = attemptModels[a];
+          const batch = remaining;
+          const jobs = await step.run(`submit-${w}-${a}${sfx}`, async () => {
+            const { submitCoverVideo } = await import("@/lib/content-factory/animate-cover");
+            const { retakePrompt } = await import("@/lib/content-factory/clip-audit");
+            const errors: string[] = [];
+            const submitted = await Promise.all(
+              batch.map(async (i) => {
                 try {
-                  const st = await checkCoverVideo(j.id!, j.model);
-                  if (st.status === "completed" && st.videoUrl) return { i: j.i, state: "done" as const, url: st.videoUrl };
-                  if (st.status === "queued" || st.status === "in_progress") return { i: j.i, state: "wait" as const };
-                  return { i: j.i, state: "failed" as const, reason: st.status };
+                  const id = await submitCoverVideo({
+                    startImageUrl: prepared[i].baseUrl,
+                    prompt: lastProblem[i] ? retakePrompt(prepared[i].prompt, lastProblem[i]) : prepared[i].prompt,
+                    duration: clipSec(i),
+                    model,
+                    sound: soundOn && model.startsWith("kling-video/v3.0/"),
+                  });
+                  return { i, id: id as string | null, model };
                 } catch (err) {
-                  // A status hiccup isn't a failed clip — ask again next round.
-                  return { i: j.i, state: "wait" as const, reason: err instanceof Error ? err.message : String(err) };
+                  errors.push(`slide ${i} ${model}: ${err instanceof Error ? err.message : err}`);
+                  return { i, id: null as string | null, model };
                 }
               })
             );
+            // Submit log beside the build (ops scripts can read Storage, not Inngest logs).
+            const { supabase } = await import("@/lib/supabase.server");
+            await supabase.storage
+              .from("content-factory")
+              .upload(
+                `living/${postId}/submit-${w}-${a}${sfx}.json`,
+                Buffer.from(JSON.stringify({ at: new Date().toISOString(), submitted, errors }, null, 1)),
+                { contentType: "application/json", upsert: true }
+              );
+            const { noteSubmitWave } = await import("@/lib/content-factory/post-video");
+            const creditsOut = await noteSubmitWave(submitted.filter((j) => j.id).length, errors);
+            return { submitted, creditsOut };
           });
-          for (const r of results) {
-            if (r.state === "done") {
-              clips[r.i] = r.url;
-              models.push(model);
-            }
-            if (r.state === "failed") logger.warn(`[post-video] ${model} clip for slide ${r.i} ended ${r.reason}`);
+          if (jobs.creditsOut) {
+            noCredits = true;
+            logger.warn(`[post-video] Higgsfield is out of credits — ${postId} ships as stills`);
+            break;
           }
-          const settled = new Set(results.filter((r) => r.state !== "wait").map((r) => r.i));
-          pending = pending.filter((j) => !settled.has(j.i));
+          for (const j of jobs.submitted) if (j.id) renders[j.i] = (renders[j.i] ?? 0) + 1;
+          let pending = jobs.submitted.filter((j) => j.id);
+          const rounds = POST_VIDEO_ROUNDS[a] ?? 20;
+          for (let round = 0; round < rounds && pending.length > 0; round++) {
+            await step.sleep(`wait-${w}-${a}-${round}${sfx}`, "30s");
+            const results = await step.run(`poll-${w}-${a}-${round}${sfx}`, async () => {
+              const { checkCoverVideo } = await import("@/lib/content-factory/animate-cover");
+              return Promise.all(
+                pending.map(async (j) => {
+                  try {
+                    const st = await checkCoverVideo(j.id!, j.model);
+                    if (st.status === "completed" && st.videoUrl) return { i: j.i, state: "done" as const, url: st.videoUrl };
+                    if (st.status === "queued" || st.status === "in_progress") return { i: j.i, state: "wait" as const };
+                    return { i: j.i, state: "failed" as const, reason: st.status };
+                  } catch (err) {
+                    // A status hiccup isn't a failed clip — ask again next round.
+                    return { i: j.i, state: "wait" as const, reason: err instanceof Error ? err.message : String(err) };
+                  }
+                })
+              );
+            });
+            for (const r of results) {
+              if (r.state === "done") {
+                clips[r.i] = r.url;
+                models.push(model);
+              }
+              if (r.state === "failed") logger.warn(`[post-video] ${model} clip for slide ${r.i} ended ${r.reason}`);
+            }
+            const settled = new Set(results.filter((r) => r.state !== "wait").map((r) => r.i));
+            pending = pending.filter((j) => !settled.has(j.i));
+          }
+          remaining = batch.filter((i) => !clips[i]);
+          if (remaining.length > 0) {
+            logger.warn(
+              `[post-video] ${model} left ${remaining.length} clip(s) undelivered in wave ${w}${a + 1 < attemptModels.length ? ` — retrying on ${attemptModels[a + 1]}` : " — those slides go still"}`
+            );
+          }
         }
-        remaining = batch.filter((i) => !clips[i]);
-        if (remaining.length > 0) {
-          logger.warn(
-            `[post-video] ${model} left ${remaining.length} clip(s) undelivered in wave ${w}${a + 1 < attemptModels.length ? ` — retrying on ${attemptModels[a + 1]}` : " — those slides go still"}`
-          );
+        if (!auditing) break;
+        // Audit every clip this take delivered; failures get a retake.
+        const delivered = todo.filter((i) => clips[i]);
+        if (delivered.length === 0) break;
+        const checked = await step.run(`audit-${w}${sfx}`, async () => {
+          const { auditMythicClip } = await import("@/lib/content-factory/clip-audit");
+          return Promise.all(delivered.map(async (i) => ({ i, ...(await auditMythicClip({ clipUrl: clips[i]!, motion: prepared[i].motion ?? "" })) })));
+        });
+        const failed: number[] = [];
+        for (const v of checked) {
+          (verdicts[v.i] ??= []).push({ take, pass: v.pass, problem: v.problem, skipped: v.skipped });
+          if (!v.pass) {
+            failed.push(v.i);
+            lastProblem[v.i] = v.problem ?? "a visible defect";
+            logger.warn(`[post-video] audit failed slide ${v.i} take ${take}: ${v.problem}`);
+          }
         }
+        if (failed.length && take === MAX_RETAKES) {
+          // Out of retakes: the slide ships as a still rather than glitching.
+          for (const i of failed) clips[i] = null;
+        }
+        todo = failed;
       }
+    }
+    if (auditing && !cached) {
+      await step.run("write-audit-log", async () => {
+        const { supabase } = await import("@/lib/supabase.server");
+        const total = Object.values(renders).reduce((n, x) => n + x, 0);
+        await supabase.storage.from("content-factory").upload(
+          `living/${postId}/audit.json`,
+          Buffer.from(
+            JSON.stringify(
+              {
+                at: new Date().toISOString(),
+                clipsNeeded: liveIdx.length,
+                rendersTotal: total,
+                slides: liveIdx.map((i) => ({ slide: i, renders: renders[i] ?? 0, verdicts: verdicts[i] ?? [], shipped: clips[i] ? "clip" : "still" })),
+              },
+              null,
+              1
+            )
+          ),
+          { contentType: "application/json", upsert: true }
+        );
+      });
     }
 
     if (!cached && liveIdx.some((i) => clips[i])) {
