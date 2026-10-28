@@ -9,6 +9,24 @@
 
 
 
+## [2026-10-27] — Paywall: yearly price in bold, no blue click outline on the plans
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** see git log
+
+### In plain English (for Keenan)
+On the yearly plan, "$39.99/year" (or "$89.99/year") is now bold. Tapping a plan no longer leaves a blue outline around the card.
+
+### Technical changes (for Jimmy)
+- apps/web/src/components/funnel-v9.tsx: bold annual price span; plan buttons get `outline-none` + a coral `focus-visible` ring, so keyboard focus still shows.
+
+### Manual steps needed
+None
+
+### Notes
+- Also live tonight: budgets app W$30/M$20, web W$40/M$20, Planners $40, retargeting $20.
+
 ## [2026-10-27] — Ad tool can clone ads into a new campaign; link-pinned visitors kept out of the price test
 
 **Requested by:** Keenan

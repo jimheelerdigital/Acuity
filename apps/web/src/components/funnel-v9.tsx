@@ -1866,7 +1866,7 @@ function PaywallScreen({ plan, setPlan, next, go, track, firstName, answers }: V
         <p className="mt-1 text-[13px] text-acuity-text-sec">$0 today &middot; reminder on day 4 &middot; cancel in 2 taps</p>
       </div>
       <div className="space-y-3">
-        <button onClick={() => pick("yearly")} className="relative w-full text-left rounded-3xl px-5 pt-5 pb-4 transition card card-sel">
+        <button onClick={() => pick("yearly")} className="relative w-full text-left rounded-3xl px-5 pt-5 pb-4 transition card card-sel outline-none focus-visible:ring-2 focus-visible:ring-acuity-primary">
           <span className="absolute -top-3 left-5 rounded-full grad px-3 py-1 text-[11px] font-bold text-white shadow">{earlyBird ? `EARLY BIRD · ${earlyBirdOffPct}% OFF${endsLabel ? ` · ENDS ${endsLabel.toUpperCase()}` : ""}` : `BEST VALUE · SAVE ${price.savingsPct}`}</span>
           <div className="flex items-center justify-between gap-3">
             <Radio on={plan === "yearly"} />
@@ -1874,7 +1874,7 @@ function PaywallScreen({ plan, setPlan, next, go, track, firstName, answers }: V
               <p className="text-[16px] font-semibold">Yearly</p>
               <p className="text-[13px] text-acuity-text-sec tabular-nums">
                 {earlyBird && <span className={`mr-1 ${SLASH}`}>{normal.annual}</span>}
-                {price.annual} a year after your free week
+                <span className="font-bold text-acuity-text">{price.annual}/year</span> after your free week
               </p>
               {coffeeLine && <p className="mt-0.5 text-[12px] font-semibold text-acuity-primary">{coffeeLine}</p>}
             </div>
@@ -1885,7 +1885,7 @@ function PaywallScreen({ plan, setPlan, next, go, track, firstName, answers }: V
             </div>
           </div>
         </button>
-        <button onClick={() => pick("monthly")} className={`relative w-full text-left rounded-3xl px-5 py-4 transition card ${plan === "monthly" ? "border-acuity-primary" : ""}`}>
+        <button onClick={() => pick("monthly")} className={`relative w-full text-left rounded-3xl px-5 py-4 transition card outline-none focus-visible:ring-2 focus-visible:ring-acuity-primary ${plan === "monthly" ? "border-acuity-primary" : ""}`}>
           <div className="flex items-center justify-between gap-3">
             <Radio on={plan === "monthly"} />
             <div className="flex-1">
