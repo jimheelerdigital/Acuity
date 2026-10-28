@@ -30,11 +30,11 @@ import { FunnelEntryIntro } from "@/components/funnel-entry-intro";
 import { PayInBrowserButton, PaywallTrustLine } from "@/components/pay-in-browser";
 import { firstDebriefOutcome, type FirstDebriefOutcome } from "@/components/funnel-first-debrief";
 import type { AdMatch } from "@/lib/funnel-ad-match";
-import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode, type RefObject } from "react";
 import { createPortal } from "react-dom";
 import { signIn } from "next-auth/react";
 import {
-  Activity, ArrowRight, Baby, BatteryLow, Bell, Brain, Briefcase, CalendarCheck, CalendarClock,
+  Activity, ArrowRight, Baby, BatteryLow, Bell, BookOpen, Brain, Briefcase, CalendarCheck, CalendarClock,
   CalendarDays, CalendarRange, Car, Check, ChevronLeft, ChevronRight, CircleCheck, Compass,
   Eye, Footprints, Heart, HeartHandshake, Home, Hourglass, Keyboard, KeyRound, Layers,
   LineChart, ListChecks, ListTodo, Lock, Mail, Mic, Moon, Repeat, RotateCcw, ShieldCheck, Smartphone, Sparkles, Sprout, Waves, X,
@@ -170,6 +170,17 @@ const CSS = `
 @keyframes v9-ripple { 0% { transform: scale(.55); opacity: .55; } 100% { transform: scale(1.6); opacity: 0; } }
 @keyframes v9-float { 0% { transform: translate(var(--x0), -30px) rotate(var(--r)); opacity: 0; } 15% { opacity: 1; } 70% { opacity: 1; } 100% { transform: translate(0, 112px) rotate(0deg) scale(.6); opacity: 0; } }
 @keyframes v9-bar { from { width: 0; } }
+@keyframes v9-strike { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+@keyframes v9-glow { 0%,100% { box-shadow: 0 0 0 0 color-mix(in oklch, var(--acuity-primary) 0%, transparent); } 50% { box-shadow: 0 0 0 6px color-mix(in oklch, var(--acuity-primary) 22%, transparent); } }
+.v9 .rv { opacity: 0; }
+.v9 .rv.on { animation: v9-up .5s cubic-bezier(.2,.8,.2,1) both; animation-delay: var(--d, 0ms); }
+.v9 .rv-pop { opacity: 0; }
+.v9 .on .rv-pop { animation: v9-pop .45s cubic-bezier(.2,.8,.2,1) both; animation-delay: var(--d, 0ms); }
+.v9 .strike { position: relative; }
+.v9 .strike::after { content: ""; position: absolute; left: -2px; right: -2px; top: 52%; height: 2px; border-radius: 2px; background: rgb(239 68 68 / .85); transform: scaleX(0); transform-origin: left; }
+.v9 .on .strike::after { animation: v9-strike .45s ease-out both; animation-delay: var(--d, 0ms); }
+.v9 .glow { animation: v9-glow 2.4s ease-in-out infinite; }
+@media (prefers-reduced-motion: reduce) { .v9 .rv, .v9 .rv-pop { opacity: 1 !important; animation: none !important; } .v9 .strike::after { transform: scaleX(1); animation: none !important; } .v9 .glow { animation: none; } }
 @keyframes v9-card-in { from { opacity: 0; transform: translateY(24px) scale(.96); } to { opacity: 1; transform: none; } }
 .v9 .card-in { animation: v9-card-in .45s cubic-bezier(.2,.8,.2,1) both; }
 .v9 .fly-yes { transform: translateX(115%) rotate(10deg); opacity: 0; transition: transform .38s ease-in, opacity .38s ease-in; }
@@ -1630,6 +1641,128 @@ const JOURNAL_APP_CENTS = 4999;
 const HABIT_APP_CENTS = 3999;
 const formatCents = (c: number) => `$${(c / 100).toFixed(2)}`;
 
+/** Adds "on" to the element once it scrolls into view (drives .rv animations). */
+function useInView<T extends HTMLElement>(): [RefObject<T>, boolean] {
+  const ref = useRef<T>(null);
+  const [on, setOn] = useState(false);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el || on) return;
+    if (typeof IntersectionObserver === "undefined") {
+      setOn(true);
+      return;
+    }
+    const io = new IntersectionObserver(
+      (es) => {
+        if (es.some((e) => e.isIntersecting)) {
+          setOn(true);
+          io.disconnect();
+        }
+      },
+      { threshold: 0.25 }
+    );
+    io.observe(el);
+    return () => io.disconnect();
+  }, [on]);
+  return [ref, on];
+}
+
+/** Counts from 0 to `cents` once `run` is true. */
+function CountUp({ cents, run, ms = 900 }: { cents: number; run: boolean; ms?: number }) {
+  const [v, setV] = useState(0);
+  useEffect(() => {
+    if (!run) return;
+    let raf = 0;
+    const t0 = performance.now();
+    const tick = (t: number) => {
+      const k = Math.min(1, (t - t0) / ms);
+      setV(Math.round(cents * (1 - Math.pow(1 - k, 3))));
+      if (k < 1) raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [run, cents, ms]);
+  return <>{formatCents(run ? v : 0)}</>;
+}
+
+function PlannerVsRipple() {
+  const [ref, on] = useInView<HTMLDivElement>();
+  return (
+    <div ref={ref} className={`card rounded-3xl p-5 ${on ? "on" : ""}`}>
+      <p className="text-center text-[22px] font-bold leading-tight tracking-tight">
+        Paper planner <span className="text-acuity-text-ter font-semibold">vs</span> <span className="grad-text">Ripple</span>
+      </p>
+      <p className="mt-1 text-center text-[13px] text-acuity-text-sec">Why people are switching</p>
+      <div className="mt-5 space-y-3">
+        {PLANNER_VS_RIPPLE.map(([planner, ripple], i) => {
+          const d = { "--d": `${i * 160}ms` } as CSSProperties;
+          return (
+            <div key={planner} className={`rv ${on ? "on" : ""}`} style={d}>
+              <div className="flex items-center gap-2.5 px-1">
+                <span className="rv-pop flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-red-500/12 text-red-500" style={d}>
+                  <X className="h-3 w-3" strokeWidth={3} />
+                </span>
+                <p className="text-[13.5px] text-acuity-text-ter">
+                  <span className="strike" style={{ "--d": `${i * 160 + 250}ms` } as CSSProperties}>{planner}</span>
+                </p>
+              </div>
+              <div className="mt-1.5 flex items-center gap-2.5 rounded-2xl px-3 py-2.5" style={{ background: "var(--v9-tint)" }}>
+                <span className="rv-pop flex h-6 w-6 shrink-0 items-center justify-center rounded-full grad text-white shadow" style={{ "--d": `${i * 160 + 420}ms` } as CSSProperties}>
+                  <Check className="h-3.5 w-3.5" strokeWidth={3} />
+                </span>
+                <p className="text-[15px] font-semibold leading-snug">{ripple}</p>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function SystemCost() {
+  const [ref, on] = useInView<HTMLDivElement>();
+  const rows = [
+    { label: "Paper planner or journal", note: "2 a year at $27.43", cents: PLANNERS_PER_YEAR_CENTS, icon: BookOpen },
+    { label: "Journaling app", note: "e.g. Day One", cents: JOURNAL_APP_CENTS, icon: Smartphone },
+    { label: "Habit tracker app", note: "e.g. Habitify", cents: HABIT_APP_CENTS, icon: Repeat },
+  ];
+  const total = rows.reduce((n, r) => n + r.cents, 0);
+  return (
+    <div ref={ref} className={`mt-5 card rounded-3xl p-5 ${on ? "on" : ""}`}>
+      <p className="text-center text-[22px] font-bold leading-tight tracking-tight">
+        What your system <span className="grad-text">costs now</span>
+      </p>
+      <div className="mt-5 space-y-2.5">
+        {rows.map((r, i) => (
+          <div key={r.label} className={`rv flex items-center gap-3 ${on ? "on" : ""}`} style={{ "--d": `${i * 180}ms` } as CSSProperties}>
+            <span className="h-9 w-9 shrink-0 rounded-xl chip-ico flex items-center justify-center">
+              <r.icon className="h-[18px] w-[18px]" />
+            </span>
+            <div className="flex-1">
+              <p className="text-[14.5px] font-semibold leading-tight">{r.label}</p>
+              <p className="text-[12px] text-acuity-text-ter">{r.note}</p>
+            </div>
+            <p className="text-[15px] font-semibold tabular-nums">
+              <CountUp cents={r.cents} run={on} />
+            </p>
+          </div>
+        ))}
+      </div>
+      <div className={`rv mt-4 rounded-2xl soft px-4 py-3 text-center ${on ? "on" : ""}`} style={{ "--d": "600ms" } as CSSProperties}>
+        <p className="text-[12px] font-bold uppercase tracking-wide text-acuity-text-ter">Every year, combined</p>
+        <p className="mt-0.5 text-[30px] font-bold tabular-nums leading-none text-red-500">
+          <CountUp cents={total} run={on} ms={1300} />
+        </p>
+      </div>
+      <div className={`rv mt-3 flex items-center justify-center gap-2 rounded-2xl grad px-4 py-3.5 text-white glow ${on ? "on" : ""}`} style={{ "--d": "1100ms" } as CSSProperties}>
+        <Sparkles className="h-4 w-4" />
+        <p className="text-[15px] font-bold">Ripple does all three, in one app.</p>
+      </div>
+    </div>
+  );
+}
+
 function PaywallScreen({ plan, setPlan, next, go, track, firstName, answers }: ViewProps) {
   const C = useV9();
   const [open, setOpen] = useState<number | null>(null);
@@ -1689,57 +1822,17 @@ function PaywallScreen({ plan, setPlan, next, go, track, firstName, answers }: V
           <CircleCheck className="h-3.5 w-3.5 text-acuity-good" /> Your plan is ready{firstName ? `, ${firstName}` : ""}
         </span>
       </div>
-      {/* Order (2026-10-27, Keenan): why it's for her → what she gets → proof
+      {/* Annual is always highlighted; the radio shows which plan is picked.
+          Order (2026-10-27, Keenan): why it's for her → what she gets → proof
           → then the price. The CTA stays pinned at the bottom throughout. */}
       <Heading
         title={<>Less to carry.<br /><span className="grad-text">A clearer next step.</span></>}
-        sub={<>Talk through what&rsquo;s on your mind about {plateLabel(answers.multi.plate ?? [], C.plateLabels)}. Ripple turns it into your to-dos and next steps. No daily streak to keep up.</>}
       />
 
-      {/* Planner vs Ripple (2026-10-27, Keenan): our best ads win on this. */}
-      <div className="card rounded-3xl p-5">
-        <p className="text-center text-[17px] font-bold tracking-tight">Why Ripple beats a paper planner</p>
-        <div className="mt-4 grid grid-cols-2 gap-x-3 text-[12px] font-bold uppercase tracking-wide">
-          <p className="text-acuity-text-ter">Paper planner</p>
-          <p className="text-acuity-primary">Ripple</p>
-        </div>
-        <div className="mt-2 divide-y divide-acuity-line">
-          {PLANNER_VS_RIPPLE.map(([planner, ripple]) => (
-            <div key={planner} className="grid grid-cols-2 gap-x-3 py-2.5">
-              <p className="flex items-start gap-1.5 text-[13px] leading-snug text-acuity-text-sec">
-                <X className="mt-0.5 h-3.5 w-3.5 shrink-0 text-red-500" /> {planner}
-              </p>
-              <p className="flex items-start gap-1.5 text-[13px] font-medium leading-snug">
-                <Check className="mt-0.5 h-3.5 w-3.5 shrink-0 text-acuity-good" /> {ripple}
-              </p>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* What her current system costs a year (2026-10-27, Keenan): no Ripple
-          price here; the plans come after. Planner figures per Keenan; app
-          prices are published (Day One Silver, Habitify Premium, US). */}
-      <div className="mt-5 card rounded-3xl p-5">
-        <p className="text-center text-[17px] font-bold tracking-tight">What your system costs now</p>
-        <div className="mt-4 space-y-1.5">
-          {[
-            { label: "Paper planner or journal (2 a year at $27.43)", cents: PLANNERS_PER_YEAR_CENTS },
-            { label: "Journaling app (e.g. Day One)", cents: JOURNAL_APP_CENTS },
-            { label: "Habit tracker app (e.g. Habitify)", cents: HABIT_APP_CENTS },
-          ].map((r) => (
-            <div key={r.label} className="flex items-baseline justify-between gap-3 text-[14px]">
-              <p className="text-acuity-text-sec">{r.label}</p>
-              <p className="tabular-nums">{formatCents(r.cents)}</p>
-            </div>
-          ))}
-        </div>
-        <div className="mt-2 flex items-baseline justify-between gap-3 border-t border-acuity-line pt-2 text-[15px]">
-          <p className="font-semibold">Per year, combined</p>
-          <p className="tabular-nums font-semibold">{formatCents(PLANNERS_PER_YEAR_CENTS + JOURNAL_APP_CENTS + HABIT_APP_CENTS)}</p>
-        </div>
-        <p className="mt-3 rounded-2xl soft px-4 py-3 text-center text-[14px] font-semibold">Ripple does all three, in one app.</p>
-      </div>
+      {/* Planner vs Ripple + what her system costs (2026-10-27, Keenan: our
+          best ads win on this; made livelier with on-scroll animation). */}
+      <PlannerVsRipple />
+      <SystemCost />
 
       <div className="mt-5 card rounded-3xl px-4 py-5">
         <div className="relative grid grid-cols-3">
@@ -1767,7 +1860,7 @@ function PaywallScreen({ plan, setPlan, next, go, track, firstName, answers }: V
         <p className="mt-1 text-[13px] text-acuity-text-sec">$0 today &middot; reminder on day 4 &middot; cancel in 2 taps</p>
       </div>
       <div className="space-y-3">
-        <button onClick={() => pick("yearly")} className={`relative w-full text-left rounded-3xl px-5 pt-5 pb-4 transition ${plan === "yearly" ? "card card-sel" : "card"}`}>
+        <button onClick={() => pick("yearly")} className="relative w-full text-left rounded-3xl px-5 pt-5 pb-4 transition card card-sel">
           <span className="absolute -top-3 left-5 rounded-full grad px-3 py-1 text-[11px] font-bold text-white shadow">{earlyBird ? `EARLY BIRD · ${earlyBirdOffPct}% OFF${endsLabel ? ` · ENDS ${endsLabel.toUpperCase()}` : ""}` : `BEST VALUE · SAVE ${price.savingsPct}`}</span>
           <div className="flex items-center justify-between gap-3">
             <Radio on={plan === "yearly"} />
@@ -1786,7 +1879,7 @@ function PaywallScreen({ plan, setPlan, next, go, track, firstName, answers }: V
             </div>
           </div>
         </button>
-        <button onClick={() => pick("monthly")} className={`relative w-full text-left rounded-3xl px-5 py-4 transition ${plan === "monthly" ? "card card-sel" : "card"}`}>
+        <button onClick={() => pick("monthly")} className={`relative w-full text-left rounded-3xl px-5 py-4 transition card ${plan === "monthly" ? "border-acuity-primary" : ""}`}>
           <div className="flex items-center justify-between gap-3">
             <Radio on={plan === "monthly"} />
             <div className="flex-1">

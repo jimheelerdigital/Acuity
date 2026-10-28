@@ -9,6 +9,24 @@
 
 
 
+## [2026-10-27] — Paywall: animated planner comparison and cost card, yearly always highlighted
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** see git log
+
+### In plain English (for Keenan)
+The two key cards are now livelier. "Paper planner vs Ripple" plays out row by row as she scrolls: each planner line gets crossed out in red, then the Ripple answer pops in on a coral-tinted pill with a check badge. "What your system costs now" shows each cost with an icon and counts the numbers up. The yearly total lands big in red ($144.84), and then "Ripple does all three, in one app" appears on a gently glowing coral bar. The yearly plan is always highlighted, even if she taps monthly; the radio button shows which plan is picked. The line under the headline is gone.
+
+### Technical changes (for Jimmy)
+- apps/web/src/components/funnel-v9.tsx: new `useInView` (IntersectionObserver, once), `CountUp` (rAF ease-out), `PlannerVsRipple` and `SystemCost` components. New CSS: `.rv`/`.rv-pop`/`.strike`/`.glow` with v9-strike and v9-glow keyframes, staggered via `--d`, and disabled under prefers-reduced-motion. The yearly card always has `card-sel`; monthly gets a primary border when picked. Headline sub removed.
+
+### Manual steps needed
+None
+
+### Notes
+- Animations play once per page view, when each card is 25% in view.
+
 ## [2026-10-27] — Web paywall simplified: planner comparison → system cost → timeline → plans → reviews
 
 **Requested by:** Keenan
