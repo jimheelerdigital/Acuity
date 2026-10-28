@@ -7,16 +7,17 @@ import Svg, {
   RadialGradient,
   Stop,
 } from "react-native-svg";
+import { THEME_MAP_MIN_ENTRIES } from "@acuity/shared";
 
 /**
- * Locked landing — shown while the user has fewer than 10 entries.
+ * Locked landing — shown while the user has fewer than THEME_MAP_MIN_ENTRIES entries.
  * Blurred teaser + progress bar + record CTA. No animation on the
  * progress bar on mobile (matches the static-first posture).
  */
 export function LockedState({ count }: { count: number }) {
   const router = useRouter();
-  const remaining = Math.max(0, 10 - count);
-  const pct = Math.min(100, (count / 10) * 100);
+  const remaining = Math.max(0, THEME_MAP_MIN_ENTRIES - count);
+  const pct = Math.min(100, (count / THEME_MAP_MIN_ENTRIES) * 100);
 
   return (
     <View
@@ -134,7 +135,7 @@ export function LockedState({ count }: { count: number }) {
             style={{ fontSize: 14 }}
             className="text-zinc-400 dark:text-zinc-500"
           >
-            of 10 entries
+            of {THEME_MAP_MIN_ENTRIES} entries
           </Text>
         </View>
         <View

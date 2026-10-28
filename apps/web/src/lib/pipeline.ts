@@ -216,7 +216,15 @@ const REFLECTION_GUIDELINE = `- reflection: ONE short message written directly T
   TONE: warm and steady, the way a friend who has been paying attention talks. Plain words, short sentences. Name the specific person, time, or number when you have it — vagueness is the main way this field fails.
   Write the reflection LAST, after you have filled in everything else, so it can draw on what you found.`;
 
-function buildExtractionSystemPrompt(useDispositional: boolean): string {
+// PAUSED 2026-10-27 (Jimmy): the per-entry reflection was built but never
+// got the legal review it was parked for (therapy-adjacent copy risk). It is
+// now behind the DB flag `entry_reflection`, OFF by default: with the flag
+// off the prompt doesn't ask for a reflection and nothing is stored. Turn it
+// on (FeatureFlag row, /admin feature flags) only after counsel signs off.
+function buildExtractionSystemPrompt(
+  useDispositional: boolean,
+  includeReflection: boolean
+): string {
   const themeGuideline = useDispositional
     ? DISPOSITIONAL_THEME_GUIDELINE
     : LEGACY_THEME_GUIDELINE;
@@ -226,8 +234,7 @@ Return ONLY valid JSON matching this exact schema — no markdown, no prose:
 
 {
   "summary": "2-3 sentence synthesis of the day",
-  "reflection": "2-3 sentences written TO the user — see the Reflection section below",
-  "mood": "GREAT" | "GOOD" | "NEUTRAL" | "LOW" | "ROUGH",
+${includeReflection ? `  "reflection": "2-3 sentences written TO the user — see the Reflection section below",\n` : ""}  "mood": "GREAT" | "GOOD" | "NEUTRAL" | "LOW" | "ROUGH",
   "moodScore": <integer 1–10, where ROUGH=1-2, LOW=3-4, NEUTRAL=5-6, GOOD=7-8, GREAT=9-10>,
   "energy": <integer 1–10>,
   "themes": [
@@ -293,15 +300,33 @@ Guidelines:
 - habitCompletions: populate ONLY when the user message lists "Tracked habits" AND the transcript gives clear evidence the user actually DID that habit today. habitName MUST be copied verbatim from that list — never invent a habit or emit one that isn't listed. One entry per completed habit; omit habits not clearly done; return an empty array when no habits are listed or none were done. This directly checks off the user's habit tracker, so precision matters more than coverage — a missed habit is harmless, a wrong check erodes trust.
 ${themeGuideline}
 - Insights should be reflective observations the user might not have noticed, or concrete next-step recommendations
-${REFLECTION_GUIDELINE}
-- moodScore should be a nuanced score that reflects the overall emotional tone
+${includeReflection ? `${REFLECTION_GUIDELINE}\n` : ""}- moodScore should be a nuanced score that reflects the overall emotional tone
 - Today's date context will be provided in the user message
 ${LIFE_AREA_EXTRACTION_SCHEMA}`;
 }
 
-const LEGACY_EXTRACTION_SYSTEM_PROMPT = buildExtractionSystemPrompt(false);
+const LEGACY_EXTRACTION_SYSTEM_PROMPT = buildExtractionSystemPrompt(false, false);
 const DISPOSITIONAL_EXTRACTION_SYSTEM_PROMPT =
-  buildExtractionSystemPrompt(true);
+  buildExtractionSystemPrompt(true, false);
+const LEGACY_EXTRACTION_SYSTEM_PROMPT_WITH_REFLECTION =
+  buildExtractionSystemPrompt(false, true);
+const DISPOSITIONAL_EXTRACTION_SYSTEM_PROMPT_WITH_REFLECTION =
+  buildExtractionSystemPrompt(true, true);
+
+/** Exposed for tests: the exact system prompt for a combination. */
+export function extractionSystemPromptFor(
+  useDispositional: boolean,
+  includeReflection: boolean
+): string {
+  if (includeReflection) {
+    return useDispositional
+      ? DISPOSITIONAL_EXTRACTION_SYSTEM_PROMPT_WITH_REFLECTION
+      : LEGACY_EXTRACTION_SYSTEM_PROMPT_WITH_REFLECTION;
+  }
+  return useDispositional
+    ? DISPOSITIONAL_EXTRACTION_SYSTEM_PROMPT
+    : LEGACY_EXTRACTION_SYSTEM_PROMPT;
+}
 
 export async function extractFromTranscript(
   transcript: string,
@@ -325,7 +350,11 @@ export async function extractFromTranscript(
   habits: Array<{ name: string; description?: string | null }> = [],
   // ClaudeCallLog attribution (2026-10-18). Optional so older callers and
   // tests keep working; the two production callers pass it.
-  userId: string | null = null
+  userId: string | null = null,
+  // Per-entry reflection (PR #48), PAUSED pending legal review: callers pass
+  // `await isEnabled(userId, "entry_reflection")`. Default false = no
+  // reflection requested, none returned.
+  includeReflection = false
 ): Promise<ExtractionResult> {
   const contextBlock = memoryContext
     ? `Here is what you know about this user from their entire history with Ripple:\n${memoryContext}\n\nUse these historical patterns to enrich your extraction — for example, if a goal has been mentioned multiple times before, note it as recurring rather than new.\n\n`
@@ -402,9 +431,10 @@ export async function extractFromTranscript(
           .join("\n")}\n\n`
       : "";
 
-  const systemPrompt = useDispositionalThemes
-    ? DISPOSITIONAL_EXTRACTION_SYSTEM_PROMPT
-    : LEGACY_EXTRACTION_SYSTEM_PROMPT;
+  const systemPrompt = extractionSystemPromptFor(
+    useDispositionalThemes,
+    includeReflection
+  );
 
   const { loggedMessagesCreate } = await import("@/lib/claude-call-log");
   const message = await loggedMessagesCreate(anthropic, {
@@ -519,7 +549,7 @@ export async function extractFromTranscript(
     summary: String(parsed.summary ?? ""),
     // Empty/absent/non-string normalises to null so downstream readers
     // have ONE "no reflection" value to guard. See normalizeReflection.
-    reflection: normalizeReflection(parsed.reflection),
+    reflection: includeReflection ? normalizeReflection(parsed.reflection) : null,
     mood: validateMood(parsed.mood),
     moodScore: clamp(Number(parsed.moodScore ?? 5), 1, 10),
     energy: clamp(Number(parsed.energy ?? 5), 1, 10),
@@ -849,7 +879,9 @@ export async function processEntry({
       false,
       "",
       activeHabits.map((h) => ({ name: h.name, description: h.description })),
-      userId
+      userId,
+      // Reflection paused pending legal review (flag off by default).
+      await (await import("@/lib/feature-flags")).isEnabled(userId, "entry_reflection")
     );
 
     // ── Persist everything in one transaction ─────────────────────────────

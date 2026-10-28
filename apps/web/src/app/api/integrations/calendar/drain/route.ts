@@ -24,6 +24,11 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import {
+  DELETION_DRAIN_BATCH,
+  deletionOps,
+  drainSupportsDelete,
+} from "@/lib/calendar-deletion";
+import {
   type CalendarProviderId,
   type CalendarSyncOp,
 } from "@/lib/calendar-sync";
@@ -115,8 +120,26 @@ export async function GET(req: NextRequest) {
     duration,
   }));
 
+  // Dismissed tasks' events to remove (2026-10-27). Only for app JS that
+  // says it can execute deletes: older JS would treat an unknown op as an
+  // upsert and put the event back. Deletes go first.
+  let deletes: CalendarSyncOp[] = [];
+  if (drainSupportsDelete(req.nextUrl.searchParams)) {
+    const rows = await prisma.calendarDeletion.findMany({
+      where: { userId },
+      select: { id: true, providerEventId: true },
+      orderBy: { createdAt: "asc" },
+      take: DELETION_DRAIN_BATCH,
+    });
+    deletes = deletionOps(rows, {
+      userId,
+      providerId: user.calendarConnectedProvider as CalendarProviderId,
+      targetCalendarId: user.targetCalendarId as string,
+    });
+  }
+
   return NextResponse.json(
-    { ops },
+    { ops: [...deletes, ...ops] },
     { headers: { "Cache-Control": "no-store" } }
   );
 }

@@ -207,8 +207,11 @@ describe("emergingPatternsCopy — hedged, and quoting no numbers", () => {
   });
 });
 
-describe("the unlock ladder was not touched", () => {
-  it("UNLOCK_THRESHOLD is still 10", () => {
+// The ladder itself moved on 2026-10-27 (Theme Map 10 → 7 entries, pinned in
+// unlock-thresholds.test.ts). What these guard is that this card never OWNS
+// it: the thresholds live only in @acuity/shared.
+describe("the unlock ladder is owned by @acuity/shared, not this card", () => {
+  it("the Theme Map screen reads the shared threshold", () => {
     const client = read(
       "apps",
       "web",
@@ -218,14 +221,14 @@ describe("the unlock ladder was not touched", () => {
       "theme-map",
       "theme-map-client.tsx"
     );
-    expect(client).toMatch(/const UNLOCK_THRESHOLD = 10;/);
+    expect(client).toMatch(/const UNLOCK_THRESHOLD = THEME_MAP_MIN_ENTRIES;/);
     expect(client).toMatch(/const MIN_MENTIONS_FOR_PLANET = 2;/);
   });
 
-  it("the themeMap progression rule is unchanged", () => {
+  it("the themeMap progression rule uses the shared constants", () => {
     const prog = read("packages", "shared", "src", "userProgression.ts");
     expect(prog).toMatch(
-      /themeMap: entriesCount >= 10 && themesDetected >= 3,/
+      /themeMap:\s*entriesCount >= THEME_MAP_MIN_ENTRIES &&\s*themesDetected >= THEME_MAP_MIN_THEMES,/
     );
   });
 

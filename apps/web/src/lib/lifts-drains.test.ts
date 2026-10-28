@@ -118,4 +118,55 @@ describe("computeLiftsDrains", () => {
     const r = run(days);
     expect(r.lifts.filter((l) => l.label === "Mom")).toHaveLength(1);
   });
+
+  // ── Energy (2026-10-27) ─────────────────────────────────────────────
+  it("finds an energy-only lift when mood doesn't move", () => {
+    const days = mk(12, (i) =>
+      i < 6 ? { themes: ["Gym"], mood: 6, energy: 8 } : { mood: 6, energy: 5 }
+    );
+    const r = run(days);
+    expect(r.lifts).toHaveLength(1);
+    expect(r.lifts[0]).toMatchObject({ label: "Gym", metric: "energy", withAvg: 8, withoutAvg: 5, also: null });
+    expect(r.lifts[0].observation).toBe(
+      "On days Gym came up, your energy tended to be higher (8 vs 5)."
+    );
+  });
+
+  it("shows a factor once when mood and energy both qualify, ranked by the larger gap", () => {
+    const days = mk(12, (i) =>
+      i < 6
+        ? { themes: ["Gym"], mood: 7, energy: 9 }
+        : { mood: 5, energy: 5 }
+    );
+    const r = run(days);
+    expect(r.lifts).toHaveLength(1);
+    const f = r.lifts[0];
+    expect(f.metric).toBe("energy"); // gap 4 beats mood's gap 2
+    expect(f.also).toMatchObject({ metric: "mood", withAvg: 7, withoutAvg: 5 });
+    expect(f.observation).toBe(
+      "On days Gym came up, your energy tended to be higher (9 vs 5) and your mood too (7 vs 5)."
+    );
+  });
+
+  it("says so when mood and energy move in opposite directions", () => {
+    const days = mk(12, (i) =>
+      i < 6 ? { themes: ["Work"], mood: 4, energy: 8 } : { mood: 7, energy: 5 }
+    );
+    const f = [...run(days).lifts, ...run(days).drains][0];
+    expect(f.observation).toBe(
+      "On days Work came up, your mood tended to be lower (4 vs 7), while your energy tended to be higher (8 vs 5)."
+    );
+  });
+
+  it("ignores energy without 10 energy-scored days of its own", () => {
+    const days = mk(12, (i) => ({
+      themes: i < 6 ? ["Gym"] : [],
+      mood: 6,
+      energy: i < 9 ? (i < 6 ? 9 : 4) : null,
+    }));
+    const r = run(days);
+    expect(r.lifts).toEqual([]);
+    expect(r.drains).toEqual([]);
+  });
 });
+

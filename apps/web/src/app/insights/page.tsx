@@ -2,7 +2,29 @@ import Link from "next/link";
 import { getServerSession } from "next-auth";
 import { redirect } from "next/navigation";
 
+import { wrappedPeriodForCard } from "@acuity/shared";
+
 import { getAuthOptions } from "@/lib/auth";
+import {
+  loadFirstRead,
+  loadFollowThrough,
+  loadHowYouTalk,
+  loadLiftsDrains,
+  loadOpenLoops,
+  loadUserLocalDate,
+  loadWrapped,
+} from "@/lib/insights-reports-data";
+import {
+  failSoft,
+  reportsPlan,
+  showFollowThrough,
+  showHowYouTalk,
+  showLiftsDrains,
+  showOpenLoops,
+  showWrapped,
+} from "@/lib/insights-reports-plan";
+import { requireEntitlement } from "@/lib/paywall";
+import { safeLog } from "@/lib/safe-log";
 import { getUserProgression } from "@/lib/userProgression";
 import { ComparisonsCard } from "@/components/comparisons-card";
 import { HealthCorrelationsCard } from "@/components/health-correlations-card";
@@ -15,6 +37,14 @@ import { EmergingPatternsCard } from "./emerging-patterns-card";
 import { InsightsView } from "./insights-view";
 import { RecentTimeline } from "./recent-timeline";
 import { MetricsDrawer } from "./metrics-drawer";
+import {
+  FirstReadCard,
+  FollowThroughCard,
+  HowYouTalkCard,
+  LiftsDrainsCard,
+  OpenLoopsCard,
+  WrappedEntryCard,
+} from "./report-cards";
 
 export const dynamic = "force-dynamic";
 
@@ -41,7 +71,70 @@ export default async function InsightsPage() {
   const session = await getServerSession(getAuthOptions());
   if (!session?.user?.id) redirect("/auth/signin");
 
-  const progression = await getUserProgression(session.user.id);
+  const userId = session.user.id;
+  const progression = await getUserProgression(userId);
+
+  // ── Insights v2 reports (2026-10-27) — the same cards as the iPhone
+  // Insights tab, loaded server-side with the shared loaders and gated by
+  // the same rules (lib/insights-reports-plan). Everything runs in
+  // parallel and fails soft: one report's error hides that card only.
+  const { prisma } = await import("@/lib/prisma");
+  const logFail = (label: string, err: unknown) =>
+    safeLog.warn("insights.web_report_failed", {
+      report: label,
+      err: err instanceof Error ? err.message : "unknown",
+    });
+  const hasProEntitlement = progression.unlocked.patternInsights
+    ? ((await failSoft(
+        () => requireEntitlement("canExtractEntries", userId),
+        "entitlement",
+        logFail
+      ))?.ok ?? false)
+    : false;
+  const plan = reportsPlan({
+    patternInsightsUnlocked: progression.unlocked.patternInsights,
+    hasProEntitlement,
+  });
+  const none = async () => null;
+  const [followThrough, openLoops, liftsDrains, howYouTalk, firstRead, wrapped] =
+    await Promise.all([
+      plan.followThrough
+        ? failSoft(() => loadFollowThrough(prisma, userId), "follow-through", logFail)
+        : none(),
+      plan.openLoops
+        ? failSoft(() => loadOpenLoops(prisma, userId), "open-loops", logFail)
+        : none(),
+      plan.liftsDrains
+        ? failSoft(() => loadLiftsDrains(prisma, userId), "lifts-drains", logFail)
+        : none(),
+      plan.howYouTalk
+        ? failSoft(() => loadHowYouTalk(prisma, userId), "how-you-talk", logFail)
+        : none(),
+      plan.firstRead
+        ? failSoft(() => loadFirstRead(prisma, userId), "first-read", logFail)
+        : none(),
+      failSoft(
+        async () => {
+          // Wrapped is offered in the first week of a month (last month)
+          // and Dec 15–Jan 7 (the year), on the user's local date.
+          const { localDate } = await loadUserLocalDate(prisma, userId);
+          const period = wrappedPeriodForCard(localDate(new Date()));
+          if (!period) return null;
+          const r = await loadWrapped(prisma, userId, period);
+          return r.ok ? r.wrapped : null;
+        },
+        "wrapped",
+        logFail
+      ),
+    ]);
+  const reportCards = [
+    showFollowThrough(followThrough) ? (
+      <FollowThroughCard key="ft" report={followThrough} />
+    ) : null,
+    showOpenLoops(openLoops) ? <OpenLoopsCard key="ol" loops={openLoops} /> : null,
+    showLiftsDrains(liftsDrains) ? <LiftsDrainsCard key="ld" data={liftsDrains} /> : null,
+    showHowYouTalk(howYouTalk) ? <HowYouTalkCard key="hy" data={howYouTalk} /> : null,
+  ].filter(Boolean);
 
   return (
     <div className="min-h-screen bg-acuity-bg text-acuity-text">
@@ -66,11 +159,17 @@ export default async function InsightsPage() {
             appeared in 2+ entries — otherwise it returns null and this
             slot collapses. Deliberately no empty state: a "no patterns
             yet" card on a 2-entry account is a nag with a chart on it. */}
+        {/* Ripple Wrapped — only in its window and with enough entries. */}
+        {showWrapped(wrapped) ? <WrappedEntryCard wrapped={wrapped} /> : null}
+
         <EmergingPatternsCard
           userId={session.user.id}
           entriesCount={progression.entriesCount}
           themeMapUnlocked={progression.unlocked.themeMap}
         />
+
+        {/* Your first read — entries 3+ until Pattern Insights unlocks. */}
+        {firstRead ? <FirstReadCard data={firstRead} /> : null}
 
         {/* Featured destinations — the long-tail analytical features.
             Ask + State of Me get HeroCard treatment (primary + secondary
@@ -156,6 +255,18 @@ export default async function InsightsPage() {
               on the long-tail analytical destinations (Ask + State
               of Me + future Goal Velocity, Mood Triggers, etc.). */}
         </div>
+
+        {/* Your reports — only cards with something true to say render,
+            and the whole section disappears when none do (no empty
+            header). Same thresholds as the iPhone cards. */}
+        {reportCards.length > 0 ? (
+          <section className="mb-10" data-testid="insights-reports">
+            <SectionHeader label="Your reports" className="mb-4" />
+            <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-2">
+              {reportCards}
+            </div>
+          </section>
+        ) : null}
 
         {/* Timeline — recent activity. Lightweight chrome; not a
             destination card, more a reading surface. */}

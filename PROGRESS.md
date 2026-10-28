@@ -489,6 +489,195 @@ When someone reaches the paywall or opens checkout and leaves without starting a
 - Keenan chose the app download over a link back to web checkout. If she signs up in the app with Sign in with Apple hide-my-email, she gets a second account. The free web account is left empty, which is harmless; the Apple duplicate catch covers payers.
 - Changed on a Tuesday at Keenan's direct request (Monday-only rule waived).
 
+
+## [2026-10-27] feat: backlog items 1–8 integrated (+ "From a month ago" wired in)
+
+- **Requested by:** Jimmy ("go build 1-8")
+- **Committed by:** Claude Code
+
+### In plain English
+One branch carries:
+- the paywall button fix
+- lower unlocks (Pattern Insights at 5 entries, Theme Map at 7)
+- energy in "lifts & drains"
+- the new reports on the website
+- "From a month ago"
+- Life Audit waits for 7 debriefs
+- habit streak freezes
+- dismissing a task removes its calendar event
+- the reflection pause (#144)
+
+### Technical changes
+- See each component commit's PROGRESS entry.
+- Integration fixes:
+  - The web-reports refactor moved lifts-drains row loading into `lib/insights-reports-data.ts`. Energy was re-applied there.
+  - `CallbackCard` is wired into `app/(tabs)/insights.tsx` after `FirstReadCard`.
+- Checks (cloud):
+  - Full web suite 1847/1847.
+  - Web tsc 0.
+  - Mobile tsc 12 (baseline).
+
+### Manual steps needed
+- Apply `docs/migrations/2026-10-27-calendar-delete-queue.sql` (CalendarDeletion) BEFORE deploying.
+
+## [2026-10-27] fix(entries): pause the per-entry reflection pending legal review
+
+- **Requested by:** Jimmy ("nobody has reviewed it and if there's risk let's pause that")
+- **Committed by:** Claude Code
+
+### In plain English
+The reflection Ripple writes after each entry is switched off until a lawyer has reviewed it. It was parked for legal review in September and merged today by mistake. No reflection was ever generated: the DB has 0 entries with one.
+
+### Technical changes
+- New flag `entry_reflection` in FEATURE_FLAG_KEYS. There's no FeatureFlag row, so `isEnabled` fails closed.
+- `extractFromTranscript(..., includeReflection=false)`. With it off, the system prompt drops the reflection schema line and guidance (`extractionSystemPromptFor`), and the result's reflection is null.
+- Both production callers (lib/pipeline.ts, process-entry) pass `isEnabled(userId, "entry_reflection")`. The try-recording routes use the default (off).
+- The app and web already render nothing when reflection is null, so build 198 needs no change.
+- Tests: entry-reflection-pause.test.ts (4). Full web suite 1770/1770. Web tsc 163, unchanged.
+
+### Manual steps needed
+- None. To turn it on after counsel signs off: add a FeatureFlag row `entry_reflection` (enabled, requiredTier PRO).
+## [2026-10-27] Quick wins: paywall button, lower unlocks, energy in lifts & drains
+
+- **Requested by:** Jimmy ("go build 1-8")
+- **Committed by:** Claude Code
+
+### In plain English
+- The "Subscribe in app" / "Continue" button on the paywall screen was showing at about 30% strength, so its white text was hard to read. It's now full strength.
+- Pattern Insights now unlocks at 5 entries (was 7), and the Theme Map at 7 entries plus 3 recurring themes (was 10). Today that newly unlocks Pattern Insights for 7 active users and the Theme Map for 4.
+- "What lifts you, what drains you" now covers energy as well as mood. For example: "On days Gym came up, your energy tended to be higher (8 vs 5)."
+
+### Technical changes
+- **Paywall:** `apps/mobile/app/paywall.tsx` was spreading `tokens.glowPrimary` (with `opacity: 0.3`) into the button style array. It now maps it to shadow props, the same way subscribe.tsx does. No other glow or shadow spreads exist in the app.
+- **Unlock thresholds:**
+  - `packages/shared/src/userProgression.ts` gains `PATTERN_INSIGHTS_MIN_ENTRIES=5`, `THEME_MAP_MIN_ENTRIES=7` and `THEME_MAP_MIN_THEMES=3`, used by the unlock check, the next-unlock progress and the locked-card copy.
+  - The Theme Map screens and LockedState (web + mobile) had their own hard-coded `10`; they now read the shared constant.
+  - Pinned by `apps/web/src/lib/unlock-thresholds.test.ts`.
+  - Side effect: "Your first read" now covers entries 3–4 (it hides once Pattern Insights unlocks).
+- **Energy in lifts & drains:**
+  - `apps/web/src/lib/lifts-drains.ts` compares mood and energy with the same thresholds. Energy needs 10+ energy-scored days of its own.
+  - When both qualify, the factor shows once, ranked by the larger gap, with both numbers in the sentence (`also`).
+  - The route selects `Entry.energy`. The mobile card footer now reads "Mood and energy out of 10".
+  - 4 new tests.
+## [2026-10-27] feat(web): the new Insights reports on goripple.io/insights
+
+- **Requested by:** Jimmy ("go build 1-8", item 2)
+- **Committed by:** Claude Code
+
+### In plain English
+The reports from the iPhone Insights tab now appear on the website too:
+- Follow-through
+- Open loops
+- What lifts you / what drains you
+- How you talk
+- Your first read
+- Ripple Wrapped: an entry card plus a full recap page at /insights/wrapped, with a "Copy to share" button
+
+Each card shows under exactly the same rules as the app. If no report has anything to say, the "Your reports" section doesn't appear at all.
+
+### Technical changes
+- `lib/insights-reports-data.ts`: one loader per report. Both the mobile API routes and the web page now use them, so the two can't drift. The six `/api/insights/*` routes were slimmed to auth + gate + loader; responses and cache headers are unchanged.
+- `lib/insights-reports-plan.ts` (+ 14 tests): the same gates as the app:
+  - first read only before Pattern Insights unlocks;
+  - lifts & drains only after the unlock and with `canExtractEntries`;
+  - plus fail-soft, the per-card show checks, copy helpers and the default Wrapped period.
+- Thresholds come from the user's progression (shared userProgression), so the threshold change flows through.
+- `app/insights/page.tsx`:
+  - all loaders run in parallel; each fails soft (one error hides that card only, and is logged as `insights.web_report_failed`);
+  - Wrapped and first read sit at the top; a "Your reports" grid sits after the featured cards.
+- `app/insights/report-cards.tsx`: server-component cards.
+- `app/insights/wrapped/page.tsx` + `share-block.tsx`: copy-to-clipboard of `wrappedShareText`. A person's first name is included only if ticked (off by default); never transcript content or the win.
+- Checks: full web suite 1780/1780; web tsc 0; mobile tsc 12 (unchanged).
+## [2026-10-27] feat(insights): "From a month ago" callback card
+
+- **Requested by:** Jimmy ("go build 1-8", item 3)
+- **Committed by:** Claude Code
+
+### In plain English
+Once a week, Insights can show one moment from about a month ago that connects to what you talked about last week. For example: A month ago: "Started the new role." Last week, work came up again — and your mood's been higher. Tapping it opens that old entry. It only uses a win or the summary, never what you actually said word for word, and it never brings back a hard day.
+
+### Technical changes
+- `apps/web/src/lib/callback.ts` (+ 13 tests), `GET /api/insights/callback` (getAnySessionUserId, private cache 1h).
+- **Matching:** shared ThemeMention themeIds between entries 26–35 days before this ISO week and last week's entries. Deterministic. No AI and no embeddings: themes are already normalised, so this is cheap.
+- **Stable per week:** every window is anchored to Monday 00:00 UTC, and ties rotate by ISO week.
+- **Safety:** skips moodScore ≤ 3, and anything where the summary, snippet, theme name or transcript matches CRISIS_PATTERN (from open-loops). The mood clause appears only when mood is ≥1 point higher; it never says "lower".
+- `apps/mobile/components/insights/callback-card.tsx`: `CallbackCard` (no props). Not wired into the Insights tab.
+## [2026-10-27] fix(life-audit): wait for 7 debriefs, never ship a thin audit
+
+- **Requested by:** Jimmy (backlog item 8)
+- **Committed by:** Claude Code
+
+### In plain English
+The Life Audit used to go out the night before the trial ended, whatever someone had recorded. Under 7 entries, Ripple sent a fill-in-the-blanks version instead: 239 of the 245 audits ever made.
+
+Now it waits:
+- It's written once you have 7 debriefs from your first 30 days, the night your trial ends or as soon as you reach 7 after that.
+- If you never reach 7 in the first month, there's no audit.
+- Nobody gets a second audit: the 42 people in the current window who already have one keep it.
+- Screens that said "Your Day 7 Life Audit is ready" or "is coming" now say "Your Life Audit unlocks after 7 debriefs."
+
+### Technical changes
+- New `apps/web/src/lib/life-audit-eligibility.ts`: pure `decideLifeAudit`.
+  - **Dispatch:** trial ending or ended, entitled (canGenerateNewLifeAudit), 7+ COMPLETE entries with entryDate in [signup, signup+30d]. The period runs from signup to min(now, signup+30d).
+  - **Defer:** otherwise, until signup+30d plus 1 day of grace.
+  - **Skip:** if any QUEUED/GENERATING/COMPLETE audit exists, or after 2 FAILED runs.
+- `day-7-audit-cron.ts`: the scan is no longer limited to status TRIAL (deferred users may have converted or expired). Each user goes through decideLifeAudit; a per-reason tally is logged.
+- `generate-life-audit.ts`: the degraded onFailure fallback is removed; onFailure now marks the row FAILED and never overwrites COMPLETE. `buildDegradedAudit` and `DEGRADED_CLOSING` are deleted from `lib/prompts/life-audit.ts`. The generation prompt is unchanged.
+- `POST /api/life-audit`: returns 409 `not_enough_entries` under 7 instead of creating a row. It has no client callers.
+- `packages/shared/src/userProgression.ts`:
+  - The `lifeAudit` unlock now needs 7+ entries from the first 30 days (it was 1 entry).
+  - nextUnlock and lockedFeatureCopy are rewritten with honest copy; the label is "Life Audit".
+- Copy: home focus card (web and mobile) and the 14-day milestone (web and mobile) drop "Day 7"; the web onboarding step 7 says "7 debriefs" instead of "Day 7".
+- Tests: life-audit-eligibility.test.ts (14). Full web suite 1780/1780; web tsc 0; mobile tsc 12.
+
+### Manual steps needed
+- None.
+## [2026-10-27] feat(habits): streak freezes
+
+- **Requested by:** Jimmy ("go build 1-8"; on the public roadmap as "Streak freezes")
+- **Committed by:** Claude Code
+
+### In plain English
+Keep a habit going for 7 scheduled days in a row and you bank a freeze, up to 2. If you miss a single scheduled day, a freeze is used automatically and your streak survives. That day shows ❄️ in the history, not a tick. A freeze covers one day, never two in a row. Habit detail (app and web) shows "❄️ N freezes saved" with a one-line explainer.
+
+### Technical changes
+- `packages/shared/src/habits.ts`:
+  - `streakState()` walks check history forward from the habit's createdAt (or its first check) and returns streak, best, freezesBanked and frozenDates.
+  - It's fully derived from existing HabitCheck rows: no schema change, no write path, no cron.
+  - `currentStreak` / `bestStreak` now delegate to it, so Habits rows, Home, the widgets, emails and insights all apply freezes the same way.
+  - Constants: `FREEZE_EARN_EVERY` = 7, `MAX_BANKED_FREEZES` = 2.
+- Mobile `app/habit/[id].tsx` and web `app/habits/[id]/habit-detail.tsx`: frozen cell state (❄️), a legend item, and a freezes card. Web `statsFor` returns `freezes` / `frozen`.
+- Rules:
+  - Unscheduled days are skipped.
+  - An unchecked today is in progress.
+  - The earn counter continues across a frozen day and resets on a break.
+  - Banked freezes survive a break.
+  - Freezes apply retroactively, because they're derived from history.
+- Tests: `evidence/habit-streak-freezes.test.ts` (10). The existing habits tests still pass. Full web suite 1776/1776; web tsc 0; mobile tsc 12 (unchanged).
+
+### Manual steps needed
+- None (no migration).
+## [2026-10-27] fix(calendar): dismissing a task removes its calendar event
+
+- **Requested by:** Jimmy (backlog item 6)
+- **Committed by:** Claude Code
+
+### In plain English
+Before, dismissing a task left its event behind on your phone calendar. Now the event is removed the next time Ripple opens.
+
+### Technical changes
+- New table `CalendarDeletion`, a queue of event ids. Dismiss still hard-deletes the Task at once, so no list, count, widget, Siri, watch or insights query ever sees a dismissed task. Before the delete, it queues the event when the task has `calendarEventId` and a phone calendar is connected.
+- `lib/calendar-deletion.ts`: queue, op ids (`calendar-deletion:<id>`), drain ops, result handling. Success or a permanent failure removes the row; retryable failures give up after 5.
+- `GET /drain` returns delete ops (first) ONLY with `?supports=delete`. Older app JS would treat an unknown op as an upsert and recreate the event.
+- `POST /sync-result` routes deletion op ids to the queue (user-scoped).
+- Disconnect drops the user's rows. The calendar cron expires rows after 7 days.
+- Phone (JS only, OTA-able; expo-calendar is already in 1.9.6): `deleteEvent()` in device-calendar.ts. The drain asks with `supports=delete` and executes delete ops; an event that's already gone counts as done.
+- Tests: calendar-deletion.test.ts (12), drain/route.deletes.test.ts (2), tasks/route.dismiss.test.ts (1), sync-result/route.deletion.test.ts (2), disconnect assertion. Full web suite 1783/1783. Web tsc 0, mobile tsc 12 (unchanged).
+- Not covered: deleting a whole entry cascades its tasks without queueing their events. Out of scope.
+
+### Manual steps needed
+- Apply `docs/migrations/2026-10-27-calendar-delete-queue.sql` (creates the table and enables RLS) BEFORE deploying.
+
 ## [2026-10-27] — Fixed web payers getting stuck before the app, and added a real-spend table for every Meta campaign
 
 **Requested by:** Keenan

@@ -83,7 +83,7 @@ const UNLOCK_TITLES: Record<UnlockKey, string> = {
   patternInsights: "Pattern Insights unlocked",
   themeMap: "Your Theme Map is ready",
   weeklyReport: "Your first Weekly Report is queued",
-  lifeAudit: "Your Day 7 Life Audit is ready",
+  lifeAudit: "Your Life Audit is ready",
 };
 
 const UNLOCK_BODIES: Record<UnlockKey, string> = {
@@ -98,7 +98,7 @@ const UNLOCK_BODIES: Record<UnlockKey, string> = {
   weeklyReport:
     "A week of entries + day 7 means your first report is on the way.",
   lifeAudit:
-    "One week in. Ripple has generated a long-form letter from your own entries.",
+    "Ripple has written a long-form letter from your own entries.",
 };
 
 const UNLOCK_HREFS: Record<UnlockKey, string> = {

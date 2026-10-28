@@ -3,13 +3,14 @@
  *
  * A deliberately WEAK, hedged pattern surface that lives in the gap
  * before the full Theme Map unlocks, so Ripple starts noticing things
- * around entry 2-3 rather than going silent until entry 10.
+ * around entry 2-3 rather than going silent until the Theme Map unlocks
+ * (THEME_MAP_MIN_ENTRIES, 7 since 2026-10-27; was 10).
  *
  * ── What this is not ─────────────────────────────────────────────────
- * It does NOT move the unlock ladder. `UNLOCK_THRESHOLD = 10` in
+ * It does NOT move the unlock ladder. `UNLOCK_THRESHOLD` in
  * theme-map-client.tsx, `MIN_MENTIONS_FOR_PLANET`, and
- * `unlocked.themeMap` (entriesCount >= 10 && themesDetected >= 3) are all
- * untouched. This card renders only BEFORE that unlock and disappears the
+ * `unlocked.themeMap` (THEME_MAP_MIN_ENTRIES / THEME_MAP_MIN_THEMES in
+ * @acuity/shared) are owned elsewhere. This card renders only BEFORE that unlock and disappears the
  * moment the real map is available — the two never show at once.
  *
  * ── Why the framing is hedged ────────────────────────────────────────

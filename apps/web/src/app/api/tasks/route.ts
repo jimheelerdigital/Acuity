@@ -241,9 +241,19 @@ export async function PATCH(req: NextRequest) {
     case "reopen":
       data = { status: "OPEN", snoozedUntil: null, completedAt: null };
       break;
-    case "dismiss":
+    case "dismiss": {
+      // 2026-10-27: if the task put an event on the phone calendar, queue
+      // its removal before the row goes (lib/calendar-deletion.ts). The
+      // task itself is still hard-deleted, so no reader ever sees it.
+      const withEvent = await prisma.task.findFirst({
+        where: { id: body.id, userId },
+        select: { calendarEventId: true },
+      });
+      const { queueCalendarDeletion } = await import("@/lib/calendar-deletion");
+      await queueCalendarDeletion(prisma, userId, withEvent?.calendarEventId);
       await prisma.task.delete({ where: { id: body.id } });
       return NextResponse.json({ success: true });
+    }
     case "move": {
       // Reassign a task to a different group (or ungroup with null).
       // Body: { id, action: "move", groupId: string | null }

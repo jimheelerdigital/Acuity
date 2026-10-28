@@ -1,6 +1,6 @@
 import {
   currentStreak,
-  bestStreak,
+  streakState,
   completionRate,
   type HabitLike,
 } from "@acuity/shared";
@@ -202,11 +202,19 @@ export function statsFor(
 ): {
   current: number;
   best: number;
+  /** Streak freezes banked now (2026-10-27). */
+  freezes: number;
+  /** Missed scheduled days a freeze covered (shown as ❄️). */
+  frozen: Set<string>;
   rate: { done: number; expected: number; pct: number };
 } {
+  // One walk of the history (streakState) gives current, best and freezes.
+  const st = streakState(habit, checkSet, today);
   return {
-    current: currentStreak(habit, checkSet, today),
-    best: bestStreak(habit, checkSet, today),
+    current: st.streak,
+    best: st.best,
+    freezes: st.freezesBanked,
+    frozen: st.frozenDates,
     rate: completionRate(habit, checkSet, today, 30),
   };
 }

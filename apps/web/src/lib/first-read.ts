@@ -1,7 +1,8 @@
 /**
  * "Your first read" (2026-10-27): a small report for people with a few
- * entries but not yet enough to unlock Pattern Insights (7 entries).
- * 77% of active users sit under 7 entries and mostly saw locked cards.
+ * entries but not yet enough to unlock Pattern Insights
+ * (PATTERN_INSIGHTS_MIN_ENTRIES: 5 since 2026-10-27, was 7). 77% of active
+ * users sat under 7 entries and mostly saw locked cards.
  *
  * Pure: the route (GET /api/insights/first-read) loads the rows, this
  * decides what's honest to say. Rules:

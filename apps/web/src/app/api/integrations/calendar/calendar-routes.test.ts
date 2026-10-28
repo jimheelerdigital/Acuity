@@ -12,6 +12,7 @@ const db = {
   taskUpdateMany: vi.fn(),
   eventDeleteMany: vi.fn(),
   eventUpsert: vi.fn(),
+  deletionDeleteMany: vi.fn(),
 };
 const tx = {
   calendarEvent: {
@@ -26,6 +27,7 @@ vi.mock("@/lib/prisma", () => ({
       update: (...a: unknown[]) => db.userUpdate(...a),
     },
     task: { updateMany: (...a: unknown[]) => db.taskUpdateMany(...a) },
+    calendarDeletion: { deleteMany: (...a: unknown[]) => db.deletionDeleteMany(...a) },
     $transaction: async (fn: (t: typeof tx) => Promise<unknown>) => fn(tx),
   },
 }));
@@ -97,6 +99,8 @@ describe("POST /api/integrations/calendar/disconnect", () => {
       where: { userId: "user_1", calendarSyncStatus: "PENDING" },
       data: { calendarSyncStatus: "NOT_SYNCED", calendarPendingSince: null },
     });
+    // Queued event deletions (dismissed tasks) can't run after disconnect.
+    expect(db.deletionDeleteMany).toHaveBeenCalledWith({ where: { userId: "user_1" } });
   });
 });
 

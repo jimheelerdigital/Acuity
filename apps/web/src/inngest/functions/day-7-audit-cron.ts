@@ -1,21 +1,29 @@
 /**
- * Day 7 Life Audit cron. Fires daily at 22:00 UTC; finds every user
- * whose trial ends in the next 24h and doesn't already have a Day 7
- * audit in a non-terminal or COMPLETE state; seeds a LifeAudit row
- * with status=QUEUED and dispatches the per-user generation event.
+ * Life Audit dispatcher ("Day 7" audit, kind TRIAL_DAY_14). Fires daily at
+ * 22:00 UTC.
  *
- * Invariant we rely on (IMPLEMENTATION_PLAN_PAYWALL §7.4): a user
- * never hits the paywall without having read their Life Audit. The
- * cron fires ~24h before trialEndsAt so the generator (background
- * retries up to ~14 min) plus the degraded fallback in onFailure all
- * fit within the window before enforcement activates.
+ * 2026-10-27: WAIT FOR DATA. The audit used to be dispatched the night
+ * before trial end regardless of entry count, and the generator's degraded
+ * fallback then shipped a template audit to almost everyone (239 of 245).
+ * Now each candidate goes through decideLifeAudit (lib/life-audit-
+ * eligibility.ts):
+ *  - generate once the user has 7+ completed entries in their first 30 days
+ *    and their trial is ending or has ended;
+ *  - with fewer, DEFER and look again tomorrow, up to day 30;
+ *  - after that, nothing. There is no degraded audit any more.
+ * Idempotent: an existing QUEUED/GENERATING/COMPLETE audit blocks dispatch,
+ * and a FAILED one is retried at most once more.
  *
- * Retries: 3 (background). onFailure: logs only; individual
- * per-user audits are handled by the generator's own retry + degraded
- * fallback path.
+ * Retries: 3 (background). Per-user failures are the generator's concern.
  */
 
 import { inngest } from "@/inngest/client";
+import { entitlementsFor } from "@/lib/entitlements";
+import {
+  AUDIT_WINDOW_DAYS,
+  auditWindowEnd,
+  decideLifeAudit,
+} from "@/lib/life-audit-eligibility";
 import { safeLog } from "@/lib/safe-log";
 
 const ONE_DAY_MS = 24 * 60 * 60 * 1000;
@@ -31,64 +39,67 @@ export const day7AuditCronFn = inngest.createFunction(
     const { prisma } = await import("@/lib/prisma");
 
     const now = new Date();
-    const expiresBy = new Date(now.getTime() + ONE_DAY_MS);
 
-    // Users whose trial ends in the next 24h, status=TRIAL.
+    // Everyone whose trial is ending (next 24h) or has ended, and who
+    // signed up within the window (+1 day grace). decideLifeAudit makes the
+    // exact call per user; this query only bounds the scan.
     const candidates = await prisma.user.findMany({
       where: {
-        subscriptionStatus: "TRIAL",
-        trialEndsAt: { gte: now, lt: expiresBy },
+        trialEndsAt: { not: null, lt: new Date(now.getTime() + ONE_DAY_MS) },
+        createdAt: {
+          gte: new Date(now.getTime() - (AUDIT_WINDOW_DAYS + 1) * ONE_DAY_MS),
+        },
       },
       select: {
         id: true,
-        email: true,
         createdAt: true,
         trialEndsAt: true,
+        subscriptionStatus: true,
+        stripeFirstFailureAt: true,
       },
     });
 
-    safeLog.info("day-7-audit-cron.tick", {
-      now: now.toISOString(),
-      windowEnd: expiresBy.toISOString(),
-      candidateCount: candidates.length,
-    });
-
+    const tally: Record<string, number> = {};
     let dispatched = 0;
-    let alreadyExists = 0;
 
     for (const user of candidates) {
-      // Skip if this user already has a non-terminal or COMPLETE
-      // audit (dedupe). Only re-dispatch if the prior attempt ended
-      // FAILED — in which case we want a fresh run with a fresh
-      // retry budget.
-      const existing = await prisma.lifeAudit.findFirst({
+      const existing = await prisma.lifeAudit.findMany({
         where: { userId: user.id, kind: "TRIAL_DAY_14" },
-        orderBy: { createdAt: "desc" },
-        select: { id: true, status: true },
+        select: { status: true },
       });
-      if (existing && existing.status !== "FAILED") {
-        alreadyExists++;
-        continue;
-      }
-
-      const periodStart = user.createdAt;
-      const periodEnd = user.trialEndsAt ?? now;
-
-      const entryCount = await prisma.entry.count({
+      const windowEnd = auditWindowEnd(user.createdAt);
+      const completedEntriesInWindow = await prisma.entry.count({
         where: {
           userId: user.id,
           status: "COMPLETE",
-          entryDate: { gte: periodStart, lte: periodEnd },
+          entryDate: { gte: user.createdAt, lte: windowEnd },
         },
       });
+
+      const decision = decideLifeAudit({
+        now,
+        createdAt: user.createdAt,
+        trialEndsAt: user.trialEndsAt,
+        entitled: entitlementsFor({
+          subscriptionStatus: user.subscriptionStatus,
+          trialEndsAt: user.trialEndsAt,
+          stripeFirstFailureAt: user.stripeFirstFailureAt,
+        }, now).canGenerateNewLifeAudit,
+        completedEntriesInWindow,
+        existingStatuses: existing.map((a) => a.status),
+      });
+
+      const key = decision.action === "dispatch" ? "dispatch" : decision.reason;
+      tally[key] = (tally[key] ?? 0) + 1;
+      if (decision.action !== "dispatch") continue;
 
       const audit = await prisma.lifeAudit.create({
         data: {
           userId: user.id,
           kind: "TRIAL_DAY_14",
-          periodStart,
-          periodEnd,
-          entryCount,
+          periodStart: decision.periodStart,
+          periodEnd: decision.periodEnd,
+          entryCount: completedEntriesInWindow,
           narrative: "",
           closingLetter: "",
           themesArc: {},
@@ -103,20 +114,23 @@ export const day7AuditCronFn = inngest.createFunction(
 
       safeLog.info("day-7-audit-cron.dispatched", {
         userId: user.id,
-        email: user.email,
         lifeAuditId: audit.id,
-        entryCount,
-        trialEndsAt: user.trialEndsAt?.toISOString() ?? null,
+        entryCount: completedEntriesInWindow,
       });
-
       dispatched++;
     }
+
+    safeLog.info("day-7-audit-cron.tick", {
+      now: now.toISOString(),
+      candidateCount: candidates.length,
+      ...tally,
+    });
 
     return {
       scannedAt: now.toISOString(),
       candidates: candidates.length,
       dispatched,
-      alreadyExists,
+      tally,
     };
   }
 );

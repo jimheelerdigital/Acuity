@@ -1,15 +1,16 @@
 "use client";
 
 import Link from "next/link";
+import { THEME_MAP_MIN_ENTRIES } from "@acuity/shared";
 
 /**
- * Pre-unlock landing. Appears when the user has fewer than 10
+ * Pre-unlock landing. Appears when the user has fewer than THEME_MAP_MIN_ENTRIES
  * recording entries. Blurred orbital teaser + lock icon + progress
  * bar + record CTA.
  */
 export function LockedState({ count }: { count: number }) {
-  const remaining = Math.max(0, 10 - count);
-  const pct = Math.min(100, (count / 10) * 100);
+  const remaining = Math.max(0, THEME_MAP_MIN_ENTRIES - count);
+  const pct = Math.min(100, (count / THEME_MAP_MIN_ENTRIES) * 100);
 
   return (
     <div className="flex flex-col items-center text-center px-6 pt-[60px] pb-10">
@@ -122,7 +123,7 @@ export function LockedState({ count }: { count: number }) {
             {count}
           </span>
           <span className="text-sm text-zinc-400 dark:text-zinc-500">
-            of 10 entries
+            of {THEME_MAP_MIN_ENTRIES} entries
           </span>
         </div>
         <div
