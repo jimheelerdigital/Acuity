@@ -51,8 +51,9 @@ type U = {
 };
 
 /** Which funnel a person came through, in plain words. */
-export function funnelOf(u: U, planners: Set<string>): string {
-  if (planners.has(u.id)) return "Planners campaign (early bird price)";
+export function funnelOf(u: U, planners: Map<string, string>): string {
+  const pl = planners.get(u.id);
+  if (pl) return pl === "planners-reg" ? "Planners campaign, registrations (early bird price)" : "Planners campaign (early bird price)";
   if ((u.signupMethod ?? "").startsWith("mobile")) return "App (downloaded, signed up in the app)";
   const src = (u.signupUtmSource ?? "").toLowerCase();
   const med = (u.signupUtmMedium ?? "").toLowerCase();
@@ -150,7 +151,10 @@ export async function buildDailySummary(at: Date = new Date(), days = 1, opts: {
   const armEvents = ids.length
     ? await prisma.onboardingEvent.findMany({ where: { event: "funnel_price_arm", userId: { in: ids } }, select: { userId: true, value: true } })
     : [];
-  const planners = new Set(armEvents.filter((e) => (e.value ?? "").endsWith(":planners")).map((e) => e.userId!));
+  // Link-pinned arm labels look like "low:planners" or "low:planners-reg".
+  const planners = new Map(
+    armEvents.filter((e) => /:planners/.test(e.value ?? "")).map((e) => [e.userId!, (e.value ?? "").split(":")[1]] as [string, string])
+  );
   const lowArm = new Set(armEvents.filter((e) => (e.value ?? "").startsWith("low")).map((e) => e.userId!));
 
   const { affiliateTagsForEmails } = await import("@/lib/creators/affiliate-users");

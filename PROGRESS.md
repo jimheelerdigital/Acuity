@@ -9,6 +9,26 @@
 
 
 
+## [2026-10-28] — Second Planners campaign (optimizes for registrations); budgets rebalanced
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** see git log
+
+### In plain English (for Keenan)
+A copy of the Planners campaign now runs at $40/day: the same two ads, the same early bird ($6.99/$39.99) funnel. The difference is that Meta is told to find people who complete a registration on the website rather than people who start a paid trial. That should get more volume and cheaper learning, and we'll see whether those registrations turn into trials. To keep total spend the same ($170/day), $10/day came off each of: men's web, women's web, men's app installs and women's app installs. In the nightly email, it shows as its own funnel ("Planners campaign, registrations").
+
+### Technical changes (for Jimmy)
+- apps/web/src/app/api/admin/adlab/app-campaign/route.ts: `clone-campaign` takes an optional `event` (PURCHASE default, or COMPLETE_REGISTRATION) for the ad sets' promoted_object.
+- lib/founder-daily-summary.ts: `funnelOf` reads the pinned label (`low:planners` vs `low:planners-reg`).
+- Meta (no code): new campaign cloned from ads 120255252660410581 and 120255252665710581, links `ptest=low&ptsrc=planners-reg`. Budgets: men web 20→10, women web 40→30, app men 20→10, app women 30→20.
+
+### Manual steps needed
+None
+
+### Notes
+- Both Planners campaigns pin the early bird price and stay out of the 50/50 price test (their own tags).
+
 ## [2026-10-28] — Web funnel: reviews screen removed, reviews placed under the slider questions
 
 **Requested by:** Keenan

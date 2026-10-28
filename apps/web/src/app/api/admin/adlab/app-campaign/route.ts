@@ -69,7 +69,7 @@ export async function POST(req: NextRequest) {
     /** "find-ads": ads whose name contains this text. */
     query?: string;
     /** "clone-campaign": new web campaign from existing ads, links re-pointed (2026-10-27). */
-    clone?: { name: string; budgetCents: number; sourceAdIds: string[]; linkParams: string; activate?: boolean };
+    clone?: { name: string; budgetCents: number; sourceAdIds: string[]; linkParams: string; activate?: boolean; event?: "PURCHASE" | "COMPLETE_REGISTRATION" };
     /** "retarget": web retargeting campaign (2026-10-27). */
     retarget?: { budgetCents: number; sourceAdIds: string[]; days?: number; activate?: boolean };
     /** promoted_object.object_store_url override (defaults to APP_STORE_URL). */
@@ -215,7 +215,7 @@ export async function POST(req: NextRequest) {
           billing_event: "IMPRESSIONS",
           optimization_goal: "OFFSITE_CONVERSIONS",
           bid_strategy: "LOWEST_COST_WITHOUT_CAP",
-          promoted_object: { pixel_id: pixel, custom_event_type: "PURCHASE" },
+          promoted_object: { pixel_id: pixel, custom_event_type: c.event ?? "PURCHASE" },
           targeting: t,
           status,
         });
