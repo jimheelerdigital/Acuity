@@ -95,6 +95,7 @@ private let flameGradient = LinearGradient(
 struct StreakHero: View {
     let streak: Int
     var numberSize: CGFloat = 52
+    var tile: Bool = true
     var body: some View {
         VStack(spacing: 0) {
             Image(systemName: "flame.fill")
@@ -117,7 +118,7 @@ struct StreakHero: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(
             RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .fill(accent.opacity(0.12))
+                .fill(accent.opacity(tile ? 0.12 : 0))
         )
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("\(streak)-day streak")
@@ -146,31 +147,37 @@ struct SmallView: View {
 
 struct MediumView: View {
     let entry: RippleEntry
+    /// Width of the per-habit streak column, so the check circles line up
+    /// whether or not a habit has a streak.
+    private let habitStreakWidth: CGFloat = 30
     var body: some View {
-        HStack(alignment: .center, spacing: 14) {
-            StreakHero(streak: entry.streak)
-                .frame(width: 104)
-            VStack(alignment: .leading, spacing: 6) {
+        // Jimmy, 2026-10-28: habits on the left with each habit's streak to
+        // the LEFT of its check circle; the overall streak big on the right,
+        // set apart by a vertical line.
+        HStack(alignment: .center, spacing: 12) {
+            VStack(alignment: .leading, spacing: 8) {
                 Spacer(minLength: 0)
                 ForEach(Array(entry.habits.prefix(4).enumerated()), id: \.offset) { _, h in
-                    HStack(spacing: 8) {
+                    HStack(spacing: 6) {
+                        HStack(spacing: 1) {
+                            if let s = h.streak, s > 0 {
+                                Image(systemName: "flame.fill")
+                                    .font(.system(size: 10))
+                                    .foregroundStyle(flameGradient)
+                                Text("\(s)")
+                                    .font(.system(size: 12, weight: .bold, design: .rounded))
+                                    .foregroundColor(.secondary)
+                                    .minimumScaleFactor(0.7)
+                                    .lineLimit(1)
+                            }
+                        }
+                        .frame(width: habitStreakWidth, alignment: .trailing)
+                        .accessibilityLabel(h.streak.map { $0 > 0 ? "\($0)-day streak" : "" } ?? "")
                         Image(systemName: h.done == 1 ? "checkmark.circle.fill" : "circle")
                             .foregroundColor(h.done == 1 ? accent : .secondary)
                         Text(h.name).font(.system(size: 14)).lineLimit(1)
                             .strikethrough(h.done == 1, color: .secondary)
                             .foregroundColor(h.done == 1 ? .secondary : .primary)
-                        Spacer(minLength: 4)
-                        if let s = h.streak, s > 0 {
-                            HStack(spacing: 2) {
-                                Image(systemName: "flame.fill")
-                                    .font(.system(size: 10))
-                                    .foregroundColor(accent)
-                                Text("\(s)")
-                                    .font(.system(size: 12, weight: .semibold, design: .rounded))
-                                    .foregroundColor(.secondary)
-                            }
-                            .accessibilityLabel("\(s)-day streak")
-                        }
                     }
                 }
                 if entry.habits.isEmpty {
@@ -180,6 +187,14 @@ struct MediumView: View {
                 Spacer(minLength: 0)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
+
+            Rectangle()
+                .fill(Color.secondary.opacity(0.25))
+                .frame(width: 1)
+                .padding(.vertical, 6)
+
+            StreakHero(streak: entry.streak, numberSize: 56, tile: false)
+                .frame(width: 96)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
         .padding(12)
