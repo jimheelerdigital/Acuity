@@ -84,17 +84,43 @@ struct Provider: TimelineProvider {
 
 private let accent = Color("AccentColor")
 
-struct StreakBadge: View {
+/// The streak as the hero of the home-screen widgets (Jimmy, 2026-10-28:
+/// "It's an achievement"): a tinted tile filling the height, a gradient
+/// flame over a big rounded number, centered, with "day streak" under it.
+private let flameGradient = LinearGradient(
+    colors: [Color(red: 1.0, green: 0.72, blue: 0.25), accent],
+    startPoint: .top, endPoint: .bottom
+)
+
+struct StreakHero: View {
     let streak: Int
+    var numberSize: CGFloat = 52
     var body: some View {
-        HStack(spacing: 4) {
-            Image(systemName: "flame.fill").foregroundColor(accent)
-            Text("\(streak)").font(.system(size: 30, weight: .bold, design: .rounded))
-            Text("day\(streak == 1 ? "" : "s")")
-                .font(.system(size: 13, weight: .medium))
-                .foregroundColor(.secondary)
-                .padding(.top, 8)
+        VStack(spacing: 0) {
+            Image(systemName: "flame.fill")
+                .font(.system(size: numberSize * 0.55, weight: .bold))
+                .foregroundStyle(flameGradient)
+                .widgetAccentable()
+            Text("\(streak)")
+                .font(.system(size: numberSize, weight: .heavy, design: .rounded))
+                .minimumScaleFactor(0.5)
+                .lineLimit(1)
+                .foregroundColor(.primary)
+                .padding(.top, -2)
+            Text("day streak")
+                .font(.system(size: 12, weight: .semibold, design: .rounded))
+                .textCase(.uppercase)
+                .tracking(0.6)
+                .foregroundColor(accent)
+                .widgetAccentable()
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .fill(accent.opacity(0.12))
+        )
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("\(streak)-day streak")
     }
 }
 
@@ -102,9 +128,8 @@ struct SmallView: View {
     let entry: RippleEntry
     var remaining: Int { entry.habits.filter { $0.done == 0 }.count }
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            StreakBadge(streak: entry.streak)
-            Spacer()
+        VStack(spacing: 8) {
+            StreakHero(streak: entry.streak, numberSize: 44)
             if entry.habits.isEmpty {
                 Text("Tap to reflect").font(.system(size: 13, weight: .medium)).foregroundColor(.secondary)
             } else if remaining == 0 {
@@ -114,17 +139,19 @@ struct SmallView: View {
                     .font(.system(size: 13, weight: .medium)).foregroundColor(.secondary)
             }
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
-        .padding(16)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .padding(12)
     }
 }
 
 struct MediumView: View {
     let entry: RippleEntry
     var body: some View {
-        HStack(alignment: .top, spacing: 16) {
-            VStack(alignment: .leading) { StreakBadge(streak: entry.streak); Spacer() }
+        HStack(alignment: .center, spacing: 14) {
+            StreakHero(streak: entry.streak)
+                .frame(width: 104)
             VStack(alignment: .leading, spacing: 6) {
+                Spacer(minLength: 0)
                 ForEach(Array(entry.habits.prefix(4).enumerated()), id: \.offset) { _, h in
                     HStack(spacing: 8) {
                         Image(systemName: h.done == 1 ? "checkmark.circle.fill" : "circle")
@@ -150,12 +177,12 @@ struct MediumView: View {
                     Text("Tap to start today's debrief")
                         .font(.system(size: 14, weight: .medium)).foregroundColor(.secondary)
                 }
-                Spacer()
+                Spacer(minLength: 0)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
-        .padding(16)
+        .padding(12)
     }
 }
 
