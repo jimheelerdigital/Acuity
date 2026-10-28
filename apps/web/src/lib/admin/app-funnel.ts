@@ -143,6 +143,7 @@ export async function getAppFunnel(prisma: PrismaClient, start: Date, end: Date)
     { label: "Denied the microphone", people: inCohort(peopleWhere((e, v) => e.event === "v10_mic_result" && v.result !== "granted")).size },
     { label: "Recording failed to start", people: inCohort(peopleWhere(is("v10_recording_start_failed"))).size },
     { label: "Processing failed (had to retry)", people: inCohort(peopleWhere(is("v10_processing_failed"))).size },
+    { label: "Switched to typing from the record screen", people: inCohort(peopleWhere(is("v10_record_type_instead"))).size },
   ];
 
   // ── Before sign-in: raw screen views (no per-person id yet) ─────────

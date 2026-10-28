@@ -37,6 +37,9 @@ export type V10Event =
   | "v10_recording_silent"
   | "v10_recording_interrupted"
   | "v10_chip_tapped"
+  // Record screen (2026-10-28): seen, and "Type it instead" from it.
+  | "v10_record_viewed"
+  | "v10_record_type_instead"
   | "v10_recording_completed"
   | "v10_processing_viewed"
   // Leaving mid-analysis (2026-10-20): left the app, came back, and a
