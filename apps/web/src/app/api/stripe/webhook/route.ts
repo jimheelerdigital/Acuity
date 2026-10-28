@@ -563,7 +563,9 @@ export async function POST(req: NextRequest) {
         // silently report stale revenue to Meta after any price change, and
         // Meta optimizes ad delivery against that number.
         const { planValueDollars } = await import("@/lib/pricing");
-        const purchaseValue = planValueDollars(interval);
+        // Web price test: the low arm's purchase is worth its own price.
+        const { armPlanValueDollars } = await import("@/lib/price-test-shared");
+        const purchaseValue = session.metadata?.price_arm === "low" ? armPlanValueDollars("low", interval) : planValueDollars(interval);
         // Deterministic id shared with the browser pixel's Purchase (funnel
         // download screen fires fbq with eventID purchaseEventId(session_id)),
         // so Meta dedupes the pair. A random id here made Meta count every

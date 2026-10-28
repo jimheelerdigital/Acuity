@@ -44,13 +44,30 @@ import {
 import { fireFbq, waitForFbq } from "@/components/meta-pixel-events";
 import { purchaseEventId } from "@/lib/meta-event-ids";
 import { trackOnboardingEvent, captureUtmParams, type UtmParams } from "@/lib/track-onboarding";
-import {
-  displayAnnual,
-  displayAnnualAsMonthly,
-  displayMonthly,
-  displaySavingsPct,
-  planValueDollars,
-} from "@/lib/pricing";
+import { armPlanValueDollars, clientPriceArm, pricesForArm, type ArmPrices, type PriceArm } from "@/lib/price-test-shared";
+
+// Web price test (lib/price-test.ts): the arm lives in the rp_ptest cookie,
+// set by /api/funnel/price-arm when the funnel mounts. Every price shown and
+// every pixel value reads it, and checkout charges the same arm.
+type PriceArmState = { arm: PriceArm; on: boolean };
+let priceArmNow: PriceArmState = { arm: "std", on: false };
+const priceArmListeners = new Set<(a: PriceArmState) => void>();
+function setPriceArm(a: PriceArmState) {
+  priceArmNow = a;
+  priceArmListeners.forEach((l) => l(a));
+}
+function useArmPrices(): ArmPrices & { testOn: boolean } {
+  const [st, setSt] = useState<PriceArmState>(priceArmNow);
+  useEffect(() => {
+    setSt({ ...priceArmNow, arm: clientPriceArm() });
+    priceArmListeners.add(setSt);
+    return () => {
+      priceArmListeners.delete(setSt);
+    };
+  }, []);
+  return { ...pricesForArm(st.arm), testOn: st.on };
+}
+const planValueDollars = (plan: string | null | undefined) => armPlanValueDollars(clientPriceArm(), plan);
 import { APP_STORE_RATING_LABEL } from "@/lib/social-proof";
 import {
   RIPPLE_V9,
@@ -222,6 +239,13 @@ export function FunnelV9({ brand = "ripple", adMatch }: { brand?: V9Brand; adMat
     // Arrived from /start or /start-bwk through the normal-vs-test split:
     // remember the arm and log it once (lib/funnel-split.ts).
     if (consumeTestArrival()) track("funnel_split_arm", "test");
+    // Price test: place her in an arm (or clear it when the test is off).
+    // The arm is logged at the paywall, where she's signed in.
+    const ptest = new URLSearchParams(window.location.search).get("ptest");
+    fetch(`/api/funnel/price-arm${ptest === "low" || ptest === "std" ? `?force=${ptest}` : ""}`, { method: "POST" })
+      .then((r) => r.json())
+      .then((d: { on?: boolean }) => setPriceArm({ arm: clientPriceArm(), on: !!d.on }))
+      .catch(() => {});
     const params = new URLSearchParams(window.location.search);
     // eslint-disable-next-line @typescript-eslint/no-require-imports
     if (!require("@/lib/internal-traffic").isInternalClient()) try {
@@ -1598,7 +1622,18 @@ function PaywallScreen({ plan, setPlan, next, go, track, firstName, answers }: V
     loadStripeJs().catch(() => {});
   }, []);
   const state = C.stateName({ plate: answers.multi.plate ?? [], sliders: answers.sliders, pileup: answers.single.pileup, said: answers.single });
-  const after = plan === "yearly" ? `${displayAnnual()}/year` : `${displayMonthly()}/month`;
+  const price = useArmPrices();
+  const after = plan === "yearly" ? `${price.annual}/year` : `${price.monthly}/month`;
+  // Log which price she saw, once per browser session (signed in by now, so
+  // the event carries her userId as well as the funnel session).
+  useEffect(() => {
+    if (!price.testOn) return;
+    try {
+      if (sessionStorage.getItem("rp_ptest_logged") === price.arm) return;
+      sessionStorage.setItem("rp_ptest_logged", price.arm);
+    } catch {}
+    track("funnel_price_arm", price.arm);
+  }, [price.testOn, price.arm, track]);
   const pick = (p: Plan) => {
     setPlan(p);
     track("funnel_paywall_plan_selected", p);
@@ -1619,15 +1654,15 @@ function PaywallScreen({ plan, setPlan, next, go, track, firstName, answers }: V
 
       <div className="space-y-3">
         <button onClick={() => pick("yearly")} className={`relative w-full text-left rounded-3xl px-5 pt-5 pb-4 transition ${plan === "yearly" ? "card card-sel" : "card"}`}>
-          <span className="absolute -top-3 left-5 rounded-full grad px-3 py-1 text-[11px] font-bold text-white shadow">BEST VALUE · SAVE {displaySavingsPct()}</span>
+          <span className="absolute -top-3 left-5 rounded-full grad px-3 py-1 text-[11px] font-bold text-white shadow">BEST VALUE · SAVE {price.savingsPct}</span>
           <div className="flex items-center justify-between gap-3">
             <Radio on={plan === "yearly"} />
             <div className="flex-1">
               <p className="text-[16px] font-semibold">Yearly</p>
-              <p className="text-[13px] text-acuity-text-sec tabular-nums">{displayAnnual()} a year after your free week</p>
+              <p className="text-[13px] text-acuity-text-sec tabular-nums">{price.annual} a year after your free week</p>
             </div>
             <div className="text-right">
-              <p className="text-[24px] font-bold tabular-nums leading-none">{displayAnnualAsMonthly()}</p>
+              <p className="text-[24px] font-bold tabular-nums leading-none">{price.annualAsMonthly}</p>
               <p className="text-[12px] text-acuity-text-ter">per month</p>
             </div>
           </div>
@@ -1640,7 +1675,7 @@ function PaywallScreen({ plan, setPlan, next, go, track, firstName, answers }: V
               <p className="text-[13px] text-acuity-text-sec">Billed monthly after your free week</p>
             </div>
             <div className="text-right">
-              <p className="text-[24px] font-bold tabular-nums leading-none">{displayMonthly()}</p>
+              <p className="text-[24px] font-bold tabular-nums leading-none">{price.monthly}</p>
               <p className="text-[12px] text-acuity-text-ter">per month</p>
             </div>
           </div>
@@ -1744,6 +1779,7 @@ function Radio({ on }: { on: boolean }) {
 }
 
 function CheckoutScreen({ plan, go, track, onPaid }: ViewProps) {
+  const price = useArmPrices();
   const C = useV9();
   const mountRef = useRef<HTMLDivElement>(null);
   const [state, setState] = useState<"loading" | "ready" | "fallback" | "error">("loading");
@@ -1868,7 +1904,7 @@ function CheckoutScreen({ plan, go, track, onPaid }: ViewProps) {
       <div className="card rounded-3xl px-5 py-4 mb-4 flex items-center justify-between">
         <div>
           <p className="text-[15px] font-semibold">Ripple Pro, {plan === "yearly" ? "yearly" : "monthly"}</p>
-          <p className="text-[13px] text-acuity-text-sec tabular-nums">$0 today, then {plan === "yearly" ? `${displayAnnual()}/year` : `${displayMonthly()}/month`}</p>
+          <p className="text-[13px] text-acuity-text-sec tabular-nums">$0 today, then {plan === "yearly" ? `${price.annual}/year` : `${price.monthly}/month`}</p>
         </div>
         <button onClick={() => go("paywall")} className="text-[13px] font-semibold text-acuity-primary">Change</button>
       </div>

@@ -9,6 +9,37 @@
 
 
 
+## [2026-10-27] — Web price test built: $6.99/$39.99 vs $9.99/$89.99 (switched off until Mon 11-02)
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** see git log
+
+### In plain English (for Keenan)
+From Monday Nov 2 to Monday Nov 9, half of new web-funnel visitors will see $6.99/month or $39.99/year, and the other half the current $9.99/$89.99. Everyone gets the same 7-day free trial, and each person is charged exactly the price they were shown. The cheaper group's annual plan saves 52%, versus 25% today, to push more people toward yearly. People who start at the lower price keep it after the test. The app and its App Store paywall are not part of the test. The test is switched off until Monday; a preview link (`&ptest=low`) shows the test price before then.
+
+### Technical changes (for Jimmy)
+- New Stripe price (live): price_1UVKSDD9XJakJqj5khvXc1Ul, $6.99/month on product prod_UOdmMmo6Qxesni. The low arm's annual is the existing $39.99 price price_1TcSPvD9XJakJqj5C2dITYrR.
+- New apps/web/src/lib/price-test-shared.ts (browser-safe: arm cookie `rp_ptest`, LOW_TIER, pricesForArm, armPlanValueDollars) and apps/web/src/lib/price-test.ts (flag `web_price_test` with a 30s memo, pickPriceArm, stripePriceIdFor).
+- New POST /api/funnel/price-arm: flag on → keep or coin-flip and set the cookie; flag off → clear it; `?force=low|std` pins an arm (preview).
+- apps/web/src/components/funnel-v9.tsx: paywall + checkout prices and all pixel values come from the arm; logs `funnel_price_arm` at the paywall once per session; `?ptest=` on a funnel URL is passed through as the force.
+- apps/web/src/app/api/onboarding/create-checkout/route.ts: charges the arm's price from the same cookie; adds `price_arm` to session + subscription metadata.
+- apps/web/src/app/api/stripe/webhook/route.ts: CAPI Purchase value is the low arm's price when metadata.price_arm=low.
+- New apps/web/src/lib/price-test-results.ts + GET /api/admin/price-test?since&until (viewers, trials, annual mix, ended, paid, est. yr-1 revenue per 100 paywall viewers).
+- FeatureFlag row `web_price_test` created disabled (rollout 100).
+- price-test.test.ts (4 tests).
+
+### Manual steps needed
+- [ ] Review the checkout/webhook changes; this is payment code (Jimmy)
+- [ ] Mon 11-02: turn on `web_price_test` in Admin → Feature flags (Claude can do it on Keenan's go)
+- [ ] Mon 11-09: turn it off; first read on trial rate. ~11-16: final read on how many trials paid (Claude)
+
+### Notes
+- Paywall win-back emails send people to the app (App Store price), so they still quote $9.99/$89.99. A low-arm leaver who comes back through the app pays the app price.
+- The "trial ends soon" email reads the price from the live Stripe subscription, so it's right for both arms.
+- Checkout honors the cookie even after the flag is off, so someone who saw $6.99 just before switch-off is charged $6.99. The next funnel load with the flag off clears the cookie.
+- Grandfathering: low-arm Stripe subscriptions stay on their price; ending the test changes nothing for them.
+
 ## [2026-10-27] — Mythicals videos built one clip at a time, each audited, failures re-rendered alone
 
 - **Requested by:** Keenan

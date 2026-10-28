@@ -54,11 +54,17 @@ export async function POST(req: NextRequest) {
     embedded = body?.embedded === true && !handoff;
   } catch {}
 
-  // Use PRICING config which includes env-var fallbacks for local dev
+  // Price test (lib/price-test.ts): charge the arm she was shown, from the
+  // same rp_ptest cookie the paywall reads. No cookie = the live price, which
+  // PRICING resolves (with env-var fallbacks for local dev).
+  const { PTEST_COOKIE, parsePriceArm, stripePriceIdFor } = await import("@/lib/price-test");
+  const priceArm = parsePriceArm(req.cookies.get(PTEST_COOKIE)?.value) ?? "std";
   const priceId =
-    interval === "yearly"
-      ? PRICING.annual.stripeId
-      : PRICING.monthly.stripeId;
+    priceArm === "low"
+      ? stripePriceIdFor("low", interval)
+      : interval === "yearly"
+        ? PRICING.annual.stripeId
+        : PRICING.monthly.stripeId;
 
   if (!priceId) {
     console.error("[onboarding/create-checkout] No price ID for interval:", interval);
@@ -121,9 +127,9 @@ export async function POST(req: NextRequest) {
       line_items: [{ price: priceId, quantity: 1 }],
       subscription_data: {
         trial_period_days: trialDays,
-        metadata: { userId: session.user.id, interval, source: "onboarding_funnel" },
+        metadata: { userId: session.user.id, interval, source: "onboarding_funnel", price_arm: priceArm },
       },
-      metadata: { userId: session.user.id, interval, source: "onboarding_funnel", ...(handoff ? { handoff: "browser" } : {}), ...matchMeta },
+      metadata: { userId: session.user.id, interval, source: "onboarding_funnel", price_arm: priceArm, ...(handoff ? { handoff: "browser" } : {}), ...matchMeta },
     });
 
     if (embedded) {
