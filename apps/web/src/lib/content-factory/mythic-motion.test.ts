@@ -33,4 +33,9 @@ describe("Mythicals clip direction around the Action", () => {
   it("keeps the measured best-era line for ungrounded clips", () => {
     expect(measuredMythicLine("anything", false)).toMatch(/A dragon may breathe/);
   });
+
+  it("asks for unmistakable dragon fire on both paths", () => {
+    expect(measuredMythicLine("The dragon breathes fire", true)).toMatch(/MAKE IT UNMISTAKABLE/);
+    expect(measuredMythicLine("anything", false)).toMatch(/MAKE IT UNMISTAKABLE/);
+  });
 });

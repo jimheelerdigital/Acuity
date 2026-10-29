@@ -38,6 +38,15 @@ function ffmpegPath(): string | null {
 }
 
 /**
+ * Dragon breath must read at a glance (2026-10-29, per Keenan: "the dragon
+ * fire breathing needs to be more clear in videos for mythicals"). Clips
+ * were coming out with a faint haze or a short puff at the jaws that's easy
+ * to miss on a phone. Applies whenever an Action has a dragon breathing.
+ */
+export const DRAGON_BREATH_LINE =
+  "WHEN A DRAGON BREATHES FIRE (or ice), MAKE IT UNMISTAKABLE: its jaws open wide and a thick, bright, roaring jet of flame pours straight out of its mouth, clearly visible and sustained for at least two full seconds, reaching far out into the sky or landscape. The flame is solid, glowing and opaque (white-hot at the mouth, orange and yellow further out) and lights up the dragon's face, scales and the scene around it. It is never a faint haze, a wisp of smoke, a short puff or a glow at the lips, and smoke never hides it.";
+
+/**
  * The Mythicals direction around the clip's Action. Ungrounded clips keep the
  * 2026-10-13 measured best-era line. Grounded clips (motion written from the
  * real start frame) follow the Action at full energy, with powers allowed
@@ -46,12 +55,12 @@ function ffmpegPath(): string | null {
  */
 export function measuredMythicLine(motion: string | undefined, grounded: boolean): string {
   const line =
-    "Keep it MEASURED and real: the subject holds its pose and comes alive in one clear, natural movement at real-world speed (breathing, a slow head turn, a powerful wingbeat, a warrior turning his blade so it catches the light, a few heavy steps). A dragon may breathe a long, powerful jet of fire or ice from between its open jaws in the direction they point, into the sky or landscape, never at a person and never down its own chest. Small effects bring it to life and blend into the scene's light: glowing runes or eyes, embers and sparks drifting, flames licking along armor or a blade, frost mist curling, faint lightning across horns or steel. The air and scene move gently (cloak and mane stir, smoke and mist drift, embers float). Nothing fast or frantic: no attacks, no charging, no lunging, no whip pans, no morphing, no cartoon auras or energy blasts. A creature never holds or uses a weapon. WEAPONS ARE RIGID, UNCHANGING OBJECTS (2026-10-16): a hero may swing or strike through the air, but every weapon keeps its exact shape, size, head, blade and handle on the same side for the whole clip, like a solid metal object; it never bends, morphs, flips or changes, and it never hits the ground. The camera makes a slow, gentle push-in or stays steady.";
+    `Keep it MEASURED and real: the subject holds its pose and comes alive in one clear, natural movement at real-world speed (breathing, a slow head turn, a powerful wingbeat, a warrior turning his blade so it catches the light, a few heavy steps). A dragon may breathe a long, powerful jet of fire or ice from between its open jaws in the direction they point, into the sky or landscape, never at a person and never down its own chest. ${DRAGON_BREATH_LINE} Small effects bring it to life and blend into the scene's light: glowing runes or eyes, embers and sparks drifting, flames licking along armor or a blade, frost mist curling, faint lightning across horns or steel. The air and scene move gently (cloak and mane stir, smoke and mist drift, embers float). Nothing fast or frantic: no attacks, no charging, no lunging, no whip pans, no morphing, no cartoon auras or energy blasts. A creature never holds or uses a weapon. WEAPONS ARE RIGID, UNCHANGING OBJECTS (2026-10-16): a hero may swing or strike through the air, but every weapon keeps its exact shape, size, head, blade and handle on the same side for the whole clip, like a solid metal object; it never bends, morphs, flips or changes, and it never hits the ground. The camera makes a slow, gentle push-in or stays steady.`;
   // Grounded clips (2026-10-27): the Action was written from the real
   // picture, so it leads; the one extra limit is that nothing new arrives
   // (a fireball once appeared behind two paladins).
   if (!grounded) return line;
-  return `Follow the Action as written, with its full energy. Powers and effects belong to the subjects in the picture (fire breath, flames along a blade or armor, glowing runes and eyes, embers, frost, lightning). Nothing new arrives in the sky or background, and nothing appears that isn't in the first frame. A creature never holds a weapon; every weapon keeps its exact shape and never hits the ground. No morphing. The camera is steady or makes a slow, gentle push-in.`;
+  return `Follow the Action as written, with its full energy. Powers and effects belong to the subjects in the picture (fire breath, flames along a blade or armor, glowing runes and eyes, embers, frost, lightning). ${DRAGON_BREATH_LINE} Nothing new arrives in the sky or background, and nothing appears that isn't in the first frame. A creature never holds a weapon; every weapon keeps its exact shape and never hits the ground. No morphing. The camera is steady or makes a slow, gentle push-in.`;
 }
 
 /**
