@@ -79,6 +79,10 @@ export function parseChoiceLaneSpec(raw: unknown): ChoiceLaneSpec | null {
 // (armor, who guards your back, which creature is you, which mage, war
 // mount, which queen), and the extra colossal-beast / hatchling categories
 // are out.
+/** Super-legendary posts (2026-10-29): the scale has to read in the image. */
+const SUPER_SCALE =
+  "SUPER LEGENDARY SCALE: each beast is monstrous and impossibly huge, and every scene shows that size with something tiny in the same frame: a fleet of warships, a castle or walled city, a lone knight on a cliff, a dragon rider passing like a speck, a mountain it towers over. Shot from a low or distant angle so the beast fills the sky. Fantasy-world landmarks only, no modern cities or vehicles.";
+
 export const CHOICE_CATEGORIES = [
   "which war-mount carries you into battle (winged, armored, clawed, serpentine; each with its rider's saddle and battle gear)",
   "which dragon the reader is (each dragon a temperament: storm, ember, frost, shadow, verdant, abyssal, celestial)",
@@ -97,6 +101,15 @@ export const CHOICE_CATEGORIES = [
   // WHICH ONE WOULD YOU TRUST?"): "you can also do weapons like this where
   // they're standalone instead of with a character".
   "which legendary weapon would you trust, shown STANDALONE with no one holding it (each weapon alone on an altar, pedestal or anvil, driven into stone or suspended in a dark cathedral, forge, crypt or ruin; no person, hand or creature anywhere in its picture)",
+  // 2026-10-29, per Keenan: "mix in some super legendary mythical posts...
+  // like 'which leviathan are you?'" ... "monstrous beasts that give crazy
+  // scale in the image". A tier above the usual beasts; every picture
+  // carries a tiny fantasy-world landmark so the size reads instantly.
+  `which leviathan you are (five monstrous leviathans of the deep, from wingless sea serpents to giant winged leviathan dragons rising out of the ocean; every winged one has huge, clearly visible wings) ${SUPER_SCALE}`,
+  `which world serpent coils around your realm (Jormungandr-like serpents so vast their coils wrap mountains and swallow seas) ${SUPER_SCALE}`,
+  `which behemoth you are (monstrous land beasts of legend so big forests grow on their backs and armies march between their feet: horned, armored, stone-hided, fire-veined) ${SUPER_SCALE}`,
+  `which elder dragon of legend you are (the oldest, greatest dragons, each the size of a mountain range; always with huge wings) ${SUPER_SCALE}`,
+  `which god-beast of myth chooses you (Fenrir, the Roc, the Phoenix, the Thunderbird, the Qilin, each monstrous and at its full mythic size) ${SUPER_SCALE}`,
 ];
 
 export function rollChoiceCategory(recentCategories: string[]): string {
