@@ -178,7 +178,7 @@ Lessons are about mechanics (hook, structure, pacing, format, sound, ending), no
 // ─── Approval links ────────────────────────────────────────────────────────
 
 function secret(): string {
-  const s = process.env.VIDEO_INBOX_SECRET || process.env.CRON_SECRET;
+  const s = process.env.VIDEO_INBOX_SECRET?.trim() || process.env.CRON_SECRET?.trim();
   if (!s) throw new Error("VIDEO_INBOX_SECRET not set");
   return s;
 }

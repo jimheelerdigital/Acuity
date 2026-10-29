@@ -20,8 +20,9 @@ import { requireAdmin } from "@/lib/admin-guard";
 export const dynamic = "force-dynamic";
 
 function bearerOk(req: NextRequest): boolean {
-  const got = Buffer.from(req.headers.get("authorization") ?? "");
-  return [process.env.VIDEO_INBOX_SECRET, process.env.CRON_SECRET].some((s) => {
+  const got = Buffer.from((req.headers.get("authorization") ?? "").trim());
+  // Trimmed: a value pasted into Vercel with a stray space or newline still works.
+  return [process.env.VIDEO_INBOX_SECRET?.trim(), process.env.CRON_SECRET?.trim()].some((s) => {
     if (!s) return false;
     const want = Buffer.from(`Bearer ${s}`);
     return want.length === got.length && timingSafeEqual(want, got);
