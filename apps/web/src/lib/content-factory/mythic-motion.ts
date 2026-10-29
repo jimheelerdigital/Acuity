@@ -30,7 +30,7 @@ Rules (loosened 2026-10-27 per Keenan: "we need less stringent restrictions"; on
 - HARD LIMIT: no catching, landing on, leaping onto or mounting another figure, and no one figure lifting another. Kling can't time two figures meeting.
 - Otherwise keep the plan's energy. Bold, cinematic action is welcome when the subject is in the picture: a beast rears up and roars, charges a few heavy strides, spreads its wings wide and beats them; a dragon breathes a long jet of fire; a warrior swings his blade or raises his shield; both figures can act at once.
 - Powers and effects are welcome on what's in the picture: fire breath, flames along a blade or armor, glowing runes and eyes, embers, frost, lightning across horns or steel.
-- Dragon fire must be obvious (2026-10-29, Keenan). When a dragon breathes, say so plainly and make it the clip's main beat: jaws open wide, a thick, bright jet of fire (or ice) pours from its mouth for at least two seconds, out into the sky or landscape. Never a faint wisp or a puff.
+- Dragon fire must be obvious (2026-10-29, Keenan). When a dragon breathes, say so plainly and make it the clip's main beat: jaws open wide, a thick, bright, high-pressure jet of fire (or ice) shoots out of its mouth like a blast from a flamethrower for at least two seconds, out into the sky or landscape. Never a faint wisp or a puff.
 - A weapon keeps its shape; a creature doesn't hold a weapon. The camera is steady or makes a slow push-in.
 - If the plan already fits the picture, return it almost unchanged.
 

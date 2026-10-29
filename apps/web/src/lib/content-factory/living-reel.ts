@@ -44,7 +44,7 @@ function ffmpegPath(): string | null {
  * to miss on a phone. Applies whenever an Action has a dragon breathing.
  */
 export const DRAGON_BREATH_LINE =
-  "WHEN A DRAGON BREATHES FIRE (or ice), MAKE IT UNMISTAKABLE: its jaws open wide and a thick, bright, roaring jet of flame pours straight out of its mouth, clearly visible and sustained for at least two full seconds, reaching far out into the sky or landscape. The flame is solid, glowing and opaque (white-hot at the mouth, orange and yellow further out) and lights up the dragon's face, scales and the scene around it. It is never a faint haze, a wisp of smoke, a short puff or a glow at the lips, and smoke never hides it.";
+  "WHEN A DRAGON BREATHES FIRE (or ice), MAKE IT UNMISTAKABLE: its jaws open wide and a thick, bright, roaring jet of flame SHOOTS straight out of its mouth with force and speed, like a flamethrower blast, clearly visible and sustained for at least two full seconds, reaching far out into the sky or landscape. The flame is solid, glowing and opaque (white-hot at the mouth, orange and yellow further out) and lights up the dragon's face, scales and the scene around it. It never pours, dribbles or spills out, and it is never a faint haze, a wisp of smoke, a short puff or a glow at the lips, and smoke never hides it.";
 
 /**
  * The Mythicals direction around the clip's Action. Ungrounded clips keep the
