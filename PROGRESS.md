@@ -98,7 +98,8 @@ You can now share any Instagram, TikTok or YouTube video to Ripple from your pho
 - New apps/web/src/lib/video-inbox/watch.ts: `parseVideoUrl` (canonical links, resolves vm.tiktok short links), `enqueueVideo` (30-day dedupe), `fetchSource` (Apify clockworks~tiktok-scraper / apify~instagram-scraper, YouTube oEmbed), `watchVideo` (Gemini, else frames/slides + subtitles through Claude), `writeBreakdown` (Sonnet 5.5 JSON; Keenan's note → locked APPROVED lesson), `emailBreakdown`.
 - New apps/web/src/lib/video-inbox/playbook.ts: `distillBrand` (reinforce/propose via Claude, fade ×0.85, retire <0.5, proposals expire after 28 days), HMAC-signed approve/reject links, weekly email, `playbookBlock` (≤15 approved lessons, locked first).
 - New Inngest functions in apps/web/src/inngest/functions/video-inbox.ts: `video-inbox-watch` (event `video-inbox/received`, steps fetch → watch → breakdown → email, concurrency 2) and `video-inbox-playbook` (cron Sun 9am Central + event `video-inbox/playbook`). Registered in api/inngest/route.ts.
-- New routes: POST/GET /api/video-inbox (Bearer VIDEO_INBOX_SECRET or CRON_SECRET, or admin session); GET /api/video-inbox/lesson (signed links from the email).
+- New routes: POST/GET /api/video-inbox (Bearer VIDEO_INBOX_SECRET or CRON_SECRET, trimmed, or admin session); GET /api/video-inbox/lesson (signed links from the email).
+- New page /send-video (noindex): home-screen "Paste & Send" for Keenan; key from ?k= is remembered in localStorage.
 - Writers: `readBriefBlock` (weekly-brief.ts) appends the playbook for Ripple and Mythicals; `getAudiencePulse` (reddit-trends.ts) appends it for BWK only, since BWK writers don't read the brief.
 - competitor-media.ts: exported urlsFrom/download/toJpeg/videoFrames/cleanSubtitles for reuse (no behavior change).
 - Tests: src/lib/video-inbox/video-inbox.test.ts (link parsing, signatures).
@@ -107,7 +108,7 @@ You can now share any Instagram, TikTok or YouTube video to Ripple from your pho
 - [ ] Add `VIDEO_INBOX_SECRET` to Vercel production; the value is in apps/web/.env.local (Keenan). Claude's Vercel login had expired.
 - [ ] Add `GEMINI_API_KEY` to Vercel production (Keenan). The current key's project is prepaid with **no credits** (402 "prepayment credits are depleted"). Top it up at ai.studio/projects, or use a key from a project with no billing attached (free tier). Until then, YouTube links fail and IG/TikTok use the frames + captions fallback.
 - [ ] After deploy: `curl -X PUT https://goripple.io/api/inngest` so the new Sunday cron registers (Claude).
-- [ ] Build the iPhone "Send to Ripple" shortcut (Keenan; steps in the session).
+- [ ] Add https://goripple.io/send-video?k=<VIDEO_INBOX_SECRET> to the iPhone home screen (Safari → Share → Add to Home Screen) (Keenan). Replaces the Shortcuts route, which was too fiddly to set up.
 
 ### Notes
 - Library only for now; there is no admin page yet. GET /api/video-inbox returns the library and playbook as JSON (Claude can read it with CRON_SECRET).
