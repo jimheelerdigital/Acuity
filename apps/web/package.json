@@ -4,7 +4,9 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
+    "prebuild": "tsx scripts/build-system-map.ts || echo 'system-map: scan failed, using committed map'",
     "build": "next build",
+    "system-map": "tsx scripts/build-system-map.ts",
     "test:auth": "vitest run src/__tests__/auth",
     "start": "next start",
     "lint": "next lint",

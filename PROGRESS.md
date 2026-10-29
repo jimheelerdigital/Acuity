@@ -9,6 +9,52 @@
 
 
 
+## [2026-10-29] — Admin: drag-and-drop System Map of the whole codebase
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** see git log
+
+### In plain English (for Keenan)
+Admin → System map (in the tools list) shows everything we've built as a map you can drag around. Like Obsidian's graph, but organized into the 27 systems we actually talk about: the content factory, Mythicals, AdLab, the web funnel, payments, emails, the mobile app and so on. Each one is a bubble placed in its neighbourhood (product, mobile, money, growth, social content, plumbing), with lines showing what depends on what and diamonds for outside services (Stripe, Meta, Higgsfield, Claude…). Click a bubble to see what it does, what it connects to, every scheduled job and when it runs, its pages, database tables and biggest files. "Open its files" zooms into that system file by file, and "Everything" shows all 1,600 files clustered by system. Where you drag things is remembered on your browser, and the map rebuilds itself from the code on every deploy, so it stays current.
+
+### Technical changes (for Jimmy)
+- New apps/web/scripts/build-system-map.ts: scans apps/web/src, apps/mobile (app/components/lib/hooks/contexts) and packages/shared/src (tests excluded). It tags each file with a system from an ordered, hand-curated regex list (SYSTEMS), resolves imports (`@/`, relative, `@acuity/shared`), maps `"/api/..."` string literals to route files (screen/page → API edges), links `inngest.send` event names to the functions triggered by them, reads Prisma model usage (`prisma.x.find…`) and outside-service fingerprints (SDK imports and env var names), and parses every `inngest.createFunction` for cron/event triggers and whether it's registered in api/inngest/route.ts. Writes apps/web/src/data/system-map.json (~380KB, committed as the fallback).
+- apps/web/package.json: `prebuild` runs the scan on every build (`|| echo` fallback so a scan failure never breaks a deploy); `npm run system-map` to run it by hand.
+- New GET /api/admin/system-map (requireAdmin) serves the JSON; it's not bundled into client JS.
+- New /admin/system-map page (system-map.tsx + force-graph-canvas.tsx) on the already-installed react-force-graph-2d (previously unused). Three views (systems / files in a system / everything), custom d3 forces (group-region anchors + label-aware collision) written inline, so no new dependency. Layout pins live in localStorage per view (`systemMap.layout.v1.*`). Deep links: `?view=files&system=adlab`, `?view=all`.
+- admin-dashboard.tsx: "System map" added to TOOL_LINKS.
+- No schema changes.
+
+### Manual steps needed
+None
+
+### Notes
+- Layout is per-browser (localStorage), so Keenan's and Jimmy's arrangements are separate. If a shared layout becomes useful, store it in a table later.
+- A new area of code lands in "Core platform" (the catch-all, currently 37 files) until a rule in SYSTEMS claims it. Check that bucket now and then and add a rule.
+- Edges are static analysis only: an import, an `/api/...` string, or an Inngest event name. Runtime-only links (webhooks from Stripe/RevenueCat, crons calling URLs) appear as outside-service usage, not as arrows.
+- All 104 Inngest functions are currently registered. "Off" lanes that are switched off by flag or env (e.g. YOUTUBE_MANUAL, funnel flags) still show as live jobs; the map reads code, not flags. UGC & creators is marked "partly retired" by hand (scraping retired 10-21).
+
+## [2026-10-29] — Legendary Mythicals: "super legendary" post subjects (leviathans, behemoths, world serpents)
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** see git log
+
+### In plain English (for Keenan)
+The daily "which would you choose?" Mythicals posts now mix in a tier of bigger-than-ever myth subjects: "which leviathan are you?", which world serpent coils around your realm, which behemoth you are, which elder dragon of legend you are, and which god-beast (Fenrir, the Roc, the Phoenix, the Thunderbird, the Qilin) chooses you. They sit alongside the existing subjects (armor, weapons, mages, queens, war mounts and so on), not instead of them.
+
+### Technical changes (for Jimmy)
+- apps/web/src/lib/content-factory/choice-lane.ts: 5 new entries in CHOICE_CATEGORIES (leviathan, world serpent, behemoth, elder dragon, god-beast), each carrying a shared SUPER_SCALE instruction: every scene puts something tiny in frame (warships, a castle, a lone knight, a mountain) so the size reads. No schema changes.
+
+### Manual steps needed
+None
+
+### Notes
+- Keenan: "monstrous beasts that give crazy scale in the image". Titans dropped for behemoths (beasts, not giants). Scale references are fantasy-world only, so it doesn't drift into the retired kaiju-in-real-cities "How Big" format.
+- The performance-loop bandit reads CHOICE_CATEGORIES as its catalog, so the new subjects get drawn through its explore share right away and earn their keep on views after that. Now 5 of 19 standard categories.
+- Leviathan entry mixes wingless sea serpents with giant winged leviathan dragons (Keenan: "some kind of leviathans do have wings"); winged ones get huge, clearly visible wings, in line with the every-dragon-has-wings rule.
+
 ## [2026-10-28] — Funnel dashboard: "New vs old paywall" before/after view
 
 **Requested by:** Keenan

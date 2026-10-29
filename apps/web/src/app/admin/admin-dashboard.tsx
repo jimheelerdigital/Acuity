@@ -107,6 +107,7 @@ const NAV_GROUPS: NavGroup[] = [
 
 // Routed admin tools that live outside the tabbed dashboard.
 const TOOL_LINKS: { href: string; label: string }[] = [
+  { href: "/admin/system-map", label: "System map" },
   { href: "/admin/adlab", label: "AdLab" },
   { href: "/admin/ugc", label: "UGC creators" },
   { href: "/admin/creators", label: "Creator payouts" },
