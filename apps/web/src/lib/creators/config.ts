@@ -65,6 +65,25 @@ export const AGREEMENT_VERSION = "2026-10-22";
 export const CODE_ALPHABET = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
 export const CODE_LENGTH = 6;
 
+/**
+ * Countries a creator can pick for their Stripe Express account. Ripple's
+ * platform is US: US accounts use the full service agreement, every other
+ * country needs the cross-border "recipient" agreement (transfers only).
+ */
+export const CONNECT_COUNTRIES: Array<{ code: string; name: string }> = [
+  { code: "US", name: "United States" },
+  { code: "CA", name: "Canada" },
+  { code: "GB", name: "United Kingdom" },
+  { code: "AU", name: "Australia" },
+  { code: "NZ", name: "New Zealand" },
+  { code: "IE", name: "Ireland" },
+];
+
+export function connectCountry(raw: string | null | undefined): string | null {
+  const code = raw?.trim().toUpperCase();
+  return CONNECT_COUNTRIES.some((c) => c.code === code) ? code! : null;
+}
+
 export const SITE_URL = "https://goripple.io";
 
 export const CREATOR_EMAIL_FROM = '"Keenan from Ripple" <keenan@goripple.io>';

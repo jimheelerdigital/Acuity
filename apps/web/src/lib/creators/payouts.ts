@@ -342,8 +342,13 @@ export async function resetFailedPayout(payoutId: string): Promise<void> {
 
 // ── Stripe Connect Express onboarding ────────────────────────────────
 
-/** Create (once) the creator's Express account and return an onboarding link. */
-export async function connectOnboardingLink(creatorId: string): Promise<string> {
+/**
+ * Create (once) the creator's Express account and return an onboarding link.
+ * `country` (from the picker) sets the account's country, which Stripe
+ * fixes at creation; omitted, an existing account is reused and a new one
+ * defaults to US.
+ */
+export async function connectOnboardingLink(creatorId: string, country?: string | null): Promise<string> {
   const { stripe } = await import("@/lib/stripe");
   const c = await prisma.ugcCreator.findUniqueOrThrow({
     where: { id: creatorId },
@@ -354,7 +359,15 @@ export async function connectOnboardingLink(creatorId: string): Promise<string> 
   // Stripe key) would fail every time: forget it and start a fresh account.
   if (accountId) {
     try {
-      await stripe.accounts.retrieve(accountId);
+      const existing = await stripe.accounts.retrieve(accountId);
+      // Wrong country (e.g. a Canadian stuck on a defaulted US account) can't
+      // be changed at Stripe: abandon it, not delete it, and start over. Only
+      // reached while payouts aren't enabled, so nothing has been paid to it.
+      if (country && existing.country !== country) {
+        safeLog.warn("creators.connect.country-reset", { creatorId, accountId, from: existing.country, to: country });
+        await prisma.ugcCreator.update({ where: { id: c.id }, data: { stripeAccountId: null, stripePayoutsEnabled: false } });
+        accountId = null;
+      }
     } catch (err) {
       const code = (err as { code?: string; statusCode?: number } | null) ?? {};
       if (code.statusCode === 403 || code.statusCode === 404 || code.code === "account_invalid" || code.code === "resource_missing") {
@@ -367,11 +380,16 @@ export async function connectOnboardingLink(creatorId: string): Promise<string> 
     }
   }
   if (!accountId) {
+    const acctCountry = country ?? "US";
     const acct = await stripe.accounts.create({
       type: "express",
+      country: acctCountry,
       email: c.email ?? undefined,
       capabilities: { transfers: { requested: true } },
       business_type: "individual",
+      // A US platform can only onboard non-US accounts cross-border under
+      // the recipient agreement; without it Stripe rejects the create.
+      ...(acctCountry !== "US" ? { tos_acceptance: { service_agreement: "recipient" } } : {}),
       metadata: { creatorId: c.id },
     });
     accountId = acct.id;

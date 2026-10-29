@@ -11,6 +11,7 @@ import { Card } from "@/components/acuity";
 import { AGREEMENT_SECTIONS } from "@/lib/creators/agreement";
 import {
   AGREEMENT_VERSION,
+  CONNECT_COUNTRIES,
   HOLD_DAYS,
   PAYOUT_MIN_CENTS,
   SITE_URL,
@@ -444,12 +445,31 @@ export default async function CreatorsPage({
                 <p className="mt-1 text-[14px] text-acuity-text-sec">
                   Stripe collects your bank details and tax form (W-9 or W-8BEN) and sends US creators a 1099. It takes about five minutes.
                 </p>
-                <a
-                  href="/api/creators/connect"
-                  className="mt-3 inline-flex items-center justify-center rounded-acuity-pill bg-acuity-grad-primary px-6 py-3 text-[15px] font-semibold text-white hover:brightness-105 active:scale-[0.98]"
-                >
-                  {creator.stripeAccountId ? "Finish Stripe setup" : "Connect Stripe"}
-                </a>
+                <form action="/api/creators/connect" method="get" className="mt-3 flex flex-wrap items-center gap-3">
+                  <label className="flex items-center gap-2 text-[14px] text-acuity-text-sec">
+                    Where you live
+                    <select
+                      name="country"
+                      defaultValue="US"
+                      className="rounded-acuity-md border border-acuity-line bg-acuity-bg-sub px-3 py-2 text-[14px] text-acuity-text"
+                    >
+                      {CONNECT_COUNTRIES.map((c) => (
+                        <option key={c.code} value={c.code}>
+                          {c.name}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <button
+                    type="submit"
+                    className="inline-flex items-center justify-center rounded-acuity-pill bg-acuity-grad-primary px-6 py-3 text-[15px] font-semibold text-white hover:brightness-105 active:scale-[0.98]"
+                  >
+                    {creator.stripeAccountId ? "Finish Stripe setup" : "Connect Stripe"}
+                  </button>
+                </form>
+                <p className="mt-2 text-[13px] text-acuity-text-ter">
+                  Outside the US, Stripe pays you in your local currency.
+                </p>
               </>
             )}
             <div className="mt-4">

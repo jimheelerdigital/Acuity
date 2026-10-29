@@ -5,6 +5,7 @@
  */
 import { NextRequest, NextResponse } from "next/server";
 
+import { connectCountry } from "@/lib/creators/config";
 import { connectDashboardLink, connectOnboardingLink, refreshConnectStatus } from "@/lib/creators/payouts";
 import { currentCreatorId } from "@/lib/creators/session";
 import { safeLog } from "@/lib/safe-log";
@@ -17,7 +18,8 @@ export async function GET(req: NextRequest) {
   if (!creatorId) return NextResponse.redirect(new URL("/creators", req.url));
   try {
     const ready = await refreshConnectStatus(creatorId);
-    const url = ready ? await connectDashboardLink(creatorId) : await connectOnboardingLink(creatorId);
+    const country = connectCountry(req.nextUrl.searchParams.get("country"));
+    const url = ready ? await connectDashboardLink(creatorId) : await connectOnboardingLink(creatorId, country);
     if (!url) throw new Error("no Stripe link");
     return NextResponse.redirect(url);
   } catch (err) {

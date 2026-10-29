@@ -9,6 +9,54 @@
 
 
 
+## [2026-10-29] — Creators outside the US can now connect Stripe for payouts
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** see git log
+
+### In plain English (for Keenan)
+Creators who don't live in the US (like the Canadian creator) couldn't finish the Stripe payout setup: Stripe was treating everyone as American and asking for a US social security number and US bank. The creator page now asks where they live (US, Canada, UK, Australia, New Zealand or Ireland), and Stripe sets them up for that country so they're paid in their local currency. If someone already got stuck on a US setup, picking their real country starts them over cleanly.
+
+### Technical changes (for Jimmy)
+- apps/web/src/lib/creators/config.ts: new `CONNECT_COUNTRIES` allowlist + `connectCountry()` validator.
+- apps/web/src/lib/creators/payouts.ts: `connectOnboardingLink(creatorId, country?)` now passes `country` to `stripe.accounts.create` (default US) and, for non-US, `tos_acceptance.service_agreement: "recipient"` (required for cross-border accounts under a US platform; transfers capability only). If a stored, not-yet-ready account's country differs from the picked one, the stored id is cleared (account abandoned, not deleted) and a fresh one created.
+- apps/web/src/app/api/creators/connect/route.ts: reads `?country=` and passes it through.
+- apps/web/src/app/creators/page.tsx: "Connect Stripe" link → GET form with a country select.
+- No schema changes.
+
+### Manual steps needed
+- [ ] Jimmy: review (payment code), especially the recipient-agreement create and the country reset (Jimmy)
+- [ ] Ask the Canadian creator to pick Canada and click "Finish Stripe setup" again (Keenan)
+
+### Notes
+- Root cause: `accounts.create` had no `country`, so Stripe defaulted to the platform's (US). Country is fixed at creation, so a stuck account can't be fixed, only replaced.
+- Recipient accounts get USD transfers that Stripe converts to their currency; Stripe charges a cross-border payout fee. Transfers code unchanged (`currency: "usd"`).
+- Couldn't inspect the live Connect accounts locally (.env.local has a test key; the live key is Vercel-sensitive), so the exact Stripe error for this creator wasn't seen.
+- The refresh_url (`?refresh=1`) carries no country, so it reuses the existing account, which is correct.
+
+## [2026-10-29] — Mythicals: dragon fire breathing made unmistakable in videos
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** see git log
+
+### In plain English (for Keenan)
+When a dragon breathes fire in a Mythicals video, the video maker is now told to make it impossible to miss: jaws open wide, a thick bright jet shooting out with force (never pouring or dribbling) for at least two seconds, lighting up the dragon and the scene. The breath matches the kind of dragon: fire, ice, lightning, shadow, poison and so on. No more faint haze or tiny puff at the mouth that's easy to miss on a phone.
+
+### Technical changes (for Jimmy)
+- apps/web/src/lib/content-factory/living-reel.ts: new exported `DRAGON_BREATH_LINE`; added to both branches of `measuredMythicLine` (grounded and ungrounded), so every Mythicals Kling clip prompt carries it.
+- apps/web/src/lib/content-factory/mythic-motion.ts: the start-frame motion rewriter's system prompt now tells Claude to make dragon breath the clip's main beat, described plainly (wide jaws, thick bright jet, ≥2s).
+- apps/web/src/lib/content-factory/mythic-motion.test.ts: test that both paths carry the line.
+- No schema changes.
+
+### Manual steps needed
+None
+
+### Notes
+- Prompt-only change; it doesn't force fire into every dragon clip, it only makes it clear when the Action has a dragon breathing.
+- Not touched: the mythic-colossus 15s cinematic shot (cinematic-shot.ts already asks for "a roaring column of fire") and the retired egg-hatch flow.
+
 ## [2026-10-29] — Admin: drag-and-drop System Map of the whole codebase
 
 **Requested by:** Keenan
