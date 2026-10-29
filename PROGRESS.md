@@ -35,6 +35,38 @@ None
 - Edges are static analysis only: an import, an `/api/...` string, or an Inngest event name. Runtime-only links (webhooks from Stripe/RevenueCat, crons calling URLs) appear as outside-service usage, not as arrows.
 - All 104 Inngest functions are currently registered. "Off" lanes that are switched off by flag or env (e.g. YOUTUBE_MANUAL, funnel flags) still show as live jobs; the map reads code, not flags. UGC & creators is marked "partly retired" by hand (scraping retired 10-21).
 
+## [2026-10-29] — Video inbox: send Claude any Instagram/TikTok/YouTube video from your phone, and it learns from it
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** see git log
+
+### In plain English (for Keenan)
+You can now share any Instagram, TikTok or YouTube video to Ripple from your phone's share menu. The server pulls the video itself, watches it, and emails you a breakdown: the hook, the first 3 seconds, on-screen text, structure, pacing, sound, why it worked, and how Ripple, BWK or Mythicals could use it. Everything you send is kept in a library. Every Sunday morning, the system reads the week's videos and proposes short lessons for each brand ("open on the payoff, then rewind"). You get one email with "Use it" / "Skip it" buttons, and only the lessons you approve reach the writers. Lessons that keep showing up in new videos get stronger; ones nothing backs up fade out. If your note says "love this" or "never do this", that becomes a permanent rule straight away.
+
+### Technical changes (for Jimmy)
+- Prisma: new models `VideoLesson` (the library: url, platform, brand, note, status, numbers, seenVia, watchNotes, breakdown Json, tags) and `PlaybookLesson` (brand, lesson, status PROPOSED/APPROVED/REJECTED/RETIRED, locked, strength, videoIds). Both RLS-enabled; added to prisma/rls-allowlist.txt. **Already pushed to prod** from main (guard: additive only).
+- New apps/web/src/lib/video-inbox/gemini.ts: Gemini REST client. YouTube via file_uri; other videos through the Files API (resumable upload, poll until ACTIVE, delete after). Model chain GEMINI_VIDEO_MODEL → gemini-3.8-flash → flash-latest → 3.5 → 2.5; 401/402/403 throws `GeminiUnavailable`.
+- New apps/web/src/lib/video-inbox/watch.ts: `parseVideoUrl` (canonical links, resolves vm.tiktok short links), `enqueueVideo` (30-day dedupe), `fetchSource` (Apify clockworks~tiktok-scraper / apify~instagram-scraper, YouTube oEmbed), `watchVideo` (Gemini, else frames/slides + subtitles through Claude), `writeBreakdown` (Sonnet 5.5 JSON; Keenan's note → locked APPROVED lesson), `emailBreakdown`.
+- New apps/web/src/lib/video-inbox/playbook.ts: `distillBrand` (reinforce/propose via Claude, fade ×0.85, retire <0.5, proposals expire after 28 days), HMAC-signed approve/reject links, weekly email, `playbookBlock` (≤15 approved lessons, locked first).
+- New Inngest functions in apps/web/src/inngest/functions/video-inbox.ts: `video-inbox-watch` (event `video-inbox/received`, steps fetch → watch → breakdown → email, concurrency 2) and `video-inbox-playbook` (cron Sun 9am Central + event `video-inbox/playbook`). Registered in api/inngest/route.ts.
+- New routes: POST/GET /api/video-inbox (Bearer VIDEO_INBOX_SECRET or CRON_SECRET, or admin session); GET /api/video-inbox/lesson (signed links from the email).
+- Writers: `readBriefBlock` (weekly-brief.ts) appends the playbook for Ripple and Mythicals; `getAudiencePulse` (reddit-trends.ts) appends it for BWK only, since BWK writers don't read the brief.
+- competitor-media.ts: exported urlsFrom/download/toJpeg/videoFrames/cleanSubtitles for reuse (no behavior change).
+- Tests: src/lib/video-inbox/video-inbox.test.ts (link parsing, signatures).
+
+### Manual steps needed
+- [ ] Add `VIDEO_INBOX_SECRET` to Vercel production; the value is in apps/web/.env.local (Keenan). Claude's Vercel login had expired.
+- [ ] Add `GEMINI_API_KEY` to Vercel production (Keenan). The current key's project is prepaid with **no credits** (402 "prepayment credits are depleted"). Top it up at ai.studio/projects, or use a key from a project with no billing attached (free tier). Until then, YouTube links fail and IG/TikTok use the frames + captions fallback.
+- [ ] After deploy: `curl -X PUT https://goripple.io/api/inngest` so the new Sunday cron registers (Claude).
+- [ ] Build the iPhone "Send to Ripple" shortcut (Keenan; steps in the session).
+
+### Notes
+- Library only for now; there is no admin page yet. GET /api/video-inbox returns the library and playbook as JSON (Claude can read it with CRON_SECRET).
+- Not built yet: checking whether posts that use a lesson beat posts that don't. That needs writers to record which lessons they used on each CarouselPost. For now, the approval gate is the quality check.
+- `general` videos (no brand fit) stay in the library but never feed a playbook.
+- Fallback frames are the first ~16 seconds only (one every 2s, max 8), from competitor-media's extractor; Gemini sees the whole video with sound.
+
 ## [2026-10-29] — Legendary Mythicals: "super legendary" post subjects (leviathans, behemoths, world serpents)
 
 **Requested by:** Keenan

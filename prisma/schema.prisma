@@ -1767,6 +1767,61 @@ model HashtagVideo {
   @@index([watchId, postedAt])
 }
 
+// Video inbox (2026-10-29, per Keenan: "send you instagram/youtube/tiktok
+// videos where you can pull them yourself and look at what they do" +
+// "how do we build memory into this?"). Keenan shares a link from his
+// phone; lib/video-inbox watches it (Gemini, or frames + captions through
+// Claude) and saves the breakdown here. The weekly distill turns the
+// library into PlaybookLesson rows.
+model VideoLesson {
+  id          String    @id @default(cuid())
+  url         String // canonical link (tracking params stripped)
+  platform    String // "youtube" | "instagram" | "tiktok" | "other"
+  /// "ripple" | "bwk" | "mythicals" | "general". Keenan's pick, else the breakdown's.
+  brand       String?
+  note        String?   @db.Text // what Keenan said when he sent it
+  status      String    @default("QUEUED") // "QUEUED" | "WATCHING" | "DONE" | "FAILED"
+  error       String?   @db.Text
+  author      String?
+  caption     String?   @db.Text
+  views       Int?
+  likes       Int?
+  comments    Int?
+  /// What the video was read from: "gemini" (watched with sound) | "frames" | "slides" | "text".
+  seenVia     String?
+  watchNotes  String?   @db.Text // Gemini's raw notes on the video
+  /// {summary, hook, firstSeconds, onScreenText, structure, pacing, audio, whyItWorked, howWeUseIt, lessons[]}
+  breakdown   Json?
+  tags        String[]  @default([])
+  createdAt   DateTime  @default(now())
+  watchedAt   DateTime?
+  distilledAt DateTime? // when the weekly playbook update last read it
+
+  @@index([status, createdAt])
+  @@index([brand, distilledAt])
+  @@index([url])
+}
+
+// Playbook lessons distilled from VideoLesson rows, per brand. Writers see
+// APPROVED (and LOCKED) lessons only. Strength rises each time a new video
+// backs a lesson and fades when nothing does (lib/video-inbox/playbook.ts).
+model PlaybookLesson {
+  id          String    @id @default(cuid())
+  brand       String // "ripple" | "bwk" | "mythicals"
+  lesson      String    @db.Text
+  /// "PROPOSED" | "APPROVED" | "REJECTED" | "RETIRED". Keenan approves from the weekly email.
+  status      String    @default("PROPOSED")
+  /// Keenan's own words ("love this" / "never do this"); never fades or retires.
+  locked      Boolean   @default(false)
+  strength    Float     @default(1)
+  videoIds    String[]  @default([]) // VideoLesson ids that back it
+  lastSeenAt  DateTime  @default(now())
+  createdAt   DateTime  @default(now())
+  decidedAt   DateTime?
+
+  @@index([brand, status])
+}
+
 // ─── Auto-Blog System ───────────────────────────────────────────────────────
 
 model BlogTopicQueue {

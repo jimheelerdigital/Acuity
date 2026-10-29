@@ -356,7 +356,19 @@ export async function getAudiencePulse(brand: "ripple" | "bwk"): Promise<string>
   } catch {
     /* soft — pulse alone is fine */
   }
-  return `${pulse}${mimic}`;
+  // Video playbook (2026-10-29). Ripple and Mythicals writers get it through
+  // readBriefBlock (weekly-brief.ts); BWK writers don't read the brief.
+  let playbook = "";
+  if (brand === "bwk") {
+    try {
+      const { playbookBlock } = await import("@/lib/video-inbox/playbook");
+      const block = await playbookBlock("bwk");
+      if (block) playbook = `\n${block}`;
+    } catch {
+      /* soft */
+    }
+  }
+  return `${pulse}${mimic}${playbook}`;
 }
 
 /** Top N ranked themes of the day for the solve lanes (empty = no

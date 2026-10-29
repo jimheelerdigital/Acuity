@@ -38,7 +38,7 @@ function str(v: unknown): string {
 }
 
 /** Every http(s) URL string found under the given keys, in order. */
-function urlsFrom(v: unknown): string[] {
+export function urlsFrom(v: unknown): string[] {
   if (typeof v === "string") return /^https?:\/\//.test(v) ? [v] : [];
   if (Array.isArray(v)) return v.flatMap(urlsFrom);
   if (v && typeof v === "object") {
@@ -53,7 +53,7 @@ function urlsFrom(v: unknown): string[] {
   return [];
 }
 
-async function download(url: string, maxBytes = MAX_VIDEO_BYTES): Promise<Buffer | null> {
+export async function download(url: string, maxBytes = MAX_VIDEO_BYTES): Promise<Buffer | null> {
   try {
     const res = await fetch(url, { signal: AbortSignal.timeout(60_000) });
     if (!res.ok) return null;
@@ -64,7 +64,7 @@ async function download(url: string, maxBytes = MAX_VIDEO_BYTES): Promise<Buffer
   }
 }
 
-async function toJpeg(buf: Buffer): Promise<Buffer | null> {
+export async function toJpeg(buf: Buffer): Promise<Buffer | null> {
   try {
     return await sharp(buf).resize({ width: IMAGE_WIDTH, withoutEnlargement: true }).jpeg({ quality: 78 }).toBuffer();
   } catch {
@@ -83,7 +83,7 @@ function ffmpegPath(): string | null {
 }
 
 /** One frame every FRAME_EVERY_SEC seconds, at most MAX_IMAGES. */
-async function videoFrames(video: Buffer): Promise<Buffer[]> {
+export async function videoFrames(video: Buffer): Promise<Buffer[]> {
   const bin = ffmpegPath();
   if (!bin) return [];
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), "competitor-frames-"));
@@ -116,7 +116,7 @@ async function videoFrames(video: Buffer): Promise<Buffer[]> {
 }
 
 /** WebVTT/SRT → plain words. */
-function cleanSubtitles(raw: string): string {
+export function cleanSubtitles(raw: string): string {
   return raw
     .split(/\r?\n/)
     .filter((l) => l.trim() && !/^WEBVTT/.test(l) && !/-->/.test(l) && !/^\d+$/.test(l.trim()))

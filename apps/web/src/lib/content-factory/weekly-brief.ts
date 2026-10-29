@@ -99,6 +99,14 @@ export async function readBriefBlock(brand: BriefBrand): Promise<string> {
   } catch {
     // The plan is extra guidance; never block a writer over it.
   }
+  try {
+    // Video playbook (2026-10-29): lessons Keenan approved from videos he sent.
+    const { playbookBlock } = await import("@/lib/video-inbox/playbook");
+    const lessons = await playbookBlock(brand);
+    if (lessons) block = block ? `${block}\n\n${lessons}` : lessons;
+  } catch {
+    // Same: soft.
+  }
   return block;
 }
 
