@@ -38,7 +38,7 @@ function isUniqueViolation(err: unknown): boolean {
 export interface PaymentInput {
   userId: string;
   source: "stripe" | "revenuecat";
-  store: "stripe" | "app_store" | "play_store";
+  store: "stripe" | "app_store" | "play_store" | "rc_billing";
   externalEventId: string;
   providerEventId?: string | null;
   plan?: string | null;
@@ -151,7 +151,9 @@ export interface ReversalInput {
  * applied immediately (payable now, netted against the balance). Never
  * invoiced: a negative balance just carries forward.
  */
-export async function recordReversal(input: ReversalInput): Promise<{ clawbackCents: number } | null> {
+export async function recordReversal(
+  input: ReversalInput
+): Promise<{ clawbackCents: number; creatorIds: string[] } | null> {
   const payment = await prisma.creatorRevenueEvent.findUnique({
     where: { externalEventId: input.paymentExternalId },
     select: { id: true, userId: true, store: true, amountPaid: true, netRevenue: true, plan: true },
@@ -181,6 +183,7 @@ export async function recordReversal(input: ReversalInput): Promise<{ clawbackCe
         select: { creatorId: true, amount: true },
       });
       let total = 0;
+      const creatorIds: string[] = [];
       for (const c of commissions) {
         const clawed = await tx.creatorLedgerEntry.aggregate({
           where: {
@@ -199,6 +202,7 @@ export async function recordReversal(input: ReversalInput): Promise<{ clawbackCe
         });
         if (amount === 0) continue;
         total += amount;
+        creatorIds.push(c.creatorId);
         await tx.creatorLedgerEntry.create({
           data: {
             creatorId: c.creatorId,
@@ -214,10 +218,90 @@ export async function recordReversal(input: ReversalInput): Promise<{ clawbackCe
           },
         });
       }
-      return { clawbackCents: total };
+      return { clawbackCents: total, creatorIds };
     });
   } catch (err) {
     if (isUniqueViolation(err)) return null;
+    throw err;
+  }
+}
+
+/**
+ * Store refunds (App Store / Play Store / RC Web Billing) are whole-
+ * transaction refunds, reported by up to three paths: the RC webhook
+ * (CANCELLATION, latest period only), Apple's own REFUND notification, and
+ * the pre-payout store check (lib/creators/refund-reconcile). They share ONE
+ * key per refunded transaction so the first path to see it records it and
+ * the others are no-ops (unique externalEventId).
+ */
+export function storeRefundKey(transactionId: string): string {
+  return `rc:refund:txn:${transactionId}`;
+}
+export function storeRefundReversedKey(transactionId: string): string {
+  return `rc:refund_reversed:txn:${transactionId}`;
+}
+export function storePaymentKey(transactionId: string): string {
+  return `rc:txn:${transactionId}`;
+}
+
+/**
+ * The store reversed a refund (App Store REFUND_REVERSED): the money came
+ * back, so the refund's clawbacks are undone with adjustments. Idempotent.
+ */
+export async function recordRefundReversed(params: {
+  transactionId: string;
+  providerEventId?: string | null;
+  occurredAt: Date;
+}): Promise<number> {
+  const refund = await prisma.creatorRevenueEvent.findUnique({
+    where: { externalEventId: storeRefundKey(params.transactionId) },
+    select: { id: true, userId: true, source: true, store: true, amountPaid: true, plan: true },
+  });
+  if (!refund) return 0; // never recorded a refund for it: nothing to undo
+  try {
+    return await prisma.$transaction(async (tx) => {
+      const ev = await tx.creatorRevenueEvent.create({
+        data: {
+          userId: refund.userId,
+          source: refund.source,
+          store: refund.store,
+          externalEventId: storeRefundReversedKey(params.transactionId),
+          providerEventId: params.providerEventId ?? null,
+          type: "refund_reversed",
+          plan: refund.plan,
+          amountPaid: refund.amountPaid,
+          netRevenue: 0,
+          relatesToId: refund.id,
+          occurredAt: params.occurredAt,
+        },
+        select: { id: true },
+      });
+      const clawbacks = await tx.creatorLedgerEntry.findMany({
+        where: { revenueEventId: refund.id, type: "clawback", status: { not: "voided" } },
+        select: { creatorId: true, amount: true },
+      });
+      let total = 0;
+      for (const c of clawbacks) {
+        total += -c.amount;
+        await tx.creatorLedgerEntry.create({
+          data: {
+            creatorId: c.creatorId,
+            type: "adjustment",
+            amount: -c.amount,
+            status: "payable",
+            payableAt: params.occurredAt,
+            revenueEventId: ev.id,
+            userId: refund.userId,
+            dedupeKey: `rr:${refund.id}:${c.creatorId}`,
+            reason: "refund reversed by the store, clawback undone",
+            createdBy: refund.source,
+          },
+        });
+      }
+      return total;
+    });
+  } catch (err) {
+    if (isUniqueViolation(err)) return 0;
     throw err;
   }
 }
@@ -392,14 +476,20 @@ export async function awardMilestones(now: Date = new Date()): Promise<number> {
     });
     const firstByUser = new Map<string, string>();
     for (const p of firstPayments) if (!firstByUser.has(p.userId)) firstByUser.set(p.userId, p.id);
-    const reversed = new Set(
+    const reversals = await prisma.creatorRevenueEvent.findMany({
+      where: { relatesToId: { in: Array.from(firstByUser.values()) }, type: { in: ["refund", "dispute"] } },
+      select: { id: true, relatesToId: true },
+    });
+    // A refund the store later reversed (or a chargeback we won) no longer counts.
+    const undone = new Set(
       (
         await prisma.creatorRevenueEvent.findMany({
-          where: { relatesToId: { in: Array.from(firstByUser.values()) }, type: { in: ["refund", "dispute"] } },
+          where: { relatesToId: { in: reversals.map((r) => r.id) }, type: { in: ["refund_reversed", "dispute_won"] } },
           select: { relatesToId: true },
         })
       ).map((r) => r.relatesToId)
     );
+    const reversed = new Set(reversals.filter((r) => !undone.has(r.id)).map((r) => r.relatesToId));
     const perCreator = new Map<string, number>();
     for (const r of refs) {
       const first = firstByUser.get(r.userId);

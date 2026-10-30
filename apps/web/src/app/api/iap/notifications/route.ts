@@ -151,17 +151,36 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ received: true, noop: "no-transaction-info" });
   }
   let originalTransactionId: string | null = null;
+  let transactionId: string | null = null;
+  let revocationDate: number | null = null;
   try {
     // Decode without re-verifying — already covered by outer chain.
     const { decodeJwt } = await import("jose");
     const txPayload = decodeJwt(signedTxInfo) as {
       originalTransactionId?: unknown;
+      transactionId?: unknown;
+      revocationDate?: unknown;
     };
     if (typeof txPayload.originalTransactionId === "string") {
       originalTransactionId = txPayload.originalTransactionId;
     }
+    if (typeof txPayload.transactionId === "string") transactionId = txPayload.transactionId;
+    if (typeof txPayload.revocationDate === "number") revocationDate = txPayload.revocationDate;
   } catch {
     // fall through to ignore-no-target below
+  }
+
+  // Creator commission clawback (2026-10-28). Apple names the exact refunded
+  // transaction, any period — RC only reports refunds of the latest one.
+  // Independent of the entitlement decision below; never throws.
+  if (notificationType === "REFUND" || notificationType === "REFUND_REVERSED") {
+    const { handleAppleNotificationForCreators } = await import("@/lib/creators/providers");
+    await handleAppleNotificationForCreators({
+      notificationType,
+      transactionId,
+      revocationDate,
+      notificationUUID,
+    });
   }
 
   if (!originalTransactionId) {

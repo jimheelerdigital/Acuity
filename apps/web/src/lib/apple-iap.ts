@@ -638,7 +638,9 @@ export type AppleNotificationType =
   | "DID_CHANGE_RENEWAL_STATUS"
   | "REFUND"
   | "REVOKE"
-  | "CONSUMPTION_REQUEST";
+  | "CONSUMPTION_REQUEST"
+  /** Log-only for entitlements; the creator ledger undoes its clawback. */
+  | "REFUND_REVERSED";
 
 export type NotificationDecision =
   | { action: "ignore"; reason: string }
@@ -855,4 +857,90 @@ export function decideReceiptVerify(
     action: "write",
     reason: "happy path",
   };
+}
+
+// ─── Refund history (creator commission clawbacks) ────────────────────
+//
+// App Store Server API "Get Refund History":
+//   GET /inApps/v2/refund/lookup/{transactionId}?revision=<r>
+//   → { signedTransactions: JWS[], revision, hasMore }
+// Any transactionId of the customer works; it returns every refunded
+// transaction for that customer (all periods). Paged by `revision`.
+// Same trust model as fetchTransactionInfo: the response comes over TLS from
+// Apple to our JWT-authenticated request, so the JWS payloads are decoded,
+// not chain-verified. Production first, sandbox on 404 / 401.
+
+export interface AppleRefundedTransaction {
+  transactionId: string;
+  originalTransactionId: string | null;
+  /** ms since epoch; null if Apple omitted it. */
+  revocationDate: number | null;
+}
+
+export type AppleRefundHistoryResult =
+  | { ok: true; refunded: AppleRefundedTransaction[] }
+  | { ok: false; code: FetchTransactionFailure["code"]; diagnostic: string };
+
+export async function fetchAppleRefundHistory(
+  transactionId: string,
+  config: AppleApiJwtConfig,
+  fetchImpl: typeof fetch = fetch
+): Promise<AppleRefundHistoryResult> {
+  const jwt = await signAppStoreConnectJwt(config);
+
+  const tryEnv = async (env: AppleEnvironment): Promise<AppleRefundHistoryResult> => {
+    const refunded: AppleRefundedTransaction[] = [];
+    let revision: string | null = null;
+    for (let page = 0; page < 50; page++) {
+      const q = revision ? `?revision=${encodeURIComponent(revision)}` : "";
+      const url = `https://${APPLE_API_HOST[env]}/inApps/v2/refund/lookup/${encodeURIComponent(transactionId)}${q}`;
+      let res: Response;
+      try {
+        res = await fetchImpl(url, { method: "GET", headers: { Authorization: `Bearer ${jwt}` } });
+      } catch (err) {
+        return { ok: false, code: "APPLE_HTTP_ERROR", diagnostic: `network error calling ${env}: ${err instanceof Error ? err.message : String(err)}` };
+      }
+      if (res.status === 401 || res.status === 403) {
+        return { ok: false, code: "APPLE_AUTH_FAILED", diagnostic: `${env} returned ${res.status}` };
+      }
+      if (res.status === 404) {
+        return { ok: false, code: "TRANSACTION_NOT_FOUND", diagnostic: `${env} returned 404 for transactionId` };
+      }
+      if (!res.ok) return { ok: false, code: "APPLE_HTTP_ERROR", diagnostic: `${env} returned ${res.status}` };
+      let body: { signedTransactions?: unknown; revision?: unknown; hasMore?: unknown };
+      try {
+        body = (await res.json()) as typeof body;
+      } catch {
+        return { ok: false, code: "APPLE_HTTP_ERROR", diagnostic: `${env} returned non-JSON body` };
+      }
+      const list = Array.isArray(body.signedTransactions) ? body.signedTransactions : [];
+      for (const jws of list) {
+        if (typeof jws !== "string") continue;
+        try {
+          const p = decodeJwt(jws) as Record<string, unknown>;
+          const id = stringField(p.transactionId);
+          if (!id) continue;
+          refunded.push({
+            transactionId: id,
+            originalTransactionId: stringField(p.originalTransactionId),
+            revocationDate: numberField(p.revocationDate),
+          });
+        } catch {
+          /* skip an undecodable entry */
+        }
+      }
+      if (body.hasMore !== true || typeof body.revision !== "string") return { ok: true, refunded };
+      revision = body.revision;
+    }
+    return { ok: true, refunded };
+  };
+
+  const prod = await tryEnv("Production");
+  if (prod.ok) return prod;
+  if (prod.code === "TRANSACTION_NOT_FOUND" || prod.code === "APPLE_AUTH_FAILED") {
+    const sandbox = await tryEnv("Sandbox");
+    if (sandbox.ok) return sandbox;
+    return { ok: false, code: sandbox.code, diagnostic: `Production: ${prod.diagnostic} | Sandbox: ${sandbox.diagnostic}` };
+  }
+  return prod;
 }

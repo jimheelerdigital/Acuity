@@ -7,6 +7,8 @@
  *   creators-flags-scan         daily     fraud / data flags (hold payouts)
  *   creators-cleanup            daily     clicks > 90 days deleted, captured emails > 30 days nulled
  *   creators-reconcile          weekly    ledger vs Stripe per creator; gaps → admin email
+ *   creators-store-refunds      daily     App Store / Google Play refunds RC never reported
+ *                                         → clawbacks (Play only looks back 30 days, so daily)
  *   creators-payout-preview     Fridays   on payout Fridays, build the run preview and email
  *                                         Keenan to approve (nothing is paid without approval)
  *
@@ -99,6 +101,34 @@ export const creatorsReconcileFn = inngest.createFunction(
   }
 );
 
+export const creatorsStoreRefundsFn = inngest.createFunction(
+  { id: "creators-store-refunds", name: "Creators: store refund check", triggers: [{ cron: "20 6 * * *" }], retries: 1 },
+  async ({ step }) => {
+    const r = await step.run("check", async () => {
+      const { reconcileStoreRefundsSafe } = await import("@/lib/creators/refund-reconcile");
+      const res = await reconcileStoreRefundsSafe();
+      return {
+        ok: res.ok,
+        refunds: res.app_store.refunds + res.play_store.refunds,
+        errors: [...res.app_store.errors, ...res.play_store.errors],
+      };
+    });
+    if (!r.ok) {
+      await step.run("notify", async () => {
+        const { sendAdminNotice } = await import("@/lib/creators/emails");
+        const esc = (x: string) => x.replace(/&/g, "&amp;").replace(/</g, "&lt;");
+        await sendAdminNotice(
+          "Creator store refund check failed",
+          `<p>The daily App Store / Google Play refund check couldn't finish. Affected creators are held out of payouts until it passes.</p><ul>${r.errors
+            .map((e) => `<li>${esc(e)}</li>`)
+            .join("")}</ul>`
+        );
+      });
+    }
+    return r;
+  }
+);
+
 export const creatorsPayoutPreviewFn = inngest.createFunction(
   { id: "creators-payout-preview", name: "Creators: payout run preview", triggers: [{ cron: "0 14 * * 5" }], retries: 1 },
   async ({ step }) => {
@@ -130,5 +160,6 @@ export const creatorsFunctions = [
   creatorsFlagsScanFn,
   creatorsCleanupFn,
   creatorsReconcileFn,
+  creatorsStoreRefundsFn,
   creatorsPayoutPreviewFn,
 ];

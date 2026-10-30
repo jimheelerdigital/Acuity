@@ -248,3 +248,47 @@ export function decideGoogleReceiptVerify(
   }
   return { action: "write", reason: "happy path" };
 }
+
+// ─── Voided purchases (creator commission clawbacks) ──────────────────
+//
+// purchases.voidedpurchases.list with type=1 returns refunded / charged-back
+// / revoked orders — one-time AND subscription renewals — each identified by
+// orderId ("uniquely identifies a one-time purchase, subscription purchase,
+// or subscription renewal"), which is the transaction_id RevenueCat reports
+// for Play. Google only looks back 30 days, so the creator job runs daily.
+
+export interface GoogleVoidedPurchase {
+  orderId: string;
+  voidedTimeMillis: number | null;
+  /** 0 other, 1 remorse, 2 not_received, 3 defective, 4 accidental, 5 fraud, 6 friendly_fraud, 7 chargeback */
+  voidedReason: number | null;
+}
+
+export async function listGoogleVoidedPurchases(
+  config: GooglePlayApiConfig,
+  sinceMs: number
+): Promise<GoogleVoidedPurchase[]> {
+  const publisher = getAndroidPublisher(config);
+  const earliest = Date.now() - 30 * 24 * 60 * 60 * 1000 + 60_000; // API rejects > 30 days
+  const out: GoogleVoidedPurchase[] = [];
+  let token: string | undefined;
+  for (let page = 0; page < 100; page++) {
+    const res = await publisher.purchases.voidedpurchases.list({
+      packageName: config.packageName,
+      type: 1,
+      maxResults: 1000,
+      ...(token ? { token } : { startTime: String(Math.max(sinceMs, earliest)) }),
+    });
+    for (const v of res.data.voidedPurchases ?? []) {
+      if (!v.orderId) continue;
+      out.push({
+        orderId: v.orderId,
+        voidedTimeMillis: v.voidedTimeMillis ? Number(v.voidedTimeMillis) : null,
+        voidedReason: v.voidedReason ?? null,
+      });
+    }
+    token = res.data.tokenPagination?.nextPageToken ?? undefined;
+    if (!token) break;
+  }
+  return out;
+}

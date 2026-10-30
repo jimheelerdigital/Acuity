@@ -21,6 +21,7 @@ import { safeLog } from "@/lib/safe-log";
 
 import { AGREEMENT_VERSION, PAYOUT_MIN_CENTS, SITE_URL, stripePayoutsEnabled } from "./config";
 import { nextPayoutDate, payoutCutoff, runKeyFor } from "./money";
+import { refundGateReason, reconcileStoreRefundsSafe, type RefundReconcileResult } from "./refund-reconcile";
 
 export interface PreviewLine {
   creatorId: string;
@@ -37,6 +38,31 @@ export interface RunPreview {
   runKey: string;
   cutoff: string;
   lines: PreviewLine[];
+  /** App Store / Google Play refund check run before this preview (finding 7). */
+  refundCheck: { ok: boolean; refunds: number; errors: string[] };
+}
+
+/** Referred customers behind each payout's ledger rows. */
+async function payoutUserIds(payouts: Array<{ id: string; entryIds: unknown }>): Promise<Map<string, string[]>> {
+  const all = payouts.flatMap((p) => p.entryIds as string[]);
+  const rows = all.length
+    ? await prisma.creatorLedgerEntry.findMany({ where: { id: { in: all } }, select: { id: true, userId: true } })
+    : [];
+  const userOf = new Map(rows.map((r) => [r.id, r.userId]));
+  const out = new Map<string, string[]>();
+  for (const p of payouts) {
+    const ids = (p.entryIds as string[]).map((e) => userOf.get(e)).filter((u): u is string => Boolean(u));
+    out.set(p.id, Array.from(new Set(ids)));
+  }
+  return out;
+}
+
+function refundSummary(r: RefundReconcileResult): RunPreview["refundCheck"] {
+  return {
+    ok: r.ok,
+    refunds: r.app_store.refunds + r.play_store.refunds,
+    errors: [...r.app_store.errors, ...r.play_store.errors],
+  };
 }
 
 async function blockersFor(creatorIds: string[]) {
@@ -85,6 +111,10 @@ export async function previewRun(opts: { runDate?: Date; offCycleCreatorId?: str
   const cutoff = offCycle ? new Date() : payoutCutoff(opts.runDate ?? nextPayoutDate());
   const runKey = offCycle ? `offcycle-${randomUUID().slice(0, 8)}` : runKeyFor(opts.runDate ?? nextPayoutDate());
 
+  // Store refunds RevenueCat never reported become clawbacks first, so the
+  // preview nets them (finding 7).
+  const refunds = await reconcileStoreRefundsSafe();
+
   const entries = await prisma.creatorLedgerEntry.findMany({
     where: {
       status: "payable",
@@ -93,13 +123,14 @@ export async function previewRun(opts: { runDate?: Date; offCycleCreatorId?: str
       type: { not: "payout" },
       ...(offCycle ? { creatorId: opts.offCycleCreatorId } : {}),
     },
-    select: { id: true, creatorId: true, amount: true },
+    select: { id: true, creatorId: true, amount: true, userId: true },
   });
-  const byCreator = new Map<string, { ids: string[]; total: number }>();
+  const byCreator = new Map<string, { ids: string[]; total: number; users: Set<string> }>();
   for (const e of entries) {
-    const g = byCreator.get(e.creatorId) ?? { ids: [], total: 0 };
+    const g = byCreator.get(e.creatorId) ?? { ids: [], total: 0, users: new Set<string>() };
     g.ids.push(e.id);
     g.total += e.amount;
+    if (e.userId) g.users.add(e.userId);
     byCreator.set(e.creatorId, g);
   }
   const info = await blockersFor(Array.from(byCreator.keys()));
@@ -114,6 +145,10 @@ export async function previewRun(opts: { runDate?: Date; offCycleCreatorId?: str
     const i = info.get(creatorId)!;
     const blocked = [...i.blocked];
     if (g.total < PAYOUT_MIN_CENTS) blocked.push(g.total < 0 ? "negative balance" : "under $25");
+    // A clawback recorded just above is already in g.total; only an
+    // unconfirmed store check holds the creator.
+    const gate = refundGateReason(creatorId, Array.from(g.users), { ...refunds, clawedCreatorIds: [] });
+    if (gate) blocked.push("store refunds unconfirmed");
     const prior = existingBy.get(creatorId);
     if (prior && prior.status !== "previewed") {
       lines.push({
@@ -159,11 +194,31 @@ export async function previewRun(opts: { runDate?: Date; offCycleCreatorId?: str
     });
   }
   lines.sort((a, b) => b.amount - a.amount);
-  return { runKey, cutoff: cutoff.toISOString(), lines };
+  return { runKey, cutoff: cutoff.toISOString(), lines, refundCheck: refundSummary(refunds) };
 }
 
-/** Keenan's approval. Only previewed rows; returns how many were approved. */
+/**
+ * Keenan's approval. Only previewed rows; returns how many were approved.
+ * The store refund check runs again first: approval is the last step before
+ * PayPal / manual money is sent by hand, so a payout whose customers'
+ * refunds can't be confirmed (or that just got a clawback) is refused.
+ */
 export async function approveRun(runKey: string, by: string, payoutIds?: string[]): Promise<number> {
+  const candidates = await prisma.creatorPayout.findMany({
+    where: { runKey, status: "previewed", ...(payoutIds ? { id: { in: payoutIds } } : {}) },
+    select: { id: true, creatorId: true, entryIds: true },
+  });
+  if (candidates.length === 0) return 0;
+  const refunds = await reconcileStoreRefundsSafe();
+  const users = await payoutUserIds(candidates);
+  const gated = candidates
+    .map((p) => ({ p, why: refundGateReason(p.creatorId, users.get(p.id) ?? [], refunds) }))
+    .filter((g) => g.why);
+  if (gated.length > 0) {
+    throw new Error(
+      `Not approved: ${gated.length} payout${gated.length === 1 ? "" : "s"} can't go yet: ${Array.from(new Set(gated.map((g) => g.why))).join("; ")}`
+    );
+  }
   const res = await prisma.creatorPayout.updateMany({
     where: { runKey, status: "previewed", ...(payoutIds ? { id: { in: payoutIds } } : {}) },
     data: { status: "approved", approvedBy: by, approvedAt: new Date() },
@@ -198,7 +253,26 @@ export async function executeRun(runKey: string): Promise<ExecuteResult> {
     where: { runKey, status: { in: ["approved", "sending"] } },
     include: { creator: { select: { stripeAccountId: true, stripePayoutsEnabled: true } } },
   });
+  // Store refunds first (finding 7). A gated payout stays approved, untouched.
+  const fresh = payouts.filter((p) => p.status === "approved");
+  const refunds = fresh.length > 0 ? await reconcileStoreRefundsSafe() : null;
+  const users = refunds ? await payoutUserIds(fresh) : new Map<string, string[]>();
   for (const p of payouts) {
+    // "sending" = money may already have moved; it is only ever settled.
+    const why = refunds && p.status === "approved" ? refundGateReason(p.creatorId, users.get(p.id) ?? [], refunds) : null;
+    if (why) {
+      // A fresh clawback changes what's owed: send the payout back to
+      // "previewed" so the next preview recomputes it (approved rows are
+      // otherwise frozen). An unconfirmed check leaves it approved, to retry.
+      if (refunds!.clawedCreatorIds.includes(p.creatorId)) {
+        await prisma.creatorPayout.updateMany({
+          where: { id: p.id, status: "approved" },
+          data: { status: "previewed", approvedAt: null, approvedBy: null },
+        });
+      }
+      out.failed.push({ payoutId: p.id, error: p.rail === "stripe_connect" ? why : `don't send by hand yet: ${why}` });
+      continue;
+    }
     if (p.rail !== "stripe_connect") {
       if (p.status === "approved") out.manual.push(p.id);
       continue;
