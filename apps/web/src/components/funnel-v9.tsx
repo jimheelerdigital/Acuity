@@ -111,6 +111,9 @@ const OPTION_ICONS: Record<string, LucideIcon> = {
   "pileup:drive": Car,
   "notice:fires": Flame,
   "when:truck": Truck, "when:gym": Dumbbell,
+  // /start-journal
+  "tried-what:paper": BookOpen, "tried-what:bullet": ListChecks, "tried-what:journal-app": Smartphone, "tried-what:todo-app": ListTodo,
+  "tried-what:reminders": Bell, "tried-what:notes": Layers, "tried-what:habit-app": Target,
 };
 
 function sessionId(): string {
@@ -158,6 +161,56 @@ const CSS = `
   --acuity-hero-grad: radial-gradient(100% 50% at 50% 0%, oklch(0.6 0.17 256 / 0.12) 0%, transparent 70%), linear-gradient(180deg, oklch(0.205 0.015 250) 0%, oklch(0.175 0.013 250) 100%);
   color-scheme: dark;
 }
+.v9[data-funnel-theme="sunrise"] {
+  /* /start-journal (2026-10-31): the approved app redesign look. Very light
+     peach, glassy white cards, orange gradient on the big moments, Fraunces
+     headings, two warm lights drifting behind everything. */
+  --acuity-primary: oklch(0.64 0.2 38); --acuity-primary-hi: oklch(0.74 0.16 50); --acuity-primary-lo: oklch(0.56 0.2 33);
+  --acuity-primary-soft: oklch(0.64 0.2 38 / 0.14);
+  --acuity-bg: #FFF2EA; --acuity-bg-sub: rgba(255,255,255,.55); --acuity-bg-inset: #FBE7DA; --acuity-card-bg: rgba(255,255,255,.72);
+  --acuity-text: #2A231D; --acuity-text-sec: #5E5348; --acuity-text-ter: #6F6458; --acuity-text-quiet: #8A7E71;
+  --acuity-line: rgba(242,84,30,.08); --acuity-line-strong: rgba(242,84,30,.28);
+  --acuity-grad-primary: linear-gradient(135deg, #FF9459 0%, #F04A18 100%);
+  --acuity-hero-grad: linear-gradient(180deg, #FFF4EC 0%, #FFEFE5 100%);
+  color-scheme: light;
+}
+.v9.funnel-root[data-funnel-theme="sunrise"]::before, .v9.funnel-root[data-funnel-theme="sunrise"]::after { content: ""; position: fixed; z-index: 0; border-radius: 9999px; pointer-events: none; filter: blur(10px); }
+.v9.funnel-root[data-funnel-theme="sunrise"]::before { width: 440px; height: 440px; left: -140px; top: -160px; background: radial-gradient(circle, rgba(255,100,40,.32), transparent 65%); animation: v9-drift 18s ease-in-out infinite; }
+.v9.funnel-root[data-funnel-theme="sunrise"]::after { width: 460px; height: 460px; right: -180px; top: 38vh; background: radial-gradient(circle, rgba(255,170,130,.36), transparent 65%); animation: v9-drift2 22s ease-in-out infinite; }
+.v9.funnel-root[data-funnel-theme="sunrise"] > main { position: relative; z-index: 1; }
+.v9[data-funnel-theme="sunrise"] h1, .v9[data-funnel-theme="sunrise"] .serif { font-family: Fraunces, Georgia, serif; font-weight: 600; letter-spacing: -0.02em; }
+.v9[data-funnel-theme="sunrise"] blockquote { font-family: Fraunces, Georgia, serif; font-style: normal; font-weight: 600; }
+.v9[data-funnel-theme="sunrise"] .card { background: var(--acuity-card-bg); border: 1px solid rgba(255,255,255,.95); box-shadow: 0 14px 34px rgba(242,84,30,.10), 0 2px 6px rgba(42,35,29,.04); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); }
+.v9[data-funnel-theme="sunrise"] .card-sel { background: linear-gradient(155deg, #FFFFFF, #FFE3D2); border-color: #F2541E; box-shadow: 0 0 0 3px rgba(242,84,30,.18), 0 14px 30px rgba(242,84,30,.16); }
+.v9[data-funnel-theme="sunrise"] .soft { background: rgba(255,255,255,.55); border: 1px solid rgba(255,255,255,.9); }
+.v9[data-funnel-theme="sunrise"] .chip-ico { background: #FFE2D1; color: #A8360C; }
+@keyframes v9-drift { 0%,100% { transform: translate(0,0) scale(1); } 50% { transform: translate(60px,50px) scale(1.12); } }
+@keyframes v9-drift2 { 0%,100% { transform: translate(0,0) scale(1.05); } 50% { transform: translate(-70px,-40px) scale(.95); } }
+@keyframes v9-fan { from { opacity: 0; transform: translate(0, 30px) rotate(0deg); } to { opacity: 1; transform: translate(var(--tx), 0) rotate(var(--rot)); } }
+@keyframes v9-xout { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+@keyframes v9-stamp { 0% { opacity: 0; transform: rotate(-14deg) scale(1.8); } 60% { opacity: 1; transform: rotate(-14deg) scale(.92); } 100% { opacity: 1; transform: rotate(-14deg) scale(1); } }
+@keyframes v9-gap { 0%,40% { opacity: 1; } 50%,90% { opacity: .15; } 100% { opacity: 1; } }
+@keyframes v9-grow { 0% { transform: translateY(0); } 100% { transform: translateY(-60%); } }
+@keyframes v9-zz { 0% { opacity: 0; transform: translate(0,0) scale(.6); } 40% { opacity: 1; } 100% { opacity: 0; transform: translate(10px,-18px) scale(1.1); } }
+@keyframes v9-blink { 50% { opacity: 0; } }
+@keyframes v9-swap-in { from { opacity: 0; transform: scale(.6) rotate(-20deg); } to { opacity: 1; transform: none; } }
+.v9 .fan { animation: v9-fan .7s cubic-bezier(.2,.8,.2,1) both; animation-delay: var(--d, 0ms); }
+.v9 .xout { transform-origin: left; animation: v9-xout .45s ease-out both; animation-delay: var(--d, 0ms); }
+.v9 .stamp { animation: v9-stamp .4s cubic-bezier(.2,.8,.2,1) both; }
+.v9 .gapday { animation: v9-gap 2.4s ease-in-out infinite; animation-delay: var(--d, 0ms); }
+.v9 .growlist { animation: v9-grow 3s ease-in-out infinite alternate; }
+.v9 .zz { animation: v9-zz 2.2s ease-out infinite; animation-delay: var(--d, 0ms); }
+.v9 .blink { animation: v9-blink 1s steps(1) infinite; }
+.v9 .swap-in { animation: v9-swap-in .35s cubic-bezier(.2,.8,.2,1) both; }
+@keyframes v9-ring-out { 0% { opacity: .9; transform: scale(1); } 100% { opacity: 0; transform: scale(1.9); } }
+.v9 .ring-out { opacity: 0; animation: v9-ring-out 1.8s ease-out infinite both; }
+@keyframes v9-bell { 0%,55%,100% { transform: rotate(0); } 60% { transform: rotate(16deg); } 66% { transform: rotate(-14deg); } 72% { transform: rotate(10deg); } 78% { transform: rotate(-6deg); } 84% { transform: rotate(0); } }
+.v9 .ring-bell { transform-origin: 50% 8%; animation: v9-bell 2.6s ease-in-out infinite; }
+@keyframes v9-notif { from { opacity: 0; transform: translateY(-14px) scale(.96); } to { opacity: 1; transform: none; } }
+.v9 .notif-in { animation: v9-notif .55s cubic-bezier(.2,.8,.2,1) .9s both; }
+@keyframes v9-fill-down { from { height: 0; } to { height: 100%; } }
+.v9 .fill-down { height: 100%; animation: v9-fill-down 1.1s ease-out .3s both; }
+@media (prefers-reduced-motion: reduce) { .v9[data-funnel-theme="sunrise"]::before, .v9[data-funnel-theme="sunrise"]::after, .v9 .fan, .v9 .xout, .v9 .stamp, .v9 .gapday, .v9 .growlist, .v9 .zz, .v9 .blink, .v9 .swap-in, .v9 .ring-out, .v9 .ring-bell, .v9 .notif-in, .v9 .fill-down { animation: none !important; } }
 .v9 { --v9-tint: color-mix(in oklch, var(--acuity-primary) 9%, var(--acuity-card-bg)); --v9-ring: color-mix(in oklch, var(--acuity-primary) 38%, transparent); }
 .v9 .card { background: var(--acuity-card-bg); border: 1px solid var(--acuity-line-strong); box-shadow: 0 1px 2px rgba(20,16,40,.04), 0 6px 18px rgba(20,16,40,.05); }
 .v9 .card-sel { background: var(--v9-tint); border-color: var(--acuity-primary); box-shadow: 0 0 0 3px var(--v9-ring); }
@@ -495,9 +548,12 @@ type ViewProps = {
 };
 
 function StepView(p: ViewProps) {
+  const C = useV9();
   const { step } = p;
   switch (step.kind) {
     case "single":
+      if (p.step.id === "tried" && C.brand === "journal") return <TriedTiles {...p} step={step} />;
+      if (p.step.id === "happens" && C.brand === "journal") return <HappensCards {...p} step={step} />;
       return <SingleScreen {...p} step={step} />;
     case "multi":
       return <MultiScreen {...p} step={step} />;
@@ -953,7 +1009,7 @@ function StatementScreen({ step, answers, setAnswers, next, track }: ViewProps &
         </figure>
       ) : (
         <figure className={`card-in relative flex flex-col items-center overflow-hidden rounded-[28px] card px-6 pb-[clamp(22px,6vw,30px)] pt-6 text-center ${fly === "yes" ? "fly-yes" : fly === "no" ? "fly-no" : ""}`}>
-          <MoodAvatar mood={step.mood} size={60} />
+          {C.brand === "journal" && isHook ? <PlannerStack /> : C.brand === "journal" && (step.id === "st-upkeep" || step.id === "st-zero") ? <JournalStatementPic id={step.id} /> : <MoodAvatar mood={step.mood} size={60} />}
           <blockquote className="relative mt-4 text-[clamp(19px,5.6vw,22px)] font-medium italic leading-[1.35] tracking-tight text-balance">
             &ldquo;{step.statement}&rdquo;
           </blockquote>
@@ -1020,6 +1076,16 @@ function SliderScreen({ step, answers, setAnswers, next, track }: ViewProps & { 
   return (
     <div className="enter">
       <Heading eyebrow={`Slider ${pos + 1} of ${sliderSteps(C).length}`} title="Which sounds more like you?" sub="Drag toward the one that fits, then let go." />
+      {step.id === "s-say" && (
+        <div className="mb-4 flex flex-col items-center">
+          <span key={lean} className="swap-in relative h-20 w-20 rounded-full grad flex items-center justify-center text-white shadow-[0_14px_30px_-8px_var(--acuity-primary)]">
+            {lean === "left" ? <BookOpen className="h-9 w-9" /> : lean === "right" ? <Mic className="h-9 w-9" /> : <Sparkles className="h-9 w-9" />}
+          </span>
+          <p key={`t-${lean}`} className="up mt-3 text-[14px] font-semibold text-acuity-text-sec">
+            {lean === "left" ? "Writing it down takes upkeep." : lean === "right" ? "Ripple is built for talking it out." : "Ripple takes both: talk or type."}
+          </p>
+        </div>
+      )}
       <div className="card rounded-3xl p-5">
         <div className="grid grid-cols-2 gap-3">
           {[step.left, step.right].map((s, i) => {
@@ -1633,6 +1699,7 @@ function PlanScreen({ answers, firstName, next }: ViewProps) {
         : "A year of debriefs across work, family, health and money, all in your Life Matrix. You can see how far you've come, in your own words.",
     },
   ];
+  if (C.brand === "journal") return <UnlockPath firstName={firstName} next={next} />;
   return (
     <div className="enter">
       <Heading eyebrow="Built from your answers" title={firstName ? `${firstName}'s year with Ripple` : "Your year with Ripple"} />
@@ -2039,6 +2106,226 @@ function ClassicPaywall({ plan, setPlan, next, go, track, firstName, answers }: 
 }
 
 
+// ─── /start-journal screens (2026-10-31) ───────────────────────────────────
+
+/** Hook visual: the planners she's already abandoned, fanned and crossed out. */
+function PlannerStack() {
+  const items = [
+    { icon: BookOpen, label: "Planner", rot: "-12deg", tx: "-58px", bg: "#FFF7EF" },
+    { icon: Smartphone, label: "App", rot: "2deg", tx: "0px", bg: "#FFFFFF" },
+    { icon: ListChecks, label: "Journal", rot: "13deg", tx: "58px", bg: "#FFF1E6" },
+  ];
+  return (
+    <div className="relative mt-1 mb-2 h-[96px] w-[220px]" aria-hidden="true">
+      {items.map((it, i) => (
+        <div
+          key={it.label}
+          className="fan absolute left-1/2 top-0 -ml-[34px] h-[84px] w-[68px] rounded-2xl flex flex-col items-center justify-center gap-1"
+          style={{ background: it.bg, border: "1px solid rgba(242,84,30,.14)", boxShadow: "0 8px 20px rgba(242,84,30,.14)", ["--rot" as string]: it.rot, ["--tx" as string]: it.tx, ["--d" as string]: `${120 + i * 120}ms`, zIndex: i === 1 ? 2 : 1 } as CSSProperties}
+        >
+          <it.icon className="h-6 w-6 text-acuity-primary" />
+          <span className="text-[10px] font-semibold text-acuity-text-ter">{it.label}</span>
+          <span className="xout absolute left-2 right-2 top-1/2 h-[2.5px] rounded-full bg-red-500/70" style={{ ["--d" as string]: `${700 + i * 160}ms` } as CSSProperties} />
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/** Pictures for the two later /start-journal statements. */
+function JournalStatementPic({ id }: { id: string }) {
+  if (id === "st-upkeep")
+    return (
+      <span className="relative mt-1 h-[72px] w-[120px]" aria-hidden="true">
+        <span className="absolute left-1/2 top-1 -ml-[30px] h-[64px] w-[60px] rounded-xl bg-white p-2 flex flex-col gap-[6px]" style={{ border: "1px solid rgba(242,84,30,.2)", boxShadow: "0 8px 18px rgba(242,84,30,.12)" }}>
+          {[0, 1, 2, 3].map((k) => (
+            <span key={k} className="flex items-center gap-1"><span className="h-[7px] w-[7px] shrink-0 rounded-[2px]" style={{ border: "1.5px solid #F2541E" }} /><span className="h-[4px] flex-1 rounded" style={{ background: "rgba(242,84,30,.28)" }} /></span>
+          ))}
+        </span>
+        {[0, 1, 2].map((k) => (
+          <span key={k} className="fan absolute top-0 rounded-full px-1.5 py-[1px] text-[10px] font-bold text-white grad" style={{ left: `${76 + k * 9}px`, ["--tx" as string]: "0px", ["--rot" as string]: `${-8 + k * 9}deg`, ["--d" as string]: `${300 + k * 420}ms`, top: `${k * 16}px` } as CSSProperties}>+1</span>
+        ))}
+      </span>
+    );
+  return (
+    <span className="relative mt-1 flex h-[72px] w-[120px] items-center justify-center" aria-hidden="true">
+      {[0, 1].map((k) => <span key={k} className="ring-out absolute h-[54px] w-[54px] rounded-full" style={{ border: "2px solid rgba(242,84,30,.35)", animationDelay: `${k * 900}ms` }} />)}
+      <span className="relative h-[54px] w-[54px] rounded-full grad flex items-center justify-center" style={{ boxShadow: "0 10px 24px rgba(242,84,30,.3)" }}><Mic className="h-6 w-6 text-white" /></span>
+      <span className="stamp absolute -right-1 -top-1 rounded-lg bg-white px-2 py-0.5 text-[11px] font-bold" style={{ color: "#C2410C", border: "1.5px solid #F2541E", animationDelay: "500ms" }}>upkeep: 0</span>
+    </span>
+  );
+}
+
+/** "How many have you tried?" as big tiles with a stack that grows. */
+function TriedTiles({ step, answers, setAnswers, next, track }: ViewProps & { step: Extract<V9Step, { kind: "single" }> }) {
+  const [picked, setPicked] = useState<string | null>(answers.single[step.id] ?? null);
+  const advancing = useRef(false);
+  const stack: Record<string, number> = { one: 1, few: 3, many: 5, lost: 7 };
+  return (
+    <div className="enter">
+      <Heading title={step.title} sub="Planners, apps, journals, notebooks. All of them count." />
+      <div className="grid grid-cols-2 gap-3">
+        {step.options.map((o, i) => {
+          const n = stack[o.id] ?? 1;
+          const on = picked === o.id;
+          return (
+            <button
+              key={o.id}
+              onClick={() => {
+                if (advancing.current) return;
+                advancing.current = true;
+                haptic();
+                setPicked(o.id);
+                setAnswers((a) => ({ ...a, single: { ...a.single, [step.id]: o.id } }));
+                track(`funnel_v9_${step.id}_answered`, o.id);
+                setTimeout(next, 420);
+              }}
+              className={`up relative h-[150px] rounded-3xl card flex flex-col items-center justify-end pb-4 transition active:scale-[0.97] ${on ? "card-sel" : ""}`}
+              style={{ animationDelay: `${i * 70}ms` }}
+            >
+              <span className="relative mb-3 h-[64px] w-[64px]" aria-hidden="true">
+                {Array.from({ length: n }, (_, k) => (
+                  <span
+                    key={k}
+                    className="pop absolute left-1/2 -ml-[24px] h-[46px] w-[48px] rounded-lg"
+                    style={{
+                      bottom: `${k * 4}px`,
+                      rotate: `${(k % 2 ? 1 : -1) * (k * 3)}deg`,
+                      background: k === n - 1 ? "var(--acuity-grad-primary)" : ["#FFE2D1", "#FFD3BB", "#FFC7A8"][k % 3],
+                      border: "1px solid rgba(255,255,255,.9)",
+                      boxShadow: "0 3px 8px rgba(242,84,30,.14)",
+                      animationDelay: `${i * 70 + k * 60}ms`,
+                    }}
+                  />
+                ))}
+              </span>
+              <span className="text-[16px] font-semibold">{o.label}</span>
+              {on && <span className="pop absolute top-3 right-3 h-6 w-6 rounded-full grad flex items-center justify-center"><Check className="h-3.5 w-3.5 text-white" strokeWidth={3} /></span>}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+/** "What usually happens?" as cards with a small moving picture each. */
+function HappensCards({ step, answers, setAnswers, next, track }: ViewProps & { step: Extract<V9Step, { kind: "single" }> }) {
+  const [picked, setPicked] = useState<string | null>(answers.single[step.id] ?? null);
+  const advancing = useRef(false);
+  const Pic = ({ id }: { id: string }) => {
+    const panel = "relative h-[64px] w-full rounded-2xl flex items-center justify-center overflow-hidden";
+    const tint = { background: "linear-gradient(160deg, #FFEADF, #FFF6F0)" };
+    if (id === "miss")
+      return (
+        <span className={panel} style={tint} aria-hidden="true">
+          <span className="grid grid-cols-7 gap-[4px] w-[112px]">
+            {Array.from({ length: 14 }, (_, k) => (
+              <span key={k} className={`h-[11px] rounded-[3px] ${k < 4 ? "grad" : "gapday"}`} style={{ background: k < 4 ? undefined : "#F6C3A6", ["--d" as string]: `${k * 90}ms` } as CSSProperties} />
+            ))}
+          </span>
+        </span>
+      );
+    if (id === "chore")
+      return (
+        <span className={panel} style={tint} aria-hidden="true">
+          <span className="relative h-[50px] w-[64px] overflow-hidden rounded-lg bg-white" style={{ border: "1px solid rgba(242,84,30,.2)" }}>
+            <span className="growlist absolute inset-x-2 top-1.5 flex flex-col gap-[5px]">
+              {Array.from({ length: 10 }, (_, k) => (
+                <span key={k} className="flex items-center gap-1"><span className="h-[6px] w-[6px] shrink-0 rounded-[2px]" style={{ border: "1.5px solid #F2541E" }} /><span className="h-[4px] rounded" style={{ background: "rgba(242,84,30,.3)", width: `${55 + ((k * 37) % 40)}%` }} /></span>
+              ))}
+            </span>
+          </span>
+        </span>
+      );
+    if (id === "forget")
+      return (
+        <span className={panel} style={tint} aria-hidden="true">
+          <span className="relative">
+            <Smartphone className="h-8 w-8" style={{ color: "#C2410C" }} strokeWidth={1.8} />
+            {[0, 1].map((k) => <span key={k} className="zz absolute -right-3 -top-2 text-[14px] font-bold" style={{ color: "#F2541E", ["--d" as string]: `${k * 1100}ms` } as CSSProperties}>z</span>)}
+          </span>
+        </span>
+      );
+    return (
+      <span className={panel} style={tint} aria-hidden="true">
+        <span className="relative h-[50px] w-[42px] rounded-md bg-white flex items-start p-2" style={{ border: "1px solid rgba(242,84,30,.25)", boxShadow: "0 4px 10px rgba(242,84,30,.1)" }}>
+          <span className="blink h-4 w-[2px]" style={{ background: "#F2541E" }} />
+        </span>
+      </span>
+    );
+  };
+  return (
+    <div className="enter">
+      <Heading title={step.title} sub="Be honest. Everyone's been here." />
+      <div className="grid grid-cols-2 gap-3">
+        {step.options.map((o, i) => {
+          const on = picked === o.id;
+          return (
+            <button
+              key={o.id}
+              onClick={() => {
+                if (advancing.current) return;
+                advancing.current = true;
+                haptic();
+                setPicked(o.id);
+                setAnswers((a) => ({ ...a, single: { ...a.single, [step.id]: o.id } }));
+                track(`funnel_v9_${step.id}_answered`, o.id);
+                setTimeout(next, 420);
+              }}
+              className={`up relative min-h-[150px] rounded-3xl card p-4 flex flex-col items-start justify-between text-left transition active:scale-[0.97] ${on ? "card-sel" : ""}`}
+              style={{ animationDelay: `${i * 70}ms` }}
+            >
+              <Pic id={o.id} />
+              <span className="mt-3 text-[14.5px] font-semibold leading-snug">{o.label}</span>
+              {on && <span className="pop absolute top-3 right-3 h-6 w-6 rounded-full grad flex items-center justify-center"><Check className="h-3.5 w-3.5 text-white" strokeWidth={3} /></span>}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+/** Plan screen for /start-journal: the same unlock path as the new app. */
+function UnlockPath({ firstName, next }: { firstName: string; next: () => void }) {
+  const rows = [
+    { day: 1, icon: ListTodo, title: "Your list writes itself", text: "Talk for as long as you like. Every task lands on your plan, already sorted.", open: true },
+    { day: 3, icon: Sparkles, title: "Your first pattern", text: "What keeps coming up for you, in your own words.", open: true },
+    { day: 7, icon: Eye, title: "Your first weekly report", text: "What moved, what slipped, and one thing to drop next week.", open: false },
+    { day: 14, icon: TrendingUp, title: "What lifts you, what drains you", text: "Know what to protect and what to plan around.", open: false },
+    { day: 30, icon: Waves, title: "Your first month", text: "Your month on one page, plus ask your past self anything.", open: false },
+    { day: 365, icon: Sprout, title: "Your year with Ripple", text: "A year of your life, told back to you.", open: false },
+  ];
+  return (
+    <div className="enter">
+      <Heading eyebrow="Built from your answers" title={firstName ? `${firstName}, here's what unlocks` : "Here's what unlocks"} sub="New insights open up as you keep talking. Nothing ever resets." />
+      <ol className="relative">
+        <span className="absolute left-[21px] top-5 bottom-5 w-[3px] rounded-full" style={{ background: "repeating-linear-gradient(180deg, #F4C9B2 0 6px, transparent 6px 11px)" }} />
+        <span className="absolute left-[21px] top-5 w-[3px] rounded-full grad" style={{ height: "30%", animation: "v9-bar 1.2s .3s cubic-bezier(.2,.8,.2,1) both" }} />
+        {rows.map((r, i) => {
+          const Icon = r.icon;
+          return (
+            <li key={r.day} className="up relative flex gap-4 pb-3" style={{ animationDelay: `${150 + i * 140}ms` }}>
+              <span className={`relative z-10 h-11 w-11 shrink-0 rounded-full flex items-center justify-center ${r.open ? "grad text-white shadow-[0_6px_16px_-6px_var(--acuity-primary)]" : "bg-white text-acuity-text-ter"}`} style={r.open ? undefined : { border: "2px dashed #E8C3AE" }}>
+                {r.open ? <Icon className="h-5 w-5" /> : <Lock className="h-4 w-4" />}
+              </span>
+              <div className={`flex-1 rounded-2xl card px-4 py-3 ${r.open ? "" : "opacity-90"}`}>
+                <p className="text-[11px] font-extrabold tracking-[0.1em] text-acuity-primary">DAY {r.day}{r.open ? " · INCLUDED IN YOUR TRIAL" : ""}</p>
+                <p className="mt-0.5 text-[16px] font-semibold serif">{r.title}</p>
+                <p className="mt-0.5 text-[13.5px] leading-snug text-acuity-text-sec">{r.text}</p>
+              </div>
+            </li>
+          );
+        })}
+      </ol>
+      <BottomBar>
+        <PrimaryButton onClick={next}>Start my first week</PrimaryButton>
+      </BottomBar>
+    </div>
+  );
+}
+
 // ─── New-app-design preview (2026-10-31, /start-journal) ─────────────────────
 // A phone showing the redesigned app's "Added to your plan" screen, filled
 // with the tasks she tapped on the week screen. Colors follow the approved
@@ -2198,12 +2485,21 @@ function TrustPaywall({ plan, setPlan, next, track, firstName, answers }: ViewPr
         {back}
         <div className="flex justify-center mt-6">
           <span className="relative h-28 w-28 rounded-full grad flex items-center justify-center shadow-[0_18px_40px_-10px_var(--acuity-primary)]">
-            <Bell className="h-12 w-12 text-white" strokeWidth={2} />
+            <Bell className="ring-bell h-12 w-12 text-white" strokeWidth={2} />
             <span className="pop absolute top-3 right-3 h-7 w-7 rounded-full bg-white text-acuity-primary text-[13px] font-bold flex items-center justify-center">1</span>
           </span>
         </div>
         <h1 className="mt-8 text-center text-[28px] font-bold leading-tight">We&apos;ll remind you before your free trial ends.</h1>
         <p className="mt-3 text-center text-[16px] text-acuity-text-sec">No payment due now. If Ripple isn&apos;t for you, cancel in 2 taps before it ends.</p>
+        {/* What the reminder will look like, so it feels real. */}
+        <div className="notif-in mt-7 flex items-start gap-3 rounded-2xl card px-4 py-3" aria-hidden="true">
+          <span className="h-9 w-9 shrink-0 rounded-[10px] grad flex items-center justify-center"><Bell className="h-4 w-4 text-white" /></span>
+          <span className="flex-1 min-w-0">
+            <span className="flex items-center justify-between text-[12px] text-acuity-text-ter"><span className="font-semibold uppercase tracking-wide">Ripple</span><span>Day 4</span></span>
+            <span className="block text-[14px] font-semibold leading-snug">Your free trial ends in 3 days</span>
+            <span className="block text-[13px] text-acuity-text-sec leading-snug">Keep going, or cancel in 2 taps. Your call.</span>
+          </span>
+        </div>
         <BottomBar>
           <PrimaryButton onClick={() => setPage(2)}>Try for $0.00</PrimaryButton>
         </BottomBar>
@@ -2216,14 +2512,18 @@ function TrustPaywall({ plan, setPlan, next, track, firstName, answers }: ViewPr
       {back}
       <Heading title="How your free trial works" />
       <div className="card rounded-3xl px-4 py-5">
-        <ol className="space-y-4">
+        <ol className="relative space-y-4">
+          {/* The line between the three days fills in as the page opens. */}
+          <span className="absolute left-[17px] top-5 bottom-5 w-[3px] rounded-full" style={{ background: "#FFE2D1" }} aria-hidden="true">
+            <span className="fill-down block w-full rounded-full grad" />
+          </span>
           {[
             { label: "Today", text: "Full access to everything. $0.", icon: Sparkles, on: true },
             { label: "Day 4", text: "We email you a reminder.", icon: Bell, on: false },
             { label: "Day 7", text: "Your plan starts. Cancel anytime before, in 2 taps.", icon: CalendarCheck, on: false },
-          ].map((t) => (
-            <li key={t.label} className="flex items-start gap-3">
-              <span className={`h-9 w-9 shrink-0 rounded-full flex items-center justify-center ${t.on ? "grad text-white" : "soft text-acuity-primary"}`}>
+          ].map((t, i) => (
+            <li key={t.label} className="up relative flex items-start gap-3" style={{ animationDelay: `${150 + i * 180}ms` }}>
+              <span className={`h-9 w-9 shrink-0 rounded-full flex items-center justify-center ${t.on ? "grad text-white" : ""}`} style={t.on ? undefined : { background: "#FFE2D1", color: "#C2410C", boxShadow: "0 0 0 3px #FFFFFF" }}>
                 <t.icon className="h-4 w-4" />
               </span>
               <span>

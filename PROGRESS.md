@@ -10,6 +10,34 @@
 
 
 
+## [2026-10-31] — /start-journal gets the new app look, with moving pictures on every question
+
+- **Requested by:** Keenan
+- **Committed by:** Claude Code
+- **Commit hash:** (see git log, "feat: Give /start-journal the new app look")
+
+### In plain English (for Keenan)
+The Planners funnel now looks like the new app design (peach background, glassy cards, the serif headings) and every screen has something moving: planner cards that get crossed out, piles that grow with how many systems she has tried, a calendar with missed days, a reminder notification that slides in on the paywall. It also fixes a bug where the Continue button was hidden below the screen on the pick-several and slider questions.
+
+### Technical changes (for Jimmy)
+- `apps/web/src/lib/funnel-v9-config.ts`: `V9Config.theme` adds `"sunrise"`; JOURNAL_V9 uses it.
+- `apps/web/src/components/funnel-v9.tsx`:
+  - Sunrise theme block in `CSS` (peach bg, glass `.card`, Fraunces headings, drifting background glows on `.funnel-root` only) plus new keyframes: fan, xout, stamp, gap, grow, zz, blink, swap-in, ring-out, bell, notif, fill-down; all off under prefers-reduced-motion.
+  - New journal-only pieces: `PlannerStack` (hook), `TriedTiles` (tried), `HappensCards` (happens), `JournalStatementPic` (st-upkeep, st-zero), icon swap on the s-say slider, `UnlockPath` (plan step: Day 1/3/7/14/30/365 ladder).
+  - TrustPaywall page 2: ringing bell + preview of the Day 4 reminder notification. Page 3: tinted timeline icons with a filling connector line.
+  - Option icons for tried-what (`OPTION_ICONS`).
+- `apps/web/src/app/start-journal/page.tsx`: loads Fraunces from Google Fonts.
+- Other brands are unchanged (all new UI is gated on `C.brand === "journal"` or `theme === "sunrise"`).
+
+### Manual steps needed
+- None beyond the 11-09 switch-on already listed in the entry below.
+
+### Notes
+- Bug caught: a `.v9[data-funnel-theme=sunrise] > * { position: relative }` rule also hit the portaled `BottomBar` (its wrapper carries the same theme attributes), turning the fixed bar into an in-flow block below the fold. Scoped to `.funnel-root > main`. Anything portaled with the theme attrs must not be matched by root-only rules.
+- Tailwind opacity modifiers (`bg-acuity-primary/60`) render nothing with the var-based acuity colors; use inline rgba.
+- Pop/fade animations that use `transform` wipe an inline `transform: rotate()`; use the separate `rotate` CSS property for tilts.
+- Local dev shows $4.99/$39.99 because the new-pricing switch isn't set locally; prod shows $9.99/$89.99.
+
 ## [2026-10-31] — New "/start-journal" funnel for the Planners ads, ready to switch on Monday 11-09
 
 **Requested by:** Keenan

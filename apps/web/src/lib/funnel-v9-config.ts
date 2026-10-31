@@ -304,7 +304,8 @@ export interface V9Config {
   brand: V9Brand;
   flowVersion: string;
   path: string;
-  theme: "light" | "dusk";
+  /** "sunrise" = the 2026-10-31 redesign look (peach glass, orange, Fraunces). */
+  theme: "light" | "dusk" | "sunrise";
   /** Ad-matched screen 1 (2026-09-30): the tapped ad's say/catch example,
    *  shown under the hook buttons. Set per request by FunnelV9's adMatch. */
   adDemo?: { said: string; caught: { text: string; kind: "task" | "pattern" }[] };
@@ -706,6 +707,7 @@ export function journalStateName(a: { plate: string[]; sliders: Record<string, n
 export const JOURNAL_V9: V9Config = {
   ...RIPPLE_V9,
   brand: "journal",
+  theme: "sunrise",
   flowVersion: "v9-journal",
   path: "/start-journal",
   hookLine: "Ripple keeps track of what you say. No planner to keep up.",

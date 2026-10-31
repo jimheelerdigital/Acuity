@@ -34,6 +34,9 @@ export default async function StartJournalPage({
   const adMatch = await findAdMatch(searchParams.utm_content);
   return (
     <>
+      {/* Fraunces: the redesign's heading face (sunrise theme). */}
+      <link rel="preconnect" href="https://fonts.googleapis.com" />
+      <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700&display=swap" />
       {inSplit ? <script dangerouslySetInnerHTML={{ __html: journalArmScript() }} /> : null}
       <FunnelV9 brand="journal" adMatch={adMatch} />
     </>
