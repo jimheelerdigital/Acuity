@@ -8,7 +8,6 @@ import {
   COMMISSION_RATE,
   COMMISSION_WINDOW_MONTHS,
   HOLD_DAYS,
-  MILESTONE_TIERS,
   PAYOUT_ANCHOR_FRIDAY,
 } from "./config";
 
@@ -64,11 +63,6 @@ export function clawbackFor(params: {
   const remaining = commissionCents - Math.abs(alreadyClawedCents);
   const amount = Math.max(0, Math.min(want, remaining));
   return amount === 0 ? 0 : -amount;
-}
-
-/** Milestone tiers a creator has reached for a month's customer count. */
-export function milestonesReached(paidCustomers: number) {
-  return MILESTONE_TIERS.filter((t) => paidCustomers >= t.customers);
 }
 
 /** "YYYY-MM" in UTC. */

@@ -3,7 +3,6 @@
  * these only schedule it.
  *
  *   creators-ledger-mature      hourly    pending → payable after the 14-day hold
- *   creators-milestones         daily     monthly milestone bonuses (idempotent)
  *   creators-flags-scan         daily     fraud / data flags (hold payouts)
  *   creators-cleanup            daily     clicks > 90 days deleted, captured emails > 30 days nulled
  *   creators-reconcile          weekly    ledger vs Stripe per creator; gaps → admin email
@@ -22,17 +21,6 @@ export const creatorsLedgerMatureFn = inngest.createFunction(
       return matureLedger();
     });
     return { released };
-  }
-);
-
-export const creatorsMilestonesFn = inngest.createFunction(
-  { id: "creators-milestones", name: "Creators: milestone bonuses", triggers: [{ cron: "30 6 * * *" }], retries: 2 },
-  async ({ step }) => {
-    const written = await step.run("award", async () => {
-      const { awardMilestones } = await import("@/lib/creators/ledger");
-      return awardMilestones();
-    });
-    return { written };
   }
 );
 
@@ -126,7 +114,6 @@ export const creatorsPayoutPreviewFn = inngest.createFunction(
 
 export const creatorsFunctions = [
   creatorsLedgerMatureFn,
-  creatorsMilestonesFn,
   creatorsFlagsScanFn,
   creatorsCleanupFn,
   creatorsReconcileFn,

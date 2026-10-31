@@ -16,20 +16,17 @@ import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { safeLog } from "@/lib/safe-log";
 
-import { BOOST_BONUS_CENTS, HOLD_DAYS, MAX_BOOSTS_PER_MONTH, VIEW_BONUS_TIERS } from "./config";
+import { BOOST_BONUS_CENTS, MAX_BOOSTS_PER_MONTH, VIEW_BONUS_TIERS } from "./config";
 import {
   clawbackFor,
   commissionFor,
   insideWindow,
-  milestonesReached,
-  monthKey,
   netRevenue,
   payableAt,
   windowEndFor,
 } from "./money";
 
 type Tx = Prisma.TransactionClient;
-const DAY_MS = 24 * 60 * 60 * 1000;
 
 function isUniqueViolation(err: unknown): boolean {
   return (err as { code?: string } | null)?.code === "P2002";
@@ -400,75 +397,6 @@ export async function addAdjustment(params: {
       createdBy: params.by,
     },
   });
-}
-
-/**
- * Milestone bonuses. Runs daily; awards any tier a creator has reached for
- * the current or previous calendar month, counting referred customers whose
- * FIRST payment landed in that month, cleared the hold, and wasn't refunded.
- * Idempotent via dedupeKey; never clawed back.
- */
-export async function awardMilestones(now: Date = new Date()): Promise<number> {
-  const months = [
-    new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - 1, 1)),
-    new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1)),
-  ];
-  const clearedBefore = new Date(now.getTime() - HOLD_DAYS * DAY_MS);
-  let written = 0;
-  for (const start of months) {
-    const end = new Date(Date.UTC(start.getUTCFullYear(), start.getUTCMonth() + 1, 1));
-    const month = monthKey(start);
-    const refs = await prisma.creatorReferral.findMany({
-      where: { firstPaidAt: { gte: start, lt: end, lte: clearedBefore } },
-      select: { creatorId: true, userId: true, firstPaidAt: true },
-    });
-    if (refs.length === 0) continue;
-    // Drop customers whose first payment was refunded / disputed.
-    const firstPayments = await prisma.creatorRevenueEvent.findMany({
-      where: { userId: { in: refs.map((r) => r.userId) }, type: "payment" },
-      orderBy: { occurredAt: "asc" },
-      select: { id: true, userId: true },
-    });
-    const firstByUser = new Map<string, string>();
-    for (const p of firstPayments) if (!firstByUser.has(p.userId)) firstByUser.set(p.userId, p.id);
-    const reversed = new Set(
-      (
-        await prisma.creatorRevenueEvent.findMany({
-          where: { relatesToId: { in: Array.from(firstByUser.values()) }, type: { in: ["refund", "dispute"] } },
-          select: { relatesToId: true },
-        })
-      ).map((r) => r.relatesToId)
-    );
-    const perCreator = new Map<string, number>();
-    for (const r of refs) {
-      const first = firstByUser.get(r.userId);
-      if (!first || reversed.has(first)) continue;
-      perCreator.set(r.creatorId, (perCreator.get(r.creatorId) ?? 0) + 1);
-    }
-    for (const [creatorId, count] of Array.from(perCreator.entries())) {
-      for (const tier of milestonesReached(count)) {
-        try {
-          await prisma.creatorLedgerEntry.create({
-            data: {
-              creatorId,
-              type: "milestone_bonus",
-              amount: tier.bonusCents,
-              status: "payable",
-              payableAt: now,
-              milestoneMonth: month,
-              dedupeKey: `ms:${creatorId}:${month}:${tier.customers}`,
-              reason: `${tier.customers} paying customers in ${month}`,
-              createdBy: "ledger/milestones",
-            },
-          });
-          written++;
-        } catch (err) {
-          if (!isUniqueViolation(err)) throw err;
-        }
-      }
-    }
-  }
-  return written;
 }
 
 // ── Balances ──────────────────────────────────────────────────────────

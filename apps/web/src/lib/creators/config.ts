@@ -5,8 +5,8 @@
  *
  * Decisions locked 2026-10-22:
  *   - 14-day hold (the spec's "30-day" mentions were stale)
- *   - milestone bonuses $50 / $150 / $300 at 10 / 25 / 50 paying customers
- *     per calendar month, each tier paid separately ($500 at 50)
+ *   - (monthly paying-customer milestone bonuses removed 2026-10-31,
+ *     Keenan: commission already pays for signups; bonuses are per views)
  *   - web payments come from our Stripe webhook; RevenueCat feeds App Store
  *     and Google Play only (its Stripe / RC Billing events are skipped so
  *     nothing is counted twice)
@@ -38,13 +38,6 @@ export const CODE_COOKIE = "rp_creator";
 export const BOOST_BONUS_CENTS = 100_00;
 /** At most this many boost bonuses per calendar month across all creators. */
 export const MAX_BOOSTS_PER_MONTH = 5;
-
-/** Per calendar month; each tier paid separately once reached. */
-export const MILESTONE_TIERS: Array<{ customers: number; bonusCents: number }> = [
-  { customers: 10, bonusCents: 50_00 },
-  { customers: 25, bonusCents: 150_00 },
-  { customers: 50, bonusCents: 300_00 },
-];
 
 /**
  * View bonuses (2026-10-31, Keenan): per post, by views in its first

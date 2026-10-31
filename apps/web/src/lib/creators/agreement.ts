@@ -11,7 +11,6 @@ import {
   AGREEMENT_VERSION,
   COMMISSION_WINDOW_MONTHS,
   HOLD_DAYS,
-  MILESTONE_TIERS,
   VIEW_BONUS_TIERS,
   VIEW_BONUS_WINDOW_DAYS,
 } from "./config";
@@ -30,7 +29,7 @@ export const AGREEMENT_SECTIONS: Array<{ title: string; body: string }> = [
   },
   {
     title: "Bonuses",
-    body: `View bonuses: a post with your link or code earns ${VIEW_BONUS_TIERS.map((t) => `${formatCents(t.bonusCents)} at ${(t.views / 1000).toLocaleString("en-US")}k views`).join(", ")} in its first ${VIEW_BONUS_WINDOW_DAYS} days. The highest level a post reaches is its bonus (a post at ${(VIEW_BONUS_TIERS[VIEW_BONUS_TIERS.length - 1].views / 1000).toLocaleString("en-US")}k views earns ${formatCents(VIEW_BONUS_TIERS[VIEW_BONUS_TIERS.length - 1].bonusCents)} in total). Views are counted from the platform's own figure, and bought or botted views don't count. If we pick one of your videos to run as an ad, you get a one-time $100 bonus for that video. Each calendar month you also earn ${MILESTONE_TIERS.map((t) => `${formatCents(t.bonusCents)} at ${t.customers}`).join(", ")} paying customers (each tier paid once per month). Bonuses are never taken back.`,
+    body: `View bonuses: a post with your link or code earns ${VIEW_BONUS_TIERS.map((t) => `${formatCents(t.bonusCents)} at ${(t.views / 1000).toLocaleString("en-US")}k views`).join(", ")} in its first ${VIEW_BONUS_WINDOW_DAYS} days. The highest level a post reaches is its bonus (a post at ${(VIEW_BONUS_TIERS[VIEW_BONUS_TIERS.length - 1].views / 1000).toLocaleString("en-US")}k views earns ${formatCents(VIEW_BONUS_TIERS[VIEW_BONUS_TIERS.length - 1].bonusCents)} in total). Views are counted from the platform's own figure, and bought or botted views don't count. If we pick one of your videos to run as an ad, you get a one-time $100 bonus for that video.`,
   },
   {
     title: "When you get paid",

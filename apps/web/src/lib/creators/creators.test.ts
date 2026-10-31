@@ -1,6 +1,5 @@
 import { describe, expect, it } from "vitest";
 
-import { MILESTONE_TIERS } from "./config";
 import {
   clawbackFor,
   codeKey,
@@ -9,7 +8,6 @@ import {
   generateCreatorCode,
   insideWindow,
   isPayoutFriday,
-  milestonesReached,
   netRevenue,
   nextPayoutDate,
   normalizeCode,
@@ -68,22 +66,6 @@ describe("clawbacks", () => {
     expect(clawbackFor({ commissionCents: 2250, paymentAmountCents: 8999, refundAmountCents: 4500, alreadyClawedCents: 0 })).toBe(-1125);
     expect(clawbackFor({ commissionCents: 2250, paymentAmountCents: 8999, refundAmountCents: 8999, alreadyClawedCents: -1125 })).toBe(-1125);
     expect(clawbackFor({ commissionCents: 250, paymentAmountCents: 999, refundAmountCents: 999, alreadyClawedCents: -250 })).toBe(0);
-  });
-});
-
-describe("milestones ($50 / $150 / $300, each tier paid once a month)", () => {
-  it("matches Keenan's 2026-10-22 numbers", () => {
-    expect(MILESTONE_TIERS.map((t) => [t.customers, t.bonusCents])).toEqual([
-      [10, 5000],
-      [25, 15000],
-      [50, 30000],
-    ]);
-  });
-  it("counts tiers reached", () => {
-    expect(milestonesReached(9)).toHaveLength(0);
-    expect(milestonesReached(10)).toHaveLength(1);
-    expect(milestonesReached(49).reduce((s, t) => s + t.bonusCents, 0)).toBe(20000);
-    expect(milestonesReached(50).reduce((s, t) => s + t.bonusCents, 0)).toBe(50000);
   });
 });
 

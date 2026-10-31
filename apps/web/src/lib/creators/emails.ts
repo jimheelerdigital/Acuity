@@ -17,8 +17,12 @@ import {
   ADMIN_ALERT_EMAIL,
   CREATOR_EMAIL_FROM,
   CREATOR_EMAIL_REPLY_TO,
+  BOOST_BONUS_CENTS,
+  COMMISSION_RATE,
   HOLD_DAYS,
   SITE_URL,
+  VIEW_BONUS_TIERS,
+  VIEW_BONUS_WINDOW_DAYS,
 } from "./config";
 import { firstNameOf, formatCents } from "./money";
 import { signMagicLinkToken } from "./session";
@@ -56,9 +60,9 @@ export function magicLinkUrl(creatorId: string, version: number): string {
   return `${SITE_URL}/creators/login?t=${encodeURIComponent(signMagicLinkToken(creatorId, version))}`;
 }
 
-async function send(to: string, subject: string, html: string) {
+async function send(to: string, subject: string, html: string, from: string = CREATOR_EMAIL_FROM) {
   await sendEmailOrThrow({
-    from: CREATOR_EMAIL_FROM,
+    from,
     replyTo: CREATOR_EMAIL_REPLY_TO,
     to,
     subject,
@@ -84,6 +88,36 @@ ${button(url, "Open my dashboard")}
   if (kind === "invite") {
     await prisma.ugcCreator.update({ where: { id: c.id }, data: { dashboardInvitedAt: new Date() } });
   }
+}
+
+/**
+ * One-off: the agreement changed (2026-10-31 view bonuses). Explains the
+ * change, carries the full new text, and signs them straight into the
+ * dashboard to accept it. `to` / `from` override for local previews (the
+ * local Resend key can't send as goripple.io).
+ */
+export async function sendAgreementUpdateEmail(creatorId: string, opts: { to?: string; from?: string } = {}): Promise<void> {
+  const { AGREEMENT_SECTIONS } = await import("./agreement");
+  const c = await creatorFor(creatorId);
+  const url = magicLinkUrl(c.id, c.dashboardTokenVersion);
+  const tiers = VIEW_BONUS_TIERS.map((t) => `${formatCents(t.bonusCents)} at ${t.views / 1000}k`);
+  const tierText = `${tiers.slice(0, -1).join(", ")} and ${tiers[tiers.length - 1]}`;
+  const agreement = AGREEMENT_SECTIONS.map(
+    (s) => `<p style="margin:14px 0 4px;font-weight:600">${escapeHtml(s.title)}</p><p style="margin:0;color:#4a4652;font-size:14px">${escapeHtml(s.body)}</p>`
+  ).join("");
+  await send(
+    opts.to ?? c.email,
+    "New: view bonuses on your Ripple posts",
+    layout(`<p>Hi ${escapeHtml(c.name)},</p>
+<p>We've added view bonuses. Any post with your Ripple link or code now earns ${tierText} views in its first ${VIEW_BONUS_WINDOW_DAYS} days. If we pick one of your videos to run as an ad, that's ${formatCents(BOOST_BONUS_CENTS)} on top. Your ${Math.round(COMMISSION_RATE * 100)}% commission is unchanged.</p>
+<p>The creator agreement has been updated to include this (full text below). Open your dashboard to accept it before your next payout. While you're there, log any posts you've made so we can count their views.</p>
+${button(url, "Open my dashboard")}
+<div style="margin-top:28px;padding-top:18px;border-top:1px solid #ece9f0">
+<p style="margin:0;font-weight:700">The updated creator agreement</p>
+${agreement}
+</div>`),
+    opts.from
+  );
 }
 
 export async function sendFirstSignupEmail(creatorId: string): Promise<void> {

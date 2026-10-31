@@ -158,8 +158,10 @@ describe("drafts + brief", () => {
     expect(followUpBody("Jane")).toContain("Ripple");
   });
   it("allowed dollars: commission deal + pricing only, no per-video fees", () => {
-    expect(allowedDollars()).toEqual(expect.arrayContaining([100, 50, 150, 300, 25, 2.5, 22.5, 9.99, 89.99]));
+    expect(allowedDollars()).toEqual(expect.arrayContaining([100, 25, 200, 2.5, 22.5, 9.99, 89.99]));
     expect(allowedDollars()).not.toContain(80);
+    // Monthly milestone bonuses removed 2026-10-31.
+    expect(allowedDollars()).not.toContain(300);
   });
   it("brief has branches, two hooks, rules, money; credentialed line only for credentialed", () => {
     const videos = [1, 2, 3].map((n) => ({ n, painBranch: "load", hooks: ["a", "b"], talkingPoints: ["t"] }));

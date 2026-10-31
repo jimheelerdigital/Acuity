@@ -9,6 +9,35 @@
 
 
 
+## [2026-10-31] — Creator monthly customer bonuses removed; agreement update email
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** see git log
+
+### In plain English (for Keenan)
+Creators no longer get the monthly bonuses for hitting 10 / 25 / 50 paying customers ($50 / $150 / $300). Their 25% commission already pays them for signups, and the bonuses are now per post views (plus $100 for videos we run as ads). The agreement, the creator brief and outreach drafts no longer mention monthly bonuses. There's also a ready-to-send email that tells creators about the view bonuses, includes the full updated agreement, and signs them into their dashboard to accept it.
+
+### Technical changes (for Jimmy)
+- apps/web/src/lib/creators/config.ts: removed `MILESTONE_TIERS`.
+- apps/web/src/lib/creators/money.ts: removed `milestonesReached`.
+- apps/web/src/lib/creators/ledger.ts: removed `awardMilestones` (and now-unused HOLD_DAYS import / DAY_MS).
+- apps/web/src/inngest/functions/creators-ledger.ts: removed the `creators-milestones` daily cron function.
+- apps/web/src/lib/creators/agreement.ts: Bonuses section drops the monthly milestone sentence and "Bonuses are never taken back."
+- apps/web/src/lib/ugc/brief.ts, draft.ts: monthly bonus lines removed; ugc.test.ts updated.
+- apps/web/src/lib/creators/emails.ts: new `sendAgreementUpdateEmail(creatorId, { to?, from? })` (to/from overrides for local previews); `send()` takes an optional from.
+- `milestone_bonus` enum value + label kept (historical rows / no schema change). No schema changes.
+
+### Manual steps needed
+- [ ] After deploy: `curl -X PUT https://goripple.io/api/inngest` so Inngest drops the removed creators-milestones cron (Keenan / Claude)
+- [ ] Send the agreement update email to the 7 creators once Keenan approves the preview (Keenan approves, Claude sends)
+- [ ] Jimmy: review (payment code) together with the view-bonus commit (Jimmy)
+
+### Notes
+- No milestone bonuses were ever awarded to a real creator (no real paying referrals yet), so nothing to void.
+- Creators accept the agreement by clicking "I accept the creator agreement" on their dashboard; version + timestamp are stored on UgcCreator. No signed copy is sent back.
+- Local Resend key can't send as goripple.io; previews go out from content@getacuity.io.
+
 ## [2026-10-31] — Creator agreement: view bonuses and $100 for videos we run as ads
 
 **Requested by:** Keenan
