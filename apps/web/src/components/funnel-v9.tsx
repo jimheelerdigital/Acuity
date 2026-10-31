@@ -39,7 +39,7 @@ import {
   CalendarDays, CalendarRange, Car, Check, ChevronLeft, ChevronRight, CircleCheck, Compass,
   Eye, Footprints, Heart, HeartHandshake, Home, Hourglass, Keyboard, KeyRound, Layers,
   LineChart, ListChecks, ListTodo, Lock, Mail, Mic, Moon, Repeat, RotateCcw, ShieldCheck, Smartphone, Sparkles, Sprout, Waves, X,
-  Star, Sunrise, Target, TrendingUp, User, Users, Zap, Dumbbell, Wallet, Rocket, Flame, Truck, type LucideIcon,
+  Quote, Star, Sunrise, Target, TrendingUp, User, Users, Zap, Dumbbell, Wallet, Rocket, Flame, Truck, type LucideIcon,
 } from "lucide-react";
 
 import { fireFbq, waitForFbq } from "@/components/meta-pixel-events";
@@ -210,7 +210,13 @@ const CSS = `
 .v9 .notif-in { animation: v9-notif .55s cubic-bezier(.2,.8,.2,1) .9s both; }
 @keyframes v9-fill-down { from { height: 0; } to { height: 100%; } }
 .v9 .fill-down { height: 100%; animation: v9-fill-down 1.1s ease-out .3s both; }
-@media (prefers-reduced-motion: reduce) { .v9[data-funnel-theme="sunrise"]::before, .v9[data-funnel-theme="sunrise"]::after, .v9 .fan, .v9 .xout, .v9 .stamp, .v9 .gapday, .v9 .growlist, .v9 .zz, .v9 .blink, .v9 .swap-in, .v9 .ring-out, .v9 .ring-bell, .v9 .notif-in, .v9 .fill-down { animation: none !important; } }
+@keyframes v9-bob { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-4px); } }
+.v9 .drift-chip { animation: v9-bob var(--fd, 6s) ease-in-out infinite; }
+@keyframes v9-intoorb { 0% { opacity: 0; transform: translate(calc(-50% + var(--x)), calc(-50% + var(--y))) scale(1); } 20% { opacity: 1; } 100% { opacity: 0; transform: translate(-50%, -50%) scale(.3); } }
+.v9 .into-orb { opacity: 0; animation: v9-intoorb 2.7s ease-in infinite both; }
+@keyframes v9-breathe { 50% { transform: scale(1.06); } }
+.v9 .breathe { animation: v9-breathe 1.6s ease-in-out infinite; }
+@media (prefers-reduced-motion: reduce) { .v9[data-funnel-theme="sunrise"]::before, .v9[data-funnel-theme="sunrise"]::after, .v9 .fan, .v9 .xout, .v9 .stamp, .v9 .gapday, .v9 .growlist, .v9 .zz, .v9 .blink, .v9 .swap-in, .v9 .ring-out, .v9 .ring-bell, .v9 .notif-in, .v9 .fill-down, .v9 .drift-chip, .v9 .into-orb, .v9 .breathe { animation: none !important; } }
 .v9 { --v9-tint: color-mix(in oklch, var(--acuity-primary) 9%, var(--acuity-card-bg)); --v9-ring: color-mix(in oklch, var(--acuity-primary) 38%, transparent); }
 .v9 .card { background: var(--acuity-card-bg); border: 1px solid var(--acuity-line-strong); box-shadow: 0 1px 2px rgba(20,16,40,.04), 0 6px 18px rgba(20,16,40,.05); }
 .v9 .card-sel { background: var(--v9-tint); border-color: var(--acuity-primary); box-shadow: 0 0 0 3px var(--v9-ring); }
@@ -554,8 +560,11 @@ function StepView(p: ViewProps) {
     case "single":
       if (p.step.id === "tried" && C.brand === "journal") return <TriedTiles {...p} step={step} />;
       if (p.step.id === "happens" && C.brand === "journal") return <HappensCards {...p} step={step} />;
+      if (p.step.id === "age" && C.brand === "journal") return <AgeTiles {...p} step={step} />;
+      if (p.step.id === "commit" && C.brand === "journal") return <CommitCards {...p} step={step} />;
       return <SingleScreen {...p} step={step} />;
     case "multi":
+      if (p.step.id === "plate" && C.brand === "journal") return <MultiScreen {...p} step={step} above={<PlateVisual picked={p.answers.multi.plate ?? []} />} />;
       return <MultiScreen {...p} step={step} />;
     case "week":
       return <WeekScreen {...p} step={step} />;
@@ -785,8 +794,9 @@ function SingleScreen({ step, answers, setAnswers, next, track }: ViewProps & { 
   );
 }
 
-function MultiScreen({ step, answers, setAnswers, next, track }: ViewProps & { step: Extract<V9Step, { kind: "multi" }> }) {
+function MultiScreen({ step, answers, setAnswers, next, track, above }: ViewProps & { step: Extract<V9Step, { kind: "multi" }>; above?: ReactNode }) {
   const C = useV9();
+  const stamps = C.brand === "journal" && step.id === "tried-what" ? TRIED_STAMPS : null;
   const picked = answers.multi[step.id] ?? [];
   const toggle = (id: string) =>
     setAnswers((a) => {
@@ -798,6 +808,7 @@ function MultiScreen({ step, answers, setAnswers, next, track }: ViewProps & { s
   return (
     <div className="enter">
       <Heading title={step.title} sub={step.sub} />
+      {above}
       {grid ? (
         <div className="grid grid-cols-2 gap-2.5">
           {step.options.map((o, i) => {
@@ -811,7 +822,7 @@ function MultiScreen({ step, answers, setAnswers, next, track }: ViewProps & { s
                   toggle(o.id);
                 }}
                 style={{ animationDelay: `${i * 40}ms` }}
-                className={`up relative rounded-2xl px-3 pt-4 pb-3.5 flex flex-col items-center gap-2 text-center transition active:scale-[0.97] ${sel ? "card card-sel" : "card"}`}
+                className={`up relative rounded-2xl px-3 ${stamps ? "pt-7" : "pt-4"} pb-3.5 flex flex-col items-center gap-2 text-center transition active:scale-[0.97] ${sel ? "card card-sel" : "card"}`}
               >
                 {sel && (
                   <span className="pop absolute top-2 right-2 h-5 w-5 rounded-full grad flex items-center justify-center">
@@ -822,6 +833,7 @@ function MultiScreen({ step, answers, setAnswers, next, track }: ViewProps & { s
                   <Icon className="h-5 w-5" />
                 </span>
                 <span className="text-[14px] font-semibold leading-tight">{o.label}</span>
+                {sel && stamps?.[o.id] && <span className="stamp absolute left-2 top-2.5 whitespace-nowrap rounded-md bg-white px-1.5 py-[1px] text-[10.5px] font-bold" style={{ color: "#C2410C", border: "1.5px solid #F2541E" }}>{stamps[o.id]}</span>}
               </button>
             );
           })}
@@ -873,6 +885,8 @@ function WeekScreen({ step, answers, setAnswers, next, track }: ViewProps & { st
     });
   const n = picked.length;
   const fill = Math.min(1, n / 8);
+  const C = useV9();
+  if (C.brand === "journal") return <HeadLoad step={step} picked={picked} toggle={toggle} next={next} track={track} />;
   return (
     <div className="enter">
       <Heading title={step.title} sub={step.sub} />
@@ -1391,8 +1405,10 @@ function LoaderScreen({ answers, firstName, next }: ViewProps) {
   }, [next]);
   const R = 58;
   const CIRC = 2 * Math.PI * R;
+  const journal = C.brand === "journal";
   return (
     <div className="enter pt-4">
+      {journal ? <OrbLoader chips={weekChips(C, answers)} pct={pct} /> : (
       <div className="relative mx-auto h-[150px] w-[150px]">
         <svg viewBox="0 0 140 140" className="h-full w-full -rotate-90">
           <defs>
@@ -1406,7 +1422,8 @@ function LoaderScreen({ answers, firstName, next }: ViewProps) {
         </svg>
         <div className="absolute inset-0 flex items-center justify-center text-[30px] font-bold tabular-nums">{pct}%</div>
       </div>
-      <h1 className="mt-6 text-center text-[24px] font-bold tracking-tight">Putting your results together</h1>
+      )}
+      <h1 className="mt-6 text-center text-[24px] font-bold tracking-tight">{journal ? "Sorting your week" : "Putting your results together"}</h1>
       <div className="mt-6 space-y-2.5">
         {lines.map((l, i) => {
           const done = pct >= (i + 1) * 25;
@@ -1589,6 +1606,7 @@ function ResultScreen({ answers, firstName, next }: ViewProps) {
         <p className="mt-2 text-[16px] leading-relaxed text-white/90">{state.line}</p>
       </div>
 
+      {C.brand === "journal" ? <PlannerHistory answers={answers} /> : (
       <div className="mt-5 card rounded-3xl p-5">
         <p className="text-[13px] font-bold mb-3.5">Your mental load, in your answers</p>
         <div className="space-y-3">
@@ -1605,6 +1623,7 @@ function ResultScreen({ answers, firstName, next }: ViewProps) {
           ))}
         </div>
       </div>
+      )}
 
       {statementSteps(C).some((st) => answers.single[st.id] === "yes") && (
         <div className="mt-4 card rounded-3xl p-5">
@@ -1612,7 +1631,7 @@ function ResultScreen({ answers, firstName, next }: ViewProps) {
           <div className="space-y-2">
             {statementSteps(C).filter((st) => answers.single[st.id] === "yes").map((st, i) => (
               <p key={st.id} className="up flex items-center gap-2.5 text-[15px] italic leading-snug" style={{ animationDelay: `${300 + i * 120}ms` }}>
-                <MoodAvatar mood={st.mood} tone={C.theme === "dusk" ? "steel" : "hue"} size={28} />
+                {C.brand === "journal" ? <span className="h-7 w-7 shrink-0 rounded-full chip-ico flex items-center justify-center"><Quote className="h-3.5 w-3.5" /></span> : <MoodAvatar mood={st.mood} tone={C.theme === "dusk" ? "steel" : "hue"} size={28} />}
                 <span>&ldquo;{st.statement}&rdquo;</span>
               </p>
             ))}
@@ -2156,6 +2175,272 @@ function JournalStatementPic({ id }: { id: string }) {
   );
 }
 
+/** How long each system lasted, stamped on the tile when she picks it. */
+const TRIED_STAMPS: Record<string, string> = {
+  paper: "Made it to Feb",
+  bullet: "3 spreads in",
+  "journal-app": "Opened twice",
+  "todo-app": "41 overdue",
+  reminders: "Snoozed 9 times",
+  notes: "Lost on the fridge",
+  "habit-app": "Streak: 0",
+};
+
+/** Lowercase a chip mid-sentence, except possessive names ("Mom’s appointment"). */
+const lcChip = (c: string) => (/^\S+[’']s\b/.test(c) ? c : c.charAt(0).toLowerCase() + c.slice(1));
+
+/** Age as four big tiles. */
+function AgeTiles({ step, answers, setAnswers, next, track }: ViewProps & { step: Extract<V9Step, { kind: "single" }> }) {
+  const [picked, setPicked] = useState<string | null>(answers.single[step.id] ?? null);
+  const advancing = useRef(false);
+  const big: Record<string, string> = { u35: "Under 35", "35": "35–44", "45": "45–54", "55": "55+" };
+  return (
+    <div className="enter">
+      <Heading title={step.title} sub="So Ripple can talk to you like you." />
+      <div className="grid grid-cols-2 gap-3">
+        {step.options.map((o, i) => {
+          const on = picked === o.id;
+          return (
+            <button
+              key={o.id}
+              onClick={() => {
+                if (advancing.current) return;
+                advancing.current = true;
+                haptic();
+                setPicked(o.id);
+                setAnswers((a) => ({ ...a, single: { ...a.single, [step.id]: o.id } }));
+                track(`funnel_v9_${step.id}_answered`, o.id);
+                setTimeout(next, 380);
+              }}
+              className={`up relative h-[112px] overflow-hidden rounded-3xl card flex flex-col items-start justify-end p-4 text-left transition active:scale-[0.97] ${on ? "card-sel" : ""}`}
+              style={{ animationDelay: `${i * 70}ms` }}
+            >
+              <span className="absolute -right-6 -top-6 h-20 w-20 rounded-full" style={{ background: "radial-gradient(circle, #FFD3BB, transparent 70%)" }} aria-hidden="true" />
+              <span className="serif text-[26px] leading-none">{big[o.id] ?? o.label}</span>
+              <span className="mt-1 text-[12.5px] text-acuity-text-ter">{o.id === "u35" ? "years old" : "years"}</span>
+              {on && <span className="pop absolute top-3 right-3 h-6 w-6 rounded-full grad flex items-center justify-center"><Check className="h-3.5 w-3.5 text-white" strokeWidth={3} /></span>}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+/** "Ready?" as two big cards: the warm yes and the softer try. */
+function CommitCards({ step, answers, setAnswers, next, track }: ViewProps & { step: Extract<V9Step, { kind: "single" }> }) {
+  const [picked, setPicked] = useState<string | null>(answers.single[step.id] ?? null);
+  const advancing = useRef(false);
+  const sub: Record<string, string> = { ready: "Let’s build your first week.", try: "No pressure. See it first." };
+  return (
+    <div className="enter">
+      <Heading title={step.title} />
+      <div className="space-y-3">
+        {step.options.map((o, i) => {
+          const first = i === 0;
+          const Icon = OPTION_ICONS[`${step.id}:${o.id}`] ?? Sparkles;
+          return (
+            <button
+              key={o.id}
+              onClick={() => {
+                if (advancing.current) return;
+                advancing.current = true;
+                haptic();
+                setPicked(o.id);
+                setAnswers((a) => ({ ...a, single: { ...a.single, [step.id]: o.id } }));
+                track(`funnel_v9_${step.id}_answered`, o.id);
+                setTimeout(next, 380);
+              }}
+              className={`up relative w-full overflow-hidden rounded-[28px] p-5 flex items-center gap-4 text-left transition active:scale-[0.98] ${first ? "grad text-white shadow-[0_18px_36px_-14px_var(--acuity-primary)]" : `card ${picked === o.id ? "card-sel" : ""}`}`}
+              style={{ animationDelay: `${i * 90}ms` }}
+            >
+              {first && <span className="ring-out absolute left-5 h-14 w-14 rounded-full" style={{ border: "2px solid rgba(255,255,255,.5)" }} aria-hidden="true" />}
+              <span className={`relative h-14 w-14 shrink-0 rounded-full flex items-center justify-center ${first ? "bg-white/20" : "chip-ico"}`}><Icon className="h-6 w-6" /></span>
+              <span className="flex-1">
+                <span className="serif block text-[21px] leading-tight">{o.label}</span>
+                <span className={`block text-[14px] ${first ? "text-white/85" : "text-acuity-text-sec"}`}>{sub[o.id]}</span>
+              </span>
+              <ChevronRight className={`h-5 w-5 ${first ? "text-white/80" : "text-acuity-text-ter"}`} />
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+/** A literal plate: each pick lands on it. */
+function PlateVisual({ picked }: { picked: string[] }) {
+  const n = picked.length;
+  return (
+    <div className="mb-5 flex flex-col items-center" aria-hidden="true">
+      <div className="relative h-[150px] w-[150px] rounded-full bg-white flex items-center justify-center" style={{ boxShadow: "0 18px 36px -14px rgba(242,84,30,.35), inset 0 0 0 10px #FFF6F0, inset 0 0 0 11px rgba(242,84,30,.12)" }}>
+        {picked.slice(0, 6).map((id, i) => {
+          const Icon = OPTION_ICONS[`plate:${id}`] ?? Sparkles;
+          const a = (i / Math.max(n, 1)) * Math.PI * 2 - Math.PI / 2;
+          const r = n === 1 ? 0 : 42;
+          return (
+            <span key={id} className="pop absolute h-10 w-10 rounded-full grad text-white flex items-center justify-center shadow-[0_6px_14px_-6px_var(--acuity-primary)]" style={{ left: `calc(50% - 20px + ${Math.round(Math.cos(a) * r)}px)`, top: `calc(50% - 20px + ${Math.round(Math.sin(a) * r)}px)` }}>
+              <Icon className="h-[18px] w-[18px]" />
+            </span>
+          );
+        })}
+        {n === 0 && <span className="text-[13px] text-acuity-text-ter">Your plate</span>}
+      </div>
+      <p className="mt-3 text-[14px] font-semibold text-acuity-text-sec" aria-live="polite">{n === 0 ? "Tap what you’re carrying" : n >= 4 ? "That’s a full plate." : `${n} on your plate`}</p>
+    </div>
+  );
+}
+
+const LOAD_WORDS = ["Empty", "Light", "Light", "Getting full", "Getting full", "Full", "Full", "Heavy", "Heavy", "Heavy", "Overflowing", "Overflowing", "Overflowing"];
+
+/** "What's on your list this week?" as floating thoughts and a head-load meter. */
+function HeadLoad({ step, picked, toggle, next, track }: { step: Extract<V9Step, { kind: "week" }>; picked: string[]; toggle: (id: string) => void; next: () => void; track: ViewProps["track"] }) {
+  const n = picked.length;
+  return (
+    <div className="enter">
+      <Heading title={step.title} sub={step.sub} />
+      <div className="flex flex-wrap justify-center gap-2">
+        {step.items.map((it, i) => {
+          const sel = picked.includes(it.id);
+          return (
+            <span key={it.id} className="up" style={{ animationDelay: `${i * 35}ms` }}>
+              <button
+                onClick={() => {
+                  haptic();
+                  toggle(it.id);
+                }}
+                aria-pressed={sel}
+                className={`drift-chip flex items-center gap-1.5 rounded-full px-4 py-2.5 text-[15px] font-medium transition-colors active:scale-[0.96] ${sel ? "grad text-white shadow-[0_8px_18px_-8px_var(--acuity-primary)]" : "card"}`}
+                style={{ ["--fd" as string]: `${5 + (i % 4) * 0.9}s`, animationDelay: `${(i % 5) * -0.8}s` } as CSSProperties}
+              >
+                {sel && <Check className="pop h-4 w-4" strokeWidth={3} />}
+                {it.chip}
+              </button>
+            </span>
+          );
+        })}
+      </div>
+      <div className="mt-6 card rounded-3xl px-5 py-4" aria-live="polite">
+        <div className="flex items-baseline justify-between gap-3">
+          <p className="text-[14px] text-acuity-text-sec">Your head right now: <span className="font-bold" style={{ color: "#C2410C" }}>{LOAD_WORDS[Math.min(n, 12)]}</span></p>
+          <span className="serif text-[22px] tabular-nums">{n}</span>
+        </div>
+        <div className="mt-3 grid grid-cols-12 gap-1">
+          {Array.from({ length: 12 }, (_, k) => (
+            <span key={k} className={`h-2.5 rounded-[4px] transition-colors duration-300 ${k < n ? "grad" : ""}`} style={k < n ? undefined : { background: "#FFEADF" }} />
+          ))}
+        </div>
+      </div>
+      <BottomBar>
+        <PrimaryButton
+          disabled={n === 0}
+          onClick={() => {
+            track(`funnel_v9_${step.id}_answered`, picked.join(","));
+            next();
+          }}
+        >
+          {n === 0 ? "Tap at least one" : "That’s my week"}
+        </PrimaryButton>
+      </BottomBar>
+    </div>
+  );
+}
+
+/** The new app's processing moment: her week flies into the orb. */
+function OrbLoader({ chips, pct }: { chips: string[]; pct: number }) {
+  const shown = (chips.length ? chips : ["A school form", "Bills", "Groceries"]).slice(0, 6);
+  return (
+    <div className="relative mx-auto h-[170px] w-full max-w-[300px]" aria-hidden="true">
+      <div className="absolute left-1/2 top-1/2 -ml-[50px] -mt-[50px] h-[100px] w-[100px]">
+        {[0, 1].map((k) => <span key={k} className="ring-out absolute inset-0 rounded-full" style={{ border: "2px solid rgba(242,84,30,.35)", animationDelay: `${k * 900}ms` }} />)}
+        <span className="breathe absolute inset-0 rounded-full flex items-center justify-center text-white serif text-[22px] tabular-nums" style={{ background: "radial-gradient(circle at 34% 30%, #FFC2A0 0%, #FF8A55 38%, #F04A18 80%)", boxShadow: "0 22px 46px -12px rgba(240,74,24,.6)" }}>{pct}%</span>
+      </div>
+      {shown.map((c, k) => {
+        const a = (k / shown.length) * Math.PI * 2;
+        return (
+          <span key={c} className="into-orb absolute left-1/2 top-1/2 whitespace-nowrap rounded-full bg-white px-2.5 py-1 text-[12px] font-semibold shadow-[0_6px_14px_rgba(242,84,30,.14)]" style={{ ["--x" as string]: `${Math.round(Math.cos(a) * 130)}px`, ["--y" as string]: `${Math.round(Math.sin(a) * 75)}px`, animationDelay: `${k * 0.45}s` } as CSSProperties}>{c}</span>
+        );
+      })}
+    </div>
+  );
+}
+
+/** Result card for /start-journal: what she's tried and what happened. */
+function PlannerHistory({ answers }: { answers: Answers }) {
+  const C = useV9();
+  const triedStep = C.steps.find((s): s is Extract<V9Step, { kind: "multi" }> => s.id === "tried-what" && s.kind === "multi");
+  const tools = (answers.multi["tried-what"] ?? []).map((id) => triedStep?.options.find((o) => o.id === id)?.label).filter(Boolean) as string[];
+  const count: Record<string, string> = { one: "1", few: "2–3", many: "4+", lost: "Lots" };
+  const usually: Record<string, string> = { miss: "Missed days", chore: "Became a chore", forget: "Forgot to open", blank: "Blank page" };
+  return (
+    <div className="mt-5 card rounded-3xl p-5">
+      <p className="text-[13px] font-bold mb-3">Your planner history</p>
+      <div className="grid grid-cols-3 gap-2">
+        {[
+          { v: count[answers.single.tried ?? ""] ?? String(tools.length || "?"), l: "systems tried" },
+          { v: usually[answers.single.happens ?? ""] ?? "Fizzled", l: "what happened", small: true },
+          { v: "0", l: "upkeep with Ripple" },
+        ].map((t, i) => (
+          <div key={t.l} className="up rounded-2xl px-3 py-3" style={{ background: i === 2 ? "linear-gradient(155deg,#FFE3D2,#FFD0B5)" : "linear-gradient(155deg,#fff,#FFF1E8)", animationDelay: `${200 + i * 120}ms` }}>
+            <p className={`serif leading-tight ${t.small ? "text-[15px]" : "text-[26px]"}`}>{t.v}</p>
+            <p className="mt-1 text-[11.5px] text-acuity-text-sec leading-snug">{t.l}</p>
+          </div>
+        ))}
+      </div>
+      {tools.length > 0 && (
+        <div className="mt-3 flex flex-wrap gap-1.5">
+          {tools.map((t, i) => (
+            <span key={t} className="relative rounded-full px-2.5 py-1 text-[12.5px] text-acuity-text-sec" style={{ background: "#FFF1E8" }}>
+              {t}
+              <span className="xout absolute left-2 right-2 top-1/2 h-[1.5px] rounded-full bg-red-500/70" style={{ ["--d" as string]: `${500 + i * 140}ms` } as CSSProperties} />
+            </span>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/** Preview for /start-journal: her week said out loud, then the plan it makes. */
+function SpokenThenPlan({ chips, tasks }: { chips: string[]; tasks: string[] }) {
+  const items = chips.length ? chips : ["A school form", "Bills", "Groceries"];
+  const words = useMemo(() => {
+    const list = items.map(lcChip);
+    const body = list.length > 1 ? `${list.slice(0, -1).join(", ")} and ${list[list.length - 1]}` : list[0];
+    return `Okay, so… ${body}. I just need it out of my head.`.split(" ");
+  }, [items.join("|")]);
+  const [n, setN] = useState(0);
+  useEffect(() => {
+    const reduce = typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+    if (reduce) {
+      setN(words.length);
+      return;
+    }
+    const iv = setInterval(() => setN((x) => (x >= words.length ? x : x + 1)), 110);
+    return () => clearInterval(iv);
+  }, [words]);
+  const done = n >= words.length;
+  return (
+    <div>
+      <div className="card rounded-3xl p-4 flex items-start gap-3">
+        <span className="relative h-11 w-11 shrink-0" aria-hidden="true">
+          {!done && [0, 1].map((k) => <span key={k} className="ring-out absolute inset-0 rounded-full" style={{ border: "2px solid rgba(242,84,30,.35)", animationDelay: `${k * 700}ms` }} />)}
+          <span className="absolute inset-0 rounded-full grad flex items-center justify-center text-white"><Mic className="h-5 w-5" /></span>
+        </span>
+        <p className="serif flex-1 text-[17px] leading-snug min-h-[48px]">
+          {words.slice(0, n).join(" ")}
+          {!done && <span className="blink ml-0.5 inline-block h-[1em] w-[2px] align-[-2px]" style={{ background: "#F2541E" }} />}
+        </p>
+      </div>
+      <p className="my-3 text-center text-[13px] font-semibold" style={{ color: "#C2410C" }}>{done ? "↓ Ripple wrote it down" : "You say it…"}</p>
+      <div className={`transition-all duration-500 ${done ? "opacity-100 translate-y-0" : "opacity-0 translate-y-3"}`}>
+        {done && <PreviewPhone tasks={tasks} />}
+      </div>
+    </div>
+  );
+}
+
 /** "How many have you tried?" as big tiles with a stack that grows. */
 function TriedTiles({ step, answers, setAnswers, next, track }: ViewProps & { step: Extract<V9Step, { kind: "single" }> }) {
   const [picked, setPicked] = useState<string | null>(answers.single[step.id] ?? null);
@@ -2402,9 +2687,11 @@ function PreviewScreen({ answers, next, track }: ViewProps) {
   return (
     <div className="enter">
       <Heading eyebrow={copy.eyebrow} title={copy.title} />
+      {C.brand === "journal" ? <SpokenThenPlan chips={weekChips(C, answers)} tasks={tasks} /> : (
       <div className="mt-2">
         <PreviewPhone tasks={tasks} />
       </div>
+      )}
       {copy.caption && <p className="mt-6 text-center text-[14px] leading-relaxed text-acuity-text-sec">{copy.caption}</p>}
       <BottomBar>
         <PrimaryButton onClick={next}>Continue</PrimaryButton>

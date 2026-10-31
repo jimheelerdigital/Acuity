@@ -10,6 +10,30 @@
 
 
 
+## [2026-10-31] — Every /start-journal screen now has its own design, same researched question order
+
+- **Requested by:** Keenan
+- **Committed by:** Claude Code
+- **Commit hash:** (see git log, "feat: Redesign the remaining /start-journal screens")
+
+### In plain English (for Keenan)
+The rest of the Planners funnel got its own screens in the new app look, keeping the agreed question order (yes/no first). Picking a planner she's tried stamps how it went ("Made it to Feb", "41 overdue"). Her answers land on a literal plate. Her week floats on screen with a "your head right now" meter. The preview shows her own week being said out loud before Ripple writes it into the plan. The loader shows her things flying into the Ripple orb. The result shows her planner history with the old systems crossed out. No more generic face icons anywhere in this funnel.
+
+### Technical changes (for Jimmy)
+- `apps/web/src/components/funnel-v9.tsx` (journal brand only):
+  - New components: `AgeTiles`, `CommitCards`, `PlateVisual` (via a new `above` slot on `MultiScreen`), `HeadLoad` (week step), `OrbLoader`, `PlannerHistory` (result), `SpokenThenPlan` (preview).
+  - `TRIED_STAMPS` on the tried-what tiles.
+  - The result screen's quote list uses a Quote icon instead of MoodAvatar.
+  - New keyframes: v9-bob, v9-intoorb, v9-breathe (all off under reduced motion).
+- Other funnels are unchanged.
+
+### Manual steps needed
+- None beyond the 11-09 switch-on.
+
+### Notes
+- Keyframe names share one global namespace inside the funnel CSS: a new `v9-float` silently overrode the reassure screen's falling-chip `v9-float` (the later definition wins), so the chips scattered. Check `grep "^@keyframes"` for duplicates before adding one.
+- Keenan's direction 10-31: keep the researched step order (yes/no hook first) and redesign each screen; don't invent a new flow. A separate "Unload" prototype artifact went the wrong way and is superseded by this.
+
 ## [2026-10-31] — /start-journal gets the new app look, with moving pictures on every question
 
 - **Requested by:** Keenan
