@@ -16,7 +16,7 @@ import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { safeLog } from "@/lib/safe-log";
 
-import { BOOST_BONUS_CENTS, HOLD_DAYS, MAX_BOOSTS_PER_MONTH } from "./config";
+import { BOOST_BONUS_CENTS, HOLD_DAYS, MAX_BOOSTS_PER_MONTH, VIEW_BONUS_TIERS } from "./config";
 import {
   clawbackFor,
   commissionFor,
@@ -338,6 +338,45 @@ export async function markPostBoosted(postId: string, by: string): Promise<Boost
     return { ok: true, entryId: entry.id };
   } catch (err) {
     if (isUniqueViolation(err)) return { ok: false, reason: "already_boosted" };
+    throw err;
+  }
+}
+
+/**
+ * View bonus for a post (VIEW_BONUS_TIERS). Pays the tier's total minus what
+ * this post already got, so stepping 5k → 25k pays $75 more. Written as an
+ * adjustment row (no schema change); dedupeKey views:<postId>:<tier> stops a
+ * tier being paid twice.
+ */
+export async function awardViewBonus(postId: string, tierViews: number, by: string) {
+  const tier = VIEW_BONUS_TIERS.find((t) => t.views === tierViews);
+  if (!tier) throw new Error("Unknown view tier");
+  const post = await prisma.creatorPost.findUnique({ where: { id: postId }, select: { id: true, creatorId: true, url: true } });
+  if (!post) throw new Error("Post not found");
+  const prior = await prisma.creatorLedgerEntry.findMany({
+    where: { postId, dedupeKey: { startsWith: `views:${postId}:` }, status: { not: "voided" } },
+    select: { amount: true },
+  });
+  const paid = prior.reduce((s, r) => s + r.amount, 0);
+  const amount = tier.bonusCents - paid;
+  if (amount <= 0) throw new Error("This post already has this view bonus or a higher one");
+  try {
+    return await prisma.creatorLedgerEntry.create({
+      data: {
+        creatorId: post.creatorId,
+        type: "adjustment",
+        amount,
+        status: "payable",
+        payableAt: new Date(),
+        postId: post.id,
+        dedupeKey: `views:${post.id}:${tier.views}`,
+        reason: `view bonus ${tier.views.toLocaleString("en-US")} views: ${post.url}`,
+        createdBy: by,
+      },
+      select: { id: true, amount: true },
+    });
+  } catch (err) {
+    if (isUniqueViolation(err)) throw new Error("This post already has this view bonus");
     throw err;
   }
 }

@@ -26,6 +26,8 @@ import {
   COMMISSION_RATE,
   COMMISSION_WINDOW_MONTHS,
   MILESTONE_TIERS,
+  VIEW_BONUS_TIERS,
+  VIEW_BONUS_WINDOW_DAYS,
   PAYOUT_MIN_CENTS,
 } from "@/lib/creators/config";
 import { ACQUISITION_TERM_RULE, CLAIMS_RULE, PRODUCT_ONE_LINER, TIME_OF_DAY_RULE } from "@/lib/positioning";
@@ -41,6 +43,7 @@ export function allowedDollars(): number[] {
     BOOST_BONUS_CENTS / 100,
     PAYOUT_MIN_CENTS / 100,
     ...MILESTONE_TIERS.map((t) => t.bonusCents / 100),
+    ...VIEW_BONUS_TIERS.map((t) => t.bonusCents / 100),
     2.5,
     22.5,
     ...prices,
@@ -54,7 +57,8 @@ export function allowedDollars(): number[] {
 export function offerTerms(): string {
   return [
     `${Math.round(COMMISSION_RATE * 100)}% of what every customer they send pays Ripple for that customer's first ${COMMISSION_WINDOW_MONTHS} months (their own link and code)`,
-    `a $${BOOST_BONUS_CENTS / 100} bonus each time we run one of their posts as an ad`,
+    `view bonuses per post of ${VIEW_BONUS_TIERS.map((t) => `$${t.bonusCents / 100} at ${t.views / 1000}k`).join(", ")} views in its first ${VIEW_BONUS_WINDOW_DAYS} days`,
+    `a $${BOOST_BONUS_CENTS / 100} bonus for each of their videos we pick to run as an ad`,
     `monthly bonuses of ${MILESTONE_TIERS.map((t) => `$${t.bonusCents / 100} at ${t.customers}`).join(", ")} paying customers`,
     "free Ripple premium",
     "no upfront fee; they post on their own account and get paid every other Friday through Stripe",

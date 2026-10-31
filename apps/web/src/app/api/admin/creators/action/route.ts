@@ -105,6 +105,15 @@ export async function POST(req: NextRequest) {
         result = row.id;
         break;
       }
+      case "view-bonus": {
+        const postId = need(str(b.postId), "postId");
+        const views = Number(b.views);
+        const { awardViewBonus } = await import("@/lib/creators/ledger");
+        const row = await awardViewBonus(postId, views, by);
+        await audit("view_bonus", { postId, views, amountCents: row.amount });
+        result = row.id;
+        break;
+      }
       case "add-post": {
         const creatorId = need(str(b.creatorId), "creatorId");
         const url = need(str(b.url), "URL");

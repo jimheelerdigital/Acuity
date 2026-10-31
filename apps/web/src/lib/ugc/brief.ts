@@ -25,6 +25,8 @@ import {
   COMMISSION_RATE,
   COMMISSION_WINDOW_MONTHS,
   MILESTONE_TIERS,
+  VIEW_BONUS_TIERS,
+  VIEW_BONUS_WINDOW_DAYS,
   PAYOUT_MIN_CENTS,
 } from "@/lib/creators/config";
 
@@ -55,7 +57,8 @@ export const PARTNERSHIP_LINE =
 export function moneyTerms(): string[] {
   return [
     `Commission: ${Math.round(COMMISSION_RATE * 100)}% of what each customer you send pays for their first ${COMMISSION_WINDOW_MONTHS} months. No upfront fee.`,
-    `Boost bonus: $${BOOST_BONUS_CENTS / 100} each time we run one of your posts as an ad. We may run any post carrying your link as an ad for 12 months.`,
+    `View bonuses per post: ${VIEW_BONUS_TIERS.map((t) => `$${t.bonusCents / 100} at ${t.views / 1000}k`).join(", ")} views in its first ${VIEW_BONUS_WINDOW_DAYS} days (highest level reached).`,
+    `Ad bonus: $${BOOST_BONUS_CENTS / 100} for each of your videos we pick to run as an ad. We may run any post carrying your link as an ad for 12 months.`,
     `Monthly bonuses: ${MILESTONE_TIERS.map((t) => `$${t.bonusCents / 100} at ${t.customers}`).join(", ")} paying customers.`,
     `Payouts every other Friday through Stripe once you have $${PAYOUT_MIN_CENTS / 100} payable. Your dashboard shows every click, signup and payout.`,
     "Free Ripple premium while you're active.",

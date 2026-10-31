@@ -46,6 +46,20 @@ export const MILESTONE_TIERS: Array<{ customers: number; bonusCents: number }> =
   { customers: 50, bonusCents: 300_00 },
 ];
 
+/**
+ * View bonuses (2026-10-31, Keenan): per post, by views in its first
+ * VIEW_BONUS_WINDOW_DAYS. The highest tier reached is the post's total
+ * (50k views = $200, not $25 + $100 + $200); a later tier pays the
+ * difference. Awarded by an admin from the creator page after checking the
+ * count on the platform.
+ */
+export const VIEW_BONUS_WINDOW_DAYS = 14;
+export const VIEW_BONUS_TIERS: Array<{ views: number; bonusCents: number }> = [
+  { views: 5_000, bonusCents: 25_00 },
+  { views: 25_000, bonusCents: 100_00 },
+  { views: 50_000, bonusCents: 200_00 },
+];
+
 /** Payout runs: every other Friday starting here (UTC date). */
 export const PAYOUT_ANCHOR_FRIDAY = "2026-11-06";
 export const PAYOUT_MIN_CENTS = 25_00;
@@ -59,7 +73,7 @@ export function stripePayoutsEnabled(): boolean {
 }
 
 /** Current creator agreement version — bump when the text changes. */
-export const AGREEMENT_VERSION = "2026-10-22";
+export const AGREEMENT_VERSION = "2026-10-31";
 
 /** Referral code alphabet: no 0/O, 1/I/L. */
 export const CODE_ALPHABET = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";

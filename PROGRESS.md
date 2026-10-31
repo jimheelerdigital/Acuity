@@ -9,6 +9,33 @@
 
 
 
+## [2026-10-31] — Creator agreement: view bonuses and $100 for videos we run as ads
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** see git log
+
+### In plain English (for Keenan)
+The creator agreement now pays view bonuses on each post: $25 at 5k views, $100 at 25k and $200 at 50k, counted over the post's first 14 days. The highest level a post reaches is its total (a 50k post earns $200, not $325). Any video we pick to run as an ad still earns $100. Because the agreement text changed, every creator has to accept the new version on their dashboard before their next payout. You award view bonuses from the creator's admin page by clicking the level the post reached.
+
+### Technical changes (for Jimmy)
+- apps/web/src/lib/creators/config.ts: `VIEW_BONUS_TIERS` (5k/$25, 25k/$100, 50k/$200), `VIEW_BONUS_WINDOW_DAYS = 14`; `AGREEMENT_VERSION` 2026-10-22 → 2026-10-31.
+- apps/web/src/lib/creators/agreement.ts: Bonuses section rewritten (view tiers, $100 per video picked for ads, monthly customer milestones unchanged).
+- apps/web/src/lib/creators/ledger.ts: `awardViewBonus(postId, tierViews, by)` writes a payable `adjustment` row with `postId`, dedupeKey `views:<postId>:<tier>`, amount = tier total minus prior view-bonus rows for that post (top-up).
+- apps/web/src/app/api/admin/creators/action/route.ts: new `view-bonus` action (audited as creators.view_bonus).
+- apps/web/src/app/admin/creators/[id]/page.tsx: per-post tier buttons.
+- apps/web/src/lib/ugc/brief.ts, draft.ts: creator brief + outreach drafts mention view bonuses; allowed-dollar list includes the tiers.
+- No schema changes.
+
+### Manual steps needed
+- [ ] Jimmy: review (payment code): `awardViewBonus` top-up logic and the new admin action (Jimmy)
+- [ ] Tell current creators to re-accept the updated agreement on their dashboard before the Nov 6 payout (Keenan)
+
+### Notes
+- View bonuses use the existing `adjustment` ledger type to avoid a schema push; they show as "Adjustment" with reason "view bonus …". Add a `view_bonus` enum value later if they need their own line in balances.
+- No automatic view tracking: an admin checks the post's view count on the platform at 14 days and clicks the tier.
+- Kept the monthly paying-customer milestones ($50/$150/$300) and the 5-per-month cap on ad bonuses; Keenan didn't ask to drop them.
+
 ## [2026-10-31] — Ripple Creators dashboard no longer shows the app's menus
 
 **Requested by:** Keenan

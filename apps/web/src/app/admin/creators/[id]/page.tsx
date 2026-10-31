@@ -7,7 +7,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
-import { AGREEMENT_VERSION } from "@/lib/creators/config";
+import { AGREEMENT_VERSION, VIEW_BONUS_TIERS, VIEW_BONUS_WINDOW_DAYS } from "@/lib/creators/config";
 import { labelFor } from "@/lib/creators/emails";
 import { balancesFor } from "@/lib/creators/ledger";
 import { formatCents } from "@/lib/creators/money";
@@ -173,6 +173,17 @@ export default async function CreatorDetail({ params }: { params: { id: string }
                     ) : (
                       <ActionButton body={{ action: "boost", postId: p.id }} label="Mark boosted ($100)" tone="go" confirm />
                     )}
+                    <div className="mt-1 flex flex-wrap gap-1 text-xs">
+                      <span className="text-acuity-text-ter">Views in {VIEW_BONUS_WINDOW_DAYS}d:</span>
+                      {VIEW_BONUS_TIERS.map((t) => (
+                        <ActionButton
+                          key={t.views}
+                          body={{ action: "view-bonus", postId: p.id, views: t.views }}
+                          label={`${t.views / 1000}k (${usd(t.bonusCents)})`}
+                          confirm
+                        />
+                      ))}
+                    </div>
                     {p.adSpend != null && p.trials ? (
                       <div className="text-xs text-acuity-text-ter">{usd(Math.round(p.adSpend / p.trials))}/trial</div>
                     ) : null}
