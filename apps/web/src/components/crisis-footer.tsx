@@ -5,6 +5,8 @@ import { usePathname } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { useState, useEffect } from "react";
 
+import { isCreatorSurface } from "@/lib/creator-surface";
+
 /**
  * Persistent crisis-resources footer. Visible only on authenticated
  * pages (gated on useSession → status === "authenticated") — we don't
@@ -44,7 +46,7 @@ export function CrisisFooter() {
   // line under the paywall was removed 2026-10-27 (Keenan): it read as a
   // mental-health product at the moment of decision. The app, the signed-in
   // site and /support/crisis still carry it.
-  if (status !== "authenticated" || dismissed || pathname?.startsWith("/admin") || pathname?.startsWith("/start") || pathname?.startsWith("/lm")) return null;
+  if (status !== "authenticated" || dismissed || pathname?.startsWith("/admin") || pathname?.startsWith("/start") || pathname?.startsWith("/lm") || isCreatorSurface(pathname)) return null;
 
   const dismiss = () => {
     try {

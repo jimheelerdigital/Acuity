@@ -9,8 +9,11 @@
  * so anonymous landing pages don't 401-poll.
  */
 
+import { usePathname } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { useCallback, useEffect, useRef, useState } from "react";
+
+import { isCreatorSurface } from "@/lib/creator-surface";
 
 import { CelebrationModal } from "./CelebrationModal";
 
@@ -25,6 +28,7 @@ type PendingItem = {
 
 export function CelebrationMount() {
   const { status } = useSession();
+  const pathname = usePathname();
   const [queue, setQueue] = useState<PendingItem[]>([]);
   const inFlightRef = useRef(false);
   const lastFetchRef = useRef(0);
@@ -88,7 +92,8 @@ export function CelebrationMount() {
     }
   }, [current]);
 
-  if (!current) return null;
+  // Queue is kept, so a pending celebration shows once she's back in the app.
+  if (!current || isCreatorSurface(pathname)) return null;
   return (
     <CelebrationModal
       slug={current.achievement.slug}

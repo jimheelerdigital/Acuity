@@ -1,7 +1,9 @@
 "use client";
 
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useEffect } from "react";
+
+import { isCreatorSurface } from "@/lib/creator-surface";
 
 /**
  * Global keyboard shortcuts. Mount once at the app root (dashboard
@@ -20,8 +22,11 @@ import { useEffect } from "react";
  */
 export function KeyboardShortcuts() {
   const router = useRouter();
+  const pathname = usePathname();
+  const off = isCreatorSurface(pathname);
 
   useEffect(() => {
+    if (off) return;
     const handler = (e: KeyboardEvent) => {
       if (e.metaKey || e.ctrlKey || e.altKey || e.shiftKey) return;
       const target = e.target as HTMLElement | null;
@@ -66,7 +71,7 @@ export function KeyboardShortcuts() {
 
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, [router]);
+  }, [router, off]);
 
   return null;
 }

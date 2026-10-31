@@ -57,6 +57,9 @@ const EXCLUDED_PREFIXES = [
   "/start-bwk",
   "/start-test",
   "/start-test-bwk",
+  // Ripple Creators is separate from the app (2026-10-31).
+  "/creators",
+  "/creator-desk",
 ];
 
 function isEligibleRoute(pathname: string): boolean {

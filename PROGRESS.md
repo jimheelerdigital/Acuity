@@ -9,6 +9,27 @@
 
 
 
+## [2026-10-31] — Ripple Creators dashboard no longer shows the app's menus
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** see git log
+
+### In plain English (for Keenan)
+When a creator who also has a Ripple account (or you) opened the creator dashboard, it showed up inside the app: the Record button and app sidebar on the left, the app's top bar, the 988 crisis bar at the bottom. Ripple Creators now stands on its own: the dashboard and the creator desk show only their own page, with no app menus, banners, achievement pop-ups or app keyboard shortcuts.
+
+### Technical changes (for Jimmy)
+- New apps/web/src/lib/creator-surface.ts: `isCreatorSurface(pathname)` for `/creators` and `/creator-desk`.
+- AppShell (sidebar + topbar) bypasses it; NavBar, CrisisFooter, CelebrationMount return null on it; KeyboardShortcuts doesn't bind there; InstallBanner excludes both prefixes.
+- No schema changes.
+
+### Manual steps needed
+None
+
+### Notes
+- `/c/[code]` and `/with/[code]` (customer-facing creator landers) are unchanged; they're conversion pages for customers, not the creator product.
+- Pending achievement celebrations stay queued and show once she's back in the app.
+
 ## [2026-10-29] — Creators outside the US can now connect Stripe for payouts
 
 **Requested by:** Keenan

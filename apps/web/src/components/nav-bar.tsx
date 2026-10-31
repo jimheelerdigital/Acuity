@@ -6,6 +6,8 @@ import { usePathname } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { useState, useRef, useEffect, useCallback } from "react";
 
+import { isCreatorSurface } from "@/lib/creator-surface";
+
 import { UserMenu } from "./user-menu";
 
 const NAV_LINKS = [
@@ -227,7 +229,7 @@ export function NavBar() {
   const { data: session } = useSession();
 
   // Don't show nav on auth pages, landing, or onboarding funnel
-  if (!session || pathname?.startsWith("/lm") || pathname?.startsWith("/auth") || pathname === "/" || pathname?.startsWith("/start") || pathname?.startsWith("/onboarding")) {
+  if (!session || pathname?.startsWith("/lm") || pathname?.startsWith("/auth") || pathname === "/" || pathname?.startsWith("/start") || pathname?.startsWith("/onboarding") || isCreatorSurface(pathname)) {
     return null;
   }
 

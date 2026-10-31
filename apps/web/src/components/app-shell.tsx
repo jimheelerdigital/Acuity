@@ -20,6 +20,8 @@ import {
   Users,
 } from "lucide-react";
 
+import { isCreatorSurface } from "@/lib/creator-surface";
+
 import { PastDueBanner } from "./past-due-banner";
 import { RecordSheet } from "./record-sheet";
 import { SessionUserMenu } from "./user-menu";
@@ -374,6 +376,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     // sidebar). The admin/layout.tsx server component still gates on
     // isAdmin and renders its own topbar with SessionUserMenu.
     pathname.startsWith("/admin") ||
+    isCreatorSurface(pathname) ||
     status !== "authenticated" ||
     !session?.user;
 
