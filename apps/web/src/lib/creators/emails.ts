@@ -21,6 +21,7 @@ import {
   COMMISSION_RATE,
   HOLD_DAYS,
   SITE_URL,
+  RIPPLE_SOCIAL,
   VIEW_BONUS_TIERS,
   VIEW_BONUS_WINDOW_DAYS,
 } from "./config";
@@ -50,6 +51,7 @@ async function creatorFor(creatorId: string) {
       handle: true,
       referralCode: true,
       dashboardTokenVersion: true,
+      platform: true,
     },
   });
   if (!c?.email) throw new Error(`creator ${creatorId} has no email`);
@@ -110,7 +112,8 @@ export async function sendAgreementUpdateEmail(creatorId: string, opts: { to?: s
     "New: view bonuses on your Ripple posts",
     layout(`<p>Hi ${escapeHtml(c.name)},</p>
 <p>We've added view bonuses. Any post with your Ripple link or code now earns ${tierText} views in its first ${VIEW_BONUS_WINDOW_DAYS} days. If we pick one of your videos to run as an ad, that's ${formatCents(BOOST_BONUS_CENTS)} on top. Your ${Math.round(COMMISSION_RATE * 100)}% commission is unchanged.</p>
-<p>The creator agreement has been updated to include this (full text below). Open your dashboard to accept it before your next payout. While you're there, log any posts you've made so we can count their views.</p>
+<p><strong>Tag @${c.platform === "tiktok" ? RIPPLE_SOCIAL.tiktok : RIPPLE_SOCIAL.instagram} and add #ripple on every post.</strong> We check your profile every day, add those posts to your dashboard automatically and track their views. On day ${VIEW_BONUS_WINDOW_DAYS} we lock the count and add your view bonus, so there's nothing for you to log.</p>
+<p>The creator agreement has been updated to include this (full text below). Open your dashboard to accept it before your next payout.</p>
 ${button(url, "Open my dashboard")}
 <div style="margin-top:28px;padding-top:18px;border-top:1px solid #ece9f0">
 <p style="margin:0;font-weight:700">The updated creator agreement</p>

@@ -378,6 +378,22 @@ export async function awardViewBonus(postId: string, tierViews: number, by: stri
   }
 }
 
+/**
+ * Day-14 auto award (post-tracking.ts): pays the highest tier `views`
+ * reached, topping up anything already paid on the post. Returns the row,
+ * or null when no tier was reached or it's already paid.
+ */
+export async function awardViewBonusFor(postId: string, views: number, by: string) {
+  const tier = [...VIEW_BONUS_TIERS].reverse().find((t) => views >= t.views);
+  if (!tier) return null;
+  try {
+    return await awardViewBonus(postId, tier.views, by);
+  } catch (err) {
+    if (err instanceof Error && /already has this view bonus/.test(err.message)) return null;
+    throw err;
+  }
+}
+
 export async function addAdjustment(params: {
   creatorId: string;
   amount: number;

@@ -62,6 +62,38 @@ Empty fields keep the app's own words. Prices and the trial length always come f
 - There's no mobile unit test runner, so `applyOnboardingOverrides` is only type-checked. Device testing matters for it.
 - Of 160 funnel signups in 14 days, 145 were switched to FREE correctly; all 3 failures had `signin:ok`, so the browser call itself was lost.
 
+## [2026-10-31] — Creator posts found and tracked automatically; view bonuses paid on day 14
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** see git log
+
+### In plain English (for Keenan)
+Creators no longer have to log their posts. Every day we look at each creator's recent Instagram (or TikTok) posts, and any post that tags @ripplevoice, uses #ripple, or has their code or goripple.io link is added to their dashboard automatically. Their dashboard shows each post's views ("12,400 views so far · day 6 of 14"). On day 14 the view count is locked and the view bonus it reached ($25 / $100 / $200) is added to their balance on its own. The dashboard, the agreement-update email and the creator brief all tell creators to tag @ripplevoice and use #ripple.
+
+### Technical changes (for Jimmy)
+- prisma/schema.prisma: CreatorPost + `source` (default "manual"), `externalId`, `caption`, `views`, `viewsCheckedAt`, `finalViews`, `finalizedAt`; index (finalizedAt, postedAt). Additive; pushed to prod from main with the guard.
+- New apps/web/src/lib/creators/post-match.ts (pure: `isRipplePost`, `externalIdFromUrl`, `platformOfUrl`) and post-tracking.ts (`creatorsToScan`, `scanCreatorPosts(creatorId)`, `postsDueForFinal`, `finalizeCreatorPost(postId)`).
+- Apify: `apify~instagram-scraper` (profile, 12 posts, newer than 16 days) / `clockworks~tiktok-profile-scraper` for scans; direct-URL scrape for the day-14 count.
+- apps/web/src/inngest/functions/creators-ledger.ts: new `creators-post-tracking` cron (14:00 UTC daily), one step per creator scan and per post finalize.
+- apps/web/src/lib/creators/ledger.ts: `awardViewBonusFor(postId, views, by)` pays the highest tier reached (top-up, idempotent).
+- apps/web/src/lib/creators/config.ts: `RIPPLE_SOCIAL` { instagram: ripplevoice, tiktok: getripple }, `SCAN_LOOKBACK_DAYS`.
+- apps/web/src/app/creators/page.tsx: "Tag us and we track it for you" copy, per-post views / day N of 14 / final + bonus.
+- apps/web/src/app/admin/creators/[id]/page.tsx: auto/logged + views per post.
+- apps/web/src/lib/creators/emails.ts (agreement update email) and lib/ugc/brief.ts: tag + #ripple instructions.
+- creators.test.ts: matching + URL id tests.
+
+### Manual steps needed
+- [ ] After deploy: `curl -X PUT https://goripple.io/api/inngest` to register creators-post-tracking (Claude)
+- [ ] Jimmy: review (payment code): automatic day-14 view bonus in finalizeCreatorPost / awardViewBonusFor (Jimmy)
+
+### Notes
+- Matching is lenient on purpose (any of #ripple / tag / mention / collab / code / goripple.io) because only the creator's own profile is scanned.
+- Instagram photo posts have no view count; they finalize at 0 views (no bonus). If a day-14 count can't be read, it retries for 3 days, then uses the last count the scan saw.
+- Cost: ~7 profile scrapes/day plus one post scrape per finalized post, well inside the Apify plan.
+- View bonuses still go through the payout run Keenan approves; nothing is sent automatically.
+- @ripplevoice confirmed as Ripple's Instagram (page title). @getripple is the TikTok per tiktok-metrics.ts; Instagram @getripple is a different "Ripple" account but is only used for matching.
+
 ## [2026-10-31] — Creator dashboard: journaling + planner angles in "What to post"
 
 **Requested by:** Keenan

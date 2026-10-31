@@ -53,6 +53,16 @@ export const VIEW_BONUS_TIERS: Array<{ views: number; bonusCents: number }> = [
   { views: 50_000, bonusCents: 200_00 },
 ];
 
+/**
+ * Creator post tracking (2026-10-31): Ripple's own accounts. A creator post
+ * that tags / mentions / collabs with one of these (or uses #ripple) is added
+ * to their dashboard by the daily scan. Lowercase, no "@".
+ */
+export const RIPPLE_SOCIAL = { instagram: "ripplevoice", tiktok: "getripple" } as const;
+export const RIPPLE_SOCIAL_HANDLES: string[] = Object.values(RIPPLE_SOCIAL);
+/** How far back the daily scan looks on a creator's profile. */
+export const SCAN_LOOKBACK_DAYS = VIEW_BONUS_WINDOW_DAYS + 2;
+
 /** Payout runs: every other Friday starting here (UTC date). */
 export const PAYOUT_ANCHOR_FRIDAY = "2026-11-06";
 export const PAYOUT_MIN_CENTS = 25_00;

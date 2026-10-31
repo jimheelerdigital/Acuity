@@ -166,7 +166,17 @@ export default async function CreatorDetail({ params }: { params: { id: string }
                     <a className="underline break-all" href={p.url} target="_blank" rel="noreferrer">{p.url}</a>
                     <div className="text-xs text-acuity-text-ter">{p.platform}</div>
                   </td>
-                  <td className="py-2 pr-2">{day(p.postedAt)}</td>
+                  <td className="py-2 pr-2">
+                    {day(p.postedAt)}
+                    <div className="text-xs text-acuity-text-ter">
+                      {p.source === "auto" ? "auto-found" : "logged"}
+                      {p.finalizedAt
+                        ? ` · ${(p.finalViews ?? 0).toLocaleString("en-US")} views (final)`
+                        : p.views != null
+                          ? ` · ${p.views.toLocaleString("en-US")} views`
+                          : ""}
+                    </div>
+                  </td>
                   <td className="py-2 pr-2">
                     {p.boosted ? (
                       <span className="text-emerald-400">boosted {day(p.boostedAt)}</span>

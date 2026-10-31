@@ -4085,6 +4085,19 @@ model CreatorPost {
   postedAt        DateTime
   boosted         Boolean    @default(false)
   boostedAt       DateTime?
+  /// View tracking (2026-10-31). "manual" = logged by the creator or an
+  /// admin; "auto" = found by the daily scan (tags Ripple or uses #ripple).
+  source          String     @default("manual")
+  /// Platform post id (Instagram shortcode / TikTok video id). Dedupes an
+  /// auto-found post against one the creator already logged.
+  externalId      String?
+  caption         String?
+  /// Latest view count from the daily scan.
+  views           Int?
+  viewsCheckedAt  DateTime?
+  /// Views locked on day VIEW_BONUS_WINDOW_DAYS; the view bonus is paid on this.
+  finalViews      Int?
+  finalizedAt     DateTime?
   /// Cents.
   adSpend         Int?
   trials          Int?
@@ -4093,6 +4106,7 @@ model CreatorPost {
 
   @@unique([creatorId, url])
   @@index([creatorId, postedAt])
+  @@index([finalizedAt, postedAt])
 }
 
 // ─── Public roadmap (2026-10-18) ──────────────────────────────────────

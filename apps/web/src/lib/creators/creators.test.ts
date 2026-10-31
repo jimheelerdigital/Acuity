@@ -118,3 +118,26 @@ describe("referral codes", () => {
     expect(customCodeProblem("FREETESS")).toMatch(/discount/);
   });
 });
+
+describe("post tracking: what counts as a Ripple post", () => {
+  it("matches #ripple, a Ripple tag, a goripple link or the creator's code", async () => {
+    const { isRipplePost } = await import("./post-match");
+    const base = { caption: "", people: [] as string[], hashtags: [] as string[] };
+    expect(isRipplePost({ ...base, caption: "my week #ripple #momlife" }, "KATELYN")).toBe(true);
+    expect(isRipplePost({ ...base, caption: "#Ripple" }, null)).toBe(true);
+    expect(isRipplePost({ ...base, caption: "#ripplevoice fan" }, null)).toBe(false);
+    expect(isRipplePost({ ...base, caption: "#rippleeffect" }, null)).toBe(false);
+    expect(isRipplePost({ ...base, people: ["ripplevoice"] }, null)).toBe(true);
+    expect(isRipplePost({ ...base, caption: "thanks @ripplevoice!" }, null)).toBe(true);
+    expect(isRipplePost({ ...base, caption: "link: goripple.io/c/KATELYN" }, null)).toBe(true);
+    expect(isRipplePost({ ...base, caption: "use code KATELYN" }, "KATELYN")).toBe(true);
+    expect(isRipplePost({ ...base, caption: "school run chaos" }, "KATELYN")).toBe(false);
+  });
+  it("reads the post id from Instagram and TikTok URLs", async () => {
+    const { externalIdFromUrl } = await import("./post-match");
+    expect(externalIdFromUrl("https://www.instagram.com/reel/DfAo_BZKsO5/?rpxt=abc")).toBe("DfAo_BZKsO5");
+    expect(externalIdFromUrl("https://www.instagram.com/p/ABC123/")).toBe("ABC123");
+    expect(externalIdFromUrl("https://www.tiktok.com/@me/video/7412345678901234567")).toBe("7412345678901234567");
+    expect(externalIdFromUrl("https://example.com/x")).toBeNull();
+  });
+});

@@ -14,7 +14,10 @@ import {
   CONNECT_COUNTRIES,
   HOLD_DAYS,
   PAYOUT_MIN_CENTS,
+  RIPPLE_SOCIAL,
   SITE_URL,
+  VIEW_BONUS_TIERS,
+  VIEW_BONUS_WINDOW_DAYS,
 } from "@/lib/creators/config";
 import { firstNameOf, formatCents, nextPayoutDate } from "@/lib/creators/money";
 import { ADMIN_VIEW_COOKIE, currentCreatorId } from "@/lib/creators/session";
@@ -177,6 +180,21 @@ const CAPTIONS = [
   "What surprised me about Ripple: it remembers. I talk, it keeps track, and every week I can see what's actually changing and what keeps repeating. {link} · code {code}",
 ];
 
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+/** "12,400 views so far · day 6 of 14" / "31,200 views at day 14 · $100.00 view bonus". */
+function postViewsLine(p: { postedAt: Date; views: number | null; finalViews: number | null; finalizedAt: Date | null }): string {
+  const fmt = (n: number) => n.toLocaleString("en-US");
+  if (p.finalizedAt) {
+    const v = p.finalViews ?? 0;
+    const tier = [...VIEW_BONUS_TIERS].reverse().find((t) => v >= t.views);
+    return `${fmt(v)} views at day ${VIEW_BONUS_WINDOW_DAYS}${tier ? ` · ${formatCents(tier.bonusCents)} view bonus` : ""}`;
+  }
+  const day = Math.min(VIEW_BONUS_WINDOW_DAYS, Math.max(1, Math.floor((Date.now() - p.postedAt.getTime()) / DAY_MS) + 1));
+  const so = p.views == null ? "Views checked daily" : `${fmt(p.views)} views so far`;
+  return `${so} · day ${day} of ${VIEW_BONUS_WINDOW_DAYS}`;
+}
+
 export default async function CreatorsPage({
   searchParams,
 }: {
@@ -223,6 +241,7 @@ export default async function CreatorsPage({
       where: { id: creatorId },
       select: {
         handle: true,
+        platform: true,
         displayName: true,
         firstName: true,
         referralCode: true,
@@ -239,7 +258,7 @@ export default async function CreatorsPage({
     prisma.creatorPost.findMany({
       where: { creatorId },
       orderBy: { postedAt: "desc" },
-      select: { id: true, url: true, platform: true, postedAt: true, boosted: true, boostedAt: true },
+      select: { id: true, url: true, platform: true, postedAt: true, boosted: true, boostedAt: true, source: true, views: true, finalViews: true, finalizedAt: true },
     }),
     prisma.creatorPayout.findMany({
       where: { creatorId, status: "sent" },
@@ -267,6 +286,7 @@ export default async function CreatorsPage({
       : b.payable < 0
         ? "Nothing yet"
         : "Rolls over";
+  const ourHandle = creator.platform === "tiktok" ? RIPPLE_SOCIAL.tiktok : RIPPLE_SOCIAL.instagram;
   const captions = CAPTIONS.map((c) => c.replace(/\{link\}/g, link.replace("https://", "")).replace(/\{code\}/g, code));
 
   const { cookies } = await import("next/headers");
@@ -428,8 +448,14 @@ export default async function CreatorsPage({
       </Section>
 
       {/* Posts */}
-      <Section eyebrow="Your posts" title="Log each post with your link">
-        <PostForm />
+      <Section eyebrow="Your posts" title="Tag us and we track it for you">
+        <p className="text-[15px] leading-[1.5] text-acuity-text-sec">
+          On every post, tag <strong className="text-acuity-text">@{ourHandle}</strong> and add <strong className="text-acuity-text">#ripple</strong>. We check your profile every day, add those posts here automatically and count their views. On day {VIEW_BONUS_WINDOW_DAYS} we lock the count and add your view bonus: {VIEW_BONUS_TIERS.map((t) => `${formatCents(t.bonusCents)} at ${t.views / 1000}k`).join(", ")}.
+        </p>
+        <p className="mt-2 text-[13px] text-acuity-text-ter">Missing a post? Log it below and we&apos;ll track it the same way.</p>
+        <div className="mt-4">
+          <PostForm />
+        </div>
         {posts.length > 0 && (
           <ul className="mt-5 flex flex-col">
             {posts.map((p) => (
@@ -438,9 +464,11 @@ export default async function CreatorsPage({
                   <a href={p.url} target="_blank" rel="noopener noreferrer" className="block truncate text-[15px] text-acuity-text hover:underline">
                     {p.url.replace(/^https:\/\/(www\.)?/, "")}
                   </a>
-                  <div className="text-[13px] capitalize text-acuity-text-ter">
-                    {p.platform} · {fmtDate(p.postedAt)}
+                  <div className="text-[13px] text-acuity-text-ter">
+                    <span className="capitalize">{p.platform}</span> · {fmtDate(p.postedAt)}
+                    {p.source === "auto" && " · found automatically"}
                   </div>
+                  <div className="text-[13px] text-acuity-text-sec">{postViewsLine(p)}</div>
                 </div>
                 <div className="flex items-center gap-3">
                   {p.boosted ? <Pill tone="good">Running as an ad</Pill> : <DeletePostButton id={p.id} />}

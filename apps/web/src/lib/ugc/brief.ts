@@ -24,6 +24,7 @@ import {
   BOOST_BONUS_CENTS,
   COMMISSION_RATE,
   COMMISSION_WINDOW_MONTHS,
+  RIPPLE_SOCIAL,
   VIEW_BONUS_TIERS,
   VIEW_BONUS_WINDOW_DAYS,
   PAYOUT_MIN_CENTS,
@@ -57,6 +58,7 @@ export function moneyTerms(): string[] {
   return [
     `Commission: ${Math.round(COMMISSION_RATE * 100)}% of what each customer you send pays for their first ${COMMISSION_WINDOW_MONTHS} months. No upfront fee.`,
     `View bonuses per post: ${VIEW_BONUS_TIERS.map((t) => `$${t.bonusCents / 100} at ${t.views / 1000}k`).join(", ")} views in its first ${VIEW_BONUS_WINDOW_DAYS} days (highest level reached).`,
+    `Tag @${RIPPLE_SOCIAL.instagram} (TikTok: @${RIPPLE_SOCIAL.tiktok}) and add #ripple on every post: we find it on your profile, add it to your dashboard and track its views automatically.`,
     `Ad bonus: $${BOOST_BONUS_CENTS / 100} for each of your videos we pick to run as an ad. We may run any post carrying your link as an ad for 12 months.`,
     `Payouts every other Friday through Stripe once you have $${PAYOUT_MIN_CENTS / 100} payable. Your dashboard shows every click, signup and payout.`,
     "Free Ripple premium while you're active.",

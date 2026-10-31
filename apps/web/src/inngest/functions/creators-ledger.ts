@@ -3,6 +3,8 @@
  * these only schedule it.
  *
  *   creators-ledger-mature      hourly    pending → payable after the 14-day hold
+ *   creators-post-tracking      daily     find creator posts tagging Ripple / #ripple, refresh
+ *                                         views, lock day-14 views + pay the view bonus
  *   creators-flags-scan         daily     fraud / data flags (hold payouts)
  *   creators-cleanup            daily     clicks > 90 days deleted, captured emails > 30 days nulled
  *   creators-reconcile          weekly    ledger vs Stripe per creator; gaps → admin email
@@ -21,6 +23,39 @@ export const creatorsLedgerMatureFn = inngest.createFunction(
       return matureLedger();
     });
     return { released };
+  }
+);
+
+export const creatorsPostTrackingFn = inngest.createFunction(
+  { id: "creators-post-tracking", name: "Creators: post tracking + view bonuses", triggers: [{ cron: "0 14 * * *" }], retries: 1, concurrency: { limit: 1 } },
+  async ({ step }) => {
+    const creators = await step.run("list", async () => {
+      const { creatorsToScan } = await import("@/lib/creators/post-tracking");
+      return creatorsToScan();
+    });
+    const scans = [];
+    for (const c of creators) {
+      scans.push(
+        await step.run(`scan-${c.id}`, async () => {
+          const { scanCreatorPosts } = await import("@/lib/creators/post-tracking");
+          return scanCreatorPosts(c.id);
+        })
+      );
+    }
+    const due = await step.run("due", async () => {
+      const { postsDueForFinal } = await import("@/lib/creators/post-tracking");
+      return postsDueForFinal();
+    });
+    const finals = [];
+    for (const p of due) {
+      finals.push(
+        await step.run(`final-${p.id}`, async () => {
+          const { finalizeCreatorPost } = await import("@/lib/creators/post-tracking");
+          return finalizeCreatorPost(p.id);
+        })
+      );
+    }
+    return { scans, finals };
   }
 );
 
@@ -114,6 +149,7 @@ export const creatorsPayoutPreviewFn = inngest.createFunction(
 
 export const creatorsFunctions = [
   creatorsLedgerMatureFn,
+  creatorsPostTrackingFn,
   creatorsFlagsScanFn,
   creatorsCleanupFn,
   creatorsReconcileFn,
