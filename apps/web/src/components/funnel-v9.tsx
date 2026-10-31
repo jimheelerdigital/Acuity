@@ -25,6 +25,7 @@
 import { loadStripeJs } from "@/lib/stripe-embedded";
 import { isRcWebBillingEnabled, startRcWebPurchase } from "@/lib/revenuecat/web-billing-client";
 import { consumeTestArrival } from "@/lib/funnel-split-shared";
+import { consumeJournalArmLog, consumeJournalControlArrival } from "@/lib/journal-split-shared";
 import { MoodAvatar } from "@/components/mood-avatar";
 import { FunnelEntryIntro } from "@/components/funnel-entry-intro";
 import { PayInBrowserButton, PaywallTrustLine } from "@/components/pay-in-browser";
@@ -253,6 +254,10 @@ export function FunnelV9({ brand = "ripple", adMatch }: { brand?: V9Brand; adMat
     // Arrived from /start or /start-bwk through the normal-vs-test split:
     // remember the arm and log it once (lib/funnel-split.ts).
     if (consumeTestArrival()) track("funnel_split_arm", "test");
+    // /start-journal split (lib/journal-split.ts): control arm lands here on
+    // /start-test with ?jsplit=control; the journal arm is marked by the page.
+    if (consumeJournalControlArrival()) track("funnel_split_arm", "journal-control");
+    if (consumeJournalArmLog()) track("funnel_split_arm", "journal-journal");
     // Price test: place her in an arm (or clear it when the test is off).
     // The arm is logged at the paywall, where she's signed in.
     const qs = new URLSearchParams(window.location.search);
@@ -508,7 +513,7 @@ function StepView(p: ViewProps) {
     case "statement":
       return <StatementScreen {...p} step={step} />;
     case "info":
-      return step.screen === "reassure" ? <ReassureScreen {...p} /> : step.screen === "review" ? <ReviewScreen {...p} /> : <HowScreen {...p} />;
+      return step.screen === "reassure" ? <ReassureScreen {...p} /> : step.screen === "review" ? <ReviewScreen {...p} /> : step.screen === "preview" ? <PreviewScreen {...p} /> : <HowScreen {...p} />;
     case "name":
       return <NameScreen {...p} />;
     case "loader":
@@ -1847,7 +1852,13 @@ function SystemCost() {
   );
 }
 
-function PaywallScreen({ plan, setPlan, next, go, track, firstName, answers }: ViewProps) {
+function PaywallScreen(p: ViewProps) {
+  const C = useV9();
+  if (C.paywall === "trust3") return <TrustPaywall {...p} />;
+  return <ClassicPaywall {...p} />;
+}
+
+function ClassicPaywall({ plan, setPlan, next, go, track, firstName, answers }: ViewProps) {
   const C = useV9();
   const [open, setOpen] = useState<number | null>(null);
   // Warm Stripe.js while she reads the paywall so checkout mounts fast.
@@ -2019,6 +2030,255 @@ function PaywallScreen({ plan, setPlan, next, go, track, firstName, answers }: V
         </PrimaryButton>
         <p className="mt-2 text-center text-[12px] text-acuity-text-sec tabular-nums">
           <span className="font-semibold text-acuity-text">$0 today.</span> Then {after}, renews automatically.
+        </p>
+        <PaywallTrustLine className="mt-1" />
+        <PayInBrowserButton interval={plan} funnel={C.path} track={track} className="mt-3" />
+      </BottomBar>
+    </div>
+  );
+}
+
+
+// ─── New-app-design preview (2026-10-31, /start-journal) ─────────────────────
+// A phone showing the redesigned app's "Added to your plan" screen, filled
+// with the tasks she tapped on the week screen. Colors follow the approved
+// redesign (docs/design/ripple-app-redesign-2026-10-31.md): peach glass,
+// orange gradient on the big moments, lavender only on habits.
+const NEW_UI = {
+  bg: "#FFF2EA",
+  card: "rgba(255,255,255,.78)",
+  grad: "linear-gradient(135deg, #FF9459, #F04A18)",
+  text: "#2A231D",
+  text2: "#5E5348",
+  text3: "#6F6458",
+  coral: "#A8360C",
+  coralSoft: "#FFE2D1",
+  vio: "#B4A8F8",
+  serif: "Fraunces, Georgia, serif",
+};
+
+function PreviewPhone({ tasks, compact = false }: { tasks: string[]; compact?: boolean }) {
+  const rows = (tasks.length ? tasks : ["Sign the school form", "Book Mom’s appointment", "Pay the bills"]).slice(0, compact ? 3 : 4);
+  return (
+    <div
+      className="relative mx-auto overflow-hidden"
+      style={{ width: compact ? 230 : 268, borderRadius: 36, padding: "26px 14px 18px", background: NEW_UI.bg, boxShadow: "0 24px 60px -18px rgba(242,84,30,.45), 0 0 0 8px #fff, 0 0 0 9px rgba(42,35,29,.08)" }}
+      aria-hidden="true"
+    >
+      <div className="absolute -left-10 -top-10 h-40 w-40 rounded-full" style={{ background: "radial-gradient(circle, rgba(255,100,40,.32), transparent 65%)" }} />
+      <div className="absolute -right-12 top-32 h-40 w-40 rounded-full" style={{ background: "radial-gradient(circle, rgba(255,170,130,.38), transparent 65%)" }} />
+      <div className="relative">
+        <span className="inline-flex items-center gap-1 rounded-full px-2 py-1 text-[9px] font-bold" style={{ background: NEW_UI.coralSoft, color: NEW_UI.coral }}>
+          <Check className="h-2.5 w-2.5" strokeWidth={3} /> Ready · from your debrief
+        </span>
+        <p className="mt-2 text-[19px] font-semibold leading-tight" style={{ fontFamily: NEW_UI.serif, color: NEW_UI.text }}>Added to your plan</p>
+        <p className="mt-0.5 text-[10px]" style={{ color: NEW_UI.text2 }}>{rows.length} tasks added · tap ✕ to remove anything</p>
+        <div className="mt-3 rounded-2xl px-2.5 py-1" style={{ background: NEW_UI.card, border: "1px solid rgba(255,255,255,.95)", boxShadow: "0 10px 24px rgba(242,84,30,.10)" }}>
+          {rows.map((t, i) => (
+            <div key={t} className="up flex items-center gap-2 py-2" style={{ borderBottom: i < rows.length - 1 ? "1px solid #F1E6DE" : "none", animationDelay: `${250 + i * 220}ms` }}>
+              <span className="h-[18px] w-[18px] shrink-0 rounded-full flex items-center justify-center text-white" style={{ background: NEW_UI.grad }}>
+                <Check className="h-2.5 w-2.5" strokeWidth={3.4} />
+              </span>
+              <span className="flex-1 min-w-0 truncate text-[11.5px] font-semibold" style={{ color: NEW_UI.text }}>{t}</span>
+              <X className="h-3 w-3 shrink-0" style={{ color: NEW_UI.text3 }} />
+            </div>
+          ))}
+        </div>
+        {!compact && (
+          <div className="up mt-3 pl-2" style={{ borderLeft: "2px solid #F2541E", animationDelay: `${300 + rows.length * 220}ms` }}>
+            <p className="text-[8px] font-extrabold tracking-[0.1em]" style={{ color: NEW_UI.coral }}>TODAY&apos;S READ</p>
+            <p className="text-[10.5px] leading-snug" style={{ color: NEW_UI.text }}>Most of this week is for other people. Book one thing for you.</p>
+          </div>
+        )}
+        <div className="mt-3 grid grid-cols-2 gap-2">
+          <div className="rounded-xl px-2 py-1.5" style={{ background: "linear-gradient(155deg,#fff,#FFE3D2)", border: "1px solid rgba(255,255,255,.95)" }}>
+            <p className="text-[7.5px] font-extrabold tracking-[0.1em]" style={{ color: NEW_UI.coral }}>TASKS</p>
+            <p className="text-[15px] font-bold leading-none" style={{ fontFamily: NEW_UI.serif, color: NEW_UI.text }}>{rows.length} <span className="text-[8px] font-bold" style={{ fontFamily: "inherit", color: NEW_UI.text2 }}>open</span></p>
+          </div>
+          <div className="rounded-xl px-2 py-1.5" style={{ background: "linear-gradient(155deg,#fff,#EFEBFF)", border: "1px solid rgba(255,255,255,.95)" }}>
+            <p className="text-[7.5px] font-extrabold tracking-[0.1em]" style={{ color: "#6A5AD8" }}>HABITS</p>
+            <p className="text-[15px] font-bold leading-none" style={{ fontFamily: NEW_UI.serif, color: NEW_UI.text }}>1/3 <span className="text-[8px] font-bold" style={{ color: NEW_UI.text2 }}>done</span></p>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function PreviewScreen({ answers, next, track }: ViewProps) {
+  const C = useV9();
+  const copy = C.preview ?? { eyebrow: "How Ripple works", title: "You talk. Ripple writes it down.", caption: "" };
+  const tasks = weekTasks(C, answers);
+  useEffect(() => {
+    track("funnel_v9_preview_viewed", String(tasks.length));
+  }, [track, tasks.length]);
+  return (
+    <div className="enter">
+      <Heading eyebrow={copy.eyebrow} title={copy.title} />
+      <div className="mt-2">
+        <PreviewPhone tasks={tasks} />
+      </div>
+      {copy.caption && <p className="mt-6 text-center text-[14px] leading-relaxed text-acuity-text-sec">{copy.caption}</p>}
+      <BottomBar>
+        <PrimaryButton onClick={next}>Continue</PrimaryButton>
+      </BottomBar>
+    </div>
+  );
+}
+
+// ─── 3-screen trust paywall (2026-10-31, /start-journal) ─────────────────────
+// Screen 1 "We want you to try Ripple for free" (value), screen 2 "We'll
+// remind you before your free trial ends" (no surprise charge), screen 3
+// timeline + plans + "No commitment. Cancel anytime." The trial length
+// stays clear on screen 3 and under the button (auto-renewal disclosure).
+function TrustPaywall({ plan, setPlan, next, track, firstName, answers }: ViewProps) {
+  const C = useV9();
+  const [page, setPage] = useState(0);
+  useEffect(() => {
+    loadStripeJs().catch(() => {});
+  }, []);
+  useEffect(() => {
+    track(`funnel_paywall_s${page + 1}_viewed`);
+  }, [page, track]);
+  const price = useArmPrices();
+  const after = plan === "yearly" ? `${price.annual}/year` : `${price.monthly}/month`;
+  const normal = pricesForArm("std");
+  const earlyBird = price.arm === "low" && normal.annualCents > price.annualCents;
+  const earlyBirdOffPct = Math.round((1 - price.annualCents / normal.annualCents) * 100);
+  useEffect(() => {
+    if (!price.testOn) return;
+    const label = clientArmLabel(price.arm);
+    try {
+      if (sessionStorage.getItem("rp_ptest_logged") === label) return;
+      sessionStorage.setItem("rp_ptest_logged", label);
+    } catch {}
+    track("funnel_price_arm", label);
+  }, [price.testOn, price.arm, track]);
+  const pick = (p: Plan) => {
+    setPlan(p);
+    track("funnel_paywall_plan_selected", p);
+  };
+  const review = C.reviews[0];
+  const back = page > 0 ? (
+    <button onClick={() => setPage(page - 1)} className="mb-3 flex items-center gap-1 text-[13px] font-semibold text-acuity-text-ter">
+      <ChevronLeft className="h-4 w-4" /> Back
+    </button>
+  ) : null;
+
+  if (page === 0) {
+    return (
+      <div className="enter" key="p0">
+        <div className="flex justify-center mb-3">
+          <span className="flex items-center gap-1.5 rounded-full card px-3 py-1.5 text-[12px] font-semibold">
+            <CircleCheck className="h-3.5 w-3.5 text-acuity-good" /> Your plan is ready{firstName ? `, ${firstName}` : ""}
+          </span>
+        </div>
+        <Heading title={<>We want you to try Ripple <span className="grad-text">for free.</span></>} />
+        <PreviewPhone tasks={weekTasks(C, answers)} compact />
+        <ul className="mt-6 space-y-2.5">
+          {["Everything in your head, turned into your list", "Habits and mood tracked, nothing to fill in", "A weekly report on what moved and what slipped"].map((b, i) => (
+            <li key={b} className="up flex items-center gap-3 text-[15px]" style={{ animationDelay: `${200 + i * 120}ms` }}>
+              <span className="h-6 w-6 shrink-0 rounded-full grad flex items-center justify-center"><Check className="h-3.5 w-3.5 text-white" strokeWidth={3} /></span>
+              {b}
+            </li>
+          ))}
+        </ul>
+        {review && <ReviewCard {...review} className="mt-5 w-full" />}
+        <BottomBar>
+          <PrimaryButton onClick={() => setPage(1)}>Continue</PrimaryButton>
+          <p className="mt-2 text-center text-[12px] text-acuity-text-sec">No payment due now.</p>
+        </BottomBar>
+      </div>
+    );
+  }
+
+  if (page === 1) {
+    return (
+      <div className="enter" key="p1">
+        {back}
+        <div className="flex justify-center mt-6">
+          <span className="relative h-28 w-28 rounded-full grad flex items-center justify-center shadow-[0_18px_40px_-10px_var(--acuity-primary)]">
+            <Bell className="h-12 w-12 text-white" strokeWidth={2} />
+            <span className="pop absolute top-3 right-3 h-7 w-7 rounded-full bg-white text-acuity-primary text-[13px] font-bold flex items-center justify-center">1</span>
+          </span>
+        </div>
+        <h1 className="mt-8 text-center text-[28px] font-bold leading-tight">We&apos;ll remind you before your free trial ends.</h1>
+        <p className="mt-3 text-center text-[16px] text-acuity-text-sec">No payment due now. If Ripple isn&apos;t for you, cancel in 2 taps before it ends.</p>
+        <BottomBar>
+          <PrimaryButton onClick={() => setPage(2)}>Try for $0.00</PrimaryButton>
+        </BottomBar>
+      </div>
+    );
+  }
+
+  return (
+    <div className="enter" key="p2">
+      {back}
+      <Heading title="How your free trial works" />
+      <div className="card rounded-3xl px-4 py-5">
+        <ol className="space-y-4">
+          {[
+            { label: "Today", text: "Full access to everything. $0.", icon: Sparkles, on: true },
+            { label: "Day 4", text: "We email you a reminder.", icon: Bell, on: false },
+            { label: "Day 7", text: "Your plan starts. Cancel anytime before, in 2 taps.", icon: CalendarCheck, on: false },
+          ].map((t) => (
+            <li key={t.label} className="flex items-start gap-3">
+              <span className={`h-9 w-9 shrink-0 rounded-full flex items-center justify-center ${t.on ? "grad text-white" : "soft text-acuity-primary"}`}>
+                <t.icon className="h-4 w-4" />
+              </span>
+              <span>
+                <span className="block text-[15px] font-bold">{t.label}</span>
+                <span className="block text-[14px] text-acuity-text-sec">{t.text}</span>
+              </span>
+            </li>
+          ))}
+        </ol>
+      </div>
+      <div className="mt-5 space-y-3">
+        <button onClick={() => pick("yearly")} className={`relative w-full text-left rounded-3xl px-5 pt-5 pb-4 transition card outline-none focus-visible:ring-2 focus-visible:ring-acuity-primary ${plan === "yearly" ? "card-sel" : ""}`}>
+          <span className="absolute -top-3 left-5 rounded-full grad px-3 py-1 text-[11px] font-bold text-white shadow">{earlyBird ? `EARLY BIRD · ${earlyBirdOffPct}% OFF` : `TRY IT FREE · SAVE ${price.savingsPct}`}</span>
+          <div className="flex items-center justify-between gap-3">
+            <Radio on={plan === "yearly"} />
+            <div className="flex-1">
+              <p className="text-[16px] font-semibold">Yearly</p>
+              <p className="text-[13px] text-acuity-text-sec tabular-nums">
+                {earlyBird && <span className={`mr-1 ${SLASH}`}>{normal.annual}</span>}
+                <span className="font-bold text-acuity-text">{price.annual}/year</span> after your trial
+              </p>
+            </div>
+            <div className="text-right">
+              <p className="text-[24px] font-bold tabular-nums leading-none">{price.annualAsMonthly}</p>
+              <p className="text-[12px] text-acuity-text-ter">per month</p>
+            </div>
+          </div>
+        </button>
+        <button onClick={() => pick("monthly")} className={`relative w-full text-left rounded-3xl px-5 py-4 transition card outline-none focus-visible:ring-2 focus-visible:ring-acuity-primary ${plan === "monthly" ? "border-acuity-primary" : ""}`}>
+          <div className="flex items-center justify-between gap-3">
+            <Radio on={plan === "monthly"} />
+            <div className="flex-1">
+              <p className="text-[16px] font-semibold">Monthly</p>
+              <p className="text-[13px] text-acuity-text-sec">Billed monthly after your trial</p>
+            </div>
+            <div className="text-right">
+              {earlyBird && <p className={`text-[13px] tabular-nums ${SLASH}`}>{normal.monthly}</p>}
+              <p className="text-[24px] font-bold tabular-nums leading-none">{price.monthly}</p>
+              <p className="text-[12px] text-acuity-text-ter">per month</p>
+            </div>
+          </div>
+        </button>
+      </div>
+      <BottomBar>
+        <p className="mb-2 text-center text-[14px] font-bold">No commitment. Cancel anytime.</p>
+        <PrimaryButton
+          onClick={() => {
+            track("funnel_paywall_paid_selected", plan);
+            next();
+          }}
+        >
+          Start my free trial
+        </PrimaryButton>
+        <p className="mt-2 text-center text-[12px] text-acuity-text-sec tabular-nums">
+          <span className="font-semibold text-acuity-text">$0 today, 7 days free.</span> Then {after}, renews automatically.
         </p>
         <PaywallTrustLine className="mt-1" />
         <PayInBrowserButton interval={plan} funnel={C.path} track={track} className="mt-3" />

@@ -19,6 +19,7 @@ const FUNNELS = {
   bwk: { flow: "v8-bwk", name: "BWK", path: "/start-bwk" },
   test: { flow: "v9-test", name: "Test", path: "/start-test" },
   testbwk: { flow: "v9-test-bwk", name: "Test BWK", path: "/start-test-bwk" },
+  journal: { flow: "v9-journal", name: "Journal", path: "/start-journal" },
 } as const;
 
 const ARCHIVE_VIEWS: View[] = ["cmp-all", "cmp-ripple", "cmp-bwk", "ripple", "bwk"];
@@ -172,7 +173,7 @@ function SideBySide({ start, end, traffic }: { start: string; end: string; traff
 // milestone it follows or branches from.
 
 const COMPARE_COLUMNS: Record<CompareMode, (keyof typeof FUNNELS)[]> = {
-  live: ["test", "testbwk"],
+  live: ["test", "testbwk", "journal"],
   "cmp-ripple": ["ripple", "test"],
   "cmp-bwk": ["bwk", "testbwk"],
   "cmp-all": ["ripple", "test", "bwk", "testbwk"],
@@ -182,6 +183,7 @@ const COLUMN_LABEL: Record<keyof typeof FUNNELS, { title: string; arm: string }>
   test: { title: "Ripple", arm: "Test" },
   bwk: { title: "BWK", arm: "Normal" },
   testbwk: { title: "BWK", arm: "Test" },
+  journal: { title: "Ripple", arm: "Journal" },
 };
 
 const FUNNEL_COLOR: Record<keyof typeof FUNNELS, string> = {
@@ -189,8 +191,9 @@ const FUNNEL_COLOR: Record<keyof typeof FUNNELS, string> = {
   test: "#8f7cf5",
   bwk: "#5fb3d9",
   testbwk: "#6fd3a1",
+  journal: "#F04A18",
 };
-const FLOW_TO_KEY: Record<string, keyof typeof FUNNELS> = { v8: "ripple", "v9-test": "test", "v8-bwk": "bwk", "v9-test-bwk": "testbwk" };
+const FLOW_TO_KEY: Record<string, keyof typeof FUNNELS> = { v8: "ripple", "v9-test": "test", "v8-bwk": "bwk", "v9-test-bwk": "testbwk", "v9-journal": "journal" };
 
 /** Paid subscribers from the subscription records themselves, so this can
  *  never read zero while real people are paying (2026-09-28). */

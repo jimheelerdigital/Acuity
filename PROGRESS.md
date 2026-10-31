@@ -9,6 +9,53 @@
 
 
 
+
+## [2026-10-31] — New "/start-journal" funnel for the Planners ads, ready to switch on Monday 11-09
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** see git log
+
+### In plain English (for Keenan)
+There's a new sign-up funnel at goripple.io/start-journal, built for the "planners and journals have failed you" ads.
+- **The story:** every screen continues the ad. Screen 1 is "I've tried planners, apps and journals. None of them stuck." Then: how many she's tried, what usually happens, "It's not you: every planner needs you to keep it up," and "If it took zero upkeep, I'd actually use it."
+- **A preview of the new app design,** filled with the things she tapped earlier, so she sees her own list already sorted for her.
+- **The 3-screen paywall:**
+  1. "We want you to try Ripple for free"
+  2. "We'll remind you before your free trial ends"
+  3. The timeline and plans, with "No commitment. Cancel anytime."
+- **Before Monday:** anyone who opens the link sees the new funnel, so you can try it.
+- **On Monday:** turn on the `funnel_journal_split` switch. Half the visitors then go to the current funnel and half to the new one, each person stays on the same side, and the admin funnel view gets a new "Journal" column to compare them.
+
+### Technical changes (for Jimmy)
+- **lib/funnel-v9-config.ts:**
+  - `V9Brand` adds "journal"; new info screen `preview`; new `V9Config.paywall` ("classic" | "trust3") and `preview` copy.
+  - New `JOURNAL_V9_STEPS`, `journalStateName` and `JOURNAL_V9` (flowVersion `v9-journal`, path `/start-journal`).
+- **components/funnel-v9.tsx:**
+  - `PreviewPhone` + `PreviewScreen`: the new app design, filled from her week chips.
+  - `TrustPaywall`: 3 pages, events `funnel_paywall_s1/s2/s3_viewed`. It uses the same price arms, plan picker, trust line and pay-in-browser button as the classic paywall.
+  - `PaywallScreen` now dispatches to `ClassicPaywall` or `TrustPaywall`.
+  - Split logging on mount: `funnel_split_arm` = `journal-control` / `journal-journal`.
+- **New split code:**
+  - `lib/journal-split.ts` + `lib/journal-split-shared.ts`: flag `funnel_journal_split` (30s memo), cookie `acuity_jsplit`, `?jsplit=control` redirect to /start-test with every query param kept.
+  - New page `app/start-journal/page.tsx`.
+- **Checkout routes:** `api/onboarding/create-checkout` and `api/onboarding/handoff` accept `/start-journal`. Cancel returns to `?step=paywall`.
+- **Admin:**
+  - The Funnel tab gets a "Journal" funnel (live view + compare).
+  - `api/admin/metrics` accepts `v9-journal`, adds per-screen paywall rows for trust3, includes it in `COMPARE_FLOWS` and reads the journal-* split arms.
+
+### Manual steps needed
+- [ ] Push. This waits on Jimmy's review of the earlier unpushed signup and onboarding commits, which ride along in the same push (Jimmy → then Claude)
+- [ ] Click through /start-journal on a phone once deployed: preview screen, all 3 paywall screens, checkout, download (Keenan)
+- [ ] Mon 11-09: create/enable FeatureFlag `funnel_journal_split` (enabled, rollout 100) and point the Planners ads at goripple.io/start-journal (Keenan)
+- [ ] Turn on Apple Pay + Google Pay in Stripe and verify goripple.io as a payment method domain (Keenan)
+
+### Notes
+- With the flag off, /start-journal shows the journal funnel to everyone (preview mode). With it on, only fresh landings are split; `?step=` returns never are.
+- The price is inherited from the ad link (e.g. the Planners `ptest` pin), so both arms see the same price and the test isolates the funnel.
+- Checked locally: /start-journal returns 200 and screen 1 renders on the server. The later screens are type-checked but haven't been clicked through in a browser yet.
+- The existing TS7006/PrismaClient errors in `api/admin/metrics/route.ts` were already there before this change; no new ones were added.
+
 ## [2026-10-31] — Closed the free-trial leak in the web funnel, and app onboarding is now editable from admin
 
 **Requested by:** Keenan

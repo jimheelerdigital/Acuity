@@ -40,7 +40,7 @@ export type V9Step =
    *  has the task Ripple would catch from it; the loader and result reuse
    *  the picks. Stored in answers.multi[id]. */
   | { id: string; kind: "week"; title: string; sub?: string; items: V9WeekItem[] }
-  | { id: string; kind: "info"; screen: "reassure" | "review" | "how" }
+  | { id: string; kind: "info"; screen: "reassure" | "review" | "how" | "preview" }
   | { id: string; kind: "name" }
   | { id: string; kind: "loader" }
   | { id: string; kind: "email" }
@@ -296,7 +296,7 @@ export function v9StateName(a: {
 // therapy talk) on the dusk theme. Same positioning rules: "debrief", no
 // fixed time of day, no duration claims, mirror not coach, real reviews only.
 
-export type V9Brand = "ripple" | "bwk";
+export type V9Brand = "ripple" | "bwk" | "journal";
 
 export type V9Sample = { match: string[]; said: string; tasks: string[]; mood: string; pattern: string };
 
@@ -321,6 +321,10 @@ export interface V9Config {
   plateLabels: Record<string, string>;
   milestones: Record<string, string>;
   resultOutro: string;
+  /** "trust3" = the 3-screen try-free / reminder / timeline paywall (2026-10-31). */
+  paywall?: "classic" | "trust3";
+  /** Heading copy for the "preview" info screen (new app design). */
+  preview?: { eyebrow: string; title: string; caption: string };
 }
 
 function numberedLabels(steps: V9Step[], short: Record<string, string>): Record<string, string> {
@@ -588,4 +592,142 @@ export const BWK_V9: V9Config = {
   resultOutro: "None of this means you’re soft or lazy. It means there’s nowhere to put it down. That’s the part Ripple does.",
 };
 
-export const V9_CONFIGS: Record<V9Brand, V9Config> = { ripple: RIPPLE_V9, bwk: BWK_V9 };
+
+// ─── /start-journal (2026-10-31, per Keenan) ──────────────────────────────
+// The "journals and planners have failed you" funnel for the Planners ads.
+// Every screen continues the ad's story ("Fourth planner. Still stuck."):
+// it's not you, planners need upkeep, Ripple needs none. Uses the new app
+// design in its preview screen and the 3-screen trust paywall. Split 50/50
+// against /start-test via lib/journal-split.ts (flag funnel_journal_split).
+export const JOURNAL_V9_STEPS: V9Step[] = [
+  { id: "hook", kind: "statement", statement: "I\u2019ve tried planners, apps and journals. None of them stuck.", mood: "overloaded" },
+  {
+    id: "tried",
+    kind: "single",
+    title: "How many have you tried?",
+    options: [
+      { id: "one", label: "One" },
+      { id: "few", label: "2 or 3" },
+      { id: "many", label: "4 or more" },
+      { id: "lost", label: "I\u2019ve lost count" },
+    ],
+  },
+  {
+    id: "tried-what",
+    kind: "multi",
+    title: "What have you tried?",
+    sub: "Pick all that apply.",
+    options: [
+      { id: "paper", label: "A paper planner" },
+      { id: "bullet", label: "A bullet journal" },
+      { id: "journal-app", label: "A journaling app" },
+      { id: "todo-app", label: "A to-do app" },
+      { id: "reminders", label: "Phone reminders" },
+      { id: "notes", label: "Sticky notes" },
+      { id: "habit-app", label: "A habit tracker" },
+    ],
+  },
+  {
+    id: "happens",
+    kind: "single",
+    title: "What usually happens?",
+    options: [
+      { id: "miss", label: "I start strong, then miss a few days" },
+      { id: "chore", label: "Filling it in becomes another chore" },
+      { id: "forget", label: "I forget to open it" },
+      { id: "blank", label: "I stare at the blank page" },
+    ],
+  },
+  { id: "reassure", kind: "info", screen: "reassure" },
+  { id: "st-upkeep", kind: "statement", statement: "Keeping the planner going became one more thing to remember.", mood: "drained" },
+  ...V9_STEPS.filter((st) => st.id === "age" || st.id === "plate" || st.id === "week"),
+  { id: "preview", kind: "info", screen: "preview" },
+  { id: "s-say", kind: "slider", title: "Where do you land?", left: "I\u2019d rather write it down", right: "I\u2019d rather just say it" },
+  { id: "st-zero", kind: "statement", statement: "If it took zero upkeep, I\u2019d actually use it.", mood: "hopeful", title: "Last one. True for you?" },
+  {
+    id: "commit",
+    kind: "single",
+    title: "Ready for a planner you don\u2019t have to keep up?",
+    options: [
+      { id: "ready", label: "Yes, I\u2019m ready" },
+      { id: "try", label: "I want to try it" },
+    ],
+  },
+  { id: "name", kind: "name" },
+  { id: "loader", kind: "loader" },
+  { id: "email", kind: "email" },
+  { id: "result", kind: "result" },
+  { id: "plan", kind: "plan" },
+  { id: "paywall", kind: "paywall" },
+  { id: "checkout", kind: "checkout" },
+  { id: "download", kind: "download" },
+];
+
+const JOURNAL_SHORT: Record<string, string> = {
+  hook: "None of them stuck? (screen 1, yes/no)",
+  tried: "How many tried",
+  "tried-what": "What she tried",
+  happens: "What usually happens",
+  reassure: "It's not you",
+  "st-upkeep": "Yes/no: upkeep became a chore",
+  age: "Age range",
+  plate: "On your plate",
+  week: "This week\u2019s list (chips)",
+  preview: "App preview (new design)",
+  "s-say": "Slider: write vs say",
+  "st-zero": "Yes/no: zero upkeep",
+  commit: "Ready?",
+  name: "Name",
+  loader: "Loader",
+  email: "Email gate",
+  result: "Result",
+  plan: "First week plan",
+  paywall: "Paywall (3 screens)",
+  checkout: "Checkout",
+  download: "Success / download",
+};
+
+export function journalStateName(a: { plate: string[]; sliders: Record<string, number>; said?: Record<string, string> }): { name: string; line: string } {
+  const yes = (id: string) => a.said?.[id] === "yes";
+  const tried = a.said?.tried;
+  const happens = a.said?.happens;
+  if (tried === "many" || tried === "lost") {
+    return { name: "The Restarter", line: "You keep starting fresh systems because none of them fit a life this full. That\u2019s a sign the system is wrong, not you." };
+  }
+  if (happens === "chore" || yes("st-upkeep")) {
+    return { name: "The Keeper", line: "You already keep everything going for everyone. A planner that needs keeping too was never going to last." };
+  }
+  if (happens === "forget" || happens === "miss") {
+    return { name: "The Juggler", line: "Plenty gets done. The planner is just the first thing to drop when the week gets full." };
+  }
+  return { name: "The Carrier", line: "You carry more than any page can hold, so most of it stays in your head." };
+}
+
+export const JOURNAL_V9: V9Config = {
+  ...RIPPLE_V9,
+  brand: "journal",
+  flowVersion: "v9-journal",
+  path: "/start-journal",
+  hookLine: "Ripple keeps track of what you say. No planner to keep up.",
+  steps: JOURNAL_V9_STEPS,
+  stepLabels: numberedLabels(JOURNAL_V9_STEPS, JOURNAL_SHORT),
+  progressEnd: JOURNAL_V9_STEPS.findIndex((st) => st.id === "result"),
+  stateName: journalStateName as unknown as typeof v9StateName,
+  reassure: {
+    title: "It\u2019s not you.",
+    body: "Every planner needs you to keep it up, and you\u2019re already keeping everything else up.",
+    body2: "Ripple works the other way round. You talk, and it does the keeping track.",
+    things: ["Rewrite the list", "Color-code it", "Catch up on last week", "Start a new journal", "Download another app", "Fill in Monday", "Buy a nicer planner", "Set up the tracker"],
+    cta: "That\u2019s me",
+  },
+  milestones: { week: "Halfway there.", "s-say": "You're doing great. A few more.", name: "Almost done." },
+  resultOutro: "None of this means you\u2019re bad at planning. It means planning shouldn\u2019t need upkeep. That\u2019s the part Ripple does.",
+  paywall: "trust3",
+  preview: {
+    eyebrow: "How Ripple works",
+    title: "No filling in. You talk, Ripple writes it down.",
+    caption: "This is what you see after every debrief. It\u2019s already on your list; you just remove anything that\u2019s wrong.",
+  },
+};
+
+export const V9_CONFIGS: Record<V9Brand, V9Config> = { ripple: RIPPLE_V9, bwk: BWK_V9, journal: JOURNAL_V9 };
