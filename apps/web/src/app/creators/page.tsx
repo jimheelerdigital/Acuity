@@ -125,7 +125,53 @@ function Pill({ tone, children }: { tone: "good" | "warn" | "quiet"; children: R
   );
 }
 
+/**
+ * Angles to lead with (2026-10-31, Keenan): journaling that gives nothing
+ * back, and planners that get abandoned and rebought. Hooks are lines a
+ * creator can say in the first seconds; points are what to hit after.
+ */
+const ANGLES: Array<{ title: string; pitch: string; hooks: string[]; points: string[] }> = [
+  {
+    title: "Journaling gives you nothing back",
+    pitch:
+      "Most people who quit journaling didn't fail at it. It failed them: you pour it all onto the page and the page just sits there. Ripple talks back with your tasks, your patterns and what's actually changing.",
+    hooks: [
+      "I journaled for years. Want to know what I got back? Nothing.",
+      "The reason you keep quitting journaling isn't you. It's that it never gives you anything back.",
+      "Pages and pages of journals in a drawer, and not one of them ever told me anything I didn't already know.",
+      "Journaling is a one-way conversation. This is the first one that answers.",
+    ],
+    points: [
+      "A paper journal takes and takes. You write it all down and then nothing happens with it.",
+      "You never go back and reread it, so the patterns stay buried in old pages.",
+      "With Ripple you just talk, and it hands you back your to-dos, the habits you're building, your mood over time and the things that keep coming up.",
+      "Every week you get a written report of what actually happened. That's the part journaling never did.",
+    ],
+  },
+  {
+    title: "Planners don't stick (and you keep buying new ones)",
+    pitch:
+      "A planner only works when it's with you, and it's never with you when the thought hits: in the car, in line at school pickup, at work. So it gets abandoned by February and replaced with a new one. Your phone is always with you, so Ripple is too.",
+    hooks: [
+      "How many planners did you buy this year? Be honest.",
+      "I bought four planners last year to do the exact same thing. None of them made it past month two.",
+      "My planner is beautiful. It's also at home, on the counter, every time I actually need it.",
+      "Stop buying a new planner every time you want a fresh start.",
+      "The problem with planners isn't you. It's that they're not with you when your brain is.",
+    ],
+    points: [
+      "Your planner lives on the kitchen counter. Your thoughts happen everywhere else.",
+      "By the time you're back at it, you've forgotten half of what you meant to write down.",
+      "So it gets abandoned, and a few months later you buy another one to start fresh. Four a year, same result.",
+      "Ripple is on your phone, which is already in your hand. Say it out loud wherever you are and it turns it into tasks and keeps track of your habits.",
+      "One app instead of another planner on the pile.",
+    ],
+  },
+];
+
 const CAPTIONS = [
+  "I journaled for years and never got anything back. You write, it sits there. Ripple is the first thing that answers: I talk, and it gives me my to-dos, my patterns and a weekly report of what's actually changing. 7-day free trial: {link} (code {code})",
+  "Confession: I bought four planners last year. None made it past month two, because they were never with me when I needed them. Ripple lives on my phone, so it's always there. I say what's on my mind and it turns it into tasks and tracks my habits. Try it free for 7 days at {link}, code {code}.",
   "I used to carry my whole to-do list in my head. Now I talk it out and Ripple turns it into tasks, tracks my habits and shows me what keeps coming up. 7-day free trial: {link} (code {code})",
   "The mental load is real. Ripple is where I put mine: I say what's on my mind and it pulls out the to-dos, notices the patterns and sends me a weekly report. Try it free for 7 days at {link}, code {code}.",
   "What surprised me about Ripple: it remembers. I talk, it keeps track, and every week I can see what's actually changing and what keeps repeating. {link} · code {code}",
@@ -513,7 +559,33 @@ export default async function CreatorsPage({
 
       {/* Post kit */}
       <Section eyebrow="Post kit" title="What to post">
-        <h3 className="text-[15px] font-semibold">Caption ideas</h3>
+        <h3 className="text-[15px] font-semibold">Angles that work</h3>
+        <p className="mt-1 text-[13px] text-acuity-text-ter">Pick one per video and hammer it. Say the hooks in your own words.</p>
+        <div className="mt-3 flex flex-col gap-3">
+          {ANGLES.map((a) => (
+            <div key={a.title} className="rounded-acuity-md border border-acuity-line bg-acuity-bg-sub p-4">
+              <h4 className="font-display text-[16px] font-bold tracking-[-0.2px]">{a.title}</h4>
+              <p className="mt-2 text-[14px] leading-[1.5] text-acuity-text-sec">{a.pitch}</p>
+              <div className={`${EYEBROW} mt-4`}>Hooks (first 3 seconds)</div>
+              <ul className="mt-2 flex flex-col gap-2">
+                {a.hooks.map((h) => (
+                  <li key={h} className="flex items-start justify-between gap-3 rounded-acuity-sm border border-acuity-line bg-acuity-bg-inset px-3 py-2">
+                    <span className="text-[14px] leading-[1.45] text-acuity-text">&ldquo;{h}&rdquo;</span>
+                    <CopyButton text={h} label="Copy" />
+                  </li>
+                ))}
+              </ul>
+              <div className={`${EYEBROW} mt-4`}>Then hit these</div>
+              <ul className="mt-2 list-disc space-y-1 pl-5 text-[14px] leading-[1.5] text-acuity-text-sec">
+                {a.points.map((pt) => (
+                  <li key={pt}>{pt}</li>
+                ))}
+              </ul>
+            </div>
+          ))}
+        </div>
+
+        <h3 className="mt-6 text-[15px] font-semibold">Caption ideas</h3>
         <p className="mt-1 text-[13px] text-acuity-text-ter">Rewrite them in your own words.</p>
         <div className="mt-3 flex flex-col gap-3">
           {captions.map((c, i) => (

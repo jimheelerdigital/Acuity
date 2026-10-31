@@ -9,6 +9,25 @@
 
 
 
+## [2026-10-31] — Creator dashboard: journaling + planner angles in "What to post"
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** see git log
+
+### In plain English (for Keenan)
+The "What to post" section of the creator dashboard now opens with two angles for creators to lead with. The first: traditional journaling fails because it never gives anything back, and Ripple does. The second: planners don't stick because they're not with you when the thought hits, so people buy four a year to do the same thing, while Ripple is on the phone that's always with you. Each angle has a short pitch, 4–5 hooks to say in the first seconds (with copy buttons) and talking points. There's also a new caption for each angle.
+
+### Technical changes (for Jimmy)
+- apps/web/src/app/creators/page.tsx: new `ANGLES` constant rendered as an "Angles that work" block above "Caption ideas"; two new entries at the top of `CAPTIONS`.
+- No schema changes.
+
+### Manual steps needed
+None
+
+### Notes
+- Copy follows docs/acuity-positioning.md: no therapy claims, no recording-duration claims, no time-of-day framing in our copy.
+
 ## [2026-10-31] — Admin button to email creators the updated agreement
 
 **Requested by:** Keenan
