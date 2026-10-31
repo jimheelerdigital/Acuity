@@ -194,6 +194,16 @@ export async function POST(req: NextRequest) {
         landingPath: attr.landingPath,
       } : undefined,
     });
+    // Web funnel signups start on FREE; the Pro trial there needs a card.
+    // Server-side so it can't be lost the way the funnel's browser call was
+    // (lib/funnel-free-plan.ts). Uses the funnel's own landingPath, not the
+    // first-touch cookie, so a later plain /signup isn't caught by it.
+    const { isWebFunnelPath, moveNewFunnelAccountToFree } = await import("@/lib/funnel-free-plan");
+    if (isWebFunnelPath(clientAttr.landingPath)) {
+      await moveNewFunnelAccountToFree(userId).catch((e) => {
+        console.warn("[signup] funnel free-plan switch failed (browser backstop will retry):", e);
+      });
+    }
   }
 
   // Store the verification token. Reuse NextAuth's VerificationToken

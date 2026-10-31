@@ -20,39 +20,23 @@
  * card trial flips them to PRO via the webhook (trialing → PRO).
  *
  * Mobile signups are unaffected: they don't go through this route.
+ *
+ * 2026-10-31: the signup route now does this server-side for funnel signups
+ * (lib/funnel-free-plan.ts); this browser call is the backstop.
  */
 import { getServerSession } from "next-auth";
 import { NextResponse } from "next/server";
 
 import { getAuthOptions } from "@/lib/auth";
-import { NOT_IAP_SOURCE_WHERE } from "@/lib/entitlements";
+import { moveNewFunnelAccountToFree } from "@/lib/funnel-free-plan";
 
 export const dynamic = "force-dynamic";
-
-const NEW_ACCOUNT_WINDOW_MS = 60 * 60 * 1000;
 
 export async function POST() {
   const session = await getServerSession(getAuthOptions());
   if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
-
-  const { prisma } = await import("@/lib/prisma");
-  const now = new Date();
-
-  const result = await prisma.user.updateMany({
-    where: {
-      id: session.user.id,
-      createdAt: { gte: new Date(now.getTime() - NEW_ACCOUNT_WINDOW_MS) },
-      subscriptionStatus: "TRIAL",
-      stripeSubscriptionId: null,
-      ...NOT_IAP_SOURCE_WHERE,
-    },
-    data: {
-      subscriptionStatus: "FREE",
-      trialEndsAt: now,
-    },
-  });
-
-  return NextResponse.json({ ok: true, switched: result.count === 1 });
+  const switched = await moveNewFunnelAccountToFree(session.user.id);
+  return NextResponse.json({ ok: true, switched });
 }

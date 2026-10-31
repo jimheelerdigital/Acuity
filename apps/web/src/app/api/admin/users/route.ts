@@ -210,12 +210,16 @@ function computePlanStatus(
     const daysLeft = Math.ceil((end.getTime() - now.getTime()) / 86400000);
     return daysLeft > 0 ? `Paid trial (${store}) — ${daysLeft}d left` : `Paid trial (${store}) — charge due`;
   }
+  // Anything still TRIAL here is the automatic no-card trial every new
+  // account gets at signup, not a purchase (2026-10-31, Keenan: "we don't
+  // have places where you can do a free trial"). Labelled so it can't be
+  // mistaken for a paid trial.
   if (subscriptionStatus === "TRIAL" && trialEndsAt) {
     const daysLeft = Math.ceil((trialEndsAt.getTime() - now.getTime()) / 86400000);
-    if (daysLeft <= 0) return `Trial — Expired ${Math.abs(daysLeft)}d ago`;
-    return `Trial — ${daysLeft}d left`;
+    if (daysLeft <= 0) return `Trial, no card — Expired ${Math.abs(daysLeft)}d ago`;
+    return `Trial, no card — ${daysLeft}d left`;
   }
-  if (subscriptionStatus === "TRIAL") return "Trial";
+  if (subscriptionStatus === "TRIAL") return "Trial, no card";
   // A trial end at (or within an hour of) signup means no trial was ever
   // granted: paywall skipped or checkout abandoned (2026-10-07, Keenan:
   // these showed "Expired 1d ago" though they never started a trial).
