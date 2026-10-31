@@ -76,8 +76,8 @@ The goal is retention. Today 33% of paying users have never recorded, and only 2
 |---|---|
 | Screen enter | Fade + rise 14px, 0.5s, `cubic-bezier(.2,.8,.2,1)`; content staggers in 70ms steps |
 | Ambient glows | Slow drift and scale, 18s / 22s loops |
-| Record button | Breathing glow, 3.2s loop; two expanding rings on the Home hero |
-| Recording orb | 118px orange blob, slow morph (7s) + spin (24s), gentle breath (scale 1.03, 4.8s). Two lavender layers fade in and out (6s, offset 3s) so the color drifts orange ↔ lavender. **Pond ripples:** 5 thin rings (1.5px, alternating orange/lavender) start at the orb's edge and travel outward to 2.7× while fading, staggered ~1s apart (4.8s each), so several are always in flight like a stone dropped in water. While recording, rings come faster (3s) and the inside shows 5 white sound bars. No floating or bobbing (Keenan: "too much"). 64px gap below the orb before the prompts |
+| Record button | Center tab button: **no ring or outline** (Keenan); just a soft orange shadow that breathes (scale 1.03, 3.2s). Focus outline shows only for keyboard focus. Home hero keeps its two rings |
+| Recording orb | 118px orange blob, slow morph (7s) + spin (24s), gentle breath (scale 1.03, 4.8s). Two lavender layers fade in and out (6s, offset 3s) so the color drifts orange ↔ lavender. **Pond ripples, kept subtle:** 2 faint thin rings (1.5px, orange then lavender, ~32% opacity) start at the orb's edge and travel outward to 2.7× while fading, 2.4s apart (4.8s each). Keenan: keep the round, glossy blob from the old app; fewer ripples. While recording, rings come faster (3s) and the inside shows 5 white sound bars. No floating or bobbing (Keenan: "too much"). 64px gap below the orb before the prompts |
 | Big orange cards | A light sheen sweeps across every ~3.6s |
 | Progress bars | Fill from 0 over 1.1s on appear |
 | Check-off | Check icon pops (0.35s overshoot); circle fills orange |
