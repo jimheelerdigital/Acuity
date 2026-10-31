@@ -329,6 +329,14 @@ async function CreatorsTab({ sp }: { sp: SP }) {
       )}
 
       <section className="neo-glass rounded-2xl p-5">
+        <h2 className="text-sm font-semibold">Agreement update email</h2>
+        <p className="mb-3 mt-1 text-xs text-acuity-text-ter">
+          Emails every active creator about the current agreement (view bonuses), with the full text and a sign-in link to accept it. Each creator gets it once per agreement version.
+        </p>
+        <ActionButton body={{ action: "agreement-update-email" }} label="Send to all creators" tone="go" confirm />
+      </section>
+
+      <section className="neo-glass rounded-2xl p-5">
         <h2 className="text-sm font-semibold">Add a creator</h2>
         <p className="mb-3 mt-1 text-xs text-acuity-text-ter">
           For someone who said yes. Adds them, gives them their code (yours if it's free, otherwise a random one) and emails their dashboard invite.

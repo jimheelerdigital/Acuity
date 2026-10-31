@@ -82,6 +82,41 @@ export async function POST(req: NextRequest) {
         await onCreatorDeal(need(str(b.creatorId), "creatorId"), { resend: true });
         break;
       }
+      case "agreement-update-email": {
+        // One email per creator per agreement version: skips anyone already
+        // sent this version (audit log), so a double click can't resend.
+        const { AGREEMENT_VERSION } = await import("@/lib/creators/config");
+        const { sendAgreementUpdateEmail } = await import("@/lib/creators/emails");
+        const done = new Set(
+          (
+            await prisma.adminAuditLog.findMany({
+              where: { action: "creators.agreement_update_email" },
+              select: { metadata: true },
+            })
+          )
+            .map((r) => r.metadata as { creatorId?: string; version?: string } | null)
+            .filter((m) => m?.version === AGREEMENT_VERSION)
+            .map((m) => m!.creatorId)
+        );
+        const creators = await prisma.ugcCreator.findMany({
+          where: { status: "deal", referralCode: { not: null }, email: { not: null }, NOT: { handle: { startsWith: "zz_" } } },
+          select: { id: true, handle: true },
+        });
+        const sent: string[] = [];
+        const failed: string[] = [];
+        for (const c of creators) {
+          if (done.has(c.id)) continue;
+          try {
+            await sendAgreementUpdateEmail(c.id);
+            await audit("agreement_update_email", { creatorId: c.id, version: AGREEMENT_VERSION });
+            sent.push(c.handle);
+          } catch {
+            failed.push(c.handle);
+          }
+        }
+        result = { message: `Sent to ${sent.length}: ${sent.join(", ") || "none"}${failed.length ? `. Failed: ${failed.join(", ")}` : ""}` };
+        break;
+      }
       case "grant-premium": {
         const { grantCreatorPremium } = await import("@/lib/creators/admin");
         result = await grantCreatorPremium(need(str(b.creatorId), "creatorId"), need(str(b.email), "email"), by);

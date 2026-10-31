@@ -9,6 +9,26 @@
 
 
 
+## [2026-10-31] — Admin button to email creators the updated agreement
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** see git log
+
+### In plain English (for Keenan)
+The creators admin page has a new "Send to all creators" button that emails every active creator about the view bonuses, with the full updated agreement and a sign-in link to accept it. Each creator gets it only once per agreement version, so clicking twice doesn't double-send. Used to send the Oct 31 update to the 7 creators.
+
+### Technical changes (for Jimmy)
+- apps/web/src/app/api/admin/creators/action/route.ts: new `agreement-update-email` action. Recipients: UgcCreator status deal, referralCode + email set, handle not `zz_` (test creator). Skips creators with an AdminAuditLog `creators.agreement_update_email` row for the current AGREEMENT_VERSION; logs one row per send.
+- apps/web/src/app/admin/creators/page.tsx: "Agreement update email" card with the button.
+- No schema changes.
+
+### Manual steps needed
+- [ ] After deploy: `curl -X PUT https://goripple.io/api/inngest` (creators-milestones removed in the previous commit) (Claude)
+
+### Notes
+- Sent from prod because the local Resend key isn't authorized for goripple.io.
+
 ## [2026-10-31] — Creator monthly customer bonuses removed; agreement update email
 
 **Requested by:** Keenan
