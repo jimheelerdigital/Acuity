@@ -46,8 +46,12 @@ export async function POST(req: NextRequest) {
   // hosted checkout opened in the real browser. Its return URLs carry a
   // signed pass so the buyer lands signed in (lib/checkout-handoff.ts).
   let handoff = false;
+  // Exit offer (2026-10-31, /start-journal): % off the first yearly payment
+  // for someone who left checkout and came back. Only when the coupon is set.
+  let exitOffer = false;
   try {
-    const body = (await req.json()) as { interval?: Interval; funnel?: string; embedded?: boolean; handoff?: boolean } | null;
+    const body = (await req.json()) as { interval?: Interval; funnel?: string; embedded?: boolean; handoff?: boolean; offer?: string } | null;
+    exitOffer = body?.offer === "exit";
     if (body?.interval === "yearly") interval = "yearly";
     if (body?.funnel && FUNNEL_PATHS.has(body.funnel)) funnelPath = body.funnel;
     handoff = body?.handoff === true;
@@ -82,6 +86,8 @@ export async function POST(req: NextRequest) {
   });
 
   const trialDays = TRIAL_DAYS;
+  const exitCoupon = process.env.STRIPE_EXIT_OFFER_COUPON;
+  const applyExitOffer = exitOffer && !!exitCoupon && interval === "yearly" && priceArm === "std";
   // Meta match keys for the server-side Purchase (never throws; see lib/meta-match.ts).
   const { checkoutMatchMetadata } = await import("@/lib/meta-match");
   const matchMeta = checkoutMatchMetadata(req);
@@ -111,7 +117,7 @@ export async function POST(req: NextRequest) {
             // plan or take the no-card path. (Was step=download, which
             // dropped them past the choice with no way back.)
             // /start-test and /start-test-bwk (v9) call their paywall step "paywall".
-            cancel_url: `${process.env.NEXTAUTH_URL}${funnelPath}?step=${funnelPath.startsWith("/start-test") || funnelPath === "/start-journal" ? "paywall" : "savings"}`,
+            cancel_url: `${process.env.NEXTAUTH_URL}${funnelPath}?step=${funnelPath.startsWith("/start-test") || funnelPath === "/start-journal" ? "paywall" : "savings"}${funnelPath === "/start-journal" ? "&exit=1" : ""}`,
           }),
       mode: "subscription",
       // Card + Link only (2026-09-25, Keenan). Apple Pay and Google Pay are
@@ -125,11 +131,12 @@ export async function POST(req: NextRequest) {
       customer_email: user?.stripeCustomerId ? undefined : (user?.email ?? undefined),
       client_reference_id: session.user.id,
       line_items: [{ price: priceId, quantity: 1 }],
+      ...(applyExitOffer ? { discounts: [{ coupon: exitCoupon }] } : {}),
       subscription_data: {
         trial_period_days: trialDays,
         metadata: { userId: session.user.id, interval, source: "onboarding_funnel", price_arm: priceArm },
       },
-      metadata: { userId: session.user.id, interval, source: "onboarding_funnel", price_arm: priceArm, ...(handoff ? { handoff: "browser" } : {}), ...matchMeta },
+      metadata: { userId: session.user.id, interval, source: "onboarding_funnel", price_arm: priceArm, ...(handoff ? { handoff: "browser" } : {}), ...(applyExitOffer ? { offer: "exit" } : {}), ...matchMeta },
     });
 
     if (embedded) {

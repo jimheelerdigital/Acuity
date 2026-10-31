@@ -40,7 +40,7 @@ export type V9Step =
    *  has the task Ripple would catch from it; the loader and result reuse
    *  the picks. Stored in answers.multi[id]. */
   | { id: string; kind: "week"; title: string; sub?: string; items: V9WeekItem[] }
-  | { id: string; kind: "info"; screen: "reassure" | "review" | "how" | "preview" }
+  | { id: string; kind: "info"; screen: "reassure" | "review" | "how" | "preview" | "cost" | "proof" }
   | { id: string; kind: "name" }
   | { id: string; kind: "loader" }
   | { id: string; kind: "email" }
@@ -639,12 +639,44 @@ export const JOURNAL_V9_STEPS: V9Step[] = [
       { id: "blank", label: "I stare at the blank page" },
     ],
   },
-  { id: "reassure", kind: "info", screen: "reassure" },
+  // Pain before relief (2026-10-31, Keenan: "how can we make people feel more
+  // pain in the funnel?"). The growth videos' order is hook, problem, agitate,
+  // then solution: what slipped, how it felt, what carrying it costs, and
+  // only then "It's not you".
+  {
+    id: "slipped",
+    kind: "multi",
+    title: "What\u2019s slipped through lately?",
+    sub: "Pick all that apply. No judgment.",
+    options: [
+      { id: "form", label: "A form or a deadline" },
+      { id: "bill", label: "A bill" },
+      { id: "appt", label: "An appointment" },
+      { id: "bday", label: "A birthday or a gift" },
+      { id: "promise", label: "Something I promised someone" },
+      { id: "me", label: "Something for me" },
+    ],
+  },
+  {
+    id: "feel",
+    kind: "single",
+    title: "When something slips, what do you feel first?",
+    options: [
+      { id: "guilty", label: "Guilty" },
+      { id: "annoyed", label: "Annoyed at myself" },
+      { id: "embarrassed", label: "Embarrassed" },
+      { id: "tired", label: "Just tired" },
+    ],
+  },
   { id: "st-upkeep", kind: "statement", statement: "Keeping the planner going became one more thing to remember.", mood: "drained" },
+  { id: "st-nobody", kind: "statement", statement: "If I don\u2019t remember it, nobody will.", mood: "stretched" },
   ...V9_STEPS.filter((st) => st.id === "age" || st.id === "plate" || st.id === "week"),
+  { id: "cost", kind: "info", screen: "cost" },
+  { id: "reassure", kind: "info", screen: "reassure" },
   { id: "preview", kind: "info", screen: "preview" },
   { id: "s-say", kind: "slider", title: "Where do you land?", left: "I\u2019d rather write it down", right: "I\u2019d rather just say it" },
   { id: "st-zero", kind: "statement", statement: "If it took zero upkeep, I\u2019d actually use it.", mood: "hopeful", title: "Last one. True for you?" },
+  { id: "proof", kind: "info", screen: "proof" },
   {
     id: "commit",
     kind: "single",
@@ -669,14 +701,19 @@ const JOURNAL_SHORT: Record<string, string> = {
   tried: "How many tried",
   "tried-what": "What she tried",
   happens: "What usually happens",
-  reassure: "It's not you",
+  slipped: "What slipped lately",
+  feel: "How a slip feels",
   "st-upkeep": "Yes/no: upkeep became a chore",
+  "st-nobody": "Yes/no: nobody else will remember",
+  cost: "What carrying it costs",
+  reassure: "It's not you",
   age: "Age range",
   plate: "On your plate",
   week: "This week\u2019s list (chips)",
   preview: "App preview (new design)",
   "s-say": "Slider: write vs say",
   "st-zero": "Yes/no: zero upkeep",
+  proof: "Reviews",
   commit: "Ready?",
   name: "Name",
   loader: "Loader",

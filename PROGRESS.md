@@ -10,6 +10,34 @@
 
 
 
+## [2026-10-31] — Planners funnel now makes her feel the problem before the fix, and the paywall catches people who back out
+
+- **Requested by:** Keenan
+- **Committed by:** Claude Code
+- **Commit hash:** (see git log, "feat: Add pain screens and an exit offer to /start-journal")
+
+### In plain English (for Keenan)
+The growth videos said: hook, then make the problem hurt, then show the fix. Our funnel said "It's not you" on screen 5, before she'd felt anything. Now she first says what's slipped lately (each one stamped "Late fee", "Bought last-minute", "Skipped again"), how it felt, and whether "If I don't remember it, nobody will" is true. She then sees what carrying it all costs, using her own answers ("156 things a year in your head"). Only then does she hear "It's not you" and see Ripple. There's a reviews screen before "Ready?". The paywall uses her name and her own number. Anyone who opens checkout and leaves gets a one-time 30% off their first year. That offer stays off until the Stripe coupon and two settings exist.
+
+### Technical changes (for Jimmy)
+- `apps/web/src/lib/funnel-v9-config.ts`: JOURNAL_V9_STEPS adds `slipped` (multi), `feel` (single), `st-nobody` (statement), `cost` and `proof` (info). Reassure moved after `cost`. The info `screen` union adds "cost" | "proof".
+- `apps/web/src/components/funnel-v9.tsx`:
+  - New: `SLIP_STAMPS`, `FeelCards`, `CountTo`, `CostScreen` (week picks × 52, slipped list, feel, tried count, all from her answers), `ProofScreen`, and the st-nobody picture.
+  - TrustPaywall: name in the headline, a pain-line sub, and an exit-offer page.
+  - CheckoutScreen: marks `rp_exit_pending` when checkout was shown and left unpaid. It sends `offer: "exit"` when the offer was claimed and shows the discounted first-year price.
+  - New events: `checkout_closed_without_paying`, `exit_offer_viewed`, `exit_offer_accepted`, `exit_offer_declined`, `funnel_v9_cost_viewed`.
+- `apps/web/src/app/api/onboarding/create-checkout/route.ts`: `offer: "exit"` adds `discounts: [{ coupon: STRIPE_EXIT_OFFER_COUPON }]` (yearly + std arm only) and `metadata.offer = "exit"`. The hosted cancel_url for /start-journal carries `&exit=1`.
+
+### Manual steps needed
+- [ ] Review the create-checkout change (payment code) (Jimmy)
+- [ ] Create a Stripe coupon: 30% off, duration "once"; set `STRIPE_EXIT_OFFER_COUPON` to its id and `NEXT_PUBLIC_EXIT_OFFER_PCT=30` in Vercel, then redeploy (Keenan / Jimmy). Without both, the offer never shows.
+- [ ] Confirm the "Sarah M." review in V9_REVIEWS is a real customer quote; it now shows on the reviews screen (Keenan)
+
+### Notes
+- Exit offer rules from the paywall videos: yearly only, 25–33%, once per browser (localStorage `rp_exit_offer_shown`). It is not shown on the early-bird price arm or with RevenueCat web billing.
+- The Meta InitiateCheckout/Purchase value still reports the full yearly price for exit-offer buyers.
+- The local email step fails with MissingHmacKeyError because `DELETED_USER_EMAIL_HMAC_KEY` isn't in .env.local; prod has it. Don't invent a local value: the dev server uses the prod DB and the key must never change.
+
 ## [2026-10-31] — Every /start-journal screen now has its own design, same researched question order
 
 - **Requested by:** Keenan
