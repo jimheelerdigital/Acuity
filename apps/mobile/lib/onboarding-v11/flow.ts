@@ -33,20 +33,37 @@ export const V11_ORDER = [
 
 export type V11Screen = (typeof V11_ORDER)[number];
 
+/**
+ * The order actually used. Defaults to V11_ORDER; the server can reorder or
+ * hide screens (lib/onboarding-v11/remote.ts, 2026-10-31). The shared
+ * sanitizer guarantees "name" is present and "consent" is last.
+ */
+let activeOrder: V11Screen[] = [...V11_ORDER];
+
+export function setV11Order(order: readonly string[] | null): void {
+  const valid = (order ?? []).filter((s): s is V11Screen => (V11_ORDER as readonly string[]).includes(s));
+  activeOrder = valid.length && valid[valid.length - 1] === "consent" ? valid : [...V11_ORDER];
+}
+
 export function hrefFor(screen: V11Screen): Href {
   return `/onboarding-new/${screen}` as Href;
 }
 
 export function goNext(from: V11Screen): void {
-  const i = V11_ORDER.indexOf(from);
-  const to = V11_ORDER[i + 1];
+  const i = activeOrder.indexOf(from);
+  // A screen that isn't in the active order (opened by a stale route) moves
+  // on to whatever follows it in the default order and is still active.
+  const to =
+    i >= 0
+      ? activeOrder[i + 1]
+      : V11_ORDER.slice(V11_ORDER.indexOf(from) + 1).find((s) => activeOrder.includes(s));
   if (to) router.push(hrefFor(to));
   else router.push("/onboarding-new/record" as Href);
 }
 
 /** Where the questions start. */
 export function firstQuestionHref(): Href {
-  return hrefFor("hook");
+  return hrefFor(activeOrder[0] ?? "hook");
 }
 
 export function goBack(): void {

@@ -5,6 +5,8 @@ import Animated, { FadeInDown } from "react-native-reanimated";
 
 import { trackV10 } from "@/lib/onboarding-v10/analytics";
 import { dismissV10, markV10Offered, markV10Started } from "@/lib/onboarding-v10/state";
+import { firstQuestionHref } from "@/lib/onboarding-v11/flow";
+import { lockRemoteOnboarding, prepareRemoteOnboarding } from "@/lib/onboarding-v11/remote";
 
 import { LightScreen, PrimaryButton, RippleLockupCoral, Stars, V11 } from "../_v11/ui";
 
@@ -22,6 +24,8 @@ export default function V10Start() {
   useEffect(() => {
     void markV10Started();
     trackV10("v10_start_viewed", {});
+    // Server-controlled words and order (lib/onboarding-v11/remote.ts).
+    void prepareRemoteOnboarding();
   }, []);
 
   const onNew = useCallback(() => {
@@ -29,7 +33,8 @@ export default function V10Start() {
     // Account comes after the results now (2026-10-15) — straight into the
     // questions. markV10Offered keeps a relaunch in the funnel.
     void markV10Offered();
-    router.push("/onboarding-new/hook");
+    lockRemoteOnboarding();
+    router.push(firstQuestionHref());
   }, []);
 
   const onLogIn = useCallback(async () => {

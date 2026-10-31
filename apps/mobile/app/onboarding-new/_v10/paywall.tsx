@@ -9,7 +9,8 @@ import { useAuth } from "@/contexts/auth-context";
 import { trackV10 } from "@/lib/onboarding-v10/analytics";
 import { setV10PlanDecision } from "@/lib/onboarding-v10/state";
 import { loadAnswers } from "@/lib/onboarding-v11/answers";
-import { FAQ, PRO_FEATURES, REVIEWS, stateName } from "@/lib/onboarding-v11/copy";
+import { fillOnboardingTemplate } from "@acuity/shared";
+import { FAQ, PAYWALL, PRO_FEATURES, REVIEWS, stateName } from "@/lib/onboarding-v11/copy";
 import { finishOnboarding } from "@/lib/onboarding-v11/finish";
 import { prefetchOffering } from "@/lib/onboarding-v11/offering-cache";
 import {
@@ -259,7 +260,9 @@ export default function V10Paywall() {
     );
   }
 
-  const ctaLabel = trialDays ? `Start my ${trialDays}-day free trial` : "Start Ripple Pro";
+  // Words from PAYWALL (editable at /admin/app-onboarding, 2026-10-31).
+  const fill = (t: string) => fillOnboardingTemplate(t, { days: trialDays, name });
+  const ctaLabel = trialDays ? fill(PAYWALL.cta) : "Start Ripple Pro";
   const after = selected
     ? plan === "annual"
       ? `${selected.priceString}/year`
@@ -277,7 +280,7 @@ export default function V10Paywall() {
             <View style={{ flexDirection: "row", alignItems: "center", gap: 6, backgroundColor: "#fff", borderRadius: 999, borderWidth: 1, borderColor: V11.lineStrong, paddingHorizontal: 12, paddingVertical: 6 }}>
               <CircleCheck size={14} color={V11.good} />
               <Text style={{ fontSize: 13, fontWeight: "700", color: V11.ink }}>
-                Your plan is ready{name ? `, ${name}` : ""}
+                {fill(PAYWALL.badge)}
               </Text>
             </View>
           </Animated.View>
@@ -286,7 +289,7 @@ export default function V10Paywall() {
           <Text accessibilityRole="header" style={{ textAlign: "center", fontFamily: V11.heading, fontSize: 28, lineHeight: 33, letterSpacing: -0.6, color: V11.ink }}>
             {trialDays ? (
               <>
-                Try Ripple Pro <Text style={{ color: V11.coral }}>free for {trialDays} days</Text>
+                {fill(PAYWALL.titleLead)} <Text style={{ color: V11.coral }}>{fill(PAYWALL.titleAccent)}</Text>
               </>
             ) : (
               "Unlock Ripple Pro"
@@ -294,7 +297,7 @@ export default function V10Paywall() {
           </Text>
           <Text style={{ textAlign: "center", marginTop: 8, fontSize: 15, color: V11.sec }}>
             Made for <Text style={{ fontWeight: "700", color: V11.ink }}>{persona.state}</Text>.
-            {trialDays ? " $0 today, cancel any time." : " Cancel any time."}
+            {trialDays ? ` ${fill(PAYWALL.sub)}` : " Cancel any time."}
           </Text>
 
           {/* Plans */}
@@ -354,7 +357,7 @@ export default function V10Paywall() {
 
           {/* What Pro gives you */}
           <Card style={{ marginTop: 16, padding: 18, gap: 14 }}>
-            <Text style={{ fontSize: 13, fontWeight: "800", color: V11.ink }}>What Pro gives you</Text>
+            <Text style={{ fontSize: 13, fontWeight: "800", color: V11.ink }}>{fill(PAYWALL.proHeading)}</Text>
             {PRO_FEATURES.map((f) => (
               <View key={f.title} style={{ flexDirection: "row", gap: 12 }}>
                 <IconTile name={f.icon} on={false} size={38} radius={11} />
@@ -414,6 +417,9 @@ export default function V10Paywall() {
 
         {/* Bottom bar */}
         <View style={{ paddingHorizontal: 20, paddingTop: 12, paddingBottom: 8, borderTopWidth: 1, borderTopColor: V11.line, backgroundColor: "rgba(246,245,249,0.95)" }}>
+          {PAYWALL.trustLine ? (
+            <Text style={{ marginBottom: 8, textAlign: "center", fontSize: 13, fontWeight: "700", color: V11.ink }}>{fill(PAYWALL.trustLine)}</Text>
+          ) : null}
           <PrimaryButton label={ctaLabel} busy={busy === "buy"} disabled={!selected || busy !== null} onPress={() => void onBuy()} />
           <Text style={{ marginTop: 8, textAlign: "center", fontSize: 12, color: V11.sec }}>
             {trialDays ? (

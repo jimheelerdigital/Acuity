@@ -94,6 +94,21 @@ export const READY = {
   mood: "hopeful" as MoodKey,
 };
 
+/**
+ * Paywall words (2026-10-31: editable from /admin/app-onboarding).
+ * {days} → trial length from the store, {name} → first name. trustLine is
+ * shown above the button only when set. Prices always come from the store.
+ */
+export const PAYWALL = {
+  badge: "Your plan is ready, {name}",
+  titleLead: "Try Ripple Pro",
+  titleAccent: "free for {days} days",
+  sub: "$0 today, cancel any time.",
+  proHeading: "What Pro gives you",
+  cta: "Start my {days}-day free trial",
+  trustLine: "",
+};
+
 /** Real quotes only — the set both web funnels already ship. */
 export const REVIEWS = [
   { quote: "The task manager is a lifesaver!! I never forget anything anymore", name: "App Store review" },

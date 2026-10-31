@@ -58,6 +58,7 @@ import {
 } from "@/lib/notification-routing";
 import { initSentry, setSentryUser } from "@/lib/sentry";
 import { configureRevenueCat } from "@/lib/revenuecat";
+import { firstQuestionHref } from "@/lib/onboarding-v11/flow";
 
 // Sentry init at module scope — idempotent on re-import.
 initSentry();
@@ -301,7 +302,7 @@ function AuthGate() {
         // account-first): continue the new funnel right after the account
         // step instead of the legacy onboarding.
         void markV10Offered();
-        router.replace("/onboarding-new/hook" as never);
+        router.replace(firstQuestionHref() as never);
         return;
 
       case "v10-paywall":

@@ -1802,6 +1802,18 @@ model VideoLesson {
   @@index([url])
 }
 
+// Server-controlled app settings (2026-10-31, per Keenan: "change the
+// onboarding funnel directly within our app WITHOUT ever having to do an app
+// update"). One JSON value per key; the first key is "app-onboarding" (copy,
+// screen order and A/B variants for the v11 onboarding), edited at
+// /admin/app-onboarding and served by GET /api/app/onboarding-config.
+model RemoteConfig {
+  key       String   @id
+  value     Json
+  updatedAt DateTime @updatedAt
+  updatedBy String?
+}
+
 // Playbook lessons distilled from VideoLesson rows, per brand. Writers see
 // APPROVED (and LOCKED) lessons only. Strength rises each time a new video
 // backs a lesson and fades when nothing does (lib/video-inbox/playbook.ts).

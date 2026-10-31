@@ -184,6 +184,7 @@ HashtagWatch rls
 HashtagVideo rls
 VideoLesson rls
 PlaybookLesson rls
+RemoteConfig rls
 
 # AdLab competitor research + learnings (tables adlab_competitor_ads,
 # adlab_competitor_briefs, adlab_learnings). Admin-only like the other

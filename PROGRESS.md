@@ -9,6 +9,59 @@
 
 
 
+## [2026-10-31] — Closed the free-trial leak in the web funnel, and app onboarding is now editable from admin
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** see git log
+
+### In plain English (for Keenan)
+**The leak.** Every new account starts on a free week with no card. The web funnel is meant to remove that straight away, because the trial there needs a card. That step ran in the visitor's browser and failed for 3 of about 160 recent signups. Those people could close checkout and still use the app free for a week (Laura on 10-30 did exactly that). It now happens on our server, so it can't be skipped. The 3 who already got in keep their week. In the admin, these accounts now read "Trial, no card", so they can't be confused with paid trials.
+
+**Editable onboarding.** A new admin page, **goripple.io/admin/app-onboarding**, lets you change the app's onboarding without an app update:
+- every question's words, and the answer labels;
+- the order of the screens, including hiding one;
+- the paywall's headline, badge, button and an optional "No commitment. Cancel anytime." line;
+- up to 6 versions running as an A/B test, with every onboarding event tagged by version.
+
+Empty fields keep the app's own words. Prices and the trial length always come from the App Store. Adding brand-new kinds of screens is the next phase.
+
+### Technical changes (for Jimmy)
+- Full write-up: `docs/jimmy-review-2026-10-31-trial-leak-and-remote-onboarding.md`.
+- **Fix A:**
+  - New `apps/web/src/lib/funnel-free-plan.ts` (+ test).
+  - `api/auth/signup/route.ts` moves funnel signups (client landingPath `/start*`) to FREE on the server.
+  - `api/onboarding/funnel-free-plan/route.ts` is now a thin backstop.
+  - `api/admin/users/route.ts` labels no-card trials "Trial, no card".
+- **Remote onboarding, Prisma:** new model `RemoteConfig` (key, value Json, updatedAt, updatedBy). RLS enabled; listed in `rls-allowlist.txt`.
+- **Remote onboarding, shared:** new `packages/shared/src/app-onboarding.ts` (types, sanitizers, sticky variant picker, `{days}`/`{name}` templates).
+- **Remote onboarding, web:**
+  - `lib/remote-onboarding.ts` (+ test)
+  - `GET /api/app/onboarding-config` (public)
+  - `GET/POST /api/admin/app-onboarding` (admin)
+  - `/admin/app-onboarding` page + `editor.tsx`
+- **Remote onboarding, mobile:**
+  - New `lib/onboarding-v11/remote.ts`, which writes overrides into the copy objects before the first question and then locks.
+  - `flow.ts` gets `activeOrder`.
+  - `copy.ts` gets a new `PAYWALL` object.
+  - `start.tsx` loads the config and goes to the first active question.
+  - `paywall.tsx` reads `PAYWALL` and the optional trust line.
+  - `_layout.tsx`: v10-resume uses `firstQuestionHref()`.
+  - The variant rides on the existing `setV10Assignment` (`experiment` on every v10 event).
+
+### Manual steps needed
+- [ ] Review both commits before push: signup/payment path + app onboarding (Jimmy)
+- [ ] After push: OTA via `cd apps/mobile && npm run ota -- --message "Server-controlled onboarding words and order"`, never `eas update` (Jimmy)
+- [ ] Device pass from the doc's checklist: nothing saved = same as today; a saved variant shows; airplane mode falls back (Jimmy)
+- [ ] Decide whether app signups should also start FREE instead of the no-card TRIAL (Jimmy)
+- [ ] Save the first variant on a Monday, per the funnel-change rule (Keenan)
+
+### Notes
+- The `RemoteConfig` table was created in prod with Prisma's exact DDL through `prisma db execute`, **not** `db push`. Another session had uncommitted `CreatorPost` columns in the working schema, and a push would have shipped them. `prisma migrate diff` shows no difference for `RemoteConfig`. Only the `RemoteConfig` hunk of `schema.prisma` was committed.
+- `lib/remote-onboarding.ts` (not `app-onboarding.ts`, which already exists for the onboardingCompleted logic) holds a display-only snapshot of the app's words for admin placeholders. Update it if `copy.ts` changes.
+- There's no mobile unit test runner, so `applyOnboardingOverrides` is only type-checked. Device testing matters for it.
+- Of 160 funnel signups in 14 days, 145 were switched to FREE correctly; all 3 failures had `signin:ok`, so the browser call itself was lost.
+
 ## [2026-10-31] — Creator dashboard: journaling + planner angles in "What to post"
 
 **Requested by:** Keenan
