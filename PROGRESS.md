@@ -36,6 +36,34 @@ Four weekly things are switched off and removed: the "Weekly competitor research
 - Pick lanes and writers that read competitor mimic briefs simply stop getting fresh ones. That path was already optional.
 - No schema changes. The CompetitorAccount / CompetitorPost / AdLabCompetitorBrief tables keep their old rows.
 
+## [2026-11-01] — Desktop payers get a QR code to put Ripple on their phone
+
+- **Requested by:** Keenan
+- **Committed by:** Claude Code
+- **Commit hash:** (see git log, "feat: Show a QR code on the download step for desktop payers")
+
+### In plain English (for Keenan)
+- **The problem:** of 16 web payers since 10-23, 3 of the 5 who paid on a computer never reached the app. Two tapped App Store buttons that do nothing on a computer.
+- **The fix:** on a computer, the "get the app" screen now shows a QR code to scan with her phone (it opens the App Store or Google Play), plus a note that the sign-in link is in her email.
+- Phones see the same screen as before.
+- This applies to every web funnel, including the live /start-test.
+
+### Technical changes (for Jimmy)
+- `apps/web/src/components/funnel-v9.tsx`: new `DesktopQr` (client-side QR via `qrcode`, encodes `<origin>/get?utm_source=funnel&utm_medium=qr&utm_campaign=desktop_download`), shown instead of the store buttons when `platform === "desktop"`. New event `funnel_download_qr_shown`.
+- `apps/web/package.json`: added `qrcode@^1.5.4` and dev `@types/qrcode@^1.5.5` (package-lock.json updated).
+- Scans land in `app_store_redirect` (value = ios/android) with utm_medium=qr.
+
+### Manual steps needed
+- [ ] Android: Jimmy to test paid-on-web, then install, then open, then sign in on an Android phone. 4 of 5 Android web payers since 10-23 tapped Google Play and never reached the app (Jimmy)
+
+### Notes
+- Payer audit 10-23 to 11-01 (16 web payers):
+  - iPhone IG/FB browser: 4/6 reached the app (one lost payer paid today)
+  - Android: 1/5
+  - desktop: 2/5
+- The leak is Android sign-in and desktop dead ends, not the in-app browser mic.
+- `app_signed_in` carries no platform, and older sign-ins weren't always logged, so "reached app" = sign-in or at least one Entry.
+
 ## [2026-10-31] — Jev picks email versions using each person's funnel answers
 
 - **Requested by:** Keenan

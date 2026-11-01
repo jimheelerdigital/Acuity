@@ -3602,6 +3602,9 @@ function GetTheApp({
         }
       />
       <div className="space-y-3">
+        {platform === "desktop" ? (
+          <DesktopQr track={track} email={answers.email} />
+        ) : (
         <div className="card rounded-3xl p-5">
           <StepBadge n={1} icon={Smartphone} title="Download Ripple" text="Free on your phone. You already have your account." />
           <div className={`mt-4 grid gap-2 ${store.length > 1 ? "grid-cols-2" : "grid-cols-1"}`}>
@@ -3612,6 +3615,7 @@ function GetTheApp({
             ))}
           </div>
         </div>
+        )}
         <div className="card rounded-3xl p-5">
           {/* 2026-10-27: 0 of 4 web payers reached the app after the web
               debrief + password were removed (10-23). The old copy named app
@@ -3647,6 +3651,43 @@ function GetTheApp({
   );
 }
 
+
+/**
+ * Desktop payers (2026-11-01): 3 of 5 never reached the app; two tapped App
+ * Store buttons that do nothing on a computer. Show a QR code to scan with
+ * her phone instead. It opens goripple.io/get, which sends iPhones to the
+ * App Store and Android to Google Play (logged as app_store_redirect with
+ * utm_medium=qr).
+ */
+function DesktopQr({ track, email }: { track: ViewProps["track"]; email: string }) {
+  const [src, setSrc] = useState<string | null>(null);
+  useEffect(() => {
+    track("funnel_download_qr_shown");
+    const url = `${window.location.origin}/get?utm_source=funnel&utm_medium=qr&utm_campaign=desktop_download`;
+    import("qrcode")
+      .then((QR) => QR.toDataURL(url, { width: 360, margin: 1, color: { dark: "#2A231D", light: "#FFFFFF" } }))
+      .then(setSrc)
+      .catch(() => setSrc(null));
+  }, [track]);
+  return (
+    <div className="card rounded-3xl p-5">
+      <StepBadge n={1} icon={Smartphone} title="Get Ripple on your phone" text="Point your phone's camera at this code. It opens the App Store or Google Play." />
+      <div className="mt-4 flex justify-center">
+        <div className="relative rounded-2xl bg-white p-3 shadow-[0_10px_24px_-12px_rgba(242,84,30,.45)]" style={{ border: "1px solid #F1E6DE" }}>
+          {src ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={src} alt="QR code to download the Ripple app" width={180} height={180} className="block h-[180px] w-[180px]" />
+          ) : (
+            <div className="h-[180px] w-[180px] animate-pulse rounded-lg soft" />
+          )}
+        </div>
+      </div>
+      <p className="mt-4 text-center text-[13.5px] leading-relaxed text-acuity-text-sec">
+        Ripple is a phone app. We also emailed{email ? <> <span className="font-semibold text-acuity-text">{email}</span></> : " you"} a link, so you can open it on your phone instead.
+      </p>
+    </div>
+  );
+}
 
 function StepBadge({ n, icon: Icon, title, text }: { n: number; icon: LucideIcon; title: string; text: string }) {
   return (
