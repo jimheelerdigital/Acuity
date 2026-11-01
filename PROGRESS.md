@@ -10,6 +10,36 @@
 
 
 
+## [2026-10-31] — Planners paywall page 3 rebuilt: receipt, prices, small timeline, what you get
+
+- **Requested by:** Keenan
+- **Committed by:** Claude Code
+- **Commit hash:** (see git log, "feat: Rebuild /start-journal paywall page 3")
+
+### In plain English (for Keenan)
+Paywall page 3 now reads top to bottom:
+- **Her "receipt":** what her current setup costs this year, printed line by line. Her own costs are in red ("The guilt after a slip … most days", "Your own plans … someday"), then a red stamp lands: "$144.84 A YEAR, AND IT STILL DIDN'T STICK".
+- **The prices,** with "Saves $X vs your current setup" on yearly.
+- **A small trial timeline.**
+- **"What you get with Ripple"** (5 benefits).
+
+Page 1's headline now reads "Keenan, we want you to try Ripple for free." (the comma after "free" looked broken).
+
+### Technical changes (for Jimmy)
+- `apps/web/src/components/funnel-v9.tsx`:
+  - New `CostReceipt` (mono receipt, dotted leaders, torn edge, `stamp-in` keyframe) replaces `TrueCost`.
+  - New `SETUP_PER_YEAR_CENTS`; the yearly card shows the savings when positive.
+  - The timeline is shrunk (28px icons, no footnote).
+  - New `ValueAdd` card below the timeline.
+  - The TrustPaywall page 1 headline puts the name first.
+  - Reduced motion keeps `.stamp-in` and `.rise` visible.
+
+### Manual steps needed
+- None
+
+### Notes
+- "Saves" uses her real price arm: $144.84 − $89.99 = $54.85 on standard pricing; locally it shows $104.85 because dev has the $39.99 price.
+
 ## [2026-10-31] — Planners paywall: one combined cost card, trial timeline under the prices, more motion across the funnel
 
 - **Requested by:** Keenan

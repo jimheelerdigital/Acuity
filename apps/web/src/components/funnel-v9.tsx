@@ -231,6 +231,12 @@ const CSS = `
 .v9[data-funnel-theme="sunrise"] .shine::after, .v9[data-funnel-theme="sunrise"] .cta-shine:not(:disabled)::after { content: ""; position: absolute; inset: 0; width: 40%; background: linear-gradient(90deg, transparent, rgba(255,255,255,.35), transparent); animation: v9-shine 3.6s ease-in-out infinite; pointer-events: none; }
 @keyframes v9-thump { 0% { opacity: 0; transform: scale(.85); } 60% { opacity: 1; transform: scale(1.04); } 100% { opacity: 1; transform: scale(1); } }
 .v9 .on .thump.rv, .v9 .thump.rv.on { animation: v9-thump .55s cubic-bezier(.2,.8,.2,1) both; animation-delay: var(--d, 0ms); }
+@keyframes v9-stamp-in { 0% { opacity: 0; transform: rotate(-8deg) scale(1.9); } 60% { opacity: 1; transform: rotate(-8deg) scale(.94); } 100% { opacity: 1; transform: rotate(-8deg) scale(1); } }
+.v9 .stamp-in { opacity: 0; transform: rotate(-8deg); }
+.v9 .stamp-in.on { animation: v9-stamp-in .45s cubic-bezier(.2,.8,.2,1) both; animation-delay: var(--d, 0ms); }
+@keyframes v9-rise { from { opacity: 0; transform: translateY(28px); } to { opacity: 1; transform: none; } }
+.v9 .rise { opacity: 0; }
+.v9 .rise.on { animation: v9-rise .6s cubic-bezier(.2,.8,.2,1) both; animation-delay: var(--d, 0ms); }
 @keyframes v9-tip { 0%, 100% { box-shadow: 0 0 0 0 rgba(242,84,30,.5); } 50% { box-shadow: 0 0 0 5px rgba(242,84,30,0); } }
 .v9[data-funnel-theme="sunrise"] .pbar { position: relative; }
 .v9[data-funnel-theme="sunrise"] .pbar::after { content: ""; position: absolute; right: -1px; top: 50%; width: 10px; height: 10px; margin-top: -5px; border-radius: 9999px; background: #fff; border: 2.5px solid #F2541E; animation: v9-tip 1.8s ease-in-out infinite; }
@@ -240,7 +246,8 @@ const CSS = `
 .v9 .into-orb { opacity: 0; animation: v9-intoorb 2.7s ease-in infinite both; }
 @keyframes v9-breathe { 50% { transform: scale(1.06); } }
 .v9 .breathe { animation: v9-breathe 1.6s ease-in-out infinite; }
-@media (prefers-reduced-motion: reduce) { .v9[data-funnel-theme="sunrise"]::before, .v9[data-funnel-theme="sunrise"]::after, .v9 .fan, .v9 .xout, .v9 .stamp, .v9 .gapday, .v9 .growlist, .v9 .zz, .v9 .blink, .v9 .swap-in, .v9 .ring-out, .v9 .ring-bell, .v9 .notif-in, .v9 .fill-down, .v9 .fill-right, .v9 .into-orb, .v9 .card-sel, .v9 .shine::after, .v9 .cta-shine::after, .v9 .pbar::after, .v9 .enter, .v9 .breathe { animation: none !important; } }
+@media (prefers-reduced-motion: reduce) { .v9 .stamp-in, .v9 .rise { opacity: 1 !important; } }
+@media (prefers-reduced-motion: reduce) { .v9[data-funnel-theme="sunrise"]::before, .v9[data-funnel-theme="sunrise"]::after, .v9 .fan, .v9 .xout, .v9 .stamp, .v9 .gapday, .v9 .growlist, .v9 .zz, .v9 .blink, .v9 .swap-in, .v9 .ring-out, .v9 .ring-bell, .v9 .notif-in, .v9 .fill-down, .v9 .fill-right, .v9 .into-orb, .v9 .card-sel, .v9 .stamp-in.on, .v9 .rise.on, .v9 .shine::after, .v9 .cta-shine::after, .v9 .pbar::after, .v9 .enter, .v9 .breathe { animation: none !important; } }
 .v9 { --v9-tint: color-mix(in oklch, var(--acuity-primary) 9%, var(--acuity-card-bg)); --v9-ring: color-mix(in oklch, var(--acuity-primary) 38%, transparent); }
 .v9 .card { background: var(--acuity-card-bg); border: 1px solid var(--acuity-line-strong); box-shadow: 0 1px 2px rgba(20,16,40,.04), 0 6px 18px rgba(20,16,40,.05); }
 .v9 .card-sel { background: var(--v9-tint); border-color: var(--acuity-primary); box-shadow: 0 0 0 3px var(--v9-ring); }
@@ -1843,6 +1850,8 @@ const PLANNERS_PER_YEAR_CENTS = PLANNER_PRICE_CENTS * 2;
 /** Published yearly prices, Oct 2026: Day One Silver $49.99, Habitify Premium $39.99 (US). */
 const JOURNAL_APP_CENTS = 4999;
 const HABIT_APP_CENTS = 3999;
+/** Her current setup per year, for the receipt and "you save" on the yearly card. */
+const SETUP_PER_YEAR_CENTS = PLANNERS_PER_YEAR_CENTS + JOURNAL_APP_CENTS + HABIT_APP_CENTS;
 const formatCents = (c: number) => `$${(c / 100).toFixed(2)}`;
 
 /** Adds "on" to the element once it scrolls into view (drives .rv animations). */
@@ -2006,75 +2015,91 @@ function SystemCost() {
 }
 
 /**
- * What her setup costs, in money and in her (2026-10-31, Keenan: combine the
- * two cost blocks into one, cleaner, with more pop). Money rows count up,
- * then her own "When it's all in your head" answers, then one total.
+ * Her setup as a receipt (2026-10-31, Keenan: the cost card "still looks
+ * meh"). Prints line by line (money, then her own costs priced in how often)
+ * and a red stamp lands. Top of paywall page 3; the prices under it are the
+ * contrast, and the yearly card says what she saves.
  */
-function TrueCost({ answers }: { answers: Answers }) {
+function CostReceipt({ answers }: { answers: Answers }) {
   const [ref, on] = useInView<HTMLDivElement>();
   const money = [
-    { label: "Paper planner or journal", note: "2 a year", cents: PLANNERS_PER_YEAR_CENTS, icon: BookOpen },
-    { label: "Journaling app", note: "e.g. Day One", cents: JOURNAL_APP_CENTS, icon: Smartphone },
-    { label: "Habit tracker app", note: "e.g. Habitify", cents: HABIT_APP_CENTS, icon: Repeat },
+    { label: "Paper planner ×2", cents: PLANNERS_PER_YEAR_CENTS },
+    { label: "Journaling app", cents: JOURNAL_APP_CENTS },
+    { label: "Habit tracker", cents: HABIT_APP_CENTS },
   ];
   const total = money.reduce((n, r) => n + r.cents, 0);
-  const COST: Record<string, { text: string; icon: LucideIcon }> = {
-    slip: { text: "The thing you forgot, and the guilt after", icon: HeartCrack },
-    switch: { text: "A mind that won’t switch off", icon: Waves },
-    snap: { text: "Snapping at people you love", icon: Zap },
-    behind: { text: "Always feeling one step behind", icon: Hourglass },
-    last: { text: "Your own plans, pushed to “someday”", icon: Heart },
-    drained: { text: "Starting the day already tired", icon: BatteryLow },
+  const OFTEN: Record<string, string> = { daily: "most days", weekly: "every week", sometimes: "every week", rarely: "when it counts" };
+  const often = OFTEN[answers.single.often ?? ""] ?? "every week";
+  const FEEL: Record<string, { label: string; value: string }> = {
+    slip: { label: "The guilt after a slip", value: often },
+    switch: { label: "A mind that won’t switch off", value: often },
+    snap: { label: "Snapping at people you love", value: often },
+    behind: { label: "Feeling one step behind", value: often },
+    last: { label: "Your own plans", value: "someday" },
+    drained: { label: "Starting the day tired", value: often },
   };
-  const picked = (answers.multi.pain ?? []).filter((id) => COST[id]);
-  const you = (picked.length ? picked : ["slip", "switch", "last"]).slice(0, 3);
-  const youAt = money.length * 160 + 500;
-  const totalAt = youAt + you.length * 160 + 300;
+  const picked = (answers.multi.pain ?? []).filter((id) => FEEL[id]);
+  const feel = (picked.length ? picked : ["slip", "last"]).slice(0, 2).map((id) => FEEL[id]);
+  const lines = [...money.map((m) => ({ label: m.label, value: null as string | null, cents: m.cents })), ...feel.map((f) => ({ label: f.label, value: f.value, cents: 0 }))];
+  const stampAt = lines.length * 170 + 350;
+  const paper = "#FFFDF8";
+  return (
+    <div ref={ref} className={`relative mt-4 ${on ? "on" : ""}`}>
+      <div className="relative mx-1 -rotate-[1.2deg]">
+        <div className="relative rounded-t-2xl px-5 pt-5 pb-[78px] font-mono" style={{ background: paper, boxShadow: "0 18px 34px -16px rgba(80,40,10,.35), 0 2px 6px rgba(42,35,29,.06)" }}>
+          <p className="text-center text-[11px] font-bold uppercase tracking-[0.18em] text-acuity-text-ter">Your system &middot; this year</p>
+          <div className="mt-3 border-t border-dashed" style={{ borderColor: "#D9CBBE" }} />
+          <div className="mt-3 space-y-2">
+            {lines.map((l, i) => (
+              <div key={l.label} className={`rv flex items-baseline gap-2 text-[13px] ${on ? "on" : ""}`} style={{ "--d": `${i * 170}ms` } as CSSProperties}>
+                <span className={l.cents ? "text-acuity-text" : "italic text-red-600"}>{l.label}</span>
+                <span className="flex-1 translate-y-[-3px] border-b border-dotted" style={{ borderColor: "#CDBFB2" }} />
+                <span className={`tabular-nums ${l.cents ? "font-bold" : "italic text-red-600"}`}>{l.cents ? <CountUp cents={l.cents} run={on} /> : l.value}</span>
+              </div>
+            ))}
+          </div>
+          <div className="mt-3 border-t border-dashed" style={{ borderColor: "#D9CBBE" }} />
+          <div className={`rv mt-2 flex items-baseline justify-between text-[14px] font-bold ${on ? "on" : ""}`} style={{ "--d": `${lines.length * 170}ms` } as CSSProperties}>
+            <span>TOTAL</span>
+            <span className="tabular-nums"><CountUp cents={total} run={on} ms={1200} /></span>
+          </div>
+          {/* The stamp lands across the bottom of the receipt. */}
+          <div className={`stamp-in pointer-events-none absolute left-1/2 bottom-4 -ml-[120px] w-[240px] rounded-lg border-[3px] border-red-500 px-3 py-1.5 text-center font-sans text-red-500 ${on ? "on" : ""}`} style={{ "--d": `${stampAt}ms`, background: "rgba(255,253,248,.85)" } as CSSProperties} aria-hidden="true">
+            <p className="text-[18px] font-black uppercase leading-none tracking-wide">{formatDollars(total)} a year</p>
+            <p className="mt-1 text-[11px] font-bold uppercase tracking-[0.08em]">and it still didn&rsquo;t stick</p>
+          </div>
+        </div>
+        {/* Torn bottom edge. */}
+        <div className="h-3" style={{ background: `linear-gradient(135deg, ${paper} 33.33%, transparent 33.33%) 0 0 / 16px 12px, linear-gradient(225deg, ${paper} 33.33%, transparent 33.33%) 0 0 / 16px 12px`, filter: "drop-shadow(0 4px 4px rgba(80,40,10,.12))" }} aria-hidden="true" />
+      </div>
+
+    </div>
+  );
+}
+
+/** What she gets, under the prices on paywall page 3 (2026-10-31, Keenan). */
+function ValueAdd() {
+  const [ref, on] = useInView<HTMLDivElement>();
+  const rows: { icon: LucideIcon; title: string; text: string }[] = [
+    { icon: Mic, title: "Just say it", text: "Ripple writes your list, sorted, with the dates." },
+    { icon: Repeat, title: "Habits and mood, tracked", text: "From what you say. Nothing to tick off." },
+    { icon: Eye, title: "What keeps coming up", text: "Patterns you’d never spot on paper." },
+    { icon: CalendarCheck, title: "A weekly report", text: "What moved, what slipped, what to drop." },
+    { icon: Sprout, title: "It never resets", text: "Every day adds up. No starting over." },
+  ];
   return (
     <div ref={ref} className={`mt-5 card rounded-3xl p-5 ${on ? "on" : ""}`}>
-      <p className="text-center text-[22px] font-bold leading-tight tracking-tight">
-        What it&rsquo;s <span className="text-red-500">costing you</span> now
-      </p>
-
-      <p className="mt-4 text-[11.5px] font-bold uppercase tracking-[0.1em] text-acuity-text-ter">In money</p>
-      <div className="mt-2 space-y-2">
-        {money.map((r, i) => (
-          <div key={r.label} className={`rv flex items-center gap-3 ${on ? "on" : ""}`} style={{ "--d": `${i * 160}ms` } as CSSProperties}>
-            <span className="h-8 w-8 shrink-0 rounded-xl chip-ico flex items-center justify-center"><r.icon className="h-4 w-4" /></span>
-            <p className="flex-1 text-[14px] font-semibold leading-tight">{r.label} <span className="font-normal text-acuity-text-ter">&middot; {r.note}</span></p>
-            <p className="text-[14.5px] font-semibold tabular-nums"><CountUp cents={r.cents} run={on} /></p>
+      <p className="text-[20px] font-bold leading-tight tracking-tight">What you get with <span className="grad-text">Ripple</span></p>
+      <div className="mt-4 space-y-3">
+        {rows.map((r, i) => (
+          <div key={r.title} className={`rv flex items-start gap-3 ${on ? "on" : ""}`} style={{ "--d": `${i * 130}ms` } as CSSProperties}>
+            <span className="h-9 w-9 shrink-0 rounded-xl grad text-white flex items-center justify-center"><r.icon className="h-4 w-4" /></span>
+            <span>
+              <span className="block text-[15px] font-bold leading-tight">{r.title}</span>
+              <span className="block text-[13px] leading-snug text-acuity-text-sec">{r.text}</span>
+            </span>
           </div>
         ))}
-      </div>
-
-      <div className={`rv-pop my-3 flex items-center gap-3 ${on ? "on" : ""}`} style={{ "--d": `${youAt - 200}ms` } as CSSProperties} aria-hidden="true">
-        <span className="h-px flex-1" style={{ background: "#F1E6DE" }} />
-        <span className="h-7 w-7 rounded-full bg-red-50 text-red-500 flex items-center justify-center text-[17px] font-bold">+</span>
-        <span className="h-px flex-1" style={{ background: "#F1E6DE" }} />
-      </div>
-
-      <p className="text-[11.5px] font-bold uppercase tracking-[0.1em] text-acuity-text-ter">In you</p>
-      <div className="mt-2 space-y-2">
-        {you.map((id, i) => {
-          const c = COST[id];
-          return (
-            <div key={id} className={`rv flex items-center gap-3 ${on ? "on" : ""}`} style={{ "--d": `${youAt + i * 160}ms` } as CSSProperties}>
-              <span className="h-8 w-8 shrink-0 rounded-xl flex items-center justify-center" style={{ background: "#FDE2E1", color: "#DC2626" }}><c.icon className="h-4 w-4" /></span>
-              <p className="flex-1 text-[14px] font-semibold leading-tight">{c.text}</p>
-            </div>
-          );
-        })}
-      </div>
-
-      <div className={`rv thump mt-4 rounded-2xl px-4 py-3.5 text-center ${on ? "on" : ""}`} style={{ "--d": `${totalAt}ms`, background: "linear-gradient(160deg,#FFF1F0,#FDE2E1)" } as CSSProperties}>
-        <p className="text-[11.5px] font-bold uppercase tracking-[0.1em] text-red-400">Every year</p>
-        <p className="mt-0.5 text-[26px] font-bold leading-tight text-red-500 tabular-nums">
-          <CountUp cents={total} run={on} ms={1300} /> <span className="text-[17px]">+ your peace of mind</span>
-        </p>
-      </div>
-      <div className={`rv shine relative mt-3 flex items-center justify-center gap-2 overflow-hidden rounded-2xl grad px-4 py-3.5 text-white glow ${on ? "on" : ""}`} style={{ "--d": `${totalAt + 450}ms` } as CSSProperties}>
-        <Sparkles className="h-4 w-4" />
-        <p className="text-[15px] font-bold">Ripple: one app, nothing to keep up.</p>
       </div>
     </div>
   );
@@ -3097,7 +3122,7 @@ function TrustPaywall({ plan, setPlan, next, track, firstName, answers }: ViewPr
           </span>
         </div>
         <Heading
-          title={<>We want you to try Ripple <span className="grad-text">for free</span>{firstName ? `, ${firstName}` : ""}.</>}
+          title={<>{firstName ? `${firstName}, we` : "We"} want you to try Ripple <span className="grad-text">for free.</span></>}
           sub={weekTasks(C, answers).length ? `Stop carrying ${weekTasks(C, answers).length} things in your head. Say them once, and they’re on your list.` : undefined}
         />
         <PreviewPhone tasks={weekTasks(C, answers)} compact />
@@ -3154,7 +3179,7 @@ function TrustPaywall({ plan, setPlan, next, track, firstName, answers }: ViewPr
           2026-10-31). The Planners vs Ripple stack stays off this page: the
           result screen already shows it, and comparison tables on the price
           page lost in the paywall research. */}
-      <TrueCost answers={answers} />
+      <CostReceipt answers={answers} />
       <div className="mt-6 space-y-3">
         <button onClick={() => pick("yearly")} className={`relative w-full text-left rounded-3xl px-5 pt-5 pb-4 transition card outline-none focus-visible:ring-2 focus-visible:ring-acuity-primary ${plan === "yearly" ? "card-sel" : ""}`}>
           <span className="absolute -top-3 left-5 rounded-full grad px-3 py-1 text-[11px] font-bold text-white shadow">{earlyBird ? `EARLY BIRD · ${earlyBirdOffPct}% OFF` : `TRY IT FREE · SAVE ${price.savingsPct}`}</span>
@@ -3166,6 +3191,9 @@ function TrustPaywall({ plan, setPlan, next, track, firstName, answers }: ViewPr
                 {earlyBird && <span className={`mr-1 ${SLASH}`}>{normal.annual}</span>}
                 <span className="font-bold text-acuity-text">{price.annual}/year</span> after your trial
               </p>
+              {SETUP_PER_YEAR_CENTS > price.annualCents && (
+                <p className="mt-0.5 text-[12px] font-bold" style={{ color: "#C2410C" }}>Saves {formatDollars(SETUP_PER_YEAR_CENTS - price.annualCents)} vs your current setup</p>
+              )}
             </div>
             <div className="text-right">
               <p className="text-[24px] font-bold tabular-nums leading-none">{price.annualAsMonthly}</p>
@@ -3189,9 +3217,9 @@ function TrustPaywall({ plan, setPlan, next, track, firstName, answers }: ViewPr
         </button>
       </div>
       {/* How the trial works, as one horizontal block under the prices (Keenan, 2026-10-31). */}
-      <div className="mt-4 card rounded-3xl px-3 pt-5 pb-4">
+      <div className="mt-3 card rounded-2xl px-2 py-3">
         <div className="relative grid grid-cols-3">
-          <span className="absolute left-[16.6%] right-[16.6%] top-[18px] h-[3px] rounded-full" style={{ background: "#FFE2D1" }} aria-hidden="true">
+          <span className="absolute left-[16.6%] right-[16.6%] top-[13px] h-[2px] rounded-full" style={{ background: "#FFE2D1" }} aria-hidden="true">
             <span className="fill-right block h-full rounded-full grad" />
           </span>
           {[
@@ -3200,16 +3228,16 @@ function TrustPaywall({ plan, setPlan, next, track, firstName, answers }: ViewPr
             { label: "Day 7", text: "Plan starts", icon: CalendarCheck, on: false },
           ].map((t, i) => (
             <div key={t.label} className="up relative flex flex-col items-center text-center" style={{ animationDelay: `${150 + i * 180}ms` }}>
-              <span className={`h-9 w-9 rounded-full flex items-center justify-center ${t.on ? "grad text-white" : ""}`} style={t.on ? undefined : { background: "#FFE2D1", color: "#C2410C", boxShadow: "0 0 0 3px #FFFFFF" }}>
-                <t.icon className="h-4 w-4" />
+              <span className={`h-7 w-7 rounded-full flex items-center justify-center ${t.on ? "grad text-white" : ""}`} style={t.on ? undefined : { background: "#FFE2D1", color: "#C2410C", boxShadow: "0 0 0 3px #FFFFFF" }}>
+                <t.icon className="h-3.5 w-3.5" />
               </span>
-              <p className="mt-2 text-[13.5px] font-bold">{t.label}</p>
-              <p className="text-[12px] leading-tight text-acuity-text-sec">{t.text}</p>
+              <p className="mt-1.5 text-[12px] font-bold leading-none">{t.label}</p>
+              <p className="mt-0.5 text-[11px] leading-tight text-acuity-text-sec">{t.text}</p>
             </div>
           ))}
         </div>
-        <p className="mt-3 text-center text-[12.5px] text-acuity-text-sec">Cancel anytime before day 7, in 2 taps.</p>
       </div>
+      <ValueAdd />
       <BottomBar>
         <p className="mb-2 text-center text-[14px] font-bold">No commitment. Cancel anytime.</p>
         <PrimaryButton
