@@ -1050,6 +1050,13 @@ export const carouselDailyCronFn = inngest.createFunction(
                   select: { topicSlug: true },
                 });
                 const used = new Set(posted.map((p) => mythicModeFromSlug(p.topicSlug)));
+                // Never the same type twice in a row, across days too (2026-11-01).
+                const last = await prisma.carouselPost.findFirst({
+                  where: { lane: laneKey },
+                  orderBy: { createdAt: "desc" },
+                  select: { topicSlug: true },
+                });
+                if (last) used.add(mythicModeFromSlug(last.topicSlug));
                 // "How big would they really be?" (size) and dragon egg hatching
                 // (egg) are gone for good (2026-10-11, per Keenan: "no more
                 // dragon hatch or 'how big are they really' posts... eliminate
@@ -1300,6 +1307,11 @@ export const carouselDailyCronFn = inngest.createFunction(
           const recentCatsLoop = await recentLoopCategories(laneKey, 3);
           const pickCat = pl.chooseCategory(board, choiceMode, catalog, recentCatsLoop);
           category = pickCat.arm;
+          // Creative freedom (2026-11-01): ~40% of choice posts let the writer pick the subject.
+          if (choiceMode === "choice" && Math.random() < 0.4) {
+            const { OPEN_CHOICE_CATEGORY } = await import("@/lib/content-factory/choice-lane");
+            category = OPEN_CHOICE_CATEGORY;
+          }
           // Jev cover-question pick OFF (2026-10-13, per Keenan: "turn off jev
           // picker"): each of the 5 candidate drafts now writes its own cover,
           // and the candidate ranking chooses. MYTHIC_COVER_PICK=1 restores it.

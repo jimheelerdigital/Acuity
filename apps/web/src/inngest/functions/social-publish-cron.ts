@@ -238,7 +238,7 @@ export const socialPublishCronFn = inngest.createFunction(
         return slot;
       };
 
-      // Legendary Mythicals: fixed 1pm / 3pm / 5pm Central slots — the
+      // Legendary Mythicals: fixed Central slots (12pm / 5pm since 2026-11-01) — the
       // Nth post of a day takes the Nth free slot (per platform), extras
       // roll to the next day's slots.
       const mythTaken = new Map<string, Set<number>>();

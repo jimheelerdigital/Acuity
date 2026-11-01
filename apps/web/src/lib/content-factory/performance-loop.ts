@@ -577,14 +577,17 @@ export function chooseArm(
 }
 
 /**
- * Mythicals post type for this run. Types already posted today are
- * skipped, unless a used type is a proven winner that beats every fresh
- * type's mean by ≥0.3 (a strong, measured preference). No scoreboard →
- * uniform random among fresh types (the pre-loop behavior).
+ * Mythicals post type for this run: uniform random among types not posted
+ * today and not the lane's last post (2026-11-01, per Keenan: "give it back
+ * creative freedom, it's posting the same thing daily... which duo are you
+ * and bro is literally every post. we need variance"). The scoreboard no
+ * longer steers the type: Thompson sampling plus a "proven winner may repeat
+ * the same day" override had locked onto duo (13 of the last 15 posts).
+ * `avoid` = types used today + the previous post's type.
  */
 export function chooseMythicPostType(
-  board: Scoreboard | null,
-  usedToday: Set<string>,
+  _board: Scoreboard | null,
+  avoid: Set<string>,
   rng: () => number = Math.random
 ): ArmChoice {
   // "size" is a daily series the cron schedules itself (2026-10-01), so
@@ -597,15 +600,9 @@ export function chooseMythicPostType(
   // POST NEEDS TO BE A 'IF YOU KNOW HIM, WHICH?' just ask the reader what
   // they'd pick"); it can still be requested by hand.
   const MODES = ["choice", "duo", "scenario"];
-  const fresh = MODES.filter((m) => !usedToday.has(m));
+  const fresh = MODES.filter((m) => !avoid.has(m));
   const pool = fresh.length ? fresh : MODES;
-  if (!board) return { arm: pool[Math.floor(rng() * pool.length)], reason: "explore" };
-  const stats = board.postTypes;
-  const bestFresh = Math.max(0, ...pool.map((m) => stats[m]?.mean ?? 0));
-  const strong = MODES.filter(
-    (m) => usedToday.has(m) && stats[m]?.label === "proven winner" && stats[m].mean >= bestFresh + 0.3
-  );
-  return chooseArm([...pool, ...strong.filter((m) => !pool.includes(m))], stats, { rng });
+  return { arm: pool[Math.floor(rng() * pool.length)], reason: "explore" };
 }
 
 /** Category within a post type (or pick theme family), avoiding `recent`. */

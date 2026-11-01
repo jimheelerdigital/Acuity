@@ -262,7 +262,8 @@ export function clampToWindow(t: Date, platform: SocialPlatform): Date {
 // 6 a day since 2026-10-01 (Keenan: "up that to 6 posts per day picked at
 // random... 10, 11, 1, 3, 5, 6 pm ct").
 // 3 a day since 2026-10-11 (Keenan: "12 3 and 5pm cst please").
-export const MYTHICALS_SLOTS_CT = [12, 15, 17];
+// 2 a day since 2026-11-01 (Keenan: "just cut it down to 2 from here on out").
+export const MYTHICALS_SLOTS_CT = [12, 17];
 
 /** UTC instant for a wall-clock hour on a calendar day in America/Chicago (DST-safe). */
 export function centralWallTimeToUtc(day: string, hour: number): Date {

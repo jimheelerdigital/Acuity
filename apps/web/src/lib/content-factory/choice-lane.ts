@@ -112,6 +112,15 @@ export const CHOICE_CATEGORIES = [
   `which god-beast of myth chooses you (Fenrir, the Roc, the Phoenix, the Thunderbird, the Qilin, each monstrous and at its full mythic size) ${SUPER_SCALE}`,
 ];
 
+/**
+ * Open brief (2026-11-01, per Keenan: "give it back creative freedom"): the
+ * writer picks its own subject instead of one from the list above. All the
+ * lane's rules (epic only, a hero on every cover, no places, no duos) still
+ * apply. carousel-daily rolls it for ~40% of "choice" posts.
+ */
+export const OPEN_CHOICE_CATEGORY =
+  "WRITER'S CHOICE: you pick the subject. Invent a fresh one-of-five fantasy pick that fantasy fans would love to answer and that none of the recent titles has covered: any legendary beast, hero, weapon, armor, relic, power, mount, banner, crown, curse, oath, order to join or new life. Ask the reader what THEY would pick, about themselves alone (not a duo or pair post). Surprise us; don't default to dragons or to the subjects in the recent titles.";
+
 export function rollChoiceCategory(recentCategories: string[]): string {
   const fresh = CHOICE_CATEGORIES.filter((c) => !recentCategories.includes(c));
   const pool = fresh.length ? fresh : CHOICE_CATEGORIES;
