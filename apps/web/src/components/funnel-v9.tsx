@@ -2749,7 +2749,8 @@ function SpokenThenPlan({ chips, tasks }: { chips: string[]; tasks: string[] }) 
           <span className="absolute inset-0 rounded-full grad flex items-center justify-center text-white"><Mic className="h-5 w-5" /></span>
         </span>
         <p className="serif flex-1 text-[17px] leading-snug min-h-[48px]">
-          {words.slice(0, n).join(" ")}
+          {/* Quote marks so it reads as her talking (Keenan, 2026-10-31). */}
+          <span className="italic">&ldquo;{words.slice(0, n).join(" ")}{done && <>&rdquo;</>}</span>
           {!done && <span className="blink ml-0.5 inline-block h-[1em] w-[2px] align-[-2px]" style={{ background: "#F2541E" }} />}
         </p>
       </div>
