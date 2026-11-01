@@ -8,7 +8,7 @@ import { useState, useEffect } from "react";
 // Since 2026-10-19 every ad visitor lands on the test funnels (/start-test,
 // /start-test-bwk; FeatureFlag funnel_test_only), so "live" (both test
 // funnels) is the default and the normal funnels live under the archive menu.
-type View = "live" | "cmp-ripple" | "cmp-bwk" | "cmp-all" | "ripple" | "bwk" | "test" | "testbwk" | "both" | "legacy" | "price" | "paywall";
+type View = "live" | "cmp-ripple" | "cmp-bwk" | "cmp-all" | "ripple" | "bwk" | "test" | "testbwk" | "both" | "legacy" | "price" | "paywall" | "planners";
 type CompareMode = "live" | "cmp-ripple" | "cmp-bwk" | "cmp-all";
 type SplitFilter = "auto" | "on" | "off";
 type LegacyFlow = "v7" | "v6" | "v5" | "v4" | "v3" | "v2" | "v1" | "all";
@@ -482,6 +482,7 @@ export default function FunnelAnalyticsTab({ start, end }: { start: string; end:
           <span style={{ fontSize: 11, color: "rgba(255,255,255,0.35)", margin: "0 4px 0 10px" }}>Tests:</span>
           <button onClick={() => setView("price")} style={seg(view === "price")}>Early bird vs normal price</button>
           <button onClick={() => setView("paywall")} style={seg(view === "paywall")}>New vs old paywall</button>
+          <button onClick={() => setView("planners")} style={seg(view === "planners")}>Planners: new vs old</button>
         </div>
         <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
           <div style={{ display: "flex", gap: 4 }} title="Social in-app = sessions opened inside Instagram, Facebook or TikTok, where ad clicks land. All = includes crawler and link-preview visits.">
@@ -517,6 +518,8 @@ export default function FunnelAnalyticsTab({ start, end }: { start: string; end:
         ? <PriceTestView />
         : view === "paywall"
         ? <PaywallCompareView />
+        : view === "planners"
+        ? <PlannersCompareView />
         : view === "live" || view === "cmp-ripple" || view === "cmp-bwk" || view === "cmp-all"
         ? <CompareView key={view} start={start} end={end} traffic={traffic} mode={view} />
         : view === "both"
@@ -1206,6 +1209,159 @@ function PaywallCompareView() {
             ))}
           </tbody>
         </table>
+      </div>
+    </div>
+  );
+}
+
+
+// ── Planners funnel: new vs old (2026-11-01, per Keenan) ───────────────────
+// /start-journal (new) vs /start-test (old), split visitors only, so both
+// arms get the same Planners ads over the same hours.
+// Data: GET /api/admin/planners-compare (lib/planners-compare.ts).
+
+function PlannersCompareView() {
+  const [data, setData] = useState<any>(null);
+  const [error, setError] = useState<string | null>(null);
+  useEffect(() => {
+    fetch("/api/admin/planners-compare", { cache: "no-store" })
+      .then(async (r) => (r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`))))
+      .then(setData)
+      .catch((e) => setError(e.message));
+  }, []);
+  if (error) return <div style={{ color: "var(--acuity-bad)", padding: 40, textAlign: "center" }}>Error: {error}</div>;
+  if (!data) return <div style={{ color: "var(--acuity-text-ter)", padding: 40, textAlign: "center" }}>Loading Planners comparison...</div>;
+  const [nw, old] = data.arms as any[];
+  const card: React.CSSProperties = { background: "var(--acuity-card-bg)", borderRadius: 12, padding: 20 };
+  const th: React.CSSProperties = { textAlign: "right", padding: "6px 8px", fontSize: 11, fontWeight: 600, color: "var(--acuity-text-quiet)", whiteSpace: "nowrap" };
+  const td: React.CSSProperties = { textAlign: "right", padding: "8px", fontSize: 13, color: "var(--acuity-text)", fontVariantNumeric: "tabular-nums", whiteSpace: "nowrap" };
+  const pctS = (v: number | null) => (v == null ? "—" : `${v}%`);
+  const since = new Date(data.from).toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
+  const minArm = Math.min(nw.sessions, old.sessions);
+  const verdict = (t: any) => {
+    if (t.pValue == null || minArm < 30) return <span style={{ color: "var(--acuity-text-quiet)" }}>Too early</span>;
+    if (!t.significant) return <span style={{ color: "var(--acuity-text-ter)" }}>No clear difference yet</span>;
+    const better = (t.newRate ?? 0) > (t.oldRate ?? 0) ? "New" : "Old";
+    return <span style={{ fontWeight: 700, color: better === "New" ? "var(--acuity-good, #4ade80)" : "var(--acuity-bad, #f87171)" }}>{better} is winning</span>;
+  };
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+      <div style={card}>
+        <div style={{ fontSize: 15, fontWeight: 700, color: "var(--acuity-text)" }}>
+          Planners funnel: new vs old{" "}
+          <span style={{ fontSize: 11, fontWeight: 600, padding: "2px 8px", borderRadius: 99, marginLeft: 6, background: data.splitOn ? "rgba(74,222,128,.15)" : "rgba(248,113,113,.15)", color: data.splitOn ? "#4ade80" : "#f87171" }}>
+            {data.splitOn ? "Split ON" : "Split OFF"}
+          </span>
+        </div>
+        <div style={{ marginTop: 6, fontSize: 12, color: "var(--acuity-text-ter)", lineHeight: 1.5 }}>
+          New = <strong style={{ color: "var(--acuity-text)" }}>/start-journal</strong>. Old = <strong style={{ color: "var(--acuity-text)" }}>/start-test</strong>. Only visitors the 50/50 split placed (same ads, same hours), since {since}. Internal accounts excluded. Don&rsquo;t call a winner before ~{data.targetPerArm} visitors per arm; paid trials need more.
+          {data.unsplitNewSessions ? <> {data.unsplitNewSessions} other /start-journal visits came in directly and aren&rsquo;t counted.</> : null}
+        </div>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 10, marginTop: 14 }}>
+          {[
+            ["Visitors", nw.sessions, old.sessions],
+            ["Paid trials", nw.steps.find((x: any) => x.key === "trial").count, old.steps.find((x: any) => x.key === "trial").count],
+            ["Visitor → trial", pctS(nw.steps.find((x: any) => x.key === "trial").pctOfLanded), pctS(old.steps.find((x: any) => x.key === "trial").pctOfLanded)],
+            ["Signed into app", nw.app, old.app],
+          ].map(([l, a, b]) => (
+            <div key={l as string} style={{ background: "var(--acuity-bg-inset)", borderRadius: 10, padding: "10px 12px" }}>
+              <div style={{ fontSize: 11, color: "var(--acuity-text-quiet)", fontWeight: 600 }}>{l}</div>
+              <div style={{ marginTop: 4, fontSize: 18, fontWeight: 700, color: "var(--acuity-text)", fontVariantNumeric: "tabular-nums" }}>
+                <span style={{ color: "var(--acuity-primary)" }}>{a}</span> <span style={{ fontSize: 12, color: "var(--acuity-text-quiet)" }}>new</span>{"  "}
+                <span>{b}</span> <span style={{ fontSize: 12, color: "var(--acuity-text-quiet)" }}>old</span>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div style={card}>
+        <div style={{ fontSize: 13, fontWeight: 700, color: "var(--acuity-text)" }}>Step by step</div>
+        <div style={{ overflowX: "auto", marginTop: 10 }}>
+          <table style={{ width: "100%", borderCollapse: "collapse" }}>
+            <thead>
+              <tr>
+                <th style={{ ...th, textAlign: "left" }}>Step</th>
+                <th style={th}>New</th>
+                <th style={th}>% of visitors</th>
+                <th style={th}>% of prev</th>
+                <th style={th}>Old</th>
+                <th style={th}>% of visitors</th>
+                <th style={th}>% of prev</th>
+              </tr>
+            </thead>
+            <tbody>
+              {nw.steps.map((s: any, i: number) => {
+                const o = old.steps[i];
+                const diff = s.pctOfLanded != null && o.pctOfLanded != null ? Math.round((s.pctOfLanded - o.pctOfLanded) * 10) / 10 : null;
+                return (
+                  <tr key={s.key} style={{ borderTop: "1px solid var(--acuity-line)" }}>
+                    <td style={{ ...td, textAlign: "left", fontWeight: 600 }}>{s.label}</td>
+                    <td style={{ ...td, fontWeight: 700, color: "var(--acuity-primary)" }}>{s.count}</td>
+                    <td style={td}>
+                      {pctS(s.pctOfLanded)}
+                      {diff != null && i > 0 ? <span style={{ fontSize: 10, marginLeft: 4, color: diff >= 0 ? "var(--acuity-good, #4ade80)" : "var(--acuity-bad, #f87171)" }}>{diff >= 0 ? "▲" : "▼"}{Math.abs(diff)}</span> : null}
+                    </td>
+                    <td style={td}>{pctS(s.pctOfPrev)}</td>
+                    <td style={{ ...td, fontWeight: 700 }}>{o.count}</td>
+                    <td style={td}>{pctS(o.pctOfLanded)}</td>
+                    <td style={td}>{pctS(o.pctOfPrev)}</td>
+                  </tr>
+                );
+              })}
+              <tr style={{ borderTop: "1px solid var(--acuity-line)" }}>
+                <td style={{ ...td, textAlign: "left", fontWeight: 600 }}>Chose yearly (of trials)</td>
+                <td style={td}>{nw.yearlyTrials}</td><td style={td} /><td style={td} />
+                <td style={td}>{old.yearlyTrials}</td><td style={td} /><td style={td} />
+              </tr>
+              <tr style={{ borderTop: "1px solid var(--acuity-line)" }}>
+                <td style={{ ...td, textAlign: "left", fontWeight: 600 }}>Has a first debrief</td>
+                <td style={td}>{nw.debrief}</td><td style={td} /><td style={td} />
+                <td style={td}>{old.debrief}</td><td style={td} /><td style={td} />
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <div style={{ marginTop: 6, fontSize: 11, color: "var(--acuity-text-quiet)" }}>Arrows: percentage points, new vs old, as a share of visitors.</div>
+      </div>
+
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 16 }}>
+        <div style={card}>
+          <div style={{ fontSize: 13, fontWeight: 700, color: "var(--acuity-text)" }}>Verdicts</div>
+          <table style={{ width: "100%", borderCollapse: "collapse", marginTop: 8 }}>
+            <tbody>
+              {data.tests.map((t: any) => (
+                <tr key={t.key} style={{ borderTop: "1px solid var(--acuity-line)" }}>
+                  <td style={{ ...td, textAlign: "left" }}>{t.label}</td>
+                  <td style={td}>{pctS(t.newRate)} vs {pctS(t.oldRate)}</td>
+                  <td style={td}>{verdict(t)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <div style={card}>
+          <div style={{ fontSize: 13, fontWeight: 700, color: "var(--acuity-text)" }}>New funnel: paywall pages</div>
+          <table style={{ width: "100%", borderCollapse: "collapse", marginTop: 8 }}>
+            <tbody>
+              {[
+                ["1 · Try it free", nw.paywallPages?.s1],
+                ["2 · We'll remind you", nw.paywallPages?.s2],
+                ["3 · Receipt + plans", nw.paywallPages?.s3],
+                ["Exit offer shown", nw.exitOffer?.viewed],
+                ["Exit offer claimed", nw.exitOffer?.accepted],
+              ].map(([l, v], i, arr) => (
+                <tr key={l as string} style={{ borderTop: "1px solid var(--acuity-line)" }}>
+                  <td style={{ ...td, textAlign: "left" }}>{l}</td>
+                  <td style={{ ...td, fontWeight: 700 }}>{v ?? 0}</td>
+                  <td style={{ ...td, color: "var(--acuity-text-quiet)" }}>
+                    {i > 0 && i < 3 && arr[i - 1][1] ? `${Math.round(((v as number) / (arr[i - 1][1] as number)) * 100)}% of prev` : ""}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   );

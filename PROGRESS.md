@@ -143,6 +143,36 @@ Four weekly things are switched off and removed: the "Weekly competitor research
 - Pick lanes and writers that read competitor mimic briefs simply stop getting fresh ones. That path was already optional.
 - No schema changes. The CompetitorAccount / CompetitorPost / AdLabCompetitorBrief tables keep their old rows.
 
+## [2026-11-01] — Admin: Planners funnel new vs old tracker
+
+- **Requested by:** Keenan
+- **Committed by:** Claude Code
+- **Commit hash:** (see git log, "feat: Add a Planners new vs old tracker to admin")
+
+### In plain English (for Keenan)
+- **Where it is:** admin → Funnel Analytics has a new "Planners: new vs old" button, comparing /start-journal with /start-test for visitors the 50/50 split placed.
+- **What it shows:**
+  - visitors, paid trials, visitor-to-trial rate and app sign-ins for each side
+  - every step side by side (screen 1, email, signup, paywall, checkout, trial)
+  - "who's winning" verdicts once there's enough traffic
+  - for the new funnel: drop-off across the 3 paywall pages and the exit offer
+
+### Technical changes (for Jimmy)
+- New `apps/web/src/lib/planners-compare.ts`:
+  - sessions keyed by `funnel_split_arm` journal-journal (new) / journal-control (old) since 2026-11-01 18:00 UTC
+  - furthest-reached step counting
+  - app_signed_in / Entry per user
+  - internal accounts excluded
+  - two-proportion p-values
+- New `GET /api/admin/planners-compare[?since=ISO]` (admin or CRON_SECRET).
+- `apps/web/src/app/admin/tabs/FunnelAnalyticsTab.tsx`: `planners` view plus `PlannersCompareView`.
+
+### Manual steps needed
+- None
+
+### Notes
+- Live split check 11-01: 40 fresh visitors gave 22 new / 18 old. The control arm is sticky via the acuity_jsplit cookie, so a browser placed in "old" always lands on /start-test. Use a `?step=hook` link or clear the cookie to see the new funnel.
+
 ## [2026-11-01] — 20 pain-based static ads drafted in AdLab, plus the in-app onboarding prototype
 
 - **Requested by:** Keenan
