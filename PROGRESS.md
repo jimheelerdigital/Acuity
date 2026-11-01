@@ -10,6 +10,31 @@
 
 
 
+## [2026-11-01] — Planners: Men Discipline ad sets off, one $100/day ad set per campaign
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** see git log
+
+### In plain English (for Keenan)
+Each Planners campaign had two ad sets showing the same 23 ads to the same broad audience, so they were bidding against each other and splitting what Meta learns. The "Men Discipline" ad set in each campaign is now off, and its $50 moved into the other ad set, which is now $100/day. Total spend is unchanged at about $300/day. The purchases vs registrations campaigns stay separate, because that's a real test.
+
+### Technical changes (for Jimmy)
+- **Meta:**
+  - paused ad sets 120255378041590581 (Planners purchases, Men Discipline) and 120255387588830581 (Planners registrations, Men Discipline)
+  - budgets on 120255378040550581 and 120255387587400581: 5000 → 10000 (confirmed by re-read)
+- **DB:** 46 AdLabAd rows in the paused ad sets set to status paused, with a decisionReason.
+
+### Manual steps needed
+None
+
+### Notes
+- **Why they were duplicates:** both ad sets were Advantage+ broad, all genders, US/CA/GB (ages 18–65 vs 25–65), the same event and the same ads. Despite its name, "Men Discipline" wasn't targeting men.
+- **Last 5 days before the change:**
+  - purchases campaign: $188, 8 signups, 2 trials
+  - registrations campaign: $183, 17 signups, 1 trial
+- **The original Men Discipline creative** (one ad per campaign) stopped with its ad set.
+
 ## [2026-11-01] — All 23 new ads in every Planners ad set; Planners men ad sets and women's app installs raised
 
 **Requested by:** Keenan
