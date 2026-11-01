@@ -10,6 +10,31 @@
 
 
 
+## [2026-10-31] — Funnel previews correctly on a phone over local Wi-Fi; receipt fits small screens
+
+- **Requested by:** Keenan
+- **Committed by:** Claude Code
+- **Commit hash:** (see git log, "fix: Let phones preview the local dev funnel")
+
+### In plain English (for Keenan)
+Opening the local funnel on a phone (http://192.168.x.x:3999) showed an unstyled page. That's fixed. The paywall receipt was also tightened so every line fits on one row on a phone and the red stamp no longer covers the total.
+
+### Technical changes (for Jimmy)
+- `apps/web/next.config.js`:
+  - CSP `upgrade-insecure-requests` is production-only.
+  - HSTS is `max-age=0` outside production.
+  - Over plain-http LAN, the CSP made the phone request /_next CSS and JS over https, so nothing loaded (browsers exempt localhost, so it only hit phones).
+  - Production headers are unchanged.
+- `apps/web/src/components/funnel-v9.tsx` CostReceipt:
+  - shorter emotional labels and frequency words, nowrap rows
+  - more bottom padding and a smaller stamp tilt so it clears TOTAL
+
+### Manual steps needed
+- None
+
+### Notes
+- To preview on a phone: same Wi-Fi, http://<mac-ip>:3999/start-journal. The dev server already binds to all interfaces.
+
 ## [2026-10-31] — Planners paywall: "What you get back" moves above the prices and leads with feelings
 
 - **Requested by:** Keenan

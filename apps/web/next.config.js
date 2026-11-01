@@ -121,7 +121,10 @@ const CSP_DIRECTIVES = [
   "object-src 'none'",
   "manifest-src 'self'",
   // Upgrade any accidental http:// links on an https:// page to https://
-  "upgrade-insecure-requests",
+  // Production only (2026-10-31): in `next dev` it made phones on the LAN
+  // (http://192.168.x.x:3999) fetch CSS/JS over https and render unstyled.
+  // Browsers exempt localhost, which is why it only showed up on a phone.
+  ...(process.env.NODE_ENV === "production" ? ["upgrade-insecure-requests"] : []),
 ].join("; ");
 
 const securityHeaders = [
@@ -135,7 +138,8 @@ const securityHeaders = [
     // this deploy has been live for a week without rollback, submit
     // goripple.io to hstspreload.org.
     key: "Strict-Transport-Security",
-    value: "max-age=31536000; includeSubDomains; preload",
+    // HTTPS-only is meaningless (and sticky) over plain-http local dev.
+    value: process.env.NODE_ENV === "production" ? "max-age=31536000; includeSubDomains; preload" : "max-age=0",
   },
   {
     // DENY framing entirely — belt + suspenders with the CSP

@@ -231,8 +231,8 @@ const CSS = `
 .v9[data-funnel-theme="sunrise"] .shine::after, .v9[data-funnel-theme="sunrise"] .cta-shine:not(:disabled)::after { content: ""; position: absolute; inset: 0; width: 40%; background: linear-gradient(90deg, transparent, rgba(255,255,255,.35), transparent); animation: v9-shine 3.6s ease-in-out infinite; pointer-events: none; }
 @keyframes v9-thump { 0% { opacity: 0; transform: scale(.85); } 60% { opacity: 1; transform: scale(1.04); } 100% { opacity: 1; transform: scale(1); } }
 .v9 .on .thump.rv, .v9 .thump.rv.on { animation: v9-thump .55s cubic-bezier(.2,.8,.2,1) both; animation-delay: var(--d, 0ms); }
-@keyframes v9-stamp-in { 0% { opacity: 0; transform: rotate(-8deg) scale(1.9); } 60% { opacity: 1; transform: rotate(-8deg) scale(.94); } 100% { opacity: 1; transform: rotate(-8deg) scale(1); } }
-.v9 .stamp-in { opacity: 0; transform: rotate(-8deg); }
+@keyframes v9-stamp-in { 0% { opacity: 0; transform: rotate(-5deg) scale(1.9); } 60% { opacity: 1; transform: rotate(-5deg) scale(.94); } 100% { opacity: 1; transform: rotate(-5deg) scale(1); } }
+.v9 .stamp-in { opacity: 0; transform: rotate(-5deg); }
 .v9 .stamp-in.on { animation: v9-stamp-in .45s cubic-bezier(.2,.8,.2,1) both; animation-delay: var(--d, 0ms); }
 @keyframes v9-rise { from { opacity: 0; transform: translateY(28px); } to { opacity: 1; transform: none; } }
 .v9 .rise { opacity: 0; }
@@ -2028,13 +2028,14 @@ function CostReceipt({ answers }: { answers: Answers }) {
     { label: "Habit tracker", cents: HABIT_APP_CENTS },
   ];
   const total = money.reduce((n, r) => n + r.cents, 0);
-  const OFTEN: Record<string, string> = { daily: "most days", weekly: "every week", sometimes: "every week", rarely: "when it counts" };
-  const often = OFTEN[answers.single.often ?? ""] ?? "every week";
+  // Short enough to stay on one line at phone width (2026-10-31).
+  const OFTEN: Record<string, string> = { daily: "most days", weekly: "weekly", sometimes: "weekly", rarely: "often" };
+  const often = OFTEN[answers.single.often ?? ""] ?? "weekly";
   const FEEL: Record<string, { label: string; value: string }> = {
-    slip: { label: "The guilt after a slip", value: often },
-    switch: { label: "A mind that won’t switch off", value: often },
-    snap: { label: "Snapping at people you love", value: often },
-    behind: { label: "Feeling one step behind", value: often },
+    slip: { label: "Guilt after a slip", value: often },
+    switch: { label: "A mind that won’t stop", value: often },
+    snap: { label: "Snapping at loved ones", value: often },
+    behind: { label: "Feeling behind", value: often },
     last: { label: "Your own plans", value: "someday" },
     drained: { label: "Starting the day tired", value: often },
   };
@@ -2046,14 +2047,14 @@ function CostReceipt({ answers }: { answers: Answers }) {
   return (
     <div ref={ref} className={`relative mt-4 ${on ? "on" : ""}`}>
       <div className="relative mx-1 -rotate-[1.2deg]">
-        <div className="relative rounded-t-2xl px-5 pt-5 pb-[78px] font-mono" style={{ background: paper, boxShadow: "0 18px 34px -16px rgba(80,40,10,.35), 0 2px 6px rgba(42,35,29,.06)" }}>
+        <div className="relative rounded-t-2xl px-4 pt-5 pb-[86px] font-mono" style={{ background: paper, boxShadow: "0 18px 34px -16px rgba(80,40,10,.35), 0 2px 6px rgba(42,35,29,.06)" }}>
           <p className="text-center text-[11px] font-bold uppercase tracking-[0.18em] text-acuity-text-ter">Your system &middot; this year</p>
           <div className="mt-3 border-t border-dashed" style={{ borderColor: "#D9CBBE" }} />
           <div className="mt-3 space-y-2">
             {lines.map((l, i) => (
-              <div key={l.label} className={`rv flex items-baseline gap-2 text-[13px] ${on ? "on" : ""}`} style={{ "--d": `${i * 170}ms` } as CSSProperties}>
+              <div key={l.label} className={`rv flex items-baseline gap-2 whitespace-nowrap text-[12.5px] ${on ? "on" : ""}`} style={{ "--d": `${i * 170}ms` } as CSSProperties}>
                 <span className={l.cents ? "text-acuity-text" : "italic text-red-600"}>{l.label}</span>
-                <span className="flex-1 translate-y-[-3px] border-b border-dotted" style={{ borderColor: "#CDBFB2" }} />
+                <span className="min-w-[12px] flex-1 translate-y-[-3px] border-b border-dotted" style={{ borderColor: "#CDBFB2" }} />
                 <span className={`tabular-nums ${l.cents ? "font-bold" : "italic text-red-600"}`}>{l.cents ? <CountUp cents={l.cents} run={on} /> : l.value}</span>
               </div>
             ))}
@@ -2064,7 +2065,7 @@ function CostReceipt({ answers }: { answers: Answers }) {
             <span className="tabular-nums"><CountUp cents={total} run={on} ms={1200} /></span>
           </div>
           {/* The stamp lands across the bottom of the receipt. */}
-          <div className={`stamp-in pointer-events-none absolute left-1/2 bottom-4 -ml-[120px] w-[240px] rounded-lg border-[3px] border-red-500 px-3 py-1.5 text-center font-sans text-red-500 ${on ? "on" : ""}`} style={{ "--d": `${stampAt}ms`, background: "rgba(255,253,248,.85)" } as CSSProperties} aria-hidden="true">
+          <div className={`stamp-in pointer-events-none absolute left-1/2 bottom-4 -ml-[115px] w-[230px] rounded-lg border-[3px] border-red-500 px-3 py-1.5 text-center font-sans text-red-500 ${on ? "on" : ""}`} style={{ "--d": `${stampAt}ms`, background: "rgba(255,253,248,.85)" } as CSSProperties} aria-hidden="true">
             <p className="text-[18px] font-black uppercase leading-none tracking-wide">{formatDollars(total)} a year</p>
             <p className="mt-1 text-[11px] font-bold uppercase tracking-[0.08em]">and it still didn&rsquo;t stick</p>
           </div>
