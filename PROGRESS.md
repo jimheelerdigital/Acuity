@@ -10,6 +10,28 @@
 
 
 
+## [2026-10-31] — This week's list stays still when tapped; local preview can skip the email step
+
+- **Requested by:** Keenan
+- **Committed by:** Claude Code
+- **Commit hash:** (see git log, "fix: Keep the week chips still when tapped")
+
+### In plain English (for Keenan)
+On "What's on your list this week?", tapping an item no longer shuffles the rows around. The checkmark now sits on the chip's corner instead of making it wider. On a founder's own computer, the email screen now has a "Skip (local preview only)" link so the result and paywall can be checked; the live site never shows it.
+
+### Technical changes (for Jimmy)
+- `apps/web/src/components/funnel-v9.tsx`:
+  - HeadLoad chips: the check is an absolute corner badge (was an inline icon that changed the chip width and rewrapped the rows). Selected chips get `border border-transparent` to match `.card`'s 1px border. The floating `v9-bob` animation was removed, and a focus-visible ring was added.
+  - EmailScreen: a skip button rendered only when `process.env.NODE_ENV === "development"` (inlined at build, so it's absent from prod).
+
+### Manual steps needed
+- None
+
+### Notes
+- Verified by measuring every chip's position before and after tapping 6: no row changes; the only difference was a 1–2px border width, now fixed.
+- Local signup fails with MissingHmacKeyError (no DELETED_USER_EMAIL_HMAC_KEY locally). Don't set one locally: the dev server writes to the prod DB and the key must never change.
+- The same inline-check rewrap exists on /start-test's WeekScreen (live funnel); it was left alone under the Monday-only rule.
+
 ## [2026-10-31] — "How many have you tried?" becomes "How many times have you started over?"
 
 - **Requested by:** Keenan

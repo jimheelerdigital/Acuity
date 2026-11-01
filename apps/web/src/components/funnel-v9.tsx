@@ -219,13 +219,11 @@ const CSS = `
 .v9 .notif-in { animation: v9-notif .55s cubic-bezier(.2,.8,.2,1) .9s both; }
 @keyframes v9-fill-down { from { height: 0; } to { height: 100%; } }
 .v9 .fill-down { height: 100%; animation: v9-fill-down 1.1s ease-out .3s both; }
-@keyframes v9-bob { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-4px); } }
-.v9 .drift-chip { animation: v9-bob var(--fd, 6s) ease-in-out infinite; }
 @keyframes v9-intoorb { 0% { opacity: 0; transform: translate(calc(-50% + var(--x)), calc(-50% + var(--y))) scale(1); } 20% { opacity: 1; } 100% { opacity: 0; transform: translate(-50%, -50%) scale(.3); } }
 .v9 .into-orb { opacity: 0; animation: v9-intoorb 2.7s ease-in infinite both; }
 @keyframes v9-breathe { 50% { transform: scale(1.06); } }
 .v9 .breathe { animation: v9-breathe 1.6s ease-in-out infinite; }
-@media (prefers-reduced-motion: reduce) { .v9[data-funnel-theme="sunrise"]::before, .v9[data-funnel-theme="sunrise"]::after, .v9 .fan, .v9 .xout, .v9 .stamp, .v9 .gapday, .v9 .growlist, .v9 .zz, .v9 .blink, .v9 .swap-in, .v9 .ring-out, .v9 .ring-bell, .v9 .notif-in, .v9 .fill-down, .v9 .drift-chip, .v9 .into-orb, .v9 .breathe { animation: none !important; } }
+@media (prefers-reduced-motion: reduce) { .v9[data-funnel-theme="sunrise"]::before, .v9[data-funnel-theme="sunrise"]::after, .v9 .fan, .v9 .xout, .v9 .stamp, .v9 .gapday, .v9 .growlist, .v9 .zz, .v9 .blink, .v9 .swap-in, .v9 .ring-out, .v9 .ring-bell, .v9 .notif-in, .v9 .fill-down, .v9 .into-orb, .v9 .breathe { animation: none !important; } }
 .v9 { --v9-tint: color-mix(in oklch, var(--acuity-primary) 9%, var(--acuity-card-bg)); --v9-ring: color-mix(in oklch, var(--acuity-primary) 38%, transparent); }
 .v9 .card { background: var(--acuity-card-bg); border: 1px solid var(--acuity-line-strong); box-shadow: 0 1px 2px rgba(20,16,40,.04), 0 6px 18px rgba(20,16,40,.05); }
 .v9 .card-sel { background: var(--v9-tint); border-color: var(--acuity-primary); box-shadow: 0 0 0 3px var(--v9-ring); }
@@ -1584,6 +1582,14 @@ function EmailScreen({ answers, setAnswers, firstName, next, go, track }: ViewPr
           Send me occasional notes from Ripple.
         </label>
       </div>
+      {/* Local preview only: signup can't run on a dev machine without the
+          prod-only DELETED_USER_EMAIL_HMAC_KEY, so this lets a founder click
+          through to the result and paywall. Stripped from production builds. */}
+      {process.env.NODE_ENV === "development" && (
+        <button onClick={next} className="mt-5 w-full text-center text-[13px] font-semibold text-acuity-text-ter underline underline-offset-4">
+          Skip (local preview only)
+        </button>
+      )}
       <BottomBar>
         <PrimaryButton onClick={submit} disabled={busy || !email.trim()}>
           {busy ? "Saving…" : "See my results"}
@@ -2374,11 +2380,16 @@ function HeadLoad({ step, picked, toggle, next, track }: { step: Extract<V9Step,
                   toggle(it.id);
                 }}
                 aria-pressed={sel}
-                className={`drift-chip flex items-center gap-1.5 rounded-full px-4 py-2.5 text-[15px] font-medium transition-colors active:scale-[0.96] ${sel ? "grad text-white shadow-[0_8px_18px_-8px_var(--acuity-primary)]" : "card"}`}
-                style={{ ["--fd" as string]: `${5 + (i % 4) * 0.9}s`, animationDelay: `${(i % 5) * -0.8}s` } as CSSProperties}
+                className={`relative rounded-full px-4 py-2.5 text-[15px] font-medium outline-none transition-colors active:scale-[0.96] focus-visible:ring-2 focus-visible:ring-acuity-primary ${sel ? "grad border border-transparent text-white shadow-[0_8px_18px_-8px_var(--acuity-primary)]" : "card"}`}
               >
-                {sel && <Check className="pop h-4 w-4" strokeWidth={3} />}
                 {it.chip}
+                {/* Corner badge, not an inline icon: the chip keeps its width,
+                    so the rows never rewrap as she taps (2026-10-31). */}
+                {sel && (
+                  <span className="pop absolute -right-1 -top-1 h-5 w-5 rounded-full bg-white flex items-center justify-center shadow-[0_2px_6px_rgba(242,84,30,.3)]" aria-hidden="true">
+                    <Check className="h-3 w-3 text-acuity-primary" strokeWidth={3.5} />
+                  </span>
+                )}
               </button>
             </span>
           );
