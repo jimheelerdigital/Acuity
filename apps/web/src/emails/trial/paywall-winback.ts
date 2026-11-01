@@ -59,6 +59,43 @@ function whatAWeekDoes(v: TrialVars): string {
     : "In a week, Ripple turns what you say into your to-do list, tracks the habits you&rsquo;re building, and sends a weekly report of what changed and what keeps coming up.";
 }
 
+/**
+ * #1 when the 30% offer is on (2026-10-31, per Keenan: "send it as a 30% off
+ * email with a link to the updated 30% off paywall… 10 minutes after a
+ * signup… replace it with whatever the other email is"). The link signs her
+ * in and opens the paywall on the offer screen (any browser, so it also
+ * catches people who X'd out of the Instagram/Facebook browser).
+ */
+export const paywallWinback1Offer: TrialEmailTemplate = withVariants([
+  variant(
+    "offer30_saved",
+    "30% off the first year, framed as her setup being saved and waiting; $0 today still",
+    (v) => `${v.exitOfferPct ?? 30}% off your first year of Ripple`,
+    () => "Your free week is still there. $0 today.",
+    (v) => `
+      ${h1(`${v.exitOfferPct ?? 30}% off your first year.`)}
+      ${hi(v)}
+      ${para("You got right up to the end of setting up Ripple. If the price gave you pause, here&rsquo;s a better one, just for you.")}
+      ${para(`Start your free week today and your first year is ${v.exitOfferPct ?? 30}% off. Still $0 today, still cancel any time before day 7.`)}
+      ${button(v.exitOfferUrl ?? startUrl(v), `Claim my ${v.exitOfferPct ?? 30}% off`)}
+      ${para("This offer is one-time and only for you.")}
+    `
+  ),
+  variant(
+    "offer30_quiet_head",
+    "Leads with the feeling (a quiet head, nothing slipping), then the 30% first-year offer",
+    () => "A quieter head, for less",
+    (v) => `${v.exitOfferPct ?? 30}% off your first year. $0 today.`,
+    (v) => `
+      ${h1("Say it once. Let Ripple hold it.")}
+      ${hi(v)}
+      ${para("No planner to keep up, nothing slipping through. You talk, and Ripple turns it into your list.")}
+      ${para(`To make starting easier, your first year is <strong>${v.exitOfferPct ?? 30}% off</strong>. You still get 7 days free and pay $0 today.`)}
+      ${button(v.exitOfferUrl ?? startUrl(v), `Claim my ${v.exitOfferPct ?? 30}% off`)}
+    `
+  ),
+]);
+
 export const paywallWinback1: TrialEmailTemplate = withVariants([
   variant(
     "your_list_saved",

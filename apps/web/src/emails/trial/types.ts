@@ -33,6 +33,11 @@ export interface TrialVars {
   /** Signed /free-week claim link (lib/free-week.ts). Set only for the
    *  free_week_offer / free_week_followup emails. */
   freeWeekUrl?: string | null;
+  /** Paywall win-back #1 only (2026-10-31): signed link to the 30%-off
+   *  paywall. Set only when the offer is configured and she's on standard
+   *  pricing; without it #1 sends the original (no discount) version. */
+  exitOfferUrl?: string | null;
+  exitOfferPct?: number;
   /** Paywall win-back only (2026-10-26): up to 3 to-dos from her FIRST
    *  completed debrief (raw text, escaped by the template) and its summary. */
   firstDebriefTasks?: string[];

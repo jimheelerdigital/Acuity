@@ -10,6 +10,41 @@
 
 
 
+## [2026-10-31] — First win-back email becomes a 30%-off offer, 10 minutes after signup
+
+- **Requested by:** Keenan
+- **Committed by:** Claude Code
+- **Commit hash:** (see git log, "feat: Send a 30%-off win-back email 10 minutes after signup")
+
+### In plain English (for Keenan)
+- **Who and when:** anyone who signs up with their email in the web funnel and doesn't pay now gets an email about 10 minutes later: "30% off your first year of Ripple".
+- **What the button does:** it signs her in and opens the paywall straight on the 30% offer, in any browser. That catches people who closed the Instagram/Facebook browser with the X, which the on-page offer can't.
+- **It replaces the first win-back email** ("your list is saved").
+- **The old email still goes out** until the 30% coupon is set up in Stripe and Vercel, and for anyone who saw the early-bird price.
+- Emails #2 and #3 are unchanged.
+
+### Technical changes (for Jimmy)
+- `apps/web/src/emails/trial/paywall-winback.ts`: new `paywallWinback1Offer` (variants offer30_saved, offer30_quiet_head; Jev picks).
+- `apps/web/src/lib/trial-emails.ts`: for paywall_winback_1, when NEXT_PUBLIC_EXIT_OFFER_PCT and STRIPE_EXIT_OFFER_COUPON are set and her latest funnel_price_arm isn't low*, it builds a signed 7-day handoff link (`/api/onboarding/handoff?...&to=paywall&offer=exit`) and uses the offer template. Otherwise it keeps the original template.
+- `apps/web/src/lib/checkout-handoff.ts`: `signHandoff(userId, ttlMs?)`.
+- `apps/web/src/app/api/onboarding/handoff/route.ts`:
+  - `offer=exit` adds offer=exit, ptest=std and ptsrc=winback to the redirect
+  - it allows accounts up to 8 days old for that link
+- `apps/web/src/lib/paywall-winback.ts`: `funnel_account_created` added to the trigger events; quiet period 5 to 10 min (+ test updated).
+- `apps/web/src/components/funnel-v9.tsx`:
+  - `?offer=exit` forces the offer screen even if already seen
+  - heading "Your offer is ready."
+  - `exit_offer_viewed` is tagged `|email`
+
+### Manual steps needed
+- [ ] Jimmy review (signed sign-in link in an email, checkout coupon)
+- [ ] Stripe coupon (30%, once) + `STRIPE_EXIT_OFFER_COUPON` + `NEXT_PUBLIC_EXIT_OFFER_PCT=30` in Vercel (Keenan / Jimmy). The same switch turns on the email and the on-page offer.
+
+### Notes
+- Web signups who never reach the paywall now also get #1 (that's the point). App-only users are unaffected: `funnel_account_created` is web-only, and they never get the offer link unless they used the web funnel.
+- All offer links land on /start-journal's paywall, whichever web funnel she signed up in (it's the only one with the offer screen).
+- Monday rule: this changes a live email once pushed; ship with the 11-09 launch.
+
 ## [2026-10-31] — Funnel previews correctly on a phone over local Wi-Fi; receipt fits small screens
 
 - **Requested by:** Keenan

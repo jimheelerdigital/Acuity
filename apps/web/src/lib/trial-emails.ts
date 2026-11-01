@@ -252,7 +252,7 @@ export async function sendTrialEmail(
     }
   }
 
-  const template = TRIAL_EMAIL_TEMPLATES[emailKey];
+  let template = TRIAL_EMAIL_TEMPLATES[emailKey];
   if (!template) {
     safeLog.error("trial-email.unknown_key", new Error("unknown emailKey"), {
       emailKey,
@@ -352,6 +352,27 @@ export async function sendTrialEmail(
       }
     } catch (err) {
       safeLog.warn("trial-email.winback_debrief_failed", { userId: user.id, err: err instanceof Error ? err.message : String(err) });
+    }
+  }
+
+  // Win-back #1 → the 30%-off version when the offer is configured and she
+  // wasn't shown the early-bird price (the offer is standard-price only).
+  if (emailKey === "paywall_winback_1") {
+    const pct = Number(process.env.NEXT_PUBLIC_EXIT_OFFER_PCT || 0);
+    if (pct > 0 && process.env.STRIPE_EXIT_OFFER_COUPON) {
+      const arm = await prisma.onboardingEvent.findFirst({
+        where: { userId: user.id, event: "funnel_price_arm" },
+        orderBy: { createdAt: "desc" },
+        select: { value: true },
+      });
+      if (!arm?.value?.startsWith("low")) {
+        const { signHandoff } = await import("@/lib/checkout-handoff");
+        const pass = encodeURIComponent(signHandoff(user.id, 7 * 24 * 60 * 60 * 1000));
+        vars.exitOfferUrl = `${vars.appUrl}/api/onboarding/handoff?t=${pass}&f=${encodeURIComponent("/start-journal")}&to=paywall&offer=exit&utm_source=email&utm_medium=email&utm_campaign=winback_offer30`;
+        vars.exitOfferPct = pct;
+        const { paywallWinback1Offer } = await import("@/emails/trial/paywall-winback");
+        template = paywallWinback1Offer;
+      }
     }
   }
 

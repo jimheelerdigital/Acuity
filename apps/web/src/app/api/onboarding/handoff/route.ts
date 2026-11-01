@@ -43,6 +43,14 @@ export async function GET(req: NextRequest) {
   } else {
     dest.searchParams.set("step", FUNNELS[path]);
   }
+  // 30%-off win-back email (2026-10-31): open the paywall on the exit offer,
+  // pinned to the standard price arm (the offer is std-only).
+  const offer = q.get("offer") === "exit";
+  if (offer) {
+    dest.searchParams.set("offer", "exit");
+    dest.searchParams.set("ptest", "std");
+    dest.searchParams.set("ptsrc", "winback");
+  }
   const res = NextResponse.redirect(dest, 303);
 
   const userId = verifyHandoff(q.get("t"));
@@ -53,7 +61,9 @@ export async function GET(req: NextRequest) {
     where: { id: userId },
     select: { id: true, email: true, name: true, image: true, createdAt: true },
   });
-  if (!user || Date.now() - user.createdAt.getTime() > ACCOUNT_WINDOW_MS) return res;
+  // The win-back email can be opened days later; its link carries its own 7-day pass.
+  const windowMs = offer ? 8 * 24 * 60 * 60 * 1000 : ACCOUNT_WINDOW_MS;
+  if (!user || Date.now() - user.createdAt.getTime() > windowMs) return res;
 
   // Same token shape as a normal web sign-in (lib/auth.ts jwt callback).
   const token = await encode({

@@ -25,8 +25,8 @@ const sig = (payload: string) => {
   return createHmac("sha256", `checkout-handoff:${secret}`).update(payload).digest();
 };
 
-export function signHandoff(userId: string): string {
-  const payload = b64(`${userId}.${Date.now() + TTL_MS}`);
+export function signHandoff(userId: string, ttlMs: number = TTL_MS): string {
+  const payload = b64(`${userId}.${Date.now() + ttlMs}`);
   return `${payload}.${b64(sig(payload))}`;
 }
 

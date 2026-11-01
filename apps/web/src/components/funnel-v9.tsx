@@ -3063,15 +3063,18 @@ function TrustPaywall({ plan, setPlan, next, track, firstName, answers }: ViewPr
   useEffect(() => {
     if (!offerPct || price.arm !== "std" || isRcWebBillingEnabled()) return;
     try {
-      if (new URLSearchParams(window.location.search).get("exit") === "1") sessionStorage.setItem(EXIT_PENDING_KEY, "1");
-      if (sessionStorage.getItem(EXIT_PENDING_KEY) !== "1" || localStorage.getItem(EXIT_SHOWN_KEY)) return;
+      const qs = new URLSearchParams(window.location.search);
+      if (qs.get("exit") === "1") sessionStorage.setItem(EXIT_PENDING_KEY, "1");
+      // From the 30%-off win-back email: always show it, even if seen before.
+      const fromEmail = qs.get("offer") === "exit";
+      if (!fromEmail && (sessionStorage.getItem(EXIT_PENDING_KEY) !== "1" || localStorage.getItem(EXIT_SHOWN_KEY))) return;
       sessionStorage.removeItem(EXIT_PENDING_KEY);
       localStorage.setItem(EXIT_SHOWN_KEY, "1");
     } catch {
       return;
     }
     setOffer(true);
-    track("exit_offer_viewed", String(offerPct));
+    track("exit_offer_viewed", new URLSearchParams(window.location.search).get("offer") === "exit" ? `${offerPct}|email` : String(offerPct));
   }, [offerPct, price.arm, track]);
   const back = page > 0 ? (
     <button onClick={() => setPage(page - 1)} className="mb-3 flex items-center gap-1 text-[13px] font-semibold text-acuity-text-ter">
@@ -3089,7 +3092,9 @@ function TrustPaywall({ plan, setPlan, next, track, firstName, answers }: ViewPr
             <span className="block text-center text-[12px] font-semibold uppercase tracking-[0.1em] text-white/85">your first year</span>
           </span>
         </div>
-        <h1 className="mt-7 text-center text-[28px] font-bold leading-tight text-balance">Before you go{firstName ? `, ${firstName}` : ""}.</h1>
+        <h1 className="mt-7 text-center text-[28px] font-bold leading-tight text-balance">
+          {typeof window !== "undefined" && new URLSearchParams(window.location.search).get("offer") === "exit" ? "Your offer is ready." : `Before you go${firstName ? `, ${firstName}` : ""}.`}
+        </h1>
         <p className="mt-3 text-center text-[16px] text-acuity-text-sec text-balance">A one-time offer. You still get 7 days free, and still pay $0 today.</p>
         <div className="mt-6 card rounded-3xl px-5 py-4 flex items-center justify-between">
           <div>
