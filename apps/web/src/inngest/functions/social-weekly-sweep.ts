@@ -1,5 +1,4 @@
 import { inngest } from "@/inngest/client";
-import { competitorScrapeDailyFn } from "@/inngest/functions/competitor-scrape-daily";
 import { nicheDiscoveryFn } from "@/inngest/functions/niche-discovery";
 import { redditTrendsDailyFn } from "@/inngest/functions/reddit-trends-daily";
 
@@ -9,16 +8,15 @@ import { redditTrendsDailyFn } from "@/inngest/functions/reddit-trends-daily";
  * brief"). Saturday 8pm Central (Sun 01:00 UTC), in order, each collector
  * waited on before the next:
  *
- *   1. competitor organic scrape + keyword discovery + mimic briefs
- *      (competitor-scrape-daily; its own Sunday cron was removed)
- *   2. Reddit audience pulse (reddit-trends-daily; blocked by Reddit since
+ *   1. Reddit audience pulse (reddit-trends-daily; blocked by Reddit since
  *      10-03, so it usually adds nothing; the brief says so)
- *   3. niche hashtag + creator discovery (niche-discovery; was monthly)
- *   4. refresh the performance scoreboards (our own results)
- *   5. one Social Brief per brand: Ripple, Legendary Mythicals, Build With Key
+ *   2. niche hashtag + creator discovery (niche-discovery; was monthly)
+ *   3. refresh the performance scoreboards (our own results)
+ *   4. one Social Brief per brand: Ripple, Legendary Mythicals, Build With Key
  *
- * Competitor Meta-ad research keeps its Saturday 18:00 UTC slot because the
- * weekly ad batch reads it at 21:00; the brief reads its latest result.
+ * Competitor research (organic scrape, hashtag top videos, Meta-ad research)
+ * was removed 2026-11-01, per Keenan, along with the weekly Reddit ad batch
+ * and the lane intelligence report.
  * The weekly how/what brief that tonight's post writers read is still rebuilt
  * Sunday 04:40 UTC (weekly-brief.ts), after this sweep's data is in.
  *
@@ -50,9 +48,6 @@ export const socialWeeklySweepFn = inngest.createFunction(
 
     const opts = (event?.data ?? {}) as { email?: boolean; skipCollectors?: boolean };
     if (!opts.skipCollectors) {
-      await soft("competitor scrape", () =>
-        step.invoke("competitor-scrape", { function: competitorScrapeDailyFn, data: {}, timeout: "5h" })
-      );
       await soft("reddit pulse", () =>
         step.invoke("reddit-pulse", { function: redditTrendsDailyFn, data: {}, timeout: "30m" })
       );

@@ -10,6 +10,32 @@
 
 
 
+## [2026-11-01] — Retired four weekly research/report jobs
+
+- **Requested by:** Keenan
+- **Committed by:** Claude Code
+- **Commit hash:** (see git log, "chore: Retire weekly competitor research, Reddit ad batch and lane report")
+
+### In plain English (for Keenan)
+Four weekly things are switched off and removed: the "Weekly competitor research" email, the "Top hashtag videos to recreate" email, the Saturday batch of Reddit-grounded ads ("19 Reddit-grounded ads ready for review"), and the Sunday "Lane intelligence report". The Sunday Social Brief still comes, built from our own results and the audience pulse. It no longer has a "Competitors" section.
+
+### Technical changes (for Jimmy)
+- Deleted Inngest functions (unregistered in `app/api/inngest/route.ts`): `competitor-scrape-daily` (organic scrape, keyword discovery, mimic briefs, hashtag top videos, research report), `adlab-competitor-research` (Sat 18:00 UTC Meta-ad research), `adlab-weekly-batch` (Sat 21:00 UTC Reddit ad batch), `lane-intelligence-report` (Sun 12:00 UTC).
+- `inngest/functions/social-weekly-sweep.ts`: no longer invokes the competitor scrape. Reddit pulse, niche discovery, scoreboards and Social Briefs are unchanged.
+- `lib/content-factory/social-brief.ts`: dropped the competitor organic-breakout and competitor Meta-ad inputs, the `competitorMoves` prompt field and the "competitor breakouts" stat in the email. The type field stays, so older stored briefs still parse.
+- `lib/content-factory/learning-health.ts`: removed the `research-learning` job so the health check doesn't report it as stalled.
+- Deleted the manual-trigger routes `api/admin/adlab/run-weekly-batch`, `api/admin/adlab/run-competitor-research` and `api/admin/trends/competitors(/scrape)`, plus `api/admin/trends/hashtags`.
+- Admin: removed the Competitors and Top Videos tabs. `/admin/adlab/review` lost its "Make new ads" / "Remake" buttons; any batch still awaiting approval can still be launched.
+- Deleted `lib/content-factory/hashtag-trends.ts`, `lib/content-factory/research-report.ts` and `scripts/run-weekly-adlab-batch.ts`. Regenerated `src/data/system-map.json`.
+
+### Manual steps needed
+- [ ] After deploy, resync Inngest (`curl -X PUT https://goripple.io/api/inngest`) so the four crons stop (Keenan / Claude)
+
+### Notes
+- Shared libraries were left in place because other live code imports them: `lib/adlab/weekly-batch.ts` (ad rendering, launch, evergreen), `competitor-mimic.ts` (pick lanes, video inbox, creator tracking), `adlab/competitor-research.ts`, `research-learning.ts` and `competitor-discovery.ts`. Without callers they do nothing, and they can be pruned later.
+- Pick lanes and writers that read competitor mimic briefs simply stop getting fresh ones. That path was already optional.
+- No schema changes. The CompetitorAccount / CompetitorPost / AdLabCompetitorBrief tables keep their old rows.
+
 ## [2026-10-31] — Jev picks email versions using each person's funnel answers
 
 - **Requested by:** Keenan

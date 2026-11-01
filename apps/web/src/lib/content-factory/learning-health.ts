@@ -1,7 +1,7 @@
 /**
  * Learning-loop "brain check" (2026-10-02, fix #4 of the 30-day hands-off
  * list). Posting can keep going while the learning quietly stops: Jev fails
- * open, and the scoreboard / calibration / research-learning jobs only log
+ * open, and the scoreboard / calibration jobs only log
  * warnings. Each learning job stamps a marker here when it finishes OK, and
  * the daily social health check (social-health-check.ts) reports any that
  * are overdue, plus Jev's error rate, in the email Keenan already gets.
@@ -11,21 +11,19 @@
 
 import { readJson, writeJson } from "./performance-loop";
 
-export type LearningJob = "scoreboard" | "gate-track" | "weekly-calibration" | "research-learning";
+export type LearningJob = "scoreboard" | "gate-track" | "weekly-calibration";
 
 /** How stale each job may get before it's reported (hours). */
 const MAX_AGE_HOURS: Record<LearningJob, number> = {
   scoreboard: 50, // daily 04:30 UTC
   "gate-track": 50, // daily, same function
   "weekly-calibration": 8 * 24, // Mondays 14:00 UTC
-  "research-learning": 8 * 24, // Sundays 03:30 UTC
 };
 
 const LABEL: Record<LearningJob, string> = {
   scoreboard: "Performance scoreboard (daily)",
   "gate-track": "Publish-gate lane track records (daily)",
   "weekly-calibration": "Weekly Jev + publish-gate calibration (Mondays)",
-  "research-learning": "Research learning: source credit + search phrases (Sundays)",
 };
 
 /** Before this, a job with no marker yet is still waiting for its first post-deploy run. */

@@ -7,10 +7,8 @@
  *   - our own results: the performance scoreboard (top / bottom posts, post
  *     types) and per-lane counts for the last 14 days
  *   - the existing weekly brief's how/what lessons (Ripple, Mythicals)
- *   - competitors' organic outliers + mimic briefs (Ripple, BWK)
  *   - Reddit audience pulse (Ripple, BWK; Reddit has blocked our RSS feed
  *     since 2026-10-03, so this is usually empty, and the brief says so)
- *   - competitors' Meta ads (Ripple ad groups women / men)
  *   - newly discovered niche accounts
  *
  * Opus turns that into one plan per brand. Stored in the content-factory
@@ -97,30 +95,7 @@ export async function gather(brand: SocialBrand): Promise<Inputs> {
     }
   }
 
-  // Competitors' organic outliers (Ripple, BWK).
   if (brand !== "mythicals") {
-    try {
-      const rows = await prisma.competitorPost.findMany({
-        where: { isOutlier: true, briefAt: { gte: new Date(Date.now() - 9 * 86_400_000) }, account: { brand, status: { not: "PAUSED" } } },
-        orderBy: { outlierScore: "desc" },
-        take: 8,
-        select: { outlierScore: true, brief: true, account: { select: { handle: true, platform: true } } },
-      });
-      stats.competitorBriefs = rows.length;
-      if (rows.length) {
-        parts.push(
-          `COMPETITOR BREAKOUTS THIS WEEK: ${rows
-            .map((r) => {
-              const b = (r.brief ?? {}) as { hook?: string; format?: string; whyItWorks?: string };
-              return `@${r.account.handle} (${r.account.platform}, ${r.outlierScore?.toFixed?.(1) ?? "?"}x): hook "${b.hook ?? "?"}", format ${b.format ?? "?"}, why: ${b.whyItWorks ?? "?"}`;
-            })
-            .join(" | ")}`,
-        );
-      } else gaps.push("no fresh competitor breakouts");
-    } catch {
-      gaps.push("competitor data unavailable");
-    }
-
     try {
       const { getTopThemes } = await import("./reddit-trends");
       const themes = await getTopThemes(brand, 5);
@@ -131,28 +106,13 @@ export async function gather(brand: SocialBrand): Promise<Inputs> {
       gaps.push("audience pulse missing");
     }
   } else {
-    gaps.push("no competitor or Reddit tracking set up for Mythicals (own results only)");
-  }
-
-  // Ripple: competitors' Meta ads, niche discoveries.
-  if (brand === "ripple") {
-    try {
-      const { getLatestCompetitorBrief } = await import("@/lib/adlab/competitor-research");
-      for (const g of ["women", "men"] as const) {
-        const b = await getLatestCompetitorBrief(g);
-        if (b) parts.push(`COMPETITOR META ADS (${g}): ${b.summary} Hooks: ${b.hooks.slice(0, 5).join(" | ")}. Opportunities: ${b.opportunities.slice(0, 4).join(" | ")}`);
-      }
-    } catch {
-      gaps.push("competitor ad research unavailable");
-    }
-    // UGC creator queue dropped 2026-10-21, per Keenan: creator scouting now
-    // happens outside this system.
+    gaps.push("no Reddit tracking set up for Mythicals (own results only)");
   }
 
   return { text: parts.join("\n\n"), gaps, stats };
 }
 
-const SYSTEM = `You write the weekly social media brief for one brand. It decides what the brand posts next week. The reader is Keenan, a non-technical founder: plain words, short lines, specific, no jargon, no hype. Base every point on the data given; if the data is thin, say so instead of inventing. Never invent numbers or competitor results.
+const SYSTEM = `You write the weekly social media brief for one brand. It decides what the brand posts next week. The reader is Keenan, a non-technical founder: plain words, short lines, specific, no jargon, no hype. Base every point on the data given; if the data is thin, say so instead of inventing. Never invent numbers.
 
 The nextWeek plan is read by the brand's automatic post writers, so it must fit the ACTIVE LANES listed in the data (their formats): keep, hooksToTest, formatsToTest and kill must be things those lanes can do. Anything that needs a new lane, a retired format or a lane turned on/off goes in needsYourYes instead, never in the plan.
 
@@ -160,7 +120,6 @@ Return ONLY JSON:
 {"headline": "one sentence: the most important thing about this brand's social this week",
  "whatWorked": ["2-4 specific points, each naming the post/type and why it worked"],
  "whatFlopped": ["1-3 points"],
- "competitorMoves": ["0-4 things competitors did that worked and how we'd use them"],
  "audiencePulse": ["0-3 things the audience is talking about"],
  "nextWeek": {"keep": ["lanes/formats to keep"], "kill": ["lanes/formats to stop, only with evidence"], "start": ["0-2 new things to try"], "hooksToTest": ["3-5 hooks written out, ready to use"], "formatsToTest": ["0-3"], "adAngles": ["0-3, Ripple only"]},
  "needsYourYes": ["decisions Keenan must make, e.g. kill/start a lane; empty if none"]}`;
@@ -236,7 +195,7 @@ export function socialPlanBlock(b: SocialBrief): string {
     const nw = b.nextWeek;
     const line = (label: string, items: string[]) => (items.length ? `${label}\n${items.map((i) => `- ${i}`).join("\n")}` : "");
     const block = [
-      `THIS WEEK'S SOCIAL PLAN (from the weekly Social Brief, ${b.builtAt.slice(0, 10)}; built from our results, competitor breakouts and the audience):`,
+      `THIS WEEK'S SOCIAL PLAN (from the weekly Social Brief, ${b.builtAt.slice(0, 10)}; built from our results and the audience):`,
       line("Working now:", b.whatWorked.slice(0, 3)),
       line("Flopping now:", b.whatFlopped.slice(0, 3)),
       line("Lean into:", nw.keep),
@@ -273,7 +232,7 @@ export function socialBriefEmailHtml(briefs: SocialBrief[]): string {
       return `<div style="border-top:3px solid #F97E4E;margin:28px 0 0;padding-top:12px">
 <h2 style="font-size:19px;margin:0 0 6px;color:#111">${BRAND_LABEL[b.brand]}</h2>
 <p style="font-size:15px;margin:0 0 6px;color:#111"><b>${esc(b.headline)}</b></p>
-<p style="font-size:12px;color:#888;margin:0">${b.stats.ownPosts} scored posts · ${b.stats.competitorBriefs} competitor breakouts · ${b.stats.redditThemes} audience themes</p>
+<p style="font-size:12px;color:#888;margin:0">${b.stats.ownPosts} scored posts · ${b.stats.redditThemes} audience themes</p>
 ${list("What worked", b.whatWorked)}${list("What flopped", b.whatFlopped)}${list("Competitors", b.competitorMoves)}${list("Audience pulse", b.audiencePulse)}
 <p style="margin:16px 0 0;font-weight:800;font-size:15px;color:#F97E4E">Next week</p>
 ${list("Keep", nw.keep)}${list("Stop", nw.kill)}${list("Start", nw.start)}${list("Hooks to test", nw.hooksToTest)}${list("Formats to test", nw.formatsToTest)}${list("Ad angles", nw.adAngles)}
@@ -286,6 +245,6 @@ ${b.gaps.length ? `<p style="font-size:12px;color:#a66;margin:12px 0 0">Missing 
 <p style="font-size:13px;color:#666;margin:0 0 12px">Week ending ${new Date().toISOString().slice(0, 10)} · one sweep, one plan per brand</p>
 ${yes.length ? `<div style="background:#FFF4EE;border-radius:10px;padding:12px 16px;margin:0 0 8px"><p style="margin:0 0 6px;font-weight:700;font-size:14px">Needs your yes</p><ul style="margin:0;padding-left:20px;font-size:14px;line-height:1.5">${yes.map((y) => `<li>${esc(y)}</li>`).join("")}</ul></div>` : ""}
 ${sections}
-<p style="font-size:11px;color:#999;margin:24px 0 0">Built from the Saturday-night social sweep: our post results, competitor breakouts, competitor Meta ads, and the audience pulse.</p>
+<p style="font-size:11px;color:#999;margin:24px 0 0">Built from the Saturday-night social sweep: our post results and the audience pulse.</p>
 </div></body></html>`;
 }

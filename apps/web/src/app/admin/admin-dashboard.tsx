@@ -12,8 +12,6 @@ import TimeRangeSelector, {
 // Lazy-load tab components so only the active tab's code ships
 const CommandCenterTab = dynamic(() => import("./tabs/CommandCenterTab"));
 const AudiencePulseTab = dynamic(() => import("./tabs/AudiencePulseTab"));
-const CompetitorsTab = dynamic(() => import("./tabs/CompetitorsTab"));
-const TopVideosTab = dynamic(() => import("./tabs/TopVideosTab"));
 const UsersTab = dynamic(() => import("./tabs/UsersTab"));
 const AdsTab = dynamic(() => import("./tabs/AdsTab"));
 const ContentTab = dynamic(() => import("./tabs/ContentTab"));
@@ -35,8 +33,6 @@ type NavGroup = { eyebrow: string; items: NavItem[] };
 const TAB_KEYS = [
   "command",
   "pulse",
-  "competitors",
-  "top-videos",
   "mri",
   "funnel-analytics",
   "app-funnel",
@@ -66,8 +62,6 @@ const NAV_GROUPS: NavGroup[] = [
     eyebrow: "Trends",
     items: [
       { key: "pulse", label: "Audience Pulse" },
-      { key: "competitors", label: "Competitors" },
-      { key: "top-videos", label: "Top Videos" },
     ],
   },
   {
@@ -147,7 +141,6 @@ const NO_TIME_RANGE: Set<string> = new Set([
   "content",
   "settings",
   "pulse",
-  "competitors",
 ]);
 
 function NavButton({
@@ -360,8 +353,6 @@ export default function AdminDashboard() {
               <CommandCenterTab start={startStr} end={endStr} />
             )}
             {activeTab === "pulse" && <AudiencePulseTab />}
-            {activeTab === "competitors" && <CompetitorsTab />}
-            {activeTab === "top-videos" && <TopVideosTab />}
             {activeTab === "mri" && <MRITab start={startStr} end={endStr} />}
             {activeTab === "users" && <UsersTab />}
             {activeTab === "ads" && <AdsTab start={startStr} end={endStr} />}

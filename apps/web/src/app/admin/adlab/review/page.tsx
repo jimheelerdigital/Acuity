@@ -3,7 +3,8 @@
 /**
  * Sunday batch review screen (2026-09-23, per Keenan).
  *
- * Shows the latest awaiting-approval Reddit-grounded batch per audience
+ * Shows the latest awaiting-approval batch per audience (the weekly
+ * Reddit batch that filled this was retired 2026-11-01)
  * group (women / men). Keenan approves the ads he likes, sets the daily
  * budget and destination (his own funnel URLs or App Store), and hits
  * "Launch approved" — the ONLY action that creates + activates a real
@@ -18,7 +19,6 @@ import {
   XCircle,
   Rocket,
   ImageOff,
-  Sparkles,
 } from "lucide-react";
 
 interface Creative {
@@ -91,46 +91,14 @@ export default function ReviewPage() {
     load();
   }, [load]);
 
-  // On-demand batch (2026-09-24): the weekly batch used to be runnable only
-  // by the Sunday cron or a CRON_SECRET call. This queues the same job;
-  // nothing touches Meta — new ads land here for approval (~10 min, and the
-  // review email arrives when done).
-  const [batchState, setBatchState] = useState<"idle" | "sending" | "queued" | "error">("idle");
-  const runBatch = async () => {
-    if (!confirm("Make a fresh set of ads for both groups? It takes about 10 minutes and replaces the ads shown here. Nothing goes to Meta until you launch.")) return;
-    setBatchState("sending");
-    try {
-      const res = await fetch("/api/admin/adlab/run-weekly-batch", { method: "POST" });
-      setBatchState(res.ok ? "queued" : "error");
-    } catch {
-      setBatchState("error");
-    }
-  };
-
   return (
     <>
       <div className="mb-8 flex flex-wrap items-start justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-white mb-1">Weekly Batch Review</h1>
           <p className="text-sm text-acuity-text-ter">
-            Reddit-grounded ads generated every Sunday. Approve the ones you like, set budget
-            and destination per group, then launch. Nothing spends money until you hit Launch.
-          </p>
-        </div>
-        <div className="text-right">
-          <button
-            onClick={runBatch}
-            disabled={batchState === "sending" || batchState === "queued"}
-            className="inline-flex items-center gap-2 rounded-lg bg-white/10 px-3.5 py-2 text-sm font-semibold text-white hover:bg-white/15 disabled:opacity-50">
-            {batchState === "sending" ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
-            Make new ads
-          </button>
-          <p className="mt-1.5 text-xs text-acuity-text-ter">
-            {batchState === "queued"
-              ? "Generating — ready in ~10 min (you'll get the email). Refresh then."
-              : batchState === "error"
-                ? "Couldn't start it — try again."
-                : "Fresh batch for both groups, on demand."}
+            Ads awaiting approval. The weekly Reddit ad batch was retired 2026-11-01, so nothing
+            new lands here on its own. Approve, set budget and destination per group, then launch. Nothing spends money until you hit Launch.
           </p>
         </div>
       </div>
@@ -147,33 +115,6 @@ export default function ReviewPage() {
         </div>
       )}
     </>
-  );
-}
-
-/** Remake just this group's batch (2026-09-24) — leaves the other group's ads alone. */
-function RemakeGroupButton({ groupKey, label }: { groupKey: string; label: string }) {
-  const [state, setState] = useState<"idle" | "sending" | "queued" | "error">("idle");
-  const run = async () => {
-    if (!confirm(`Make a fresh set of ${label} ads? About 10 minutes; it replaces the ${label} ads shown here. Nothing goes to Meta until you launch.`)) return;
-    setState("sending");
-    try {
-      const res = await fetch("/api/admin/adlab/run-weekly-batch", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ groups: [groupKey] }),
-      });
-      setState(res.ok ? "queued" : "error");
-    } catch {
-      setState("error");
-    }
-  };
-  return (
-    <button
-      onClick={run}
-      disabled={state === "sending" || state === "queued"}
-      className="text-xs font-medium text-acuity-text-sec underline-offset-2 hover:underline disabled:opacity-60">
-      {state === "queued" ? "Remaking — refresh in ~10 min" : state === "error" ? "Couldn't start — retry" : state === "sending" ? "Starting…" : "Remake these ads"}
-    </button>
   );
 }
 
@@ -221,11 +162,10 @@ function GroupSection({ group, onLaunched }: { group: Group; onLaunched: () => v
       <section>
         <div className="flex items-center justify-between mb-3">
           <h2 className="text-lg font-semibold text-white">{group.projectName}</h2>
-          <RemakeGroupButton groupKey={group.groupKey} label={group.groupKey} />
         </div>
         <div className="rounded-acuity-lg border border-dashed border-acuity-line-strong bg-acuity-card-bg p-10 text-center">
           <p className="text-sm text-acuity-text-ter">
-            No batch awaiting review. The next one generates Sunday morning.
+            No batch awaiting review.
           </p>
         </div>
       </section>
@@ -410,7 +350,6 @@ function GroupSection({ group, onLaunched }: { group: Group; onLaunched: () => v
           <span className="text-xs text-acuity-text-ter">
             {approvedCount - approvedVideos}/2 image · {approvedVideos}/2 video picked · {allCreatives.length - videoOptions} image + {videoOptions} video options
           </span>
-          <RemakeGroupButton groupKey={group.groupKey} label={group.groupKey} />
         </div>
       </div>
 

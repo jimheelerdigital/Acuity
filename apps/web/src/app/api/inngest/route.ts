@@ -86,13 +86,9 @@ import { nicheResearchNightlyFn } from "@/inngest/functions/niche-research-night
 import { nicheStrategyMemoFn } from "@/inngest/functions/niche-strategy-memo";
 import { nicheDiscoveryFn } from "@/inngest/functions/niche-discovery";
 import { socialPublishCronFn } from "@/inngest/functions/social-publish-cron";
-import { laneIntelligenceReportFn } from "@/inngest/functions/lane-intelligence-report";
 import { redditTrendsDailyFn } from "@/inngest/functions/reddit-trends-daily";
 import { socialBriefEmailFn, socialWeeklySweepFn } from "@/inngest/functions/social-weekly-sweep";
-import { competitorScrapeDailyFn } from "@/inngest/functions/competitor-scrape-daily";
-import { adlabWeeklyBatchFn } from "@/inngest/functions/adlab-weekly-batch";
 import { adlabLookSamplesFn } from "@/inngest/functions/adlab-look-samples";
-import { adlabCompetitorResearchFn } from "@/inngest/functions/adlab-competitor-research";
 import { socialHealthCheckFn } from "@/inngest/functions/social-health-check";
 import { musicSampleFn } from "@/inngest/functions/music-sample";
 import { musicLibraryFn } from "@/inngest/functions/music-library";
@@ -193,14 +189,10 @@ const handler = serve({
     nicheStrategyMemoFn,
     nicheDiscoveryFn,
     socialPublishCronFn,
-    laneIntelligenceReportFn,
     redditTrendsDailyFn,
     socialWeeklySweepFn,
     socialBriefEmailFn,
-    competitorScrapeDailyFn,
-    adlabWeeklyBatchFn,
     adlabLookSamplesFn,
-    adlabCompetitorResearchFn,
     socialHealthCheckFn,
     musicSampleFn,
     musicLibraryFn,
