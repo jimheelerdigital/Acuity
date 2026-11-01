@@ -10,6 +10,25 @@
 
 
 
+## [2026-10-31] — Planners funnel result screen now reflects her own answers back to her
+
+- **Requested by:** Keenan
+- **Committed by:** Claude Code
+- **Commit hash:** (see git log, "feat: Rebuild the /start-journal result screen")
+
+### In plain English (for Keenan)
+The result screen was five summary cards that didn't land. It now has three beats, all from her own answers. First, a paragraph that reveals line by line: "You buy planners to stop forgetting things and to make time for you. But with work, the house and your health on your plate, it all lives in your head. Things slip through the cracks…". Then her pattern ("You're The Restarter. You didn't fail 6 systems. 6 systems failed a life this full."). Then "You said it would be easier if…", with each of her picks next to what Ripple does. The button now says "Show me how Ripple fixes this".
+
+### Technical changes (for Jimmy)
+- `apps/web/src/components/funnel-v9.tsx`: new `JournalResult` (journal brand only; other funnels keep `ResultScreen`). It builds sentences from `multi.why`, `multi.plate` (via plateLabel), `multi.pain` (first 2), `single.often`, `single.happens`, the `tried-what` count and `multi.easier`, and falls back cleanly when an answer is missing.
+- Removed from the journal result: the stat tiles, "In your own words", "Your week, caught" (the plan screen shows her week) and the "You're carrying" chips.
+
+### Manual steps needed
+- None
+
+### Notes
+- The "easier" to Ripple lines must stay true to the product; keep them in sync with EASIER_STAMPS.
+
 ## [2026-10-31] — This week's list stays still when tapped; local preview can skip the email step
 
 - **Requested by:** Keenan

@@ -594,7 +594,7 @@ function StepView(p: ViewProps) {
     case "email":
       return <EmailScreen {...p} />;
     case "result":
-      return <ResultScreen {...p} />;
+      return C.brand === "journal" ? <JournalResult {...p} /> : <ResultScreen {...p} />;
     case "plan":
       return <PlanScreen {...p} />;
     case "paywall":
@@ -2251,6 +2251,125 @@ function OftenTiles({ step, answers, setAnswers, next, track }: ViewProps & { st
           );
         })}
       </div>
+    </div>
+  );
+}
+
+/**
+ * Result for /start-journal (2026-10-31, Keenan: "make them feel this
+ * screen"). Three beats from her own answers: the mirror (why she buys
+ * planners, what's on her plate, what happens, how often, how they failed),
+ * the name, then the turn (each "easier" pick next to what Ripple does).
+ */
+function JournalResult({ answers, firstName, next }: ViewProps) {
+  const C = useV9();
+  const state = C.stateName({ plate: answers.multi.plate ?? [], sliders: answers.sliders, pileup: answers.single.pileup, said: answers.single });
+  const WHY: Record<string, string> = {
+    forget: "to stop forgetting things",
+    control: "to feel on top of things",
+    head: "to get it out of your head",
+    family: "to keep the family on track",
+    me: "to make time for you",
+    fresh: "to start fresh",
+  };
+  const PAIN: Record<string, string> = {
+    slip: "Things slip through the cracks.",
+    switch: "Your mind won’t switch off.",
+    snap: "You snap at people you love.",
+    behind: "You always feel behind.",
+    last: "Your own stuff comes last.",
+    drained: "You’re drained before the day starts.",
+  };
+  const OFTEN: Record<string, string> = {
+    daily: "most days",
+    weekly: "a few times a week",
+    sometimes: "about once a week",
+    rarely: "rarely, but when it does, it costs you",
+  };
+  const HAPPENS: Record<string, string> = {
+    miss: "you started strong, then missed a few days",
+    chore: "filling it in became another chore",
+    forget: "you forgot to open it",
+    blank: "you stared at the blank page",
+  };
+  const EASIER: Record<string, { said: string; ripple: string }> = {
+    say: { said: "you could just say it", ripple: "You talk. Ripple writes the list." },
+    sorts: { said: "it sorted itself", ripple: "Tasks land sorted, with their dates." },
+    setup: { said: "there was nothing to set up", ripple: "Nothing to set up. You just start talking." },
+    matters: { said: "it showed you what matters", ripple: "Ripple shows you what keeps coming up." },
+    restart: { said: "you never had to start over", ripple: "Nothing ever resets. Every day adds up." },
+    blank: { said: "there was no blank page", ripple: "No blank page. Just say what’s on your mind." },
+  };
+  const join = (xs: string[]) => (xs.length > 1 ? `${xs.slice(0, -1).join(", ")} and ${xs[xs.length - 1]}` : xs[0] ?? "");
+  const hi = (t: string) => <span className="rounded-[3px] px-0.5" style={{ background: "linear-gradient(transparent 55%, #FFD3BB 55%)" }}>{t}</span>;
+
+  const why = (answers.multi.why ?? []).map((id) => WHY[id]).filter(Boolean).slice(0, 2);
+  const plate = answers.multi.plate ?? [];
+  const pains = (answers.multi.pain ?? []).map((id) => PAIN[id]).filter(Boolean).slice(0, 2);
+  const often = OFTEN[answers.single.often ?? ""];
+  const happens = HAPPENS[answers.single.happens ?? ""];
+  const tools = (answers.multi["tried-what"] ?? []).length;
+  const easierIds = (answers.multi.easier ?? []).filter((id) => EASIER[id]);
+  const easier = (easierIds.length ? easierIds : ["say", "sorts", "restart"]).map((id) => EASIER[id]);
+
+  const lines: ReactNode[] = [];
+  if (why.length) lines.push(<>You buy planners {hi(join(why))}.</>);
+  lines.push(
+    plate.length ? (
+      <>{why.length ? "But with " : "With "}{hi(plateLabel(plate, C.plateLabels))} on your plate, it all lives in your head.</>
+    ) : (
+      <>{why.length ? "But with everything on your plate" : "With everything on your plate"}, it all lives in your head.</>
+    )
+  );
+  pains.forEach((p) => lines.push(hi(p)));
+  if (often) lines.push(<>Something slips {hi(often)}.</>);
+  if (happens) lines.push(<>And every fresh start ended the same way: {hi(happens)}.</>);
+  const nameLine = tools >= 2 ? `You didn’t fail ${tools} systems. ${tools} systems failed a life this full.` : state.line;
+  const t0 = 250;
+  const step = 420;
+  const nameAt = t0 + lines.length * step + 200;
+
+  return (
+    <div className="enter">
+      <p className="text-center text-[13px] font-semibold text-acuity-primary mb-3">
+        {firstName ? `${firstName}, here’s what you told us` : "Here’s what you told us"}
+      </p>
+
+      <div className="card rounded-[28px] px-5 py-5">
+        <p className="serif text-[20px] leading-[1.45]">
+          {lines.map((l, i) => (
+            <span key={i} className="up" style={{ animationDelay: `${t0 + i * step}ms` }}>
+              {l}{" "}
+            </span>
+          ))}
+        </p>
+      </div>
+
+      <div className="up relative mt-4 overflow-hidden rounded-[28px] grad p-6 text-white shadow-[0_14px_36px_-12px_var(--acuity-primary)]" style={{ animationDelay: `${nameAt}ms` }}>
+        <div className="absolute -right-10 -top-10 h-40 w-40 rounded-full bg-white/10" aria-hidden="true" />
+        <p className="text-[12px] font-semibold uppercase tracking-[0.14em] text-white/80">Your pattern</p>
+        <h1 className="pop mt-1 text-[32px] font-bold leading-tight" style={{ animationDelay: `${nameAt + 150}ms` }}>You&rsquo;re {state.name}</h1>
+        <p className="mt-2 text-[16px] leading-relaxed text-white/90">{nameLine}</p>
+      </div>
+
+      <div className="up mt-4 card rounded-[28px] p-5" style={{ animationDelay: `${nameAt + 500}ms` }}>
+        <p className="serif text-[19px] leading-snug">{easierIds.length ? "You said it would be easier if…" : "Here’s what changes with Ripple"}</p>
+        <div className="mt-3 space-y-2.5">
+          {easier.map((e, i) => (
+            <div key={e.said} className="up rounded-2xl p-3" style={{ background: "linear-gradient(155deg,#fff,#FFF1E8)", animationDelay: `${nameAt + 700 + i * 160}ms` }}>
+              {easierIds.length > 0 && <p className="text-[13.5px] italic text-acuity-text-sec">&hellip;{e.said}</p>}
+              <p className="mt-0.5 flex items-center gap-2 text-[15px] font-semibold">
+                <span className="h-5 w-5 shrink-0 rounded-full grad flex items-center justify-center"><Check className="h-3 w-3 text-white" strokeWidth={3} /></span>
+                {e.ripple}
+              </p>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <BottomBar>
+        <PrimaryButton onClick={next}>Show me how Ripple fixes this</PrimaryButton>
+      </BottomBar>
     </div>
   );
 }
