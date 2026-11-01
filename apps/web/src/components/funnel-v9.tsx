@@ -2077,29 +2077,45 @@ function CostReceipt({ answers }: { answers: Answers }) {
   );
 }
 
-/** What she gets, under the prices on paywall page 3 (2026-10-31, Keenan). */
+/**
+ * What she gets back, right under the receipt on paywall page 3 (2026-10-31,
+ * Keenan: "focused on emotions… mostly emotions and peace of mind"). The
+ * receipt is the mess; this is the calm. Feeling first, feature underneath.
+ */
 function ValueAdd() {
   const [ref, on] = useInView<HTMLDivElement>();
-  const rows: { icon: LucideIcon; title: string; text: string }[] = [
-    { icon: Mic, title: "Just say it", text: "Ripple writes your list, sorted, with the dates." },
-    { icon: Repeat, title: "Habits and mood, tracked", text: "From what you say. Nothing to tick off." },
-    { icon: Eye, title: "What keeps coming up", text: "Patterns you’d never spot on paper." },
-    { icon: CalendarCheck, title: "A weekly report", text: "What moved, what slipped, what to drop." },
-    { icon: Sprout, title: "It never resets", text: "Every day adds up. No starting over." },
+  const rows: { icon: LucideIcon; feel: string; how: string }[] = [
+    { icon: Waves, feel: "A quiet head", how: "Say it once. Ripple holds onto it." },
+    { icon: ListChecks, feel: "Nothing slipping through", how: "Every task lands on your list, with its date." },
+    { icon: Heart, feel: "Time that’s yours again", how: "No planner to fill in or keep up." },
+    { icon: Eye, feel: "Finally on top of it", how: "See what keeps coming up, week to week." },
+    { icon: Sprout, feel: "No more starting over", how: "Every day adds up. Nothing resets." },
   ];
   return (
-    <div ref={ref} className={`mt-5 card rounded-3xl p-5 ${on ? "on" : ""}`}>
-      <p className="text-[20px] font-bold leading-tight tracking-tight">What you get with <span className="grad-text">Ripple</span></p>
-      <div className="mt-4 space-y-3">
+    <div ref={ref} className={`relative mt-5 overflow-hidden rounded-[28px] p-5 ${on ? "on" : ""}`} style={{ background: "linear-gradient(165deg, #FFFFFF 0%, #FFF1E8 55%, #FFE3D2 100%)", border: "1px solid rgba(255,255,255,.95)", boxShadow: "0 18px 40px -18px rgba(242,84,30,.35)" }}>
+      {/* Calm ripples behind the heading, the opposite of the stamped receipt. */}
+      <span className="pointer-events-none absolute -right-10 -top-10 h-44 w-44" aria-hidden="true">
+        {[0, 1, 2].map((k) => <span key={k} className="ring-out absolute inset-8 rounded-full" style={{ border: "2px solid rgba(242,84,30,.22)", animationDelay: `${k * 1100}ms`, animationDuration: "3.3s" }} />)}
+        <span className="absolute inset-[58px] rounded-full grad opacity-90" />
+      </span>
+      <p className="relative text-[12px] font-bold uppercase tracking-[0.14em]" style={{ color: "#C2410C" }}>With Ripple</p>
+      <p className="serif relative mt-1 text-[26px] leading-[1.1]">What you get back</p>
+      <div className="relative mt-4 space-y-3.5">
         {rows.map((r, i) => (
-          <div key={r.title} className={`rv flex items-start gap-3 ${on ? "on" : ""}`} style={{ "--d": `${i * 130}ms` } as CSSProperties}>
-            <span className="h-9 w-9 shrink-0 rounded-xl grad text-white flex items-center justify-center"><r.icon className="h-4 w-4" /></span>
+          <div key={r.feel} className={`rv flex items-center gap-3.5 ${on ? "on" : ""}`} style={{ "--d": `${200 + i * 150}ms` } as CSSProperties}>
+            <span className={`rv-pop h-10 w-10 shrink-0 rounded-full bg-white flex items-center justify-center shadow-[0_6px_14px_-6px_rgba(242,84,30,.5)] ${on ? "on" : ""}`} style={{ "--d": `${300 + i * 150}ms`, color: "#F2541E" } as CSSProperties}>
+              <r.icon className="h-[18px] w-[18px]" />
+            </span>
             <span>
-              <span className="block text-[15px] font-bold leading-tight">{r.title}</span>
-              <span className="block text-[13px] leading-snug text-acuity-text-sec">{r.text}</span>
+              <span className="serif block text-[18.5px] leading-tight">{r.feel}</span>
+              <span className="block text-[13px] leading-snug text-acuity-text-sec">{r.how}</span>
             </span>
           </div>
         ))}
+      </div>
+      <div className={`rv shine relative mt-5 overflow-hidden rounded-2xl grad px-4 py-3.5 text-center text-white ${on ? "on" : ""}`} style={{ "--d": `${200 + rows.length * 150 + 200}ms` } as CSSProperties}>
+        <p className="serif text-[19px] leading-tight">Peace of mind, back.</p>
+        <p className="mt-0.5 text-[12.5px] text-white/90">The part no receipt shows.</p>
       </div>
     </div>
   );
@@ -3180,6 +3196,7 @@ function TrustPaywall({ plan, setPlan, next, track, firstName, answers }: ViewPr
           result screen already shows it, and comparison tables on the price
           page lost in the paywall research. */}
       <CostReceipt answers={answers} />
+      <ValueAdd />
       <div className="mt-6 space-y-3">
         <button onClick={() => pick("yearly")} className={`relative w-full text-left rounded-3xl px-5 pt-5 pb-4 transition card outline-none focus-visible:ring-2 focus-visible:ring-acuity-primary ${plan === "yearly" ? "card-sel" : ""}`}>
           <span className="absolute -top-3 left-5 rounded-full grad px-3 py-1 text-[11px] font-bold text-white shadow">{earlyBird ? `EARLY BIRD · ${earlyBirdOffPct}% OFF` : `TRY IT FREE · SAVE ${price.savingsPct}`}</span>
@@ -3237,7 +3254,6 @@ function TrustPaywall({ plan, setPlan, next, track, firstName, answers }: ViewPr
           ))}
         </div>
       </div>
-      <ValueAdd />
       <BottomBar>
         <p className="mb-2 text-center text-[14px] font-bold">No commitment. Cancel anytime.</p>
         <PrimaryButton

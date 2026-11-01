@@ -10,6 +10,31 @@
 
 
 
+## [2026-10-31] — Planners paywall: "What you get back" moves above the prices and leads with feelings
+
+- **Requested by:** Keenan
+- **Committed by:** Claude Code
+- **Commit hash:** (see git log, "content: Emotional value card above /start-journal prices")
+
+### In plain English (for Keenan)
+Right under the receipt, a calm card now shows what she gets back with Ripple, feelings first:
+- A quiet head
+- Nothing slipping through
+- Time that's yours again
+- Finally on top of it
+- No more starting over
+
+Each has the feature underneath in small text, and the card ends with "Peace of mind, back. The part no receipt shows." It comes before the prices, so the page reads: what it's costing you, then what you get back, then the price.
+
+### Technical changes (for Jimmy)
+- `apps/web/src/components/funnel-v9.tsx`: `ValueAdd` rewritten (gradient card, ripple rings, serif feeling lines with feature sub-lines, shine pill) and moved from under the timeline to directly under `CostReceipt`.
+
+### Manual steps needed
+- None
+
+### Notes
+- No time-of-day language ("time that's yours", not "evenings") per the positioning rules.
+
 ## [2026-10-31] — Planners paywall page 3 rebuilt: receipt, prices, small timeline, what you get
 
 - **Requested by:** Keenan
