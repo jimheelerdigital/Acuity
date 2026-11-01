@@ -2284,17 +2284,15 @@ function JournalResult({ answers, firstName, next }: ViewProps) {
     setup: { old: "Setting it up", now: "Nothing to set up", icon: Sparkles },
     matters: { old: "Guessing what matters", now: "Shows what matters", icon: Eye },
     restart: { old: "Starting over", now: "Never resets", icon: Repeat },
-    blank: { old: "A blank page", now: "Just talk", icon: Mic },
+    blank: { old: "A blank page", now: "Just talk", icon: Waves },
   };
   const triedIds = (answers.multi["tried-what"] ?? []).slice(0, 6);
-  const picks = weekPicks(C, answers).slice(0, 3);
-  const demo = picks.length ? picks : [{ chip: "A school form", task: "Sign the school form" }, { chip: "Bills", task: "Pay the bills" }, { chip: "Groceries", task: "Order the groceries" }];
   const tools = (answers.multi["tried-what"] ?? []).length;
   const ending = ENDING[answers.single.happens ?? ""] ?? "None of them stuck.";
   const line = tools >= 2 ? `${tools} systems. ${ending}` : ending;
   const pains = (answers.multi.pain ?? []).map((id) => PAIN[id]).filter(Boolean).slice(0, 3);
   const picked = (answers.multi.easier ?? []).filter((id) => SWAP[id]);
-  const ids = [...picked, ...["say", "restart", "sorts"].filter((x) => !picked.includes(x))].slice(0, 3);
+  const ids = [...picked, ...["say", "sorts", "matters", "restart", "setup", "blank"].filter((x) => !picked.includes(x))].slice(0, 5);
 
   return (
     <div className="enter">
@@ -2343,43 +2341,23 @@ function JournalResult({ answers, firstName, next }: ViewProps) {
           <p className="relative flex items-center gap-1.5 px-3 pt-3 pb-2 text-[12px] font-bold uppercase tracking-[0.08em]" style={{ color: "#C2410C" }}><Waves className="h-3.5 w-3.5" /> Ripple</p>
           {ids.map((id, i) => {
             const sw = SWAP[id];
-            const d = 600 + i * 280;
+            const d = 600 + i * 220;
             return (
               <Fragment key={id}>
-                <div className="up relative flex items-center px-3 py-3" style={{ animationDelay: `${d}ms`, borderTop: "1px solid #F1E6DE" }}>
-                  <span className="relative inline-block text-[14px] leading-snug text-acuity-text-ter">
+                <div className="up relative flex h-[58px] items-center px-3" style={{ animationDelay: `${d}ms`, borderTop: "1px solid #F1E6DE" }}>
+                  <span className="relative inline-block text-[14px] leading-tight text-acuity-text-ter">
                     {sw.old}
                     <span className="xout absolute left-0 right-0 top-1/2 h-[1.5px] rounded-full bg-red-500/70" style={{ ["--d" as string]: `${d + 250}ms` } as CSSProperties} />
                   </span>
                 </div>
-                <div className="up relative flex items-center gap-2 px-3 py-3" style={{ animationDelay: `${d + 150}ms`, borderTop: "1px solid rgba(255,255,255,.7)" }}>
+                <div className="up relative flex h-[58px] items-center gap-2 px-3" style={{ animationDelay: `${d + 150}ms`, borderTop: "1px solid rgba(255,255,255,.7)" }}>
                   <span className="pop h-7 w-7 shrink-0 rounded-full grad flex items-center justify-center text-white" style={{ animationDelay: `${d + 400}ms` }}><sw.icon className="h-3.5 w-3.5" /></span>
-                  <span className="text-[15px] font-bold leading-snug">{sw.now}</span>
+                  <span className="text-[15px] font-bold leading-tight">{sw.now}</span>
                 </div>
               </Fragment>
             );
           })}
           <span className="relative col-start-2 block h-2" aria-hidden="true" />
-        </div>
-      </div>
-
-      {/* Proof, not a claim: her own week, said once, as a Ripple list. */}
-      <div className="up mt-4 card rounded-[28px] p-5" style={{ animationDelay: `${600 + ids.length * 280 + 300}ms` }}>
-        <p className="serif text-[20px] leading-snug">Your week, the Ripple way</p>
-        <div className="mt-3 flex items-start gap-2.5">
-          <span className="h-9 w-9 shrink-0 rounded-full grad flex items-center justify-center text-white"><Mic className="h-4 w-4" /></span>
-          <p className="rounded-2xl rounded-tl-md px-3.5 py-2.5 text-[14.5px] italic leading-snug" style={{ background: "#FFF1E8" }}>
-            &ldquo;Okay so&hellip; {demo.map((d) => lcChip(d.chip)).join(", ")}&hellip;&rdquo;
-          </p>
-        </div>
-        <p className="my-2 pl-12 text-[12px] font-bold uppercase tracking-[0.08em]" style={{ color: "#C2410C" }}>&darr; Ripple wrote it down</p>
-        <div className="ml-12 rounded-2xl bg-white px-3 py-1" style={{ border: "1px solid #F1E6DE" }}>
-          {demo.map((d, i) => (
-            <p key={d.task} className="up flex items-center gap-2 py-2 text-[14.5px] font-medium" style={{ animationDelay: `${1700 + ids.length * 280 + i * 180}ms`, borderTop: i ? "1px solid #F1E6DE" : undefined }}>
-              <span className="h-5 w-5 shrink-0 rounded-full grad flex items-center justify-center"><Check className="h-3 w-3 text-white" strokeWidth={3} /></span>
-              {d.task}
-            </p>
-          ))}
         </div>
       </div>
 

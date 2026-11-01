@@ -10,6 +10,28 @@
 
 
 
+## [2026-10-31] — Planners result: five-row face-off, week card removed
+
+- **Requested by:** Keenan
+- **Committed by:** Claude Code
+- **Commit hash:** (see git log, "content: Five-row face-off on the /start-journal result")
+
+### In plain English (for Keenan)
+The result screen drops the "Your week, the Ripple way" card. "How Ripple is different" now has five rows instead of three (adding Starting over → Never resets, and Setting it up → Nothing to set up), all exactly the same height.
+
+### Technical changes (for Jimmy)
+- `apps/web/src/components/funnel-v9.tsx` JournalResult:
+  - removed the week proof card
+  - rows = her easier picks, padded from [say, sorts, matters, restart, setup, blank] to 5
+  - fixed 58px row height on both columns
+  - the "blank" row icon is now Waves (was a duplicate Mic)
+
+### Manual steps needed
+- None
+
+### Notes
+- None
+
 ## [2026-10-31] — Planners result screen: quick to read, with a Planners vs Ripple face-off
 
 - **Requested by:** Keenan
