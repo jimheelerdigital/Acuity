@@ -16,6 +16,8 @@
  * action "relink": { adsetIds, path } → every live ad in those ad sets gets
  *   a copy of its creative with the goripple.io path swapped, in place.
  * action "status": { adIds, status } → ACTIVE / PAUSED, mirrored on AdLabAd.
+ * action "insights": { level, since, until, breakdowns? } → Meta insights rows
+ *   (spend, reach, frequency, CPM, CTR, registrations/purchases/installs). Read-only.
  *
  * Auth: admin session OR `Authorization: Bearer ${CRON_SECRET}`.
  */
@@ -275,5 +277,45 @@ export async function POST(req: NextRequest) {
     return NextResponse.json(out);
   }
 
-  return NextResponse.json({ error: "action must be inspect | add | relink | status" }, { status: 400 });
+  // Read-only audit data (2026-11-01): Meta insights at ad / adset / campaign
+  // level for a date range, with the conversion actions we care about.
+  if (body.action === "insights") {
+    const b = body as unknown as { level?: string; since?: string; until?: string; breakdowns?: string };
+    const level = ["ad", "adset", "campaign", "account"].includes(b.level ?? "") ? b.level! : "ad";
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(b.since ?? "") || !/^\d{4}-\d{2}-\d{2}$/.test(b.until ?? "")) {
+      return NextResponse.json({ error: "since/until YYYY-MM-DD required" }, { status: 400 });
+    }
+    try {
+      const rows: Json[] = [];
+      let after: string | undefined;
+      for (let page = 0; page < 10; page++) {
+        const params: Json = {
+          level,
+          time_range: { since: b.since, until: b.until },
+          fields:
+            "campaign_name,adset_name,adset_id,ad_name,ad_id,spend,impressions,reach,frequency,cpm,ctr,inline_link_clicks,inline_link_click_ctr,cost_per_inline_link_click,actions,cost_per_action_type",
+          limit: 200,
+        };
+        if (b.breakdowns) params.breakdowns = b.breakdowns;
+        if (after) params.after = after;
+        const r = (await meta.metaGraph(`${acct}/insights`, "GET", params)) as { data: Json[]; paging?: { cursors?: { after?: string }; next?: string } };
+        rows.push(...r.data);
+        if (!r.paging?.next) break;
+        after = r.paging.cursors?.after;
+      }
+      const pick = (arr: unknown, keys: string[]) => {
+        const out: Record<string, number> = {};
+        for (const a of (arr as { action_type: string; value: string }[] | undefined) ?? []) if (keys.includes(a.action_type)) out[a.action_type] = Number(a.value);
+        return out;
+      };
+      const keys = ["complete_registration", "offsite_conversion.fb_pixel_complete_registration", "purchase", "offsite_conversion.fb_pixel_purchase", "mobile_app_install", "landing_page_view", "link_click"];
+      return NextResponse.json(
+        rows.map((r) => ({ ...r, actions: pick(r.actions, keys), cost_per_action_type: pick(r.cost_per_action_type, keys) }))
+      );
+    } catch (e) {
+      return NextResponse.json({ error: err(e) }, { status: 500 });
+    }
+  }
+
+  return NextResponse.json({ error: "action must be inspect | add | relink | status | insights" }, { status: 400 });
 }
