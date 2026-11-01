@@ -219,11 +219,28 @@ const CSS = `
 .v9 .notif-in { animation: v9-notif .55s cubic-bezier(.2,.8,.2,1) .9s both; }
 @keyframes v9-fill-down { from { height: 0; } to { height: 100%; } }
 .v9 .fill-down { height: 100%; animation: v9-fill-down 1.1s ease-out .3s both; }
+/* Sunrise motion pass (2026-10-31, Keenan: "better animation across the funnel"). */
+@keyframes v9-enter-soft { from { opacity: 0; transform: translateY(14px); filter: blur(6px); } to { opacity: 1; transform: none; filter: blur(0); } }
+.v9[data-funnel-theme="sunrise"] .enter { animation: v9-enter-soft .5s cubic-bezier(.2,.8,.2,1) both; }
+@keyframes v9-sel { 0% { transform: scale(.97); } 55% { transform: scale(1.025); } 100% { transform: scale(1); } }
+@keyframes v9-sel-ring { 0% { box-shadow: 0 0 0 0 rgba(242,84,30,.45), 0 14px 30px rgba(242,84,30,.16); } 100% { box-shadow: 0 0 0 12px rgba(242,84,30,0), 0 14px 30px rgba(242,84,30,.16); } }
+.v9[data-funnel-theme="sunrise"] .card-sel { animation: v9-sel .38s cubic-bezier(.2,.8,.2,1), v9-sel-ring .6s ease-out; }
+.v9[data-funnel-theme="sunrise"] button.card { transition: transform .18s ease, box-shadow .2s ease, background .2s ease; }
+@media (hover: hover) { .v9[data-funnel-theme="sunrise"] button.card:hover { transform: translateY(-2px); } }
+@keyframes v9-shine { 0%, 65% { transform: translateX(-120%) skewX(-20deg); } 100% { transform: translateX(260%) skewX(-20deg); } }
+.v9[data-funnel-theme="sunrise"] .shine::after, .v9[data-funnel-theme="sunrise"] .cta-shine:not(:disabled)::after { content: ""; position: absolute; inset: 0; width: 40%; background: linear-gradient(90deg, transparent, rgba(255,255,255,.35), transparent); animation: v9-shine 3.6s ease-in-out infinite; pointer-events: none; }
+@keyframes v9-thump { 0% { opacity: 0; transform: scale(.85); } 60% { opacity: 1; transform: scale(1.04); } 100% { opacity: 1; transform: scale(1); } }
+.v9 .on .thump.rv, .v9 .thump.rv.on { animation: v9-thump .55s cubic-bezier(.2,.8,.2,1) both; animation-delay: var(--d, 0ms); }
+@keyframes v9-tip { 0%, 100% { box-shadow: 0 0 0 0 rgba(242,84,30,.5); } 50% { box-shadow: 0 0 0 5px rgba(242,84,30,0); } }
+.v9[data-funnel-theme="sunrise"] .pbar { position: relative; }
+.v9[data-funnel-theme="sunrise"] .pbar::after { content: ""; position: absolute; right: -1px; top: 50%; width: 10px; height: 10px; margin-top: -5px; border-radius: 9999px; background: #fff; border: 2.5px solid #F2541E; animation: v9-tip 1.8s ease-in-out infinite; }
+@keyframes v9-fill-right { from { width: 0; } to { width: 50%; } }
+.v9 .fill-right { width: 50%; animation: v9-fill-right 1s ease-out .4s both; }
 @keyframes v9-intoorb { 0% { opacity: 0; transform: translate(calc(-50% + var(--x)), calc(-50% + var(--y))) scale(1); } 20% { opacity: 1; } 100% { opacity: 0; transform: translate(-50%, -50%) scale(.3); } }
 .v9 .into-orb { opacity: 0; animation: v9-intoorb 2.7s ease-in infinite both; }
 @keyframes v9-breathe { 50% { transform: scale(1.06); } }
 .v9 .breathe { animation: v9-breathe 1.6s ease-in-out infinite; }
-@media (prefers-reduced-motion: reduce) { .v9[data-funnel-theme="sunrise"]::before, .v9[data-funnel-theme="sunrise"]::after, .v9 .fan, .v9 .xout, .v9 .stamp, .v9 .gapday, .v9 .growlist, .v9 .zz, .v9 .blink, .v9 .swap-in, .v9 .ring-out, .v9 .ring-bell, .v9 .notif-in, .v9 .fill-down, .v9 .into-orb, .v9 .breathe { animation: none !important; } }
+@media (prefers-reduced-motion: reduce) { .v9[data-funnel-theme="sunrise"]::before, .v9[data-funnel-theme="sunrise"]::after, .v9 .fan, .v9 .xout, .v9 .stamp, .v9 .gapday, .v9 .growlist, .v9 .zz, .v9 .blink, .v9 .swap-in, .v9 .ring-out, .v9 .ring-bell, .v9 .notif-in, .v9 .fill-down, .v9 .fill-right, .v9 .into-orb, .v9 .card-sel, .v9 .shine::after, .v9 .cta-shine::after, .v9 .pbar::after, .v9 .enter, .v9 .breathe { animation: none !important; } }
 .v9 { --v9-tint: color-mix(in oklch, var(--acuity-primary) 9%, var(--acuity-card-bg)); --v9-ring: color-mix(in oklch, var(--acuity-primary) 38%, transparent); }
 .v9 .card { background: var(--acuity-card-bg); border: 1px solid var(--acuity-line-strong); box-shadow: 0 1px 2px rgba(20,16,40,.04), 0 6px 18px rgba(20,16,40,.05); }
 .v9 .card-sel { background: var(--v9-tint); border-color: var(--acuity-primary); box-shadow: 0 0 0 3px var(--v9-ring); }
@@ -502,8 +519,8 @@ export function FunnelV9({ brand = "ripple", adMatch }: { brand?: V9Brand; adMat
               <ChevronLeft className="h-5 w-5" />
             </button>
             {showProgress ? (
-              <div className="flex-1 h-2 rounded-full soft overflow-hidden">
-                <div className="h-full rounded-full grad transition-all duration-500 ease-out" style={{ width: `${progressPct}%` }} />
+              <div className="flex-1 h-2 rounded-full soft">
+                <div className="pbar h-full rounded-full grad transition-all duration-500 ease-out" style={{ width: `${progressPct}%` }} />
               </div>
             ) : (
               <div className="flex-1" />
@@ -674,7 +691,7 @@ function PrimaryButton({ children, onClick, disabled }: { children: ReactNode; o
     <button
       onClick={onClick}
       disabled={disabled}
-      className="group w-full rounded-full grad py-4 text-[16px] font-semibold text-white shadow-[0_8px_22px_-6px_var(--acuity-primary)] transition active:scale-[0.98] disabled:opacity-40 disabled:shadow-none flex items-center justify-center gap-2"
+      className="cta-shine group relative overflow-hidden w-full rounded-full grad py-4 text-[16px] font-semibold text-white shadow-[0_8px_22px_-6px_var(--acuity-primary)] transition active:scale-[0.98] disabled:opacity-40 disabled:shadow-none flex items-center justify-center gap-2"
     >
       {children}
       <ArrowRight className="h-4 w-4 transition group-hover:translate-x-0.5" />
@@ -1989,12 +2006,18 @@ function SystemCost() {
 }
 
 /**
- * "What no system costs you" (2026-10-31, Keenan): the emotional cost under
- * the dollar cost, built from her own "When it's all in your head" answers
- * and how often things slip. Defaults when she skipped them.
+ * What her setup costs, in money and in her (2026-10-31, Keenan: combine the
+ * two cost blocks into one, cleaner, with more pop). Money rows count up,
+ * then her own "When it's all in your head" answers, then one total.
  */
-function NoSystemCost({ answers }: { answers: Answers }) {
+function TrueCost({ answers }: { answers: Answers }) {
   const [ref, on] = useInView<HTMLDivElement>();
+  const money = [
+    { label: "Paper planner or journal", note: "2 a year", cents: PLANNERS_PER_YEAR_CENTS, icon: BookOpen },
+    { label: "Journaling app", note: "e.g. Day One", cents: JOURNAL_APP_CENTS, icon: Smartphone },
+    { label: "Habit tracker app", note: "e.g. Habitify", cents: HABIT_APP_CENTS, icon: Repeat },
+  ];
+  const total = money.reduce((n, r) => n + r.cents, 0);
   const COST: Record<string, { text: string; icon: LucideIcon }> = {
     slip: { text: "The thing you forgot, and the guilt after", icon: HeartCrack },
     switch: { text: "A mind that won’t switch off", icon: Waves },
@@ -2003,35 +2026,55 @@ function NoSystemCost({ answers }: { answers: Answers }) {
     last: { text: "Your own plans, pushed to “someday”", icon: Heart },
     drained: { text: "Starting the day already tired", icon: BatteryLow },
   };
-  const OFTEN: Record<string, string> = { daily: "Most days", weekly: "A few times a week", sometimes: "Every week", rarely: "When it counts" };
   const picked = (answers.multi.pain ?? []).filter((id) => COST[id]);
-  const ids = (picked.length ? picked : ["slip", "switch", "last"]).slice(0, 4);
-  const often = OFTEN[answers.single.often ?? ""];
+  const you = (picked.length ? picked : ["slip", "switch", "last"]).slice(0, 3);
+  const youAt = money.length * 160 + 500;
+  const totalAt = youAt + you.length * 160 + 300;
   return (
-    <div ref={ref} className={`mt-4 card rounded-3xl p-5 ${on ? "on" : ""}`}>
+    <div ref={ref} className={`mt-5 card rounded-3xl p-5 ${on ? "on" : ""}`}>
       <p className="text-center text-[22px] font-bold leading-tight tracking-tight">
-        What <span className="text-red-500">no system</span> costs you
+        What it&rsquo;s <span className="text-red-500">costing you</span> now
       </p>
-      <div className="mt-5 space-y-2.5">
-        {ids.map((id, i) => {
+
+      <p className="mt-4 text-[11.5px] font-bold uppercase tracking-[0.1em] text-acuity-text-ter">In money</p>
+      <div className="mt-2 space-y-2">
+        {money.map((r, i) => (
+          <div key={r.label} className={`rv flex items-center gap-3 ${on ? "on" : ""}`} style={{ "--d": `${i * 160}ms` } as CSSProperties}>
+            <span className="h-8 w-8 shrink-0 rounded-xl chip-ico flex items-center justify-center"><r.icon className="h-4 w-4" /></span>
+            <p className="flex-1 text-[14px] font-semibold leading-tight">{r.label} <span className="font-normal text-acuity-text-ter">&middot; {r.note}</span></p>
+            <p className="text-[14.5px] font-semibold tabular-nums"><CountUp cents={r.cents} run={on} /></p>
+          </div>
+        ))}
+      </div>
+
+      <div className={`rv-pop my-3 flex items-center gap-3 ${on ? "on" : ""}`} style={{ "--d": `${youAt - 200}ms` } as CSSProperties} aria-hidden="true">
+        <span className="h-px flex-1" style={{ background: "#F1E6DE" }} />
+        <span className="h-7 w-7 rounded-full bg-red-50 text-red-500 flex items-center justify-center text-[17px] font-bold">+</span>
+        <span className="h-px flex-1" style={{ background: "#F1E6DE" }} />
+      </div>
+
+      <p className="text-[11.5px] font-bold uppercase tracking-[0.1em] text-acuity-text-ter">In you</p>
+      <div className="mt-2 space-y-2">
+        {you.map((id, i) => {
           const c = COST[id];
           return (
-            <div key={id} className={`rv flex items-center gap-3 ${on ? "on" : ""}`} style={{ "--d": `${i * 180}ms` } as CSSProperties}>
-              <span className="h-9 w-9 shrink-0 rounded-xl flex items-center justify-center" style={{ background: "#FDE2E1", color: "#DC2626" }}>
-                <c.icon className="h-[18px] w-[18px]" />
-              </span>
-              <p className="flex-1 text-[14.5px] font-semibold leading-tight">{c.text}</p>
+            <div key={id} className={`rv flex items-center gap-3 ${on ? "on" : ""}`} style={{ "--d": `${youAt + i * 160}ms` } as CSSProperties}>
+              <span className="h-8 w-8 shrink-0 rounded-xl flex items-center justify-center" style={{ background: "#FDE2E1", color: "#DC2626" }}><c.icon className="h-4 w-4" /></span>
+              <p className="flex-1 text-[14px] font-semibold leading-tight">{c.text}</p>
             </div>
           );
         })}
       </div>
-      <div className={`rv mt-4 rounded-2xl soft px-4 py-3 text-center ${on ? "on" : ""}`} style={{ "--d": `${ids.length * 180 + 150}ms` } as CSSProperties}>
-        <p className="text-[12px] font-bold uppercase tracking-wide text-acuity-text-ter">{often ? `${often}, it costs you` : "Every week, it costs you"}</p>
-        <p className="mt-0.5 text-[26px] font-bold leading-tight text-red-500">Your peace of mind</p>
+
+      <div className={`rv thump mt-4 rounded-2xl px-4 py-3.5 text-center ${on ? "on" : ""}`} style={{ "--d": `${totalAt}ms`, background: "linear-gradient(160deg,#FFF1F0,#FDE2E1)" } as CSSProperties}>
+        <p className="text-[11.5px] font-bold uppercase tracking-[0.1em] text-red-400">Every year</p>
+        <p className="mt-0.5 text-[26px] font-bold leading-tight text-red-500 tabular-nums">
+          <CountUp cents={total} run={on} ms={1300} /> <span className="text-[17px]">+ your peace of mind</span>
+        </p>
       </div>
-      <div className={`rv mt-3 flex items-center justify-center gap-2 rounded-2xl grad px-4 py-3.5 text-white glow ${on ? "on" : ""}`} style={{ "--d": `${ids.length * 180 + 600}ms` } as CSSProperties}>
+      <div className={`rv shine relative mt-3 flex items-center justify-center gap-2 overflow-hidden rounded-2xl grad px-4 py-3.5 text-white glow ${on ? "on" : ""}`} style={{ "--d": `${totalAt + 450}ms` } as CSSProperties}>
         <Sparkles className="h-4 w-4" />
-        <p className="text-[15px] font-bold">Ripple holds it, so you don&rsquo;t have to.</p>
+        <p className="text-[15px] font-bold">Ripple: one app, nothing to keep up.</p>
       </div>
     </div>
   );
@@ -3107,36 +3150,11 @@ function TrustPaywall({ plan, setPlan, next, track, firstName, answers }: ViewPr
   return (
     <div className="enter" key="p2">
       {back}
-      <Heading title="How your free trial works" />
-      <div className="card rounded-3xl px-4 py-5">
-        <ol className="relative space-y-4">
-          {/* The line between the three days fills in as the page opens. */}
-          <span className="absolute left-[17px] top-5 bottom-5 w-[3px] rounded-full" style={{ background: "#FFE2D1" }} aria-hidden="true">
-            <span className="fill-down block w-full rounded-full grad" />
-          </span>
-          {[
-            { label: "Today", text: "Full access to everything. $0.", icon: Sparkles, on: true },
-            { label: "Day 4", text: "We email you a reminder.", icon: Bell, on: false },
-            { label: "Day 7", text: "Your plan starts. Cancel anytime before, in 2 taps.", icon: CalendarCheck, on: false },
-          ].map((t, i) => (
-            <li key={t.label} className="up relative flex items-start gap-3" style={{ animationDelay: `${150 + i * 180}ms` }}>
-              <span className={`h-9 w-9 shrink-0 rounded-full flex items-center justify-center ${t.on ? "grad text-white" : ""}`} style={t.on ? undefined : { background: "#FFE2D1", color: "#C2410C", boxShadow: "0 0 0 3px #FFFFFF" }}>
-                <t.icon className="h-4 w-4" />
-              </span>
-              <span>
-                <span className="block text-[15px] font-bold">{t.label}</span>
-                <span className="block text-[14px] text-acuity-text-sec">{t.text}</span>
-              </span>
-            </li>
-          ))}
-        </ol>
-      </div>
       {/* Anchor the price with what her current setup costs (Keenan,
           2026-10-31). The Planners vs Ripple stack stays off this page: the
           result screen already shows it, and comparison tables on the price
           page lost in the paywall research. */}
-      <SystemCost />
-      <NoSystemCost answers={answers} />
+      <TrueCost answers={answers} />
       <div className="mt-6 space-y-3">
         <button onClick={() => pick("yearly")} className={`relative w-full text-left rounded-3xl px-5 pt-5 pb-4 transition card outline-none focus-visible:ring-2 focus-visible:ring-acuity-primary ${plan === "yearly" ? "card-sel" : ""}`}>
           <span className="absolute -top-3 left-5 rounded-full grad px-3 py-1 text-[11px] font-bold text-white shadow">{earlyBird ? `EARLY BIRD · ${earlyBirdOffPct}% OFF` : `TRY IT FREE · SAVE ${price.savingsPct}`}</span>
@@ -3169,6 +3187,28 @@ function TrustPaywall({ plan, setPlan, next, track, firstName, answers }: ViewPr
             </div>
           </div>
         </button>
+      </div>
+      {/* How the trial works, as one horizontal block under the prices (Keenan, 2026-10-31). */}
+      <div className="mt-4 card rounded-3xl px-3 pt-5 pb-4">
+        <div className="relative grid grid-cols-3">
+          <span className="absolute left-[16.6%] right-[16.6%] top-[18px] h-[3px] rounded-full" style={{ background: "#FFE2D1" }} aria-hidden="true">
+            <span className="fill-right block h-full rounded-full grad" />
+          </span>
+          {[
+            { label: "Today", text: "Full access. $0.", icon: Sparkles, on: true },
+            { label: "Day 4", text: "Reminder email", icon: Bell, on: false },
+            { label: "Day 7", text: "Plan starts", icon: CalendarCheck, on: false },
+          ].map((t, i) => (
+            <div key={t.label} className="up relative flex flex-col items-center text-center" style={{ animationDelay: `${150 + i * 180}ms` }}>
+              <span className={`h-9 w-9 rounded-full flex items-center justify-center ${t.on ? "grad text-white" : ""}`} style={t.on ? undefined : { background: "#FFE2D1", color: "#C2410C", boxShadow: "0 0 0 3px #FFFFFF" }}>
+                <t.icon className="h-4 w-4" />
+              </span>
+              <p className="mt-2 text-[13.5px] font-bold">{t.label}</p>
+              <p className="text-[12px] leading-tight text-acuity-text-sec">{t.text}</p>
+            </div>
+          ))}
+        </div>
+        <p className="mt-3 text-center text-[12.5px] text-acuity-text-sec">Cancel anytime before day 7, in 2 taps.</p>
       </div>
       <BottomBar>
         <p className="mb-2 text-center text-[14px] font-bold">No commitment. Cancel anytime.</p>

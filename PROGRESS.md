@@ -10,6 +10,35 @@
 
 
 
+## [2026-10-31] — Planners paywall: one combined cost card, trial timeline under the prices, more motion across the funnel
+
+- **Requested by:** Keenan
+- **Committed by:** Claude Code
+- **Commit hash:** (see git log, "feat: Combine cost cards and add motion to /start-journal")
+
+### In plain English (for Keenan)
+- **One cost card.** Paywall page 3 now has a single "What it's costing you now" card: in money (planner, journaling app, habit tracker, counting up), then "+", then in you (her own pain answers), ending "$144.84 + your peace of mind" and "Ripple: one app, nothing to keep up."
+- **Timeline under the prices.** The "Today / Day 4 / Day 7" trial timeline now sits below the prices in one horizontal row.
+- **More motion across the Planners funnel:**
+  - softer screen transitions
+  - answers pop with a ring when picked
+  - cards lift on hover
+  - the main button has a light sweep
+  - the progress bar has a glowing tip
+
+### Technical changes (for Jimmy)
+- `apps/web/src/components/funnel-v9.tsx`:
+  - New `TrueCost` replaces `SystemCost` + `NoSystemCost` on TrustPaywall page 3 (`NoSystemCost` removed; `SystemCost` is still used by ClassicPaywall).
+  - The page 3 vertical timeline and its heading were replaced by a horizontal 3-column block under the plan cards (new `fill-right` keyframe).
+  - Sunrise-only CSS: `.enter` blur-up, `.card-sel` spring and ring (v9-sel, v9-sel-ring), `button.card` hover lift, `.shine` / `.cta-shine` sweep, `.thump` total, `.pbar` progress tip. All are disabled under reduced motion.
+  - PrimaryButton gains `cta-shine relative overflow-hidden` (the sweep only renders in sunrise and when enabled). The progress track loses `overflow-hidden` so the tip shows; the fill is rounded, so other themes look the same.
+
+### Manual steps needed
+- None
+
+### Notes
+- The motion is scoped to `[data-funnel-theme="sunrise"]`, so /start-test and /start-test-bwk are unchanged.
+
 ## [2026-10-31] — Planners paywall shows what having no system costs her, emotionally
 
 - **Requested by:** Keenan
