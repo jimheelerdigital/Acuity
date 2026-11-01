@@ -2434,7 +2434,7 @@ function PlannerHistory({ answers }: { answers: Answers }) {
   const C = useV9();
   const triedStep = C.steps.find((s): s is Extract<V9Step, { kind: "multi" }> => s.id === "tried-what" && s.kind === "multi");
   const tools = (answers.multi["tried-what"] ?? []).map((id) => triedStep?.options.find((o) => o.id === id)?.label).filter(Boolean) as string[];
-  const count: Record<string, string> = { one: "1–2", few: "3–5", many: "5+", lost: "Lots" };
+  const count: Record<string, string> = { one: "1–2", few: "3–4", many: "5–10", lost: "Lots" };
   const usually: Record<string, string> = { miss: "Missed days", chore: "Became a chore", forget: "Forgot to open", blank: "Blank page" };
   return (
     <div className="mt-5 card rounded-3xl p-5">

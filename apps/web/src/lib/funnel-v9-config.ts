@@ -650,8 +650,8 @@ export const JOURNAL_V9_STEPS: V9Step[] = [
     title: "How many times have you started over?",
     options: [
       { id: "one", label: "Once or twice" },
-      { id: "few", label: "3 to 5 times" },
-      { id: "many", label: "More than 5" },
+      { id: "few", label: "3 or 4 times" },
+      { id: "many", label: "5 to 10 times" },
       { id: "lost", label: "I\u2019ve lost count" },
     ],
   },
