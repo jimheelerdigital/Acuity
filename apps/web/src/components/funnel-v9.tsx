@@ -31,7 +31,7 @@ import { FunnelEntryIntro } from "@/components/funnel-entry-intro";
 import { PayInBrowserButton, PaywallTrustLine } from "@/components/pay-in-browser";
 import { firstDebriefOutcome, type FirstDebriefOutcome } from "@/components/funnel-first-debrief";
 import type { AdMatch } from "@/lib/funnel-ad-match";
-import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode, type RefObject } from "react";
+import { Fragment, createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode, type RefObject } from "react";
 import { createPortal } from "react-dom";
 import { signIn } from "next-auth/react";
 import {
@@ -2256,119 +2256,135 @@ function OftenTiles({ step, answers, setAnswers, next, track }: ViewProps & { st
 }
 
 /**
- * Result for /start-journal (2026-10-31, Keenan: "make them feel this
- * screen"). Three beats from her own answers: the mirror (why she buys
- * planners, what's on her plate, what happens, how often, how they failed),
- * the name, then the turn (each "easier" pick next to what Ripple does).
+ * Result for /start-journal (2026-10-31). Keenan: "people aren't going to read
+ * all of this - they want to feel quickly understood and see how we're going
+ * to be different." So: the name, one short line from her answers, her pains
+ * as tags, then old way vs Ripple in 2-4 words a row. Scannable in seconds.
  */
 function JournalResult({ answers, firstName, next }: ViewProps) {
   const C = useV9();
   const state = C.stateName({ plate: answers.multi.plate ?? [], sliders: answers.sliders, pileup: answers.single.pileup, said: answers.single });
-  const WHY: Record<string, string> = {
-    forget: "to stop forgetting things",
-    control: "to feel on top of things",
-    head: "to get it out of your head",
-    family: "to keep the family on track",
-    me: "to make time for you",
-    fresh: "to start fresh",
-  };
   const PAIN: Record<string, string> = {
-    slip: "Things slip through the cracks.",
-    switch: "Your mind won’t switch off.",
-    snap: "You snap at people you love.",
-    behind: "You always feel behind.",
-    last: "Your own stuff comes last.",
-    drained: "You’re drained before the day starts.",
+    slip: "Things slip",
+    switch: "Mind won’t switch off",
+    snap: "Snapping at people you love",
+    behind: "Always behind",
+    last: "You come last",
+    drained: "Drained",
   };
-  const OFTEN: Record<string, string> = {
-    daily: "most days",
-    weekly: "a few times a week",
-    sometimes: "about once a week",
-    rarely: "rarely, but when it does, it costs you",
+  const ENDING: Record<string, string> = {
+    miss: "Every one fizzled after a few days.",
+    chore: "Every one became a chore.",
+    forget: "Every one got forgotten.",
+    blank: "Every one ended at a blank page.",
   };
-  const HAPPENS: Record<string, string> = {
-    miss: "you started strong, then missed a few days",
-    chore: "filling it in became another chore",
-    forget: "you forgot to open it",
-    blank: "you stared at the blank page",
+  const SWAP: Record<string, { old: string; now: string; icon: LucideIcon }> = {
+    say: { old: "Writing it all down", now: "Just say it", icon: Mic },
+    sorts: { old: "Sorting it yourself", now: "Sorts itself", icon: ListChecks },
+    setup: { old: "Setting it up", now: "Nothing to set up", icon: Sparkles },
+    matters: { old: "Guessing what matters", now: "Shows what matters", icon: Eye },
+    restart: { old: "Starting over", now: "Never resets", icon: Repeat },
+    blank: { old: "A blank page", now: "Just talk", icon: Mic },
   };
-  const EASIER: Record<string, { said: string; ripple: string }> = {
-    say: { said: "you could just say it", ripple: "You talk. Ripple writes the list." },
-    sorts: { said: "it sorted itself", ripple: "Tasks land sorted, with their dates." },
-    setup: { said: "there was nothing to set up", ripple: "Nothing to set up. You just start talking." },
-    matters: { said: "it showed you what matters", ripple: "Ripple shows you what keeps coming up." },
-    restart: { said: "you never had to start over", ripple: "Nothing ever resets. Every day adds up." },
-    blank: { said: "there was no blank page", ripple: "No blank page. Just say what’s on your mind." },
-  };
-  const join = (xs: string[]) => (xs.length > 1 ? `${xs.slice(0, -1).join(", ")} and ${xs[xs.length - 1]}` : xs[0] ?? "");
-  const hi = (t: string) => <span className="rounded-[3px] px-0.5" style={{ background: "linear-gradient(transparent 55%, #FFD3BB 55%)" }}>{t}</span>;
-
-  const why = (answers.multi.why ?? []).map((id) => WHY[id]).filter(Boolean).slice(0, 2);
-  const plate = answers.multi.plate ?? [];
-  const pains = (answers.multi.pain ?? []).map((id) => PAIN[id]).filter(Boolean).slice(0, 2);
-  const often = OFTEN[answers.single.often ?? ""];
-  const happens = HAPPENS[answers.single.happens ?? ""];
+  const triedIds = (answers.multi["tried-what"] ?? []).slice(0, 6);
+  const picks = weekPicks(C, answers).slice(0, 3);
+  const demo = picks.length ? picks : [{ chip: "A school form", task: "Sign the school form" }, { chip: "Bills", task: "Pay the bills" }, { chip: "Groceries", task: "Order the groceries" }];
   const tools = (answers.multi["tried-what"] ?? []).length;
-  const easierIds = (answers.multi.easier ?? []).filter((id) => EASIER[id]);
-  const easier = (easierIds.length ? easierIds : ["say", "sorts", "restart"]).map((id) => EASIER[id]);
-
-  const lines: ReactNode[] = [];
-  if (why.length) lines.push(<>You buy planners {hi(join(why))}.</>);
-  lines.push(
-    plate.length ? (
-      <>{why.length ? "But with " : "With "}{hi(plateLabel(plate, C.plateLabels))} on your plate, it all lives in your head.</>
-    ) : (
-      <>{why.length ? "But with everything on your plate" : "With everything on your plate"}, it all lives in your head.</>
-    )
-  );
-  pains.forEach((p) => lines.push(hi(p)));
-  if (often) lines.push(<>Something slips {hi(often)}.</>);
-  if (happens) lines.push(<>And every fresh start ended the same way: {hi(happens)}.</>);
-  const nameLine = tools >= 2 ? `You didn’t fail ${tools} systems. ${tools} systems failed a life this full.` : state.line;
-  const t0 = 250;
-  const step = 420;
-  const nameAt = t0 + lines.length * step + 200;
+  const ending = ENDING[answers.single.happens ?? ""] ?? "None of them stuck.";
+  const line = tools >= 2 ? `${tools} systems. ${ending}` : ending;
+  const pains = (answers.multi.pain ?? []).map((id) => PAIN[id]).filter(Boolean).slice(0, 3);
+  const picked = (answers.multi.easier ?? []).filter((id) => SWAP[id]);
+  const ids = [...picked, ...["say", "restart", "sorts"].filter((x) => !picked.includes(x))].slice(0, 3);
 
   return (
     <div className="enter">
-      <p className="text-center text-[13px] font-semibold text-acuity-primary mb-3">
-        {firstName ? `${firstName}, here’s what you told us` : "Here’s what you told us"}
-      </p>
+      <p className="text-center text-[13px] font-semibold text-acuity-primary mb-3">{firstName ? `${firstName}, we get it` : "We get it"}</p>
 
-      <div className="card rounded-[28px] px-5 py-5">
-        <p className="serif text-[20px] leading-[1.45]">
-          {lines.map((l, i) => (
-            <span key={i} className="up" style={{ animationDelay: `${t0 + i * step}ms` }}>
-              {l}{" "}
-            </span>
-          ))}
-        </p>
-      </div>
-
-      <div className="up relative mt-4 overflow-hidden rounded-[28px] grad p-6 text-white shadow-[0_14px_36px_-12px_var(--acuity-primary)]" style={{ animationDelay: `${nameAt}ms` }}>
+      <div className="relative overflow-hidden rounded-[28px] grad p-6 text-white shadow-[0_14px_36px_-12px_var(--acuity-primary)]">
         <div className="absolute -right-10 -top-10 h-40 w-40 rounded-full bg-white/10" aria-hidden="true" />
+        {triedIds.length > 0 && (
+          // Her planner graveyard: every tool she ticked, fanned out and crossed off.
+          <div className="mb-4 flex justify-center" aria-hidden="true">
+            {triedIds.map((id, i) => {
+              const Icon = OPTION_ICONS[`tried-what:${id}`] ?? BookOpen;
+              const mid = (triedIds.length - 1) / 2;
+              return (
+                <span
+                  key={id}
+                  className="fan relative -mx-1.5 flex h-[54px] w-[46px] items-center justify-center rounded-xl bg-white shadow-[0_8px_18px_-8px_rgba(120,30,0,.5)]"
+                  style={{ ["--rot" as string]: `${(i - mid) * 7}deg`, ["--tx" as string]: "0px", ["--d" as string]: `${i * 90}ms`, zIndex: i } as CSSProperties}
+                >
+                  <Icon className="h-5 w-5" style={{ color: "#C2410C" }} />
+                  <span className="xout absolute left-1.5 right-1.5 top-1/2 h-[2.5px] rounded-full bg-red-500" style={{ ["--d" as string]: `${500 + i * 120}ms` } as CSSProperties} />
+                </span>
+              );
+            })}
+          </div>
+        )}
         <p className="text-[12px] font-semibold uppercase tracking-[0.14em] text-white/80">Your pattern</p>
-        <h1 className="pop mt-1 text-[32px] font-bold leading-tight" style={{ animationDelay: `${nameAt + 150}ms` }}>You&rsquo;re {state.name}</h1>
-        <p className="mt-2 text-[16px] leading-relaxed text-white/90">{nameLine}</p>
+        <h1 className="pop mt-1 text-[34px] font-bold leading-tight" style={{ animationDelay: `${300 + triedIds.length * 120}ms` }}>{state.name}</h1>
+        <p className="mt-1 text-[17px] font-semibold text-white/95">{line}</p>
+        {pains.length > 0 && (
+          <div className="mt-4 flex flex-wrap gap-1.5">
+            {pains.map((p, i) => (
+              <span key={p} className="up rounded-full bg-white/20 px-3 py-1 text-[13px] font-semibold" style={{ animationDelay: `${300 + i * 120}ms` }}>{p}</span>
+            ))}
+          </div>
+        )}
+        <p className="mt-4 text-[16px] font-bold italic">That&rsquo;s the system failing you.</p>
       </div>
 
-      <div className="up mt-4 card rounded-[28px] p-5" style={{ animationDelay: `${nameAt + 500}ms` }}>
-        <p className="serif text-[19px] leading-snug">{easierIds.length ? "You said it would be easier if…" : "Here’s what changes with Ripple"}</p>
-        <div className="mt-3 space-y-2.5">
-          {easier.map((e, i) => (
-            <div key={e.said} className="up rounded-2xl p-3" style={{ background: "linear-gradient(155deg,#fff,#FFF1E8)", animationDelay: `${nameAt + 700 + i * 160}ms` }}>
-              {easierIds.length > 0 && <p className="text-[13.5px] italic text-acuity-text-sec">&hellip;{e.said}</p>}
-              <p className="mt-0.5 flex items-center gap-2 text-[15px] font-semibold">
-                <span className="h-5 w-5 shrink-0 rounded-full grad flex items-center justify-center"><Check className="h-3 w-3 text-white" strokeWidth={3} /></span>
-                {e.ripple}
-              </p>
-            </div>
+      <div className="mt-4 card rounded-[28px] p-4">
+        <p className="serif px-1 text-[20px] leading-snug">How Ripple is different</p>
+        <div className="relative mt-3 grid grid-cols-2 gap-x-2">
+          {/* The Ripple column is one tinted band so it reads as the winner. */}
+          <span className="absolute inset-y-0 right-0 w-[calc(50%-4px)] rounded-2xl" style={{ background: "linear-gradient(170deg,#FFE3D2,#FFD0B5)" }} aria-hidden="true" />
+          <p className="relative flex items-center gap-1.5 px-3 pt-3 pb-2 text-[12px] font-bold uppercase tracking-[0.08em] text-acuity-text-ter"><BookOpen className="h-3.5 w-3.5" /> Planners</p>
+          <p className="relative flex items-center gap-1.5 px-3 pt-3 pb-2 text-[12px] font-bold uppercase tracking-[0.08em]" style={{ color: "#C2410C" }}><Waves className="h-3.5 w-3.5" /> Ripple</p>
+          {ids.map((id, i) => {
+            const sw = SWAP[id];
+            const d = 600 + i * 280;
+            return (
+              <Fragment key={id}>
+                <div className="up relative flex items-center px-3 py-3" style={{ animationDelay: `${d}ms`, borderTop: "1px solid #F1E6DE" }}>
+                  <span className="relative inline-block text-[14px] leading-snug text-acuity-text-ter">
+                    {sw.old}
+                    <span className="xout absolute left-0 right-0 top-1/2 h-[1.5px] rounded-full bg-red-500/70" style={{ ["--d" as string]: `${d + 250}ms` } as CSSProperties} />
+                  </span>
+                </div>
+                <div className="up relative flex items-center gap-2 px-3 py-3" style={{ animationDelay: `${d + 150}ms`, borderTop: "1px solid rgba(255,255,255,.7)" }}>
+                  <span className="pop h-7 w-7 shrink-0 rounded-full grad flex items-center justify-center text-white" style={{ animationDelay: `${d + 400}ms` }}><sw.icon className="h-3.5 w-3.5" /></span>
+                  <span className="text-[15px] font-bold leading-snug">{sw.now}</span>
+                </div>
+              </Fragment>
+            );
+          })}
+          <span className="relative col-start-2 block h-2" aria-hidden="true" />
+        </div>
+      </div>
+
+      {/* Proof, not a claim: her own week, said once, as a Ripple list. */}
+      <div className="up mt-4 card rounded-[28px] p-5" style={{ animationDelay: `${600 + ids.length * 280 + 300}ms` }}>
+        <p className="serif text-[20px] leading-snug">Your week, the Ripple way</p>
+        <div className="mt-3 flex items-start gap-2.5">
+          <span className="h-9 w-9 shrink-0 rounded-full grad flex items-center justify-center text-white"><Mic className="h-4 w-4" /></span>
+          <p className="rounded-2xl rounded-tl-md px-3.5 py-2.5 text-[14.5px] italic leading-snug" style={{ background: "#FFF1E8" }}>
+            &ldquo;Okay so&hellip; {demo.map((d) => lcChip(d.chip)).join(", ")}&hellip;&rdquo;
+          </p>
+        </div>
+        <p className="my-2 pl-12 text-[12px] font-bold uppercase tracking-[0.08em]" style={{ color: "#C2410C" }}>&darr; Ripple wrote it down</p>
+        <div className="ml-12 rounded-2xl bg-white px-3 py-1" style={{ border: "1px solid #F1E6DE" }}>
+          {demo.map((d, i) => (
+            <p key={d.task} className="up flex items-center gap-2 py-2 text-[14.5px] font-medium" style={{ animationDelay: `${1700 + ids.length * 280 + i * 180}ms`, borderTop: i ? "1px solid #F1E6DE" : undefined }}>
+              <span className="h-5 w-5 shrink-0 rounded-full grad flex items-center justify-center"><Check className="h-3 w-3 text-white" strokeWidth={3} /></span>
+              {d.task}
+            </p>
           ))}
         </div>
       </div>
 
       <BottomBar>
-        <PrimaryButton onClick={next}>Show me how Ripple fixes this</PrimaryButton>
+        <PrimaryButton onClick={next}>Show me how it works</PrimaryButton>
       </BottomBar>
     </div>
   );

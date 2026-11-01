@@ -10,6 +10,33 @@
 
 
 
+## [2026-10-31] — Planners result screen: quick to read, with a Planners vs Ripple face-off
+
+- **Requested by:** Keenan
+- **Committed by:** Claude Code
+- **Commit hash:** (see git log, "feat: Make the /start-journal result scannable")
+
+### In plain English (for Keenan)
+The long paragraph version was too much to read. The result is now three quick pieces:
+- **Her pattern card:** every planner and app she tried, fanned out and crossed off, then "The Restarter", "6 systems. Every one became a chore.", her pains as tags, and ***That's the system failing you.***
+- **A Planners vs Ripple face-off,** built from what she said would make it easier (crossed-out old way vs. orange Ripple column).
+- **Her own week turned into a Ripple list:** "Okay so… bills, emails I owe…", then the tasks.
+
+### Technical changes (for Jimmy)
+- `apps/web/src/components/funnel-v9.tsx`: rewrote `JournalResult`:
+  - a tried-what graveyard (`.fan` + `.xout`)
+  - a pattern name, plus a short line from the tried count and `happens`
+  - pain tags (max 3)
+  - a 2-column Planners/Ripple grid from `multi.easier`, padded to 3 rows with defaults
+  - a week-to-list proof card from `weekPicks` (falls back to sample items)
+- Imported `Fragment` from react. The button now reads "Show me how it works".
+
+### Manual steps needed
+- None
+
+### Notes
+- Keenan: people won't read a paragraph; they need to feel understood at a glance and see the difference. Keep result copy to 2–4 words per element.
+
 ## [2026-10-31] — Planners funnel result screen now reflects her own answers back to her
 
 - **Requested by:** Keenan
