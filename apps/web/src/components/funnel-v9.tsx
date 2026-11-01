@@ -560,7 +560,41 @@ type ViewProps = {
   onPaid: (p: Plan) => void;
 };
 
+/** /start-journal: a real review under these steps (index into C.reviews). */
+const JOURNAL_REVIEW_AT: Record<string, number> = { easier: 1, commit: 3 };
+
 function StepView(p: ViewProps) {
+  const C = useV9();
+  const at = C.brand === "journal" ? JOURNAL_REVIEW_AT[p.step.id] : undefined;
+  const r = at !== undefined ? C.reviews[at] : undefined;
+  if (r) {
+    return (
+      <>
+        <StepBody {...p} />
+        <ReviewStrip quote={r.quote} name={r.name} />
+      </>
+    );
+  }
+  return <StepBody {...p} />;
+}
+
+function ReviewStrip({ quote, name }: { quote: string; name: string }) {
+  return (
+    <figure className="up mt-6 rounded-2xl soft px-4 py-3.5 text-left" style={{ animationDelay: "250ms" }}>
+      <div className="flex items-center gap-2">
+        <span className="flex text-acuity-warn">
+          {[0, 1, 2, 3, 4].map((k) => (
+            <Star key={k} className="h-3 w-3 fill-current" />
+          ))}
+        </span>
+        <figcaption className="text-[12px] font-semibold text-acuity-text-sec">{name}</figcaption>
+      </div>
+      <blockquote className="mt-1.5 text-[13.5px] leading-snug text-acuity-text-sec italic">&ldquo;{quote}&rdquo;</blockquote>
+    </figure>
+  );
+}
+
+function StepBody(p: ViewProps) {
   const C = useV9();
   const { step } = p;
   switch (step.kind) {
@@ -671,7 +705,7 @@ function initials(name: string) {
 function SliderReview({ stepId }: { stepId: string }) {
   const C = useV9();
   // Matched to the question where it fits; other sliders take reviews in turn.
-  const byTopic: Record<string, RegExp> = { "s-lists": /never forget|task manager/i, "s-repeat": /every Monday|weekly report/i, "s-name": /never connected|bring up/i };
+  const byTopic: Record<string, RegExp> = { "s-lists": /never forget|task manager/i, "s-repeat": /every Monday|weekly report/i, "s-name": /never connected|bring up/i, "s-say": /written journaling/i };
   const sliders = C.steps.filter((s) => s.kind === "slider").map((s) => s.id);
   const i = sliders.indexOf(stepId);
   const r = C.reviews.find((x) => byTopic[stepId]?.test(x.quote)) ?? (i >= 0 && C.reviews.length ? C.reviews[i % C.reviews.length] : null);

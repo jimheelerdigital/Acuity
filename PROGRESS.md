@@ -10,6 +10,28 @@
 
 
 
+## [2026-10-31] — Planners funnel uses real App Store reviews
+
+- **Requested by:** Keenan
+- **Committed by:** Claude Code
+- **Commit hash:** (see git log, "content: Use real App Store reviews in /start-journal")
+
+### In plain English (for Keenan)
+The Planners funnel now shows only real App Store reviews, credited to each reviewer's App Store name, in five places: "It's not you" (KeysCoins), "What would make it easier?" (JCirishlax55), the write-vs-say slider (vjhaines, who switched from written journaling), "Ready?" (JPB619) and paywall page 1 (KeysCoins).
+
+### Technical changes (for Jimmy)
+- `apps/web/src/lib/funnel-v9-config.ts`: new `JOURNAL_REVIEWS`; JOURNAL_V9 sets `reviews: JOURNAL_REVIEWS` (was the shared V9_REVIEWS with Sarah M./Priya R.).
+- `apps/web/src/components/funnel-v9.tsx`:
+  - StepView now wraps a new `StepBody` and adds a `ReviewStrip` under steps listed in `JOURNAL_REVIEW_AT` (easier, commit).
+  - SliderReview matches s-say to the "written journaling" review.
+
+### Manual steps needed
+- [ ] Decide on the 3 held reviews (Keenan): NoahAssaraf (is this family? if so it needs a disclosure or should stay out), SAMullenFO (confirm she isn't a paid creator), Erguudvnkhf (mentions anxiety and reminders)
+- [ ] Confirm whether "Sarah M." and "Priya R." in V9_REVIEWS are real; they still show on the live /start-test (Keenan)
+
+### Notes
+- FTC's 2024 rule bans fake or unattributable testimonials and undisclosed insider reviews. Only use reviews traceable to a real customer.
+
 ## [2026-10-31] — Planners result: five-row face-off, week card removed
 
 - **Requested by:** Keenan
