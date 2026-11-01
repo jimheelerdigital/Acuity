@@ -2434,14 +2434,14 @@ function PlannerHistory({ answers }: { answers: Answers }) {
   const C = useV9();
   const triedStep = C.steps.find((s): s is Extract<V9Step, { kind: "multi" }> => s.id === "tried-what" && s.kind === "multi");
   const tools = (answers.multi["tried-what"] ?? []).map((id) => triedStep?.options.find((o) => o.id === id)?.label).filter(Boolean) as string[];
-  const count: Record<string, string> = { one: "1", few: "2–3", many: "4+", lost: "Lots" };
+  const count: Record<string, string> = { one: "1–2", few: "3–5", many: "5+", lost: "Lots" };
   const usually: Record<string, string> = { miss: "Missed days", chore: "Became a chore", forget: "Forgot to open", blank: "Blank page" };
   return (
     <div className="mt-5 card rounded-3xl p-5">
       <p className="text-[13px] font-bold mb-3">Your planner history</p>
       <div className="grid grid-cols-3 gap-2">
         {[
-          { v: count[answers.single.tried ?? ""] ?? String(tools.length || "?"), l: "systems tried" },
+          { v: count[answers.single.tried ?? ""] ?? String(tools.length || "?"), l: "fresh starts" },
           { v: usually[answers.single.happens ?? ""] ?? "Fizzled", l: "what happened", small: true },
           { v: "0", l: "upkeep with Ripple" },
         ].map((t, i) => (
@@ -2511,7 +2511,7 @@ function TriedTiles({ step, answers, setAnswers, next, track }: ViewProps & { st
   const stack: Record<string, number> = { one: 1, few: 3, many: 5, lost: 7 };
   return (
     <div className="enter">
-      <Heading title={step.title} sub="Planners, apps, journals, notebooks. All of them count." />
+      <Heading title={step.title} sub="New planner, new app, new notebook. Every fresh start counts." />
       <div className="grid grid-cols-2 gap-3">
         {step.options.map((o, i) => {
           const n = stack[o.id] ?? 1;

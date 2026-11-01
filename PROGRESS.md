@@ -10,6 +10,25 @@
 
 
 
+## [2026-10-31] — "How many have you tried?" becomes "How many times have you started over?"
+
+- **Requested by:** Keenan
+- **Committed by:** Claude Code
+- **Commit hash:** (see git log, "content: Reword the tried question")
+
+### In plain English (for Keenan)
+The Planners funnel now asks how many times she's started over, instead of how many planners she's tried. That counts the times it failed her rather than the products she bought, and it ties into "To start fresh, again", "If I never had to start over" and the Restarter result.
+
+### Technical changes (for Jimmy)
+- `apps/web/src/lib/funnel-v9-config.ts`: the `tried` step's title and labels changed (Once or twice / 3 to 5 times / More than 5 / I've lost count). Option ids are unchanged, so results and admin stay comparable.
+- `apps/web/src/components/funnel-v9.tsx`: TriedTiles sub-line, and the PlannerHistory "fresh starts" label and counts.
+
+### Manual steps needed
+- None
+
+### Notes
+- None
+
 ## [2026-10-31] — Planners funnel opens with Keenan's pain questions
 
 - **Requested by:** Keenan
