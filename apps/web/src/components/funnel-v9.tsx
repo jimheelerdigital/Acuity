@@ -2312,21 +2312,11 @@ function JournalResult({ answers, firstName, next }: ViewProps) {
     forget: "Every one got forgotten.",
     blank: "Every one ended at a blank page.",
   };
-  const SWAP: Record<string, { old: string; now: string; icon: LucideIcon }> = {
-    say: { old: "Writing it all down", now: "Just say it", icon: Mic },
-    sorts: { old: "Sorting it yourself", now: "Sorts itself", icon: ListChecks },
-    setup: { old: "Setting it up", now: "Nothing to set up", icon: Sparkles },
-    matters: { old: "Guessing what matters", now: "Shows what matters", icon: Eye },
-    restart: { old: "Starting over", now: "Never resets", icon: Repeat },
-    blank: { old: "A blank page", now: "Just talk", icon: Waves },
-  };
   const triedIds = (answers.multi["tried-what"] ?? []).slice(0, 6);
   const tools = (answers.multi["tried-what"] ?? []).length;
   const ending = ENDING[answers.single.happens ?? ""] ?? "None of them stuck.";
   const line = tools >= 2 ? `${tools} systems. ${ending}` : ending;
   const pains = (answers.multi.pain ?? []).map((id) => PAIN[id]).filter(Boolean).slice(0, 3);
-  const picked = (answers.multi.easier ?? []).filter((id) => SWAP[id]);
-  const ids = [...picked, ...["say", "sorts", "matters", "restart", "setup", "blank"].filter((x) => !picked.includes(x))].slice(0, 5);
 
   return (
     <div className="enter">
@@ -2366,34 +2356,9 @@ function JournalResult({ answers, firstName, next }: ViewProps) {
         <p className="mt-4 text-[16px] font-bold italic">That&rsquo;s the system failing you.</p>
       </div>
 
-      <div className="mt-4 card rounded-[28px] p-4">
-        <p className="serif px-1 text-[20px] leading-snug">How Ripple is different</p>
-        <div className="relative mt-3 grid grid-cols-2 gap-x-2">
-          {/* The Ripple column is one tinted band so it reads as the winner. */}
-          <span className="absolute inset-y-0 right-0 w-[calc(50%-4px)] rounded-2xl" style={{ background: "linear-gradient(170deg,#FFE3D2,#FFD0B5)" }} aria-hidden="true" />
-          <p className="relative flex items-center gap-1.5 px-3 pt-3 pb-2 text-[12px] font-bold uppercase tracking-[0.08em] text-acuity-text-ter"><BookOpen className="h-3.5 w-3.5" /> Planners</p>
-          <p className="relative flex items-center gap-1.5 px-3 pt-3 pb-2 text-[12px] font-bold uppercase tracking-[0.08em]" style={{ color: "#C2410C" }}><Waves className="h-3.5 w-3.5" /> Ripple</p>
-          {ids.map((id, i) => {
-            const sw = SWAP[id];
-            const d = 600 + i * 220;
-            return (
-              <Fragment key={id}>
-                <div className="up relative flex h-[58px] items-center px-3" style={{ animationDelay: `${d}ms`, borderTop: "1px solid #F1E6DE" }}>
-                  <span className="relative inline-block text-[14px] leading-tight text-acuity-text-ter">
-                    {sw.old}
-                    <span className="xout absolute left-0 right-0 top-1/2 h-[1.5px] rounded-full bg-red-500/70" style={{ ["--d" as string]: `${d + 250}ms` } as CSSProperties} />
-                  </span>
-                </div>
-                <div className="up relative flex h-[58px] items-center gap-2 px-3" style={{ animationDelay: `${d + 150}ms`, borderTop: "1px solid rgba(255,255,255,.7)" }}>
-                  <span className="pop h-7 w-7 shrink-0 rounded-full grad flex items-center justify-center text-white" style={{ animationDelay: `${d + 400}ms` }}><sw.icon className="h-3.5 w-3.5" /></span>
-                  <span className="text-[15px] font-bold leading-tight">{sw.now}</span>
-                </div>
-              </Fragment>
-            );
-          })}
-          <span className="relative col-start-2 block h-2" aria-hidden="true" />
-        </div>
-      </div>
+      {/* Keenan 2026-10-31: the live paywall's Paper planner vs Ripple graphic
+          goes here, in place of the 5-row face-off. */}
+      <PlannerVsRipple />
 
       <BottomBar>
         <PrimaryButton onClick={next}>Show me how it works</PrimaryButton>
@@ -3082,6 +3047,7 @@ function TrustPaywall({ plan, setPlan, next, track, firstName, answers }: ViewPr
             <span className="block text-[13px] text-acuity-text-sec leading-snug">Keep going, or cancel in 2 taps. Your call.</span>
           </span>
         </div>
+        {C.reviews[4] && <ReviewCard {...C.reviews[4]} className="up mt-5 w-full" />}
         <BottomBar>
           <PrimaryButton onClick={() => setPage(2)}>Try for $0.00</PrimaryButton>
         </BottomBar>
@@ -3116,7 +3082,12 @@ function TrustPaywall({ plan, setPlan, next, track, firstName, answers }: ViewPr
           ))}
         </ol>
       </div>
-      <div className="mt-5 space-y-3">
+      {/* Anchor the price with what her current setup costs (Keenan,
+          2026-10-31). The Planners vs Ripple stack stays off this page: the
+          result screen already shows it, and comparison tables on the price
+          page lost in the paywall research. */}
+      <SystemCost />
+      <div className="mt-6 space-y-3">
         <button onClick={() => pick("yearly")} className={`relative w-full text-left rounded-3xl px-5 pt-5 pb-4 transition card outline-none focus-visible:ring-2 focus-visible:ring-acuity-primary ${plan === "yearly" ? "card-sel" : ""}`}>
           <span className="absolute -top-3 left-5 rounded-full grad px-3 py-1 text-[11px] font-bold text-white shadow">{earlyBird ? `EARLY BIRD · ${earlyBirdOffPct}% OFF` : `TRY IT FREE · SAVE ${price.savingsPct}`}</span>
           <div className="flex items-center justify-between gap-3">

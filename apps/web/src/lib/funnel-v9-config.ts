@@ -768,16 +768,18 @@ export function journalStateName(a: { plate: string[]; sliders: Record<string, n
  * Real App Store reviews (2026-10-31, from Keenan's App Store Connect
  * screenshots), credited to the reviewer's App Store name. Trimmed quotes keep
  * the reviewer's words; "…" marks a cut. Order matters: [0] reassure + paywall,
- * [1] "easier", [2] the write-vs-say slider, [3] "Ready?".
- * Not used yet: NoahAssaraf (possible family connection, needs disclosure),
- * SAMullenFO (confirm she isn't a paid creator), Erguudvnkhf (anxiety and
- * reminders claims).
+ * [1] "easier", [2] the write-vs-say slider, [3] "Ready?", [4] paywall page 2
+ * (NoahAssaraf, added at Keenan's request; if the reviewer is family, FTC
+ * rules need the connection disclosed).
+ * Not used yet: SAMullenFO (confirm she isn't a paid creator), Erguudvnkhf
+ * (anxiety and reminders claims).
  */
 export const JOURNAL_REVIEWS = [
   { quote: "Tried journaling forever and it never stuck. This makes it easy and gives me way better insights into my actual life. The task manager is a lifesaver!! I never forget anything anymore", name: "KeysCoins \u00B7 App Store" },
   { quote: "Ripple is my daily go to for organization and productivity. It helps me get my thoughts down, review my day, and ensure I don\u2019t miss any habits or to-dos.", name: "JCirishlax55 \u00B7 App Store" },
   { quote: "As an avid written journaling user to start with the transition was tricky for me\u2026 Once I got over that it became entirely natural, and the app picked up on some interesting background themes for me, as well as catching tasks and goals. I honestly wouldn\u2019t be without this now.", name: "vjhaines \u00B7 App Store" },
   { quote: "This app is amazing and been a game changer for me!", name: "JPB619 \u00B7 App Store" },
+  { quote: "It is fantastic to have a place I can journal without having to stop for an hour to write everything. The organization of the stream of consciousness is fantastic and it really helps me get from a brain dump to something cohesive.", name: "NoahAssaraf \u00B7 App Store" },
 ];
 
 export const JOURNAL_V9: V9Config = {

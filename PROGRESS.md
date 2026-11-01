@@ -10,6 +10,30 @@
 
 
 
+## [2026-10-31] — Planners paywall gets the cost stack and Noah's review; result uses the Paper planner vs Ripple graphic
+
+- **Requested by:** Keenan
+- **Committed by:** Claude Code
+- **Commit hash:** (see git log, "content: Add cost stack and review to /start-journal paywall")
+
+### In plain English (for Keenan)
+- **Paywall page 2** ("We'll remind you…") now shows NoahAssaraf's App Store review.
+- **Paywall page 3** shows "What your system costs now" ($144.84 a year combined) right above the prices.
+- **The result screen** now uses the live paywall's Paper planner vs Ripple graphic instead of the 5-row face-off.
+- The value stack was not added to page 3, because the result screen shows it two steps earlier.
+
+### Technical changes (for Jimmy)
+- `apps/web/src/lib/funnel-v9-config.ts`: JOURNAL_REVIEWS[4] = NoahAssaraf.
+- `apps/web/src/components/funnel-v9.tsx`:
+  - TrustPaywall page 2 renders `ReviewCard` for reviews[4]; page 3 renders `<SystemCost />` above the plan cards.
+  - JournalResult replaces its face-off grid with `<PlannerVsRipple />` (SWAP/ids removed).
+
+### Manual steps needed
+- [ ] If NoahAssaraf is family of the founders, the review needs that connection disclosed (FTC endorsement rules) or should come out before the Monday launch (Keenan)
+
+### Notes
+- Why the value stack stayed off page 3: the paywall research (Parra) found comparison tables on the price page lose, the same graphic is on the result screen, and page 3 should keep the plans above the fold. The cost stack stays because it anchors the price.
+
 ## [2026-10-31] — Planners funnel uses real App Store reviews
 
 - **Requested by:** Keenan
