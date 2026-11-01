@@ -10,7 +10,7 @@
  *   creative per ad set. Each ad copies the destination of a live ad already
  *   in that ad set (link, button, url_tags), so planner ads keep their
  *   early-bird price pin and app-install ads keep the App Store link; web
- *   links get utm_content=<creativeId>. `path` swaps the goripple.io path
+ *   links get fresh utm_* (utm_content=<creativeId>), other params kept. `path` swaps the goripple.io path
  *   (e.g. "/start-journal"). Feed + Stories images per placement. Registered
  *   as AdLabAd rows so the daily audit judges them. status defaults PAUSED.
  * action "relink": { adsetIds, path } → every live ad in those ad sets gets
@@ -150,7 +150,13 @@ export async function POST(req: NextRequest) {
           }
           let link = template.link;
           if (!isApp) {
+            // Keep the template's own params (price pins like ptest/ptsrc),
+            // replace its utm_* with this creative's.
             const u = new URL(withPath(template.link, body.path));
+            for (const k of [...u.searchParams.keys()]) if (k.startsWith("utm_")) u.searchParams.delete(k);
+            u.searchParams.set("utm_source", "meta");
+            u.searchParams.set("utm_medium", "paid");
+            u.searchParams.set("utm_campaign", c.angle.experiment.campaignName ?? c.angle.experiment.id);
             u.searchParams.set("utm_content", c.id);
             link = u.toString();
           }
