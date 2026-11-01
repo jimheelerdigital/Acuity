@@ -8,7 +8,30 @@
 ---
 
 
+## [2026-11-01] — In-app onboarding prototype for Jimmy (new users + web members)
 
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** see git log
+
+### In plain English (for Keenan)
+The full design for the app's onboarding is saved in the repo as one file Jimmy can open in any browser. It covers both paths from the first screen: brand-new people (same questions as the new web funnel, first debrief partway through, then the paywall) and people who already paid on the web (log in, welcome back, first debrief, setup, tour of the new Home, no quiz or paywall). Links were emailed to Jimmy from Keenan's Gmail draft.
+
+### Technical changes (for Jimmy)
+- Added docs/design/in-app-onboarding-prototype-2026-11-01.html (self-contained prototype; same as https://claude.ai/artifact/Tq5kRX5fzFK1kZsJXDbbuF). "All screens" board with build notes per screen; "Tap through it" walk-through; flow switch New to Ripple / Joined on the web.
+- Design decisions in it: AI consent as a one-checkbox pop-up on the debrief screen; "usually about 20 seconds" processing note, then setup continues; notifications = one turn-on screen (times move to You → Reminders); new Action Button setup screen; tour on the approved 10-31 new Home; question tiles mirror funnel-v9 journal tiles; exit offer only after the Apple sheet is cancelled, "No thanks" returns to the plans.
+- No app or web code changed. No schema changes.
+
+### Manual steps needed
+- [ ] Review the consent pop-up wording against Art. 9 / Apple 5.1.1 before building (Jimmy)
+- [ ] Exit offer needs a second yearly product ($62.99, 7-day trial) in its own RevenueCat offering (Jimmy)
+- [ ] Decide processing copy: prototype and live app say ~20s; redesign plan doc says 30-60s (Jimmy)
+
+### Notes
+- Web-member path mirrors the live code: first screen app/onboarding-new/_v10/start.tsx, Log in app/(auth)/sign-in.tsx, welcome flow app/welcome.tsx + lib/welcome/phases.ts. Screens marked NEW in the prototype are additions.
+- Bug found while building: `all:unset` on buttons wiped the `.card` look, so answer tiles rendered as bare text. Watch for the same pattern in real CSS.
+- Apple promotional offers only work for people who subscribed before, so a new-user discount must be a separate product.
+- Local RESEND_API_KEY can't send from goripple.io (403); the prod key is Vercel-only, so the email went through Gmail drafts.
 
 ## [2026-11-01] — Men evergreen off; women evergreen $50, app installs $50, retargeting $10
 
