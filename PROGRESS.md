@@ -10,6 +10,38 @@
 
 
 
+## [2026-11-01] — All 23 new ads in every Planners ad set; Planners men ad sets and women's app installs raised
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** see git log
+
+### In plain English (for Keenan)
+- **New ads:** the two "Men Discipline" ad sets inside the Planners campaigns (purchases and registrations) only had one ad each. They now also run all 23 ads approved today, linking to /start-journal at the early-bird price.
+- **Planners men's ad sets:** both went from $20 to $50/day.
+- **Women's app installs:** $20 → $40/day.
+- **Total:** live Meta spend is now about $300/day.
+
+### Technical changes (for Jimmy)
+- **Meta** (via /api/admin/adlab/ads/place, ACTIVE, path /start-journal): the 23 creatives went into ad sets 120255378041590581 and 120255387588830581, 46 ads, all OK.
+- **Meta budgets** (app-campaign `budget` action):
+  - ad sets 120255378041590581 and 120255387588830581: 2000 → 5000
+  - campaign 120255308582170581 (App Installs Women, campaign budget): 2000 → 4000
+- The first budget read-back showed the old value for two of the three. A re-read confirmed all three, so Meta was just slow to report it.
+
+### Manual steps needed
+None
+
+### Notes
+- **Per ad set now:**
+  - Planners purchases: $50 + $50
+  - Planners registrations: $50 + $50
+  - women evergreen: $30
+  - men evergreen: $10
+  - app women: $40
+  - retargeting: $20
+  - total: $300/day
+
 ## [2026-11-01] — 12 more pain ads live in the same 5 ad sets
 
 **Requested by:** Keenan
