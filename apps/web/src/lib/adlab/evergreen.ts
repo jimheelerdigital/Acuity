@@ -43,7 +43,9 @@ export const GROUP_DAILY_BUDGET_CENTS: Record<BatchGroupKey, number> = {
   // $20 a day to app store ads". Meta = $115/day with tests at $20/$15.
   // 2026-10-20, per Keenan: one ad set per audience, optimizing for completed
   // registrations: "$75 for UGC videos" (women) and men "up spend to $40/day".
-  women: 7500,
+  // 2026-11-01, per Keenan: women $50 (live ad set 120255252659350581);
+  // men's evergreen paused ("get rid of men evergreen"), figure kept for reference.
+  women: 5000,
   men: 4000,
 };
 

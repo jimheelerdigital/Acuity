@@ -10,6 +10,41 @@
 
 
 
+## [2026-11-01] — Men evergreen off; women evergreen $50, app installs $50, retargeting $10
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** see git log
+
+### In plain English (for Keenan)
+- **Men's evergreen sign-up ads** are off.
+- **Women's evergreen** is up from $30 to $50/day.
+- **Women's app installs** are up from $40 to $50/day.
+- **Retargeting** is down from $20 to $10/day.
+- **Total Meta spend** is now about $310/day.
+- **Who "women" evergreen reaches:** Meta isn't told to show it only to women. It targets all genders with Meta's automatic audience, and the ads and Meta's learning steer who actually sees them.
+
+### Technical changes (for Jimmy)
+- **Meta pauses:**
+  - 120255252664960581 (Men | registrations)
+  - 120254913701860581 (Men | Evergreen (purchase) | test ad set)
+- **Meta budgets:**
+  - 120255252659350581 (Women | UGC | registrations): 3000 → 5000
+  - campaign 120255308582170581 (App Installs Women): 4000 → 5000
+  - 120255371877640581 (Retargeting): 2000 → 1000
+  - all confirmed by re-read
+- **apps/web/src/lib/adlab/evergreen.ts:** `GROUP_DAILY_BUDGET_CENTS.women` 7500 → 5000, to match live.
+
+### Manual steps needed
+None
+
+### Notes
+- **Women evergreen targeting:**
+  - genders unset (all), ages 25–65, US/CA/GB
+  - advantage_audience=1, so age and gender are only suggestions
+- **Men's AdLabAd rows** were left as-is. The ad verdict cron reads Meta's status.
+- **Still on but unused:** the men campaign 120254810048990581 itself is still ACTIVE, but with both ad sets paused it spends nothing.
+
 ## [2026-11-01] — Planners: Men Discipline ad sets off, one $100/day ad set per campaign
 
 **Requested by:** Keenan
