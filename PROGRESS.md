@@ -10,6 +10,28 @@
 
 
 
+## [2026-11-01] — 12 more pain ads live in the same 5 ad sets
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** see git log
+
+### In plain English (for Keenan)
+Keenan picked 12 of the 20 new ads (9 women's, 3 men's) and they're now live in the same places as the first 11. That's both Planners campaigns (to /start-journal), women's and men's evergreen sign-ups (to /start-test) and women's app installs: 60 more ads, no budget changes. Live Meta spend is $220/day.
+
+### Technical changes (for Jimmy)
+- **Meta** (via /api/admin/adlab/ads/place, ACTIVE): the 12 creatives below went into ad sets 120255378040550581, 120255387587400581, 120255252659350581, 120255252664960581 and 120255308582180581, all 60 OK.
+  - cmvy61a7s, cmvy61dvs, cmvy61f36, cmvy61gdj, cmvy61hu9, cmvy61jae
+  - cmvy61ls0, cmvy61r78, cmvy61txk, cmvy61y3d, cmvy61wu9, cmvy620sv
+- **Live ads per ad set now:** Planners 24 each, women evergreen 28, men evergreen 25, app women 25.
+
+### Manual steps needed
+None
+
+### Notes
+- The stored headline text (Meta's link title) on a few of these is second person ("your head") while the image says first person ("my head"); the images are what Keenan approved.
+- 24–28 ads on $30–50/day is thin per ad. Meta will concentrate spend on a few; the 7-day protection (previous entry) keeps the cap from pausing the new ones early.
+
 ## [2026-11-01] — 11 pain ads live in 5 ad sets, Planners +$30 each, /start-journal 50/50 split on, 20 more ads drafted
 
 **Requested by:** Keenan
