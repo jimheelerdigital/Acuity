@@ -39,7 +39,7 @@ import {
   CalendarDays, CalendarRange, Car, Check, ChevronLeft, ChevronRight, CircleCheck, Compass,
   Eye, Footprints, Heart, HeartHandshake, Home, Hourglass, Keyboard, KeyRound, Layers,
   LineChart, ListChecks, ListTodo, Lock, Mail, Mic, Moon, Repeat, RotateCcw, ShieldCheck, Smartphone, Sparkles, Sprout, Waves, X,
-  FileText, Gift, HeartCrack, Quote, Star, Sunrise, Target, TrendingUp, User, Users, Zap, Dumbbell, Wallet, Rocket, Flame, Truck, type LucideIcon,
+  FileText, HeartCrack, Quote, Star, Sunrise, Target, TrendingUp, User, Users, Zap, Dumbbell, Wallet, Rocket, Flame, Truck, type LucideIcon,
 } from "lucide-react";
 
 import { fireFbq, waitForFbq } from "@/components/meta-pixel-events";
@@ -120,8 +120,9 @@ const OPTION_ICONS: Record<string, LucideIcon> = {
   // /start-journal
   "tried-what:paper": BookOpen, "tried-what:bullet": ListChecks, "tried-what:journal-app": Smartphone, "tried-what:todo-app": ListTodo,
   "tried-what:reminders": Bell, "tried-what:notes": Layers, "tried-what:habit-app": Target,
-  "slipped:form": FileText, "slipped:bill": Wallet, "slipped:appt": CalendarCheck, "slipped:bday": Gift, "slipped:promise": HeartHandshake, "slipped:me": Heart,
-  "feel:guilty": HeartCrack, "feel:annoyed": Zap, "feel:embarrassed": Eye, "feel:tired": BatteryLow,
+  "why:forget": Brain, "why:control": Target, "why:head": Layers, "why:family": Users, "why:me": Heart, "why:fresh": RotateCcw,
+  "pain:slip": FileText, "pain:switch": Waves, "pain:snap": Zap, "pain:behind": Hourglass, "pain:last": HeartCrack, "pain:drained": BatteryLow,
+  "easier:say": Mic, "easier:sorts": ListChecks, "easier:setup": Sparkles, "easier:matters": Eye, "easier:restart": Repeat, "easier:blank": BookOpen,
 };
 
 function sessionId(): string {
@@ -570,7 +571,7 @@ function StepView(p: ViewProps) {
       if (p.step.id === "happens" && C.brand === "journal") return <HappensCards {...p} step={step} />;
       if (p.step.id === "age" && C.brand === "journal") return <AgeTiles {...p} step={step} />;
       if (p.step.id === "commit" && C.brand === "journal") return <CommitCards {...p} step={step} />;
-      if (p.step.id === "feel" && C.brand === "journal") return <FeelCards {...p} step={step} />;
+      if (p.step.id === "often" && C.brand === "journal") return <OftenTiles {...p} step={step} />;
       return <SingleScreen {...p} step={step} />;
     case "multi":
       if (p.step.id === "plate" && C.brand === "journal") return <MultiScreen {...p} step={step} above={<PlateVisual picked={p.answers.multi.plate ?? []} />} />;
@@ -587,8 +588,6 @@ function StepView(p: ViewProps) {
     case "statement":
       return <StatementScreen {...p} step={step} />;
     case "info":
-      if (step.screen === "cost") return <CostScreen {...p} />;
-      if (step.screen === "proof") return <ProofScreen {...p} />;
       return step.screen === "reassure" ? <ReassureScreen {...p} /> : step.screen === "review" ? <ReviewScreen {...p} /> : step.screen === "preview" ? <PreviewScreen {...p} /> : <HowScreen {...p} />;
     case "name":
       return <NameScreen {...p} />;
@@ -807,7 +806,7 @@ function SingleScreen({ step, answers, setAnswers, next, track }: ViewProps & { 
 
 function MultiScreen({ step, answers, setAnswers, next, track, above }: ViewProps & { step: Extract<V9Step, { kind: "multi" }>; above?: ReactNode }) {
   const C = useV9();
-  const stamps = C.brand === "journal" ? (step.id === "tried-what" ? TRIED_STAMPS : step.id === "slipped" ? SLIP_STAMPS : null) : null;
+  const stamps = C.brand === "journal" ? (step.id === "tried-what" ? TRIED_STAMPS : step.id === "easier" ? EASIER_STAMPS : null) : null;
   const picked = answers.multi[step.id] ?? [];
   const toggle = (id: string) =>
     setAnswers((a) => {
@@ -1034,7 +1033,7 @@ function StatementScreen({ step, answers, setAnswers, next, track }: ViewProps &
         </figure>
       ) : (
         <figure className={`card-in relative flex flex-col items-center overflow-hidden rounded-[28px] card px-6 pb-[clamp(22px,6vw,30px)] pt-6 text-center ${fly === "yes" ? "fly-yes" : fly === "no" ? "fly-no" : ""}`}>
-          {C.brand === "journal" && isHook ? <PlannerStack /> : C.brand === "journal" && (step.id === "st-upkeep" || step.id === "st-zero" || step.id === "st-nobody") ? <JournalStatementPic id={step.id} /> : <MoodAvatar mood={step.mood} size={60} />}
+          {C.brand === "journal" && isHook ? <PlannerStack /> : C.brand === "journal" && (step.id === "st-upkeep" || step.id === "st-zero") ? <JournalStatementPic id={step.id} /> : <MoodAvatar mood={step.mood} size={60} />}
           <blockquote className="relative mt-4 text-[clamp(19px,5.6vw,22px)] font-medium italic leading-[1.35] tracking-tight text-balance">
             &ldquo;{step.statement}&rdquo;
           </blockquote>
@@ -2177,18 +2176,6 @@ function JournalStatementPic({ id }: { id: string }) {
         ))}
       </span>
     );
-  if (id === "st-nobody")
-    return (
-      <span className="mt-1 flex w-[200px] flex-col gap-1.5" aria-hidden="true">
-        {["School form", "Mom\u2019s refill", "Dentist", "Gift for Sam"].map((t, k) => (
-          <span key={t} className="up flex items-center gap-2 rounded-lg bg-white px-2.5 py-1.5 text-left" style={{ border: "1px solid rgba(242,84,30,.16)", animationDelay: `${150 + k * 160}ms` }}>
-            <span className="h-[8px] w-[8px] shrink-0 rounded-[2px]" style={{ border: "1.5px solid #F2541E" }} />
-            <span className="flex-1 text-[11.5px] font-semibold text-acuity-text-sec">{t}</span>
-            <span className="stamp rounded-full grad px-1.5 text-[10px] font-bold text-white" style={{ animationDelay: `${450 + k * 220}ms` }}>You</span>
-          </span>
-        ))}
-      </span>
-    );
   return (
     <span className="relative mt-1 flex h-[72px] w-[120px] items-center justify-center" aria-hidden="true">
       {[0, 1].map((k) => <span key={k} className="ring-out absolute h-[54px] w-[54px] rounded-full" style={{ border: "2px solid rgba(242,84,30,.35)", animationDelay: `${k * 900}ms` }} />)}
@@ -2209,33 +2196,28 @@ const TRIED_STAMPS: Record<string, string> = {
   "habit-app": "Streak: 0",
 };
 
-/** What it cost when each thing slipped, stamped on the tile. */
-const SLIP_STAMPS: Record<string, string> = {
-  form: "Signed late",
-  bill: "Late fee",
-  appt: "Rebooked",
-  bday: "Bought last-minute",
-  promise: "“Sorry, I forgot”",
-  me: "Skipped again",
+/** "What would make it easier?": each pick is something Ripple already does. */
+const EASIER_STAMPS: Record<string, string> = {
+  say: "Ripple does this",
+  sorts: "Ripple does this",
+  setup: "Ripple does this",
+  matters: "Ripple does this",
+  restart: "Ripple does this",
+  blank: "Ripple does this",
 };
 
-/** "When something slips, what do you feel first?" as four big cards. */
-function FeelCards({ step, answers, setAnswers, next, track }: ViewProps & { step: Extract<V9Step, { kind: "single" }> }) {
+/** "How often does something slip through?" with a week of dots per answer. */
+function OftenTiles({ step, answers, setAnswers, next, track }: ViewProps & { step: Extract<V9Step, { kind: "single" }> }) {
   const [picked, setPicked] = useState<string | null>(answers.single[step.id] ?? null);
   const advancing = useRef(false);
-  const line: Record<string, string> = {
-    guilty: "Like I let someone down",
-    annoyed: "I knew about it. I just forgot.",
-    embarrassed: "Someone else noticed first",
-    tired: "One more thing I couldn’t hold",
-  };
+  const slips: Record<string, number> = { daily: 6, weekly: 3, sometimes: 1, rarely: 1 };
   return (
     <div className="enter">
-      <Heading title={step.title} sub="Be honest. Everyone has a first reaction." />
-      <div className="space-y-2.5">
+      <Heading title={step.title} sub="Each dot is a day something slipped." />
+      <div className="grid grid-cols-2 gap-3">
         {step.options.map((o, i) => {
           const on = picked === o.id;
-          const Icon = OPTION_ICONS[`${step.id}:${o.id}`] ?? Sparkles;
+          const n = slips[o.id] ?? 1;
           return (
             <button
               key={o.id}
@@ -2246,111 +2228,23 @@ function FeelCards({ step, answers, setAnswers, next, track }: ViewProps & { ste
                 setPicked(o.id);
                 setAnswers((a) => ({ ...a, single: { ...a.single, [step.id]: o.id } }));
                 track(`funnel_v9_${step.id}_answered`, o.id);
-                setTimeout(next, 420);
+                setTimeout(next, 400);
               }}
-              className={`up w-full rounded-3xl card p-4 flex items-center gap-4 text-left transition active:scale-[0.98] ${on ? "card-sel" : ""}`}
+              className={`up relative min-h-[124px] rounded-3xl card p-4 flex flex-col justify-between text-left transition active:scale-[0.97] ${on ? "card-sel" : ""}`}
               style={{ animationDelay: `${i * 70}ms` }}
             >
-              <span className={`h-12 w-12 shrink-0 rounded-2xl flex items-center justify-center ${on ? "grad text-white" : "chip-ico"}`}><Icon className="h-6 w-6" /></span>
-              <span className="flex-1">
-                <span className="serif block text-[19px] leading-tight">{o.label}</span>
-                <span className="block text-[13.5px] text-acuity-text-sec">{line[o.id]}</span>
+              <span className="grid grid-cols-7 gap-[5px]" aria-hidden="true">
+                {Array.from({ length: 7 }, (_, k) => {
+                  const hit = o.id === "rarely" ? k === 3 : k < 7 && (k * n) % 7 < n;
+                  return <span key={k} className={`pop h-[14px] rounded-[4px] ${hit ? "bg-red-500/80" : ""}`} style={{ background: hit ? undefined : "#FFE2D1", animationDelay: `${i * 70 + k * 45}ms` }} />;
+                })}
               </span>
+              <span className="mt-3 text-[15px] font-semibold leading-snug">{o.label}</span>
+              {on && <span className="pop absolute top-3 right-3 h-6 w-6 rounded-full grad flex items-center justify-center"><Check className="h-3.5 w-3.5 text-white" strokeWidth={3} /></span>}
             </button>
           );
         })}
       </div>
-    </div>
-  );
-}
-
-/** Counts up to a number once, for the cost screen. */
-function CountTo({ to, ms = 1100 }: { to: number; ms?: number }) {
-  const [v, setV] = useState(0);
-  useEffect(() => {
-    const reduce = typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
-    if (reduce) {
-      setV(to);
-      return;
-    }
-    const start = Date.now();
-    const iv = setInterval(() => {
-      const t = Math.min(1, (Date.now() - start) / ms);
-      setV(Math.round(to * (1 - Math.pow(1 - t, 3))));
-      if (t >= 1) clearInterval(iv);
-    }, 30);
-    return () => clearInterval(iv);
-  }, [to, ms]);
-  return <>{v.toLocaleString()}</>;
-}
-
-/**
- * "What carrying it costs" (2026-10-31): her own answers added up, before
- * any relief. Only her numbers: this week's list × 52, what slipped, how
- * many systems she's tried. No invented stats.
- */
-function CostScreen({ answers, firstName, next, track }: ViewProps) {
-  const C = useV9();
-  const week = weekPicks(C, answers).length || 3;
-  const slipStep = C.steps.find((s): s is Extract<V9Step, { kind: "multi" }> => s.id === "slipped" && s.kind === "multi");
-  const slipped = (answers.multi.slipped ?? []).map((id) => slipStep?.options.find((o) => o.id === id)?.label).filter(Boolean) as string[];
-  const triedN: Record<string, string> = { one: "one system", few: "2 or 3 systems", many: "4 or more systems", lost: "more systems than you can count" };
-  const feel: Record<string, string> = { guilty: "guilty", annoyed: "annoyed at yourself", embarrassed: "embarrassed", tired: "tired" };
-  useEffect(() => {
-    track("funnel_v9_cost_viewed", String(week));
-  }, [track, week]);
-  return (
-    <div className="enter">
-      <Heading eyebrow={firstName ? `${firstName}, here’s what you told us` : "Here’s what you told us"} title="This is what carrying it all costs" />
-      <div className="card rounded-3xl p-5 text-center">
-        <p className="serif text-[52px] leading-none tabular-nums grad-text"><CountTo to={week * 52} /></p>
-        <p className="mt-2 text-[15px] leading-snug text-acuity-text-sec text-balance">things a year in your head, if this week is a normal week ({week} × 52)</p>
-      </div>
-      <div className="mt-3 space-y-2.5">
-        {slipped.length > 0 && (
-          <div className="up card rounded-3xl p-4" style={{ animationDelay: "500ms" }}>
-            <p className="text-[12px] font-bold uppercase tracking-[0.08em]" style={{ color: "#C2410C" }}>Slipped lately</p>
-            <div className="mt-2 flex flex-wrap gap-1.5">
-              {slipped.map((t, i) => (
-                <span key={t} className="relative rounded-full px-2.5 py-1 text-[13px] text-acuity-text-sec" style={{ background: "#FFF1E8" }}>
-                  {t}
-                  <span className="xout absolute left-2 right-2 top-1/2 h-[1.5px] rounded-full bg-red-500/70" style={{ ["--d" as string]: `${800 + i * 160}ms` } as CSSProperties} />
-                </span>
-              ))}
-            </div>
-            {answers.single.feel && <p className="mt-2.5 text-[14px] leading-snug">And each time, you felt {feel[answers.single.feel]}.</p>}
-          </div>
-        )}
-        {answers.single.tried && (
-          <div className="up card rounded-3xl p-4" style={{ animationDelay: "750ms" }}>
-            <p className="text-[12px] font-bold uppercase tracking-[0.08em]" style={{ color: "#C2410C" }}>Tried to fix it</p>
-            <p className="mt-1.5 text-[14.5px] leading-snug">You&rsquo;ve tried {triedN[answers.single.tried]}. Every one of them gave you one more thing to keep up: the planner itself.</p>
-          </div>
-        )}
-      </div>
-      <p className="up mt-5 text-center text-[16px] font-semibold text-balance" style={{ animationDelay: "1000ms" }}>There&rsquo;s a reason none of it stuck.</p>
-      <BottomBar>
-        <PrimaryButton onClick={next}>So what actually works?</PrimaryButton>
-      </BottomBar>
-    </div>
-  );
-}
-
-/** Social proof right before "Ready?": rating plus real reviews. */
-function ProofScreen({ next }: ViewProps) {
-  const C = useV9();
-  return (
-    <div className="enter">
-      <Heading eyebrow="You’re not the only one" title="What people say after a few weeks" />
-      <Stars size="h-5 w-5" />
-      <div className="mt-5 space-y-3">
-        {C.reviews.slice(0, 2).map((r, i) => (
-          <ReviewCard key={r.quote} quote={r.quote} name={r.name} className={`up w-full ${i % 2 ? "rotate-[0.6deg]" : "-rotate-[0.6deg]"}`} />
-        ))}
-      </div>
-      <BottomBar>
-        <PrimaryButton onClick={next}>Continue</PrimaryButton>
-      </BottomBar>
     </div>
   );
 }

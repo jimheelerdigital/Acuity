@@ -10,6 +10,27 @@
 
 
 
+## [2026-10-31] — Planners funnel opens with Keenan's pain questions
+
+- **Requested by:** Keenan
+- **Committed by:** Claude Code
+- **Commit hash:** (see git log, "feat: Open /start-journal with Keenan's pain questions")
+
+### In plain English (for Keenan)
+After screen 1, the funnel now asks why she keeps buying planners, what happens when it's all in her head, and how often things slip through. Then it asks what she's tried and where it keeps failing her. Then: "What would make it easier?", and every answer she picks gets stamped "Ripple does this" before we show Ripple. The extra screens from the last change (what slipped, how it felt, "nobody will", the cost screen, the reviews screen) are gone. She now answers 17 questions before the paywall (was 14). The paywall changes and the exit offer stay.
+
+### Technical changes (for Jimmy)
+- `apps/web/src/lib/funnel-v9-config.ts`: JOURNAL_V9_STEPS is now hook, why (multi), pain (multi), often (single), tried, tried-what, happens (retitled "Where do they keep failing you?"), st-upkeep, easier (multi), reassure, age, plate, week, preview, s-say, st-zero, commit, name, loader, email, result, plan, paywall. Removed slipped, feel, st-nobody, cost, proof, and the "cost" | "proof" info screens.
+- `apps/web/src/components/funnel-v9.tsx`: removed SLIP_STAMPS, FeelCards, CountTo, CostScreen, ProofScreen and the st-nobody picture. Added `OftenTiles` (a week of dots per answer) and `EASIER_STAMPS` ("Ripple does this" on each easier pick), plus icons for why/pain/easier.
+
+### Manual steps needed
+- [ ] Same as the entry below: Jimmy reviews create-checkout; the exit-offer coupon plus two Vercel settings (Keenan / Jimmy)
+- [ ] Check in the LIVE Stripe dashboard that goripple.io is listed under Payment method domains with Apple Pay active (Keenan). The local key is test-mode, where Apple Pay is on, Google Pay off and goripple.io not listed.
+
+### Notes
+- "often" was added by Claude inside Keenan's "pain associated" section to get closer to 20 questions; cut it if it feels like one too many.
+- Every "easier" option was chosen so "Ripple does this" is true: talk, auto-sorted list, no setup, insights, days recorded never reset, no blank page. Don't add options Ripple can't back up (e.g. reminders until push ships).
+
 ## [2026-10-31] — Planners funnel now makes her feel the problem before the fix, and the paywall catches people who back out
 
 - **Requested by:** Keenan

@@ -40,7 +40,7 @@ export type V9Step =
    *  has the task Ripple would catch from it; the loader and result reuse
    *  the picks. Stored in answers.multi[id]. */
   | { id: string; kind: "week"; title: string; sub?: string; items: V9WeekItem[] }
-  | { id: string; kind: "info"; screen: "reassure" | "review" | "how" | "preview" | "cost" | "proof" }
+  | { id: string; kind: "info"; screen: "reassure" | "review" | "how" | "preview" }
   | { id: string; kind: "name" }
   | { id: string; kind: "loader" }
   | { id: string; kind: "email" }
@@ -602,6 +602,48 @@ export const BWK_V9: V9Config = {
 // against /start-test via lib/journal-split.ts (flag funnel_journal_split).
 export const JOURNAL_V9_STEPS: V9Step[] = [
   { id: "hook", kind: "statement", statement: "I\u2019ve tried planners, apps and journals. None of them stuck.", mood: "overloaded" },
+  // Pain first (2026-10-31, Keenan): why she buys planners, the pain behind
+  // that, where they keep failing her, and what would make it easier. Only
+  // then "It's not you" and Ripple. Aiming at the growth videos' ~20 questions.
+  {
+    id: "why",
+    kind: "multi",
+    title: "Why do you keep getting planners and journals?",
+    sub: "Pick all that apply.",
+    options: [
+      { id: "forget", label: "To stop forgetting things" },
+      { id: "control", label: "To feel on top of things" },
+      { id: "head", label: "To get it out of my head" },
+      { id: "family", label: "To keep the family on track" },
+      { id: "me", label: "To make time for me" },
+      { id: "fresh", label: "To start fresh, again" },
+    ],
+  },
+  {
+    id: "pain",
+    kind: "multi",
+    title: "When it\u2019s all in your head, what happens?",
+    sub: "Pick all that apply.",
+    options: [
+      { id: "slip", label: "Things slip through the cracks" },
+      { id: "switch", label: "My mind won\u2019t switch off" },
+      { id: "snap", label: "I snap at people I love" },
+      { id: "behind", label: "I always feel behind" },
+      { id: "last", label: "My own stuff comes last" },
+      { id: "drained", label: "I\u2019m drained before the day starts" },
+    ],
+  },
+  {
+    id: "often",
+    kind: "single",
+    title: "How often does something slip through?",
+    options: [
+      { id: "daily", label: "Most days" },
+      { id: "weekly", label: "A few times a week" },
+      { id: "sometimes", label: "Once a week or so" },
+      { id: "rarely", label: "Rarely, but it costs me" },
+    ],
+  },
   {
     id: "tried",
     kind: "single",
@@ -631,7 +673,7 @@ export const JOURNAL_V9_STEPS: V9Step[] = [
   {
     id: "happens",
     kind: "single",
-    title: "What usually happens?",
+    title: "Where do they keep failing you?",
     options: [
       { id: "miss", label: "I start strong, then miss a few days" },
       { id: "chore", label: "Filling it in becomes another chore" },
@@ -639,44 +681,26 @@ export const JOURNAL_V9_STEPS: V9Step[] = [
       { id: "blank", label: "I stare at the blank page" },
     ],
   },
-  // Pain before relief (2026-10-31, Keenan: "how can we make people feel more
-  // pain in the funnel?"). The growth videos' order is hook, problem, agitate,
-  // then solution: what slipped, how it felt, what carrying it costs, and
-  // only then "It's not you".
-  {
-    id: "slipped",
-    kind: "multi",
-    title: "What\u2019s slipped through lately?",
-    sub: "Pick all that apply. No judgment.",
-    options: [
-      { id: "form", label: "A form or a deadline" },
-      { id: "bill", label: "A bill" },
-      { id: "appt", label: "An appointment" },
-      { id: "bday", label: "A birthday or a gift" },
-      { id: "promise", label: "Something I promised someone" },
-      { id: "me", label: "Something for me" },
-    ],
-  },
-  {
-    id: "feel",
-    kind: "single",
-    title: "When something slips, what do you feel first?",
-    options: [
-      { id: "guilty", label: "Guilty" },
-      { id: "annoyed", label: "Annoyed at myself" },
-      { id: "embarrassed", label: "Embarrassed" },
-      { id: "tired", label: "Just tired" },
-    ],
-  },
   { id: "st-upkeep", kind: "statement", statement: "Keeping the planner going became one more thing to remember.", mood: "drained" },
-  { id: "st-nobody", kind: "statement", statement: "If I don\u2019t remember it, nobody will.", mood: "stretched" },
-  ...V9_STEPS.filter((st) => st.id === "age" || st.id === "plate" || st.id === "week"),
-  { id: "cost", kind: "info", screen: "cost" },
+  {
+    id: "easier",
+    kind: "multi",
+    title: "What would make it easier?",
+    sub: "Pick all that apply.",
+    options: [
+      { id: "say", label: "If I could just say it" },
+      { id: "sorts", label: "If it sorted itself" },
+      { id: "setup", label: "If there was nothing to set up" },
+      { id: "matters", label: "If it showed me what matters" },
+      { id: "restart", label: "If I never had to start over" },
+      { id: "blank", label: "If there was no blank page" },
+    ],
+  },
   { id: "reassure", kind: "info", screen: "reassure" },
+  ...V9_STEPS.filter((st) => st.id === "age" || st.id === "plate" || st.id === "week"),
   { id: "preview", kind: "info", screen: "preview" },
   { id: "s-say", kind: "slider", title: "Where do you land?", left: "I\u2019d rather write it down", right: "I\u2019d rather just say it" },
   { id: "st-zero", kind: "statement", statement: "If it took zero upkeep, I\u2019d actually use it.", mood: "hopeful", title: "Last one. True for you?" },
-  { id: "proof", kind: "info", screen: "proof" },
   {
     id: "commit",
     kind: "single",
@@ -698,14 +722,14 @@ export const JOURNAL_V9_STEPS: V9Step[] = [
 
 const JOURNAL_SHORT: Record<string, string> = {
   hook: "None of them stuck? (screen 1, yes/no)",
+  why: "Why she gets planners",
+  pain: "What happens when it's all in her head",
+  often: "How often things slip",
   tried: "How many tried",
   "tried-what": "What she tried",
-  happens: "What usually happens",
-  slipped: "What slipped lately",
-  feel: "How a slip feels",
+  happens: "Where they keep failing her",
+  easier: "What would make it easier",
   "st-upkeep": "Yes/no: upkeep became a chore",
-  "st-nobody": "Yes/no: nobody else will remember",
-  cost: "What carrying it costs",
   reassure: "It's not you",
   age: "Age range",
   plate: "On your plate",
@@ -713,7 +737,6 @@ const JOURNAL_SHORT: Record<string, string> = {
   preview: "App preview (new design)",
   "s-say": "Slider: write vs say",
   "st-zero": "Yes/no: zero upkeep",
-  proof: "Reviews",
   commit: "Ready?",
   name: "Name",
   loader: "Loader",
