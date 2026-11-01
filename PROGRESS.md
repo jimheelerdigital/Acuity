@@ -10,6 +10,30 @@
 
 
 
+## [2026-11-01] — Legendary Mythicals: 2 posts a day, and no more duo every post
+
+- **Requested by:** Keenan
+- **Committed by:** Claude Code
+- **Commit hash:** (see git log, "content: Cut Mythicals to 2 posts a day and rotate post types")
+
+### In plain English (for Keenan)
+Legendary Mythicals now makes 2 posts a day (12pm and 5pm Central) instead of trying for 3. It also stops repeating itself: 13 of the last 15 posts were "which duo are you and your bro?", and today both posts were duos. Now the post type is picked at random, and the same type never runs twice in a row (so at most one duo a day). About 4 in 10 "which would you choose?" posts let the writer pick its own subject instead of choosing from the fixed list.
+
+### Technical changes (for Jimmy)
+- `lib/content-factory/performance-loop.ts`: `chooseMythicPostType` is now a uniform draw over choice/duo/scenario, skipping the types in `avoid`. The scoreboard no longer steers it: the Thompson sampling and the "proven winner may repeat the same day" override are gone (that override is how duo ran twice on 11-01).
+- `inngest/functions/carousel-daily.ts` (pick-post-type step): `avoid` = today's types plus the lane's most recent post's type, which also covers yesterday. Choice posts swap the category for `OPEN_CHOICE_CATEGORY` 40% of the time.
+- `lib/content-factory/choice-lane.ts`: new `OPEN_CHOICE_CATEGORY` (the writer picks the subject; all the lane rules still apply).
+- `lib/content-factory/social-publish.ts`: `MYTHICALS_SLOTS_CT` [12, 15, 17] → [12, 17].
+- DB (already applied): `ContentLane` `mythic-picks` `hoursUtc` [5, 6, 8] → [5, 8].
+
+### Manual steps needed
+- None (the lane-hours change is a data row and is already live)
+
+### Notes
+- 11-01 only produced 05 and 08 UTC posts. The 06 UTC run made nothing, the same "only two posts" problem seen before. With 2 runs a day, both runs fill both slots.
+- Categories within a type still use the scoreboard bandit. Only the type draw is random now.
+- The YouTube 1/day cap is unchanged.
+
 ## [2026-11-01] — Retired four weekly research/report jobs
 
 - **Requested by:** Keenan
@@ -35,6 +59,38 @@ Four weekly things are switched off and removed: the "Weekly competitor research
 - Shared libraries were left in place because other live code imports them: `lib/adlab/weekly-batch.ts` (ad rendering, launch, evergreen), `competitor-mimic.ts` (pick lanes, video inbox, creator tracking), `adlab/competitor-research.ts`, `research-learning.ts` and `competitor-discovery.ts`. Without callers they do nothing, and they can be pruned later.
 - Pick lanes and writers that read competitor mimic briefs simply stop getting fresh ones. That path was already optional.
 - No schema changes. The CompetitorAccount / CompetitorPost / AdLabCompetitorBrief tables keep their old rows.
+
+## [2026-11-01] — 20 pain-based static ads drafted in AdLab, plus the in-app onboarding prototype
+
+- **Requested by:** Keenan
+- **Committed by:** Claude Code
+- **Commit hash:** (see git log, "docs: Log the 20 pain-based AdLab drafts")
+
+### In plain English (for Keenan)
+- **20 new static ads,** built on the Planners-funnel pains, are in AdLab as drafts and were emailed to Keenan for review:
+  - 10 show the new app design
+  - 4 compare a journal or planner with Ripple
+  - 6 use an AI-generated person (4 women, 2 men)
+- **Lanes:** 15 women's, 5 men's.
+- Nothing is approved or live.
+- **The in-app onboarding prototype** (https://claude.ai/artifact/Tq5kRX5fzFK1kZsJXDbbuF) now mirrors the web funnel, with account first, then a real first debrief, then the Apple paywall and exit offer.
+
+### Technical changes (for Jimmy)
+- **Prod DB (no code change):**
+  - 2 AdLabExperiment rows (ripple-women, ripple-men): status awaiting_approval, campaignTags ["pains-statics-2026-11-01", lane]
+  - 20 AdLabAngle + AdLabCreative rows: approved=false, complianceStatus=pending, formatKey pains-app-ui / pains-journal-vs-ripple / pains-avatar
+- **Images:** Supabase bucket `adlab-creatives` under `pains-1101/` (feed 1080x1350 + story 1080x1920).
+- **How they were made:** HTML rendered with Playwright (system Chrome); 6 photos from gpt-image-2 (high, 1024x1536) using the local OPENAI_API_KEY (ACUITY_ADLAB_OPENAI_KEY isn't local).
+- The review email went through Resend from the AdLab sender.
+
+### Manual steps needed
+- [ ] Review in /admin/adlab/review, approve the ones to run, and give an explicit yes before anything launches (Keenan)
+- [ ] Compliance check wasn't run (the local Anthropic key is stale); run it from admin before launch (Keenan / Jimmy)
+
+### Notes
+- The AdLab weekly batch can't draw people or the new app UI (every look bans faces; app-proof uses old Play Store screenshots), so these were custom renders.
+- Copy was scrubbed for brand rules: no recording-duration claims, no time-of-day, no health claims.
+- The review page only shows the latest awaiting_approval experiment per lane, so these replace whatever was there.
 
 ## [2026-11-01] — Desktop payers get a QR code to put Ripple on their phone
 
