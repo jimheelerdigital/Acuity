@@ -143,6 +143,29 @@ Four weekly things are switched off and removed: the "Weekly competitor research
 - Pick lanes and writers that read competitor mimic briefs simply stop getting fresh ones. That path was already optional.
 - No schema changes. The CompetitorAccount / CompetitorPost / AdLabCompetitorBrief tables keep their old rows.
 
+## [2026-11-01] — Faster email step; cleaner Ripple column in the Planners funnel
+
+- **Requested by:** Keenan
+- **Committed by:** Claude Code
+- **Commit hash:** (see git log, "perf: Send signup email and Meta event after responding")
+
+### In plain English (for Keenan)
+- **Faster email step:** it took about 3 seconds because the server waited for the welcome email to send and for Meta to confirm the signup before showing her results. Both now happen right after she's let through, so the step should be roughly a second faster for every web funnel. The button also says "Unlocking your results…" in the Planners funnel.
+- **Cleaner Ripple side** of "Paper planner vs Ripple" in the Planners funnel: one white panel, orange icon circles, thin dividers, no green check badges. The live /start-test paywall keeps its current look.
+
+### Technical changes (for Jimmy)
+- `apps/web/src/app/api/auth/signup/route.ts`: the welcome/verify email (Resend) and Meta CAPI CompleteRegistration now run under `waitUntil` from `@vercel/functions` instead of being awaited before the response. Behavior is otherwise unchanged; the user and token are written before responding as before.
+- `apps/web/package.json` / package-lock.json: added `@vercel/functions@^1.5.2`.
+- `apps/web/src/components/funnel-v9.tsx`:
+  - `rip-list` / `rip-row` / `rip-ico` / `rip-check` hooks in PlannerVsRipple, styled only under `data-funnel-theme="sunrise"`
+  - EmailScreen busy label for the journal brand
+
+### Manual steps needed
+- [ ] Jimmy review: signup route change (Meta CAPI now via waitUntil). Check in Meta Events Manager that CompleteRegistration still arrives after deploy (Jimmy)
+
+### Notes
+- The remaining wait is real work: two rate-limit checks, a bcrypt cost-12 hash (and another on the credentials sign-in), account bootstrap (several DB writes) and the free-plan switch. Next lever if needed: a lower bcrypt cost or skipping the hash for funnel-only random passwords, which needs Jimmy's call (security).
+
 ## [2026-11-01] — Admin: Planners funnel new vs old tracker
 
 - **Requested by:** Keenan

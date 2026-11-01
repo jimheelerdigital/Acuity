@@ -230,6 +230,14 @@ const CSS = `
 @keyframes v9-shine { 0%, 65% { transform: translateX(-120%) skewX(-20deg); } 100% { transform: translateX(260%) skewX(-20deg); } }
 .v9[data-funnel-theme="sunrise"] .shine::after, .v9[data-funnel-theme="sunrise"] .cta-shine:not(:disabled)::after { content: ""; position: absolute; inset: 0; width: 40%; background: linear-gradient(90deg, transparent, rgba(255,255,255,.35), transparent); animation: v9-shine 3.6s ease-in-out infinite; pointer-events: none; }
 @keyframes v9-thump { 0% { opacity: 0; transform: scale(.85); } 60% { opacity: 1; transform: scale(1.04); } 100% { opacity: 1; transform: scale(1); } }
+/* Cleaner Ripple column in the sunrise theme (2026-11-01, Keenan): one white
+   panel with dividers, orange icon circles, no green check badges. */
+.v9[data-funnel-theme="sunrise"] .rip-list { background: #fff; border-radius: 14px; padding: 2px 10px; }
+.v9[data-funnel-theme="sunrise"] .rip-list > * + * { margin-top: 0 !important; }
+.v9[data-funnel-theme="sunrise"] .rip-row { background: transparent; box-shadow: none; border-radius: 0; gap: 10px; padding: 10px 0; min-height: 60px; }
+.v9[data-funnel-theme="sunrise"] .rip-row + .rip-row { border-top: 1px solid #F3E7DF; }
+.v9[data-funnel-theme="sunrise"] .rip-ico { height: 30px; width: 30px; border-radius: 9999px; background: linear-gradient(135deg,#FF9459,#F04A18); color: #fff; }
+.v9[data-funnel-theme="sunrise"] .rip-check { display: none; }
 .v9 .on .thump.rv, .v9 .thump.rv.on { animation: v9-thump .55s cubic-bezier(.2,.8,.2,1) both; animation-delay: var(--d, 0ms); }
 @keyframes v9-stamp-in { 0% { opacity: 0; transform: rotate(-5deg) scale(1.9); } 60% { opacity: 1; transform: rotate(-5deg) scale(.94); } 100% { opacity: 1; transform: rotate(-5deg) scale(1); } }
 .v9 .stamp-in { opacity: 0; transform: rotate(-5deg); }
@@ -1650,7 +1658,7 @@ function EmailScreen({ answers, setAnswers, firstName, next, go, track }: ViewPr
       )}
       <BottomBar>
         <PrimaryButton onClick={submit} disabled={busy || !email.trim()}>
-          {busy ? "Saving…" : "See my results"}
+          {busy ? (C.brand === "journal" ? "Unlocking your results…" : "Saving…") : "See my results"}
         </PrimaryButton>
       </BottomBar>
     </div>
@@ -1942,18 +1950,18 @@ function PlannerVsRipple() {
           <span className="absolute left-0 right-0 top-0 flex h-7 items-center justify-center gap-1 text-[11px] font-bold uppercase tracking-wide text-white">
             <Sparkles className="h-3 w-3" /> Ripple
           </span>
-          <div className="space-y-1.5">
+          <div className="rip-list space-y-1.5">
             {PLANNER_VS_RIPPLE.map(([planner, ripple], i) => {
               const Icon = RIPPLE_ROW_ICONS[i % RIPPLE_ROW_ICONS.length];
               return (
                 <div
                   key={planner}
-                  className="rv flex min-h-[64px] items-center gap-1.5 rounded-xl bg-white px-1.5 py-2 text-acuity-text shadow-sm"
+                  className="rip-row rv flex min-h-[64px] items-center gap-1.5 rounded-xl bg-white px-1.5 py-2 text-acuity-text shadow-sm"
                   style={{ "--d": `${700 + i * 170}ms` } as CSSProperties}
                 >
-                  <span className="relative flex h-7 w-7 shrink-0 items-center justify-center rounded-lg chip-ico">
+                  <span className="rip-ico relative flex h-7 w-7 shrink-0 items-center justify-center rounded-lg chip-ico">
                     <Icon className="h-3.5 w-3.5" />
-                    <span className="rv-pop absolute -right-1 -top-1 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-acuity-good text-white ring-2 ring-white" style={{ "--d": `${850 + i * 170}ms` } as CSSProperties}>
+                    <span className="rip-check rv-pop absolute -right-1 -top-1 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-acuity-good text-white ring-2 ring-white" style={{ "--d": `${850 + i * 170}ms` } as CSSProperties}>
                       <Check className="h-2 w-2" strokeWidth={4} />
                     </span>
                   </span>

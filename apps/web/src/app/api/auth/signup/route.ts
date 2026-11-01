@@ -22,6 +22,7 @@
  *   429 { error: "RateLimited" }
  */
 
+import { waitUntil } from "@vercel/functions";
 import { NextRequest, NextResponse } from "next/server";
 
 import { welcomeVerifyEmail } from "@/emails/welcome-verify";
@@ -237,25 +238,30 @@ export async function POST(req: NextRequest) {
       unsubscribeUrl,
       foundingMemberNumber: userRow?.foundingMemberNumber ?? null,
     });
-    try {
-      const { sendEmailOrThrow } = await import("@/lib/resend");
-      await sendEmailOrThrow({
-        from: process.env.EMAIL_FROM ?? "Ripple <hello@getacuity.io>",
-        to: email,
-        subject,
-        html,
-      });
-    } catch (emailErr) {
-      console.error("[signup] Welcome/verify email send failed:", emailErr);
+    // After the response (2026-11-01): the funnel waited ~0.5s on Resend
+    // before showing her results. waitUntil keeps the function alive until
+    // the send finishes, so it isn't dropped.
+    waitUntil((async () => {
       try {
-        const Sentry = await import("@sentry/nextjs");
-        Sentry.captureException(emailErr, {
-          tags: { stage: "signup-email-send" },
-          extra: { userId, email },
+        const { sendEmailOrThrow } = await import("@/lib/resend");
+        await sendEmailOrThrow({
+          from: process.env.EMAIL_FROM ?? "Ripple <hello@getacuity.io>",
+          to: email,
+          subject,
+          html,
         });
-      } catch {}
-      // Don't block signup — user was already created successfully
-    }
+      } catch (emailErr) {
+        console.error("[signup] Welcome/verify email send failed:", emailErr);
+        try {
+          const Sentry = await import("@sentry/nextjs");
+          Sentry.captureException(emailErr, {
+            tags: { stage: "signup-email-send" },
+            extra: { userId, email },
+          });
+        } catch {}
+        // Don't block signup — user was already created successfully
+      }
+    })());
   }
 
   // Fire Meta CAPI CompleteRegistration for new signups (best-effort, non-blocking)
@@ -264,11 +270,14 @@ export async function POST(req: NextRequest) {
     const reqHeaders = req.headers;
     const nameParts = (name ?? "").trim().split(/\s+/);
 
-    // Awaited: fire-and-forget fetches can be cut off when the serverless
-    // function freezes after responding, and a dropped CompleteRegistration
-    // is a missing ad result in Meta. sendConversionEvent never throws.
+    // Plain fire-and-forget fetches can be cut off when the serverless
+    // function freezes after responding (a dropped CompleteRegistration is a
+    // missing ad result in Meta), so this runs under waitUntil.
+    // sendConversionEvent never throws.
     const { hasInternalCookie } = await import("@/lib/internal-traffic");
-    await sendConversionEvent({
+    // After the response (2026-11-01): was awaited (~0.5s) so it couldn't be
+    // cut off; waitUntil gives the same guarantee without making her wait.
+    waitUntil(sendConversionEvent({
       eventName: "CompleteRegistration",
       eventId,
       userId,
@@ -289,7 +298,7 @@ export async function POST(req: NextRequest) {
         currency: "USD",
         value: 0,
       },
-    }).catch(() => {}); // fire-and-forget
+    }).catch(() => {}));
 
     return NextResponse.json({
       ok: true,

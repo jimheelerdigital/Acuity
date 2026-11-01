@@ -28,6 +28,7 @@
     "@types/bcryptjs": "^2.4.6",
     "@upstash/ratelimit": "^2.0.8",
     "@upstash/redis": "^1.37.0",
+    "@vercel/functions": "^1.5.2",
     "bcryptjs": "^3.0.3",
     "canvas-confetti": "^1.9.4",
     "date-fns": "^4.1.0",
