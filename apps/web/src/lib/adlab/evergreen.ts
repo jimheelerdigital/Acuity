@@ -541,9 +541,13 @@ export async function trimMainAdSet(groupKey: BatchGroupKey): Promise<{ paused: 
   if (!project.evergreenAdsetId) return { paused: [], live: 0 };
   const live = await prisma.adLabAd.findMany({
     where: { metaAdsetId: project.evergreenAdsetId, status: { in: ["live", "scaled"] } },
-    select: { id: true, metaAdId: true, creativeId: true, creative: { select: { headline: true } } },
+    select: { id: true, metaAdId: true, creativeId: true, launchedAt: true, creative: { select: { headline: true } } },
   });
   if (live.length <= MAX_ACTIVE_ADS) return { paused: [], live: live.length };
+  // 2026-11-01, per Keenan ("let's see what works"): ads get their test week
+  // before the cap can pause them. Without this, 11 statics added at once
+  // were due to be capped the same night on near-zero spend.
+  const settled = (a: { launchedAt: Date | null }) => !a.launchedAt || Date.now() - a.launchedAt.getTime() >= TEST_DAYS * 86_400_000;
   const judged = await judgeCreatives([...new Set(live.map((a) => a.creativeId))]);
   const norm = (h: string) => h.toLowerCase().replace(/[^a-z0-9 ]/g, "").trim();
   const seen = new Map<string, number>();
@@ -559,7 +563,7 @@ export async function trimMainAdSet(groupKey: BatchGroupKey): Promise<{ paused: 
   });
   // Weakest first; within a tier, least spend (Meta's own vote) first.
   const candidates = order
-    .filter((x) => x.weakness >= 1)
+    .filter((x) => x.weakness >= 1 && settled(x.a))
     .sort((x, y) => (y.weakness - x.weakness) || (x.j.spendCents - y.j.spendCents));
   const paused: { headline: string; reason: string }[] = [];
   let count = live.length;

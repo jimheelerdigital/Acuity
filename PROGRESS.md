@@ -10,6 +10,47 @@
 
 
 
+## [2026-11-01] — 11 pain ads live in 5 ad sets, Planners +$30 each, /start-journal 50/50 split on, 20 more ads drafted
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** see git log
+
+### In plain English (for Keenan)
+- **11 of the new pain-based statics are live** (Keenan's picks): in both Planners campaigns, the women's and men's evergreen sign-up campaigns, and women's app installs. That's 55 ads.
+- **Planners budgets:** each Planners campaign is up $30/day, both $40 → $70. The extra $30 went to the ad set holding the new ads ($20 → $50).
+- **New funnel split live:** every Planners ad (old and new) now goes to /start-journal, and the split switch is on. Half of those visitors get the new journal funnel and half get the current /start-test funnel, each at the early-bird price.
+- **New ads get a full week:** the daily clean-up that caps each evergreen ad set at 8 ads no longer pauses an ad in its first 7 days. Without this, it would have switched off 3 of the new ads in each evergreen set tonight.
+- **20 more ads drafted** in a different style: 8 with people, 7 comparisons, 5 pain-based; 15 women, 5 men. They're in AdLab for review, nothing launched.
+
+### Technical changes (for Jimmy)
+- apps/web/src/lib/adlab/evergreen.ts: `trimMainAdSet` only pauses ads launched ≥ TEST_DAYS (7) ago.
+- Meta (via /api/admin/adlab/ads/place, status ACTIVE). The 11 creatives went into:
+  - 120255378040550581 (Planners, /start-journal ptsrc=planners)
+  - 120255387587400581 (Planners reg, /start-journal ptsrc=planners-reg)
+  - 120255252659350581 (Women evergreen, /start-test)
+  - 120255252664960581 (Men evergreen, /start-test)
+  - 120255308582180581 (App Installs Women, App Store)
+  - AdLabAd rows created; creatives marked approved.
+- **Meta relink:** the 4 existing Planners ads 120255387590510581, 120255387588260581, 120255378042010581 and 120255378041100581 moved from /start-bwk or /u/therapyandthings to /start-journal (params kept).
+- **Meta budgets:** ad sets 120255378040550581 and 120255387587400581 went 2000 → 5000. The Men Discipline Planners ad sets stay at $20.
+- **DB:** FeatureFlag `funnel_journal_split` created, enabled, rollout 100. Checked live: fresh landings split 307 → /start-test?…&jsplit=control vs 200.
+- **20 new drafts:**
+  - Experiments cmvy618750001pfzcq9ud3imx (women) and cmvy618j90003pfzcv1qjdd1q (men), tag pains-statics-2026-11-01b, formatKey pains2-*.
+  - Images in adlab-creatives/pains-1101b/.
+
+### Manual steps needed
+- [ ] Review the 20 new drafts in /admin/adlab/review (they replace the 11-01 batch on that page). Ad 4's photo shows a bra strap; check it before approving (Keenan)
+- [ ] Compliance check wasn't run on either batch (Keenan / Jimmy)
+- [ ] Check the journal vs control split in the admin Funnel tab after a few days (Keenan)
+
+### Notes
+- **Spend now:** Planners $140/day (was $80); evergreen women $30, men $10, app women $20 unchanged. Total Meta spend is up $60/day.
+- **Tested before launch:** /start-journal was clicked through at phone width by an agent, with all 20 screens and the 3 paywall pages OK and prices correct for ptest=low. It stopped at the email step (no test account on prod).
+- **Women's ads in the men's set:** the men's evergreen set now has the women-photo ads too, as asked. The ad verdict rules will turn off whatever doesn't get trials.
+- **Men's control arm:** the Men Discipline Planners ad used to land on /start-bwk. Its control half now lands on /start-test, because the journal split's control is /start-test.
+- **Sunday change:** the 11-01 budget and funnel changes were made on a Sunday, at Keenan's explicit request (normally Monday-only).
+
 ## [2026-11-01] — Admin route to place AdLab ads into any existing Meta ad set
 
 **Requested by:** Keenan
@@ -29,6 +70,28 @@ None
 ### Notes
 - Raw Graph calls (not the SDK) so Meta's real error comes back.
 - App-install ad sets copy the App Store link and INSTALL_MOBILE_APP button from their existing ads.
+
+## [2026-11-01] — Legendary Mythicals: only dragons breathe fire
+
+- **Requested by:** Keenan
+- **Committed by:** Claude Code
+- **Commit hash:** (see git log, "content: Only let dragons breathe fire in Mythicals clips")
+
+### In plain English (for Keenan)
+In Legendary Mythicals videos, only dragons and dragon-like creatures (wyverns, drakes, wyrms, hydras) can now breathe fire, ice or lightning. Griffins, phoenixes, wolves, behemoths and other beasts roar, rear, beat their wings or charge instead. If a clip direction still has a non-dragon breathing fire, it is rewritten before the video is made.
+
+### Technical changes (for Jimmy)
+- `lib/content-factory/living-reel.ts`: new `BREATH_DRAGONS_ONLY` rule, appended to `DRAGON_BREATH_LINE`, which every Mythicals clip prompt already includes.
+- `lib/content-factory/mythic-motion.ts`: the grounding prompt carries the rule. New `nonDragonBreath(motion, visible)` rejects a breath-attack phrase when neither the motion nor what the checker sees names dragon-kind. The checker then retries, and falls back to the safe motion if the retry still fails.
+- `lib/content-factory/choice-lane.ts`: the writer's motion and abilities rules say only dragons breathe.
+- `lib/content-factory/cinematic-shot.ts`: the POWERS rule says the same.
+- `mythic-motion.test.ts`: new cases.
+
+### Manual steps needed
+- None
+
+### Notes
+- Ordinary breathing ("breathes slowly") is still allowed for every creature. Only breath attacks are blocked.
 
 ## [2026-11-01] — Legendary Mythicals: 2 posts a day, and no more duo every post
 
