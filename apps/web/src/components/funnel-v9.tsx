@@ -1988,6 +1988,55 @@ function SystemCost() {
   );
 }
 
+/**
+ * "What no system costs you" (2026-10-31, Keenan): the emotional cost under
+ * the dollar cost, built from her own "When it's all in your head" answers
+ * and how often things slip. Defaults when she skipped them.
+ */
+function NoSystemCost({ answers }: { answers: Answers }) {
+  const [ref, on] = useInView<HTMLDivElement>();
+  const COST: Record<string, { text: string; icon: LucideIcon }> = {
+    slip: { text: "The thing you forgot, and the guilt after", icon: HeartCrack },
+    switch: { text: "A mind that won’t switch off", icon: Waves },
+    snap: { text: "Snapping at people you love", icon: Zap },
+    behind: { text: "Always feeling one step behind", icon: Hourglass },
+    last: { text: "Your own plans, pushed to “someday”", icon: Heart },
+    drained: { text: "Starting the day already tired", icon: BatteryLow },
+  };
+  const OFTEN: Record<string, string> = { daily: "Most days", weekly: "A few times a week", sometimes: "Every week", rarely: "When it counts" };
+  const picked = (answers.multi.pain ?? []).filter((id) => COST[id]);
+  const ids = (picked.length ? picked : ["slip", "switch", "last"]).slice(0, 4);
+  const often = OFTEN[answers.single.often ?? ""];
+  return (
+    <div ref={ref} className={`mt-4 card rounded-3xl p-5 ${on ? "on" : ""}`}>
+      <p className="text-center text-[22px] font-bold leading-tight tracking-tight">
+        What <span className="text-red-500">no system</span> costs you
+      </p>
+      <div className="mt-5 space-y-2.5">
+        {ids.map((id, i) => {
+          const c = COST[id];
+          return (
+            <div key={id} className={`rv flex items-center gap-3 ${on ? "on" : ""}`} style={{ "--d": `${i * 180}ms` } as CSSProperties}>
+              <span className="h-9 w-9 shrink-0 rounded-xl flex items-center justify-center" style={{ background: "#FDE2E1", color: "#DC2626" }}>
+                <c.icon className="h-[18px] w-[18px]" />
+              </span>
+              <p className="flex-1 text-[14.5px] font-semibold leading-tight">{c.text}</p>
+            </div>
+          );
+        })}
+      </div>
+      <div className={`rv mt-4 rounded-2xl soft px-4 py-3 text-center ${on ? "on" : ""}`} style={{ "--d": `${ids.length * 180 + 150}ms` } as CSSProperties}>
+        <p className="text-[12px] font-bold uppercase tracking-wide text-acuity-text-ter">{often ? `${often}, it costs you` : "Every week, it costs you"}</p>
+        <p className="mt-0.5 text-[26px] font-bold leading-tight text-red-500">Your peace of mind</p>
+      </div>
+      <div className={`rv mt-3 flex items-center justify-center gap-2 rounded-2xl grad px-4 py-3.5 text-white glow ${on ? "on" : ""}`} style={{ "--d": `${ids.length * 180 + 600}ms` } as CSSProperties}>
+        <Sparkles className="h-4 w-4" />
+        <p className="text-[15px] font-bold">Ripple holds it, so you don&rsquo;t have to.</p>
+      </div>
+    </div>
+  );
+}
+
 function PaywallScreen(p: ViewProps) {
   const C = useV9();
   if (C.paywall === "trust3") return <TrustPaywall {...p} />;
@@ -3087,6 +3136,7 @@ function TrustPaywall({ plan, setPlan, next, track, firstName, answers }: ViewPr
           result screen already shows it, and comparison tables on the price
           page lost in the paywall research. */}
       <SystemCost />
+      <NoSystemCost answers={answers} />
       <div className="mt-6 space-y-3">
         <button onClick={() => pick("yearly")} className={`relative w-full text-left rounded-3xl px-5 pt-5 pb-4 transition card outline-none focus-visible:ring-2 focus-visible:ring-acuity-primary ${plan === "yearly" ? "card-sel" : ""}`}>
           <span className="absolute -top-3 left-5 rounded-full grad px-3 py-1 text-[11px] font-bold text-white shadow">{earlyBird ? `EARLY BIRD · ${earlyBirdOffPct}% OFF` : `TRY IT FREE · SAVE ${price.savingsPct}`}</span>

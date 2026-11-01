@@ -10,6 +10,26 @@
 
 
 
+## [2026-10-31] — Planners paywall shows what having no system costs her, emotionally
+
+- **Requested by:** Keenan
+- **Committed by:** Claude Code
+- **Commit hash:** (see git log, "content: Add emotional cost section to /start-journal paywall")
+
+### In plain English (for Keenan)
+Paywall page 3 now has a second cost card under the dollar one: "What no system costs you". It lists her own answers in emotional terms (for example "The thing you forgot, and the guilt after", "Snapping at people you love", "Your own plans, pushed to someday"), then "Most days, it costs you: Your peace of mind" and "Ripple holds it, so you don't have to."
+
+### Technical changes (for Jimmy)
+- `apps/web/src/components/funnel-v9.tsx`: new `NoSystemCost`, rendered in TrustPaywall page 3 after `SystemCost`.
+  - It maps `multi.pain` (max 4; defaults slip/switch/last) to emotional costs, and `single.often` to the footer label.
+  - It uses the same on-scroll reveal as SystemCost.
+
+### Manual steps needed
+- None
+
+### Notes
+- Copy stays on her side and makes no health claims ("peace of mind", not anxiety or stress relief).
+
 ## [2026-10-31] — Planners paywall gets the cost stack and Noah's review; result uses the Paper planner vs Ripple graphic
 
 - **Requested by:** Keenan
