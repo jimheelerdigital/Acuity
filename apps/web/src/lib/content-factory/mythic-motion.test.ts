@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { measuredMythicLine } from "./living-reel";
-import { riskyMotion, SAFE_MYTHIC_MOTION } from "./mythic-motion";
+import { nonDragonBreath, riskyMotion, SAFE_MYTHIC_MOTION } from "./mythic-motion";
 
 describe("Mythicals motion phrase check (loosened 2026-10-27)", () => {
   it("still blocks the two hard limits: things appearing, and figures meeting mid-action", () => {
@@ -37,5 +37,19 @@ describe("Mythicals clip direction around the Action", () => {
   it("asks for unmistakable dragon fire on both paths", () => {
     expect(measuredMythicLine("The dragon breathes fire", true)).toMatch(/MAKE IT UNMISTAKABLE/);
     expect(measuredMythicLine("anything", false)).toMatch(/MAKE IT UNMISTAKABLE/);
+  });
+});
+
+describe("Only dragons breathe (2026-11-01)", () => {
+  it("blocks breath attacks on other beasts", () => {
+    expect(nonDragonBreath("The griffin rears back and breathes a long jet of fire into the sky", "a griffin on a cliff")).toBeTruthy();
+    expect(nonDragonBreath("The behemoth breathes fire across the valley", "a horned behemoth")).toBeTruthy();
+  });
+
+  it("allows dragon-kind breath and ordinary breathing", () => {
+    expect(nonDragonBreath("It opens its jaws and breathes a long jet of ice", "a frost wyvern")).toBeNull();
+    expect(nonDragonBreath("The dragon breathes fire into the sky")).toBeNull();
+    expect(nonDragonBreath("The griffin breathes slowly as its eyes glow")).toBeNull();
+    expect(nonDragonBreath(SAFE_MYTHIC_MOTION)).toBeNull();
   });
 });

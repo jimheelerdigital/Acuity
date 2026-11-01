@@ -37,6 +37,10 @@ function ffmpegPath(): string | null {
   }
 }
 
+/** 2026-11-01, per Keenan: "only dragons and dragon type animals should breathe fire, not every animal". */
+export const BREATH_DRAGONS_ONLY =
+  "ONLY DRAGONS BREATHE: a breath attack (a jet of fire, ice, lightning or any other breath) belongs only to dragons and dragon-kind (wyverns, drakes, wyrms, hydras). Every other creature (griffins, phoenixes, wolves, chimeras, behemoths, krakens, basilisks, boars, rocs and so on) never breathes anything out of its mouth; it roars, rears, beats its wings, charges, or its eyes, runes or embers glow instead.";
+
 /**
  * Dragon breath must read at a glance (2026-10-29, per Keenan: "the dragon
  * fire breathing needs to be more clear in videos for mythicals"). Clips
@@ -44,7 +48,7 @@ function ffmpegPath(): string | null {
  * to miss on a phone. Applies whenever an Action has a dragon breathing.
  */
 export const DRAGON_BREATH_LINE =
-  "WHEN A DRAGON USES ITS BREATH, MAKE IT UNMISTAKABLE. The breath matches the kind of dragon it is: fire for a fire dragon, a freezing blast of ice and frost for an ice dragon, crackling lightning for a storm dragon, and likewise for any other kind (shadow, poison, magma, starlight, water...). Its jaws open wide and a thick, bright, roaring jet of that breath SHOOTS straight out of its mouth with force and speed, like a flamethrower blast, clearly visible and sustained for at least two full seconds, reaching far out into the sky or landscape. The jet is solid, vivid and brightest at the mouth, and its light falls on the dragon's face, scales and the scene around it. It never pours, dribbles or spills out, and it is never a faint haze, a wisp of smoke or mist, a short puff or a glow at the lips, and nothing hides it.";
+  "WHEN A DRAGON USES ITS BREATH, MAKE IT UNMISTAKABLE. The breath matches the kind of dragon it is: fire for a fire dragon, a freezing blast of ice and frost for an ice dragon, crackling lightning for a storm dragon, and likewise for any other kind (shadow, poison, magma, starlight, water...). Its jaws open wide and a thick, bright, roaring jet of that breath SHOOTS straight out of its mouth with force and speed, like a flamethrower blast, clearly visible and sustained for at least two full seconds, reaching far out into the sky or landscape. The jet is solid, vivid and brightest at the mouth, and its light falls on the dragon's face, scales and the scene around it. It never pours, dribbles or spills out, and it is never a faint haze, a wisp of smoke or mist, a short puff or a glow at the lips, and nothing hides it." + " " + BREATH_DRAGONS_ONLY;
 
 /**
  * The Mythicals direction around the clip's Action. Ungrounded clips keep the

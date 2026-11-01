@@ -31,6 +31,7 @@ Rules (loosened 2026-10-27 per Keenan: "we need less stringent restrictions"; on
 - Otherwise keep the plan's energy. Bold, cinematic action is welcome when the subject is in the picture: a beast rears up and roars, charges a few heavy strides, spreads its wings wide and beats them; a dragon breathes a long jet of fire; a warrior swings his blade or raises his shield; both figures can act at once.
 - Powers and effects are welcome on what's in the picture: fire breath, flames along a blade or armor, glowing runes and eyes, embers, frost, lightning across horns or steel.
 - Dragon breath must be obvious (2026-10-29, Keenan). When a dragon breathes, say so plainly and make it the clip's main beat: jaws open wide, a thick, bright, high-pressure jet of its breath shoots out of its mouth like a blast from a flamethrower for at least two seconds. The breath matches the kind of dragon in the picture: fire, ice, lightning, shadow, poison or whatever fits its look, out into the sky or landscape. Never a faint wisp or a puff.
+- Only dragons and dragon-kind (wyverns, drakes, wyrms, hydras) ever breathe fire, ice, lightning or any breath (2026-11-01, Keenan). Any other creature (griffin, phoenix, wolf, chimera, behemoth, kraken, basilisk, roc...) never breathes anything out of its mouth: it roars, rears, beats its wings or charges instead, and its eyes or embers may glow.
 - A weapon keeps its shape; a creature doesn't hold a weapon. The camera is steady or makes a slow push-in.
 - If the plan already fits the picture, return it almost unchanged.
 
@@ -44,6 +45,20 @@ const RISKY = [
   /\b(mounts?|mounting)\b/i,
   /\b(appears?|appearing|emerges?|emerging|materiali[sz]es?|enters?\s+the\s+frame|steps?\s+into\s+(the\s+)?frame|comes?\s+into\s+view)\b/i,
 ]
+
+/** A breath attack in a motion line (fire/ice/lightning jet out of a mouth). */
+const BREATH_ATTACK = /\b(breath(e|es|ing)?\s+(out\s+)?(a\s+)?(long\s+|thick\s+|bright\s+|powerful\s+)*(jet|stream|blast|torrent|gout|plume|burst|cone|fire|flames?|ice|frost|lightning|poison|shadow)|fire\s*breath|(fire|flame|ice|frost|lightning)\s+(jet|blast|stream)s?\s+(from|out of)\s+(its|the)\s+(mouth|jaws|maw))/i;
+const DRAGON_KIND = /\b(dragons?|wyverns?|drakes?|wyrms?|hydras?|dragonkind)\b/i;
+
+/**
+ * Breath attacks are dragons-only (2026-11-01, per Keenan). Flags a breath
+ * attack when neither the motion nor what the checker sees names a dragon.
+ */
+export function nonDragonBreath(motion: string, visible = ""): string | null {
+  const m = motion.match(BREATH_ATTACK);
+  if (!m) return null;
+  return DRAGON_KIND.test(`${motion} ${visible}`) ? null : `a breath attack ("${m[0]}") on a creature that isn't a dragon`;
+}
 
 export function riskyMotion(motion: string): string | null {
   for (const re of RISKY) {
@@ -94,7 +109,7 @@ export async function groundMythicMotion(opts: { imageUrl: string; motion: strin
       const text = response.content.map((b) => (b.type === "text" ? b.text : "")).join("");
       const parsed = JSON.parse(lastJsonText(text)) as { visible?: string; motion?: string };
       const motion = (parsed.motion ?? "").trim();
-      const risky = motion ? riskyMotion(motion) : "empty";
+      const risky = motion ? riskyMotion(motion) ?? nonDragonBreath(motion, parsed.visible) : "empty";
       if (motion.length >= 20 && !risky) {
         console.log(`[mythic-motion] grounded (sees: ${parsed.visible ?? "?"}): ${motion}`);
         return { motion, visible: parsed.visible, source: "grounded" };
