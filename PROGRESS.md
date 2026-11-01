@@ -10,6 +10,28 @@
 
 
 
+## [2026-10-31] — Jev picks email versions using each person's funnel answers
+
+- **Requested by:** Keenan
+- **Committed by:** Claude Code
+- **Commit hash:** (see git log, "feat: Let Jev pick email versions from funnel answers")
+
+### In plain English (for Keenan)
+When Jev chooses which version of an email someone gets, it now sees what she told us in the funnel (why she buys planners, what happens when it's all in her head, how often things slip, how planners failed her, what would make it easier) and favors the version that speaks to that. The 30%-off email is now judged on whether people start a trial, not on clicks.
+
+### Technical changes (for Jimmy)
+- `apps/web/src/lib/email-jev.ts`:
+  - `PersonContext.answers` comes from her `funnel_v9_*_answered` OnboardingEvents (latest per step, name excluded, values capped at 120 chars).
+  - Jev's instructions tell it to weigh those answers most.
+  - `paywall_winback_1` goal: click → pay.
+
+### Manual steps needed
+- None
+
+### Notes
+- Applies to every Jev-picked email; people with no funnel answers (app-only) just get an empty `answers`.
+- The "pay" goal counts anyone PRO now among the sends (no paid-at timestamp), the same as the other recovery emails.
+
 ## [2026-10-31] — First win-back email becomes a 30%-off offer, 10 minutes after signup
 
 - **Requested by:** Keenan

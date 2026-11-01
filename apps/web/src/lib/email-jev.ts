@@ -34,7 +34,7 @@ export type EmailGoal = "record" | "app" | "pay" | "claim" | "click";
 /** What each email is for. Anything not listed counts clicks. */
 export function goalFor(emailKey: string): EmailGoal {
   if (["recovery_paid_no_app", "app_access_rescue", "apple_duplicate_rescue", "apple_duplicate_linked", "rescue_signup_only", "rescue_viewed_no_tap", "rescue_tapped_app_store", "rescue_webview_blocked"].includes(emailKey)) return "app";
-  if (["recovery_signup_no_checkout", "recovery_checkout_abandoned", "trial_ending"].includes(emailKey)) return "pay";
+  if (["recovery_signup_no_checkout", "recovery_checkout_abandoned", "trial_ending", "paywall_winback_1"].includes(emailKey)) return "pay";
   if (emailKey.startsWith("free_week_")) return "claim";
   if (/^(app_first_record|first_debrief_followup|card_trial_|never_recorded|nr_winback|stall_|winback_|keep_momentum)/.test(emailKey)) return "record";
   return "click";
@@ -133,17 +133,33 @@ export interface PersonContext {
   daysSinceSignup: number;
   inApp: boolean;
   source: string | null;
+  /** Her web funnel answers, step → answer ids (2026-10-31, Keenan: Jev
+   *  "should pick based on the answers of the person"). E.g. why: "forget,me",
+   *  pain: "slip,last", often: "daily", happens: "chore", easier: "say,sorts". */
+  answers: Record<string, string>;
 }
 
 export async function personContext(userId: string, vars: TrialVars): Promise<PersonContext> {
   const { prisma } = await import("@/lib/prisma");
-  const [user, signedIn] = await Promise.all([
+  const [user, signedIn, answered] = await Promise.all([
     prisma.user.findUnique({
       where: { id: userId },
       select: { subscriptionStatus: true, createdAt: true, signupUtmSource: true },
     }),
     prisma.onboardingEvent.findFirst({ where: { userId, event: "app_signed_in" }, select: { id: true } }),
+    prisma.onboardingEvent.findMany({
+      where: { userId, event: { startsWith: "funnel_v9_", endsWith: "_answered" } },
+      orderBy: { createdAt: "asc" },
+      select: { event: true, value: true },
+      take: 60,
+    }),
   ]);
+  // Latest answer per step wins (she can go back and change one).
+  const answers: Record<string, string> = {};
+  for (const a of answered) {
+    const step = a.event.slice("funnel_v9_".length, -"_answered".length);
+    if (step && step !== "name" && a.value) answers[step] = a.value.slice(0, 120);
+  }
   return {
     lane: vars.lane ?? "women",
     plan: user?.subscriptionStatus ?? "unknown",
@@ -151,6 +167,7 @@ export async function personContext(userId: string, vars: TrialVars): Promise<Pe
     daysSinceSignup: user ? Math.floor((Date.now() - user.createdAt.getTime()) / 86400_000) : 0,
     inApp: !!signedIn,
     source: user?.signupUtmSource ?? null,
+    answers,
   };
 }
 
@@ -226,7 +243,7 @@ export async function chooseEmailVariant(
         pick: {
           type: "choice",
           instructions:
-            "Which version of this email is most likely to get this person to reach the goal? Weigh the versions' results (a higher rate over more sends is real evidence; under 20 sends is weak evidence) and how well each angle fits this person (their lane, whether they are in the app, how many debriefs they have recorded, how long since they signed up).",
+            "Which version of this email is most likely to get this person to reach the goal? Weigh the versions' results (a higher rate over more sends is real evidence; under 20 sends is weak evidence) and how well each angle fits this person (their lane, whether they are in the app, how many debriefs they have recorded, how long since they signed up). Weigh their own funnel answers most (person.answers: why they buy planners, what happens when it's all in their head, how often things slip, how planners failed them, what would make it easier, what's on their plate): pick the version whose angle speaks to what they told us.",
           criteria: Object.fromEntries(variants.map((x) => [x.id, x.angle])),
         },
       });
