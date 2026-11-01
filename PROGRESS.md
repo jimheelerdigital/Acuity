@@ -10,6 +10,26 @@
 
 
 
+## [2026-11-01] — Admin route to place AdLab ads into any existing Meta ad set
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** see git log
+
+### In plain English (for Keenan)
+A behind-the-scenes tool so the new pain-based ads can go into the Planners campaigns, the men's and women's evergreen sign-up campaigns and the women's app-install campaign, each one copying where that campaign's current ads send people (price pins, App Store link). It can also re-point the Planners ads to the new /start-journal funnel. No ads change from the tool itself; the actual Meta changes are logged in the next entry.
+
+### Technical changes (for Jimmy)
+- New apps/web/src/app/api/admin/adlab/ads/place/route.ts (admin or CRON_SECRET): `inspect` (ad sets + live ads' link/CTA), `add` (creative × ad set, destination + url_tags copied from a live ad in that ad set, utm_content=creativeId, optional path swap, feed+story placement creative, AdLabAd rows), `relink` (swap goripple.io path on every live ad's creative in place), `status` (ACTIVE/PAUSED mirrored on AdLabAd).
+- No schema changes.
+
+### Manual steps needed
+None
+
+### Notes
+- Raw Graph calls (not the SDK) so Meta's real error comes back.
+- App-install ad sets copy the App Store link and INSTALL_MOBILE_APP button from their existing ads.
+
 ## [2026-11-01] — Legendary Mythicals: 2 posts a day, and no more duo every post
 
 - **Requested by:** Keenan
