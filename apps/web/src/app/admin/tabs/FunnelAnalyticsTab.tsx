@@ -24,6 +24,7 @@ const FUNNELS = {
   catch: { flow: "v9-slip", name: "Things slip", path: "/start-catch" },
   clarity: { flow: "v9-loop", name: "Hidden pattern", path: "/start-clarity" },
   progress: { flow: "v9-progress", name: "No progress", path: "/start-progress" },
+  focus: { flow: "v9-adhd", name: "Scattered / ADHD", path: "/start-focus" },
 } as const;
 
 const ARCHIVE_VIEWS: View[] = ["cmp-all", "cmp-ripple", "cmp-bwk", "ripple", "bwk"];
@@ -177,7 +178,7 @@ function SideBySide({ start, end, traffic }: { start: string; end: string; traff
 // milestone it follows or branches from.
 
 const COMPARE_COLUMNS: Record<CompareMode, (keyof typeof FUNNELS)[]> = {
-  live: ["test", "testbwk", "journal", "relief", "catch", "clarity", "progress"],
+  live: ["test", "testbwk", "journal", "relief", "catch", "clarity", "progress", "focus"],
   "cmp-ripple": ["ripple", "test"],
   "cmp-bwk": ["bwk", "testbwk"],
   "cmp-all": ["ripple", "test", "bwk", "testbwk"],
@@ -192,6 +193,7 @@ const COLUMN_LABEL: Record<keyof typeof FUNNELS, { title: string; arm: string }>
   catch: { title: "Pain", arm: "Things slip" },
   clarity: { title: "Pain", arm: "Hidden pattern" },
   progress: { title: "Pain", arm: "No progress" },
+  focus: { title: "Pain", arm: "Scattered / ADHD" },
 };
 
 const FUNNEL_COLOR: Record<keyof typeof FUNNELS, string> = {
@@ -204,8 +206,9 @@ const FUNNEL_COLOR: Record<keyof typeof FUNNELS, string> = {
   catch: "#C2410C",
   clarity: "#D9822B",
   progress: "#B4532A",
+  focus: "#9A3412",
 };
-const FLOW_TO_KEY: Record<string, keyof typeof FUNNELS> = { v8: "ripple", "v9-test": "test", "v8-bwk": "bwk", "v9-test-bwk": "testbwk", "v9-journal": "journal", "v9-pain": "relief", "v9-slip": "catch", "v9-loop": "clarity", "v9-progress": "progress" };
+const FLOW_TO_KEY: Record<string, keyof typeof FUNNELS> = { v8: "ripple", "v9-test": "test", "v8-bwk": "bwk", "v9-test-bwk": "testbwk", "v9-journal": "journal", "v9-pain": "relief", "v9-slip": "catch", "v9-loop": "clarity", "v9-progress": "progress", "v9-adhd": "focus" };
 
 /** Paid subscribers from the subscription records themselves, so this can
  *  never read zero while real people are paying (2026-09-28). */

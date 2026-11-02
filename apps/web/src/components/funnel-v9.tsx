@@ -140,6 +140,8 @@ const OPTION_ICONS: Record<string, LucideIcon> = {
   "want:wins": Sparkles, "look:never": Hourglass, "look:wrong": Zap, "look:newyear": CalendarDays, "look:sometimes": Eye, "proof:no": Eye,
   "proof:little": Sprout, "proof:hard": Layers, "proof:yes": TrendingUp, "slid:health": Activity, "slid:move": Dumbbell, "slid:money": Wallet,
   "slid:friends": Users, "slid:hobby": Heart, "slid:calm": Waves,
+  // /start-focus (scattered / ADHD) and the 11-02 review
+  "help:once": Mic, "help:habits": Target, "help:week": CalendarCheck, "pain:start": Layers, "pain:lose": Waves, "pain:forget": Brain, "pain:time": Hourglass, "pain:overwhelm": Zap, "pain:freeze": Lock, "fail:setup": ListChecks, "fail:open": Smartphone, "fail:bored": Hourglass, "fail:typing": Keyboard, "fail:streak": HeartCrack, "fail:much": Layers, "brain:yes": Brain, "brain:wonder": Eye, "brain:scattered": Zap, "brain:skip": Lock, "want:dump": Brain, "want:talk": Mic, "want:sort": ListChecks, "want:one": Layers, "want:setup": Sparkles, "want:nostreak": Repeat,
 };
 
 function sessionId(): string {
@@ -317,6 +319,8 @@ const CSS = `
 .v9 .snap > * { scroll-snap-align: center; }
 .v9 .noscroll::-webkit-scrollbar { display: none; }
 @media (prefers-reduced-motion: reduce) { .v9 * { animation: none !important; transition: none !important; } }
+/* Reassure cloud without motion: the chips sit in a group above the Ripple card instead of piling up. */
+@media (prefers-reduced-motion: reduce) { .v9 .rs-cloud { display: flex; flex-wrap: wrap; justify-content: center; align-content: flex-start; gap: 6px; height: auto; padding-bottom: 76px; } .v9 .rs-float { position: static !important; margin: 0 !important; transform: none !important; width: auto !important; } }
 `;
 
 export function FunnelV9({ brand = "ripple", adMatch }: { brand?: V9Brand; adMatch?: AdMatch | null }) {
@@ -661,7 +665,7 @@ function StepBody(p: ViewProps) {
       if (p.step.id === "often" && sunrise(C)) return <OftenTiles {...p} step={step} />;
       return <SingleScreen {...p} step={step} />;
     case "multi":
-      if (p.step.id === "plate" && sunrise(C)) return <MultiScreen {...p} step={step} above={<PlateVisual picked={p.answers.multi.plate ?? []} />} />;
+      if (p.step.id === "plate" && C.brand === "journal") return <MultiScreen {...p} step={step} above={<PlateVisual picked={p.answers.multi.plate ?? []} />} />;
       return <MultiScreen {...p} step={step} />;
     case "week":
       return <WeekScreen {...p} step={step} />;
@@ -1251,11 +1255,11 @@ function ReassureScreen({ next }: ViewProps) {
   return (
     <div className="enter">
       <Heading title={C.reassure.title} />
-      <div className="relative h-[210px] mb-6 overflow-hidden">
+      <div className="rs-cloud relative h-[210px] mb-6 overflow-hidden">
         {C.reassure.things.map((t, i) => (
           <span
             key={t}
-            className="absolute left-1/2 top-0 -ml-[60px] w-[120px] text-center rounded-full card px-3 py-1.5 text-[12px] font-semibold text-acuity-text-sec"
+            className="rs-float absolute left-1/2 top-0 -ml-[60px] w-[120px] text-center rounded-full card px-3 py-1.5 text-[12px] font-semibold text-acuity-text-sec"
             style={{
               animation: `v9-float 3.4s ${i * 0.42}s ease-in infinite both`,
               ["--x0" as string]: `${(i % 2 ? 1 : -1) * (40 + (i % 3) * 28)}px`,
@@ -2096,10 +2100,11 @@ function CostReceipt({ answers }: { answers: Answers }) {
           <div className="mt-3 border-t border-dashed" style={{ borderColor: "#D9CBBE" }} />
           <div className="mt-3 space-y-2">
             {lines.map((l, i) => (
-              <div key={l.label} className={`rv flex items-baseline gap-2 whitespace-nowrap text-[12.5px] ${on ? "on" : ""}`} style={{ "--d": `${i * 170}ms` } as CSSProperties}>
-                <span className={`min-w-0 truncate ${l.cents ? "text-acuity-text" : "italic text-red-600"}`}>{l.label}</span>
+              <div key={l.label} className={`rv flex items-baseline gap-2 text-[12.5px] ${kit ? "" : "whitespace-nowrap"} ${on ? "on" : ""}`} style={{ "--d": `${i * 170}ms` } as CSSProperties}>
+                {/* Pain lines are her own answers and can run long: wrap, never cut. */}
+                <span className={`min-w-0 ${kit ? "leading-snug" : "truncate"} ${l.cents ? "text-acuity-text" : "italic text-red-600"}`}>{l.label}</span>
                 <span className="min-w-[12px] flex-1 translate-y-[-3px] border-b border-dotted" style={{ borderColor: "#CDBFB2" }} />
-                <span className={`tabular-nums ${l.cents ? "font-bold" : "italic text-red-600"}`}>{l.cents ? <CountUp cents={l.cents} run={on} /> : l.value}</span>
+                <span className={`shrink-0 tabular-nums ${l.cents ? "font-bold" : "italic text-red-600"}`}>{l.cents ? <CountUp cents={l.cents} run={on} /> : l.value}</span>
               </div>
             ))}
           </div>

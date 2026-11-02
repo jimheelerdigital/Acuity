@@ -42,6 +42,55 @@
 - **Screenshots:** there is no upload. Creators reply by email, and the admin view-bonus buttons do the top-up (they pay the difference to a higher tier).
 - **Free Pro:** it is still granted indefinitely in code (autoGrantCreatorPerk). Enforcement needs the open Pro decisions first.
 
+## [2026-11-02] — Pain funnels reviewed screen by screen, and a fifth funnel for scattered / ADHD brains
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** see git log
+
+### In plain English (for Keenan)
+- **Every screen of the pain funnels was checked for two things:** does it build on her pain, and does it work on a phone. What changed:
+  - **"On your plate"** now asks a question about each funnel's pain (for example "Where do things slip most?"), without the abstract plate picture.
+  - **"This week's list"** is reworded per funnel.
+  - **Sliders** say what she would say at each end.
+  - **Mental load, "What would help most?":** three answers that claimed things Ripple doesn't do were replaced.
+  - **Reassure screen:** for people who turn animations off, its floating chips now sit in a neat group instead of piling up.
+  - **Paywall receipt:** long answers wrap instead of getting cut off.
+- **New fifth funnel, /start-focus,** for scattered and ADHD brains. It opens with "My brain has 47 tabs open, and I can't find the one I need." It presents Ripple as a helpful tool and never as a treatment or cure.
+- **The split** now sends 20% of visitors to each of the five funnels. It's still off.
+- **Review page:** https://claude.ai/artifact/1Bq771B6TfR3RcxRhrXhTj
+
+### Technical changes (for Jimmy)
+- **apps/web/src/lib/funnel-v9-config.ts:**
+  - ADHD_V9 (brand adhd, flowVersion v9-adhd, /start-focus), added to PAIN_FUNNELS
+  - `painShared(plate, week?)` rewords the shared plate/week steps per funnel
+  - painTail takes plate/week copy
+  - slider left/right rewritten
+  - relief help options swapped (out, nothing, once, why, habits, week)
+  - slip "A school form"
+- **apps/web/src/components/funnel-v9.tsx:**
+  - PlateVisual is journal-only
+  - reassure cloud gets `rs-cloud`/`rs-float` with a reduced-motion layout
+  - CostReceipt pain lines wrap (no truncate)
+  - new option icons
+- **apps/web/src/components/consent-gated-trackers.tsx:** on /start-focus only, `fbq('set','autoConfig',false,pixel)` before init. The page asks "Do you have ADHD?", and this stops Meta's automatic button-text capture from collecting a health answer. Explicit Lead/CompleteRegistration/Purchase events are unchanged, and funnel answers only go to OnboardingEvent.
+- **Paths and analytics:**
+  - pain-split-shared.ts: arm `focus`
+  - create-checkout and handoff: /start-focus
+  - metrics route and FunnelAnalyticsTab: v9-adhd
+  - new page apps/web/src/app/start-focus
+- **Verified:** typecheck clean on changed files; all 5 funnels' screens captured at iPhone size with no page errors.
+
+### Manual steps needed
+- [ ] Review all five funnels on the review page (Keenan)
+- [ ] Meta ads for /start-focus must not say or imply the viewer has ADHD (Meta's personal-attributes rule). Write them as "for scattered brains" or "ADHD-friendly", never "Do you have ADHD?" (Keenan)
+- [ ] Check the pixel autoConfig change on /start-focus (Jimmy)
+
+### Notes
+- ADHD copy rule from Keenan, 11-02: Ripple is a helpful tool for ADHD and scattered brains, never a cure. ADHD can be used as a buzzword.
+- The ADHD question's answer is health data: keep it out of Meta, CAPI and any ad audience.
+- Screenshot method: the viewport is set to the page height, so the fixed bottom bar renders where she sees it. Full-page captures froze it mid-page and made screens look broken.
+
 ## [2026-11-02] — Four new pain-first web funnels and a 4-way split (built, switched off)
 
 **Requested by:** Keenan

@@ -1,8 +1,9 @@
 /**
  * Pain-funnel split (2026-11-02, per Keenan). Ads point at /start-pain, which
- * sends each new visitor to one of four pain-first funnels, 25% each:
+ * sends each new visitor to one of five pain-first funnels, an equal share each:
  * /start-relief (mental load), /start-catch (things slip), /start-clarity
- * (hidden pattern), /start-progress (no progress).
+ * (hidden pattern), /start-progress (no progress), /start-focus (scattered
+ * brain / ADHD, added later the same day).
  *
  *   - flag `funnel_pain_split` OFF → /start-pain sends everyone to
  *     /start-relief, unmarked (so the funnels can be previewed directly).

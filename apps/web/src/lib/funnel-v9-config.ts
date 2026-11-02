@@ -298,7 +298,7 @@ export function v9StateName(a: {
 // therapy talk) on the dusk theme. Same positioning rules: "debrief", no
 // fixed time of day, no duration claims, mirror not coach, real reviews only.
 
-export type V9Brand = "ripple" | "bwk" | "journal" | "pain" | "slip" | "loop" | "progress";
+export type V9Brand = "ripple" | "bwk" | "journal" | "pain" | "slip" | "loop" | "progress" | "adhd";
 
 export type V9Sample = { match: string[]; said: string; tasks: string[]; mood: string; pattern: string };
 
@@ -918,16 +918,16 @@ export const PAIN_V9_STEPS: V9Step[] = [
     options: [
       { id: "out", label: "Getting it all out of my head" },
       { id: "nothing", label: "Knowing nothing’s slipping" },
-      { id: "only", label: "Not being the only one who remembers" },
+      { id: "once", label: "Saying it once and letting it go" },
       { id: "why", label: "Seeing what’s wearing me down" },
-      { id: "me", label: "Making time for me again" },
-      { id: "behind", label: "Not feeling behind all the time" },
+      { id: "habits", label: "Keeping up the things I drop" },
+      { id: "week", label: "Seeing my week laid out" },
     ],
   },
   { id: "reassure", kind: "info", screen: "reassure" },
-  ...V9_STEPS.filter((st) => st.id === "age" || st.id === "plate" || st.id === "week"),
+  ...painShared({ title: "Who and what are you keeping track of?" }),
   { id: "preview", kind: "info", screen: "preview" },
-  { id: "s-load", kind: "slider", title: "How heavy does it feel lately?", left: "I’m managing", right: "It’s too much" },
+  { id: "s-load", kind: "slider", title: "How heavy does it feel lately?", left: "I’m managing fine", right: "It’s too much to carry" },
   { id: "st-share", kind: "statement", statement: "I’d feel lighter if something else remembered for me.", mood: "hopeful", title: "Last one. True for you?" },
   {
     id: "commit",
@@ -1019,7 +1019,7 @@ export const PAIN_V9: V9Config = {
     stackStep: "tabs",
     stamps: {
       first: { move: "Skipped again", friends: "Rain check #4", appts: "Still not booked", sleep: "6 hours, maybe", me: "Someday", food: "Ate standing up" },
-      help: { out: "Ripple does this", nothing: "Ripple does this", only: "Ripple does this", why: "Ripple does this", me: "Ripple does this", behind: "Ripple does this" },
+      help: { out: "Ripple does this", nothing: "Ripple does this", once: "Ripple does this", why: "Ripple does this", habits: "Ripple does this", week: "Ripple does this" },
     },
     reviewAt: { help: 0, commit: 3 },
     closeStamp: "held for you",
@@ -1043,12 +1043,21 @@ export const PAIN_V9: V9Config = {
   },
 };
 
+// Age / plate / week from the main funnel, with the plate (and optionally the
+// week) question reworded to the funnel's pain (2026-11-02 review: "On your
+// plate" read as generic profiling).
+function painShared(plate: { title: string; sub?: string }, week?: { title: string; sub?: string }): V9Step[] {
+  return V9_STEPS.filter((st) => st.id === "age" || st.id === "plate" || st.id === "week").map((st) =>
+    st.id === "plate" ? ({ ...st, ...plate } as V9Step) : st.id === "week" && week ? ({ ...st, ...week } as V9Step) : st
+  );
+}
+
 // ─── Shared tail for the pain-first funnels: age/plate/week, preview, then
 // slider → closing yes/no → ready → account → result → plan → paywall.
-function painTail(slider: V9Step, close: V9Step, commitTitle: string): V9Step[] {
+function painTail(slider: V9Step, close: V9Step, commitTitle: string, plate: { title: string; sub?: string }, week?: { title: string; sub?: string }): V9Step[] {
   return [
     { id: "reassure", kind: "info", screen: "reassure" },
-    ...V9_STEPS.filter((st) => st.id === "age" || st.id === "plate" || st.id === "week"),
+    ...painShared(plate, week),
     { id: "preview", kind: "info", screen: "preview" },
     slider,
     close,
@@ -1078,7 +1087,7 @@ export const SLIP_V9_STEPS: V9Step[] = [
   {
     id: "pain", kind: "multi", title: "What’s slipped lately?", sub: "Pick all that apply.",
     options: [
-      { id: "form", label: "A school form or permission slip" },
+      { id: "form", label: "A school form" },
       { id: "appt", label: "An appointment" },
       { id: "bday", label: "A birthday" },
       { id: "bill", label: "A bill or renewal" },
@@ -1137,9 +1146,11 @@ export const SLIP_V9_STEPS: V9Step[] = [
     ],
   },
   ...painTail(
-    { id: "s-sure", kind: "slider", title: "How sure are you nothing will slip this week?", left: "Not at all", right: "Totally sure" },
+    { id: "s-sure", kind: "slider", title: "How sure are you nothing will slip this week?", left: "Nothing gets past me", right: "Things slip all the time" },
     { id: "st-close", kind: "statement", statement: "I’d relax if I knew nothing was slipping.", mood: "hopeful", title: "Last one. True for you?" },
-    "Ready for nothing to slip?"
+    "Ready for nothing to slip?",
+    { title: "Where do things slip most?" },
+    { title: "What could slip this week?", sub: "Tap everything you’re trying to remember." }
   ),
 ];
 
@@ -1265,9 +1276,11 @@ export const LOOP_V9_STEPS: V9Step[] = [
     ],
   },
   ...painTail(
-    { id: "s-know", kind: "slider", title: "How well do you know what lifts you?", left: "No idea", right: "I know exactly" },
+    { id: "s-know", kind: "slider", title: "How well do you know what lifts you?", left: "I know what lifts me", right: "I have no idea what lifts me" },
     { id: "st-close", kind: "statement", statement: "If I could see what’s really going on, I’d change it.", mood: "hopeful", title: "Last one. True for you?" },
-    "Ready to see what’s really going on?"
+    "Ready to see what’s really going on?",
+    { title: "What takes the most out of you?" },
+    { title: "What’s filling your week?", sub: "Tap everything that’s on your mind right now." }
   ),
 ];
 
@@ -1394,9 +1407,10 @@ export const PROGRESS_V9_STEPS: V9Step[] = [
     ],
   },
   ...painTail(
-    { id: "s-see", kind: "slider", title: "How well can you see your own progress?", left: "Not at all", right: "Very clearly" },
+    { id: "s-see", kind: "slider", title: "How well can you see your own progress?", left: "I can see I’m getting somewhere", right: "Every week feels the same" },
     { id: "st-close", kind: "statement", statement: "If I could see I’m getting somewhere, I’d keep going.", mood: "hopeful", title: "Last one. True for you?" },
-    "Ready to see your progress?"
+    "Ready to see your progress?",
+    { title: "Where do you want to see progress?" }
   ),
 ];
 
@@ -1458,7 +1472,142 @@ export const PROGRESS_V9: V9Config = {
   },
 };
 
-export const V9_CONFIGS: Record<V9Brand, V9Config> = { ripple: RIPPLE_V9, bwk: BWK_V9, journal: JOURNAL_V9, pain: PAIN_V9, slip: SLIP_V9, loop: LOOP_V9, progress: PROGRESS_V9 };
+// ─── /start-focus: scattered brain / ADHD (2026-11-02) ──────────────────────
+// Keenan: "a funnel that targets ... people with scattered brains"; "not a
+// cure, but a helpful tool ... use ADHD as a buzzword." Ripple never claims
+// to treat or diagnose ADHD (docs/acuity-positioning.md); it is a tool that
+// works the way a fast, scattered brain does.
+export const ADHD_V9_STEPS: V9Step[] = [
+  { id: "hook", kind: "statement", statement: "My brain has 47 tabs open, and I can’t find the one I need.", mood: "overloaded" },
+  {
+    id: "pain", kind: "multi", title: "What does a scattered day look like?", sub: "Pick all that apply.",
+    options: [
+      { id: "start", label: "I start five things and finish none" },
+      { id: "lose", label: "I lose my train of thought mid-sentence" },
+      { id: "forget", label: "I forget things the second I walk away" },
+      { id: "time", label: "Time just disappears" },
+      { id: "overwhelm", label: "Too many thoughts, no idea where to start" },
+      { id: "freeze", label: "I freeze when I sit down to plan" },
+    ],
+  },
+  {
+    id: "often", kind: "single", title: "How often does your brain feel like this?", sub: "Each dot is a scattered day.",
+    options: [
+      { id: "daily", label: "Most days" },
+      { id: "weekly", label: "A few days a week" },
+      { id: "sometimes", label: "Once a week or so" },
+      { id: "rarely", label: "Rarely, but it derails me" },
+    ],
+  },
+  {
+    id: "apps", kind: "single", title: "How many apps and systems have you tried?", sub: "Planners, apps, sticky notes. They all count.",
+    options: [
+      { id: "one", label: "One or two" },
+      { id: "few", label: "3 or 4" },
+      { id: "many", label: "5 or more" },
+      { id: "lost", label: "I’ve lost count" },
+    ],
+  },
+  {
+    id: "fail", kind: "multi", title: "Why do they stop working for you?", sub: "Pick all that apply.",
+    options: [
+      { id: "setup", label: "Setting them up takes forever" },
+      { id: "open", label: "I forget to open them" },
+      { id: "bored", label: "They get boring" },
+      { id: "typing", label: "Typing it all out is too slow" },
+      { id: "streak", label: "Missing a day makes me quit" },
+      { id: "much", label: "Too many buttons and settings" },
+    ],
+  },
+  {
+    id: "brain", kind: "single", title: "Do you have ADHD, or wonder if you do?",
+    options: [
+      { id: "yes", label: "Yes, I’ve been diagnosed" },
+      { id: "wonder", label: "I’ve wondered" },
+      { id: "scattered", label: "No, I’m just scattered" },
+      { id: "skip", label: "I’d rather not say" },
+    ],
+  },
+  { id: "st-mid", kind: "statement", statement: "If I don’t do it right now, it’s gone.", mood: "overloaded" },
+  {
+    id: "want", kind: "multi", title: "What would actually work for your brain?", sub: "Pick all that apply.",
+    options: [
+      { id: "dump", label: "Dumping every thought out, fast" },
+      { id: "talk", label: "Talking instead of typing" },
+      { id: "sort", label: "Having it sorted for me" },
+      { id: "one", label: "One list, not five apps" },
+      { id: "setup", label: "Nothing to set up" },
+      { id: "nostreak", label: "No streak to break" },
+    ],
+  },
+  ...painTail(
+    { id: "s-thoughts", kind: "slider", title: "Where are your thoughts right now?", left: "My thoughts are in order", right: "My thoughts are everywhere" },
+    { id: "st-close", kind: "statement", statement: "If I could just say it and let it go, I’d actually keep up.", mood: "hopeful", title: "Last one. True for you?" },
+    "Ready to get it out of your head?",
+    { title: "What’s pulling at your attention?" },
+    { title: "What’s bouncing around your head this week?", sub: "Tap everything, in any order." }
+  ),
+];
 
-/** The four pain-first funnels in the 2026-11-02 split, in order. */
-export const PAIN_FUNNELS = [PAIN_V9, SLIP_V9, LOOP_V9, PROGRESS_V9];
+export function adhdStateName(a: { plate: string[]; sliders: Record<string, number>; said?: Record<string, string>; multi?: Record<string, string[]> }): { name: string; line: string } {
+  const said = a.said ?? {};
+  const pain = a.multi?.pain ?? [];
+  if (said.apps === "many" || said.apps === "lost") return { name: "The System Collector", line: "You’ve tried system after system. None of them were built for a brain that moves this fast." };
+  if (pain.includes("start") || pain.includes("time")) return { name: "The Tab Opener", line: "Ideas arrive faster than you can finish them, so a lot gets left open." };
+  if (pain.includes("forget") || pain.includes("lose")) return { name: "The Vanishing Thought", line: "Good thoughts show up at the worst moments and are gone a minute later." };
+  return { name: "The Fast Thinker", line: "Your brain moves quickly. It just needs somewhere to put things down." };
+}
+
+export const ADHD_V9: V9Config = {
+  ...PAIN_V9,
+  brand: "adhd",
+  flowVersion: "v9-adhd",
+  path: "/start-focus",
+  hookLine: "For scattered, busy and ADHD brains. Say it the second you think it, and Ripple sorts it.",
+  steps: ADHD_V9_STEPS,
+  stepLabels: numberedLabels(ADHD_V9_STEPS, {
+    ...TAIL_SHORT, hook: "47 tabs open? (screen 1, yes/no)", pain: "What a scattered day looks like", often: "Scattered days a week", apps: "How many systems tried",
+    fail: "Why they stop working", brain: "ADHD, or wondered?", "st-mid": "Yes/no: do it now or it's gone", want: "What would work for her brain",
+    "s-thoughts": "Slider: thoughts in order vs everywhere", "st-close": "Yes/no: say it and let it go",
+  }),
+  progressEnd: ADHD_V9_STEPS.findIndex((st) => st.id === "result"),
+  stateName: adhdStateName as unknown as typeof v9StateName,
+  reassure: {
+    title: "It’s not a willpower problem.",
+    body: "A brain that moves this fast can’t also be the filing cabinet. Most systems were built for brains that sit still.",
+    body2: "Ripple works the way your brain does. Say it the second you think it, in any order, and it lands on your list, sorted.",
+    things: ["Reply to Jen", "Laundry!!", "Dentist?", "Renew passport", "That idea", "Call back", "Return package", "Pay parking"],
+    cta: "That’s me",
+  },
+  milestones: { week: "Halfway there.", "s-thoughts": "You’re doing great. A few more.", name: "Almost done." },
+  resultOutro: "None of this means you’re lazy or careless. Your brain needs a place to put things down. Ripple is that place.",
+  preview: { eyebrow: "How Ripple works", title: "Say it messy. Ripple sorts it.", caption: "Talk in any order. Every task lands on your list, already sorted, with nothing to set up." },
+  painKit: {
+    label: "Scattered / ADHD",
+    hookCards: ["Tab 1", "Tab 2", "Tab 47"],
+    stackStep: "apps",
+    stamps: {
+      fail: { setup: "Quit on day 2", open: "Last opened: March", bored: "Novelty gone", typing: "3 notes, 0 done", streak: "Streak: 0", much: "Too many menus" },
+      want: ripple(["dump", "talk", "sort", "one", "setup", "nostreak"]),
+    },
+    reviewAt: { want: 0, commit: 3 },
+    closeStamp: "sorted",
+    vs: {
+      left: "In your head",
+      sub: "Where it goes with Ripple",
+      rows: [
+        ["Wait, what was I saying?", "Said once", "Kept for you"],
+        ["Five apps, none up to date", "One list", "From your own voice"],
+        ["Great idea in the shower, gone", "Every idea", "Caught as you say it"],
+        ["Started five things, finished none", "Your tasks", "Sorted, with dates"],
+        ["Missed a day, quit the app", "Nothing resets", "Pick up anytime"],
+      ],
+    },
+    receipt: { title: "Your brain · this week", stamp: "Too many tabs open", stampSub: "and they’re all yours", extra: { label: "Apps you tried", value: "abandoned" } },
+  },
+};
+
+export const V9_CONFIGS: Record<V9Brand, V9Config> = { ripple: RIPPLE_V9, bwk: BWK_V9, journal: JOURNAL_V9, pain: PAIN_V9, slip: SLIP_V9, loop: LOOP_V9, progress: PROGRESS_V9, adhd: ADHD_V9 };
+
+/** The pain-first funnels in the 2026-11-02 split, in order. */
+export const PAIN_FUNNELS = [PAIN_V9, SLIP_V9, LOOP_V9, PROGRESS_V9, ADHD_V9];

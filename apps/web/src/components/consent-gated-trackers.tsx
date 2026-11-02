@@ -105,6 +105,10 @@ export function ConsentGatedTrackers() {
             t.src=v;s=b.getElementsByTagName(e)[0];
             s.parentNode.insertBefore(t,s)}(window, document,'script',
             'https://connect.facebook.net/en_US/fbevents.js');
+            // /start-focus asks about ADHD (2026-11-02): stop the pixel's
+            // automatic button-text and page-data capture there, so a health
+            // answer can never reach Meta. Our own explicit events still fire.
+            if (location.pathname.indexOf('/start-focus') === 0) fbq('set', 'autoConfig', false, '${META_PIXEL_ID}');
             fbq('init', '${META_PIXEL_ID}');
             // Internal devices (QA browsers, team phones) never count in Meta.
             if (!navigator.webdriver && document.cookie.indexOf('acuity_internal=1') < 0) fbq('track', 'PageView');

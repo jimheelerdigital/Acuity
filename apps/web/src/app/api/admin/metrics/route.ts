@@ -157,7 +157,7 @@ export async function GET(req: NextRequest) {
         case "funnel-analytics": {
           const showBots = req.nextUrl.searchParams.get("showBots") === "true";
           const resetAfter = req.nextUrl.searchParams.get("resetAfter") ?? null;
-          const flow = req.nextUrl.searchParams.get("flow") as "v8" | "v8-bwk" | "v9-test" | "v9-test-bwk" | "v9-journal" | "v9-pain" | "v9-slip" | "v9-loop" | "v9-progress" | "v7" | "v6" | "v5" | "v4" | "v3" | "v2" | "v1" | "all" | null;
+          const flow = req.nextUrl.searchParams.get("flow") as "v8" | "v8-bwk" | "v9-test" | "v9-test-bwk" | "v9-journal" | "v9-pain" | "v9-slip" | "v9-loop" | "v9-progress" | "v9-adhd" | "v7" | "v6" | "v5" | "v4" | "v3" | "v2" | "v1" | "all" | null;
           // traffic=inapp keeps only sessions seen in a social in-app browser
           // (FB/IG/TikTok), which drops Meta's ad-review crawler and link
           // preloads. Default "all" so any other caller sees unchanged numbers.
@@ -2299,7 +2299,7 @@ async function getFunnelCompare(
   };
 }
 
-async function getFunnelAnalytics(prisma: PrismaClient, start: Date, end: Date, showBots = false, resetAfter: string | null = null, flowVersion: "v8" | "v8-bwk" | "v9-test" | "v9-test-bwk" | "v9-journal" | "v9-pain" | "v9-slip" | "v9-loop" | "v9-progress" | "v7" | "v6" | "v5" | "v4" | "v3" | "v2" | "v1" | "all" = "v8", traffic: "inapp" | "real" | "all" = "real") {
+async function getFunnelAnalytics(prisma: PrismaClient, start: Date, end: Date, showBots = false, resetAfter: string | null = null, flowVersion: "v8" | "v8-bwk" | "v9-test" | "v9-test-bwk" | "v9-journal" | "v9-pain" | "v9-slip" | "v9-loop" | "v9-progress" | "v9-adhd" | "v7" | "v6" | "v5" | "v4" | "v3" | "v2" | "v1" | "all" = "v8", traffic: "inapp" | "real" | "all" = "real") {
  try {
   const isV8 = flowVersion === "v8" || flowVersion === "v8-bwk" || flowVersion.startsWith("v9-test");
   // Date-based epoch clamping — only used for v1 (cap end at v3 deploy)
@@ -2619,7 +2619,7 @@ async function getFunnelAnalytics(prisma: PrismaClient, start: Date, end: Date, 
     : flowVersion === "v9-test" ? { flowVersion: "v9-test" as const }
     : flowVersion === "v9-test-bwk" ? { flowVersion: "v9-test-bwk" as const }
     : flowVersion === "v9-journal" ? { flowVersion: "v9-journal" as const }
-    : flowVersion === "v9-pain" || flowVersion === "v9-slip" || flowVersion === "v9-loop" || flowVersion === "v9-progress" ? { flowVersion }
+    : flowVersion === "v9-pain" || flowVersion === "v9-slip" || flowVersion === "v9-loop" || flowVersion === "v9-progress" || flowVersion === "v9-adhd" ? { flowVersion }
     : flowVersion === "v7" ? { flowVersion: "v7" as const }
     : flowVersion === "v6" ? { flowVersion: "v6" as const }
     : flowVersion === "v5" ? { flowVersion: "v5" as const }

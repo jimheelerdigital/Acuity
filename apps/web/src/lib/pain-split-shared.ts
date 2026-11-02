@@ -12,6 +12,7 @@ export const PAIN_ARMS = {
   catch: "/start-catch",
   clarity: "/start-clarity",
   progress: "/start-progress",
+  focus: "/start-focus",
 } as const;
 export type PainArm = keyof typeof PAIN_ARMS;
 

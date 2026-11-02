@@ -23,9 +23,9 @@ type Interval = "monthly" | "yearly";
 // Funnel paths Stripe may send the buyer back to. Allowlisted so the request
 // body can't point success_url anywhere else. /start-bwk buyers used to land
 // on /start (women's copy, wrong cohort tag) after paying.
-const FUNNEL_PATHS = new Set(["/start", "/start-bwk", "/start-test", "/start-test-bwk", "/start-journal", "/start-relief", "/start-catch", "/start-clarity", "/start-progress"]);
+const FUNNEL_PATHS = new Set(["/start", "/start-bwk", "/start-test", "/start-test-bwk", "/start-journal", "/start-relief", "/start-catch", "/start-clarity", "/start-progress", "/start-focus"]);
 /** Funnels whose paywall is a ?step=paywall page (not the old "savings" step). */
-const PAYWALL_STEP_PATHS = new Set(["/start-journal", "/start-relief", "/start-catch", "/start-clarity", "/start-progress"]);
+const PAYWALL_STEP_PATHS = new Set(["/start-journal", "/start-relief", "/start-catch", "/start-clarity", "/start-progress", "/start-focus"]);
 
 export async function POST(req: NextRequest) {
   // TODO: v1.4 GDPR — If this checkout ever switches from deferred
