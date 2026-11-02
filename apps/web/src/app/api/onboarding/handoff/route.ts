@@ -25,6 +25,10 @@ const FUNNELS: Record<string, string> = {
   "/start-test": "paywall",
   "/start-test-bwk": "paywall",
   "/start-journal": "paywall",
+  "/start-relief": "paywall",
+  "/start-catch": "paywall",
+  "/start-clarity": "paywall",
+  "/start-progress": "paywall",
 };
 const ACCOUNT_WINDOW_MS = 48 * 60 * 60 * 1000;
 const SESSION_MAX_AGE = 30 * 24 * 60 * 60;

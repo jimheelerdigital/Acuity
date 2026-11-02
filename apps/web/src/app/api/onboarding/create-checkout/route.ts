@@ -23,7 +23,9 @@ type Interval = "monthly" | "yearly";
 // Funnel paths Stripe may send the buyer back to. Allowlisted so the request
 // body can't point success_url anywhere else. /start-bwk buyers used to land
 // on /start (women's copy, wrong cohort tag) after paying.
-const FUNNEL_PATHS = new Set(["/start", "/start-bwk", "/start-test", "/start-test-bwk", "/start-journal"]);
+const FUNNEL_PATHS = new Set(["/start", "/start-bwk", "/start-test", "/start-test-bwk", "/start-journal", "/start-relief", "/start-catch", "/start-clarity", "/start-progress"]);
+/** Funnels whose paywall is a ?step=paywall page (not the old "savings" step). */
+const PAYWALL_STEP_PATHS = new Set(["/start-journal", "/start-relief", "/start-catch", "/start-clarity", "/start-progress"]);
 
 export async function POST(req: NextRequest) {
   // TODO: v1.4 GDPR — If this checkout ever switches from deferred
@@ -117,7 +119,7 @@ export async function POST(req: NextRequest) {
             // plan or take the no-card path. (Was step=download, which
             // dropped them past the choice with no way back.)
             // /start-test and /start-test-bwk (v9) call their paywall step "paywall".
-            cancel_url: `${process.env.NEXTAUTH_URL}${funnelPath}?step=${funnelPath.startsWith("/start-test") || funnelPath === "/start-journal" ? "paywall" : "savings"}${funnelPath === "/start-journal" ? "&exit=1" : ""}`,
+            cancel_url: `${process.env.NEXTAUTH_URL}${funnelPath}?step=${funnelPath.startsWith("/start-test") || PAYWALL_STEP_PATHS.has(funnelPath) ? "paywall" : "savings"}${funnelPath === "/start-journal" ? "&exit=1" : ""}`,
           }),
       mode: "subscription",
       // Card + Link only (2026-09-25, Keenan). Apple Pay and Google Pay are

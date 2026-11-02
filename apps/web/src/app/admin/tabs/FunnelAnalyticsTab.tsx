@@ -20,6 +20,10 @@ const FUNNELS = {
   test: { flow: "v9-test", name: "Test", path: "/start-test" },
   testbwk: { flow: "v9-test-bwk", name: "Test BWK", path: "/start-test-bwk" },
   journal: { flow: "v9-journal", name: "Journal", path: "/start-journal" },
+  relief: { flow: "v9-pain", name: "Mental load", path: "/start-relief" },
+  catch: { flow: "v9-slip", name: "Things slip", path: "/start-catch" },
+  clarity: { flow: "v9-loop", name: "Hidden pattern", path: "/start-clarity" },
+  progress: { flow: "v9-progress", name: "No progress", path: "/start-progress" },
 } as const;
 
 const ARCHIVE_VIEWS: View[] = ["cmp-all", "cmp-ripple", "cmp-bwk", "ripple", "bwk"];
@@ -173,7 +177,7 @@ function SideBySide({ start, end, traffic }: { start: string; end: string; traff
 // milestone it follows or branches from.
 
 const COMPARE_COLUMNS: Record<CompareMode, (keyof typeof FUNNELS)[]> = {
-  live: ["test", "testbwk", "journal"],
+  live: ["test", "testbwk", "journal", "relief", "catch", "clarity", "progress"],
   "cmp-ripple": ["ripple", "test"],
   "cmp-bwk": ["bwk", "testbwk"],
   "cmp-all": ["ripple", "test", "bwk", "testbwk"],
@@ -184,6 +188,10 @@ const COLUMN_LABEL: Record<keyof typeof FUNNELS, { title: string; arm: string }>
   bwk: { title: "BWK", arm: "Normal" },
   testbwk: { title: "BWK", arm: "Test" },
   journal: { title: "Ripple", arm: "Journal" },
+  relief: { title: "Pain", arm: "Mental load" },
+  catch: { title: "Pain", arm: "Things slip" },
+  clarity: { title: "Pain", arm: "Hidden pattern" },
+  progress: { title: "Pain", arm: "No progress" },
 };
 
 const FUNNEL_COLOR: Record<keyof typeof FUNNELS, string> = {
@@ -192,8 +200,12 @@ const FUNNEL_COLOR: Record<keyof typeof FUNNELS, string> = {
   bwk: "#5fb3d9",
   testbwk: "#6fd3a1",
   journal: "#F04A18",
+  relief: "#E8743B",
+  catch: "#C2410C",
+  clarity: "#D9822B",
+  progress: "#B4532A",
 };
-const FLOW_TO_KEY: Record<string, keyof typeof FUNNELS> = { v8: "ripple", "v9-test": "test", "v8-bwk": "bwk", "v9-test-bwk": "testbwk", "v9-journal": "journal" };
+const FLOW_TO_KEY: Record<string, keyof typeof FUNNELS> = { v8: "ripple", "v9-test": "test", "v8-bwk": "bwk", "v9-test-bwk": "testbwk", "v9-journal": "journal", "v9-pain": "relief", "v9-slip": "catch", "v9-loop": "clarity", "v9-progress": "progress" };
 
 /** Paid subscribers from the subscription records themselves, so this can
  *  never read zero while real people are paying (2026-09-28). */

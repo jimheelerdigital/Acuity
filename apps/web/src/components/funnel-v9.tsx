@@ -26,6 +26,7 @@ import { loadStripeJs } from "@/lib/stripe-embedded";
 import { isRcWebBillingEnabled, startRcWebPurchase } from "@/lib/revenuecat/web-billing-client";
 import { consumeTestArrival } from "@/lib/funnel-split-shared";
 import { consumeJournalArmLog, consumeJournalControlArrival } from "@/lib/journal-split-shared";
+import { consumePainSplitArrival } from "@/lib/pain-split-shared";
 import { MoodAvatar } from "@/components/mood-avatar";
 import { FunnelEntryIntro } from "@/components/funnel-entry-intro";
 import { PayInBrowserButton, PaywallTrustLine } from "@/components/pay-in-browser";
@@ -79,6 +80,7 @@ import { APP_STORE_RATING_LABEL } from "@/lib/social-proof";
 import {
   RIPPLE_V9,
   V9_CONFIGS,
+  type PainKit,
   type V9Brand,
   type V9Config,
   type V9Step,
@@ -123,6 +125,21 @@ const OPTION_ICONS: Record<string, LucideIcon> = {
   "why:forget": Brain, "why:control": Target, "why:head": Layers, "why:family": Users, "why:me": Heart, "why:fresh": RotateCcw,
   "pain:slip": FileText, "pain:switch": Waves, "pain:snap": Zap, "pain:behind": Hourglass, "pain:last": HeartCrack, "pain:drained": BatteryLow,
   "easier:say": Mic, "easier:sorts": ListChecks, "easier:setup": Sparkles, "easier:matters": Eye, "easier:restart": Repeat, "easier:blank": BookOpen,
+  // Pain-first funnels (/start-relief, /start-catch, /start-clarity, /start-progress)
+  "first:move": Dumbbell, "first:friends": Users, "first:appts": CalendarCheck, "first:sleep": Moon, "first:me": Heart, "first:food": Activity,
+  "seen:none": User, "seen:slip": Zap, "seen:partner": Heart, "seen:me": Eye, "help:out": Brain, "help:nothing": ListChecks,
+  "help:only": Users, "help:why": Eye, "help:me": Heart, "help:behind": Hourglass, "help:catch": Mic, "help:dates": CalendarDays,
+  "help:coming": CalendarRange, "help:head": Brain, "help:top": Target, "pain:form": FileText, "pain:appt": CalendarCheck, "pain:bday": Sparkles,
+  "pain:bill": Wallet, "pain:reply": Mail, "pain:promise": HeartHandshake, "pain:tired": BatteryLow, "pain:short": Zap, "pain:nextweek": CalendarClock,
+  "pain:skip": HeartCrack, "pain:blur": Waves, "pain:dread": CalendarRange, "pain:stuck": Repeat, "pain:goals": Target, "pain:restart": RotateCcw,
+  "pain:proud": Sparkles, "pain:year": CalendarDays, "after:guilt": HeartCrack, "after:scramble": Zap, "after:sorry": Users, "after:replay": Repeat,
+  "after:blame": User, "after:fee": Wallet, "remember:head": Brain, "remember:shots": Smartphone, "remember:texts": Mail, "remember:alarms": Bell,
+  "helps:walk": Footprints, "helps:friends": Users, "helps:sleep": Moon, "helps:move": Dumbbell, "helps:quiet": Waves, "helps:fun": Sparkles,
+  "why:no": Compass, "why:guess": Eye, "why:mix": Layers, "why:know": Lock, "want:drains": BatteryLow, "want:lifts": TrendingUp,
+  "want:habits": Target, "want:week": CalendarCheck, "want:coming": Repeat, "want:pattern": LineChart, "want:progress": TrendingUp, "want:life": Compass,
+  "want:wins": Sparkles, "look:never": Hourglass, "look:wrong": Zap, "look:newyear": CalendarDays, "look:sometimes": Eye, "proof:no": Eye,
+  "proof:little": Sprout, "proof:hard": Layers, "proof:yes": TrendingUp, "slid:health": Activity, "slid:move": Dumbbell, "slid:money": Wallet,
+  "slid:friends": Users, "slid:hobby": Heart, "slid:calm": Waves,
 };
 
 function sessionId(): string {
@@ -356,6 +373,9 @@ export function FunnelV9({ brand = "ripple", adMatch }: { brand?: V9Brand; adMat
     // /start-test with ?jsplit=control; the journal arm is marked by the page.
     if (consumeJournalControlArrival()) track("funnel_split_arm", "journal-control");
     if (consumeJournalArmLog()) track("funnel_split_arm", "journal-journal");
+    // /start-pain split (lib/pain-split.ts): the entry page adds ?psplit=<arm>.
+    const painArm = consumePainSplitArrival();
+    if (painArm) track("funnel_split_arm", `pain-${painArm}`);
     // Price test: place her in an arm (or clear it when the test is off).
     // The arm is logged at the paywall, where she's signed in.
     const qs = new URLSearchParams(window.location.search);
@@ -592,12 +612,15 @@ type ViewProps = {
   onPaid: (p: Plan) => void;
 };
 
+/** /start-journal and the pain-first funnels share the 2026-10-31 sunrise screens. */
+const sunrise = (C: V9Config) => C.brand === "journal" || !!C.painKit;
+
 /** /start-journal: a real review under these steps (index into C.reviews). */
 const JOURNAL_REVIEW_AT: Record<string, number> = { easier: 1, commit: 3 };
 
 function StepView(p: ViewProps) {
   const C = useV9();
-  const at = C.brand === "journal" ? JOURNAL_REVIEW_AT[p.step.id] : undefined;
+  const at = C.painKit ? C.painKit.reviewAt[p.step.id] : C.brand === "journal" ? JOURNAL_REVIEW_AT[p.step.id] : undefined;
   const r = at !== undefined ? C.reviews[at] : undefined;
   if (r) {
     return (
@@ -631,14 +654,14 @@ function StepBody(p: ViewProps) {
   const { step } = p;
   switch (step.kind) {
     case "single":
-      if (p.step.id === "tried" && C.brand === "journal") return <TriedTiles {...p} step={step} />;
+      if ((p.step.id === "tried" && C.brand === "journal") || (!!C.painKit && p.step.id === C.painKit.stackStep)) return <TriedTiles {...p} step={step} />;
       if (p.step.id === "happens" && C.brand === "journal") return <HappensCards {...p} step={step} />;
-      if (p.step.id === "age" && C.brand === "journal") return <AgeTiles {...p} step={step} />;
-      if (p.step.id === "commit" && C.brand === "journal") return <CommitCards {...p} step={step} />;
-      if (p.step.id === "often" && C.brand === "journal") return <OftenTiles {...p} step={step} />;
+      if (p.step.id === "age" && sunrise(C)) return <AgeTiles {...p} step={step} />;
+      if (p.step.id === "commit" && sunrise(C)) return <CommitCards {...p} step={step} />;
+      if (p.step.id === "often" && sunrise(C)) return <OftenTiles {...p} step={step} />;
       return <SingleScreen {...p} step={step} />;
     case "multi":
-      if (p.step.id === "plate" && C.brand === "journal") return <MultiScreen {...p} step={step} above={<PlateVisual picked={p.answers.multi.plate ?? []} />} />;
+      if (p.step.id === "plate" && sunrise(C)) return <MultiScreen {...p} step={step} above={<PlateVisual picked={p.answers.multi.plate ?? []} />} />;
       return <MultiScreen {...p} step={step} />;
     case "week":
       return <WeekScreen {...p} step={step} />;
@@ -660,7 +683,7 @@ function StepBody(p: ViewProps) {
     case "email":
       return <EmailScreen {...p} />;
     case "result":
-      return C.brand === "journal" ? <JournalResult {...p} /> : <ResultScreen {...p} />;
+      return C.brand === "journal" ? <JournalResult {...p} /> : C.painKit ? <PainResult {...p} /> : <ResultScreen {...p} />;
     case "plan":
       return <PlanScreen {...p} />;
     case "paywall":
@@ -870,7 +893,7 @@ function SingleScreen({ step, answers, setAnswers, next, track }: ViewProps & { 
 
 function MultiScreen({ step, answers, setAnswers, next, track, above }: ViewProps & { step: Extract<V9Step, { kind: "multi" }>; above?: ReactNode }) {
   const C = useV9();
-  const stamps = C.brand === "journal" ? (step.id === "tried-what" ? TRIED_STAMPS : step.id === "easier" ? EASIER_STAMPS : null) : null;
+  const stamps = C.brand === "journal" ? (step.id === "tried-what" ? TRIED_STAMPS : step.id === "easier" ? EASIER_STAMPS : null) : C.painKit?.stamps[step.id] ?? null;
   const picked = answers.multi[step.id] ?? [];
   const toggle = (id: string) =>
     setAnswers((a) => {
@@ -960,7 +983,7 @@ function WeekScreen({ step, answers, setAnswers, next, track }: ViewProps & { st
   const n = picked.length;
   const fill = Math.min(1, n / 8);
   const C = useV9();
-  if (C.brand === "journal") return <HeadLoad step={step} picked={picked} toggle={toggle} next={next} track={track} />;
+  if (sunrise(C)) return <HeadLoad step={step} picked={picked} toggle={toggle} next={next} track={track} />;
   return (
     <div className="enter">
       <Heading title={step.title} sub={step.sub} />
@@ -1097,7 +1120,7 @@ function StatementScreen({ step, answers, setAnswers, next, track }: ViewProps &
         </figure>
       ) : (
         <figure className={`card-in relative flex flex-col items-center overflow-hidden rounded-[28px] card px-6 pb-[clamp(22px,6vw,30px)] pt-6 text-center ${fly === "yes" ? "fly-yes" : fly === "no" ? "fly-no" : ""}`}>
-          {C.brand === "journal" && isHook ? <PlannerStack /> : C.brand === "journal" && (step.id === "st-upkeep" || step.id === "st-zero") ? <JournalStatementPic id={step.id} /> : <MoodAvatar mood={step.mood} size={60} />}
+          {C.brand === "journal" && isHook ? <PlannerStack /> : C.painKit && isHook ? <CarryStack cards={C.painKit.hookCards} /> : C.painKit ? <JournalStatementPic id={step.title ? "st-zero" : "st-upkeep"} stamp={C.painKit.closeStamp} /> : C.brand === "journal" && (step.id === "st-upkeep" || step.id === "st-zero") ? <JournalStatementPic id={step.id} /> : <MoodAvatar mood={step.mood} size={60} />}
           <blockquote className="relative mt-4 text-[clamp(19px,5.6vw,22px)] font-medium italic leading-[1.35] tracking-tight text-balance">
             &ldquo;{step.statement}&rdquo;
           </blockquote>
@@ -1479,7 +1502,7 @@ function LoaderScreen({ answers, firstName, next }: ViewProps) {
   }, [next]);
   const R = 58;
   const CIRC = 2 * Math.PI * R;
-  const journal = C.brand === "journal";
+  const journal = sunrise(C);
   return (
     <div className="enter pt-4">
       {journal ? <OrbLoader chips={weekChips(C, answers)} pct={pct} /> : (
@@ -1524,7 +1547,7 @@ function EmailScreen({ answers, setAnswers, firstName, next, go, track }: ViewPr
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [exists, setExists] = useState(false);
-  const state = C.stateName({ plate: answers.multi.plate ?? [], sliders: answers.sliders, pileup: answers.single.pileup, said: answers.single });
+  const state = C.stateName({ plate: answers.multi.plate ?? [], sliders: answers.sliders, pileup: answers.single.pileup, said: answers.single, multi: answers.multi });
 
   // Already gave an email this session (refresh, a ?step=email link, or
   // history): the account exists, so go straight to the result instead of
@@ -1658,7 +1681,7 @@ function EmailScreen({ answers, setAnswers, firstName, next, go, track }: ViewPr
       )}
       <BottomBar>
         <PrimaryButton onClick={submit} disabled={busy || !email.trim()}>
-          {busy ? (C.brand === "journal" ? "Unlocking your results…" : "Saving…") : "See my results"}
+          {busy ? (sunrise(C) ? "Unlocking your results…" : "Saving…") : "See my results"}
         </PrimaryButton>
       </BottomBar>
     </div>
@@ -1669,7 +1692,7 @@ function EmailScreen({ answers, setAnswers, firstName, next, go, track }: ViewPr
 
 function ResultScreen({ answers, firstName, next }: ViewProps) {
   const C = useV9();
-  const state = C.stateName({ plate: answers.multi.plate ?? [], sliders: answers.sliders, pileup: answers.single.pileup, said: answers.single });
+  const state = C.stateName({ plate: answers.multi.plate ?? [], sliders: answers.sliders, pileup: answers.single.pileup, said: answers.single, multi: answers.multi });
   const bars = sliderSteps(C).map((s) => {
     const v = answers.sliders[s.id] ?? 3;
     return { label: s.right, pct: Math.round(((v - 1) / 4) * 100) };
@@ -1800,7 +1823,7 @@ function PlanScreen({ answers, firstName, next }: ViewProps) {
         : "A year of debriefs across work, family, health and money, all in your Life Matrix. You can see how far you've come, in your own words.",
     },
   ];
-  if (C.brand === "journal") return <UnlockPath firstName={firstName} next={next} />;
+  if (sunrise(C)) return <UnlockPath firstName={firstName} next={next} />;
   return (
     <div className="enter">
       <Heading eyebrow="Built from your answers" title={firstName ? `${firstName}'s year with Ripple` : "Your year with Ripple"} />
@@ -1917,23 +1940,26 @@ const SCRAWL_STYLE = [
   { rot: -1.1, x: 2, ink: "#4a4236" },
 ];
 
-function PlannerVsRipple() {
+/** Paper planner vs Ripple; the pain-first funnels pass their own rows (PainKit.vs). */
+function PlannerVsRipple({ vs }: { vs?: PainKit["vs"] }) {
   const [ref, on] = useInView<HTMLDivElement>();
+  const left = vs?.left ?? "Paper planner";
+  const rows: [string, string, string][] = vs?.rows ?? PLANNER_VS_RIPPLE.map(([planner, ripple], i) => [planner, RIPPLE_TILES[i]?.title ?? ripple, RIPPLE_TILES[i]?.sub ?? ""]);
   return (
     <div ref={ref} className={`card rounded-3xl p-4 ${on ? "on" : ""}`}>
       <p className="text-center text-[22px] font-bold leading-tight tracking-tight">
-        Paper planner <span className="text-acuity-text-ter font-semibold">vs</span> <span className="grad-text">Ripple</span>
+        {left} <span className="text-acuity-text-ter font-semibold">vs</span> <span className="grad-text">Ripple</span>
       </p>
-      <p className="mt-1 text-center text-[13px] text-acuity-text-sec">Why people are switching</p>
+      <p className="mt-1 text-center text-[13px] text-acuity-text-sec">{vs?.sub ?? "Why people are switching"}</p>
       <div className="mt-4 grid grid-cols-2 gap-2.5">
         {/* The planner: crumpled lined paper, crooked notes in mixed pens, scribbled out. */}
         <div className="paper rv relative -rotate-[1.5deg] rounded-lg px-2.5 pb-3 pt-9" style={{ "--d": "0ms" } as CSSProperties}>
           <span className="absolute left-0 right-0 top-0 h-6 rounded-t-lg bg-[#e9e2cf] text-center text-[11px] font-bold uppercase tracking-wide leading-6 text-[#8a7f66]">
-            Paper planner
+            {left}
           </span>
           <span className="stain" aria-hidden />
           <span className="dogear" aria-hidden />
-          {PLANNER_VS_RIPPLE.map(([planner], i) => {
+          {rows.map(([planner], i) => {
             const st = SCRAWL_STYLE[i % SCRAWL_STYLE.length];
             return (
               <div key={planner} className="flex min-h-[66px] items-start gap-1 py-1" style={{ transform: `rotate(${st.rot}deg) translateX(${st.x}px)` }}>
@@ -1951,7 +1977,7 @@ function PlannerVsRipple() {
             <Sparkles className="h-3 w-3" /> Ripple
           </span>
           <div className="rip-list space-y-1.5">
-            {PLANNER_VS_RIPPLE.map(([planner, ripple], i) => {
+            {rows.map(([planner, title, sub], i) => {
               const Icon = RIPPLE_ROW_ICONS[i % RIPPLE_ROW_ICONS.length];
               return (
                 <div
@@ -1966,8 +1992,8 @@ function PlannerVsRipple() {
                     </span>
                   </span>
                   <div className="min-w-0 flex-1">
-                    <p className="whitespace-nowrap text-[13px] font-bold leading-tight">{RIPPLE_TILES[i]?.title ?? ripple}</p>
-                    <p className="mt-0.5 text-[11px] leading-tight text-acuity-text-sec">{RIPPLE_TILES[i]?.sub}</p>
+                    <p className={`${vs ? "" : "whitespace-nowrap "}text-[13px] font-bold leading-tight`}>{title}</p>
+                    <p className="mt-0.5 text-[11px] leading-tight text-acuity-text-sec">{sub}</p>
                   </div>
                 </div>
               );
@@ -2029,6 +2055,7 @@ function SystemCost() {
  * contrast, and the yearly card says what she saves.
  */
 function CostReceipt({ answers }: { answers: Answers }) {
+  const C = useV9();
   const [ref, on] = useInView<HTMLDivElement>();
   const money = [
     { label: "Paper planner ×2", cents: PLANNERS_PER_YEAR_CENTS },
@@ -2049,33 +2076,44 @@ function CostReceipt({ answers }: { answers: Answers }) {
   };
   const picked = (answers.multi.pain ?? []).filter((id) => FEEL[id]);
   const feel = (picked.length ? picked : ["slip", "last"]).slice(0, 2).map((id) => FEEL[id]);
-  const lines = [...money.map((m) => ({ label: m.label, value: null as string | null, cents: m.cents })), ...feel.map((f) => ({ label: f.label, value: f.value, cents: 0 }))];
+  // Pain-first funnels (2026-11-02): no planner money. The lines are what she
+  // picked on the first question, then the kit's extra line; no total.
+  const kit = C.painKit;
+  const firstMulti = C.steps.find((st) => st.kind === "multi");
+  const painLabels = firstMulti?.kind === "multi" ? Object.fromEntries(firstMulti.options.map((o) => [o.id, o.label])) : {};
+  const painPicked = (answers.multi[firstMulti?.id ?? ""] ?? []).map((id) => painLabels[id]).filter(Boolean).slice(0, 3);
+  const painValue = answers.single.often ? often : "every week";
+  const lines = kit
+    ? [...(painPicked.length ? painPicked : Object.values(painLabels).slice(0, 2)).map((l) => ({ label: l, value: painValue as string | null, cents: 0 })), { label: kit.receipt.extra.label, value: kit.receipt.extra.value, cents: 0 }]
+    : [...money.map((m) => ({ label: m.label, value: null as string | null, cents: m.cents })), ...feel.map((f) => ({ label: f.label, value: f.value, cents: 0 }))];
   const stampAt = lines.length * 170 + 350;
   const paper = "#FFFDF8";
   return (
     <div ref={ref} className={`relative mt-4 ${on ? "on" : ""}`}>
       <div className="relative mx-1 -rotate-[1.2deg]">
         <div className="relative rounded-t-2xl px-4 pt-5 pb-[86px] font-mono" style={{ background: paper, boxShadow: "0 18px 34px -16px rgba(80,40,10,.35), 0 2px 6px rgba(42,35,29,.06)" }}>
-          <p className="text-center text-[11px] font-bold uppercase tracking-[0.18em] text-acuity-text-ter">Your system &middot; this year</p>
+          <p className="text-center text-[11px] font-bold uppercase tracking-[0.18em] text-acuity-text-ter">{kit ? kit.receipt.title : <>Your system &middot; this year</>}</p>
           <div className="mt-3 border-t border-dashed" style={{ borderColor: "#D9CBBE" }} />
           <div className="mt-3 space-y-2">
             {lines.map((l, i) => (
               <div key={l.label} className={`rv flex items-baseline gap-2 whitespace-nowrap text-[12.5px] ${on ? "on" : ""}`} style={{ "--d": `${i * 170}ms` } as CSSProperties}>
-                <span className={l.cents ? "text-acuity-text" : "italic text-red-600"}>{l.label}</span>
+                <span className={`min-w-0 truncate ${l.cents ? "text-acuity-text" : "italic text-red-600"}`}>{l.label}</span>
                 <span className="min-w-[12px] flex-1 translate-y-[-3px] border-b border-dotted" style={{ borderColor: "#CDBFB2" }} />
                 <span className={`tabular-nums ${l.cents ? "font-bold" : "italic text-red-600"}`}>{l.cents ? <CountUp cents={l.cents} run={on} /> : l.value}</span>
               </div>
             ))}
           </div>
           <div className="mt-3 border-t border-dashed" style={{ borderColor: "#D9CBBE" }} />
-          <div className={`rv mt-2 flex items-baseline justify-between text-[14px] font-bold ${on ? "on" : ""}`} style={{ "--d": `${lines.length * 170}ms` } as CSSProperties}>
-            <span>TOTAL</span>
-            <span className="tabular-nums"><CountUp cents={total} run={on} ms={1200} /></span>
-          </div>
+          {!kit && (
+            <div className={`rv mt-2 flex items-baseline justify-between text-[14px] font-bold ${on ? "on" : ""}`} style={{ "--d": `${lines.length * 170}ms` } as CSSProperties}>
+              <span>TOTAL</span>
+              <span className="tabular-nums"><CountUp cents={total} run={on} ms={1200} /></span>
+            </div>
+          )}
           {/* The stamp lands across the bottom of the receipt. */}
           <div className={`stamp-in pointer-events-none absolute left-1/2 bottom-4 -ml-[115px] w-[230px] rounded-lg border-[3px] border-red-500 px-3 py-1.5 text-center font-sans text-red-500 ${on ? "on" : ""}`} style={{ "--d": `${stampAt}ms`, background: "rgba(255,253,248,.85)" } as CSSProperties} aria-hidden="true">
-            <p className="text-[18px] font-black uppercase leading-none tracking-wide">{formatDollars(total)} a year</p>
-            <p className="mt-1 text-[11px] font-bold uppercase tracking-[0.08em]">and it still didn&rsquo;t stick</p>
+            <p className="text-[18px] font-black uppercase leading-none tracking-wide">{kit ? kit.receipt.stamp : `${formatDollars(total)} a year`}</p>
+            <p className="mt-1 text-[11px] font-bold uppercase tracking-[0.08em]">{kit ? kit.receipt.stampSub : <>and it still didn&rsquo;t stick</>}</p>
           </div>
         </div>
         {/* Torn bottom edge. */}
@@ -2092,11 +2130,12 @@ function CostReceipt({ answers }: { answers: Answers }) {
  * receipt is the mess; this is the calm. Feeling first, feature underneath.
  */
 function ValueAdd() {
+  const C = useV9();
   const [ref, on] = useInView<HTMLDivElement>();
   const rows: { icon: LucideIcon; feel: string; how: string }[] = [
     { icon: Waves, feel: "A quiet head", how: "Say it once. Ripple holds onto it." },
     { icon: ListChecks, feel: "Nothing slipping through", how: "Every task lands on your list, with its date." },
-    { icon: Heart, feel: "Time that’s yours again", how: "No planner to fill in or keep up." },
+    { icon: Heart, feel: "Time that’s yours again", how: C.painKit ? "Nothing to fill in or keep up." : "No planner to fill in or keep up." },
     { icon: Eye, feel: "Finally on top of it", how: "See what keeps coming up, week to week." },
     { icon: Sprout, feel: "No more starting over", how: "Every day adds up. Nothing resets." },
   ];
@@ -2343,8 +2382,69 @@ function PlannerStack() {
   );
 }
 
+/** Pain-first hook visual (2026-11-02): three cards of what she carries, each piling up. */
+function CarryStack({ cards }: { cards: string[] }) {
+  const pos = [
+    { rot: "-12deg", tx: "-58px", bg: "#FFF7EF", n: 4 },
+    { rot: "2deg", tx: "0px", bg: "#FFFFFF", n: 7 },
+    { rot: "13deg", tx: "58px", bg: "#FFF1E6", n: 3 },
+  ];
+  return (
+    <div className="relative mt-1 mb-2 h-[96px] w-[220px]" aria-hidden="true">
+      {cards.slice(0, 3).map((label, i) => (
+        <div
+          key={label}
+          className="fan absolute left-1/2 top-0 -ml-[34px] h-[84px] w-[68px] rounded-2xl flex flex-col items-center justify-center gap-[5px]"
+          style={{ background: pos[i].bg, border: "1px solid rgba(242,84,30,.14)", boxShadow: "0 8px 20px rgba(242,84,30,.14)", ["--rot" as string]: pos[i].rot, ["--tx" as string]: pos[i].tx, ["--d" as string]: `${120 + i * 120}ms`, zIndex: i === 1 ? 2 : 1 } as CSSProperties}
+        >
+          <span className="text-[12px] font-bold text-acuity-text">{label}</span>
+          {[0, 1, 2].map((k) => (
+            <span key={k} className="h-[3px] rounded" style={{ background: "rgba(242,84,30,.28)", width: `${26 + ((i * 3 + k * 7) % 4) * 6}px` }} />
+          ))}
+          <span className="pop absolute -right-2 -top-2 rounded-full grad px-1.5 py-[1px] text-[10px] font-bold text-white" style={{ animationDelay: `${700 + i * 160}ms` }}>+{pos[i].n}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/**
+ * Result for the pain-first funnels (2026-11-02): same shape as JournalResult
+ * (name, one line, her pains as tags) then "<her side> vs Ripple" from the kit.
+ */
+function PainResult({ answers, firstName, next }: ViewProps) {
+  const C = useV9();
+  const state = C.stateName({ plate: answers.multi.plate ?? [], sliders: answers.sliders, pileup: answers.single.pileup, said: answers.single, multi: answers.multi });
+  const firstMulti = C.steps.find((st) => st.kind === "multi");
+  const labels = firstMulti?.kind === "multi" ? Object.fromEntries(firstMulti.options.map((o) => [o.id, o.label])) : {};
+  const pains = (answers.multi[firstMulti?.id ?? ""] ?? []).map((id) => labels[id]).filter(Boolean).slice(0, 3);
+  return (
+    <div className="enter">
+      <p className="text-center text-[13px] font-semibold text-acuity-primary mb-3">{firstName ? `${firstName}, we get it` : "We get it"}</p>
+      <div className="relative overflow-hidden rounded-[28px] grad p-6 text-white shadow-[0_14px_36px_-12px_var(--acuity-primary)]">
+        <div className="absolute -right-10 -top-10 h-40 w-40 rounded-full bg-white/10" aria-hidden="true" />
+        <p className="text-[12px] font-semibold uppercase tracking-[0.14em] text-white/80">Your pattern</p>
+        <h1 className="pop mt-1 text-[32px] font-bold leading-tight" style={{ animationDelay: "200ms" }}>{state.name}</h1>
+        <p className="mt-1 text-[16px] font-semibold leading-snug text-white/95">{state.line}</p>
+        {pains.length > 0 && (
+          <div className="mt-4 flex flex-wrap gap-1.5">
+            {pains.map((p, i) => (
+              <span key={p} className="up rounded-full bg-white/20 px-3 py-1 text-[13px] font-semibold" style={{ animationDelay: `${300 + i * 120}ms` }}>{p}</span>
+            ))}
+          </div>
+        )}
+      </div>
+      <p className="mt-4 mb-4 text-center text-[14px] leading-relaxed text-acuity-text-sec text-balance">{C.resultOutro}</p>
+      <PlannerVsRipple vs={C.painKit?.vs} />
+      <BottomBar>
+        <PrimaryButton onClick={next}>Show me how it works</PrimaryButton>
+      </BottomBar>
+    </div>
+  );
+}
+
 /** Pictures for the two later /start-journal statements. */
-function JournalStatementPic({ id }: { id: string }) {
+function JournalStatementPic({ id, stamp = "upkeep: 0" }: { id: string; stamp?: string }) {
   if (id === "st-upkeep")
     return (
       <span className="relative mt-1 h-[72px] w-[120px]" aria-hidden="true">
@@ -2362,7 +2462,7 @@ function JournalStatementPic({ id }: { id: string }) {
     <span className="relative mt-1 flex h-[72px] w-[120px] items-center justify-center" aria-hidden="true">
       {[0, 1].map((k) => <span key={k} className="ring-out absolute h-[54px] w-[54px] rounded-full" style={{ border: "2px solid rgba(242,84,30,.35)", animationDelay: `${k * 900}ms` }} />)}
       <span className="relative h-[54px] w-[54px] rounded-full grad flex items-center justify-center" style={{ boxShadow: "0 10px 24px rgba(242,84,30,.3)" }}><Mic className="h-6 w-6 text-white" /></span>
-      <span className="stamp absolute -right-1 -top-1 rounded-lg bg-white px-2 py-0.5 text-[11px] font-bold" style={{ color: "#C2410C", border: "1.5px solid #F2541E", animationDelay: "500ms" }}>upkeep: 0</span>
+      <span className="stamp absolute -right-1 -top-1 rounded-lg bg-white px-2 py-0.5 text-[11px] font-bold" style={{ color: "#C2410C", border: "1.5px solid #F2541E", animationDelay: "500ms" }}>{stamp}</span>
     </span>
   );
 }
@@ -2395,7 +2495,7 @@ function OftenTiles({ step, answers, setAnswers, next, track }: ViewProps & { st
   const slips: Record<string, number> = { daily: 6, weekly: 3, sometimes: 1, rarely: 1 };
   return (
     <div className="enter">
-      <Heading title={step.title} sub="Each dot is a day something slipped." />
+      <Heading title={step.title} sub={step.sub ?? "Each dot is a day something slipped."} />
       <div className="grid grid-cols-2 gap-3">
         {step.options.map((o, i) => {
           const on = picked === o.id;
@@ -2439,7 +2539,7 @@ function OftenTiles({ step, answers, setAnswers, next, track }: ViewProps & { st
  */
 function JournalResult({ answers, firstName, next }: ViewProps) {
   const C = useV9();
-  const state = C.stateName({ plate: answers.multi.plate ?? [], sliders: answers.sliders, pileup: answers.single.pileup, said: answers.single });
+  const state = C.stateName({ plate: answers.multi.plate ?? [], sliders: answers.sliders, pileup: answers.single.pileup, said: answers.single, multi: answers.multi });
   const PAIN: Record<string, string> = {
     slip: "Things slip",
     switch: "Mind won’t switch off",
@@ -2777,7 +2877,7 @@ function TriedTiles({ step, answers, setAnswers, next, track }: ViewProps & { st
   const stack: Record<string, number> = { one: 1, few: 3, many: 5, lost: 7 };
   return (
     <div className="enter">
-      <Heading title={step.title} sub="New planner, new app, new notebook. Every fresh start counts." />
+      <Heading title={step.title} sub={step.sub ?? "New planner, new app, new notebook. Every fresh start counts."} />
       <div className="grid grid-cols-2 gap-3">
         {step.options.map((o, i) => {
           const n = stack[o.id] ?? 1;
@@ -3016,7 +3116,7 @@ function PreviewScreen({ answers, next, track }: ViewProps) {
   return (
     <div className="enter">
       <Heading eyebrow={copy.eyebrow} title={copy.title} />
-      {C.brand === "journal" ? <SpokenThenPlan chips={weekChips(C, answers)} tasks={tasks} /> : (
+      {sunrise(C) ? <SpokenThenPlan chips={weekChips(C, answers)} tasks={tasks} /> : (
       <div className="mt-2">
         <PreviewPhone tasks={tasks} />
       </div>
@@ -3223,7 +3323,7 @@ function TrustPaywall({ plan, setPlan, next, track, firstName, answers }: ViewPr
                 {earlyBird && <span className={`mr-1 ${SLASH}`}>{normal.annual}</span>}
                 <span className="font-bold text-acuity-text">{price.annual}/year</span> after your trial
               </p>
-              {SETUP_PER_YEAR_CENTS > price.annualCents && (
+              {!C.painKit && SETUP_PER_YEAR_CENTS > price.annualCents && (
                 <p className="mt-0.5 text-[12px] font-bold" style={{ color: "#C2410C" }}>Saves {formatDollars(SETUP_PER_YEAR_CENTS - price.annualCents)} vs your current setup</p>
               )}
             </div>

@@ -42,6 +42,62 @@
 - **Screenshots:** there is no upload. Creators reply by email, and the admin view-bonus buttons do the top-up (they pay the difference to a higher tier).
 - **Free Pro:** it is still granted indefinitely in code (autoGrantCreatorPerk). Enforcement needs the open Pro decisions first.
 
+## [2026-11-02] — Four new pain-first web funnels and a 4-way split (built, switched off)
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** see git log
+
+### In plain English (for Keenan)
+- **Four new web funnels,** each built around one pain Ripple solves instead of the "planners failed you" angle:
+  - **/start-relief:** mental load ("I'm the one who keeps everything running")
+  - **/start-catch:** things slip through ("Things keep slipping through the cracks")
+  - **/start-clarity:** the same draining week without knowing why ("I'm running on empty, and I can't tell why")
+  - **/start-progress:** weeks blur and nothing seems to change ("The weeks fly by, and I can't see that anything's changing")
+- **Same as /start-journal everywhere else:** steps, look, app preview and 3-page paywall.
+- **/start-journal and its 50/50 test are unchanged.**
+- **One split link, /start-pain,** sends each visitor to one of the four, 25% each. It's switched off, and no ads point at it yet.
+- **Review page:** every screen of all four is at https://claude.ai/artifact/1Bq771B6TfR3RcxRhrXhTj
+
+### Technical changes (for Jimmy)
+- **apps/web/src/lib/funnel-v9-config.ts:**
+  - V9Brand adds pain, slip, loop, progress
+  - new configs PAIN_V9, SLIP_V9, LOOP_V9, PROGRESS_V9, built from JOURNAL_V9 (flowVersions v9-pain / v9-slip / v9-loop / v9-progress) and exported together as PAIN_FUNNELS
+  - new `PainKit` on V9Config: hook cards, stacked-tiles step, stamps, review positions, closing stamp, "<x> vs Ripple" rows, receipt copy
+  - `painTail()` builds the shared second half of the funnel
+  - `v9StateName` args gain optional `multi`
+- **apps/web/src/components/funnel-v9.tsx:**
+  - `sunrise(C)` = journal or any painKit funnel. The sunrise screens (Age/Often/Commit tiles, PlateVisual, HeadLoad, orb loader, UnlockPath, SpokenThenPlan) now serve every pain funnel.
+  - new CarryStack (hook) and PainResult
+  - PlannerVsRipple takes optional `vs` rows; titles wrap when `vs` is set
+  - CostReceipt pain variant: no money lines or total; the lines are her screen-2 picks
+  - ValueAdd copy, and the "Saves $X vs your setup" line is hidden for pain funnels
+  - 81 option icons
+  - TriedTiles/OftenTiles use step.sub
+  - logs `funnel_split_arm = pain-<arm>`
+- **New pages:**
+  - apps/web/src/app/start-relief, start-catch, start-clarity, start-progress
+  - start-pain (redirect only)
+- **New libs:** apps/web/src/lib/pain-split.ts and pain-split-shared.ts.
+  - Flag `funnel_pain_split` (no DB row = off). Cookie acuity_psplit, param ?psplit.
+  - With the flag off, /start-pain sends everyone to /start-relief, unmarked.
+- **create-checkout:** FUNNEL_PATHS + PAYWALL_STEP_PATHS (cancel_url back to ?step=paywall).
+- **handoff route:** the 4 new paths.
+- **admin metrics route and FunnelAnalyticsTab:** the 4 flows.
+- **Verified:**
+  - typecheck clean on all changed files (metrics route's 47 errors were already there on HEAD)
+  - every screen of all 4 funnels loaded at iPhone size with Playwright on a local dev server, no page errors
+
+### Manual steps needed
+- [ ] Review the four funnels' copy on the review page (Keenan)
+- [ ] After approval: push, create/enable FeatureFlag `funnel_pain_split`, then point the chosen ads at /start-pain (Keenan's explicit yes on which ads, Claude does it)
+- [ ] Glance at the create-checkout path whitelist change (Jimmy)
+
+### Notes
+- Each funnel's first multi-pick question feeds both the result-screen tags and the paywall receipt lines.
+- Splitting ~$100-200/day four ways is slow. Expect a week or more before any arm shows a real difference in trials; signups and screen-1 answer rate will separate first.
+- Screens were captured with live pricing (NEW_PRICING_ENABLED=1); the local .env.local shows the old $39.99 otherwise.
+
 ## [2026-11-02] — Retargeting and Planners registrations off
 
 **Requested by:** Keenan

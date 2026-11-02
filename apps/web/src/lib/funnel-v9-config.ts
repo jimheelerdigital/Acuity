@@ -272,6 +272,8 @@ export function v9StateName(a: {
   pileup?: string;
   /** Yes/no statement answers ("yes" | "no"), keyed by step id. */
   said?: Record<string, string>;
+  /** Multi-pick answers by step id (used by /start-relief). */
+  multi?: Record<string, string[]>;
 }): { name: string; line: string } {
   const s = (id: string) => a.sliders[id] ?? 3;
   const yes = (id: string) => a.said?.[id] === "yes";
@@ -296,7 +298,7 @@ export function v9StateName(a: {
 // therapy talk) on the dusk theme. Same positioning rules: "debrief", no
 // fixed time of day, no duration claims, mirror not coach, real reviews only.
 
-export type V9Brand = "ripple" | "bwk" | "journal";
+export type V9Brand = "ripple" | "bwk" | "journal" | "pain" | "slip" | "loop" | "progress";
 
 export type V9Sample = { match: string[]; said: string; tasks: string[]; mood: string; pattern: string };
 
@@ -326,6 +328,28 @@ export interface V9Config {
   paywall?: "classic" | "trust3";
   /** Heading copy for the "preview" info screen (new app design). */
   preview?: { eyebrow: string; title: string; caption: string };
+  /** Pain-first funnels (2026-11-02): the copy their shared sunrise screens
+   *  use in place of /start-journal's planner pictures. */
+  painKit?: PainKit;
+}
+
+export interface PainKit {
+  /** Short name for admin and the split ("Mental load", "Things slip"...). */
+  label: string;
+  /** Three small cards fanned above the hook statement. */
+  hookCards: string[];
+  /** Single-choice step drawn as growing stacks (like /start-journal's "tried"). */
+  stackStep: string;
+  /** Red stamps that land on picked tiles, by step id then option id. */
+  stamps: Record<string, Record<string, string>>;
+  /** A real review under these steps (index into reviews). */
+  reviewAt: Record<string, number>;
+  /** Small stamp on the closing yes/no statement picture. */
+  closeStamp: string;
+  /** Result: "<left> vs Ripple" rows: what she lives with, Ripple title, Ripple line. */
+  vs: { left: string; sub: string; rows: [string, string, string][] };
+  /** Paywall page 3 receipt: her picks from the first question are the lines. */
+  receipt: { title: string; stamp: string; stampSub: string; extra: { label: string; value: string } };
 }
 
 function numberedLabels(steps: V9Step[], short: Record<string, string>): Record<string, string> {
@@ -811,4 +835,630 @@ export const JOURNAL_V9: V9Config = {
   },
 };
 
-export const V9_CONFIGS: Record<V9Brand, V9Config> = { ripple: RIPPLE_V9, bwk: BWK_V9, journal: JOURNAL_V9 };
+// ─── /start-relief: the pain-first funnel (2026-11-02) ──────────────────────
+// Keenan: "an entirely new PAIN BASED funnel using our same steps,
+// infrastructure, and layout ... built around the actual pains that we solve
+// versus the journaling angle." Same slot order and screen types as
+// /start-journal (yes/no hook → picks → tiles → statement → picks → reassure →
+// age/plate/week → preview → slider → yes/no → ready → name/loader/email →
+// result → plan → 3-page paywall), but every question is about the load in
+// her head, not the planners that failed her. /start-journal is untouched.
+export const PAIN_V9_STEPS: V9Step[] = [
+  // Identity first (2026-11-02): a proud yes for her, and it leads straight
+  // into the pain. "Not really" still flows into the same questions.
+  { id: "hook", kind: "statement", statement: "I’m the one who keeps everything running.", mood: "overloaded" },
+  {
+    id: "pain",
+    kind: "multi",
+    title: "When it’s all in your head, what happens?",
+    sub: "Pick all that apply.",
+    options: [
+      { id: "slip", label: "Things slip through the cracks" },
+      { id: "switch", label: "My mind won’t switch off" },
+      { id: "snap", label: "I snap at people I love" },
+      { id: "behind", label: "I always feel behind" },
+      { id: "last", label: "My own stuff comes last" },
+      { id: "drained", label: "I’m drained before the day starts" },
+    ],
+  },
+  {
+    id: "often",
+    kind: "single",
+    title: "How often does something slip through?",
+    options: [
+      { id: "daily", label: "Most days" },
+      { id: "weekly", label: "A few times a week" },
+      { id: "sometimes", label: "Once a week or so" },
+      { id: "rarely", label: "Rarely, but it costs me" },
+    ],
+  },
+  {
+    id: "tabs",
+    kind: "single",
+    title: "How many things are you holding in your head right now?",
+    sub: "Appointments, forms, replies, birthdays. Every little thing counts.",
+    options: [
+      { id: "one", label: "A handful" },
+      { id: "few", label: "About 10" },
+      { id: "many", label: "20 or more" },
+      { id: "lost", label: "I’ve lost count" },
+    ],
+  },
+  {
+    id: "first",
+    kind: "multi",
+    title: "What’s the first thing to go when the week gets full?",
+    sub: "Pick all that apply.",
+    options: [
+      { id: "move", label: "My workouts" },
+      { id: "friends", label: "Seeing friends" },
+      { id: "appts", label: "My own appointments" },
+      { id: "sleep", label: "Sleep" },
+      { id: "me", label: "Time just for me" },
+      { id: "food", label: "Eating properly" },
+    ],
+  },
+  {
+    id: "seen",
+    kind: "single",
+    title: "Who notices how much you carry?",
+    options: [
+      { id: "none", label: "Nobody, really" },
+      { id: "slip", label: "Only when something slips" },
+      { id: "partner", label: "My partner, sometimes" },
+      { id: "me", label: "I’m not sure I do" },
+    ],
+  },
+  { id: "st-drop", kind: "statement", statement: "If I put it down for a second, something gets dropped.", mood: "drained" },
+  {
+    id: "help",
+    kind: "multi",
+    title: "What would help most?",
+    sub: "Pick all that apply.",
+    options: [
+      { id: "out", label: "Getting it all out of my head" },
+      { id: "nothing", label: "Knowing nothing’s slipping" },
+      { id: "only", label: "Not being the only one who remembers" },
+      { id: "why", label: "Seeing what’s wearing me down" },
+      { id: "me", label: "Making time for me again" },
+      { id: "behind", label: "Not feeling behind all the time" },
+    ],
+  },
+  { id: "reassure", kind: "info", screen: "reassure" },
+  ...V9_STEPS.filter((st) => st.id === "age" || st.id === "plate" || st.id === "week"),
+  { id: "preview", kind: "info", screen: "preview" },
+  { id: "s-load", kind: "slider", title: "How heavy does it feel lately?", left: "I’m managing", right: "It’s too much" },
+  { id: "st-share", kind: "statement", statement: "I’d feel lighter if something else remembered for me.", mood: "hopeful", title: "Last one. True for you?" },
+  {
+    id: "commit",
+    kind: "single",
+    title: "Ready to put some of it down?",
+    options: [
+      { id: "ready", label: "Yes, I’m ready" },
+      { id: "try", label: "I want to try it" },
+    ],
+  },
+  { id: "name", kind: "name" },
+  { id: "loader", kind: "loader" },
+  { id: "email", kind: "email" },
+  { id: "result", kind: "result" },
+  { id: "plan", kind: "plan" },
+  { id: "paywall", kind: "paywall" },
+  { id: "checkout", kind: "checkout" },
+  { id: "download", kind: "download" },
+];
+
+const PAIN_SHORT: Record<string, string> = {
+  hook: "Keeps everything running? (screen 1, yes/no)",
+  pain: "What happens when it's all in her head",
+  often: "How often things slip",
+  tabs: "How much she's holding",
+  first: "First thing to go",
+  seen: "Who notices",
+  "st-drop": "Yes/no: put it down, it drops",
+  help: "What would help most",
+  reassure: "It's not you, it's the load",
+  age: "Age range",
+  plate: "On your plate",
+  week: "This week’s list (chips)",
+  preview: "App preview (new design)",
+  "s-load": "Slider: how heavy",
+  "st-share": "Yes/no: something else remembers",
+  commit: "Ready?",
+  name: "Name",
+  loader: "Loader",
+  email: "Email gate",
+  result: "Result",
+  plan: "First week plan",
+  paywall: "Paywall (3 screens)",
+  checkout: "Checkout",
+  download: "Success / download",
+};
+
+export function painStateName(a: { plate: string[]; sliders: Record<string, number>; said?: Record<string, string>; multi?: Record<string, string[]> }): { name: string; line: string } {
+  const said = a.said ?? {};
+  const pain = a.multi?.pain ?? [];
+  const first = a.multi?.first ?? [];
+  if (said.tabs === "many" || said.tabs === "lost") {
+    return { name: "The Keeper of Everything", line: "You hold the dates, the forms and everyone’s plans. No one head was built to carry that much." };
+  }
+  if (said.seen === "none" || said.seen === "slip" || said["st-drop"] === "yes") {
+    return { name: "The Invisible Engine", line: "Everything runs because of you, and most of it goes unseen. Even by you." };
+  }
+  if (pain.includes("last") || first.includes("me")) {
+    return { name: "The Last on the List", line: "You make room for everyone. Your own things wait for someday." };
+  }
+  if (pain.includes("switch")) {
+    return { name: "The Always-On Mind", line: "Your head keeps going long after the day is done, because it’s holding all of it." };
+  }
+  return { name: "The Carrier", line: "You carry more than anyone sees, so most of it stays in your head." };
+}
+
+export const PAIN_V9: V9Config = {
+  ...JOURNAL_V9,
+  brand: "pain",
+  flowVersion: "v9-pain",
+  path: "/start-relief",
+  hookLine: "Ripple keeps track of what you say, so your head doesn’t have to.",
+  steps: PAIN_V9_STEPS,
+  stepLabels: numberedLabels(PAIN_V9_STEPS, PAIN_SHORT),
+  progressEnd: PAIN_V9_STEPS.findIndex((st) => st.id === "result"),
+  stateName: painStateName as unknown as typeof v9StateName,
+  reassure: {
+    title: "It’s not you. It’s the load.",
+    body: "You’re holding the dates, the plans and everyone’s needs in one head. Anyone would drop something.",
+    body2: "Ripple takes the keeping-track off you. You talk for a few minutes, and it catches the tasks and shows you what’s wearing you down.",
+    things: ["Dentist Thursday", "Permission slip", "Call Mom back", "Car insurance", "Book the vet", "Reply to Sarah", "Birthday gift", "Water bill"],
+    cta: "That’s me",
+  },
+  milestones: { week: "Halfway there.", "s-load": "You’re doing great. A few more.", name: "Almost done." },
+  resultOutro: "None of this means you’re failing. It means one head is holding too much. Ripple takes the keeping-track part.",
+  painKit: {
+    label: "Mental load",
+    hookCards: ["Work", "Kids", "Home"],
+    stackStep: "tabs",
+    stamps: {
+      first: { move: "Skipped again", friends: "Rain check #4", appts: "Still not booked", sleep: "6 hours, maybe", me: "Someday", food: "Ate standing up" },
+      help: { out: "Ripple does this", nothing: "Ripple does this", only: "Ripple does this", why: "Ripple does this", me: "Ripple does this", behind: "Ripple does this" },
+    },
+    reviewAt: { help: 0, commit: 3 },
+    closeStamp: "held for you",
+    vs: {
+      left: "In your head",
+      sub: "Where it all lives now",
+      rows: [
+        ["Dentist is Thursday… or Friday?", "On your list", "With the date"],
+        ["Did I sign the permission slip?", "Nothing slips", "Every task caught"],
+        ["I’ll start walking again next week", "Your habits", "From what you say"],
+        ["Why am I this tired every week?", "Your patterns", "Week to week"],
+        ["Going over everything, again", "A quiet head", "Said once, held for you"],
+      ],
+    },
+    receipt: { title: "Carrying it all · this week", stamp: "Too much for one head", stampSub: "and nobody sees it", extra: { label: "Time just for you", value: "someday" } },
+  },
+  preview: {
+    eyebrow: "How Ripple works",
+    title: "You talk. Ripple keeps track.",
+    caption: "This is what you see after every debrief. It’s already on your list, so it’s out of your head.",
+  },
+};
+
+// ─── Shared tail for the pain-first funnels: age/plate/week, preview, then
+// slider → closing yes/no → ready → account → result → plan → paywall.
+function painTail(slider: V9Step, close: V9Step, commitTitle: string): V9Step[] {
+  return [
+    { id: "reassure", kind: "info", screen: "reassure" },
+    ...V9_STEPS.filter((st) => st.id === "age" || st.id === "plate" || st.id === "week"),
+    { id: "preview", kind: "info", screen: "preview" },
+    slider,
+    close,
+    { id: "commit", kind: "single", title: commitTitle, options: [{ id: "ready", label: "Yes, I’m ready" }, { id: "try", label: "I want to try it" }] },
+    { id: "name", kind: "name" },
+    { id: "loader", kind: "loader" },
+    { id: "email", kind: "email" },
+    { id: "result", kind: "result" },
+    { id: "plan", kind: "plan" },
+    { id: "paywall", kind: "paywall" },
+    { id: "checkout", kind: "checkout" },
+    { id: "download", kind: "download" },
+  ];
+}
+
+const TAIL_SHORT: Record<string, string> = {
+  reassure: "It's not you", age: "Age range", plate: "On your plate", week: "This week’s list (chips)", preview: "App preview (new design)",
+  commit: "Ready?", name: "Name", loader: "Loader", email: "Email gate", result: "Result", plan: "First week plan",
+  paywall: "Paywall (3 screens)", checkout: "Checkout", download: "Success / download",
+};
+
+const ripple = (ids: string[]) => Object.fromEntries(ids.map((id) => [id, "Ripple does this"]));
+
+// ─── /start-catch: pain #2, things slip through (2026-11-02) ────────────────
+export const SLIP_V9_STEPS: V9Step[] = [
+  { id: "hook", kind: "statement", statement: "Things keep slipping through the cracks.", mood: "overloaded" },
+  {
+    id: "pain", kind: "multi", title: "What’s slipped lately?", sub: "Pick all that apply.",
+    options: [
+      { id: "form", label: "A school form or permission slip" },
+      { id: "appt", label: "An appointment" },
+      { id: "bday", label: "A birthday" },
+      { id: "bill", label: "A bill or renewal" },
+      { id: "reply", label: "A message I meant to answer" },
+      { id: "promise", label: "Something I promised someone" },
+    ],
+  },
+  {
+    id: "often", kind: "single", title: "How often does something slip through?", sub: "Each dot is a day something slipped.",
+    options: [
+      { id: "daily", label: "Most days" },
+      { id: "weekly", label: "A few times a week" },
+      { id: "sometimes", label: "Once a week or so" },
+      { id: "rarely", label: "Rarely, but it costs me" },
+    ],
+  },
+  {
+    id: "pile", kind: "single", title: "How many “I’ll remember that” moments in a day?", sub: "The ones you never write down.",
+    options: [
+      { id: "one", label: "A few" },
+      { id: "few", label: "About 10" },
+      { id: "many", label: "20 or more" },
+      { id: "lost", label: "I’ve lost count" },
+    ],
+  },
+  {
+    id: "after", kind: "multi", title: "What happens after something slips?", sub: "Pick all that apply.",
+    options: [
+      { id: "guilt", label: "I feel guilty for days" },
+      { id: "scramble", label: "I scramble to fix it" },
+      { id: "sorry", label: "I apologize. A lot." },
+      { id: "replay", label: "I replay it in my head" },
+      { id: "blame", label: "I blame myself" },
+      { id: "fee", label: "It costs money, like a late fee" },
+    ],
+  },
+  {
+    id: "remember", kind: "single", title: "How do you try to remember things now?",
+    options: [
+      { id: "head", label: "I just keep it in my head" },
+      { id: "shots", label: "Notes and screenshots" },
+      { id: "texts", label: "Texting myself" },
+      { id: "alarms", label: "Phone alarms" },
+    ],
+  },
+  { id: "st-mid", kind: "statement", statement: "I’m doing my best, and things still fall through.", mood: "drained" },
+  {
+    id: "help", kind: "multi", title: "What would help most?", sub: "Pick all that apply.",
+    options: [
+      { id: "catch", label: "Catching things the moment I think of them" },
+      { id: "dates", label: "Every date in one place" },
+      { id: "coming", label: "Seeing what’s coming up this week" },
+      { id: "nothing", label: "Knowing nothing’s slipping" },
+      { id: "head", label: "Not holding it all in my head" },
+      { id: "top", label: "Feeling on top of things" },
+    ],
+  },
+  ...painTail(
+    { id: "s-sure", kind: "slider", title: "How sure are you nothing will slip this week?", left: "Not at all", right: "Totally sure" },
+    { id: "st-close", kind: "statement", statement: "I’d relax if I knew nothing was slipping.", mood: "hopeful", title: "Last one. True for you?" },
+    "Ready for nothing to slip?"
+  ),
+];
+
+export function slipStateName(a: { plate: string[]; sliders: Record<string, number>; said?: Record<string, string>; multi?: Record<string, string[]> }): { name: string; line: string } {
+  const said = a.said ?? {};
+  const after = a.multi?.after ?? [];
+  if (said.pile === "many" || said.pile === "lost") return { name: "The Overflow", line: "It isn’t a memory problem. One head is holding more than any head can." };
+  if (after.includes("guilt") || after.includes("blame") || after.includes("replay")) return { name: "The Self-Blamer", line: "When something slips, you carry the guilt for days. You’re that hard on yourself because you care that much." };
+  if (said.remember === "head") return { name: "The Human Calendar", line: "Everyone’s dates live in your head, and there’s no backup when one falls out." };
+  return { name: "The Juggler", line: "You keep a lot in the air. Now and then one drops, and it’s always on you." };
+}
+
+export const SLIP_V9: V9Config = {
+  ...PAIN_V9,
+  brand: "slip",
+  flowVersion: "v9-slip",
+  path: "/start-catch",
+  steps: SLIP_V9_STEPS,
+  stepLabels: numberedLabels(SLIP_V9_STEPS, {
+    ...TAIL_SHORT, hook: "Things keep slipping? (screen 1, yes/no)", pain: "What slipped lately", often: "How often things slip", pile: "“I’ll remember” moments",
+    after: "After something slips", remember: "How she remembers now", "st-mid": "Yes/no: doing my best", help: "What would help most",
+    "s-sure": "Slider: sure nothing slips", "st-close": "Yes/no: I’d relax",
+  }),
+  progressEnd: SLIP_V9_STEPS.findIndex((st) => st.id === "result"),
+  stateName: slipStateName as unknown as typeof v9StateName,
+  reassure: {
+    title: "It’s not a memory problem. It’s a storage problem.",
+    body: "No one can hold this many dates, forms and promises in one head. The forgetting isn’t a flaw. It’s overflow.",
+    body2: "Ripple is the place it goes. You say it once, and it lands on your list with the date.",
+    things: ["Permission slip", "Dentist Thursday", "Mia’s birthday", "Car insurance", "Reply to Sarah", "Return the dress", "Water bill", "Book the vet"],
+    cta: "That’s me",
+  },
+  milestones: { week: "Halfway there.", "s-sure": "You’re doing great. A few more.", name: "Almost done." },
+  resultOutro: "None of this means you’re careless. It means there’s too much to hold in one head. Ripple holds it for you.",
+  preview: { eyebrow: "How Ripple works", title: "Say it once. It’s on your list.", caption: "This is what you see after every debrief: every task caught, with its date. Nothing left to remember." },
+  painKit: {
+    label: "Things slip",
+    hookCards: ["Forms", "Dates", "Replies"],
+    stackStep: "pile",
+    stamps: {
+      after: { guilt: "For days", scramble: "Last minute", sorry: "Sorry #3", replay: "On repeat", blame: "Every time", fee: "$35 late fee" },
+      help: ripple(["catch", "dates", "coming", "nothing", "head", "top"]),
+    },
+    reviewAt: { help: 0, commit: 3 },
+    closeStamp: "on your list",
+    vs: {
+      left: "In your head",
+      sub: "Where it lands with Ripple",
+      rows: [
+        ["Form due… Friday? Monday?", "On your list", "With the date"],
+        ["Mia’s birthday is when again?", "Every date", "In one place"],
+        ["Screenshot of a screenshot", "Said once", "Caught for you"],
+        ["Meant to reply. Forgot.", "Nothing slips", "Every task caught"],
+        ["What did I forget this week?", "Your week", "Laid out for you"],
+      ],
+    },
+    receipt: { title: "What slipping costs you", stamp: "Too much to remember", stampSub: "and it’s always on you", extra: { label: "Guilt afterwards", value: "for days" } },
+  },
+};
+
+// ─── /start-clarity: pain #5, the same draining week and no idea why ────────
+export const LOOP_V9_STEPS: V9Step[] = [
+  { id: "hook", kind: "statement", statement: "I’m running on empty, and I can’t tell why.", mood: "drained" },
+  {
+    id: "pain", kind: "multi", title: "What does a hard week look like for you?", sub: "Pick all that apply.",
+    options: [
+      { id: "tired", label: "I’m worn out by midweek" },
+      { id: "short", label: "Small things set me off" },
+      { id: "nextweek", label: "I keep saying “next week”" },
+      { id: "skip", label: "I skip the things that help me" },
+      { id: "blur", label: "I can’t say where the week went" },
+      { id: "dread", label: "I dread the week ahead" },
+    ],
+  },
+  {
+    id: "often", kind: "single", title: "How many days a week do you feel drained?", sub: "Each dot is a drained day.",
+    options: [
+      { id: "daily", label: "Most days" },
+      { id: "weekly", label: "A few days" },
+      { id: "sometimes", label: "One or two" },
+      { id: "rarely", label: "Rarely, but it hits hard" },
+    ],
+  },
+  {
+    id: "repeat", kind: "single", title: "How long has it felt like this?", sub: "However long it’s been, it counts.",
+    options: [
+      { id: "one", label: "A few weeks" },
+      { id: "few", label: "A few months" },
+      { id: "many", label: "Over a year" },
+      { id: "lost", label: "Longer than I remember" },
+    ],
+  },
+  {
+    id: "helps", kind: "multi", title: "What actually helps you feel better?", sub: "Pick all that apply.",
+    options: [
+      { id: "walk", label: "A walk outside" },
+      { id: "friends", label: "Time with a friend" },
+      { id: "sleep", label: "A proper night’s sleep" },
+      { id: "move", label: "Exercise" },
+      { id: "quiet", label: "Quiet time alone" },
+      { id: "fun", label: "Something just for fun" },
+    ],
+  },
+  {
+    id: "why", kind: "single", title: "Do you know what’s draining you most?",
+    options: [
+      { id: "no", label: "Honestly, no" },
+      { id: "guess", label: "I have a guess" },
+      { id: "mix", label: "It’s a mix of things" },
+      { id: "know", label: "I know, but can’t change it" },
+    ],
+  },
+  { id: "st-mid", kind: "statement", statement: "I keep meaning to change things, then another week goes by.", mood: "drained" },
+  {
+    id: "want", kind: "multi", title: "What would you love to see?", sub: "Pick all that apply.",
+    options: [
+      { id: "drains", label: "What drains me" },
+      { id: "lifts", label: "What lifts me" },
+      { id: "habits", label: "Which habits actually stick" },
+      { id: "week", label: "My week, summed up" },
+      { id: "coming", label: "What keeps coming up" },
+      { id: "pattern", label: "Patterns I can’t see myself" },
+    ],
+  },
+  ...painTail(
+    { id: "s-know", kind: "slider", title: "How well do you know what lifts you?", left: "No idea", right: "I know exactly" },
+    { id: "st-close", kind: "statement", statement: "If I could see what’s really going on, I’d change it.", mood: "hopeful", title: "Last one. True for you?" },
+    "Ready to see what’s really going on?"
+  ),
+];
+
+export function loopStateName(a: { plate: string[]; sliders: Record<string, number>; said?: Record<string, string>; multi?: Record<string, string[]> }): { name: string; line: string } {
+  const said = a.said ?? {};
+  const pain = a.multi?.pain ?? [];
+  if (said.repeat === "many" || said.repeat === "lost") return { name: "The Long Haul", line: "You’ve been running on empty for a long time and kept going anyway. That takes more than anyone sees." };
+  if (pain.includes("skip") || pain.includes("nextweek")) return { name: "The Someday Self", line: "You know what helps you. It just keeps landing on next week’s list." };
+  if (said.why === "no" || said.why === "mix" || pain.includes("blur")) return { name: "The Blurred Week", line: "Every week runs into the next, so the pattern behind it stays hidden." };
+  return { name: "The Quiet Fader", line: "You keep everything going, and a little of you slips away each week." };
+}
+
+export const LOOP_V9: V9Config = {
+  ...PAIN_V9,
+  brand: "loop",
+  flowVersion: "v9-loop",
+  path: "/start-clarity",
+  hookLine: "Ripple shows you what’s really going on in your week.",
+  steps: LOOP_V9_STEPS,
+  stepLabels: numberedLabels(LOOP_V9_STEPS, {
+    ...TAIL_SHORT, hook: "Running on empty? (screen 1, yes/no)", pain: "What a hard week looks like", often: "Drained days a week", repeat: "How long it's felt like this",
+    helps: "What helps her", why: "Knows what drains her?", "st-mid": "Yes/no: another week goes by", want: "What she'd love to see",
+    "s-know": "Slider: knows what lifts her", "st-close": "Yes/no: if I could see it",
+  }),
+  progressEnd: LOOP_V9_STEPS.findIndex((st) => st.id === "result"),
+  stateName: loopStateName as unknown as typeof v9StateName,
+  reassure: {
+    title: "It’s not you. You just can’t see the pattern.",
+    body: "From inside it, every week blurs into the next. Nobody can spot a pattern while they’re living it.",
+    body2: "Ripple can. You talk for a few minutes, and it shows you what drains you, what lifts you and what keeps coming back.",
+    things: ["Tired again", "Skipped the walk", "Next week", "Short with the kids", "Up late again", "No time for me", "Same argument", "Monday again"],
+    cta: "That’s me",
+  },
+  milestones: { week: "Halfway there.", "s-know": "You’re doing great. A few more.", name: "Almost done." },
+  resultOutro: "None of this means you’re doing it wrong. It means you can’t see the pattern from inside it. Ripple shows it to you.",
+  preview: { eyebrow: "How Ripple works", title: "You talk. Ripple shows you the pattern.", caption: "This is what you see after every debrief: your tasks caught, and over the weeks, what keeps coming up." },
+  painKit: {
+    label: "Hidden pattern",
+    hookCards: ["Mon", "Wed", "Fri"],
+    stackStep: "repeat",
+    stamps: {
+      helps: { walk: "Skipped this week", friends: "Not since summer", sleep: "Rarely", move: "Next week", quiet: "Someday", fun: "Can’t remember" },
+      want: ripple(["drains", "lifts", "habits", "week", "coming", "pattern"]),
+    },
+    reviewAt: { want: 0, commit: 3 },
+    closeStamp: "pattern found",
+    vs: {
+      left: "Your week now",
+      sub: "What changes when you can see it",
+      rows: [
+        ["Tired again, no idea why", "What drains you", "Shown week to week"],
+        ["Can’t say where the week went", "Your week, told back", "A weekly report"],
+        ["The walk got skipped. Again.", "Your habits", "From what you say"],
+        ["Same argument, every month", "What keeps coming up", "Your patterns"],
+        ["Not sure what lifts me", "What lifts you", "From your own words"],
+      ],
+    },
+    receipt: { title: "Your week · on repeat", stamp: "Same week, again", stampSub: "and you can’t see why", extra: { label: "The things that help you", value: "skipped" } },
+  },
+};
+
+// ─── /start-progress: pain #6, the weeks blur and nothing seems to change ───
+export const PROGRESS_V9_STEPS: V9Step[] = [
+  { id: "hook", kind: "statement", statement: "The weeks fly by, and I can’t see that anything’s changing.", mood: "drained" },
+  {
+    id: "pain", kind: "multi", title: "What does that feel like?", sub: "Pick all that apply.",
+    options: [
+      { id: "blur", label: "The weeks blur together" },
+      { id: "stuck", label: "I feel stuck" },
+      { id: "goals", label: "My goals keep sliding" },
+      { id: "restart", label: "I keep starting over" },
+      { id: "proud", label: "I can’t say what I’m proud of" },
+      { id: "year", label: "Another year went by" },
+    ],
+  },
+  {
+    id: "look", kind: "single", title: "When do you look back on how things are going?",
+    options: [
+      { id: "never", label: "Never, really" },
+      { id: "wrong", label: "When something goes wrong" },
+      { id: "newyear", label: "At New Year’s" },
+      { id: "sometimes", label: "Once in a while" },
+    ],
+  },
+  {
+    id: "goal", kind: "single", title: "How many times have you set the same goal?", sub: "Every fresh start counts.",
+    options: [
+      { id: "one", label: "Once" },
+      { id: "few", label: "2 or 3 times" },
+      { id: "many", label: "Every year" },
+      { id: "lost", label: "I’ve lost count" },
+    ],
+  },
+  {
+    id: "slid", kind: "multi", title: "What keeps sliding?", sub: "Pick all that apply.",
+    options: [
+      { id: "health", label: "My health" },
+      { id: "move", label: "Moving my body" },
+      { id: "money", label: "Money goals" },
+      { id: "friends", label: "Friendships" },
+      { id: "hobby", label: "Something I used to love" },
+      { id: "calm", label: "Feeling calmer" },
+    ],
+  },
+  {
+    id: "proof", kind: "single", title: "If someone asked what changed this year, could you say?",
+    options: [
+      { id: "no", label: "Not really" },
+      { id: "little", label: "A little" },
+      { id: "hard", label: "It’s hard to put into words" },
+      { id: "yes", label: "Yes, but it doesn’t feel like it" },
+    ],
+  },
+  { id: "st-mid", kind: "statement", statement: "I’m busy all the time, but I don’t feel like I’m getting anywhere.", mood: "drained" },
+  {
+    id: "want", kind: "multi", title: "What would you love to see?", sub: "Pick all that apply.",
+    options: [
+      { id: "week", label: "My week, summed up" },
+      { id: "progress", label: "Proof I’m getting somewhere" },
+      { id: "habits", label: "Which habits stick" },
+      { id: "life", label: "Where my life is heading" },
+      { id: "wins", label: "Wins I’d otherwise forget" },
+      { id: "coming", label: "What keeps coming up" },
+    ],
+  },
+  ...painTail(
+    { id: "s-see", kind: "slider", title: "How well can you see your own progress?", left: "Not at all", right: "Very clearly" },
+    { id: "st-close", kind: "statement", statement: "If I could see I’m getting somewhere, I’d keep going.", mood: "hopeful", title: "Last one. True for you?" },
+    "Ready to see your progress?"
+  ),
+];
+
+export function progressStateName(a: { plate: string[]; sliders: Record<string, number>; said?: Record<string, string>; multi?: Record<string, string[]> }): { name: string; line: string } {
+  const said = a.said ?? {};
+  const pain = a.multi?.pain ?? [];
+  if (said.goal === "many" || said.goal === "lost" || pain.includes("restart")) return { name: "The Fresh Starter", line: "You keep setting the goal again because you never got to see how far you came last time." };
+  if (pain.includes("stuck") || pain.includes("blur")) return { name: "The Treadmill", line: "You’re moving all the time. Without a record, it feels like standing still." };
+  if (said.proof === "no" || said.proof === "hard" || pain.includes("proud")) return { name: "The Unseen Progress", line: "More is changing than you can see. It just isn’t written down anywhere." };
+  return { name: "The Quiet Climber", line: "You’re getting somewhere, a little at a time, and little steps are easy to miss." };
+}
+
+export const PROGRESS_V9: V9Config = {
+  ...PAIN_V9,
+  brand: "progress",
+  flowVersion: "v9-progress",
+  path: "/start-progress",
+  hookLine: "Ripple shows you how far you’ve come, week by week.",
+  steps: PROGRESS_V9_STEPS,
+  stepLabels: numberedLabels(PROGRESS_V9_STEPS, {
+    ...TAIL_SHORT, hook: "Weeks fly by, nothing changes? (screen 1, yes/no)", pain: "What it feels like", look: "When she looks back", goal: "Same goal how many times",
+    slid: "What keeps sliding", proof: "Could she say what changed", "st-mid": "Yes/no: busy, not getting anywhere", want: "What she'd love to see",
+    "s-see": "Slider: sees her progress", "st-close": "Yes/no: I'd keep going",
+  }),
+  progressEnd: PROGRESS_V9_STEPS.findIndex((st) => st.id === "result"),
+  stateName: progressStateName as unknown as typeof v9StateName,
+  reassure: {
+    title: "It’s not you. You just can’t see it from here.",
+    body: "Change happens a little at a time, and little changes are easy to miss. Without a record, every week looks like the last one.",
+    body2: "Ripple keeps the record for you. You talk for a few minutes, and week by week it shows you what’s changing.",
+    things: ["New Year goal", "Back to the gym", "Read more", "Call friends", "Drink water", "Save money", "Bed earlier", "Be calmer"],
+    cta: "That’s me",
+  },
+  milestones: { week: "Halfway there.", "s-see": "You’re doing great. A few more.", name: "Almost done." },
+  resultOutro: "None of this means you’re not trying. It means nobody’s keeping the record. Ripple keeps it, so you can see how far you’ve come.",
+  preview: { eyebrow: "How Ripple works", title: "You talk. Ripple keeps the record.", caption: "This is what you see after every debrief. Week by week, it adds up to a picture of your progress." },
+  painKit: {
+    label: "No progress",
+    hookCards: ["Jan", "Jun", "Dec"],
+    stackStep: "goal",
+    stamps: {
+      slid: { health: "Next month", move: "Starting Monday", money: "Next year", friends: "Overdue", hobby: "Packed away", calm: "Someday" },
+      want: ripple(["week", "progress", "habits", "life", "wins", "coming"]),
+    },
+    reviewAt: { want: 0, commit: 3 },
+    closeStamp: "week 4: up",
+    vs: {
+      left: "Your year now",
+      sub: "What changes when it’s written down",
+      rows: [
+        ["Same goal as last January", "Your progress", "Week by week"],
+        ["Can’t say what changed", "Your week, told back", "A weekly report"],
+        ["Wins forgotten by Friday", "Every win kept", "In your own words"],
+        ["Habits started, then dropped", "Your habits", "From what you say"],
+        ["Where is my life going?", "Your Life Matrix", "The big picture"],
+      ],
+    },
+    receipt: { title: "Your year · so far", stamp: "Busy, not moving", stampSub: "or so it feels", extra: { label: "Proof you’ve grown", value: "nowhere" } },
+  },
+};
+
+export const V9_CONFIGS: Record<V9Brand, V9Config> = { ripple: RIPPLE_V9, bwk: BWK_V9, journal: JOURNAL_V9, pain: PAIN_V9, slip: SLIP_V9, loop: LOOP_V9, progress: PROGRESS_V9 };
+
+/** The four pain-first funnels in the 2026-11-02 split, in order. */
+export const PAIN_FUNNELS = [PAIN_V9, SLIP_V9, LOOP_V9, PROGRESS_V9];
