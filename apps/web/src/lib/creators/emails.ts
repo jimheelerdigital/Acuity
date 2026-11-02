@@ -19,6 +19,9 @@ import {
   CREATOR_EMAIL_REPLY_TO,
   BOOST_BONUS_CENTS,
   COMMISSION_RATE,
+  CREATOR_PRO_FREE_MONTHS,
+  CREATOR_PRO_MIN_PAID_PER_MONTH,
+  MILESTONE_TIERS,
   HOLD_DAYS,
   SITE_URL,
   RIPPLE_SOCIAL,
@@ -82,7 +85,7 @@ export async function sendDashboardLink(creatorId: string, kind: "invite" | "sig
       ? layout(`<p>Hi ${escapeHtml(c.name)},</p>
 <p>Your Ripple creator dashboard is ready. Your link is <a href="${link}">${link.replace("https://", "")}</a> and your code is <strong>${escapeHtml(c.referralCode ?? "")}</strong>.</p>
 <p>Before your first payout, two quick things in the dashboard: accept the creator agreement and connect Stripe so we can pay you. It takes about five minutes.</p>
-<p>Your Ripple Pro is free while you're working with us: download Ripple and sign up with this same email address (${escapeHtml(c.email)}) and Pro switches on automatically. If you sign in with Apple, choose to share your email rather than hide it.</p>
+<p>Ripple Pro is free for your first ${CREATOR_PRO_FREE_MONTHS} months, no signups needed, and after that in any month you refer at least ${CREATOR_PRO_MIN_PAID_PER_MONTH} paying customer. Download Ripple and sign up with this same email address (${escapeHtml(c.email)}) and Pro switches on automatically. If you sign in with Apple, choose to share your email rather than hide it.</p>
 ${button(url, "Open my dashboard")}
 <p style="color:#77737f;font-size:13px">This link signs you in for 7 days. You can always ask for a new one at ${SITE_URL.replace("https://", "")}/creators.</p>`)
       : layout(`<p>Hi ${escapeHtml(c.name)},</p><p>Here's your sign-in link for the Ripple creator dashboard.</p>${button(url, "Open my dashboard")}<p style="color:#77737f;font-size:13px">It works for 7 days. If you didn't ask for it, ignore this email.</p>`);
@@ -93,8 +96,8 @@ ${button(url, "Open my dashboard")}
 }
 
 /**
- * One-off: the agreement changed (2026-10-31 view bonuses). Explains the
- * change, carries the full new text, and signs them straight into the
+ * One-off: the agreement changed (2026-11-02 terms: new view bonus levels
+ * on day 14, monthly customer bonuses, free Pro rule). Explains the change, carries the full new text, and signs them straight into the
  * dashboard to accept it. `to` / `from` override for local previews (the
  * local Resend key can't send as goripple.io).
  */
@@ -109,10 +112,10 @@ export async function sendAgreementUpdateEmail(creatorId: string, opts: { to?: s
   ).join("");
   await send(
     opts.to ?? c.email,
-    "New: view bonuses on your Ripple posts",
+    "Updated: your Ripple creator terms",
     layout(`<p>Hi ${escapeHtml(c.name)},</p>
-<p>We've added view bonuses. Any post with your Ripple link or code now earns ${tierText} views in its first ${VIEW_BONUS_WINDOW_DAYS} days. If we pick one of your videos to run as an ad, that's ${formatCents(BOOST_BONUS_CENTS)} on top. Your ${Math.round(COMMISSION_RATE * 100)}% commission is unchanged.</p>
-<p><strong>Tag @${c.platform === "tiktok" ? RIPPLE_SOCIAL.tiktok : RIPPLE_SOCIAL.instagram} and add #ripple on every post.</strong> We check your profile every day, add those posts to your dashboard automatically and track their views. On day ${VIEW_BONUS_WINDOW_DAYS} we lock the count and add your view bonus, so there's nothing for you to log.</p>
+<p>View bonuses are easier to reach: each video with your Ripple link or code earns ${tierText} organic views, measured on day ${VIEW_BONUS_WINDOW_DAYS} after you post. If we pick one of your videos to run as an ad, that's ${formatCents(BOOST_BONUS_CENTS)} on top. You also earn monthly bonuses of ${MILESTONE_TIERS.map((t) => `${formatCents(t.bonusCents)} at ${t.customers}`).join(", ")} paying customers. Your ${Math.round(COMMISSION_RATE * 100)}% commission is unchanged.</p>
+<p><strong>Invite @${c.platform === "tiktok" ? RIPPLE_SOCIAL.tiktok : RIPPLE_SOCIAL.instagram} as a collaborator on every post and log it in your dashboard.</strong> We track its views and add your view bonus on day ${VIEW_BONUS_WINDOW_DAYS}. If our count looks low, reply with your day-${VIEW_BONUS_WINDOW_DAYS} Insights screenshot.</p>
 <p>The creator agreement has been updated to include this (full text below). Open your dashboard to accept it before your next payout.</p>
 ${button(url, "Open my dashboard")}
 <div style="margin-top:28px;padding-top:18px;border-top:1px solid #ece9f0">
@@ -138,9 +141,9 @@ export async function sendBoostEmail(creatorId: string, postUrl: string): Promis
   const c = await creatorFor(creatorId);
   await send(
     c.email,
-    "We're running your post as an ad",
+    "We picked your video for our ads",
     layout(`<p>Hi ${escapeHtml(c.name)},</p>
-<p>We liked <a href="${escapeHtml(postUrl)}">your post</a> enough to run it as an ad. A $100 boost bonus is now in your balance, and any signups from the ad still count toward your commission.</p>
+<p>We picked <a href="${escapeHtml(postUrl)}">your video</a> to run as an ad. A ${formatCents(BOOST_BONUS_CENTS)} ad bonus is now in your balance, and any signups from the ad still count toward your commission.</p>
 ${button(`${SITE_URL}/creators`, "See your dashboard")}`)
   );
 }

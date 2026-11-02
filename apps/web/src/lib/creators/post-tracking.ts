@@ -1,8 +1,8 @@
 import "server-only";
 
 /**
- * Creator post tracking (2026-10-31, per Keenan). Creators tag Ripple and use
- * #ripple; a daily scan of each creator's own recent posts adds those to
+ * Creator post tracking (2026-10-31, per Keenan). Creators invite Ripple as a
+ * collaborator (or tag it / use #ripple) and log each post; a daily scan of each creator's own recent posts adds those to
  * their dashboard, refreshes view counts, and on day VIEW_BONUS_WINDOW_DAYS
  * locks the count and pays the view bonus it reached.
  *
@@ -24,7 +24,7 @@ export { externalIdFromUrl, isRipplePost, platformOfUrl };
 const DAY_MS = 24 * 60 * 60 * 1000;
 /** Posts per creator per scan; creators rarely post more in the lookback. */
 const SCAN_POSTS = 12;
-/** If day-14 views can't be fetched, give up and use the last seen count after this many extra days. */
+/** If day-N views can't be fetched, give up and use the last seen count after this many extra days. */
 const FINALIZE_GRACE_DAYS = 3;
 
 

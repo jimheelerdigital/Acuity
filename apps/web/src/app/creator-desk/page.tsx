@@ -47,7 +47,7 @@ export default async function CreatorDesk() {
           <p className="font-mono text-[11px] font-bold uppercase tracking-[1.4px] text-acuity-text-ter">Ripple</p>
           <h1 className="mt-2 font-display text-[32px] font-extrabold tracking-[-0.8px]">Creator desk</h1>
           <p className="mt-2 text-[15px] text-acuity-text-sec">
-            Add creators who said yes. Each one gets their code, a dashboard invite by email, and free Ripple Pro when they sign up with the same email.
+            Add creators who said yes. Each one gets their code, a dashboard invite by email, and free Ripple Pro when they sign up with the same email (free for 2 months, then any month they refer a paying customer).
           </p>
         </header>
 

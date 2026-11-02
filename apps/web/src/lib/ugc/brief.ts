@@ -23,6 +23,9 @@ import { allowedDollars } from "@/lib/ugc/draft";
 import {
   BOOST_BONUS_CENTS,
   COMMISSION_RATE,
+  CREATOR_PRO_FREE_MONTHS,
+  CREATOR_PRO_MIN_PAID_PER_MONTH,
+  MILESTONE_TIERS,
   COMMISSION_WINDOW_MONTHS,
   RIPPLE_SOCIAL,
   VIEW_BONUS_TIERS,
@@ -57,11 +60,12 @@ export const PARTNERSHIP_LINE =
 export function moneyTerms(): string[] {
   return [
     `Commission: ${Math.round(COMMISSION_RATE * 100)}% of what each customer you send pays for their first ${COMMISSION_WINDOW_MONTHS} months. No upfront fee.`,
-    `View bonuses per post: ${VIEW_BONUS_TIERS.map((t) => `$${t.bonusCents / 100} at ${t.views / 1000}k`).join(", ")} views in its first ${VIEW_BONUS_WINDOW_DAYS} days (highest level reached).`,
-    `Tag @${RIPPLE_SOCIAL.instagram} (TikTok: @${RIPPLE_SOCIAL.tiktok}) and add #ripple on every post: we find it on your profile, add it to your dashboard and track its views automatically.`,
-    `Ad bonus: $${BOOST_BONUS_CENTS / 100} for each of your videos we pick to run as an ad. We may run any post carrying your link as an ad for 12 months.`,
+    `View bonuses per video: ${VIEW_BONUS_TIERS.map((t) => `$${t.bonusCents / 100} at ${t.views / 1000}k+`).join(", ")} organic views, measured on day ${VIEW_BONUS_WINDOW_DAYS} (highest level reached, no cap on videos).`,
+    `Monthly bonuses: ${MILESTONE_TIERS.map((t, i) => `${i ? "another " : ""}$${t.bonusCents / 100} at ${t.customers}`).join(", ")} paying customers in a month.`,
+    `Invite @${RIPPLE_SOCIAL.instagram} (TikTok: @${RIPPLE_SOCIAL.tiktok}) as a collaborator on every post and log it in your dashboard; we track its views.`,
+    `Ad bonus: $${BOOST_BONUS_CENTS / 100} for each of your videos we pick for ads (earned when picked). We may run any post carrying your link as an ad for 12 months.`,
     `Payouts every other Friday through Stripe once you have $${PAYOUT_MIN_CENTS / 100} payable. Your dashboard shows every click, signup and payout.`,
-    "Free Ripple premium while you're active.",
+    `Free Ripple Pro for your first ${CREATOR_PRO_FREE_MONTHS} months, then any month you refer at least ${CREATOR_PRO_MIN_PAID_PER_MONTH} paying customer.`,
   ];
 }
 

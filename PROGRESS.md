@@ -8,6 +8,40 @@
 ---
 
 
+## [2026-11-02] — Creator program matches the current terms: lower view bonus levels, monthly bonuses back, 2-month free Pro rule
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** see git log
+
+### In plain English (for Keenan)
+- **View bonuses are easier to hit:** $25 at 1,000 views, $100 at 10,000 and $200 at 25,000, measured on day 14 after posting, as before (was 5k / 25k / 50k). Only the highest level is paid. If our count is low, creators send their day-14 Insights screenshot and you top it up from their admin page.
+- **Monthly customer bonuses are back:** $50 at 10 paying customers in a month, another $150 at 25 and another $300 at 50.
+- **Ad-pick bonus:** the $100 is earned the moment you pick a video, even if the ad never runs. The old limit of 5 a month is gone.
+- **Posting:** creators are told to invite @ripplevoice as a collaborator and log every post on their dashboard. The daily scan still catches posts they forget to log.
+- **Free Pro:** the agreement, invite email and outreach now say 2 free months, then free in any month they refer a paying customer. Nothing switches Pro off yet; that waits on your open decisions.
+- **Agreement:** it's a new version, so every creator re-accepts it on their dashboard before their next payout. No email has gone out about it.
+
+### Technical changes (for Jimmy)
+- apps/web/src/lib/creators/config.ts: `VIEW_BONUS_TIERS` 1k/$25, 10k/$100, 25k/$200; `VIEW_BONUS_WINDOW_DAYS` stays 14; `MILESTONE_TIERS` restored; `MAX_BOOSTS_PER_MONTH` removed; new `CREATOR_PRO_FREE_MONTHS = 2`, `CREATOR_PRO_MIN_PAID_PER_MONTH = 1`; `AGREEMENT_VERSION` 2026-10-31 → 2026-11-02.
+- Monthly milestone code from 53305bcb restored as it was: `awardMilestones` (ledger.ts), `milestonesReached` (money.ts), `creators-milestones` cron at 06:30 UTC (inngest/functions/creators-ledger.ts), milestone tests.
+- ledger.ts `markPostBoosted`: monthly cap check removed (and the `monthly_cap` message in api/admin/creators/action/route.ts).
+- agreement.ts: new sections View bonuses, Ad selection bonus, Monthly customer bonuses, Free Ripple Pro, Joining the program; 90-day click line in What you earn.
+- emails.ts (invite Pro line, agreement update email, ad-pick email), lib/ugc/brief.ts + draft.ts (offer terms, allowed dollars incl. 50/150/300/500), app/creators/page.tsx (posts section: collaborator + log; "Picked for ads"), admin creators/[id] labels, creator-desk Pro line, ugc.test.ts.
+- No schema changes. Typecheck clean on changed files; creators + ugc tests pass (53).
+
+### Manual steps needed
+- [ ] Review before merge, payment code: restored milestone awards, ad bonus with no cap, new view bonus tiers (Jimmy)
+- [ ] After deploy: `curl -X PUT https://goripple.io/api/inngest` to register `creators-milestones` again (Claude)
+- [ ] Decide the open terms: ad usage length, platforms and editing rights; whether losing Pro affects affiliate status; video bonus payout timing and cross-platform counting; when the 2 free months start, how later months are measured, how Pro is restored (Keenan)
+- [ ] Decide whether to email the 7 existing creators the new agreement (admin "Send to all creators" now sends the updated copy, once per version) (Keenan)
+
+### Notes
+- **Re-accept before payout:** the version bump means existing creators can't be paid until they accept the new agreement. The first payout run is Fri 11-06.
+- **Posts in flight:** posts not yet locked are paid on the new tiers when they reach day 14.
+- **Screenshots:** there is no upload. Creators reply by email, and the admin view-bonus buttons do the top-up (they pay the difference to a higher tier).
+- **Free Pro:** it is still granted indefinitely in code (autoGrantCreatorPerk). Enforcement needs the open Pro decisions first.
+
 ## [2026-11-02] — Web price test ended: everyone back on $9.99 / $89.99, with $14.99 / $149 crossed out
 
 **Requested by:** Keenan

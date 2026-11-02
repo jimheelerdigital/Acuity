@@ -168,7 +168,6 @@ export async function POST(req: NextRequest) {
           const msg = {
             not_found: "Post not found",
             already_boosted: "This post already got its boost bonus",
-            monthly_cap: "Monthly boost cap reached (5 across all creators)",
           }[r.reason];
           throw new Error(msg);
         }

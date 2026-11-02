@@ -5,8 +5,9 @@
  *
  * Decisions locked 2026-10-22:
  *   - 14-day hold (the spec's "30-day" mentions were stale)
- *   - (monthly paying-customer milestone bonuses removed 2026-10-31,
- *     Keenan: commission already pays for signups; bonuses are per views)
+ *   - milestone bonuses $50 / $150 / $300 at 10 / 25 / 50 paying customers
+ *     per calendar month, each tier paid separately ($500 at 50). Removed
+ *     2026-10-31, restored 2026-11-02 (Keenan's current program terms).
  *   - web payments come from our Stripe webhook; RevenueCat feeds App Store
  *     and Google Play only (its Stripe / RC Billing events are skipped so
  *     nothing is counted twice)
@@ -35,23 +36,44 @@ export function cookieDomainFor(host: string | null): string | undefined {
 /** Readable by the landing banner: "<CODE>|<firstName>". */
 export const CODE_COOKIE = "rp_creator";
 
+/**
+ * Ad-selection bonus: earned when we pick the video for ads, whether or not
+ * the ad launches. No monthly cap (2026-11-02): a cap would leave a picked
+ * video unpaid, which the terms don't allow.
+ */
 export const BOOST_BONUS_CENTS = 100_00;
-/** At most this many boost bonuses per calendar month across all creators. */
-export const MAX_BOOSTS_PER_MONTH = 5;
+
+/** Per calendar month; each tier paid separately once reached. */
+export const MILESTONE_TIERS: Array<{ customers: number; bonusCents: number }> = [
+  { customers: 10, bonusCents: 50_00 },
+  { customers: 25, bonusCents: 150_00 },
+  { customers: 50, bonusCents: 300_00 },
+];
 
 /**
- * View bonuses (2026-10-31, Keenan): per post, by views in its first
- * VIEW_BONUS_WINDOW_DAYS. The highest tier reached is the post's total
- * (50k views = $200, not $25 + $100 + $200); a later tier pays the
- * difference. Awarded by an admin from the creator page after checking the
- * count on the platform.
+ * View bonuses (2026-11-02, Keenan's current terms): per video, organic
+ * views measured on day VIEW_BONUS_WINDOW_DAYS after posting (verified with
+ * an Insights screenshot when the public count falls short). The highest
+ * tier reached is the video's total (25k views = $200, not $25 + $100 +
+ * $200); a later tier pays the difference. The daily scan locks the public
+ * count and awards on day 14; an admin can top up from the creator page
+ * after checking a screenshot. (Was 5k / 25k / 50k, 10-31.)
  */
 export const VIEW_BONUS_WINDOW_DAYS = 14;
 export const VIEW_BONUS_TIERS: Array<{ views: number; bonusCents: number }> = [
-  { views: 5_000, bonusCents: 25_00 },
-  { views: 25_000, bonusCents: 100_00 },
-  { views: 50_000, bonusCents: 200_00 },
+  { views: 1_000, bonusCents: 25_00 },
+  { views: 10_000, bonusCents: 100_00 },
+  { views: 25_000, bonusCents: 200_00 },
 ];
+
+/**
+ * Free Ripple Pro for creators (2026-11-02 terms): free for the first
+ * CREATOR_PRO_FREE_MONTHS with no signups needed; after that it stays free
+ * in any month the creator refers at least CREATOR_PRO_MIN_PAID_PER_MONTH
+ * paying customer. Communicated only: Pro is not switched off by code yet.
+ */
+export const CREATOR_PRO_FREE_MONTHS = 2;
+export const CREATOR_PRO_MIN_PAID_PER_MONTH = 1;
 
 /**
  * Creator post tracking (2026-10-31): Ripple's own accounts. A creator post
@@ -76,7 +98,7 @@ export function stripePayoutsEnabled(): boolean {
 }
 
 /** Current creator agreement version — bump when the text changes. */
-export const AGREEMENT_VERSION = "2026-10-31";
+export const AGREEMENT_VERSION = "2026-11-02";
 
 /** Referral code alphabet: no 0/O, 1/I/L. */
 export const CODE_ALPHABET = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";

@@ -182,7 +182,7 @@ const CAPTIONS = [
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
-/** "12,400 views so far · day 6 of 14" / "31,200 views at day 14 · $100.00 view bonus". */
+/** "1,400 views so far · day 6 of 14" / "12,200 views at day 14 · $100.00 view bonus". */
 function postViewsLine(p: { postedAt: Date; views: number | null; finalViews: number | null; finalizedAt: Date | null }): string {
   const fmt = (n: number) => n.toLocaleString("en-US");
   if (p.finalizedAt) {
@@ -448,11 +448,11 @@ export default async function CreatorsPage({
       </Section>
 
       {/* Posts */}
-      <Section eyebrow="Your posts" title="Tag us and we track it for you">
+      <Section eyebrow="Your posts" title="Invite us and log every post">
         <p className="text-[15px] leading-[1.5] text-acuity-text-sec">
-          On every post, tag <strong className="text-acuity-text">@{ourHandle}</strong> and add <strong className="text-acuity-text">#ripple</strong>. We check your profile every day, add those posts here automatically and count their views. On day {VIEW_BONUS_WINDOW_DAYS} we lock the count and add your view bonus: {VIEW_BONUS_TIERS.map((t) => `${formatCents(t.bonusCents)} at ${t.views / 1000}k`).join(", ")}.
+          On every post, invite <strong className="text-acuity-text">@{ourHandle}</strong> as a collaborator, then log the post below. We count its organic views on day {VIEW_BONUS_WINDOW_DAYS} after you post and add your view bonus: {VIEW_BONUS_TIERS.map((t) => `${formatCents(t.bonusCents)} at ${(t.views / 1000).toLocaleString("en-US")}k+`).join(", ")}. Only the highest level counts, and there&apos;s no limit on how many videos can earn one.
         </p>
-        <p className="mt-2 text-[13px] text-acuity-text-ter">Missing a post? Log it below and we&apos;ll track it the same way.</p>
+        <p className="mt-2 text-[13px] text-acuity-text-ter">If our count looks lower than your Insights, reply to any of our emails with your day-{VIEW_BONUS_WINDOW_DAYS} Insights screenshot and we&apos;ll pay what it shows.</p>
         <div className="mt-4">
           <PostForm />
         </div>
@@ -471,7 +471,7 @@ export default async function CreatorsPage({
                   <div className="text-[13px] text-acuity-text-sec">{postViewsLine(p)}</div>
                 </div>
                 <div className="flex items-center gap-3">
-                  {p.boosted ? <Pill tone="good">Running as an ad</Pill> : <DeletePostButton id={p.id} />}
+                  {p.boosted ? <Pill tone="good">Picked for ads</Pill> : <DeletePostButton id={p.id} />}
                 </div>
               </li>
             ))}

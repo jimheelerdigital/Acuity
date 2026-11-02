@@ -181,10 +181,10 @@ export default async function CreatorDetail({ params }: { params: { id: string }
                     {p.boosted ? (
                       <span className="text-emerald-400">boosted {day(p.boostedAt)}</span>
                     ) : (
-                      <ActionButton body={{ action: "boost", postId: p.id }} label="Mark boosted ($100)" tone="go" confirm />
+                      <ActionButton body={{ action: "boost", postId: p.id }} label="Picked for ads ($100)" tone="go" confirm />
                     )}
                     <div className="mt-1 flex flex-wrap gap-1 text-xs">
-                      <span className="text-acuity-text-ter">Views in {VIEW_BONUS_WINDOW_DAYS}d:</span>
+                      <span className="text-acuity-text-ter">Views on day {VIEW_BONUS_WINDOW_DAYS} (screenshot top-up):</span>
                       {VIEW_BONUS_TIERS.map((t) => (
                         <ActionButton
                           key={t.views}
