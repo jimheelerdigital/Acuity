@@ -42,6 +42,29 @@
 - **Screenshots:** there is no upload. Creators reply by email, and the admin view-bonus buttons do the top-up (they pay the difference to a higher tier).
 - **Free Pro:** it is still granted indefinitely in code (autoGrantCreatorPerk). Enforcement needs the open Pro decisions first.
 
+## [2026-11-02] — Retargeting and Planners registrations off
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** see git log
+
+### In plain English (for Keenan)
+- **Retargeting** (ads shown again to people who signed up but didn't start a trial) is off: it cost $120 for 1 trial last week.
+- **Planners registrations** is off too: Keenan turned it off by hand, $256 for 1–2 trials.
+- **Live Meta spend:** about $200/day.
+
+### Technical changes (for Jimmy)
+- **Meta:** ad set 120255371877640581 ("Ripple — Retargeting | signed up, no trial") PAUSED via POST /api/admin/adlab/app-campaign `pause-adset`; read back effective_status PAUSED.
+- **Meta (Keenan, Ads Manager):** Planners registrations ad set 120255387587400581 paused.
+- No code changes.
+
+### Manual steps needed
+None
+
+### Notes
+- Both cuts follow the 11-02 cost-per-customer read: about $150 of web ad spend per paying customer, against roughly $55–65 of first-year revenue per customer.
+- Remaining paid-trial spend is mainly Planners purchases ($100/day, now at $9.99/$89.99) and women evergreen.
+
 ## [2026-11-02] — Web price test ended: everyone back on $9.99 / $89.99, with $14.99 / $149 crossed out
 
 **Requested by:** Keenan
