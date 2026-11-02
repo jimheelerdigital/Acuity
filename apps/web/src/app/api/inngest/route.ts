@@ -52,6 +52,7 @@ import { blogRewriteTriageFn } from "@/inngest/functions/blog-rewrite-triage";
 import { blogVisualRefreshFn } from "@/inngest/functions/blog-visual-refresh";
 import { weeklySeoReportFn } from "@/inngest/functions/weekly-seo-report";
 import { weeklyMetricsEmailFn } from "@/inngest/functions/weekly-metrics-email";
+import { audienceReportEmailFn } from "@/inngest/functions/audience-report-email";
 import { waitlistReactivationFn } from "@/inngest/functions/waitlist-reactivation";
 import { cleanupTrySessionsFn } from "@/inngest/functions/cleanup-try-sessions";
 import { recoveryEmailOrchestratorFn } from "@/inngest/functions/recovery-email-orchestrator";
@@ -152,6 +153,7 @@ const handler = serve({
     blogVisualRefreshFn,
     weeklySeoReportFn,
     weeklyMetricsEmailFn,
+    audienceReportEmailFn,
     waitlistReactivationFn,
     drainPendingCalendarTasksFn,
     backfillExtractionsFn,

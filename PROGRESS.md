@@ -42,6 +42,37 @@
 - **Screenshots:** there is no upload. Creators reply by email, and the admin view-bonus buttons do the top-up (they pay the difference to a higher tier).
 - **Free Pro:** it is still granted indefinitely in code (autoGrantCreatorPerk). Enforcement needs the open Pro decisions first.
 
+## [2026-11-02] — Sunday "who's converting" report: ad audience by age and gender, plus who actually pays
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** see git log
+
+### In plain English (for Keenan)
+- **New Sunday email** at 9am Central, covering the last 28 days.
+- **From Meta:** who sees, clicks and buys from our Meta ads, broken down by gender, age, and the two together.
+- **From our own funnel:** the age range people pick there, matched to who actually started a paid trial.
+- **Problem spots are called out at the top,** for example an age group that spent money with no purchases, or app-install ads collecting accidental taps.
+- **First read (6 weeks since the 09-21 relaunch):**
+  - Most clicks on the App Installs campaigns are junk: a 35–46% "click rate", mostly from people 65+.
+  - 65+ took about 13% of web ad spend for 1 purchase.
+  - Men bought at a lower cost per purchase than women.
+  - Under-35s barely convert.
+
+### Technical changes (for Jimmy)
+- **New:**
+  - apps/web/src/lib/audience-report.ts: Graph insights at campaign level with breakdowns age,gender (paginated, non-Ripple campaigns excluded); app-install campaigns reported separately; funnel join on funnel_v9_age_answered → funnel_account_created/email_submitted → funnel_payment_completed or a Stripe-subscribed user
+  - apps/web/src/inngest/functions/audience-report-email.ts: cron `TZ=America/Chicago 0 9 * * 0`, plus event founders/audience-report.send
+  - GET /api/admin/audience-report?days=28[&send=1]: admin or Bearer CRON_SECRET
+- **Registered** in apps/web/src/app/api/inngest/route.ts.
+
+### Manual steps needed
+- [ ] After deploy: `curl -X PUT https://goripple.io/api/inngest` so Inngest picks up the new Sunday cron (Claude)
+
+### Notes
+- Meta's purchase counts run about 2x real Stripe trials, so the funnel table is the truer read on who pays. Meta's numbers are best for comparing segments against each other.
+- inline_link_clicks on app-install campaigns are taps to the App Store, so they're shown in their own table rather than mixed into web clicks.
+
 ## [2026-11-02] — App Store banner off all funnel pages; lighter logo on funnel screens
 
 **Requested by:** Keenan
