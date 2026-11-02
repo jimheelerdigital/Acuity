@@ -60,6 +60,26 @@ export function pricesForArm(arm: PriceArm): ArmPrices {
   };
 }
 
+/** Crossed-out reference price on the funnel paywall next to the live
+ *  $9.99 / $89.99 (2026-11-02, Keenan: "$14.99 slashed thru and $149"). */
+export const REFERENCE_TIER = { monthlyCents: 1499, annualCents: 14900 } as const;
+
+/** The crossed-out price for this arm: the normal price for the low arm,
+ *  the reference price for everyone else. */
+export function slashedPricesFor(arm: PriceArm): ArmPrices {
+  if (arm === "low") return pricesForArm("std");
+  const t = REFERENCE_TIER;
+  return {
+    arm,
+    monthlyCents: t.monthlyCents,
+    annualCents: t.annualCents,
+    monthly: formatDollars(t.monthlyCents),
+    annual: formatDollars(t.annualCents),
+    annualAsMonthly: formatDollars(Math.round(t.annualCents / 12)),
+    savingsPct: "0%",
+  };
+}
+
 /** Purchase value in dollars for Meta, per arm. */
 export function armPlanValueDollars(arm: PriceArm, interval: string | null | undefined): number {
   const p = pricesForArm(arm);

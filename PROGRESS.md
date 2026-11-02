@@ -8,6 +8,42 @@
 ---
 
 
+## [2026-11-02] — Web price test ended: everyone back on $9.99 / $89.99, with $14.99 / $149 crossed out
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** see git log
+
+### In plain English (for Keenan)
+- **Price test over:** every web visitor now pays $9.99/month or $89.99/year again, including people coming from the Planners ads, which had been pinned to the $6.99 / $39.99 early bird price.
+- **Crossed-out prices:** the paywall now shows $14.99 and $149 crossed out next to $9.99 and $89.99, with the early bird badge.
+- **Why:** after 5.6 days the cheaper price brought in a similar share of trials but about half the money per trial ($132 against $228 per 100 paywall viewers).
+- **Existing subscribers:** people who already started at $6.99 / $39.99 keep that price.
+
+### Technical changes (for Jimmy)
+- **DB:** FeatureFlag `web_price_test` enabled → false (live immediately; /api/funnel/price-arm returns `{"arm":"std","on":false}`).
+- **apps/web/src/app/api/funnel/price-arm/route.ts:**
+  - with the test off, a `?ptest=` pin is honored only for `src=preview`
+  - campaign pins (`ptsrc=planners`, `planners-reg`) fall through to std and the cookies are cleared, so checkout charges std
+  - the Meta ads still carry `ptest=low` in their links; no ad edits, so Meta learning isn't reset
+- **apps/web/src/lib/price-test-shared.ts:** `REFERENCE_TIER` ($14.99 / $149) and `slashedPricesFor(arm)`, which returns the normal price for the low arm and the reference price otherwise.
+- **apps/web/src/components/funnel-v9.tsx:** both paywalls (classic + 3-page journal) use `slashedPricesFor`. The early bird badge and strike-through now show for std (40% off yearly).
+- Typecheck clean on changed files; price-test.test.ts passes.
+
+### Manual steps needed
+- [ ] Review the price-arm change before or after merge: it decides which Stripe price checkout charges (Jimmy)
+- [ ] Final read of trials started under the test (do they convert to paid) ~11-10 (Keenan / Claude)
+
+### Notes
+- **11-02 read, clean 50/50:**
+  - std: 40 viewers → 3 trials (2 yearly)
+  - low: 21 → 2 (1 yearly)
+- **Planners (pinned low, outside the 50/50):**
+  - purchases: 16 viewers → 6 trials, all yearly, ~$44/trial (best in the account)
+  - registrations: 37 → 1
+- **Uneven split:** 40 vs 21 viewers. It isn't chance-like and hasn't been explained; check before trusting the next 50/50.
+- **Reference price:** $14.99 / $149 was never charged. It's a crossed-out reference price, per Keenan.
+
 ## [2026-11-01] — In-app onboarding prototype for Jimmy (new users + web members)
 
 **Requested by:** Keenan

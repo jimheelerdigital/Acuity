@@ -45,7 +45,7 @@ import {
 import { fireFbq, waitForFbq } from "@/components/meta-pixel-events";
 import { purchaseEventId } from "@/lib/meta-event-ids";
 import { trackOnboardingEvent, captureUtmParams, type UtmParams } from "@/lib/track-onboarding";
-import { armPlanValueDollars, clientArmLabel, clientPriceArm, pricesForArm, type ArmPrices, type PriceArm } from "@/lib/price-test-shared";
+import { armPlanValueDollars, clientArmLabel, clientPriceArm, pricesForArm, slashedPricesFor, type ArmPrices, type PriceArm } from "@/lib/price-test-shared";
 import { formatDollars } from "@/lib/pricing";
 
 /** Exit offer state: left checkout unpaid (session), offer shown (forever), offer claimed (session). */
@@ -2145,10 +2145,10 @@ function ClassicPaywall({ plan, setPlan, next, go, track, firstName, answers }: 
   }, []);
   const price = useArmPrices();
   const after = plan === "yearly" ? `${price.annual}/year` : `${price.monthly}/month`;
-  // Price test, low arm (2026-10-27, Keenan): framed as an early bird price
-  // against the normal one, which is true: low-arm members keep it.
-  const normal = pricesForArm("std");
-  const earlyBird = price.arm === "low" && normal.annualCents > price.annualCents;
+  // Crossed-out price: $14.99 / $149 next to the live price (2026-11-02,
+  // Keenan); the normal price for anyone still on the low arm.
+  const normal = slashedPricesFor(price.arm);
+  const earlyBird = normal.annualCents > price.annualCents;
   const earlyBirdOffPct = Math.round((1 - price.annualCents / normal.annualCents) * 100);
   // "Ends today" in her own time zone (Keenan 2026-10-27: urgency is industry
   // standard). Set after mount so the server render never disagrees.
@@ -3050,8 +3050,8 @@ function TrustPaywall({ plan, setPlan, next, track, firstName, answers }: ViewPr
   }, [page, track]);
   const price = useArmPrices();
   const after = plan === "yearly" ? `${price.annual}/year` : `${price.monthly}/month`;
-  const normal = pricesForArm("std");
-  const earlyBird = price.arm === "low" && normal.annualCents > price.annualCents;
+  const normal = slashedPricesFor(price.arm);
+  const earlyBird = normal.annualCents > price.annualCents;
   const earlyBirdOffPct = Math.round((1 - price.annualCents / normal.annualCents) * 100);
   useEffect(() => {
     if (!price.testOn) return;
