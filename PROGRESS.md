@@ -42,6 +42,32 @@
 - **Screenshots:** there is no upload. Creators reply by email, and the admin view-bonus buttons do the top-up (they pay the difference to a higher tier).
 - **Free Pro:** it is still granted indefinitely in code (autoGrantCreatorPerk). Enforcement needs the open Pro decisions first.
 
+## [2026-11-02] — App Store banner off all funnel pages; lighter logo on funnel screens
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** see git log
+
+### In plain English (for Keenan)
+- **App Store banner:** the "Ripple is better in the app" banner was still showing at the top of screen 1 on /start-journal (live in the 50/50 test) and on the five new pain funnels, giving people a way out before the first question. It's now hidden on every funnel page.
+- **Faster funnel pages:** the Ripple logo image on funnel pages went from 151KB to 14KB, so pages finish loading sooner on slow phones.
+- **Screen 1 mockups:** concepts for a new first screen are at https://claude.ai/artifact/QMwqdkLuA5EX8fmYPxEE19 (nothing built yet).
+
+### Technical changes (for Jimmy)
+- **apps/web/src/components/install-banner.tsx:** `isEligibleRoute` returns false for any path starting `/start`. The old exclude list only named /start, /start-bwk, /start-test and /start-test-bwk.
+- **apps/web/public/ripple-mark-coral-t-192.png:** new, 192px, 14KB. The original is 1254px and 151KB.
+- **apps/web/src/components/funnel-v9.tsx:** uses the 192px logo.
+
+### Manual steps needed
+None
+
+### Notes
+- **Load test:** live /start-relief and /start-test on a throttled 4G iPhone with an Instagram user agent.
+  - Screen 1 text is visible at about 1.0s (server-rendered).
+  - Buttons only respond after hydration, about 3.3–3.8s.
+  - Biggest downloads while hydrating: the logo (151KB, fixed), Meta's fbevents.js plus config (216KB), and our largest JS chunk (110KB).
+- **Not changed:** loading Meta's pixel later on funnel pages would free bandwidth for hydration, but it changes when Meta sees the page view. That needs Keenan's OK.
+
 ## [2026-11-02] — Pain funnels reviewed screen by screen, and a fifth funnel for scattered / ADHD brains
 
 **Requested by:** Keenan

@@ -1101,7 +1101,7 @@ function StatementScreen({ step, answers, setAnswers, next, track }: ViewProps &
       ) : isHook ? (
         <div className="up mb-5 flex flex-col items-center text-center">
           <div className="flex items-center gap-2">
-            <img src="/ripple-mark-coral-t.png" alt="" width={36} height={36} className="h-9 w-9" />
+            <img src="/ripple-mark-coral-t-192.png" alt="" width={36} height={36} className="h-9 w-9" />
             <span className="text-[24px] font-bold tracking-tight">ripple</span>
           </div>
           <p className="mt-2.5 max-w-[20rem] text-[14px] leading-snug text-acuity-text-sec text-balance">{C.hookLine}</p>
@@ -1272,7 +1272,7 @@ function ReassureScreen({ next }: ViewProps) {
         <div className="absolute left-1/2 bottom-2 -translate-x-1/2 w-[190px] rounded-3xl card px-4 py-3 flex items-center gap-2.5">
           {/* The Ripple mark in white on the brand square, like the app icon. */}
           <span className="h-9 w-9 rounded-xl grad flex items-center justify-center">
-            <img src="/ripple-mark-coral-t.png" alt="" width={22} height={22} className="h-[22px] w-[22px]" style={{ filter: "brightness(0) invert(1)" }} />
+            <img src="/ripple-mark-coral-t-192.png" alt="" width={22} height={22} className="h-[22px] w-[22px]" style={{ filter: "brightness(0) invert(1)" }} />
           </span>
           <div className="text-left">
             <p className="text-[13px] font-bold">Ripple</p>

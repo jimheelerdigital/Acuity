@@ -63,6 +63,9 @@ const EXCLUDED_PREFIXES = [
 ];
 
 function isEligibleRoute(pathname: string): boolean {
+  // Every web funnel lives at /start… (2026-11-02): /start-journal and the
+  // pain funnels weren't listed above, so the banner sat on their screen 1.
+  if (pathname.startsWith("/start")) return false;
   if (pathname === "/auth" || pathname.startsWith("/auth/")) {
     return pathname === "/auth/signup" || pathname.startsWith("/auth/signup/");
   }
