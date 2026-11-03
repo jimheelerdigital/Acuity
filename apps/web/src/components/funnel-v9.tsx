@@ -337,8 +337,8 @@ const CSS = `
 @keyframes v9p-pulse { 50% { transform: scale(1.15); } }
 .v9 .hp-fall { animation: v9p-fall 3.6s ease-in infinite; }
 @keyframes v9p-fall { 0% { opacity: 0; transform: translate(0,0) rotate(-6deg); } 12%,70% { opacity: 1; } 100% { opacity: 0; transform: translate(26px,150px) rotate(34deg); } }
-.v9 .hp-drain { animation: v9p-drain 4s linear infinite; }
-@keyframes v9p-drain { 0% { width: 92%; } 100% { width: 10%; } }
+.v9 .hp-drain { width: 12%; animation: v9p-drain 1.4s ease-in-out infinite; }
+@keyframes v9p-drain { 0%, 100% { width: 12%; opacity: 1; } 50% { width: 6%; opacity: .25; } }
 .v9 .hp-zz { animation: v9p-zz 2.4s ease-out infinite; }
 @keyframes v9p-zz { 0% { opacity: 0; transform: translateY(6px); } 30% { opacity: 1; } 100% { opacity: 0; transform: translate(6px,-12px); } }
 .v9 .hp-roll { animation: v9p-roll 4.8s steps(1) infinite; }
