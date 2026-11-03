@@ -42,6 +42,34 @@
 - **Screenshots:** there is no upload. Creators reply by email, and the admin view-bonus buttons do the top-up (they pay the difference to a higher tier).
 - **Free Pro:** it is still granted indefinitely in code (autoGrantCreatorPerk). Enforcement needs the open Pro decisions first.
 
+## [2026-11-03] — Portraits on four screens of each pain funnel (committed, NOT pushed)
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** see git log
+
+### In plain English (for Keenan)
+- **Portraits on four screens:** the illustrated portraits appear in each of the five pain funnels, women's and men's:
+  - screen 1
+  - the mid yes/no
+  - "It's not you"
+  - the result
+- **Not live:** the old funnels stay the default. No redirects, and the 5-way split is off.
+- **Review page:** https://claude.ai/artifact/1Bq771B6TfR3RcxRhrXhTj
+- **Earlier today:** these portraits went live by mistake together with redirects and the split (edf19182). That was reverted (b7999978).
+
+### Technical changes (for Jimmy)
+- apps/web/public/funnel/faces/*.webp
+- apps/web/src/lib/funnel-v9-config.ts: `PainKit.face`
+- apps/web/src/components/funnel-v9.tsx: `FacePic` and its motion
+- **Not included:** the old-funnel redirects and pain-split.ts retiredFunnelUrl from edf19182.
+
+### Manual steps needed
+- [ ] Keenan reviews, then says "push it" (Keenan)
+
+### Notes
+- The pain funnels only show the portraits to someone who opens them directly. Nothing routes traffic there until the split or ads are turned on.
+
 ## [2026-11-03] — App Store banner only on the homepage
 
 **Requested by:** Keenan
