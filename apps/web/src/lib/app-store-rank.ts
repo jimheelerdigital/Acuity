@@ -14,33 +14,25 @@ export const RIPPLE_APP_ID = 6762633410;
 const LIMIT = 200;
 const PREFIX = "aso/ranks";
 
-/** The searches we want to be found for (Keenan's key list, 11-03). */
-export const RANK_TERMS = [
-  "voice journal",
-  "ai voice journal",
-  "ai journal",
-  "audio journal",
-  "voice diary",
-  "journal app",
-  "journaling",
-  "diary",
-  "brain dump",
-  "mental load",
-  "mental load planner",
-  "adhd planner",
-  "to do list",
-  "to do list adhd",
-  "habit tracker",
-  "mood tracker",
-  "goal tracker",
-  "daily planner",
-  "life organizer",
-  "self care journal",
-  "journal for mental health",
-  "mom planner",
-  "ripple",
-  "ripple journal",
-];
+/**
+ * Every search we should show up for (11-03: Keenan wanted far more than the
+ * first 24). Generic phrases only, taken from Apple's own search suggestions
+ * for each thing Ripple does; other apps' names left out.
+ */
+export const RANK_GROUPS: Record<string, string[]> = {
+  "Voice journal": ["voice journal", "voice journal free", "voice journal app", "voice journaling", "ai voice journal", "audio journal", "audio journal app", "audio diary", "voice diary", "voice diary ai", "voice to text journal", "talk journaling app", "voice notes", "voice notes ai"],
+  "Journal & diary": ["journal", "journal app", "journal apps", "journaling", "journaling app", "free journaling app", "daily journal", "daily journal app", "journal diary", "diary", "diary app", "ai journal", "free ai journal", "ai diary", "journal for thoughts and feelings", "journaling for mental health", "journaling app for mental health", "mental health journal", "self care journal", "reflection journal", "gratitude journal"],
+  "Brain dump & mental load": ["brain dump", "brain dumping", "brain dump to do list", "mental load", "mental load app", "mental load for moms", "second brain", "second brain app"],
+  "To-do list & tasks": ["to do list", "to do list free", "to do list app", "to do list adhd", "to do list reminder", "task list", "daily task list", "task manager", "ai task manager", "adhd task manager", "family task manager", "checklist", "reminders", "reminders to do list", "reminder app"],
+  "Planner & organizer": ["planner", "daily planner", "daily planner and to do list", "weekly planner", "life planner", "ai life planner", "life organizer", "organizer planner", "family planner", "family organizer", "mom planner", "productivity planner", "routine planner"],
+  "ADHD": ["adhd", "adhd planner", "adhd planner free", "adhd planner ai", "adhd to do list", "adhd app", "adhd app for women"],
+  "Habits & goals": ["habit tracker", "habit tracker free", "habit tracker and planner", "habits tracker", "goal tracker", "goals tracker", "daily goal tracker", "routine tracker", "self care tracker", "self improvement", "self care"],
+  "Mood & patterns": ["mood tracker", "mood tracker journal", "mood tracker mental health", "mood tracker for self care", "mood journal", "mood diary", "emotion tracker", "stress tracker", "mental health tracker"],
+  "AI coach & assistant": ["ai life coach", "life coach", "ai coach", "ai personal assistant", "personal assistant for daily tasks", "weekly review"],
+  "Brand": ["ripple", "ripple app", "ripple journal", "ripple voice journal"],
+};
+export const RANK_TERMS = Object.values(RANK_GROUPS).flat();
+export const GROUP_OF: Record<string, string> = Object.fromEntries(Object.entries(RANK_GROUPS).flatMap(([g, ts]) => ts.map((t) => [t, g])));
 
 export type RankSnapshot = { date: string; ranks: Record<string, number | null> };
 
@@ -59,13 +51,18 @@ async function rankFor(term: string): Promise<number | null> {
   throw new Error(`iTunes search failed for "${term}"`);
 }
 
-export async function currentRanks(): Promise<RankSnapshot> {
+/** Ranks for a slice of terms (the Inngest job runs the list in chunks to stay under function time limits). */
+export async function ranksFor(terms: string[]): Promise<Record<string, number | null>> {
   const ranks: Record<string, number | null> = {};
-  for (const term of RANK_TERMS) {
+  for (const term of terms) {
     ranks[term] = await rankFor(term);
-    await new Promise((r) => setTimeout(r, 1500));
+    await new Promise((r) => setTimeout(r, 2500));
   }
-  return { date: new Date().toISOString().slice(0, 10), ranks };
+  return ranks;
+}
+
+export async function currentRanks(): Promise<RankSnapshot> {
+  return { date: new Date().toISOString().slice(0, 10), ranks: await ranksFor(RANK_TERMS) };
 }
 
 export async function saveSnapshot(s: RankSnapshot): Promise<void> {
@@ -103,22 +100,27 @@ function change(now: number | null, before: number | null | undefined): { text: 
 }
 
 export function rankReportHtml(now: RankSnapshot, prev: RankSnapshot | null, sheetUrl?: string): { subject: string; html: string } {
-  const rows = RANK_TERMS.map((t) => {
-    const c = change(now.ranks[t], prev ? prev.ranks[t] : undefined);
-    return `<tr><td style="padding:7px 10px;border-bottom:1px solid #F1E6DD">${t}</td><td style="padding:7px 10px;border-bottom:1px solid #F1E6DD;text-align:right;font-weight:600">${fmt(now.ranks[t])}</td><td style="padding:7px 10px;border-bottom:1px solid #F1E6DD;text-align:right;color:#6F6458">${prev ? fmt(prev.ranks[t] ?? null) : "-"}</td><td style="padding:7px 10px;border-bottom:1px solid #F1E6DD;text-align:right;color:${c.color};font-weight:600">${c.text}</td></tr>`;
-  }).join("");
-  const ranked = RANK_TERMS.filter((t) => now.ranks[t] !== null).length;
-  const top10 = RANK_TERMS.filter((t) => (now.ranks[t] ?? 999) <= 10).length;
-  const ups = prev ? RANK_TERMS.filter((t) => change(now.ranks[t], prev.ranks[t]).text.startsWith("up") || change(now.ranks[t], prev.ranks[t]).text.startsWith("new")).length : 0;
-  const downs = prev ? RANK_TERMS.filter((t) => ["down", "dropped"].some((w) => change(now.ranks[t], prev.ranks[t]).text.startsWith(w))).length : 0;
+  const td = "padding:6px 10px;border-bottom:1px solid #F1E6DD";
+  const ranked = RANK_TERMS.filter((t) => now.ranks[t] !== null);
+  const top10 = ranked.filter((t) => (now.ranks[t] as number) <= 10).length;
+  const moves = prev ? RANK_TERMS.map((t) => ({ t, c: change(now.ranks[t], prev.ranks[t]) })) : [];
+  const ups = moves.filter((m) => m.c.text.startsWith("up") || m.c.text.startsWith("new"));
+  const downs = moves.filter((m) => m.c.text.startsWith("down") || m.c.text.startsWith("dropped"));
   const summary = prev
-    ? `Ranking for ${ranked} of ${RANK_TERMS.length} searches (${top10} in the top 10). Since ${prev.date}: ${ups} up, ${downs} down.`
-    : `Ranking for ${ranked} of ${RANK_TERMS.length} searches (${top10} in the top 10). This is the baseline; next week shows the change.`;
+    ? `Ripple shows up for ${ranked.length} of ${RANK_TERMS.length} searches (${top10} in the top 10). Since ${prev.date}: ${ups.length} up, ${downs.length} down.`
+    : `Ripple shows up for ${ranked.length} of ${RANK_TERMS.length} searches (${top10} in the top 10). This is the baseline; next week shows the change.`;
+  const moveTable = (title: string, list: { t: string; c: { text: string; color: string } }[]) =>
+    list.length
+      ? `<h3 style="margin:18px 0 6px;font-size:15px">${title}</h3><table style="border-collapse:collapse;width:100%;font-size:14px">${list.map((m) => `<tr><td style="${td}">${m.t}</td><td style="${td};text-align:right">${fmt(now.ranks[m.t])}</td><td style="${td};text-align:right;color:${m.c.color};font-weight:600">${m.c.text}</td></tr>`).join("")}</table>`
+      : "";
+  const where = `<h3 style="margin:18px 0 6px;font-size:15px">Where Ripple ranks now</h3><table style="border-collapse:collapse;width:100%;font-size:14px">${ranked
+    .sort((a, b) => (now.ranks[a] as number) - (now.ranks[b] as number))
+    .map((t) => `<tr><td style="${td}">${t}</td><td style="${td};text-align:right;font-weight:600">${fmt(now.ranks[t])}</td></tr>`).join("")}</table>`;
   const html = `<div style="font-family:-apple-system,Segoe UI,Helvetica,Arial,sans-serif;max-width:640px;color:#2A231D;font-size:14px;line-height:1.5">
-<h2 style="margin:0 0 6px;font-size:20px">App Store search rank, week of ${now.date}</h2>
+<h2 style="margin:0 0 10px;font-size:20px">App Store search rank, week of ${now.date}</h2>
 ${sheetUrl ? `<p style="margin:0 0 14px"><a href="${sheetUrl}" style="display:inline-block;padding:10px 16px;border-radius:999px;background:#F2541E;color:#fff;font-weight:700;text-decoration:none">Open this week's rankings</a></p>` : ""}
-<p style="margin:0 0 14px">${summary}</p>
-<table style="border-collapse:collapse;width:100%;font-size:14px"><tr style="background:#FFF2EA"><th style="padding:7px 10px;text-align:left">Search</th><th style="padding:7px 10px;text-align:right">This week</th><th style="padding:7px 10px;text-align:right">Last week</th><th style="padding:7px 10px;text-align:right">Change</th></tr>${rows}</table>
-<p style="margin:14px 0 0;color:#6F6458;font-size:12px">Rank is Ripple's position in Apple's US App Store search results (top ${LIMIT}), read from Apple's public search API. A single iPhone can show a slightly different order (personalization, ads). Lower is better.</p></div>`;
-  return { subject: `New App Store rankings (${now.date}): ${ranked}/${RANK_TERMS.length} searches${prev ? `, ${ups} up, ${downs} down` : ""}`, html };
+<p style="margin:0 0 6px">${summary}</p>
+${moveTable("Moved up", ups)}${moveTable("Moved down", downs)}${where}
+<p style="margin:14px 0 0;color:#6F6458;font-size:12px">Rank is Ripple's position in Apple's US App Store search results (top ${LIMIT}), read from Apple's public search API. A single iPhone can show a slightly different order (personalization, ads). Lower is better. Every search is in the sheet.</p></div>`;
+  return { subject: `New App Store rankings (${now.date}): ${ranked.length}/${RANK_TERMS.length} searches${prev ? `, ${ups.length} up, ${downs.length} down` : ""}`, html };
 }

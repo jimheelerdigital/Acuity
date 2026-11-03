@@ -16,9 +16,20 @@ export const appStoreRankEmailFn = inngest.createFunction(
     triggers: [{ cron: "TZ=America/Chicago 0 21 * * 0" }, { event: "founders/app-store-rank.send" }],
   },
   async ({ step }) => {
-    const now = await step.run("rank", async () => {
-      const { currentRanks, saveSnapshot } = await import("@/lib/app-store-rank");
-      const s = await currentRanks();
+    // ~108 searches at ~3s each: run them in chunks of 15 so no step hits the function time limit.
+    const { RANK_TERMS } = await import("@/lib/app-store-rank");
+    const date = new Date().toISOString().slice(0, 10);
+    const ranks: Record<string, number | null> = {};
+    for (let i = 0; i < RANK_TERMS.length; i += 15) {
+      const part = await step.run(`rank-${i / 15 + 1}`, async () => {
+        const { ranksFor } = await import("@/lib/app-store-rank");
+        return ranksFor(RANK_TERMS.slice(i, i + 15));
+      });
+      Object.assign(ranks, part);
+    }
+    const now = await step.run("save", async () => {
+      const { saveSnapshot } = await import("@/lib/app-store-rank");
+      const s = { date, ranks };
       await saveSnapshot(s);
       return s;
     });

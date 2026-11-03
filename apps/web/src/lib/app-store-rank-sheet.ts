@@ -6,7 +6,7 @@
  * (editor) with the GA4 service account, which writes it via the Sheets API.
  */
 import type { RankSnapshot } from "./app-store-rank";
-import { RANK_TERMS } from "./app-store-rank";
+import { GROUP_OF, RANK_TERMS } from "./app-store-rank";
 
 export const RANK_SHEET_ID = "1jTOCC-OEytvOu5BnDyt7IsGkV-PCdEqkCayCevVloG8";
 export const RANK_SHEET_URL = `https://docs.google.com/spreadsheets/d/${RANK_SHEET_ID}/edit`;
@@ -56,7 +56,7 @@ export async function writeRankSheet(snapshots: RankSnapshot[]): Promise<{ tab: 
   const overview = existing.find((s) => s.properties?.title === "Overview");
   if (!overview) {
     const firstTab = existing[0]?.properties;
-    reqs.push({ updateSheetProperties: { properties: { sheetId: firstTab?.sheetId, title: "Overview", gridProperties: { frozenRowCount: 1, frozenColumnCount: 1 } }, fields: "title,gridProperties.frozenRowCount,gridProperties.frozenColumnCount" } });
+    reqs.push({ updateSheetProperties: { properties: { sheetId: firstTab?.sheetId, title: "Overview", gridProperties: { frozenRowCount: 1, frozenColumnCount: 2 } }, fields: "title,gridProperties.frozenRowCount,gridProperties.frozenColumnCount" } });
   }
   if (!existing.some((s) => s.properties?.title === tab)) {
     reqs.push({ addSheet: { properties: { title: tab, index: 1, gridProperties: { frozenRowCount: 1 } } } });
@@ -70,8 +70,8 @@ export async function writeRankSheet(snapshots: RankSnapshot[]): Promise<{ tab: 
 
   // This week's tab.
   const weekRows = [
-    ["Search", "Rank this week", "Last week", "Change vs last week", "Week 1 rank", "Change since week 1", "Best ever"],
-    ...RANK_TERMS.map((t) => [t, shown(now.ranks[t]), prev ? shown(prev.ranks[t]) : "", prev ? shift(now.ranks[t], prev.ranks[t]) : "first week", shown(first.ranks[t]), n > 1 ? shift(now.ranks[t], first.ranks[t]) : "", best(t)]),
+    ["Group", "Search", "Rank this week", "Last week", "Change vs last week", "Week 1 rank", "Change since week 1", "Best ever"],
+    ...RANK_TERMS.map((t) => [GROUP_OF[t], t, shown(now.ranks[t]), prev ? shown(prev.ranks[t]) : "", prev ? shift(now.ranks[t], prev.ranks[t]) : "first week", shown(first.ranks[t]), n > 1 ? shift(now.ranks[t], first.ranks[t]) : "", best(t)]),
     [],
     [`Rank = Ripple's position in Apple's US App Store search results (top 200), read ${now.date}. Lower is better. "200+" = not in the top 200.`],
   ];
@@ -79,10 +79,10 @@ export async function writeRankSheet(snapshots: RankSnapshot[]): Promise<{ tab: 
 
   // Overview: every week side by side.
   const overviewRows = [
-    ["Search", ...snapshots.map((s, i) => `Week ${i + 1} (${s.date})`), "Change vs last week", "Change since week 1", "Best ever"],
-    ...RANK_TERMS.map((t) => [t, ...snapshots.map((s) => shown(s.ranks[t])), prev ? shift(now.ranks[t], prev.ranks[t]) : "first week", n > 1 ? shift(now.ranks[t], first.ranks[t]) : "", best(t)]),
+    ["Group", "Search", ...snapshots.map((s, i) => `Week ${i + 1} (${s.date})`), "Change vs last week", "Change since week 1", "Best ever"],
+    ...RANK_TERMS.map((t) => [GROUP_OF[t], t, ...snapshots.map((s) => shown(s.ranks[t])), prev ? shift(now.ranks[t], prev.ranks[t]) : "first week", n > 1 ? shift(now.ranks[t], first.ranks[t]) : "", best(t)]),
   ];
-  await sheets.spreadsheets.values.clear({ spreadsheetId: RANK_SHEET_ID, range: "'Overview'!A1:ZZ200" });
+  await sheets.spreadsheets.values.clear({ spreadsheetId: RANK_SHEET_ID, range: "'Overview'!A1:ZZ400" });
   await sheets.spreadsheets.values.update({ spreadsheetId: RANK_SHEET_ID, range: "'Overview'!A1", valueInputOption: "RAW", requestBody: { values: overviewRows } });
 
   // Bold headers and readable widths on both tabs.
@@ -93,8 +93,9 @@ export async function writeRankSheet(snapshots: RankSnapshot[]): Promise<{ tab: 
     requestBody: {
       requests: ids.flatMap((sheetId) => [
         { repeatCell: { range: { sheetId, startRowIndex: 0, endRowIndex: 1 }, cell: { userEnteredFormat: { textFormat: { bold: true }, backgroundColor: { red: 1, green: 0.95, blue: 0.92 } } }, fields: "userEnteredFormat(textFormat,backgroundColor)" } },
-        { updateDimensionProperties: { range: { sheetId, dimension: "COLUMNS", startIndex: 0, endIndex: 1 }, properties: { pixelSize: 220 }, fields: "pixelSize" } },
-        { updateDimensionProperties: { range: { sheetId, dimension: "COLUMNS", startIndex: 1, endIndex: 30 }, properties: { pixelSize: 150 }, fields: "pixelSize" } },
+        { updateDimensionProperties: { range: { sheetId, dimension: "COLUMNS", startIndex: 0, endIndex: 1 }, properties: { pixelSize: 180 }, fields: "pixelSize" } },
+        { updateDimensionProperties: { range: { sheetId, dimension: "COLUMNS", startIndex: 1, endIndex: 2 }, properties: { pixelSize: 260 }, fields: "pixelSize" } },
+        { updateDimensionProperties: { range: { sheetId, dimension: "COLUMNS", startIndex: 2, endIndex: 60 }, properties: { pixelSize: 150 }, fields: "pixelSize" } },
       ]),
     },
   });
