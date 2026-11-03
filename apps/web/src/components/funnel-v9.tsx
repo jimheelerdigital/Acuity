@@ -318,17 +318,6 @@ const CSS = `
 .v9 .snap { scroll-snap-type: x mandatory; }
 .v9 .snap > * { scroll-snap-align: center; }
 .v9 .noscroll::-webkit-scrollbar { display: none; }
-/* Illustrated portraits (2026-11-03): each moves with its feeling. */
-.v9 .face-relief { animation: v9f-breathe 4.8s ease-in-out infinite; }
-@keyframes v9f-breathe { 0%,100% { transform: scale(1.04); } 50% { transform: scale(1.09) translateY(-4px); } }
-.v9 .face-catch { animation: v9f-jolt 3.6s ease-out infinite; }
-@keyframes v9f-jolt { 0%,62%,100% { transform: scale(1.05); } 66% { transform: scale(1.1) translateY(-6px); } 72% { transform: scale(1.08) translateX(-3px); } 78% { transform: scale(1.08) translateX(3px); } 84% { transform: scale(1.07); } }
-.v9 .face-clarity { animation: v9f-heavy 7s ease-in-out infinite; }
-@keyframes v9f-heavy { 0%,100% { transform: scale(1.05) rotate(0); } 50% { transform: scale(1.08) rotate(-1.4deg) translateY(5px); } }
-.v9 .face-progress { animation: v9f-drift 9s ease-in-out infinite; }
-@keyframes v9f-drift { 0%,100% { transform: scale(1.05) translateX(0); } 50% { transform: scale(1.08) translateX(-7px); } }
-.v9 .face-focus { animation: v9f-jitter 2.6s steps(1) infinite; }
-@keyframes v9f-jitter { 0% { transform: scale(1.06); } 25% { transform: scale(1.07) translate(-3px,1px) rotate(-.6deg); } 50% { transform: scale(1.06) translate(3px,-1px) rotate(.5deg); } 75% { transform: scale(1.07) translate(-1px,-2px); } }
 @media (prefers-reduced-motion: reduce) { .v9 * { animation: none !important; transition: none !important; } }
 /* Reassure cloud without motion: the chips sit in a group above the Ripple card instead of piling up. */
 @media (prefers-reduced-motion: reduce) { .v9 .rs-cloud { display: flex; flex-wrap: wrap; justify-content: center; align-content: flex-start; gap: 6px; height: auto; padding-bottom: 76px; } .v9 .rs-float { position: static !important; margin: 0 !important; transform: none !important; width: auto !important; } }
@@ -1135,7 +1124,7 @@ function StatementScreen({ step, answers, setAnswers, next, track }: ViewProps &
         </figure>
       ) : (
         <figure className={`card-in relative flex flex-col items-center overflow-hidden rounded-[28px] card px-6 pb-[clamp(22px,6vw,30px)] pt-6 text-center ${fly === "yes" ? "fly-yes" : fly === "no" ? "fly-no" : ""}`}>
-          {C.brand === "journal" && isHook ? <PlannerStack /> : C.painKit && isHook ? <FacePic size="hero" /> : C.painKit && !step.title ? <FacePic size="mid" /> : C.painKit ? <JournalStatementPic id="st-zero" stamp={C.painKit.closeStamp} /> : C.brand === "journal" && (step.id === "st-upkeep" || step.id === "st-zero") ? <JournalStatementPic id={step.id} /> : <MoodAvatar mood={step.mood} size={60} />}
+          {C.brand === "journal" && isHook ? <PlannerStack /> : C.painKit && isHook ? <CarryStack cards={C.painKit.hookCards} /> : C.painKit ? <JournalStatementPic id={step.title ? "st-zero" : "st-upkeep"} stamp={C.painKit.closeStamp} /> : C.brand === "journal" && (step.id === "st-upkeep" || step.id === "st-zero") ? <JournalStatementPic id={step.id} /> : <MoodAvatar mood={step.mood} size={60} />}
           <blockquote className="relative mt-4 text-[clamp(19px,5.6vw,22px)] font-medium italic leading-[1.35] tracking-tight text-balance">
             &ldquo;{step.statement}&rdquo;
           </blockquote>
@@ -1265,7 +1254,6 @@ function ReassureScreen({ next }: ViewProps) {
   const C = useV9();
   return (
     <div className="enter">
-      {C.painKit && <div className="mb-3"><FacePic size="avatar" /></div>}
       <Heading title={C.reassure.title} />
       <div className="rs-cloud relative h-[210px] mb-6 overflow-hidden">
         {C.reassure.things.map((t, i) => (
@@ -2399,32 +2387,6 @@ function PlannerStack() {
   );
 }
 
-/**
- * Illustrated portrait for the funnel's pain (2026-11-03, Keenan: "use those
- * illustrated portraits across the entire funnel at key spots ... make people
- * associate with the emotion"). Hers on women's funnels, his on ?for=men.
- * Used on screen 1 (hero), the mid-funnel yes/no, reassure and the result.
- */
-function FacePic({ size }: { size: "hero" | "mid" | "avatar" }) {
-  const C = useV9();
-  const face = C.painKit?.face;
-  if (!face) return null;
-  const src = `/funnel/faces/${C.brand.endsWith("_m") ? "m" : "f"}-${face}.webp`;
-  if (size === "hero") {
-    return (
-      <span className="relative mb-1 block w-full overflow-hidden rounded-[22px]" style={{ height: "clamp(168px, 28vh, 230px)" }} aria-hidden="true">
-        <img src={src} alt="" width={560} height={700} loading="eager" decoding="async" className={`face-${face} h-full w-full object-cover`} style={{ objectPosition: "50% 22%" }} />
-      </span>
-    );
-  }
-  const px = size === "mid" ? 112 : 76;
-  return (
-    <span className="relative mx-auto block overflow-hidden rounded-full" style={{ width: px, height: px, border: "3px solid #fff", boxShadow: "0 10px 24px -10px rgba(140,60,20,.45)" }} aria-hidden="true">
-      <img src={src} alt="" width={px} height={px} loading="lazy" decoding="async" className={`face-${face} h-full w-full object-cover`} style={{ objectPosition: "50% 18%" }} />
-    </span>
-  );
-}
-
 /** Pain-first hook visual (2026-11-02): three cards of what she carries, each piling up. */
 function CarryStack({ cards }: { cards: string[] }) {
   const pos = [
@@ -2466,9 +2428,8 @@ function PainResult({ answers, firstName, next }: ViewProps) {
       <p className="text-center text-[13px] font-semibold text-acuity-primary mb-3">{firstName ? `${firstName}, we get it` : "We get it"}</p>
       <div className="relative overflow-hidden rounded-[28px] grad p-6 text-white shadow-[0_14px_36px_-12px_var(--acuity-primary)]">
         <div className="absolute -right-10 -top-10 h-40 w-40 rounded-full bg-white/10" aria-hidden="true" />
-        <div className="absolute right-4 top-4"><FacePic size="avatar" /></div>
         <p className="text-[12px] font-semibold uppercase tracking-[0.14em] text-white/80">Your pattern</p>
-        <h1 className="pop mt-1 pr-20 text-[32px] font-bold leading-tight" style={{ animationDelay: "200ms" }}>{state.name}</h1>
+        <h1 className="pop mt-1 text-[32px] font-bold leading-tight" style={{ animationDelay: "200ms" }}>{state.name}</h1>
         <p className="mt-1 text-[16px] font-semibold leading-snug text-white/95">{state.line}</p>
         {pains.length > 0 && (
           <div className="mt-4 flex flex-wrap gap-1.5">
