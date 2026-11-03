@@ -42,6 +42,44 @@
 - **Screenshots:** there is no upload. Creators reply by email, and the admin view-bonus buttons do the top-up (they pay the difference to a higher tier).
 - **Free Pro:** it is still granted indefinitely in code (autoGrantCreatorPerk). Enforcement needs the open Pro decisions first.
 
+## [2026-11-03] — Face funnels are now the default: portraits throughout, old funnels retired, 5-way split on
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** see git log
+
+### In plain English (for Keenan)
+- **Portraits throughout:** the illustrated portraits now appear across all five pain funnels, women's and men's, at four points:
+  - screen 1, large and moving with the feeling
+  - the mid-funnel yes/no
+  - the "It's not you" screen
+  - her (or his) result card
+- **Old funnels retired:** a fresh visit to /start, /start-test, /start-journal, or the men's /start-bwk and /start-test-bwk, now goes to the face funnels. The men's addresses open the men's versions.
+- **Mid-checkout links still work:** links into the middle of a funnel (back from Stripe, the Safari payment step, win-back emails) are left alone, so nobody mid-checkout gets bounced.
+- **5-way split on:** /start-pain sends each new visitor to one of the five face funnels, 20% each. Meta ads are off, so traffic is light until the new campaigns launch.
+
+### Technical changes (for Jimmy)
+- **Portrait images:** apps/web/public/funnel/faces/{f,m}-{relief,catch,clarity,progress,focus}.webp, 560px, 19–32KB each.
+- **apps/web/src/lib/funnel-v9-config.ts:** `PainKit.face` set on each pain config; the men's configs inherit it.
+- **apps/web/src/components/funnel-v9.tsx:**
+  - new `FacePic` (hero / mid / avatar), hers or his by `brand.endsWith("_m")`
+  - per-feeling motion keyframes (`face-relief|catch|clarity|progress|focus`), off under reduced motion
+  - placement: statement hook (hero, replaces CarryStack), untitled mid statement (mid), ReassureScreen (avatar), PainResult (avatar)
+- **apps/web/src/lib/pain-split.ts:** `retiredFunnelUrl(searchParams, men)` keeps every param except jsplit/fsplit.
+- **Redirects:** apps/web/src/app/{start,start-bwk,start-journal,start-test,start-test-bwk}/page.tsx redirect when there's no `step` param.
+- **DB:** FeatureFlag `funnel_pain_split` created with enabled true and rollout 100. `funnel_journal_split` is still true but no longer matters, because /start-journal redirects before it runs.
+- **Verified:**
+  - redirects tested locally
+  - all 10 funnels captured at iPhone size, no page errors
+  - live /start-pain spread 6 test visits across 5 funnels
+
+### Manual steps needed
+- [ ] New Meta ads point at /start-pain (women) or /start-pain?for=men (men), or straight at a single pain funnel (Keenan)
+
+### Notes
+- CarryStack and PainKit.hookCards are now unused. They're left in place in case the hook visual is A/B tested later.
+- Planners links with ptest/ptsrc params still pass through to the new funnel; the price pin is ignored while the price test is off.
+
 ## [2026-11-03] — App Store banner only on the homepage
 
 **Requested by:** Keenan

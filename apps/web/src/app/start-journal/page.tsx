@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 
+import { retiredFunnelUrl } from "@/lib/pain-split";
+
 import { FunnelV9 } from "@/components/funnel-v9";
 import { findAdMatch } from "@/lib/funnel-ad-match";
 import { isJournalSplitOn, journalArmScript, journalControlUrl, JSPLIT_COOKIE, pickJournalArm } from "@/lib/journal-split";
@@ -25,6 +27,8 @@ export default async function StartJournalPage({
   searchParams: { [key: string]: string | string[] | undefined };
 }) {
   const step = typeof searchParams.step === "string" ? searchParams.step : null;
+  // Retired for the face funnels (2026-11-03): fresh landings go to /start-pain.
+  if (!step) redirect(retiredFunnelUrl(searchParams));
   let inSplit = false;
   if (!step && (await isJournalSplitOn())) {
     const arm = pickJournalArm(cookies().get(JSPLIT_COOKIE)?.value);

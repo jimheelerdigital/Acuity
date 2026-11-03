@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 
 import { FunnelV9 } from "@/components/funnel-v9";
 import { findAdMatch } from "@/lib/funnel-ad-match";
+import { redirect } from "next/navigation";
+import { retiredFunnelUrl } from "@/lib/pain-split";
 
 export const metadata: Metadata = {
   title: "Start Free Trial — Ripple",
@@ -21,6 +23,8 @@ export default async function StartTestBwkPage({
   searchParams: { [key: string]: string | string[] | undefined };
 }) {
   // Ad-matched screen 1 (2026-09-30): the tapped ad's hook + say/catch.
+  // Retired for the face funnels (2026-11-03): fresh landings go to /start-pain.
+  if (typeof searchParams.step !== "string") redirect(retiredFunnelUrl(searchParams, true));
   const adMatch = await findAdMatch(searchParams.utm_content);
   return <FunnelV9 brand="bwk" adMatch={adMatch} />;
 }

@@ -42,6 +42,26 @@ export async function isPainSplitOn(): Promise<boolean> {
   return on;
 }
 
+/**
+ * Old funnels retired (2026-11-03, Keenan: "no more old funnel, the new face
+ * funnel will be the go to"). A fresh landing on /start, /start-test,
+ * /start-journal (or the men's /start-bwk, /start-test-bwk) goes to the
+ * pain split, keeping every query param; men's pages add ?for=men. Links to a
+ * specific step (Stripe returns, the Safari handoff, win-back emails) are left
+ * alone so nobody mid-checkout is bounced.
+ */
+export function retiredFunnelUrl(searchParams: Record<string, string | string[] | undefined>, men = false): string {
+  const qs = new URLSearchParams();
+  for (const [k, v] of Object.entries(searchParams)) {
+    if (k === "jsplit" || k === "fsplit") continue;
+    if (Array.isArray(v)) v.forEach((x) => qs.append(k, x));
+    else if (typeof v === "string") qs.set(k, v);
+  }
+  if (men) qs.set("for", "men");
+  const q = qs.toString();
+  return `/start-pain${q ? `?${q}` : ""}`;
+}
+
 export function pickPainArm(cookieValue: string | undefined): PainArm {
   const saved = parsePainArm(cookieValue);
   if (saved) return saved;

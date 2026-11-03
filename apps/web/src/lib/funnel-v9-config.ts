@@ -336,6 +336,8 @@ export interface V9Config {
 export interface PainKit {
   /** Short name for admin and the split ("Mental load", "Things slip"...). */
   label: string;
+  /** Illustrated portrait for this pain (public/funnel/faces/{f|m}-<face>.webp, 2026-11-03). */
+  face: "relief" | "catch" | "clarity" | "progress" | "focus";
   /** Three small cards fanned above the hook statement. */
   hookCards: string[];
   /** Single-choice step drawn as growing stacks (like /start-journal's "tried"). */
@@ -1015,6 +1017,7 @@ export const PAIN_V9: V9Config = {
   resultOutro: "None of this means you’re failing. It means one head is holding too much. Ripple takes the keeping-track part.",
   painKit: {
     label: "Mental load",
+    face: "relief",
     hookCards: ["Work", "Kids", "Home"],
     stackStep: "tabs",
     stamps: {
@@ -1188,6 +1191,7 @@ export const SLIP_V9: V9Config = {
   preview: { eyebrow: "How Ripple works", title: "Say it once. It’s on your list.", caption: "This is what you see after every debrief: every task caught, with its date. Nothing left to remember." },
   painKit: {
     label: "Things slip",
+    face: "catch",
     hookCards: ["Forms", "Dates", "Replies"],
     stackStep: "pile",
     stamps: {
@@ -1319,6 +1323,7 @@ export const LOOP_V9: V9Config = {
   preview: { eyebrow: "How Ripple works", title: "You talk. Ripple shows you the pattern.", caption: "This is what you see after every debrief: your tasks caught, and over the weeks, what keeps coming up." },
   painKit: {
     label: "Hidden pattern",
+    face: "clarity",
     hookCards: ["Mon", "Wed", "Fri"],
     stackStep: "repeat",
     stamps: {
@@ -1449,6 +1454,7 @@ export const PROGRESS_V9: V9Config = {
   preview: { eyebrow: "How Ripple works", title: "You talk. Ripple keeps the record.", caption: "This is what you see after every debrief. Week by week, it adds up to a picture of your progress." },
   painKit: {
     label: "No progress",
+    face: "progress",
     hookCards: ["Jan", "Jun", "Dec"],
     stackStep: "goal",
     stamps: {
@@ -1584,6 +1590,7 @@ export const ADHD_V9: V9Config = {
   preview: { eyebrow: "How Ripple works", title: "Say it messy. Ripple sorts it.", caption: "Talk in any order. Every task lands on your list, already sorted, with nothing to set up." },
   painKit: {
     label: "Scattered / ADHD",
+    face: "focus",
     hookCards: ["Tab 1", "Tab 2", "Tab 47"],
     stackStep: "apps",
     stamps: {
