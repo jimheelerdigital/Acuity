@@ -102,7 +102,7 @@ function change(now: number | null, before: number | null | undefined): { text: 
   return d > 0 ? { text: `up ${d}`, color: "#15803D" } : { text: `down ${-d}`, color: "#B91C1C" };
 }
 
-export function rankReportHtml(now: RankSnapshot, prev: RankSnapshot | null): { subject: string; html: string } {
+export function rankReportHtml(now: RankSnapshot, prev: RankSnapshot | null, sheetUrl?: string): { subject: string; html: string } {
   const rows = RANK_TERMS.map((t) => {
     const c = change(now.ranks[t], prev ? prev.ranks[t] : undefined);
     return `<tr><td style="padding:7px 10px;border-bottom:1px solid #F1E6DD">${t}</td><td style="padding:7px 10px;border-bottom:1px solid #F1E6DD;text-align:right;font-weight:600">${fmt(now.ranks[t])}</td><td style="padding:7px 10px;border-bottom:1px solid #F1E6DD;text-align:right;color:#6F6458">${prev ? fmt(prev.ranks[t] ?? null) : "-"}</td><td style="padding:7px 10px;border-bottom:1px solid #F1E6DD;text-align:right;color:${c.color};font-weight:600">${c.text}</td></tr>`;
@@ -116,8 +116,9 @@ export function rankReportHtml(now: RankSnapshot, prev: RankSnapshot | null): { 
     : `Ranking for ${ranked} of ${RANK_TERMS.length} searches (${top10} in the top 10). This is the baseline; next week shows the change.`;
   const html = `<div style="font-family:-apple-system,Segoe UI,Helvetica,Arial,sans-serif;max-width:640px;color:#2A231D;font-size:14px;line-height:1.5">
 <h2 style="margin:0 0 6px;font-size:20px">App Store search rank, week of ${now.date}</h2>
+${sheetUrl ? `<p style="margin:0 0 14px"><a href="${sheetUrl}" style="display:inline-block;padding:10px 16px;border-radius:999px;background:#F2541E;color:#fff;font-weight:700;text-decoration:none">Open this week's rankings</a></p>` : ""}
 <p style="margin:0 0 14px">${summary}</p>
 <table style="border-collapse:collapse;width:100%;font-size:14px"><tr style="background:#FFF2EA"><th style="padding:7px 10px;text-align:left">Search</th><th style="padding:7px 10px;text-align:right">This week</th><th style="padding:7px 10px;text-align:right">Last week</th><th style="padding:7px 10px;text-align:right">Change</th></tr>${rows}</table>
 <p style="margin:14px 0 0;color:#6F6458;font-size:12px">Rank is Ripple's position in Apple's US App Store search results (top ${LIMIT}), read from Apple's public search API. A single iPhone can show a slightly different order (personalization, ads). Lower is better.</p></div>`;
-  return { subject: `App Store rank: ${ranked}/${RANK_TERMS.length} searches${prev ? `, ${ups} up, ${downs} down` : " (baseline)"}`, html };
+  return { subject: `New App Store rankings (${now.date}): ${ranked}/${RANK_TERMS.length} searches${prev ? `, ${ups} up, ${downs} down` : ""}`, html };
 }

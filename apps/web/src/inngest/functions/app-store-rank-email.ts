@@ -1,17 +1,19 @@
 import { inngest } from "@/inngest/client";
 
 /**
- * Weekly App Store search-rank email (2026-11-03, per Keenan). Sunday 9:30am
- * Central, after the audience report: Ripple's rank for each key search,
- * last week's rank and the change. Built in lib/app-store-rank.ts. Manual
- * run: event "founders/app-store-rank.send".
+ * Weekly App Store search ranks (2026-11-03, per Keenan). Sunday 9pm Central
+ * ("it checks every sunday night"): Ripple's rank for each key search goes
+ * into a new "Week N" tab of the "App Store SEO Rankings" Google Sheet (plus
+ * the Overview tab with every week side by side), and an email with the
+ * change since last week. Built in lib/app-store-rank.ts and
+ * lib/app-store-rank-sheet.ts. Manual run: event "founders/app-store-rank.send".
  */
 export const appStoreRankEmailFn = inngest.createFunction(
   {
     id: "app-store-rank-email",
     name: "Founders — Weekly App Store Rank",
     retries: 1,
-    triggers: [{ cron: "TZ=America/Chicago 30 9 * * 0" }, { event: "founders/app-store-rank.send" }],
+    triggers: [{ cron: "TZ=America/Chicago 0 21 * * 0" }, { event: "founders/app-store-rank.send" }],
   },
   async ({ step }) => {
     const now = await step.run("rank", async () => {
@@ -20,10 +22,15 @@ export const appStoreRankEmailFn = inngest.createFunction(
       await saveSnapshot(s);
       return s;
     });
+    const sheet = await step.run("sheet", async () => {
+      const { allSnapshots, writeRankSheet, RANK_SHEET_URL } = await import("@/lib/app-store-rank-sheet");
+      const { tab } = await writeRankSheet(await allSnapshots());
+      return { tab, url: RANK_SHEET_URL };
+    });
     return step.run("send", async () => {
       const { previousSnapshot, rankReportHtml } = await import("@/lib/app-store-rank");
       const { getResendClient } = await import("@/lib/resend");
-      const { subject, html } = rankReportHtml(now, await previousSnapshot(now.date));
+      const { subject, html } = rankReportHtml(now, await previousSnapshot(now.date), sheet.url);
       const { data, error } = await getResendClient().emails.send({
         from: "Ripple <hello@goripple.io>",
         to: ["keenan@heelerdigital.com"],
