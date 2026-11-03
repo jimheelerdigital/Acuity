@@ -298,7 +298,7 @@ export function v9StateName(a: {
 // therapy talk) on the dusk theme. Same positioning rules: "debrief", no
 // fixed time of day, no duration claims, mirror not coach, real reviews only.
 
-export type V9Brand = "ripple" | "bwk" | "journal" | "pain" | "slip" | "loop" | "progress" | "adhd";
+export type V9Brand = "ripple" | "bwk" | "journal" | "pain" | "slip" | "loop" | "progress" | "adhd" | "pain_m" | "slip_m" | "loop_m" | "progress_m" | "adhd_m";
 
 export type V9Sample = { match: string[]; said: string; tasks: string[]; mood: string; pattern: string };
 
@@ -1607,7 +1607,173 @@ export const ADHD_V9: V9Config = {
   },
 };
 
-export const V9_CONFIGS: Record<V9Brand, V9Config> = { ripple: RIPPLE_V9, bwk: BWK_V9, journal: JOURNAL_V9, pain: PAIN_V9, slip: SLIP_V9, loop: LOOP_V9, progress: PROGRESS_V9, adhd: ADHD_V9 };
+// ─── Men's versions of the pain funnels (2026-11-02) ────────────────────────
+// Keenan: "rebuild the funnels for HIS language for all pains so I can toggle
+// between them all." Same screens and answer ids as the women's funnels (so
+// icons, stamps, result names and analytics keep working); only the words
+// change: plainer, more about handling it, his examples. Served at the same
+// path with ?for=men (app/start-*/page.tsx), flowVersion "<women's>-m".
+type StepPatch = { title?: string; sub?: string; statement?: string; left?: string; right?: string; options?: Record<string, string> };
+
+function forMen(steps: V9Step[], patch: Record<string, StepPatch>): V9Step[] {
+  return steps.map((st) => {
+    const p = patch[st.id];
+    if (!p) return st;
+    const next = { ...st } as V9Step & Record<string, unknown>;
+    for (const k of ["title", "sub", "statement", "left", "right"] as const) if (p[k] !== undefined) next[k] = p[k];
+    if (p.options && "options" in st) next.options = st.options.map((o) => ({ ...o, label: p.options![o.id] ?? o.label }));
+    return next as V9Step;
+  });
+}
+
+function menConfig(w: V9Config, brand: V9Brand, patch: Record<string, StepPatch>, rest: Omit<Partial<V9Config>, "painKit"> & { painKit: Partial<PainKit> }): V9Config {
+  const { painKit, ...other } = rest;
+  return {
+    ...w,
+    ...other,
+    brand,
+    flowVersion: `${w.flowVersion}-m`,
+    steps: forMen(w.steps, patch),
+    painKit: { ...w.painKit!, ...painKit, label: `${w.painKit!.label} · men` },
+  };
+}
+
+const MEN_WEEK_THINGS = ["Oil change", "Call the bank", "Kid’s practice", "Renew insurance", "Reply to boss", "Gym", "Book dentist", "Pay the card"];
+
+export const PAIN_M_V9 = menConfig(PAIN_V9, "pain_m", {
+  hook: { statement: "I’m the one holding it all together." },
+  pain: { title: "When it’s all on you, what happens?", options: { slip: "Things fall through the cracks", switch: "I can’t switch off", snap: "I’m short with the people I love", behind: "I’m always playing catch-up", last: "My own goals get pushed back", drained: "I’m running on fumes" } },
+  tabs: { title: "How many things are you keeping track of right now?", sub: "Work, home, kids, bills. It all counts." },
+  first: { title: "What’s the first thing to go when the week gets busy?", options: { move: "The gym", friends: "Seeing friends", appts: "My own appointments", sleep: "Sleep", me: "Time for me", food: "Eating right" } },
+  seen: { title: "Does anyone see how much you handle?", options: { none: "No, not really", slip: "Only when something slips", partner: "My partner, sometimes", me: "I don’t stop long enough to notice" } },
+  "st-drop": { statement: "If I take my foot off the gas, something drops." },
+  help: { options: { out: "Getting it out of my head", nothing: "Knowing nothing’s slipping", once: "Saying it once and moving on", why: "Seeing what’s wearing me down", habits: "Sticking to the habits I drop", week: "Seeing my week laid out" } },
+  "s-load": { left: "I’ve got it handled", right: "It’s too much to carry" },
+  "st-share": { statement: "I’d breathe easier if something else kept track for me." },
+  commit: { title: "Ready to take some of it off your plate?" },
+}, {
+  reassure: { ...PAIN_V9.reassure, body: "You’re carrying work, home and everyone’s plans in one head. Anyone would drop something.", things: MEN_WEEK_THINGS },
+  resultOutro: "None of this means you’re slipping. It means one head is holding too much. Ripple takes the keeping-track part.",
+  painKit: {
+    stamps: {
+      first: { move: "Skipped again", friends: "Rain check #4", appts: "Still not booked", sleep: "5 hours, maybe", me: "Someday", food: "Drive-thru again" },
+      help: PAIN_V9.painKit!.stamps.help,
+    },
+    vs: {
+      left: "In your head",
+      sub: "Where it all lives now",
+      rows: [
+        ["Dentist Thursday… or Friday?", "On your list", "With the date"],
+        ["Did I pay the card?", "Nothing slips", "Every task caught"],
+        ["Gym again next week", "Your habits", "From what you say"],
+        ["Why am I wiped every week?", "Your patterns", "Week to week"],
+        ["Running through it all, again", "A clear head", "Said once, held for you"],
+      ],
+    },
+    receipt: { title: "Carrying it all · this week", stamp: "Too much for one head", stampSub: "and nobody sees it", extra: { label: "Time for you", value: "someday" } },
+  },
+});
+
+export const SLIP_M_V9 = menConfig(SLIP_V9, "slip_m", {
+  hook: { statement: "Stuff keeps slipping through the cracks." },
+  pain: { options: { form: "A form for the kids", appt: "An appointment", bday: "A birthday", bill: "A bill or renewal", reply: "A message I meant to answer", promise: "Something I said I’d do" } },
+  after: { options: { guilt: "It bugs me for days", scramble: "I scramble to fix it", sorry: "I end up apologizing", replay: "I replay it in my head", blame: "I’m hard on myself", fee: "It costs money, like a late fee" } },
+  remember: { title: "How do you keep track of things now?", options: { head: "I keep it in my head" } },
+  "st-mid": { statement: "I’m on top of most things, and stuff still falls through." },
+  help: { options: { catch: "Catching things the second I think of them", coming: "Seeing what’s coming this week", top: "Being on top of it" } },
+  "s-sure": { left: "Nothing gets past me", right: "Stuff slips all the time" },
+}, {
+  reassure: { ...SLIP_V9.reassure, body: "No one can hold this many dates, bills and promises in one head. Forgetting isn’t a flaw. It’s overflow.", things: ["Oil change", "Dentist Thursday", "Dad’s birthday", "Car insurance", "Reply to Jake", "Return the drill", "Water bill", "Kid’s form"] },
+  painKit: {
+    stamps: { after: { guilt: "For days", scramble: "Last minute", sorry: "Sorry #3", replay: "On repeat", blame: "Every time", fee: "$35 late fee" }, help: SLIP_V9.painKit!.stamps.help },
+    vs: {
+      left: "In your head",
+      sub: "Where it lands with Ripple",
+      rows: [
+        ["Form due… Friday? Monday?", "On your list", "With the date"],
+        ["When’s Dad’s birthday again?", "Every date", "In one place"],
+        ["Screenshot of a screenshot", "Said once", "Caught for you"],
+        ["Meant to reply. Forgot.", "Nothing slips", "Every task caught"],
+        ["What did I miss this week?", "Your week", "Laid out for you"],
+      ],
+    },
+    receipt: { title: "What slipping costs you", stamp: "Too much to remember", stampSub: "and it’s always on you", extra: { label: "It bugs you", value: "for days" } },
+  },
+});
+
+export const LOOP_M_V9 = menConfig(LOOP_V9, "loop_m", {
+  hook: { statement: "I’m running on empty, and I can’t figure out why." },
+  pain: { title: "What does a rough week look like for you?", options: { tired: "I’m wiped by midweek", short: "I’ve got a short fuse", nextweek: "I keep saying “next week”", skip: "I skip the stuff that keeps me sane", blur: "I can’t tell you where the week went", dread: "I dread Monday" } },
+  helps: { title: "What actually helps you reset?", options: { walk: "Getting outside", friends: "Time with friends", sleep: "A full night’s sleep", move: "Working out", quiet: "Time alone", fun: "Something just for fun" } },
+  why: { options: { guess: "I’ve got a guess" } },
+  want: { title: "What would you want to see?", options: { lifts: "What recharges me" } },
+  "s-know": { left: "I know what recharges me", right: "No idea what recharges me" },
+  "st-close": { statement: "If I could see what’s really going on, I’d fix it." },
+}, {
+  reassure: { ...LOOP_V9.reassure, body2: "Ripple can. You talk for a few minutes, and it shows you what drains you, what recharges you and what keeps coming back.", things: ["Wiped again", "Skipped the gym", "Next week", "Short with the kids", "Up late again", "No time for me", "Same argument", "Monday again"] },
+  resultOutro: "None of this means you’re doing it wrong. You can’t see the pattern from inside it. Ripple shows it to you.",
+  painKit: {
+    stamps: { helps: LOOP_V9.painKit!.stamps.helps, want: LOOP_V9.painKit!.stamps.want },
+    vs: {
+      left: "Your week now",
+      sub: "What changes when you can see it",
+      rows: [
+        ["Wiped again, no idea why", "What drains you", "Shown week to week"],
+        ["Can’t say where the week went", "Your week, told back", "A weekly report"],
+        ["Skipped the gym. Again.", "Your habits", "From what you say"],
+        ["Same argument, every month", "What keeps coming up", "Your patterns"],
+        ["Not sure what recharges me", "What recharges you", "From your own words"],
+      ],
+    },
+  },
+});
+
+export const PROGRESS_M_V9 = menConfig(PROGRESS_V9, "progress_m", {
+  hook: { statement: "The weeks fly by, and I’m not getting anywhere." },
+  pain: { title: "What does that look like?", options: { proud: "I can’t point to what I’ve built" } },
+  look: { title: "When do you check how things are going?" },
+  slid: { options: { move: "Getting in shape", hobby: "Something I used to love doing", calm: "Staying calm" } },
+  proof: { options: { hard: "Hard to put into words" } },
+  "st-mid": { statement: "I’m busy all the time, but I’m not getting anywhere." },
+  want: { title: "What would you want to see?", options: { progress: "Proof I’m making progress", life: "Where my life is heading" } },
+  "s-see": { left: "I can see I’m making progress" },
+  "st-close": { statement: "If I could see I’m making progress, I’d keep going." },
+}, {
+  reassure: { ...PROGRESS_V9.reassure, things: ["New Year goal", "Back in the gym", "Read more", "Call the guys", "Drink water", "Save money", "Bed earlier", "Less screen time"] },
+  resultOutro: "None of this means you’re not trying. Nobody’s keeping score. Ripple keeps it, so you can see how far you’ve come.",
+  painKit: {
+    vs: {
+      left: "Your year now",
+      sub: "What changes when it’s written down",
+      rows: [
+        ["Same goal as last January", "Your progress", "Week by week"],
+        ["Can’t say what changed", "Your week, told back", "A weekly report"],
+        ["Wins forgotten by Friday", "Every win kept", "In your own words"],
+        ["Habits started, then dropped", "Your habits", "From what you say"],
+        ["Where is this all going?", "Your Life Matrix", "The big picture"],
+      ],
+    },
+  },
+});
+
+export const ADHD_M_V9 = menConfig(ADHD_V9, "adhd_m", {
+  pain: { options: { overwhelm: "Too much in my head, no idea where to start", freeze: "I stall when I sit down to plan" } },
+  "st-close": { statement: "If I could just say it and move on, I’d actually keep up." },
+}, {
+  reassure: { ...ADHD_V9.reassure, things: ["Reply to Jake", "Laundry!!", "Dentist?", "Renew passport", "That idea", "Call back", "Return package", "Pay parking"] },
+  resultOutro: "None of this means you’re lazy or careless. Your brain needs somewhere to put things down. Ripple is that place.",
+  painKit: {},
+});
+
+/** Men's version of a pain funnel, by the women's brand (?for=men). */
+export const MEN_OF: Partial<Record<V9Brand, V9Brand>> = { pain: "pain_m", slip: "slip_m", loop: "loop_m", progress: "progress_m", adhd: "adhd_m" };
+
+export const V9_CONFIGS: Record<V9Brand, V9Config> = {
+  ripple: RIPPLE_V9, bwk: BWK_V9, journal: JOURNAL_V9, pain: PAIN_V9, slip: SLIP_V9, loop: LOOP_V9, progress: PROGRESS_V9, adhd: ADHD_V9,
+  pain_m: PAIN_M_V9, slip_m: SLIP_M_V9, loop_m: LOOP_M_V9, progress_m: PROGRESS_M_V9, adhd_m: ADHD_M_V9,
+};
 
 /** The pain-first funnels in the 2026-11-02 split, in order. */
 export const PAIN_FUNNELS = [PAIN_V9, SLIP_V9, LOOP_V9, PROGRESS_V9, ADHD_V9];
+/** Men's versions, same order (?for=men). */
+export const PAIN_FUNNELS_M = [PAIN_M_V9, SLIP_M_V9, LOOP_M_V9, PROGRESS_M_V9, ADHD_M_V9];

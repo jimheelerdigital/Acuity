@@ -21,7 +21,8 @@ export default async function Page({ searchParams }: { searchParams: { [key: str
       {/* Fraunces: the redesign's heading face (sunrise theme). */}
       <link rel="preconnect" href="https://fonts.googleapis.com" />
       <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700&display=swap" />
-      <FunnelV9 brand="slip" adMatch={adMatch} />
+      {/* ?for=men: his wording (2026-11-02). */}
+      <FunnelV9 brand={searchParams.for === "men" ? "slip_m" : "slip"} adMatch={adMatch} />
     </>
   );
 }

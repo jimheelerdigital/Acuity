@@ -3491,7 +3491,7 @@ function CheckoutScreen({ plan, go, track, onPaid }: ViewProps) {
     const res = await fetch("/api/onboarding/create-checkout", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ interval: plan, funnel: C.path, offer }),
+      body: JSON.stringify({ interval: plan, funnel: C.path, offer, ...(C.brand.endsWith("_m") ? { variant: "men" } : {}) }),
     });
     const data = (await res.json().catch(() => ({}))) as { url?: string; error?: string };
     if (data.url) {
@@ -3521,7 +3521,7 @@ function CheckoutScreen({ plan, go, track, onPaid }: ViewProps) {
             const res = await fetch("/api/onboarding/create-checkout", {
               method: "POST",
               headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ interval: plan, funnel: C.path, embedded: true, offer }),
+              body: JSON.stringify({ interval: plan, funnel: C.path, embedded: true, offer, ...(C.brand.endsWith("_m") ? { variant: "men" } : {}) }),
             });
             const data = (await res.json()) as { clientSecret?: string; error?: string };
             if (!data.clientSecret) throw new Error(res.status === 401 ? "unauthorized" : data.error ?? "No client secret");

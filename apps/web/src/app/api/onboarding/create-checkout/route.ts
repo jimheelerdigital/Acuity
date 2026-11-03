@@ -44,6 +44,7 @@ export async function POST(req: NextRequest) {
   // on our own paywall, with Apple Pay / Google Pay at the top and the card
   // form below. Returns a client secret instead of a redirect URL.
   let embedded = false;
+  let variantQs = "";
   // handoff (2026-09-30): the "Pay with Apple Pay in Safari" button — a
   // hosted checkout opened in the real browser. Its return URLs carry a
   // signed pass so the buyer lands signed in (lib/checkout-handoff.ts).
@@ -52,11 +53,13 @@ export async function POST(req: NextRequest) {
   // for someone who left checkout and came back. Only when the coupon is set.
   let exitOffer = false;
   try {
-    const body = (await req.json()) as { interval?: Interval; funnel?: string; embedded?: boolean; handoff?: boolean; offer?: string } | null;
+    const body = (await req.json()) as { interval?: Interval; funnel?: string; embedded?: boolean; handoff?: boolean; offer?: string; variant?: string } | null;
     exitOffer = body?.offer === "exit";
     if (body?.interval === "yearly") interval = "yearly";
     if (body?.funnel && FUNNEL_PATHS.has(body.funnel)) funnelPath = body.funnel;
     handoff = body?.handoff === true;
+    // Men's pain funnels (?for=men, 2026-11-02): keep him on his wording after Stripe.
+    if (body?.variant === "men") variantQs = "&for=men";
     embedded = body?.embedded === true && !handoff;
   } catch {}
 
@@ -104,10 +107,10 @@ export async function POST(req: NextRequest) {
       hasCustomerId: !!user?.stripeCustomerId,
     });
 
-    const returnUrl = `${process.env.NEXTAUTH_URL}${funnelPath}?step=download&payment=success&session_id={CHECKOUT_SESSION_ID}`;
+    const returnUrl = `${process.env.NEXTAUTH_URL}${funnelPath}?step=download&payment=success&session_id={CHECKOUT_SESSION_ID}${variantQs}`;
     const { signHandoff } = await import("@/lib/checkout-handoff");
     const pass = handoff ? encodeURIComponent(signHandoff(session.user.id)) : "";
-    const handoffBase = `${process.env.NEXTAUTH_URL}/api/onboarding/handoff?t=${pass}&f=${encodeURIComponent(funnelPath)}`;
+    const handoffBase = `${process.env.NEXTAUTH_URL}/api/onboarding/handoff?t=${pass}&f=${encodeURIComponent(funnelPath)}${variantQs ? "&v=men" : ""}`;
     const checkoutSession = await stripe.checkout.sessions.create({
       ...(handoff
         ? { success_url: `${handoffBase}&to=download&session_id={CHECKOUT_SESSION_ID}`, cancel_url: `${handoffBase}&to=paywall` }
@@ -119,7 +122,7 @@ export async function POST(req: NextRequest) {
             // plan or take the no-card path. (Was step=download, which
             // dropped them past the choice with no way back.)
             // /start-test and /start-test-bwk (v9) call their paywall step "paywall".
-            cancel_url: `${process.env.NEXTAUTH_URL}${funnelPath}?step=${funnelPath.startsWith("/start-test") || PAYWALL_STEP_PATHS.has(funnelPath) ? "paywall" : "savings"}${funnelPath === "/start-journal" ? "&exit=1" : ""}`,
+            cancel_url: `${process.env.NEXTAUTH_URL}${funnelPath}?step=${funnelPath.startsWith("/start-test") || PAYWALL_STEP_PATHS.has(funnelPath) ? "paywall" : "savings"}${funnelPath === "/start-journal" ? "&exit=1" : ""}${variantQs}`,
           }),
       mode: "subscription",
       // Card + Link only (2026-09-25, Keenan). Apple Pay and Google Pay are

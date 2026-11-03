@@ -56,6 +56,8 @@ export async function GET(req: NextRequest) {
     dest.searchParams.set("ptest", "std");
     dest.searchParams.set("ptsrc", "winback");
   }
+  // Men's pain funnels keep his wording after the Safari handoff (2026-11-02).
+  if (q.get("v") === "men") dest.searchParams.set("for", "men");
   const res = NextResponse.redirect(dest, 303);
 
   const userId = verifyHandoff(q.get("t"));

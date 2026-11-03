@@ -42,6 +42,43 @@
 - **Screenshots:** there is no upload. Creators reply by email, and the admin view-bonus buttons do the top-up (they pay the difference to a higher tier).
 - **Free Pro:** it is still granted indefinitely in code (autoGrantCreatorPerk). Enforcement needs the open Pro decisions first.
 
+## [2026-11-03] — Men's versions of all five pain funnels (same page, ?for=men)
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** see git log
+
+### In plain English (for Keenan)
+- **Each of the five pain funnels now has a men's version.** The screens are the same, but every question, answer, example and line is in his language: plainer, about handling it, his examples ("I’m the one holding it all together", "The gym" instead of "My workouts", "Did I pay the card?").
+- **Men's ads just add `?for=men` to the funnel link,** for example goripple.io/start-relief?for=men.
+- **He stays on his version through checkout and the "pay in Safari" step.**
+- **Review page** with a Women's/Men's switch: https://claude.ai/artifact/1Bq771B6TfR3RcxRhrXhTj
+- **His face on screen 1:** the drawn cartoon has a male version now: https://claude.ai/artifact/QMwqdkLuA5EX8fmYPxEE19. His illustrated portrait and photo aren't made yet.
+
+### Technical changes (for Jimmy)
+- **apps/web/src/lib/funnel-v9-config.ts:**
+  - V9Brand adds pain_m, slip_m, loop_m, progress_m and adhd_m
+  - `forMen(steps, patch)` relabels steps by id, keeping option ids, so icons, stamps, stateName and analytics are unchanged
+  - `menConfig()` builds each men's config with flowVersion `<women's>-m` and a painKit override
+  - new exports PAIN_FUNNELS_M and MEN_OF
+- **apps/web/src/app/start-{relief,catch,clarity,progress,focus}/page.tsx:** brand comes from `searchParams.for === "men"`.
+- **apps/web/src/components/funnel-v9.tsx:** create-checkout body sends `variant: "men"` for `_m` brands.
+- **apps/web/src/app/api/onboarding/create-checkout/route.ts:** `variantQs` (`&for=men`) on the success, return and cancel URLs, plus `&v=men` on the handoff URL.
+- **apps/web/src/app/api/onboarding/handoff/route.ts:** `v=men` → `?for=men` on the redirect.
+- **apps/web/src/app/api/admin/metrics/route.ts:** any `v9-*` flow filters on its own flowVersion; men's flows added to the type union.
+- **Verified:**
+  - typecheck clean on changed files
+  - all 5 men's funnels captured at iPhone size, no page errors
+
+### Manual steps needed
+- [ ] Review the men's copy on the review page (Keenan)
+- [ ] Approve about 1.25 Higgsfield credits if his illustrated portraits are wanted (Keenan)
+- [ ] Glance at the checkout variant pass-through (Jimmy)
+
+### Notes
+- The ?for=men param survives in-funnel navigation because the step-URL sync edits the current URL rather than rebuilding it.
+- The men's funnels keep the light Ripple look, per the 09-25 decision and the 11-02 data: the light men's funnel beat the dark one on screen-1 answers and produced the paying men.
+
 ## [2026-11-02] — Sunday "who's converting" report: ad audience by age and gender, plus who actually pays
 
 **Requested by:** Keenan
