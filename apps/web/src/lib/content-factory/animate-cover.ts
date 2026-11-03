@@ -462,7 +462,9 @@ export async function submitCoverVideo(opts: {
     const allowed = model.startsWith("minimax/") ? [6, 10] : [5, 10];
     const want = Number(body.duration) || allowed[0];
     payload = {
-      prompt: opts.prompt,
+      // Kling 2.5 caps prompts at 2,500 characters (2026-11-03: Mythicals
+      // prompts, ~2,300 chars, moved here from Kling 3).
+      prompt: model.startsWith("kling-video/") ? opts.prompt.slice(0, 2500) : opts.prompt,
       image_url: opts.startImageUrl,
       duration: want > (allowed[0] + allowed[1]) / 2 ? allowed[1] : allowed[0],
       ...(model.startsWith("kling-video/")

@@ -8,6 +8,28 @@
 ---
 
 
+## [2026-11-03] — Mythicals videos move from Kling 3 to the cheaper Kling 2.5
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** see git log
+
+### In plain English (for Keenan)
+Legendary Mythicals clips now render on Kling 2.5, the same model Ripple uses, instead of Kling 3. Clip sound has been off since mid-October, so the only thing Kling 3 still gave us was its picture. Animation costs drop about a third at list price, and about two thirds while Higgsfield's 50% Kling 2.5 discount lasts.
+
+### Technical changes (for Jimmy)
+- apps/web/src/lib/content-factory/post-video.ts: `MYTHICALS_VIDEO_MODEL` default changed from `kling-video/v3.0/std/image-to-video` to `kling-video/v2.5-turbo/standard/image-to-video`. The env override is unchanged.
+- Side effects in carousel-post-video.ts (no edit needed): `kling3` is now false for Mythicals, so clips run 5s (LIVING_CLIP_SEC) and the 6s Kling 3 cap no longer applies. Both attempts (primary and retry) use Kling 2.5. Grounded-motion prompts still apply, since they are keyed on brand.
+- apps/web/src/lib/content-factory/animate-cover.ts: Kling 2.5/Hailuo-path prompts are sliced to 2,500 chars (Kling's limit). Mythicals prompts run ~2,200-2,330 chars.
+
+### Manual steps needed
+- [ ] Confirm `MYTHICALS_VIDEO_MODEL` is NOT set in Vercel. If it is, it overrides this default: delete it or set it to the 2.5 model (Keenan/Jimmy)
+
+### Notes
+- Prices from open.higgsfield.ai/pricing (11-03): Kling 3.0 std $0.063/s; Kling 2.5 Turbo std $0.042/s list, $0.021/s with 50% off.
+- Mythicals = 2 posts/day × 6 clips. Kling 3 ran 29s/post (4s cover + 5×5s) ≈ $1.83. Kling 2.5 runs 30s ≈ $1.26 list / $0.63 discounted. Per day: $3.65 → $2.52 (−$34/mo) or $1.26 (−$72/mo).
+- Egg-hatch and cinematic-shot code still reference Kling 3 models; both formats are retired, so they were left alone.
+
 ## [2026-11-03] — Alert when Higgsfield runs out of credits mid-batch; today's posts re-animated
 
 **Requested by:** Keenan

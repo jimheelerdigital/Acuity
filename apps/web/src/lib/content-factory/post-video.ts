@@ -214,9 +214,14 @@ export function ytReelPath(postId: string): string {
  * sound; the main reel (email, Instagram, Facebook) carries only that sound
  * and YouTube gets a copy with music mixed under it.
  * MYTHICALS_VIDEO_MODEL overrides the model ("" → the normal post model).
+ *
+ * 2026-11-03 (per Keenan: "for mythicals posts, drop from kling 3 to kling
+ * 2.5"): Kling 2.5 Turbo Standard, the same model as Ripple. Clip sound has
+ * been off since 10-16, so Kling 3's audio was unused; 2.5 is ~$0.042/s vs
+ * $0.063/s list. Clips are 5s (Kling 2.5 only takes 5|10).
  */
 export const MYTHICALS_VIDEO_MODEL =
-  process.env.MYTHICALS_VIDEO_MODEL?.trim() ?? "kling-video/v3.0/std/image-to-video";
+  process.env.MYTHICALS_VIDEO_MODEL?.trim() ?? "kling-video/v2.5-turbo/standard/image-to-video";
 
 /** Sound direction appended to Mythicals clip prompts when Kling 3.0 renders sound. */
 export const MYTHICALS_SOUND_LINE =
