@@ -42,6 +42,8 @@ describe("isOutOfCreditsError", () => {
   it("matches billing failures, not ordinary ones", () => {
     expect(isOutOfCreditsError('Higgsfield submit failed (402) for model "x": {}')).toBe(true);
     expect(isOutOfCreditsError("Higgsfield submit failed (400): Insufficient credits")).toBe(true);
+    // The real 2026-11-03 error from the developer API.
+    expect(isOutOfCreditsError('Higgsfield submit failed (403) for model "kling-video/v2.5-turbo/standard/image-to-video": {"detail":"not_enough_credits"}')).toBe(true);
     expect(isOutOfCreditsError("Higgsfield submit failed (500): internal error")).toBe(false);
     expect(isOutOfCreditsError("The operation was aborted due to timeout")).toBe(false);
   });

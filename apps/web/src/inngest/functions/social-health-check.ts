@@ -186,6 +186,9 @@ export const socialHealthCheckFn = inngest.createFunction(
         }
         const broken: string[] = [];
         let noCreditPosts = 0;
+        // Out of credits (2026-11-03): a rebuild would only fail again, so
+        // count the post in the credits line instead of rebuilding it.
+        const creditsOut = (await readCreditsFlag())?.out === true;
         for (const p of posts) {
           if (!laneWantsReel(p.lane)) continue;
           const m = await readVideoMarker(p.id);
@@ -197,7 +200,7 @@ export const socialHealthCheckFn = inngest.createFunction(
           if (!bad) continue;
           // Shipped as stills because Higgsfield is out of credits: on
           // purpose, not broken — rebuilding would just fail again.
-          if (m?.stillsReason === "no-credits") {
+          if (m?.stillsReason === "no-credits" || creditsOut) {
             noCreditPosts++;
             continue;
           }
@@ -213,7 +216,7 @@ export const socialHealthCheckFn = inngest.createFunction(
         const credits = await readCreditsFlag();
         if (credits?.out && (!credits.alertedAt || now - Date.parse(credits.alertedAt) > CREDITS_ALERT_EVERY_MS)) {
           out.push(
-            `Higgsfield is out of credits (since ${credits.since?.slice(0, 10) ?? "?"}). ${noCreditPosts} of today's video posts went out as slideshows instead. Top up at cloud.higgsfield.ai and videos resume on their own. Last error: ${credits.lastError?.slice(0, 160) ?? "?"}`
+            `Higgsfield is out of credits (since ${credits.since?.slice(0, 10) ?? "?"}). ${noCreditPosts} of today's video posts went out as slideshows or only partly animated. Top up at cloud.higgsfield.ai and videos resume on their own. Last error: ${credits.lastError?.slice(0, 160) ?? "?"}`
           );
           await writeCreditsFlag({ ...credits, alertedAt: new Date(now).toISOString() });
         }

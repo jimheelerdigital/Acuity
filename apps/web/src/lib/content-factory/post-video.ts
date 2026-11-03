@@ -76,23 +76,30 @@ export async function writeCreditsFlag(flag: Omit<CreditsFlag, "updatedAt">): Pr
   await writeJson(CREDITS_FLAG, { ...flag, updatedAt: new Date().toISOString() }).catch(() => undefined);
 }
 
-/** Record a submit wave's outcome. Returns true when it was a credits failure. */
+/**
+ * Record a submit wave's outcome. Returns true when the whole wave was a
+ * credits failure (the post then ships as stills).
+ *
+ * 2026-11-03: a wave where SOME clips were refused for credits now flips
+ * the flag too. On 11-03 the balance ran dry mid-wave: one clip got in,
+ * three got 403 not_enough_credits, and the one success cleared the flag,
+ * so the health check never said a word while posts went out as stills.
+ * Only a clean wave (something submitted, no credit errors) clears it.
+ */
 export async function noteSubmitWave(submittedCount: number, errors: string[]): Promise<boolean> {
   const prev = await readCreditsFlag();
-  if (submittedCount > 0) {
-    if (prev?.out) await writeCreditsFlag({ out: false });
+  const creditErrors = errors.filter(isOutOfCreditsError);
+  if (creditErrors.length === 0) {
+    if (submittedCount > 0 && prev?.out) await writeCreditsFlag({ out: false });
     return false;
   }
-  const credits = errors.length > 0 && errors.every(isOutOfCreditsError);
-  if (credits) {
-    await writeCreditsFlag({
-      out: true,
-      since: prev?.out ? prev.since : new Date().toISOString(),
-      lastError: errors[0].slice(0, 300),
-      alertedAt: prev?.out ? prev.alertedAt : undefined,
-    });
-  }
-  return credits;
+  await writeCreditsFlag({
+    out: true,
+    since: prev?.out ? prev.since : new Date().toISOString(),
+    lastError: creditErrors[0].slice(0, 300),
+    alertedAt: prev?.out ? prev.alertedAt : undefined,
+  });
+  return submittedCount === 0 && creditErrors.length === errors.length;
 }
 
 const BUCKET = "content-factory";

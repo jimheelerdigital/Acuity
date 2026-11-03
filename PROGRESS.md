@@ -8,6 +8,30 @@
 ---
 
 
+## [2026-11-03] — Alert when Higgsfield runs out of credits mid-batch; today's posts re-animated
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** see git log
+
+### In plain English (for Keenan)
+Posts stopped being animated on Nov 2 because the Higgsfield developer account ran out of credits. Our warning never fired, because one clip slipped through before the money ran out and that counted as "fine." Now any clip refused for credits triggers the 9am health-check warning, and the system stops retrying rebuilds that can't work until you top up. Today's three posts were re-animated by hand on the Higgsfield app account and posted at their usual times.
+
+### Technical changes (for Jimmy)
+- apps/web/src/lib/content-factory/post-video.ts: `noteSubmitWave` sets `health/higgsfield-credits.json` out=true whenever ANY submit error is a credits error (was: only when zero submitted and every error was credits); clears only on a clean wave (submitted > 0, no credit errors). Return value unchanged in meaning: true only for a full credits failure (post ships as stills).
+- apps/web/src/inngest/functions/social-health-check.ts: while the credits flag is out, stills/partial posts are counted in the credits line instead of re-queued to `video-requests/` (rebuilds would just fail again); alert copy now says "slideshows or only partly animated".
+- apps/web/src/lib/content-factory/gate-calibration.test.ts: added the real 11-03 dev-API error (`403 {"detail":"not_enough_credits"}`) to the `isOutOfCreditsError` cases.
+- Ops (no code): 19 clips rendered on the Higgsfield APP account via MCP (Kling 3.0 std for 2 Mythicals posts, Kling 2.6 for Ripple list since 2.5 Turbo isn't on the app account), uploaded to `living/<postId>/appclip-<i>.mp4`, written into `living/<postId>/clips.json`, rebuilt via `video-requests/<postId>.json`. Posts cmw08dixt…, cmw0cglp3…, cmw0eo607… now 6/7, 8/8, 6/7 live.
+
+### Manual steps needed
+- [ ] Top up the Higgsfield DEVELOPER API credits at cloud.higgsfield.ai (separate from the app account) before tonight's ~05:00 UTC generation (Keenan)
+- [ ] Inngest resync not needed (no trigger changes)
+
+### Notes
+- Dev API refuses at submit with 403 `not_enough_credits`. Mythicals Kling 3 jobs on 11-02/11-03 were ACCEPTED and then failed within the first 30s poll with no error text, which was most likely credits as well. The flag can't see that case; it only sees submit errors.
+- Rebuild-with-app-credits recipe: `clips.json` must have a URL for every live slide index or the builder ignores the cache and resubmits to the dev API. The ripple-list clips.json model label says `app:kling-video/v2.5-turbo…` but those 7 clips are really Kling 2.6.
+- Higgsfield MCP batch submits can come back "preset recommended" instead of running; resubmit with `declined_preset_id`.
+
 ## [2026-11-02] — Creator program matches the current terms: lower view bonus levels, monthly bonuses back, 2-month free Pro rule
 
 **Requested by:** Keenan
