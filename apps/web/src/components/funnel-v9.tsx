@@ -329,7 +329,23 @@ const CSS = `
 @keyframes v9f-drift { 0%,100% { transform: scale(1.05) translateX(0); } 50% { transform: scale(1.08) translateX(-7px); } }
 .v9 .face-focus { animation: v9f-jitter 2.6s steps(1) infinite; }
 @keyframes v9f-jitter { 0% { transform: scale(1.06); } 25% { transform: scale(1.07) translate(-3px,1px) rotate(-.6deg); } 50% { transform: scale(1.06) translate(3px,-1px) rotate(.5deg); } 75% { transform: scale(1.07) translate(-1px,-2px); } }
-@media (prefers-reduced-motion: reduce) { .v9 * { animation: none !important; transition: none !important; } }
+.v9 .face-soft { animation: v9f-soft 7s ease-in-out infinite; }
+@keyframes v9f-soft { 0%,100% { transform: scale(1.03); } 50% { transform: scale(1.07); } }
+.v9 .hp-bob { animation: v9p-bob 3.2s ease-in-out infinite; }
+@keyframes v9p-bob { 0%,100% { transform: translateY(0) rotate(-2deg); } 50% { transform: translateY(-6px) rotate(2deg); } }
+.v9 .hp-pulse { animation: v9p-pulse 1.6s ease-in-out infinite; }
+@keyframes v9p-pulse { 50% { transform: scale(1.15); } }
+.v9 .hp-fall { animation: v9p-fall 3.6s ease-in infinite; }
+@keyframes v9p-fall { 0% { opacity: 0; transform: translate(0,0) rotate(-6deg); } 12%,70% { opacity: 1; } 100% { opacity: 0; transform: translate(26px,150px) rotate(34deg); } }
+.v9 .hp-drain { animation: v9p-drain 4s linear infinite; }
+@keyframes v9p-drain { 0% { width: 92%; } 100% { width: 10%; } }
+.v9 .hp-zz { animation: v9p-zz 2.4s ease-out infinite; }
+@keyframes v9p-zz { 0% { opacity: 0; transform: translateY(6px); } 30% { opacity: 1; } 100% { opacity: 0; transform: translate(6px,-12px); } }
+.v9 .hp-roll { animation: v9p-roll 4.8s steps(1) infinite; }
+@keyframes v9p-roll { 0% { transform: translateY(0); } 25% { transform: translateY(-34px); } 50% { transform: translateY(-68px); } 75% { transform: translateY(-102px); } }
+.v9 .hp-pop { opacity: 0; animation: v9p-pop 4.2s ease-out infinite; }
+@keyframes v9p-pop { 0% { opacity: 0; transform: scale(.6); } 10%,82% { opacity: 1; transform: scale(1); } 95%,100% { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .v9 * { animation: none !important; transition: none !important; } .v9 .hp-pop, .v9 .hp-fall { opacity: 1; } }
 /* Reassure cloud without motion: the chips sit in a group above the Ripple card instead of piling up. */
 @media (prefers-reduced-motion: reduce) { .v9 .rs-cloud { display: flex; flex-wrap: wrap; justify-content: center; align-content: flex-start; gap: 6px; height: auto; padding-bottom: 76px; } .v9 .rs-float { position: static !important; margin: 0 !important; transform: none !important; width: auto !important; } }
 `;
@@ -1135,7 +1151,7 @@ function StatementScreen({ step, answers, setAnswers, next, track }: ViewProps &
         </figure>
       ) : (
         <figure className={`card-in relative flex flex-col items-center overflow-hidden rounded-[28px] card px-6 pb-[clamp(22px,6vw,30px)] pt-6 text-center ${fly === "yes" ? "fly-yes" : fly === "no" ? "fly-no" : ""}`}>
-          {C.brand === "journal" && isHook ? <PlannerStack /> : C.painKit && isHook ? <FacePic size="hero" /> : C.painKit && !step.title ? <FacePic size="mid" /> : C.painKit ? <JournalStatementPic id="st-zero" stamp={C.painKit.closeStamp} /> : C.brand === "journal" && (step.id === "st-upkeep" || step.id === "st-zero") ? <JournalStatementPic id={step.id} /> : <MoodAvatar mood={step.mood} size={60} />}
+          {C.brand === "journal" && isHook ? <PlannerStack /> : C.painKit && isHook ? <FacePic size="hero" /> : C.painKit && !step.title ? <FacePic size="mid" spot="mid" /> : C.painKit ? <JournalStatementPic id="st-zero" stamp={C.painKit.closeStamp} /> : C.brand === "journal" && (step.id === "st-upkeep" || step.id === "st-zero") ? <JournalStatementPic id={step.id} /> : <MoodAvatar mood={step.mood} size={60} />}
           <blockquote className="relative mt-4 text-[clamp(19px,5.6vw,22px)] font-medium italic leading-[1.35] tracking-tight text-balance">
             &ldquo;{step.statement}&rdquo;
           </blockquote>
@@ -1265,7 +1281,7 @@ function ReassureScreen({ next }: ViewProps) {
   const C = useV9();
   return (
     <div className="enter">
-      {C.painKit && <div className="mb-3"><FacePic size="avatar" /></div>}
+      {C.painKit && <div className="mb-3"><FacePic size="avatar" spot="calm" /></div>}
       <Heading title={C.reassure.title} />
       <div className="rs-cloud relative h-[210px] mb-6 overflow-hidden">
         {C.reassure.things.map((t, i) => (
@@ -1295,6 +1311,7 @@ function ReassureScreen({ next }: ViewProps) {
       <p className="text-center text-[16px] leading-relaxed text-acuity-text-sec text-balance">
         {C.reassure.body}
       </p>
+      {C.painKit && <p className="mt-3 text-center text-[16px] font-semibold leading-relaxed text-acuity-text text-balance">{C.reassure.body2}</p>}
       <div className="mt-6">
         <ReviewCard {...C.reviews[0]} />
       </div>
@@ -2405,24 +2422,70 @@ function PlannerStack() {
  * associate with the emotion"). Hers on women's funnels, his on ?for=men.
  * Used on screen 1 (hero), the mid-funnel yes/no, reassure and the result.
  */
-function FacePic({ size }: { size: "hero" | "mid" | "avatar" }) {
+function FacePic({ size, spot = "hook" }: { size: "hero" | "mid" | "avatar"; spot?: "hook" | "mid" | "calm" | "clear" }) {
   const C = useV9();
   const face = C.painKit?.face;
   if (!face) return null;
-  const src = `/funnel/faces/${C.brand.endsWith("_m") ? "m" : "f"}-${face}.webp`;
-  if (size === "hero") {
+  const male = C.brand.endsWith("_m");
+  // One illustration per spot (2026-11-03, Keenan: "we don't want redundancy"):
+  // hook = the pain at its peak, mid = the moment it hits, calm = the first
+  // exhale, clear = calm and handled, talking it out.
+  const src = `/funnel/faces/${male ? "m" : "f"}-${face}${spot === "hook" ? "" : `-${spot}`}.webp`;
+  const motion = spot === "hook" ? `face-${face}` : "face-soft";
+  if (size === "hero" || size === "mid") {
     return (
-      <span className="relative mb-1 block w-full overflow-hidden rounded-[22px]" style={{ height: "clamp(168px, 28vh, 230px)" }} aria-hidden="true">
-        <img src={src} alt="" width={560} height={700} loading="eager" decoding="async" className={`face-${face} h-full w-full object-cover`} style={{ objectPosition: "50% 22%" }} />
+      <span className="relative mb-1 block w-full overflow-hidden rounded-[22px]" style={{ height: size === "hero" ? "clamp(168px, 28vh, 230px)" : "clamp(150px, 24vh, 200px)" }} aria-hidden="true">
+        <img src={src} alt="" width={560} height={700} loading={size === "hero" ? "eager" : "lazy"} decoding="async" className={`${motion} h-full w-full object-cover`} style={{ objectPosition: size === "hero" ? "50% 22%" : "50% 30%" }} />
+        {size === "hero" && <HeroProps face={face} male={male} />}
       </span>
     );
   }
-  const px = size === "mid" ? 112 : 76;
   return (
-    <span className="relative mx-auto block overflow-hidden rounded-full" style={{ width: px, height: px, border: "3px solid #fff", boxShadow: "0 10px 24px -10px rgba(140,60,20,.45)" }} aria-hidden="true">
-      <img src={src} alt="" width={px} height={px} loading="lazy" decoding="async" className={`face-${face} h-full w-full object-cover`} style={{ objectPosition: "50% 18%" }} />
+    <span className="relative mx-auto block overflow-hidden rounded-full" style={{ width: 84, height: 84, border: "3px solid #fff", boxShadow: "0 10px 24px -10px rgba(140,60,20,.45)" }} aria-hidden="true">
+      <img src={src} alt="" width={84} height={84} loading="lazy" decoding="async" className={`${motion} h-full w-full object-cover`} style={{ objectPosition: "50% 18%" }} />
     </span>
   );
+}
+
+/** Screen 1 props that name the pain, animating over the portrait (2026-11-03). */
+function HeroProps({ face, male }: { face: NonNullable<PainKit["face"]>; male: boolean }) {
+  const chip = "absolute rounded-full bg-white/95 px-2.5 py-1 text-[11px] font-semibold text-acuity-text shadow-[0_6px_14px_-6px_rgba(140,60,20,.45)] whitespace-nowrap";
+  if (face === "relief") {
+    const items = male ? ["Oil change", "Call the bank", "Kid’s practice", "Pay the card"] : ["Dentist Thu", "Call Mom", "Water bill", "Permission slip"];
+    const pos = [{ left: "6%", top: "10%" }, { right: "6%", top: "18%" }, { left: "4%", bottom: "16%" }, { right: "5%", bottom: "9%" }];
+    return <>{items.map((t, i) => <span key={t} className={`${chip} hp-bob`} style={{ ...pos[i], animationDelay: `${i * 0.6}s` }}>{t}</span>)}</>;
+  }
+  if (face === "catch") {
+    return (
+      <>
+        <span className="hp-pulse absolute right-3 top-3 flex h-8 w-8 items-center justify-center rounded-full bg-red-500 text-[17px] font-black text-white shadow">!</span>
+        <span className={`${chip} hp-fall`} style={{ left: "8%", top: "12%" }}>{male ? "Late fee" : "Permission slip"}</span>
+      </>
+    );
+  }
+  if (face === "clarity") {
+    return (
+      <>
+        <span className="absolute right-3 top-3 flex h-6 w-12 items-center rounded-md border-2 border-[#2A231D] bg-white p-[2px]"><i className="hp-drain block h-full rounded-[3px] bg-red-500" /></span>
+        <span className="hp-zz absolute left-4 top-3 font-serif text-[18px] font-bold text-[#C2410C]">z</span>
+        <span className="hp-zz absolute left-8 top-1 font-serif text-[13px] font-bold text-[#C2410C]" style={{ animationDelay: ".8s" }}>z</span>
+      </>
+    );
+  }
+  if (face === "progress") {
+    return (
+      <>
+        <span className="absolute right-3 top-3 h-[52px] w-[46px] overflow-hidden rounded-lg bg-white text-center shadow">
+          <span className="block h-3.5 bg-[#F2541E]" />
+          <span className="block h-[34px] overflow-hidden"><span className="hp-roll block font-serif text-[15px] font-bold leading-[34px] text-acuity-text">{["Jan", "Apr", "Aug", "Dec"].map((m) => <span key={m} className="block">{m}</span>)}</span></span>
+        </span>
+        <span className={chip} style={{ left: "6%", bottom: "9%", color: "#C2410C" }}>Day 1, again</span>
+      </>
+    );
+  }
+  const tabs = male ? ["Reply to Jake", "Laundry!!", "Dentist?", "That idea"] : ["Reply to Jen", "Laundry!!", "Dentist?", "That idea"];
+  const pos = [{ left: "5%", top: "8%" }, { right: "5%", top: "16%" }, { left: "6%", bottom: "14%" }, { right: "6%", bottom: "8%" }];
+  return <>{tabs.map((t, i) => <span key={t} className={`${chip} hp-pop rounded-md`} style={{ ...pos[i], animationDelay: `${i * 0.7}s` }}>{t}</span>)}</>;
 }
 
 /** Pain-first hook visual (2026-11-02): three cards of what she carries, each piling up. */
@@ -2466,7 +2529,7 @@ function PainResult({ answers, firstName, next }: ViewProps) {
       <p className="text-center text-[13px] font-semibold text-acuity-primary mb-3">{firstName ? `${firstName}, we get it` : "We get it"}</p>
       <div className="relative overflow-hidden rounded-[28px] grad p-6 text-white shadow-[0_14px_36px_-12px_var(--acuity-primary)]">
         <div className="absolute -right-10 -top-10 h-40 w-40 rounded-full bg-white/10" aria-hidden="true" />
-        <div className="absolute right-4 top-4"><FacePic size="avatar" /></div>
+        <div className="absolute right-4 top-4"><FacePic size="avatar" spot="clear" /></div>
         <p className="text-[12px] font-semibold uppercase tracking-[0.14em] text-white/80">Your pattern</p>
         <h1 className="pop mt-1 pr-20 text-[32px] font-bold leading-tight" style={{ animationDelay: "200ms" }}>{state.name}</h1>
         <p className="mt-1 text-[16px] font-semibold leading-snug text-white/95">{state.line}</p>
