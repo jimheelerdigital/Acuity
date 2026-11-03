@@ -8,6 +8,31 @@
 ---
 
 
+## [2026-11-03] — Weekly App Store search rankings in a Google Sheet, every Sunday night
+
+- **Requested by:** Keenan
+- **Committed by:** Claude Code
+- **Commit hash:** baf7eec5, fe365645, 8c72c13a
+
+### In plain English (for Keenan)
+Every Sunday night Ripple now checks where it ranks in App Store search for 108 searches we want to be found for (voice journal, to do list, habit tracker, mental load, ADHD planner and more). It adds a new "Week N" tab to the "App Store SEO Rankings" Google Sheet, updates an Overview tab that shows every week side by side, and emails Keenan a link with what moved up and down. Week 1 (today) is already in the sheet: Ripple ranks for 10 of the 108 searches.
+
+### Technical changes (for Jimmy)
+- New apps/web/src/lib/app-store-rank.ts: RANK_GROUPS (108 terms in 10 groups), rank lookup via the public iTunes Search API (US, top 200, app id 6762633410), snapshots saved as JSON in content-factory/aso/ranks/<date>.json (no schema change), email HTML
+- New apps/web/src/lib/app-store-rank-sheet.ts: writes a "Week N · <date>" tab + rebuilds "Overview" via the Sheets API (googleapis), using the GA4 service account (lib/google/auth.ts)
+- New Inngest function apps/web/src/inngest/functions/app-store-rank-email.ts (id app-store-rank-email): cron Sunday 9pm America/Chicago + event founders/app-store-rank.send; ranks in steps of 15 terms to stay under function time limits, then sheet, then Resend email
+- Registered in apps/web/src/app/api/inngest/route.ts
+
+### Manual steps needed
+- [x] Google Sheets API enabled in GCP project 521567709148 (Keenan, done 11-03)
+- [x] Sheet "App Store SEO Rankings" (1jTOCC-OEytvOu5BnDyt7IsGkV-PCdEqkCayCevVloG8) shared as editor with acuity-analytics-reader@acuity-493920.iam.gserviceaccount.com (done)
+- [ ] Inngest resync after deploy: curl -X PUT https://goripple.io/api/inngest (Claude Code, right after this push)
+
+### Notes
+- The iTunes Search API order tracks App Store search closely but isn't identical to one iPhone (personalization, Search Ads slots). It rate-limits bursts, so lookups are spaced 2.5s apart with retries.
+- Keyword list came from Apple's own search suggestions (MZSearchHints endpoint) per feature/pain; other apps' names are excluded. Edit RANK_GROUPS to add or drop searches; history stays comparable by term.
+- The local .env.local Resend key can't send from goripple.io; the prod key can.
+
 ## [2026-11-03] — Mythicals videos move from Kling 3 to the cheaper Kling 2.5
 
 **Requested by:** Keenan
