@@ -42,6 +42,24 @@
 - **Screenshots:** there is no upload. Creators reply by email, and the admin view-bonus buttons do the top-up (they pay the difference to a higher tier).
 - **Free Pro:** it is still granted indefinitely in code (autoGrantCreatorPerk). Enforcement needs the open Pro decisions first.
 
+## [2026-11-03] — App Store banner only on the homepage
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** see git log
+
+### In plain English (for Keenan)
+The "Ripple is better in the app / App Store" banner now only shows on the goripple.io homepage. It's gone from every funnel, the blog, landing pages, sign-up and everywhere else on the site.
+
+### Technical changes (for Jimmy)
+- apps/web/src/components/install-banner.tsx: `isEligibleRoute` returns `pathname === "/"`; the EXCLUDED_PREFIXES list and the /start rule are removed.
+
+### Manual steps needed
+None
+
+### Notes
+- Mythicals surfaces were already excluded and stay excluded (the root path there isn't goripple.io's homepage).
+
 ## [2026-11-03] — Men's versions of all five pain funnels (same page, ?for=men)
 
 **Requested by:** Keenan

@@ -24,7 +24,7 @@ import { trackClient } from "@/lib/analytics-client";
  * scroll). Sets `--install-banner-h` so body padding pushes content down and
  * the page's own fixed top-navs offset below it.
  *
- * Gating: public marketing + conversion routes; iOS → App Store, Android →
+ * Gating: the homepage only (see isEligibleRoute); iOS → App Store, Android →
  * Play (both apps are live); 7-day dismiss cookie. Analytics: shown / clicked
  * / dismissed.
  */
@@ -34,44 +34,14 @@ const COOKIE_DAYS = 7;
 const BANNER_HEIGHT = 60; // px — tight; the badge carries the weight, not the bar
 const SLIDE_MS = 220;
 
-const EXCLUDED_PREFIXES = [
-  "/admin",
-  "/api",
-  "/dashboard",
-  "/home",
-  "/account",
-  "/entries",
-  "/goals",
-  "/tasks",
-  "/insights",
-  "/life-matrix",
-  "/achievements",
-  "/actions",
-  "/delete-account",
-  // /start and /start-bwk are the web onboarding funnels — they have their
-  // own download step at the end, so a competing App Store banner up top
-  // would pull users out early. (/start-bwk needs its own entry: the prefix
-  // check only matches "/start" or "/start/…", so the men's funnel was
-  // showing the banner on every screen until 2026-09-24.)
-  "/start",
-  "/start-bwk",
-  "/start-test",
-  "/start-test-bwk",
-  // Ripple Creators is separate from the app (2026-10-31).
-  "/creators",
-  "/creator-desk",
-];
-
+/**
+ * Homepage only (2026-11-03, Keenan: "eliminate the app store banner across
+ * the entire funnel and website EVERYWHERE ... unless someone is on
+ * goripple.io the home page ONLY"). Funnels, blog, landing pages, auth and
+ * the app all go without it; the funnels hand off to the app at the end.
+ */
 function isEligibleRoute(pathname: string): boolean {
-  // Every web funnel lives at /start… (2026-11-02): /start-journal and the
-  // pain funnels weren't listed above, so the banner sat on their screen 1.
-  if (pathname.startsWith("/start")) return false;
-  if (pathname === "/auth" || pathname.startsWith("/auth/")) {
-    return pathname === "/auth/signup" || pathname.startsWith("/auth/signup/");
-  }
-  return !EXCLUDED_PREFIXES.some(
-    (p) => pathname === p || pathname.startsWith(p + "/")
-  );
+  return pathname === "/";
 }
 
 type Platform = "ios" | "android";
