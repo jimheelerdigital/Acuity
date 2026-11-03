@@ -848,7 +848,7 @@ export const JOURNAL_V9: V9Config = {
 export const PAIN_V9_STEPS: V9Step[] = [
   // Identity first (2026-11-02): a proud yes for her, and it leads straight
   // into the pain. "Not really" still flows into the same questions.
-  { id: "hook", kind: "statement", statement: "I’m the one who keeps everything running.", mood: "overloaded" },
+  { id: "hook", kind: "statement", statement: "I have so much going on, I can’t keep track of it all.", mood: "overloaded" },
   {
     id: "pain",
     kind: "multi",
@@ -951,7 +951,7 @@ export const PAIN_V9_STEPS: V9Step[] = [
 ];
 
 const PAIN_SHORT: Record<string, string> = {
-  hook: "Keeps everything running? (screen 1, yes/no)",
+  hook: "Too much going on to keep track? (screen 1, yes/no)",
   pain: "What happens when it's all in her head",
   often: "How often things slip",
   tabs: "How much she's holding",
@@ -1648,7 +1648,7 @@ function menConfig(w: V9Config, brand: V9Brand, patch: Record<string, StepPatch>
 const MEN_WEEK_THINGS = ["Oil change", "Call the bank", "Kid’s practice", "Renew insurance", "Reply to boss", "Gym", "Book dentist", "Pay the card"];
 
 export const PAIN_M_V9 = menConfig(PAIN_V9, "pain_m", {
-  hook: { statement: "I’m the one holding it all together." },
+  hook: { statement: "I’ve got too much going on, and I can’t keep track of it all." },
   pain: { title: "When it’s all on you, what happens?", options: { slip: "Things fall through the cracks", switch: "I can’t switch off", snap: "I’m short with the people I love", behind: "I’m always playing catch-up", last: "My own goals get pushed back", drained: "I’m running on fumes" } },
   tabs: { title: "How many things are you keeping track of right now?", sub: "Work, home, kids, bills. It all counts." },
   first: { title: "What’s the first thing to go when the week gets busy?", options: { move: "The gym", friends: "Seeing friends", appts: "My own appointments", sleep: "Sleep", me: "Time for me", food: "Eating right" } },
