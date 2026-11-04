@@ -1104,6 +1104,11 @@ function StatementScreen({ step, answers, setAnswers, next, track }: ViewProps &
   const pos = statementSteps(C).findIndex((s) => s.id === step.id);
   const prev = answers.single[step.id];
   const lux = C.theme === "dusk";
+  // Screen 1 for the face funnels (2026-11-04, Keenan: "replace the first
+  // screen ... with the newly designed ones"): a big portrait, a "Feeling"
+  // tag, then a small question label over the quote. No big heading.
+  const face = C.painKit?.face ?? C.face;
+  const faceHook = !lux && isHook && !!face;
   return (
     <div className="flex min-h-[calc(100svh-6rem)] flex-col justify-center">
       {lux ? (
@@ -1140,7 +1145,7 @@ function StatementScreen({ step, answers, setAnswers, next, track }: ViewProps &
           Tap what&rsquo;s true &middot; {pos} of {statementSteps(C).length - 1}
         </p>
       )}
-      {!lux && <h1 className="up mb-5 text-center text-[clamp(22px,6.6vw,27px)] font-bold leading-tight tracking-tight">{step.title ?? "Does this sound like you?"}</h1>}
+      {!lux && !faceHook && <h1 className="up mb-5 text-center text-[clamp(22px,6.6vw,27px)] font-bold leading-tight tracking-tight">{step.title ?? "Does this sound like you?"}</h1>}
 
       {/* The statement as a quote: a face showing the feeling, then the line
           centered in italics (2026-09-25, per Keenan). */}
@@ -1148,6 +1153,19 @@ function StatementScreen({ step, answers, setAnswers, next, track }: ViewProps &
         <figure className={`card-in relative flex flex-col items-center rounded-[26px] card px-6 pb-7 pt-6 text-center ${fly === "yes" ? "fly-yes" : fly === "no" ? "fly-no" : ""}`}>
           <MoodAvatar mood={step.mood} tone="steel" size={56} />
           <blockquote className="mt-4 text-[clamp(21px,6vw,24px)] font-bold leading-[1.28] tracking-tight text-balance">
+            &ldquo;{step.statement}&rdquo;
+          </blockquote>
+        </figure>
+      ) : faceHook ? (
+        <figure className={`card-in relative flex flex-col items-center text-center ${fly === "yes" ? "fly-yes" : fly === "no" ? "fly-no" : ""}`}>
+          <div className="relative w-full max-w-[310px]">
+            <FacePic size="stage" />
+            <span className="absolute -bottom-4 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full bg-white/95 px-3.5 py-2 text-[13px] font-semibold text-acuity-text shadow-[0_8px_20px_-10px_rgba(140,60,20,.45)]">
+              Feeling: <b className="text-[#C2410C]">{FEELING[face!]}</b>
+            </span>
+          </div>
+          <p className="mt-8 text-[11px] font-bold uppercase tracking-[0.1em] text-[#9A8B80]">Does this sound like you?</p>
+          <blockquote className="mt-1.5 max-w-[22rem] text-[clamp(21px,6vw,24px)] font-semibold leading-[1.24] tracking-tight text-balance" style={{ fontFamily: "Fraunces, Georgia, serif" }}>
             &ldquo;{step.statement}&rdquo;
           </blockquote>
         </figure>
@@ -2424,7 +2442,17 @@ function PlannerStack() {
  * associate with the emotion"). Hers on women's funnels, his on ?for=men.
  * Used on screen 1 (hero), the mid-funnel yes/no, reassure and the result.
  */
-function FacePic({ size, spot = "hook" }: { size: "hero" | "mid" | "avatar"; spot?: "hook" | "mid" | "calm" | "clear" }) {
+/** The feeling word under the screen 1 portrait, per pain (2026-11-04). */
+const FEELING: Record<NonNullable<PainKit["face"]>, string> = {
+  relief: "overloaded",
+  catch: "oh no, I forgot",
+  clarity: "drained",
+  progress: "stuck",
+  focus: "scattered",
+  journal: "frustrated",
+};
+
+function FacePic({ size, spot = "hook" }: { size: "stage" | "hero" | "mid" | "avatar"; spot?: "hook" | "mid" | "calm" | "clear" }) {
   const C = useV9();
   const face = C.painKit?.face ?? C.face;
   if (!face) return null;
@@ -2434,6 +2462,14 @@ function FacePic({ size, spot = "hook" }: { size: "hero" | "mid" | "avatar"; spo
   // exhale, clear = calm and handled, talking it out.
   const src = `/funnel/faces/${male ? "m" : "f"}-${face}${spot === "hook" ? "" : `-${spot}`}.webp`;
   const motion = spot === "hook" ? `face-${face}` : "face-soft";
+  if (size === "stage") {
+    return (
+      <span className="relative block w-full overflow-hidden rounded-[28px] shadow-[0_18px_36px_-18px_rgba(120,50,20,.45)]" style={{ height: "clamp(250px, 40vh, 340px)" }} aria-hidden="true">
+        <img src={src} alt="" width={560} height={700} loading="eager" decoding="async" className={`${motion} h-full w-full object-cover`} style={{ objectPosition: "50% 22%" }} />
+        <HeroProps face={face} male={male} />
+      </span>
+    );
+  }
   if (size === "hero" || size === "mid") {
     return (
       <span className="relative mb-1 block w-full overflow-hidden rounded-[22px]" style={{ height: size === "hero" ? "clamp(168px, 28vh, 230px)" : "clamp(150px, 24vh, 200px)" }} aria-hidden="true">
