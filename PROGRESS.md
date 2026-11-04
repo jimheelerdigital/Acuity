@@ -8,6 +8,26 @@
 ---
 
 
+## [2026-11-04] — Second set of 20 Ripple videos (music + CTA) queued, one a day
+
+- **Requested by:** Keenan
+- **Committed by:** Claude Code
+- **Commit hash:** (this commit)
+
+### In plain English (for Keenan)
+The 20 "MUSIC + CTA" Ripple videos (same videos as the "Without vs With Ripple" set but without the "Without/With Ripple:" labels) now post once a day on Ripple's Instagram and Facebook at 1:30pm CT, video 20 on Nov 5 counting down to video 1 on Nov 24. The "Without vs With" set keeps going at 4:30pm CT, so each day has one of each style, never the same video twice in a day, and we can see which style does better.
+
+### Technical changes (for Jimmy)
+- DB only: 20 CarouselPost rows (status APPROVED, lane ripple-split, topicSlug `cta-<nn>-…`) + COVER slide + IG/FB SocialPublish rows at 19:30 UTC daily 11-05 → 11-24; MP4s at content-factory/reels/<postId>.mp4
+- Script: apps/web/scripts/_tmp-queue-cta.ts (untracked one-off)
+
+### Manual steps needed
+- None
+
+### Notes
+- Compare styles by topicSlug prefix: `ww-` (Without vs With) vs `cta-` (Music + CTA); captions are identical per video number, so the label is the only difference.
+- Times: 22:30 UTC = 4:30pm CST, 19:30 UTC = 1:30pm CST (CST = UTC-6 since 11-01).
+
 ## [2026-11-04] — Normal Ripple posts no longer wait behind the 20 hand-queued videos
 
 - **Requested by:** Keenan
