@@ -8,6 +8,27 @@
 ---
 
 
+## [2026-11-04] — Facebook 2-posts-a-day limit removed
+
+- **Requested by:** Keenan
+- **Committed by:** Claude Code
+- **Commit hash:** (this commit)
+
+### In plain English (for Keenan)
+Facebook no longer stops at 2 auto-posts per Page per day. Everything queued now goes out on both Instagram and Facebook, including both daily Ripple videos. Today's skipped Facebook video ("Running late because it's all on you") was re-sent.
+
+### Technical changes (for Jimmy)
+- apps/web/src/inngest/functions/social-publish-cron.ts: removed the FB_DAILY_CAP check (added 2026-10-08) that marked extra Facebook rows SKIPPED
+- DB: SocialPublish cmw1a55qk000912h87ndhz5x1 (Ripple FB, video 2) set back to PENDING after deploy
+- FB_DAILY_CAP env var is now unused (can be deleted in Vercel)
+
+### Manual steps needed
+- None
+
+### Notes
+- Applies to every Page (Ripple, BWK, Mythicals). Ripple FB is now ~4 posts/day (2 normal + 2 videos).
+- The cap existed because organic FB reach was ~0 at full volume (10-08); watch FB reach per post.
+
 ## [2026-11-04] — Second set of 20 Ripple videos (music + CTA) queued, one a day
 
 - **Requested by:** Keenan
