@@ -8,6 +8,26 @@
 ---
 
 
+## [2026-11-04] — Normal Ripple posts no longer wait behind the 20 hand-queued videos
+
+- **Requested by:** Keenan
+- **Committed by:** Claude Code
+- **Commit hash:** (this commit)
+
+### In plain English (for Keenan)
+The 20 "Without vs With Ripple" videos queued on 11-03 pushed Ripple's normal daily posts three weeks back, so nothing went out on 11-04 before 4:30pm. Today's two normal posts were moved back to this afternoon. Once this change is live, the normal posts keep their usual times every day and the videos go out on top, one a day at 4:30pm CT until 11-23.
+
+### Technical changes (for Jimmy)
+- apps/web/src/inngest/functions/social-publish-cron.ts: nextSlot cursor seeds only from PENDING rows whose CarouselPost is DRAFT (cron-queued), so hand-queued APPROVED posts don't move it
+- DB (done by hand): 11-04 "Rest" (ripple-split) and "6 things i stopped doing…" (ripple-list) IG+FB rows rescheduled from 11-23/24 to 20:55 and 21:40 UTC on 11-04
+
+### Manual steps needed
+- [ ] Push to main (Keenan's yes). Until then, new daily posts still queue after 11-24 and need moving by hand
+
+### Notes
+- Videos 2–20 and the 11-23 re-post of video 1 all have music; video 1's first post (11-03) was silent.
+- Any future hand-queued batch should be APPROVED posts so the cron ignores it when scheduling.
+
 ## [2026-11-04] — New portrait-first screen 1 in every funnel; /start-journal gets portraits and a men's version
 
 - **Requested by:** Keenan

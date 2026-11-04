@@ -214,12 +214,15 @@ export const socialPublishCronFn = inngest.createFunction(
       // cursor per platform made Ripple and BWK compete for ~9 IG slots a
       // day at ~14 posts a day combined, so the queue would grow forever.
       // Each brand now runs its own schedule inside the same window.
+      // Only rows this cron queued (DRAFT posts) seed the cursor (2026-11-04):
+      // hand-queued APPROVED posts (the 20 "Without vs With" videos, one a
+      // day to 11-23) pushed the normal daily posts three weeks back.
       const cursors = new Map<string, number>();
       const nextSlot = async (platform: QueuePlatform, accountKey: string) => {
         const key = `${platform}:${accountKey}`;
         if (!cursors.has(key)) {
           const latest = await prisma.socialPublish.findFirst({
-            where: { status: "PENDING", platform, accountKey },
+            where: { status: "PENDING", platform, accountKey, carouselPost: { status: "DRAFT" } },
             orderBy: { scheduledAt: "desc" },
             select: { scheduledAt: true },
           });
