@@ -8,6 +8,29 @@
 ---
 
 
+## [2026-11-04] — New portrait-first screen 1 in every funnel; /start-journal gets portraits and a men's version
+
+- **Requested by:** Keenan
+- **Committed by:** Claude Code
+- **Commit hash:** 1f925cf1, 681659fb
+
+### In plain English (for Keenan)
+Every web funnel (mental load, things slipping, tired/patterns, progress, scattered/ADHD and journaling) now opens on the new screen 1: a big illustrated portrait with a small animation, a "Feeling: ..." tag, then the question and quote. /start-journal now has its own woman and man, shown on four screens like the other funnels, a stronger opening line ("I've bought the beautiful journals. They're empty after page six."), and a men's version. Each funnel also has its own women's and men's link (for example /start-journal-men).
+
+### Technical changes (for Jimmy)
+- apps/web/src/components/funnel-v9.tsx: faceHook screen 1 layout (FacePic "stage" size, FEELING words), journal face on hook/st-upkeep/reassure/result, isJournal() covers journal_m
+- apps/web/src/lib/funnel-v9-config.ts: V9Config.face, JOURNAL_M_V9 (brand journal_m, flowVersion "<journal>-m"), new journal hook statement, MEN_OF.journal
+- apps/web/src/app/start-journal/page.tsx: ?for=men serves journal_m
+- apps/web/next.config.js: /start-<journal|relief|catch|clarity|progress|focus>-men → ?for=men and -women → base (temporary redirects, query passes through)
+- apps/web/public/funnel/faces: 8 new journal portraits (f-/m-journal, -mid, -calm, -clear)
+
+### Manual steps needed
+- None
+
+### Notes
+- /start-journal is live and still in the 50/50 journal split (flag funnel_journal_split), so half of its visitors see the new version right away; the five pain funnels get traffic only once the new ads launch.
+- Funnel analytics: the men's journal funnel reports as flowVersion "<journal>-m" (brand journal_m).
+
 ## [2026-11-03] — Weekly App Store search rankings in a Google Sheet, every Sunday night
 
 - **Requested by:** Keenan
