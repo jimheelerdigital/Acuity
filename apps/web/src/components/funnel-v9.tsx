@@ -644,14 +644,16 @@ type ViewProps = {
 };
 
 /** /start-journal and the pain-first funnels share the 2026-10-31 sunrise screens. */
-const sunrise = (C: V9Config) => C.brand === "journal" || !!C.painKit;
+/** /start-journal, women's or men's (?for=men, 2026-11-03). */
+const isJournal = (C: V9Config) => C.brand === "journal" || C.brand === "journal_m";
+const sunrise = (C: V9Config) => isJournal(C) || !!C.painKit;
 
 /** /start-journal: a real review under these steps (index into C.reviews). */
 const JOURNAL_REVIEW_AT: Record<string, number> = { easier: 1, commit: 3 };
 
 function StepView(p: ViewProps) {
   const C = useV9();
-  const at = C.painKit ? C.painKit.reviewAt[p.step.id] : C.brand === "journal" ? JOURNAL_REVIEW_AT[p.step.id] : undefined;
+  const at = C.painKit ? C.painKit.reviewAt[p.step.id] : isJournal(C) ? JOURNAL_REVIEW_AT[p.step.id] : undefined;
   const r = at !== undefined ? C.reviews[at] : undefined;
   if (r) {
     return (
@@ -685,14 +687,14 @@ function StepBody(p: ViewProps) {
   const { step } = p;
   switch (step.kind) {
     case "single":
-      if ((p.step.id === "tried" && C.brand === "journal") || (!!C.painKit && p.step.id === C.painKit.stackStep)) return <TriedTiles {...p} step={step} />;
-      if (p.step.id === "happens" && C.brand === "journal") return <HappensCards {...p} step={step} />;
+      if ((p.step.id === "tried" && isJournal(C)) || (!!C.painKit && p.step.id === C.painKit.stackStep)) return <TriedTiles {...p} step={step} />;
+      if (p.step.id === "happens" && isJournal(C)) return <HappensCards {...p} step={step} />;
       if (p.step.id === "age" && sunrise(C)) return <AgeTiles {...p} step={step} />;
       if (p.step.id === "commit" && sunrise(C)) return <CommitCards {...p} step={step} />;
       if (p.step.id === "often" && sunrise(C)) return <OftenTiles {...p} step={step} />;
       return <SingleScreen {...p} step={step} />;
     case "multi":
-      if (p.step.id === "plate" && C.brand === "journal") return <MultiScreen {...p} step={step} above={<PlateVisual picked={p.answers.multi.plate ?? []} />} />;
+      if (p.step.id === "plate" && isJournal(C)) return <MultiScreen {...p} step={step} above={<PlateVisual picked={p.answers.multi.plate ?? []} />} />;
       return <MultiScreen {...p} step={step} />;
     case "week":
       return <WeekScreen {...p} step={step} />;
@@ -714,7 +716,7 @@ function StepBody(p: ViewProps) {
     case "email":
       return <EmailScreen {...p} />;
     case "result":
-      return C.brand === "journal" ? <JournalResult {...p} /> : C.painKit ? <PainResult {...p} /> : <ResultScreen {...p} />;
+      return isJournal(C) ? <JournalResult {...p} /> : C.painKit ? <PainResult {...p} /> : <ResultScreen {...p} />;
     case "plan":
       return <PlanScreen {...p} />;
     case "paywall":
@@ -924,7 +926,7 @@ function SingleScreen({ step, answers, setAnswers, next, track }: ViewProps & { 
 
 function MultiScreen({ step, answers, setAnswers, next, track, above }: ViewProps & { step: Extract<V9Step, { kind: "multi" }>; above?: ReactNode }) {
   const C = useV9();
-  const stamps = C.brand === "journal" ? (step.id === "tried-what" ? TRIED_STAMPS : step.id === "easier" ? EASIER_STAMPS : null) : C.painKit?.stamps[step.id] ?? null;
+  const stamps = isJournal(C) ? (step.id === "tried-what" ? TRIED_STAMPS : step.id === "easier" ? EASIER_STAMPS : null) : C.painKit?.stamps[step.id] ?? null;
   const picked = answers.multi[step.id] ?? [];
   const toggle = (id: string) =>
     setAnswers((a) => {
@@ -1151,7 +1153,7 @@ function StatementScreen({ step, answers, setAnswers, next, track }: ViewProps &
         </figure>
       ) : (
         <figure className={`card-in relative flex flex-col items-center overflow-hidden rounded-[28px] card px-6 pb-[clamp(22px,6vw,30px)] pt-6 text-center ${fly === "yes" ? "fly-yes" : fly === "no" ? "fly-no" : ""}`}>
-          {C.brand === "journal" && isHook ? <PlannerStack /> : C.painKit && isHook ? <FacePic size="hero" /> : C.painKit && !step.title ? <FacePic size="mid" spot="mid" /> : C.painKit ? <JournalStatementPic id="st-zero" stamp={C.painKit.closeStamp} /> : C.brand === "journal" && (step.id === "st-upkeep" || step.id === "st-zero") ? <JournalStatementPic id={step.id} /> : <MoodAvatar mood={step.mood} size={60} />}
+          {(C.painKit || C.face) && isHook ? <FacePic size="hero" /> : C.face && step.id === "st-upkeep" ? <FacePic size="mid" spot="mid" /> : isJournal(C) && isHook ? <PlannerStack /> : C.painKit && !step.title ? <FacePic size="mid" spot="mid" /> : C.painKit ? <JournalStatementPic id="st-zero" stamp={C.painKit.closeStamp} /> : isJournal(C) && (step.id === "st-upkeep" || step.id === "st-zero") ? <JournalStatementPic id={step.id} /> : <MoodAvatar mood={step.mood} size={60} />}
           <blockquote className="relative mt-4 text-[clamp(19px,5.6vw,22px)] font-medium italic leading-[1.35] tracking-tight text-balance">
             &ldquo;{step.statement}&rdquo;
           </blockquote>
@@ -1281,7 +1283,7 @@ function ReassureScreen({ next }: ViewProps) {
   const C = useV9();
   return (
     <div className="enter">
-      {C.painKit && <div className="mb-3"><FacePic size="avatar" spot="calm" /></div>}
+      {(C.painKit || C.face) && <div className="mb-3"><FacePic size="avatar" spot="calm" /></div>}
       <Heading title={C.reassure.title} />
       <div className="rs-cloud relative h-[210px] mb-6 overflow-hidden">
         {C.reassure.things.map((t, i) => (
@@ -1744,7 +1746,7 @@ function ResultScreen({ answers, firstName, next }: ViewProps) {
         <p className="mt-2 text-[16px] leading-relaxed text-white/90">{state.line}</p>
       </div>
 
-      {C.brand === "journal" ? <PlannerHistory answers={answers} /> : (
+      {isJournal(C) ? <PlannerHistory answers={answers} /> : (
       <div className="mt-5 card rounded-3xl p-5">
         <p className="text-[13px] font-bold mb-3.5">Your mental load, in your answers</p>
         <div className="space-y-3">
@@ -1769,7 +1771,7 @@ function ResultScreen({ answers, firstName, next }: ViewProps) {
           <div className="space-y-2">
             {statementSteps(C).filter((st) => answers.single[st.id] === "yes").map((st, i) => (
               <p key={st.id} className="up flex items-center gap-2.5 text-[15px] italic leading-snug" style={{ animationDelay: `${300 + i * 120}ms` }}>
-                {C.brand === "journal" ? <span className="h-7 w-7 shrink-0 rounded-full chip-ico flex items-center justify-center"><Quote className="h-3.5 w-3.5" /></span> : <MoodAvatar mood={st.mood} tone={C.theme === "dusk" ? "steel" : "hue"} size={28} />}
+                {isJournal(C) ? <span className="h-7 w-7 shrink-0 rounded-full chip-ico flex items-center justify-center"><Quote className="h-3.5 w-3.5" /></span> : <MoodAvatar mood={st.mood} tone={C.theme === "dusk" ? "steel" : "hue"} size={28} />}
                 <span>&ldquo;{st.statement}&rdquo;</span>
               </p>
             ))}
@@ -2424,7 +2426,7 @@ function PlannerStack() {
  */
 function FacePic({ size, spot = "hook" }: { size: "hero" | "mid" | "avatar"; spot?: "hook" | "mid" | "calm" | "clear" }) {
   const C = useV9();
-  const face = C.painKit?.face;
+  const face = C.painKit?.face ?? C.face;
   if (!face) return null;
   const male = C.brand.endsWith("_m");
   // One illustration per spot (2026-11-03, Keenan: "we don't want redundancy"):
@@ -2450,6 +2452,12 @@ function FacePic({ size, spot = "hook" }: { size: "hero" | "mid" | "avatar"; spo
 /** Screen 1 props that name the pain, animating over the portrait (2026-11-03). */
 function HeroProps({ face, male }: { face: NonNullable<PainKit["face"]>; male: boolean }) {
   const chip = "absolute rounded-full bg-white/95 px-2.5 py-1 text-[11px] font-semibold text-acuity-text shadow-[0_6px_14px_-6px_rgba(140,60,20,.45)] whitespace-nowrap";
+  if (face === "journal") {
+    // The journals that never got past page six (2026-11-03).
+    const items = male ? ["New planner", "3 apps", "Blank since Feb"] : ["New journal", "Page 6", "Blank since Feb"];
+    const pos = [{ left: "6%", top: "10%" }, { right: "6%", top: "16%" }, { right: "6%", bottom: "12%" }];
+    return <>{items.map((t, i) => <span key={t} className={`${chip} ${i === 2 ? "hp-fall" : "hp-bob"}`} style={{ ...pos[i], animationDelay: `${i * 0.7}s` }}>{t}</span>)}</>;
+  }
   if (face === "relief") {
     const items = male ? ["Oil change", "Call the bank", "Kid’s practice", "Pay the card"] : ["Dentist Thu", "Call Mom", "Water bill", "Permission slip"];
     const pos = [{ left: "6%", top: "10%" }, { right: "6%", top: "18%" }, { left: "4%", bottom: "16%" }, { right: "5%", bottom: "9%" }];
@@ -2669,6 +2677,7 @@ function JournalResult({ answers, firstName, next }: ViewProps) {
 
   return (
     <div className="enter">
+      {C.face && <div className="mb-3"><FacePic size="avatar" spot="clear" /></div>}
       <p className="text-center text-[13px] font-semibold text-acuity-primary mb-3">{firstName ? `${firstName}, we get it` : "We get it"}</p>
 
       <div className="relative overflow-hidden rounded-[28px] grad p-6 text-white shadow-[0_14px_36px_-12px_var(--acuity-primary)]">

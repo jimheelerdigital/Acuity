@@ -231,6 +231,19 @@ const nextConfig = {
   },
   async redirects() {
     return [
+      // Women's / men's links for each funnel (2026-11-03, per Keenan):
+      // /start-<funnel>-men → ?for=men, /start-<funnel>-women → the default.
+      // Query strings (utm_*, fbclid) pass through.
+      {
+        source: "/:funnel(start-journal|start-relief|start-catch|start-clarity|start-progress|start-focus)-men",
+        destination: "/:funnel?for=men",
+        permanent: false,
+      },
+      {
+        source: "/:funnel(start-journal|start-relief|start-catch|start-clarity|start-progress|start-focus)-women",
+        destination: "/:funnel",
+        permanent: false,
+      },
       {
         // Mythicals favicon (2026-10-08, per Keenan: the tab showed Ripple's
         // icon). The root layout links Ripple's favicon files for every host;

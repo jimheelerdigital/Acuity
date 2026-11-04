@@ -38,7 +38,8 @@ export default async function StartJournalPage({
       <link rel="preconnect" href="https://fonts.googleapis.com" />
       <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700&display=swap" />
       {inSplit ? <script dangerouslySetInnerHTML={{ __html: journalArmScript() }} /> : null}
-      <FunnelV9 brand="journal" adMatch={adMatch} />
+      {/* ?for=men: his wording and portrait (2026-11-03). */}
+      <FunnelV9 brand={searchParams.for === "men" ? "journal_m" : "journal"} adMatch={adMatch} />
     </>
   );
 }

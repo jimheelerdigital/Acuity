@@ -298,7 +298,7 @@ export function v9StateName(a: {
 // therapy talk) on the dusk theme. Same positioning rules: "debrief", no
 // fixed time of day, no duration claims, mirror not coach, real reviews only.
 
-export type V9Brand = "ripple" | "bwk" | "journal" | "pain" | "slip" | "loop" | "progress" | "adhd" | "pain_m" | "slip_m" | "loop_m" | "progress_m" | "adhd_m";
+export type V9Brand = "ripple" | "bwk" | "journal" | "journal_m" | "pain" | "slip" | "loop" | "progress" | "adhd" | "pain_m" | "slip_m" | "loop_m" | "progress_m" | "adhd_m";
 
 export type V9Sample = { match: string[]; said: string; tasks: string[]; mood: string; pattern: string };
 
@@ -331,13 +331,15 @@ export interface V9Config {
   /** Pain-first funnels (2026-11-02): the copy their shared sunrise screens
    *  use in place of /start-journal's planner pictures. */
   painKit?: PainKit;
+  /** Illustrated portrait for a non-pain-kit funnel (/start-journal, 2026-11-03): same four spots as the pain funnels. */
+  face?: PainKit["face"];
 }
 
 export interface PainKit {
   /** Short name for admin and the split ("Mental load", "Things slip"...). */
   label: string;
   /** Illustrated portrait for this pain (public/funnel/faces/{f|m}-<face>.webp, 2026-11-03). */
-  face: "relief" | "catch" | "clarity" | "progress" | "focus";
+  face: "relief" | "catch" | "clarity" | "progress" | "focus" | "journal";
   /** Three small cards fanned above the hook statement. */
   hookCards: string[];
   /** Single-choice step drawn as growing stacks (like /start-journal's "tried"). */
@@ -627,7 +629,8 @@ export const BWK_V9: V9Config = {
 // design in its preview screen and the 3-screen trust paywall. Split 50/50
 // against /start-test via lib/journal-split.ts (flag funnel_journal_split).
 export const JOURNAL_V9_STEPS: V9Step[] = [
-  { id: "hook", kind: "statement", statement: "I\u2019ve tried planners, apps and journals. None of them stuck.", mood: "overloaded" },
+  // Hook (2026-11-03, Keenan picked A): the specific, recognizable failure.
+  { id: "hook", kind: "statement", statement: "I\u2019ve bought the beautiful journals. They\u2019re empty after page six.", mood: "overloaded" },
   // Pain first (2026-10-31, Keenan): why she buys planners, the pain behind
   // that, where they keep failing her, and what would make it easier. Only
   // then "It's not you" and Ripple. Aiming at the growth videos' ~20 questions.
@@ -811,6 +814,7 @@ export const JOURNAL_REVIEWS = [
 export const JOURNAL_V9: V9Config = {
   ...RIPPLE_V9,
   brand: "journal",
+  face: "journal",
   theme: "sunrise",
   flowVersion: "v9-journal",
   path: "/start-journal",
@@ -1772,12 +1776,23 @@ export const ADHD_M_V9 = menConfig(ADHD_V9, "adhd_m", {
   painKit: {},
 });
 
+/** /start-journal for men (?for=men, 2026-11-03): his wording, his portrait. */
+export const JOURNAL_M_V9: V9Config = {
+  ...JOURNAL_V9,
+  brand: "journal_m",
+  flowVersion: `${JOURNAL_V9.flowVersion}-m`,
+  steps: forMen(JOURNAL_V9.steps, {
+    hook: { statement: "I\u2019ve tried planners and apps. None of them stick." },
+    why: { title: "Why do you keep trying planners and apps?" },
+  }),
+};
+
 /** Men's version of a pain funnel, by the women's brand (?for=men). */
-export const MEN_OF: Partial<Record<V9Brand, V9Brand>> = { pain: "pain_m", slip: "slip_m", loop: "loop_m", progress: "progress_m", adhd: "adhd_m" };
+export const MEN_OF: Partial<Record<V9Brand, V9Brand>> = { journal: "journal_m", pain: "pain_m", slip: "slip_m", loop: "loop_m", progress: "progress_m", adhd: "adhd_m" };
 
 export const V9_CONFIGS: Record<V9Brand, V9Config> = {
   ripple: RIPPLE_V9, bwk: BWK_V9, journal: JOURNAL_V9, pain: PAIN_V9, slip: SLIP_V9, loop: LOOP_V9, progress: PROGRESS_V9, adhd: ADHD_V9,
-  pain_m: PAIN_M_V9, slip_m: SLIP_M_V9, loop_m: LOOP_M_V9, progress_m: PROGRESS_M_V9, adhd_m: ADHD_M_V9,
+  journal_m: JOURNAL_M_V9, pain_m: PAIN_M_V9, slip_m: SLIP_M_V9, loop_m: LOOP_M_V9, progress_m: PROGRESS_M_V9, adhd_m: ADHD_M_V9,
 };
 
 /** The pain-first funnels in the 2026-11-02 split, in order. */
