@@ -97,3 +97,46 @@ export function buildSnapshots(
   }
   return rows;
 }
+
+/**
+ * Background sync (HealthKit background delivery). iOS wakes the app when new
+ * steps or exercise minutes land in Health — at most hourly — and the app
+ * re-sends a short window so a habit rule ("5,000 steps") is checked off on
+ * the server without the app being opened.
+ */
+
+/** Days a background wake re-sends: today, plus yesterday for late entries
+ * (a walk logged after midnight, a Watch that synced late). */
+export const BACKGROUND_SYNC_DAYS = 2;
+
+/** Two wakes this close together (steps and exercise often arrive together)
+ * share one upload. */
+export const BACKGROUND_MIN_GAP_MS = 15 * 60 * 1000;
+
+export type BackgroundSyncDecision =
+  | "sync"
+  | "disabled"
+  | "busy"
+  | "locked"
+  | "too-soon";
+
+/**
+ * Whether a background wake should read Health and upload. "locked" matters:
+ * Health data is encrypted while the phone is locked, so reads fail and would
+ * upload nothing (or blanks). Skipping does not stamp the last-sync time, so
+ * the next wake after unlock — or the next app open — still syncs.
+ */
+export function backgroundSyncDecision(input: {
+  enabled: boolean;
+  running: boolean;
+  protectedDataAvailable: boolean;
+  lastSyncedAt: number;
+  now: number;
+}): BackgroundSyncDecision {
+  if (!input.enabled) return "disabled";
+  if (input.running) return "busy";
+  if (!input.protectedDataAvailable) return "locked";
+  const last = Number.isFinite(input.lastSyncedAt) ? input.lastSyncedAt : 0;
+  if (input.now - last < BACKGROUND_MIN_GAP_MS) return "too-soon";
+  return "sync";
+}

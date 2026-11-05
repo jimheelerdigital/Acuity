@@ -101,6 +101,11 @@ export default function HealthScreen() {
             Only daily totals for the last week leave your phone. Ripple never writes to Health and
             never sees individual readings.
           </Text>
+          <Text className="text-xs mt-2" style={{ color: tokens.textTer, lineHeight: 18 }}>
+            Habits like "10,000 steps" can check themselves off during the day without opening
+            Ripple. iPhone decides when (often within an hour) and only while your phone is
+            unlocked.
+          </Text>
         </View>
 
         {state.kind === "loading" || state.kind === "working" ? (

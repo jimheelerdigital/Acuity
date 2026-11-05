@@ -266,7 +266,7 @@
         {
           "NSHealthShareUsageDescription": "Ripple reads your daily steps, exercise minutes, sleep and heart rate variability to show how they line up with your mood, and to check off habits like a daily step goal. Only daily totals are shared.",
           "NSHealthUpdateUsageDescription": "Ripple only reads from Apple Health. It never saves or changes any of your Health data.",
-          "background": false
+          "background": true
         }
       ],
       "@react-native-community/datetimepicker",
