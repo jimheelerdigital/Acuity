@@ -8,6 +8,31 @@
 ---
 
 
+## [2026-11-05] — Quick debrief test results added to Jimmy's spec
+
+- **Requested by:** Keenan
+- **Committed by:** Claude Code
+- **Commit hash:** (this commit)
+
+### In plain English (for Keenan)
+We tested the quick analysis on Keenan's last 30 debriefs on the live server. It takes about 2.4 seconds instead of about 18, and its summaries read better. The to-dos and very short debriefs need a prompt fix first. The results and the required fixes are now in Jimmy's spec for the next app version.
+
+### Technical changes (for Jimmy)
+- docs/jimmy-spec-2026-11-05-fast-first-results.md:
+  - new 2.2.1 (required prompt fixes + pass bar)
+  - new 2.6 (bench results + field audit)
+  - 2.2 now points at the existing lib/quick-debrief.ts
+  - 2.5 covers the extraction-review gate for to-dos, drops `insights`, and skips the deep pass on thin debriefs
+  - rollout says next app version
+- Bench: POST /api/admin/bench/quick-debrief on 30 entries. Quick p50 2.4s / p90 3.1s / max 3.2s vs full p50 18.4s / p90 28.5s; 30/30 parsed; to-dos same count on 12/30
+
+### Manual steps needed
+- [ ] Apply the 2.2.1 fixes, re-run the bench, build per spec (Jimmy)
+- [ ] Approve the final quick-analysis wording (Keenan)
+
+### Notes
+- The 11-05 push of ef6fdabd never triggered a Vercel build. It was deployed with a REST gitSource deploy of main (builds from GitHub, not local disk). Check `gh api repos/jimheelerdigital/Acuity/deployments` after a push if a change doesn't show up.
+
 ## [2026-11-05] — Test page to time the quick debrief analysis on real debriefs
 
 - **Requested by:** Keenan
