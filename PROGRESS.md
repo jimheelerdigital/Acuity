@@ -8,6 +8,31 @@
 ---
 
 
+## [2026-11-05] — Canadian creator's Stripe payout setup no longer restarts on every visit
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** see git log
+
+### In plain English (for Keenan)
+Natalie (our Canadian creator) could never finish Stripe payout setup. The "Where you live" box on her dashboard went back to "United States" on every visit. Pressing "Finish Stripe setup" without re-picking Canada threw away her Canadian Stripe setup and started a US one, and picking Canada again started yet another. She ended up with 6 empty Stripe accounts and lost her progress each time. Now a creator who has started setup sees "Set up for Canada" and a Finish button that always continues the same setup. Changing country is a separate "Wrong country? Start over" option. New creators must pick their country; it no longer defaults to the US.
+
+### Technical changes (for Jimmy)
+- apps/web/src/lib/creators/payouts.ts: `connectOnboardingLink(creatorId, country, { restart })` abandons an existing account for a different country only when `restart` is true; otherwise the existing account is always continued. New `connectStatus(creatorId)` → `{ ready, country }` (one `accounts.retrieve`); `refreshConnectStatus` now wraps it.
+- apps/web/src/app/api/creators/connect/route.ts: reads `restart=1` and passes it through.
+- apps/web/src/app/creators/page.tsx: with an account, shows a Finish link (no country param) plus "Set up for <country>", and a collapsed "Wrong country?" form (`restart=1`, defaulted to the account's country). Without an account, the country select is required with no default.
+- No schema changes. Typecheck clean on changed files; creators tests pass.
+
+### Manual steps needed
+- [ ] Review the Connect onboarding change, payment code (Jimmy)
+- [ ] After deploy, ask Natalie to open her dashboard and press "Finish Stripe setup". It continues her current Canadian account acct_1UYBMBDo5LTYXyTT (Keenan)
+- [ ] Optional: delete her 5 abandoned empty Connect accounts in Stripe → Connect (CA acct_1UYBLKDhFmYKpiQK, acct_1UW2mkDMnKuyZ6g0; US acct_1UYBLsDhx640v2hu, acct_1UW2nBDKf3eNGcIA, acct_1UW0dqDvZKUPeFxy). They hold nothing (Keenan)
+
+### Notes
+- **Live Stripe state on 11-05:** her account is CA, recipient agreement, CAD, nothing submitted yet, `disabled_reason: requirements.past_due` (normal for an untouched account). A fresh onboarding link for it was created without error, so Stripe's side works.
+- **The loop on 11-04 at 15:03–15:04 CT:** CA → US → CA accounts created within 53 seconds.
+- **Local Stripe key is the sandbox:** use the production key from `vercel env pull` for live checks (see the 10-23 gotcha).
+
 ## [2026-11-04] — Ripple video auto-posting turned off; Keenan posts them by hand
 
 - **Requested by:** Keenan

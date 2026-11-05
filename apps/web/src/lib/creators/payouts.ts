@@ -348,7 +348,18 @@ export async function resetFailedPayout(payoutId: string): Promise<void> {
  * fixes at creation; omitted, an existing account is reused and a new one
  * defaults to US.
  */
-export async function connectOnboardingLink(creatorId: string, country?: string | null): Promise<string> {
+/**
+ * Hosted onboarding link. An existing account is always continued, whatever
+ * `country` says: only `restart` (the dashboard's "Wrong country? Start over")
+ * may abandon it for one in another country. Without that rule, the country
+ * picker's default sent a Canadian creator's every return visit to a fresh US
+ * account, wiping her progress (6 accounts by 2026-11-04).
+ */
+export async function connectOnboardingLink(
+  creatorId: string,
+  country?: string | null,
+  opts: { restart?: boolean } = {}
+): Promise<string> {
   const { stripe } = await import("@/lib/stripe");
   const c = await prisma.ugcCreator.findUniqueOrThrow({
     where: { id: creatorId },
@@ -360,10 +371,10 @@ export async function connectOnboardingLink(creatorId: string, country?: string 
   if (accountId) {
     try {
       const existing = await stripe.accounts.retrieve(accountId);
-      // Wrong country (e.g. a Canadian stuck on a defaulted US account) can't
-      // be changed at Stripe: abandon it, not delete it, and start over. Only
-      // reached while payouts aren't enabled, so nothing has been paid to it.
-      if (country && existing.country !== country) {
+      // Wrong country can't be changed at Stripe: on an explicit restart,
+      // abandon it (not delete it) and start over. Only reached while payouts
+      // aren't enabled, so nothing has been paid to it.
+      if (opts.restart && country && existing.country !== country) {
         safeLog.warn("creators.connect.country-reset", { creatorId, accountId, from: existing.country, to: country });
         await prisma.ugcCreator.update({ where: { id: c.id }, data: { stripeAccountId: null, stripePayoutsEnabled: false } });
         accountId = null;
@@ -406,11 +417,20 @@ export async function connectOnboardingLink(creatorId: string, country?: string 
 
 /** Re-read the Express account and store whether payouts can go to it. */
 export async function refreshConnectStatus(creatorId: string): Promise<boolean> {
+  return (await connectStatus(creatorId)).ready;
+}
+
+/**
+ * refreshConnectStatus plus the account's country (null when there's no
+ * account or Stripe can't be reached), so the dashboard can show which
+ * country the setup is for instead of a picker that defaults to the US.
+ */
+export async function connectStatus(creatorId: string): Promise<{ ready: boolean; country: string | null }> {
   const c = await prisma.ugcCreator.findUnique({
     where: { id: creatorId },
     select: { stripeAccountId: true, stripePayoutsEnabled: true },
   });
-  if (!c?.stripeAccountId) return false;
+  if (!c?.stripeAccountId) return { ready: false, country: null };
   try {
     const { stripe } = await import("@/lib/stripe");
     const acct = await stripe.accounts.retrieve(c.stripeAccountId);
@@ -418,13 +438,13 @@ export async function refreshConnectStatus(creatorId: string): Promise<boolean> 
     if (ready !== c.stripePayoutsEnabled) {
       await prisma.ugcCreator.update({ where: { id: creatorId }, data: { stripePayoutsEnabled: ready } });
     }
-    return ready;
+    return { ready, country: acct.country ?? null };
   } catch (err) {
     safeLog.warn("creators.connect.refresh-failed", {
       creatorId,
       err: err instanceof Error ? err.message : String(err),
     });
-    return c.stripePayoutsEnabled;
+    return { ready: c.stripePayoutsEnabled, country: null };
   }
 }
 

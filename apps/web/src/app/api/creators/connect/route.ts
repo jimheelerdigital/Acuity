@@ -2,6 +2,8 @@
  * GET /api/creators/connect — send the creator to Stripe: hosted Express
  * onboarding until payouts are enabled, then their Express dashboard.
  * Also the onboarding `refresh_url` (?refresh=1) when a link expires.
+ * `country` picks the country for a NEW account; it only replaces an
+ * existing one with `restart=1` (the dashboard's "Start over").
  */
 import { NextRequest, NextResponse } from "next/server";
 
@@ -19,7 +21,8 @@ export async function GET(req: NextRequest) {
   try {
     const ready = await refreshConnectStatus(creatorId);
     const country = connectCountry(req.nextUrl.searchParams.get("country"));
-    const url = ready ? await connectDashboardLink(creatorId) : await connectOnboardingLink(creatorId, country);
+    const restart = req.nextUrl.searchParams.get("restart") === "1";
+    const url = ready ? await connectDashboardLink(creatorId) : await connectOnboardingLink(creatorId, country, { restart });
     if (!url) throw new Error("no Stripe link");
     return NextResponse.redirect(url);
   } catch (err) {

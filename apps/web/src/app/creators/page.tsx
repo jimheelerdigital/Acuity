@@ -228,13 +228,16 @@ export default async function CreatorsPage({
   const { prisma } = await import("@/lib/prisma");
   const { balancesFor } = await import("@/lib/creators/ledger");
   const { creatorCustomers, creatorFunnels } = await import("@/lib/creators/stats");
-  const { refreshConnectStatus } = await import("@/lib/creators/payouts");
+  const { connectStatus } = await import("@/lib/creators/payouts");
 
   const pre = await prisma.ugcCreator.findUniqueOrThrow({
     where: { id: creatorId },
     select: { stripeAccountId: true },
   });
-  if (pre.stripeAccountId) await refreshConnectStatus(creatorId);
+  // Country of an existing Stripe setup: return visits continue it instead of
+  // re-asking (a defaulted "United States" used to restart a Canadian's setup).
+  const connectCountryCode = pre.stripeAccountId ? (await connectStatus(creatorId)).country : null;
+  const connectCountryName = CONNECT_COUNTRIES.find((c) => c.code === connectCountryCode)?.name ?? connectCountryCode;
 
   const [creator, balances, funnels, customers, posts, payouts, brief] = await Promise.all([
     prisma.ugcCreator.findUniqueOrThrow({
@@ -519,28 +522,69 @@ export default async function CreatorsPage({
                 <p className="mt-1 text-[14px] text-acuity-text-sec">
                   Stripe collects your bank details and tax form (W-9 or W-8BEN) and sends US creators a 1099. It takes about five minutes.
                 </p>
-                <form action="/api/creators/connect" method="get" className="mt-3 flex flex-wrap items-center gap-3">
-                  <label className="flex items-center gap-2 text-[14px] text-acuity-text-sec">
-                    Where you live
-                    <select
-                      name="country"
-                      defaultValue="US"
-                      className="rounded-acuity-md border border-acuity-line bg-acuity-bg-sub px-3 py-2 text-[14px] text-acuity-text"
-                    >
-                      {CONNECT_COUNTRIES.map((c) => (
-                        <option key={c.code} value={c.code}>
-                          {c.name}
+                {creator.stripeAccountId ? (
+                  <>
+                    <div className="mt-3 flex flex-wrap items-center gap-3">
+                      <a
+                        href="/api/creators/connect"
+                        className="inline-flex items-center justify-center rounded-acuity-pill bg-acuity-grad-primary px-6 py-3 text-[15px] font-semibold text-white hover:brightness-105 active:scale-[0.98]"
+                      >
+                        Finish Stripe setup
+                      </a>
+                      {connectCountryName && (
+                        <span className="text-[14px] text-acuity-text-sec">Set up for {connectCountryName}. Stripe keeps what you&apos;ve already filled in.</span>
+                      )}
+                    </div>
+                    <details className="mt-3 text-[13px] text-acuity-text-ter">
+                      <summary className="cursor-pointer hover:text-acuity-text-sec">Wrong country?</summary>
+                      <form action="/api/creators/connect" method="get" className="mt-2 flex flex-wrap items-center gap-3">
+                        <input type="hidden" name="restart" value="1" />
+                        <select
+                          name="country"
+                          defaultValue={connectCountryCode ?? "US"}
+                          className="rounded-acuity-md border border-acuity-line bg-acuity-bg-sub px-3 py-2 text-[14px] text-acuity-text"
+                        >
+                          {CONNECT_COUNTRIES.map((c) => (
+                            <option key={c.code} value={c.code}>
+                              {c.name}
+                            </option>
+                          ))}
+                        </select>
+                        <button type="submit" className="text-[14px] font-semibold text-acuity-text-sec hover:text-acuity-text hover:underline">
+                          Start over in this country
+                        </button>
+                      </form>
+                      <p className="mt-1">Starting over clears what you entered at Stripe so far.</p>
+                    </details>
+                  </>
+                ) : (
+                  <form action="/api/creators/connect" method="get" className="mt-3 flex flex-wrap items-center gap-3">
+                    <label className="flex items-center gap-2 text-[14px] text-acuity-text-sec">
+                      Where you live
+                      <select
+                        name="country"
+                        defaultValue=""
+                        required
+                        className="rounded-acuity-md border border-acuity-line bg-acuity-bg-sub px-3 py-2 text-[14px] text-acuity-text"
+                      >
+                        <option value="" disabled>
+                          Choose
                         </option>
-                      ))}
-                    </select>
-                  </label>
-                  <button
-                    type="submit"
-                    className="inline-flex items-center justify-center rounded-acuity-pill bg-acuity-grad-primary px-6 py-3 text-[15px] font-semibold text-white hover:brightness-105 active:scale-[0.98]"
-                  >
-                    {creator.stripeAccountId ? "Finish Stripe setup" : "Connect Stripe"}
-                  </button>
-                </form>
+                        {CONNECT_COUNTRIES.map((c) => (
+                          <option key={c.code} value={c.code}>
+                            {c.name}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                    <button
+                      type="submit"
+                      className="inline-flex items-center justify-center rounded-acuity-pill bg-acuity-grad-primary px-6 py-3 text-[15px] font-semibold text-white hover:brightness-105 active:scale-[0.98]"
+                    >
+                      Connect Stripe
+                    </button>
+                  </form>
+                )}
                 <p className="mt-2 text-[13px] text-acuity-text-ter">
                   Outside the US, Stripe pays you in your local currency.
                 </p>
