@@ -627,6 +627,7 @@ ${blocks.join("")}
                 where: { id: row.carouselPostId },
                 select: {
                   lane: true,
+                  status: true,
                   slides: {
                     where: { kind: { not: "SCENE" } },
                     orderBy: { order: "asc" },
@@ -685,6 +686,10 @@ ${blocks.join("")}
                 }
                 return publicUrl;
               }
+
+              // Hand-queued posts (APPROVED) ship their own finished video:
+              // never replace a missing one with a slideshow (2026-11-04).
+              if (post.status === "APPROVED") return WAIT_FOR_VIDEO;
 
               const { pickMusicTrack, renderSlideshowReel } = await import(
                 "@/lib/content-factory/slideshow-reel"

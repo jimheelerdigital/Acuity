@@ -8,6 +8,27 @@
 ---
 
 
+## [2026-11-04] — Hand-made videos can no longer be swapped for a slideshow
+
+- **Requested by:** Keenan
+- **Committed by:** Claude Code
+- **Commit hash:** (this commit)
+
+### In plain English (for Keenan)
+"Without vs With" video 2 went out as a 6-second slideshow (a still frame plus the Ripple end card) instead of the real video. The daily 9am check thought the post had no video and built one over the real file. The real video is restored and re-posted, and the 9am check and the poster now leave hand-queued videos alone.
+
+### Technical changes (for Jimmy)
+- apps/web/src/inngest/functions/social-health-check.ts: section 6 skips APPROVED (hand-queued) posts when looking for missing/failed post videos
+- apps/web/src/inngest/functions/social-publish-cron.ts: render-reel step returns WAIT_FOR_VIDEO instead of rendering a slideshow for APPROVED posts
+- Storage (done by hand): reels/cmw1a54i4000512h851x6331u.mp4 restored from the Desktop file + copy at -yt.mp4 (fresh URL, avoids CDN cache); video-builds/<id>.json "done" markers for all 41 ww-/cta- posts; replace-requests/<id>.json deleted the FB slideshow and re-queued IG+FB
+
+### Manual steps needed
+- [ ] Delete the slideshow reel on Instagram by hand: https://www.instagram.com/reel/DfViNeMjBkw/ (Keenan; the IG API refuses deletes)
+
+### Notes
+- Root cause: social-health-check (14:00 UTC) treats any reel-lane post for today with no video-builds marker as broken and drops a video-requests file; post-video.build then rendered stills over reels/<id>.mp4. Any future hand-queued video post needs a "done" marker or APPROVED status.
+- FB delete via Graph works; IG media delete returns "Unsupported delete request".
+
 ## [2026-11-04] — Facebook 2-posts-a-day limit removed
 
 - **Requested by:** Keenan

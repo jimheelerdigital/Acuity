@@ -172,7 +172,7 @@ export const socialHealthCheckFn = inngest.createFunction(
         const brandOf = new Map(lanes.map((l) => [l.key, l.brand]));
         const posts = await prisma.carouselPost.findMany({
           where: { generatedFor: today },
-          select: { id: true, lane: true },
+          select: { id: true, lane: true, status: true },
         });
         const have = new Set(posts.map((p) => p.lane));
         const missing = lanes.filter((l) => l.hoursUtc.length > 0 && !have.has(l.key)).map((l) => l.key);
@@ -191,6 +191,9 @@ export const socialHealthCheckFn = inngest.createFunction(
         const creditsOut = (await readCreditsFlag())?.out === true;
         for (const p of posts) {
           if (!laneWantsReel(p.lane)) continue;
+          // Hand-queued posts (APPROVED) carry finished videos; a rebuild
+          // overwrote one with a 6s slideshow that then posted (2026-11-04).
+          if (p.status === "APPROVED") continue;
           const m = await readVideoMarker(p.id);
           // Brands with no animation budget (Ripple since 09-30) ship stills
           // videos on purpose: only a missing or failed build is broken.
