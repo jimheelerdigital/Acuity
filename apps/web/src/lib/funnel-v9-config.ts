@@ -1,4 +1,5 @@
-import { REVIEW_COPY, STRUCTURE, applyReviewCopy } from "./funnel-copy-review";
+import { REVIEW_COPY, STRUCTURE, applyAudit, applyReviewCopy } from "./funnel-copy-review";
+import { AUDIT2 } from "./funnel-copy-audit2";
 import type { Mood } from "@/components/mood-avatar";
 /**
  * /start-test — the v9 evidence-based funnel (2026-09-24, per Keenan).
@@ -1821,6 +1822,7 @@ const REVIEW_RESULT_NAMES: Record<string, string[]> = {
   focus: ["The System Collector", "The Tab Opener", "The Vanishing Thought", "The Fast Thinker"],
   journal: ["The Restarter", "The Keeper", "The Juggler", "The Carrier"],
 };
+applyAudit(AUDIT2); // second persona pass (2026-11-05)
 export const REVIEW_COPY_PROBLEMS: string[] = [];
 for (const [key, her, him] of [
   ["relief", PAIN_V9, PAIN_M_V9], ["catch", SLIP_V9, SLIP_M_V9], ["clarity", LOOP_V9, LOOP_M_V9],

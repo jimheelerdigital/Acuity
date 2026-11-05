@@ -1266,3 +1266,31 @@ export const STRUCTURE: Record<string, { women: FunnelExtras; men: FunnelExtras 
     },
   },
 };
+
+// ─── Second persona pass (2026-11-05, lib/funnel-copy-audit2.ts) ───────────
+// Same shape as REVIEW_COPY plus per-side extras; merged over the first pass
+// before the configs apply it.
+type AuditSide = SideCopy & { extras?: FunnelExtras };
+const mergeSteps = (a: Record<string, StepCopy> = {}, b: Record<string, StepCopy> = {}) => {
+  const out = { ...a };
+  for (const [id, p] of Object.entries(b)) out[id] = { ...out[id], ...p, ...(p.options || out[id]?.options ? { options: { ...out[id]?.options, ...p.options } } : {}) };
+  return out;
+};
+export function applyAudit(audit: Record<string, { women?: AuditSide; men?: AuditSide }>) {
+  for (const [key, p] of Object.entries(audit)) {
+    for (const side of ["women", "men"] as const) {
+      const s = p[side];
+      if (!s || !REVIEW_COPY[key]) continue;
+      const rc = REVIEW_COPY[key][side];
+      rc.steps = mergeSteps(rc.steps, s.steps);
+      const cfg: Record<string, any> = { ...(rc.config ?? {}) };
+      for (const [k, v] of Object.entries(s.config ?? {})) {
+        if (k === "reassure" || k === "preview") cfg[k] = { ...(cfg[k] ?? {}), ...v };
+        else if (k === "stamps") { const st = { ...(cfg.stamps ?? {}) }; for (const [sid, m] of Object.entries(v as Record<string, Record<string, string>>)) st[sid] = { ...(st[sid] ?? {}), ...m }; cfg.stamps = st; }
+        else cfg[k] = v;
+      }
+      rc.config = cfg;
+      if (s.extras) STRUCTURE[key][side] = { ...STRUCTURE[key][side], ...s.extras };
+    }
+  }
+}

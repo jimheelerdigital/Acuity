@@ -2834,7 +2834,7 @@ function JournalResult({ answers, firstName, next }: ViewProps) {
   const triedIds = (answers.multi["tried-what"] ?? []).slice(0, 6);
   const tools = (answers.multi["tried-what"] ?? []).length;
   const ending = ENDING[answers.single.happens ?? ""] ?? "None of them stuck.";
-  const line = tools >= 2 ? `${tools} systems. ${ending}` : ending;
+  const line = tools >= 2 ? `${tools} fresh starts. ${ending}` : ending;
   const pains = (answers.multi.pain ?? []).map((id) => PAIN[id]).filter(Boolean).slice(0, 3);
 
   return (
