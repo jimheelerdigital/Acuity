@@ -8,6 +8,26 @@
 ---
 
 
+## [2026-11-05] — Test page to time the quick debrief analysis on real debriefs
+
+- **Requested by:** Keenan
+- **Committed by:** Claude Code
+- **Commit hash:** (this commit)
+
+### In plain English (for Keenan)
+A hidden admin-only test that runs the new quick analysis on someone's last 30 debriefs. It shows how fast it is next to what the full analysis wrote. Nothing users see changes.
+
+### Technical changes (for Jimmy)
+- New apps/web/src/lib/quick-debrief.ts: Haiku 4.5 quick analysis (summary, pullQuote, themes, tasks), parse/validate, logs ClaudeCallLog purpose quick_debrief. Not wired into any live path.
+- New POST /api/admin/bench/quick-debrief (admin session or Bearer CRON_SECRET), body { email, limit≤30 }. Read-only besides ClaudeCallLog rows. Baseline time = matching entry_extraction ClaudeCallLog row.
+
+### Manual steps needed
+- None
+
+### Notes
+- Field audit: 16 of 17 extraction fields have a real reader. Only `insights` is effectively unused: no column, never on either entry screen, only the Obsidian export and the web post-record card. The mobile entry screen's `entry.insights` is dead code because /api/entries/[id] never returns it.
+- Local ANTHROPIC_API_KEY is still dead, so the bench has to run on prod.
+
 ## [2026-11-05] — Ideal client profiles saved as the reference doc for all copy
 
 **Requested by:** Keenan
