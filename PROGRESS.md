@@ -8,6 +8,29 @@
 ---
 
 
+## [2026-11-05] — Spec for Jimmy: show first results in seconds instead of ~21
+
+- **Requested by:** Keenan
+- **Committed by:** Claude Code
+- **Commit hash:** (this commit)
+
+### In plain English (for Keenan)
+About 1 in 4 people who finish their first recording in the app never see their results, mostly because the wait is ~21 seconds. This is the build plan for Jimmy: a quick analysis shows results in a few seconds, and the full analysis runs in the background after she creates her account. Nothing is live yet.
+
+### Technical changes (for Jimmy)
+- New docs/jimmy-spec-2026-11-05-fast-first-results.md (spec only, no code)
+- Findings behind it: onboarding extraction (Sonnet 4.6, ClaudeCallLog entry_extraction, userId null) p50 17.8s / p90 28.3s of a 20.7s p50 phone wait; whisper-1 ~1.7s; gpt-4o-mini-transcribe ~1.2s with identical text on 8 founder clips; gpt-4o-transcribe truncated 2/8
+
+### Manual steps needed
+- [ ] Review the spec and build it behind a flag (Jimmy)
+- [ ] Approve the quick-analysis prompt wording (Keenan)
+- [ ] Go live Monday 11-09 at the earliest, with Keenan's push yes (Keenan)
+
+### Notes
+- The reveal screen reads only summary, pullQuote, themes (string[]) and tasks[].title. The full extraction never writes pullQuote, so "Ripple noticed" always shows the canned fallback today.
+- Local ANTHROPIC_API_KEY is still dead (401), so the Claude half of the bench has to run on prod.
+- Founder recordings were used for the transcription bench, not customer audio. Try-flow audio is deleted after processing anyway.
+
 ## [2026-11-05] — Pain funnels rewritten for the people they're for (persona pass ×2)
 
 **Requested by:** Keenan
