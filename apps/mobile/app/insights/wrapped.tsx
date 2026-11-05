@@ -1,12 +1,13 @@
 import { LinearGradient } from "expo-linear-gradient";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import {
   ActivityIndicator,
   Pressable,
   ScrollView,
   Share,
   Switch,
+  type View as RNView,
   Text,
   View,
 } from "react-native";
@@ -20,8 +21,17 @@ import {
 } from "@acuity/shared";
 
 import { StickyBackButton } from "@/components/back-button";
+import {
+  WRAPPED_SHARE_CARD_HEIGHT,
+  WRAPPED_SHARE_CARD_WIDTH,
+  WrappedShareCard,
+} from "@/components/insights/wrapped-share-card";
 import { useTheme } from "@/contexts/theme-context";
 import { api } from "@/lib/api";
+import { shareWrapped } from "@/lib/wrapped-share";
+
+/** The share preview is the real card at half size. */
+const PREVIEW_SCALE = 0.5;
 
 /**
  * Ripple Wrapped (2026-10-27): a card-by-card recap of a month
@@ -29,10 +39,14 @@ import { api } from "@/lib/api";
  * GET /api/insights/wrapped. Every section hides itself when the user
  * doesn't have enough data for it.
  *
- * Sharing: text via React Native's built-in Share sheet (no image capture;
- * react-native-view-shot isn't installed). The exact text is shown before
- * sharing; see wrappedShareText for the privacy rule. A person's first name
- * is only added when the user turns it on here.
+ * Sharing (image, 2026-10-28): a story-sized WrappedShareCard is rendered
+ * off-screen, captured with react-native-view-shot and shared as a PNG via
+ * expo-sharing. A half-size copy of the same card is shown as the preview, so
+ * the user sees exactly what's shared. If capture fails (including a binary
+ * older than 1.9.7, which lacks the native module) it falls back to the text
+ * share (wrappedShareText), which carries the same facts. "Share as text"
+ * stays available. Privacy rule: see wrappedShareText / WrappedShareCard. A
+ * person's first name is only added when the user turns it on here.
  */
 export default function WrappedScreen() {
   const { tokens } = useTheme();
@@ -44,6 +58,8 @@ export default function WrappedScreen() {
   const [data, setData] = useState<WrappedSummary | null>(null);
   const [state, setState] = useState<"loading" | "ready" | "error">("loading");
   const [includePerson, setIncludePerson] = useState(false);
+  const [sharing, setSharing] = useState(false);
+  const cardRef = useRef<RNView>(null);
 
   useEffect(() => {
     if (!key) {
@@ -67,9 +83,36 @@ export default function WrappedScreen() {
 
   const shareText = data ? wrappedShareText(data, { includePerson }) : "";
 
+  const onShareImage = async () => {
+    if (!data || sharing) return;
+    setSharing(true);
+    try {
+      await shareWrapped({
+        cardRef,
+        text: shareText,
+        dialogTitle: "Share your Ripple Wrapped",
+        periodKey: data.period.key,
+      });
+    } finally {
+      setSharing(false);
+    }
+  };
+
   return (
     <SafeAreaView edges={["top"]} style={{ flex: 1, backgroundColor: tokens.bg }}>
       <StickyBackButton onPress={() => router.back()} />
+      {state === "ready" && data?.eligible ? (
+        // Capture target for the share image: full size, off-screen, never
+        // seen or read by VoiceOver. See lib/wrapped-share.ts.
+        <View
+          pointerEvents="none"
+          accessibilityElementsHidden
+          importantForAccessibility="no-hide-descendants"
+          style={{ position: "absolute", top: 0, left: -10000 }}
+        >
+          <WrappedShareCard ref={cardRef} data={data} includePerson={includePerson} tokens={tokens} />
+        </View>
+      ) : null}
       {state === "loading" ? (
         <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
           <ActivityIndicator color={tokens.primary} />
@@ -171,20 +214,32 @@ export default function WrappedScreen() {
 
           {/* Share */}
           <Section eyebrow="Share it">
-            <View
-              style={{
-                backgroundColor: tokens.bgInset,
-                borderRadius: tokens.radius.sm,
-                padding: 12,
-                marginTop: 4,
-              }}
-            >
-              <Text style={{ fontFamily: tokens.fontSans, fontSize: 13, lineHeight: 19, color: tokens.textSec }}>
-                {shareText}
-              </Text>
+            <View style={{ alignItems: "center", marginTop: 4 }}>
+              <View
+                accessible
+                accessibilityRole="image"
+                accessibilityLabel={`Preview of your share image. ${shareText.replace(/\n/g, ". ")}`}
+                style={{
+                  width: WRAPPED_SHARE_CARD_WIDTH * PREVIEW_SCALE,
+                  height: WRAPPED_SHARE_CARD_HEIGHT * PREVIEW_SCALE,
+                  borderRadius: tokens.radius.md,
+                  overflow: "hidden",
+                }}
+              >
+                <View
+                  style={{
+                    width: WRAPPED_SHARE_CARD_WIDTH,
+                    height: WRAPPED_SHARE_CARD_HEIGHT,
+                    transform: [{ scale: PREVIEW_SCALE }],
+                    transformOrigin: "top left",
+                  }}
+                >
+                  <WrappedShareCard data={data} includePerson={includePerson} tokens={tokens} />
+                </View>
+              </View>
             </View>
             {data.person ? (
-              <View style={{ flexDirection: "row", alignItems: "center", marginTop: 12 }}>
+              <View style={{ flexDirection: "row", alignItems: "center", marginTop: 14 }}>
                 <Text style={{ fontFamily: tokens.fontSans, fontSize: 14, color: tokens.text, flex: 1 }}>
                   Include {data.person.firstName}
                 </Text>
@@ -197,23 +252,42 @@ export default function WrappedScreen() {
               </View>
             ) : null}
             <Text style={{ fontFamily: tokens.fontSans, fontSize: 12, color: tokens.textTer, marginTop: 8 }}>
-              Only what's shown above is shared. Nothing you said in your debriefs.
+              Only what's on this card is shared. Nothing you said in your debriefs.
             </Text>
             <Pressable
               onPress={() => {
-                void Share.share({ message: shareText }).catch(() => {});
+                void onShareImage();
               }}
+              disabled={sharing}
               accessibilityRole="button"
+              accessibilityState={{ busy: sharing, disabled: sharing }}
               style={{
                 marginTop: 14,
                 alignItems: "center",
                 paddingVertical: 13,
                 borderRadius: tokens.radius.pill,
                 backgroundColor: tokens.primary,
+                opacity: sharing ? 0.7 : 1,
               }}
             >
-              <Text style={{ fontFamily: tokens.fontSans, fontSize: 15, fontWeight: "600", color: "#fff" }}>
-                Share my recap
+              {sharing ? (
+                <ActivityIndicator color="#fff" />
+              ) : (
+                <Text style={{ fontFamily: tokens.fontSans, fontSize: 15, fontWeight: "600", color: "#fff" }}>
+                  Share my recap
+                </Text>
+              )}
+            </Pressable>
+            <Pressable
+              onPress={() => {
+                void Share.share({ message: shareText }).catch(() => {});
+              }}
+              accessibilityRole="button"
+              hitSlop={8}
+              style={{ alignItems: "center", paddingVertical: 10, marginTop: 4 }}
+            >
+              <Text style={{ fontFamily: tokens.fontSans, fontSize: 14, fontWeight: "600", color: tokens.primary }}>
+                Share as text instead
               </Text>
             </Pressable>
           </Section>
