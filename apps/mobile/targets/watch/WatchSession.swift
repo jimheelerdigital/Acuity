@@ -1,6 +1,7 @@
 import Foundation
 import SwiftUI
 import WatchConnectivity
+import WidgetKit
 
 // WatchConnectivity bridge (watch side).
 //
@@ -79,6 +80,7 @@ final class WatchSession: NSObject, ObservableObject, WCSessionDelegate {
     func handleUnauthorized() {
         token = nil
         WatchKeychain.clear()
+        WidgetCenter.shared.reloadAllTimelines() // complication → branded, no count
         requestSnapshot()
     }
 
@@ -101,8 +103,12 @@ final class WatchSession: NSObject, ObservableObject, WCSessionDelegate {
 
     private func apply(context: [String: Any]) {
         if let t = context["token"] as? String, !t.isEmpty {
+            let changed = t != token
             token = t
             WatchKeychain.set(t)
+            // The complication reads this token from the Keychain; refresh it
+            // so a first sign-in shows habit progress right away.
+            if changed { WidgetCenter.shared.reloadAllTimelines() }
         }
         if let b = context["apiBase"] as? String, !b.isEmpty {
             apiBase = b

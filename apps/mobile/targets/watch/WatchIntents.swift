@@ -20,10 +20,22 @@ final class RecordRouter: ObservableObject {
     @Published var selectedTab: Int = 1
     /// Bumped to request an immediate recording start.
     @Published var recordTrigger: Int = 0
+    /// Set with each request, cleared by RecordView when it starts. Covers a
+    /// cold launch (complication tap / intent): the trigger is bumped before
+    /// RecordView exists, so its onChange never sees it — onAppear does.
+    private var pendingStart = false
 
     func requestRecord() {
         selectedTab = 1
+        pendingStart = true
         recordTrigger &+= 1
+    }
+
+    /// True once per request.
+    func consumePendingStart() -> Bool {
+        guard pendingStart else { return false }
+        pendingStart = false
+        return true
     }
 }
 
