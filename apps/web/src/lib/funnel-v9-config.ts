@@ -1,4 +1,4 @@
-import { REVIEW_COPY, applyReviewCopy } from "./funnel-copy-review";
+import { REVIEW_COPY, STRUCTURE, applyReviewCopy } from "./funnel-copy-review";
 import type { Mood } from "@/components/mood-avatar";
 /**
  * /start-test — the v9 evidence-based funnel (2026-09-24, per Keenan).
@@ -334,6 +334,36 @@ export interface V9Config {
   painKit?: PainKit;
   /** Illustrated portrait for a non-pain-kit funnel (/start-journal, 2026-11-03): same four spots as the pain funnels. */
   face?: PainKit["face"];
+  /** Per-funnel words for the shared screens (2026-11-04 persona review, lib/funnel-copy-review.ts STRUCTURE). */
+  extras?: FunnelExtras;
+}
+
+/** Per-funnel overrides for copy the shared screens used to hardcode (2026-11-04 persona review). */
+export interface FunnelExtras {
+  /** Replaces the week chips (same 12-slot screen). */
+  weekItems?: { id: string; chip: string; task: string }[];
+  /** Label on the week meter ("Your head right now"). */
+  weekMeter?: string;
+  /** Shown under the week meter once she taps 5+. */
+  weekNote?: string;
+  /** Loader lines 1 and 3. */
+  loader?: [string, string];
+  /** Result card heading ("Your mental load, in your answers"). */
+  resultHeading?: string;
+  /** Paywall headline, two lines (second in the gradient). */
+  paywallTitle?: [string, string];
+  /** Trust paywall's three bullets. */
+  trust?: [string, string, string];
+  /** App preview's sample "Today's read". */
+  todaysRead?: string;
+  /** Screen 1 "Feeling:" word. */
+  feeling?: string;
+  /** Stamps for non-pain-kit funnels (journal), by step id then option id. */
+  stamps?: Record<string, Record<string, string>>;
+  /** "<left> vs Ripple" rows for non-pain-kit funnels (journal). */
+  vs?: PainKit["vs"];
+  /** Paywall receipt's planner line ("Paper planner ×2"). */
+  receiptPlanner?: string;
 }
 
 export interface PainKit {
@@ -977,14 +1007,15 @@ export function painStateName(a: { plate: string[]; sliders: Record<string, numb
   if (said.tabs === "head") {
     return { name: "The Keeper of Everything", line: "You hold the dates, the forms and everyone’s plans. No one head was built to carry that much." };
   }
-  if (said.seen === "lost" || said.seen === "rewrite" || said.seen === "ignore") {
-    return { name: "The List Keeper", line: "You’ve tried writing it down. Keeping the list became one more thing to carry." };
-  }
+  // Pain picks before the list answer (2026-11-04 review: most answers landed on The List Keeper).
   if (pain.includes("last")) {
     return { name: "The Last on the List", line: "You make room for everyone. Your own things wait for someday." };
   }
   if (pain.includes("switch")) {
     return { name: "The Always-On Mind", line: "Your head keeps going long after the day is done, because it’s holding all of it." };
+  }
+  if (said.seen === "lost" || said.seen === "rewrite" || said.seen === "ignore") {
+    return { name: "The List Keeper", line: "You’ve tried writing it down. Keeping the list became one more thing to carry." };
   }
   return { name: "The Carrier", line: "You carry more than anyone sees, so most of it stays in your head." };
 }
@@ -1015,10 +1046,9 @@ export const PAIN_V9: V9Config = {
     // No stacked-cards step here any more (the "how many things" screen is gone).
     stackStep: "none",
     stamps: {
-      first: { school: "Due Friday", appts: "Still not booked", bills: "Due soon", reply: "3 days late", gift: "This Sunday", work: "Before 9am" },
       help: { out: "Ripple does this", nothing: "Ripple does this", once: "Ripple does this", one: "Ripple does this", nolist: "Ripple does this", dates: "Ripple does this" },
     },
-    reviewAt: { help: 0, commit: 3 },
+    reviewAt: { help: 1, commit: 3 },
     closeStamp: "held for you",
     vs: {
       left: "In your head",
@@ -1456,7 +1486,7 @@ export const PROGRESS_V9: V9Config = {
       slid: { health: "Next month", move: "Starting Monday", money: "Next year", friends: "Overdue", hobby: "Packed away", calm: "Someday" },
       want: ripple(["week", "progress", "habits", "life", "wins", "coming"]),
     },
-    reviewAt: { want: 0, commit: 3 },
+    reviewAt: { want: 1, commit: 3 },
     closeStamp: "week 4: up",
     vs: {
       left: "Your year now",
@@ -1521,12 +1551,13 @@ export const ADHD_V9_STEPS: V9Step[] = [
     ],
   },
   {
-    id: "brain", kind: "single", title: "Do you have ADHD, or wonder if you do?",
+    // Replaced the ADHD diagnosis question (2026-11-04 review: health data next to an email, and nothing used it).
+    id: "ideas", kind: "single", title: "Where do your best ideas show up?",
     options: [
-      { id: "yes", label: "Yes, I’ve been diagnosed" },
-      { id: "wonder", label: "I’ve wondered" },
-      { id: "scattered", label: "No, I’m just scattered" },
-      { id: "skip", label: "I’d rather not say" },
+      { id: "car", label: "In the car" },
+      { id: "shower", label: "In the shower" },
+      { id: "talk", label: "Mid-conversation" },
+      { id: "walk", label: "Walking around" },
     ],
   },
   { id: "st-mid", kind: "statement", statement: "If I don’t do it right now, it’s gone.", mood: "overloaded" },
@@ -1553,9 +1584,10 @@ export const ADHD_V9_STEPS: V9Step[] = [
 export function adhdStateName(a: { plate: string[]; sliders: Record<string, number>; said?: Record<string, string>; multi?: Record<string, string[]> }): { name: string; line: string } {
   const said = a.said ?? {};
   const pain = a.multi?.pain ?? [];
-  if (said.apps === "many" || said.apps === "lost") return { name: "The System Collector", line: "You’ve tried system after system. None of them were built for a brain that moves this fast." };
+  // Pain picks first, systems tried as the fallback (2026-11-04 review: most of this audience has tried many apps).
   if (pain.includes("start") || pain.includes("time")) return { name: "The Tab Opener", line: "Ideas arrive faster than you can finish them, so a lot gets left open." };
   if (pain.includes("forget") || pain.includes("lose")) return { name: "The Vanishing Thought", line: "Good thoughts show up at the worst moments and are gone a minute later." };
+  if (said.apps === "many" || said.apps === "lost") return { name: "The System Collector", line: "You’ve tried system after system. None of them were built for a brain that moves this fast." };
   return { name: "The Fast Thinker", line: "Your brain moves quickly. It just needs somewhere to put things down." };
 }
 
@@ -1568,7 +1600,7 @@ export const ADHD_V9: V9Config = {
   steps: ADHD_V9_STEPS,
   stepLabels: numberedLabels(ADHD_V9_STEPS, {
     ...TAIL_SHORT, hook: "47 tabs open? (screen 1, yes/no)", pain: "What a scattered day looks like", often: "Scattered days a week", apps: "How many systems tried",
-    fail: "Why they stop working", brain: "ADHD, or wondered?", "st-mid": "Yes/no: do it now or it's gone", want: "What would work for her brain",
+    fail: "Why they stop working", ideas: "Where her best ideas show up", "st-mid": "Yes/no: do it now or it's gone", want: "What would work for her brain",
     "s-thoughts": "Slider: thoughts in order vs everywhere", "st-close": "Yes/no: say it and let it go",
   }),
   progressEnd: ADHD_V9_STEPS.findIndex((st) => st.id === "result"),
@@ -1656,7 +1688,6 @@ export const PAIN_M_V9 = menConfig(PAIN_V9, "pain_m", {
   resultOutro: "None of this means you’re slipping. It means one head is holding too much. Ripple takes the keeping-track part.",
   painKit: {
     stamps: {
-      first: { school: "Due Friday", appts: "Still not booked", bills: "Due soon", reply: "3 days late", gift: "This Sunday", work: "Before 9am" },
       help: PAIN_V9.painKit!.stamps.help,
     },
     vs: {
@@ -1798,6 +1829,38 @@ for (const [key, her, him] of [
   const base: V9Config = { ...her, steps: her.steps.slice() };
   REVIEW_COPY_PROBLEMS.push(...applyReviewCopy(her, REVIEW_COPY[key].women, REVIEW_RESULT_NAMES[key]));
   REVIEW_COPY_PROBLEMS.push(...applyReviewCopy(him, REVIEW_COPY[key].men, REVIEW_RESULT_NAMES[key], { inheritFrom: { base, copy: REVIEW_COPY[key].women }, men: true }));
+}
+
+// Structural overrides: per-funnel week chips, loader, headings, paywall (lib/funnel-copy-review.ts STRUCTURE).
+const withWeek = (c: V9Config) => {
+  const items = c.extras?.weekItems;
+  if (items) c.steps = c.steps.map((st) => (st.kind === "week" ? ({ ...st, items } as V9Step) : st));
+};
+for (const [key, her, him] of [
+  ["relief", PAIN_V9, PAIN_M_V9], ["catch", SLIP_V9, SLIP_M_V9], ["clarity", LOOP_V9, LOOP_M_V9],
+  ["progress", PROGRESS_V9, PROGRESS_M_V9], ["focus", ADHD_V9, ADHD_M_V9], ["journal", JOURNAL_V9, JOURNAL_M_V9],
+] as [string, V9Config, V9Config][]) {
+  her.extras = { ...her.extras, ...STRUCTURE[key].women };
+  him.extras = { ...him.extras, ...STRUCTURE[key].women, ...STRUCTURE[key].men };
+  // His own chips: an explicit men's list, else the women's ids reworded (MEN_WEEK_ITEMS, already on his steps).
+  if (!STRUCTURE[key].men.weekItems) delete him.extras.weekItems;
+  withWeek(her);
+  withWeek(him);
+}
+
+// /start-catch: "It's a storage problem" lands right after the guilt screen, not after "what would help" (2026-11-04 review).
+for (const c of [SLIP_V9, SLIP_M_V9]) {
+  const r = c.steps.find((st) => st.id === "reassure")!;
+  const rest = c.steps.filter((st) => st !== r);
+  rest.splice(rest.findIndex((st) => st.id === "after") + 1, 0, r);
+  c.steps = rest;
+  c.stepLabels = Object.fromEntries(rest.map((st, i) => [st.id, `${i + 1}. ${(c.stepLabels[st.id] ?? st.id).replace(/^\d+\. /, "")}`]));
+  c.progressEnd = rest.findIndex((st) => st.id === "result");
+}
+for (const c of [SLIP_V9, SLIP_M_V9]) if (c.preview) c.preview = { ...c.preview, caption: "This is what you see after every debrief: every task caught, with its date, in one place. No more screenshots and notes to self." };
+for (const c of [LOOP_V9, LOOP_M_V9]) {
+  if (c.preview) c.preview = { ...c.preview, title: "You talk. Ripple shows you what’s draining you." };
+  c.faq = [...c.faq, { q: "Can Ripple tell me why I’m tired?", a: "No. Ripple isn’t medical advice. It shows you what in your week drains you and what lifts you. If you’re worried about your energy, talk to your doctor." }];
 }
 
 export const V9_CONFIGS: Record<V9Brand, V9Config> = {

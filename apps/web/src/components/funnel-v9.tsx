@@ -41,6 +41,8 @@ import {
   Eye, Footprints, Heart, HeartHandshake, Home, Hourglass, Keyboard, KeyRound, Layers,
   LineChart, ListChecks, ListTodo, Lock, Mail, Mic, Moon, Repeat, RotateCcw, ShieldCheck, Smartphone, Sparkles, Sprout, Waves, X,
   FileText, HeartCrack, Quote, Star, Sunrise, Target, TrendingUp, User, Users, Zap, Dumbbell, Wallet, Rocket, Flame, Truck, type LucideIcon,
+  Droplets,
+  MessageCircle,
 } from "lucide-react";
 
 import { fireFbq, waitForFbq } from "@/components/meta-pixel-events";
@@ -143,7 +145,7 @@ const OPTION_ICONS: Record<string, LucideIcon> = {
   "proof:little": Sprout, "proof:hard": Layers, "proof:yes": TrendingUp, "slid:health": Activity, "slid:move": Dumbbell, "slid:money": Wallet,
   "slid:friends": Users, "slid:hobby": Heart, "slid:calm": Waves,
   // /start-focus (scattered / ADHD) and the 11-02 review
-  "help:once": Mic, "help:habits": Target, "help:week": CalendarCheck, "pain:start": Layers, "pain:lose": Waves, "pain:forget": Brain, "pain:time": Hourglass, "pain:overwhelm": Zap, "pain:freeze": Lock, "fail:setup": ListChecks, "fail:open": Smartphone, "fail:bored": Hourglass, "fail:typing": Keyboard, "fail:streak": HeartCrack, "fail:much": Layers, "brain:yes": Brain, "brain:wonder": Eye, "brain:scattered": Zap, "brain:skip": Lock, "want:dump": Brain, "want:talk": Mic, "want:sort": ListChecks, "want:one": Layers, "want:setup": Sparkles, "want:nostreak": Repeat,
+  "help:once": Mic, "help:habits": Target, "help:week": CalendarCheck, "pain:start": Layers, "pain:lose": Waves, "pain:forget": Brain, "pain:time": Hourglass, "pain:overwhelm": Zap, "pain:freeze": Lock, "fail:setup": ListChecks, "fail:open": Smartphone, "fail:bored": Hourglass, "fail:typing": Keyboard, "fail:streak": HeartCrack, "fail:much": Layers, "ideas:car": Car, "ideas:shower": Droplets, "ideas:talk": MessageCircle, "ideas:walk": Footprints, "want:dump": Brain, "want:talk": Mic, "want:sort": ListChecks, "want:one": Layers, "want:setup": Sparkles, "want:nostreak": Repeat,
 };
 
 function sessionId(): string {
@@ -947,7 +949,7 @@ function SingleScreen({ step, answers, setAnswers, next, track }: ViewProps & { 
 
 function MultiScreen({ step, answers, setAnswers, next, track, above }: ViewProps & { step: Extract<V9Step, { kind: "multi" }>; above?: ReactNode }) {
   const C = useV9();
-  const stamps = isJournal(C) ? (step.id === "tried-what" ? TRIED_STAMPS : step.id === "easier" ? EASIER_STAMPS : null) : C.painKit?.stamps[step.id] ?? null;
+  const stamps = isJournal(C) ? (step.id === "tried-what" ? { ...TRIED_STAMPS, ...C.extras?.stamps?.[step.id] } : step.id === "easier" ? { ...EASIER_STAMPS, ...C.extras?.stamps?.[step.id] } : null) : C.painKit?.stamps[step.id] ?? null;
   const picked = answers.multi[step.id] ?? [];
   const toggle = (id: string) =>
     setAnswers((a) => {
@@ -1184,7 +1186,7 @@ function StatementScreen({ step, answers, setAnswers, next, track }: ViewProps &
             <FacePic size="stage" />
             <HookOverlay face={face!} male={C.brand.endsWith("_m")} />
             <span className="absolute -bottom-4 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full bg-white/95 px-3.5 py-2 text-[13px] font-semibold text-acuity-text shadow-[0_8px_20px_-10px_rgba(140,60,20,.45)]">
-              Feeling: <b className="text-[#C2410C]">{FEELING[face!]}</b>
+              Feeling: <b className="text-[#C2410C]">{C.extras?.feeling ?? FEELING[face!]}</b>
             </span>
           </div>
           <p className="mt-8 text-[11px] font-bold uppercase tracking-[0.1em] text-[#9A8B80]">Does this sound like you?</p>
@@ -1354,7 +1356,7 @@ function ReassureScreen({ next }: ViewProps) {
       <p className="text-center text-[16px] leading-relaxed text-acuity-text-sec text-balance">
         {C.reassure.body}
       </p>
-      {C.painKit && <p className="mt-3 text-center text-[16px] font-semibold leading-relaxed text-acuity-text text-balance">{C.reassure.body2}</p>}
+      {(C.painKit || isJournal(C)) && C.reassure.body2 && <p className="mt-3 text-center text-[16px] font-semibold leading-relaxed text-acuity-text text-balance">{C.reassure.body2}</p>}
       <div className="mt-6">
         <ReviewCard {...C.reviews[0]} />
       </div>
@@ -1546,7 +1548,7 @@ function LoaderScreen({ answers, firstName, next }: ViewProps) {
   const lines = useMemo(
     () => [
       // The plate screen is gone from the pain funnels (2026-11-04), so no "everything on your plate" fallback there.
-      { icon: Users, text: (answers.multi.plate ?? []).length ? `Reading your answers about ${plateLabel(answers.multi.plate ?? [], C.plateLabels)}` : "Reading your answers" },
+      { icon: Users, text: C.extras?.loader?.[0] ?? ((answers.multi.plate ?? []).length ? `Reading your answers about ${plateLabel(answers.multi.plate ?? [], C.plateLabels)}` : "Reading your answers") },
       (() => {
         const chips = weekChips(C, answers);
         if (chips.length === 0) return { icon: Layers, text: "Sorting what you told us" };
@@ -1557,7 +1559,7 @@ function LoaderScreen({ answers, firstName, next }: ViewProps) {
         const list = rest > 0 ? `${shown.join(", ")} and ${rest} more` : shown.join(" and ");
         return { icon: ListChecks, text: `Catching ${chips.length} ${chips.length === 1 ? "thing" : "things"}: ${list}` };
       })(),
-      { icon: Brain, text: "Matching you to how Ripple sorts a debrief" },
+      { icon: Brain, text: C.extras?.loader?.[1] ?? "Matching you to how Ripple sorts a debrief" },
       { icon: Sparkles, text: firstName ? `Building ${firstName}'s first week` : "Building your first week" },
     ],
     [answers.multi.plate, answers.multi.week, firstName]
@@ -1790,7 +1792,7 @@ function ResultScreen({ answers, firstName, next }: ViewProps) {
 
       {isJournal(C) ? <PlannerHistory answers={answers} /> : (
       <div className="mt-5 card rounded-3xl p-5">
-        <p className="text-[13px] font-bold mb-3.5">Your mental load, in your answers</p>
+        <p className="text-[13px] font-bold mb-3.5">{C.extras?.resultHeading ?? "Your mental load, in your answers"}</p>
         <div className="space-y-3">
           {bars.map((b, i) => (
             <div key={b.label}>
@@ -2135,13 +2137,13 @@ function CostReceipt({ answers }: { answers: Answers }) {
   const C = useV9();
   const [ref, on] = useInView<HTMLDivElement>();
   const money = [
-    { label: "Paper planner ×2", cents: PLANNERS_PER_YEAR_CENTS },
+    { label: C.extras?.receiptPlanner ?? "Paper planner ×2", cents: PLANNERS_PER_YEAR_CENTS },
     { label: "Journaling app", cents: JOURNAL_APP_CENTS },
     { label: "Habit tracker", cents: HABIT_APP_CENTS },
   ];
   const total = money.reduce((n, r) => n + r.cents, 0);
   // Short enough to stay on one line at phone width (2026-10-31).
-  const OFTEN: Record<string, string> = { daily: "most days", weekly: "weekly", sometimes: "weekly", rarely: "often" };
+  const OFTEN: Record<string, string> = { daily: "most days", weekly: "weekly", sometimes: "weekly", rarely: "when it counts" };
   const often = OFTEN[answers.single.often ?? ""] ?? "weekly";
   const FEEL: Record<string, { label: string; value: string }> = {
     slip: { label: "Guilt after a slip", value: often },
@@ -2317,12 +2319,12 @@ function ClassicPaywall({ plan, setPlan, next, go, track, firstName, answers }: 
           Order (2026-10-27, Keenan): why it's for her → what she gets → proof
           → then the price. The CTA stays pinned at the bottom throughout. */}
       <Heading
-        title={<>Less to carry.<br /><span className="grad-text">A clearer next step.</span></>}
+        title={<>{C.extras?.paywallTitle?.[0] ?? "Less to carry."}<br /><span className="grad-text">{C.extras?.paywallTitle?.[1] ?? "A clearer next step."}</span></>}
       />
 
       {/* Planner vs Ripple + what her system costs (2026-10-27, Keenan: our
           best ads win on this; made livelier with on-scroll animation). */}
-      <PlannerVsRipple />
+      <PlannerVsRipple vs={C.extras?.vs} />
       <SystemCost />
 
       <div className="mt-5 card rounded-3xl px-4 py-5">
@@ -2647,7 +2649,7 @@ function HeroProps({ face, male }: { face: NonNullable<PainKit["face"]>; male: b
           <span className="block h-3.5 bg-[#F2541E]" />
           <span className="block h-[34px] overflow-hidden"><span className="hp-roll block font-serif text-[15px] font-bold leading-[34px] text-acuity-text">{["Jan", "Apr", "Aug", "Dec"].map((m) => <span key={m} className="block">{m}</span>)}</span></span>
         </span>
-        <span className={chip} style={{ left: "6%", bottom: "9%", color: "#C2410C" }}>Day 1, again</span>
+        <span className={chip} style={{ left: "6%", bottom: "9%", color: "#C2410C" }}>Still at 12%</span>
       </>
     );
   }
@@ -2864,6 +2866,7 @@ function JournalResult({ answers, firstName, next }: ViewProps) {
         <p className="text-[12px] font-semibold uppercase tracking-[0.14em] text-white/80">Your pattern</p>
         <h1 className="pop mt-1 text-[34px] font-bold leading-tight" style={{ animationDelay: `${300 + triedIds.length * 120}ms` }}>{state.name}</h1>
         <p className="mt-1 text-[17px] font-semibold text-white/95">{line}</p>
+        {state.line && <p className="mt-2 text-[15px] leading-snug text-white/90">{state.line}</p>}
         {pains.length > 0 && (
           <div className="mt-4 flex flex-wrap gap-1.5">
             {pains.map((p, i) => (
@@ -2876,7 +2879,8 @@ function JournalResult({ answers, firstName, next }: ViewProps) {
 
       {/* Keenan 2026-10-31: the live paywall's Paper planner vs Ripple graphic
           goes here, in place of the 5-row face-off. */}
-      <PlannerVsRipple />
+      {C.resultOutro && <p className="my-5 text-center text-[15px] leading-relaxed text-acuity-text-sec text-balance">{C.resultOutro}</p>}
+      <PlannerVsRipple vs={C.extras?.vs} />
 
       <BottomBar>
         <PrimaryButton onClick={next}>Show me how it works</PrimaryButton>
@@ -2995,6 +2999,7 @@ const LOAD_WORDS = ["Empty", "Light", "Light", "Getting full", "Getting full", "
 
 /** "What's on your list this week?" as floating thoughts and a head-load meter. */
 function HeadLoad({ step, picked, toggle, next, track }: { step: Extract<V9Step, { kind: "week" }>; picked: string[]; toggle: (id: string) => void; next: () => void; track: ViewProps["track"] }) {
+  const C = useV9();
   const n = picked.length;
   return (
     <div className="enter">
@@ -3027,7 +3032,7 @@ function HeadLoad({ step, picked, toggle, next, track }: { step: Extract<V9Step,
       </div>
       <div className="mt-6 card rounded-3xl px-5 py-4" aria-live="polite">
         <div className="flex items-baseline justify-between gap-3">
-          <p className="text-[14px] text-acuity-text-sec">Your head right now: <span className="font-bold" style={{ color: "#C2410C" }}>{LOAD_WORDS[Math.min(n, 12)]}</span></p>
+          <p className="text-[14px] text-acuity-text-sec">{C.extras?.weekMeter ?? "Your head right now"}: <span className="font-bold" style={{ color: "#C2410C" }}>{LOAD_WORDS[Math.min(n, 12)]}</span></p>
           <span className="serif text-[22px] tabular-nums">{n}</span>
         </div>
         <div className="mt-3 grid grid-cols-12 gap-1">
@@ -3035,6 +3040,7 @@ function HeadLoad({ step, picked, toggle, next, track }: { step: Extract<V9Step,
             <span key={k} className={`h-2.5 rounded-[4px] transition-colors duration-300 ${k < n ? "grad" : ""}`} style={k < n ? undefined : { background: "#FFEADF" }} />
           ))}
         </div>
+        {n >= 5 && C.extras?.weekNote && <p className="pop mt-2.5 text-[13px] italic text-acuity-text-sec">{C.extras.weekNote}</p>}
       </div>
       <BottomBar>
         <PrimaryButton
@@ -3284,7 +3290,7 @@ function UnlockPath({ firstName, next }: { firstName: string; next: () => void }
     { day: 3, icon: Sparkles, title: "Your first pattern", text: "What keeps coming up for you, in your own words.", open: true },
     { day: 7, icon: Eye, title: "Your first weekly report", text: "What moved, what slipped, and one thing to drop next week.", open: false },
     { day: 14, icon: TrendingUp, title: "What lifts you, what drains you", text: "Know what to protect and what to plan around.", open: false },
-    { day: 30, icon: Waves, title: "Your first month", text: "Your month on one page, plus ask your past self anything.", open: false },
+    { day: 30, icon: Waves, title: "Your first month", text: "Your month on one page: what moved, what slipped and what lifted you.", open: false },
     { day: 365, icon: Sprout, title: "Your year with Ripple", text: "A year of your life, told back to you.", open: false },
   ];
   return (
@@ -3365,7 +3371,7 @@ function PreviewPhone({ tasks, compact = false }: { tasks: string[]; compact?: b
         {!compact && (
           <div className="up mt-3 pl-2" style={{ borderLeft: "2px solid #F2541E", animationDelay: `${300 + rows.length * 220}ms` }}>
             <p className="text-[8px] font-extrabold tracking-[0.1em]" style={{ color: NEW_UI.coral }}>TODAY&apos;S READ</p>
-            <p className="text-[10.5px] leading-snug" style={{ color: NEW_UI.text }}>{TODAYS_READ[C.painKit?.face ?? C.face ?? "relief"]}</p>
+            <p className="text-[10.5px] leading-snug" style={{ color: NEW_UI.text }}>{C.extras?.todaysRead ?? TODAYS_READ[C.painKit?.face ?? C.face ?? "relief"]}</p>
           </div>
         )}
         <div className="mt-3 grid grid-cols-2 gap-2">
@@ -3535,7 +3541,7 @@ function TrustPaywall({ plan, setPlan, next, track, firstName, answers }: ViewPr
         />
         <PreviewPhone tasks={weekTasks(C, answers)} compact />
         <ul className="mt-6 space-y-2.5">
-          {["Everything in your head, turned into your list", "Habits and mood tracked, nothing to fill in", "A weekly report on what moved and what slipped"].map((b, i) => (
+          {(C.extras?.trust ?? ["Everything in your head, turned into your list", "Habits and mood tracked, nothing to fill in", "A weekly report on what moved and what slipped"]).map((b, i) => (
             <li key={b} className="up flex items-center gap-3 text-[15px]" style={{ animationDelay: `${200 + i * 120}ms` }}>
               <span className="h-6 w-6 shrink-0 rounded-full grad flex items-center justify-center"><Check className="h-3.5 w-3.5 text-white" strokeWidth={3} /></span>
               {b}

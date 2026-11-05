@@ -6,7 +6,7 @@
  * summarized on the review page); this layer applies the resulting copy on
  * top of the configs in funnel-v9-config.ts. Step and option ids never change.
  */
-import type { V9Config, V9Step } from "./funnel-v9-config";
+import type { FunnelExtras, PainKit, V9Config, V9Step } from "./funnel-v9-config";
 
 type StepCopy = { title?: string; sub?: string; statement?: string; left?: string; right?: string; options?: Record<string, string> };
 type Result = { name: string; line: string };
@@ -634,16 +634,6 @@ export const REVIEW_COPY: Record<string, { women: SideCopy; men: SideCopy }> = {
       "setup": "Setting it up is the fun part. Then I drop it"
      }
     },
-    "brain": {
-     "title": "Which sounds most like your brain?",
-     "sub": "Ripple works the same either way.",
-     "options": {
-      "yes": "ADHD, officially",
-      "wonder": "Pretty sure it’s ADHD",
-      "scattered": "Not ADHD, just a lot going on",
-      "skip": "Doesn’t matter, I just need help"
-     }
-    },
     "want": {
      "options": {
       "talk": "Talking it out, with no listening back",
@@ -750,16 +740,6 @@ export const REVIEW_COPY: Record<string, { women: SideCopy; men: SideCopy }> = {
     "fail": {
      "options": {
       "setup": "Setting it up is the fun part. Then I drop it"
-     }
-    },
-    "brain": {
-     "title": "Which sounds most like your brain?",
-     "sub": "Ripple works the same either way.",
-     "options": {
-      "yes": "ADHD, officially",
-      "wonder": "Pretty sure it’s ADHD",
-      "scattered": "Not ADHD, just a lot going on",
-      "skip": "Doesn’t matter, I just need help"
      }
     },
     "want": {
@@ -1153,7 +1133,136 @@ export function applyReviewCopy(c: V9Config, side: SideCopy, resultNames: string
       kit.stamps = st as typeof kit.stamps;
     }
     c.painKit = kit;
+  } else if (cfg.vs || cfg.stamps) {
+    // Journal has no pain kit: its vs rows and stamps go in extras (FunnelV9 reads them there).
+    c.extras = { ...c.extras, ...(cfg.vs ? { vs: cfg.vs as PainKit["vs"] } : {}), ...(cfg.stamps ? { stamps: cfg.stamps as Record<string, Record<string, string>> } : {}) };
   }
   c.stateName = mapResults(c.stateName, resultNames, (own.results as Result[] | undefined) ?? (inh?.copy.config?.results as Result[] | undefined));
   return problems;
 }
+
+// ─── Structural overrides (2026-11-04, "execute on this entire strategy") ───
+// Copy the shared screens used to hardcode, per funnel and side. Men's side
+// layers over the women's, so only what differs for him is listed.
+const wk = (rows: [string, string, string][]) => rows.map(([id, chip, task]) => ({ id, chip, task }));
+
+export const STRUCTURE: Record<string, { women: FunnelExtras; men: FunnelExtras }> = {
+  relief: {
+    women: {
+      weekNote: "That’s a lot for one head.",
+      loader: ["Reading what you’re keeping track of", "Putting it all in one place"],
+      resultHeading: "What you’re carrying, in your answers",
+      paywallTitle: ["Out of your head.", "Onto one list."],
+    },
+    men: { todaysRead: "Most of this week is for everyone else. Block one hour for you." },
+  },
+  catch: {
+    women: {
+      weekMeter: "Things to remember",
+      weekNote: "That’s a lot to keep straight.",
+      loader: ["Reading what’s slipped lately", "Putting every date in one place"],
+      resultHeading: "What’s slipping, in your answers",
+      paywallTitle: ["Say it once.", "It’s on your list."],
+      trust: ["Say it once, it’s on your list with the date", "Open Ripple and your whole week is there", "A weekly report on what moved and what slipped"],
+    },
+    men: {
+      weekItems: wk([
+        ["oil", "Oil change", "Book the oil change"], ["registration", "Renew the registration", "Renew the registration"],
+        ["form", "A form for the kids", "Sign the kids’ form"], ["quote", "A quote for a client", "Send the client quote"],
+        ["bank", "Calling the bank", "Call the bank"], ["dentist", "The dentist", "Book the dentist"],
+        ["gift", "A birthday gift", "Get the birthday gift"], ["bills", "Bills", "Pay the bills"],
+        ["emails", "Emails I owe", "Answer the emails you owe"], ["practice", "Kids’ practice", "Get the kids to practice"],
+        ["parents", "Calling my parents", "Call your parents back"], ["insurance", "Renewing the insurance", "Renew the insurance"],
+      ]),
+    },
+  },
+  clarity: {
+    women: {
+      weekItems: wk([
+        ["late", "Late nights", "Get to bed earlier one night"], ["hard", "A hard conversation", "Have the hard conversation"],
+        ["workout", "Skipped workouts", "Fit in one workout"], ["deadline", "A work deadline", "Get the work deadline done"],
+        ["kids", "The kids’ schedule", "Sort the kids’ schedule"], ["mom", "Mom’s appointment", "Book Mom’s appointment"],
+        ["me", "No time for me", "Block an hour for yourself"], ["weekend", "Weekend plans", "Plan the weekend"],
+        ["bills", "Bills", "Pay the bills"], ["emails", "Emails I owe", "Answer the emails you owe"],
+        ["callback", "Calling someone back", "Call them back"], ["friend", "Seeing a friend", "See a friend this week"],
+      ]),
+      weekMeter: "Your week right now",
+      weekNote: "No wonder you’re tired.",
+      loader: ["Reading what drains you and what lifts you", "Looking for what keeps coming up"],
+      resultHeading: "What’s draining you, in your answers",
+      paywallTitle: ["See what drains you.", "Do more of what lifts you."],
+      trust: ["See what drains you and what lifts you", "Mood and habits tracked, nothing to fill in", "A weekly report on what keeps coming up"],
+    },
+    men: {
+      weekItems: wk([
+        ["late", "Late nights", "Get to bed earlier one night"], ["stress", "Work stress", "Talk through the work stuff"],
+        ["workout", "Skipped the gym", "Get to the gym once"], ["deadline", "A work deadline", "Get the work deadline done"],
+        ["kids", "Kids’ practice", "Get the kids to practice"], ["parents", "Calling my parents", "Call your parents back"],
+        ["me", "No time for me", "Block an hour for yourself"], ["weekend", "Weekend plans", "Plan the weekend"],
+        ["bills", "Bills", "Pay the bills"], ["emails", "Emails I owe", "Answer the emails you owe"],
+        ["screen", "Too much screen time", "Phone down after dinner"], ["friends", "Seeing friends", "See a friend this week"],
+      ]),
+    },
+  },
+  progress: {
+    women: {
+      weekItems: wk([
+        ["walk", "A walk", "Go for a walk"], ["gym", "The gym", "Get to the gym"],
+        ["eat", "Eating better", "Plan this week’s meals"], ["bed", "Bed earlier", "Bed by 10:30 one night"],
+        ["budget", "Looking at the budget", "Look at the budget"], ["friend", "Calling a friend", "Call a friend"],
+        ["project", "That side project", "Give the side project an hour"], ["read", "Reading again", "Read for 20 minutes"],
+        ["phone", "Less phone", "Phone down after dinner"], ["deadline", "A work deadline", "Get the work deadline done"],
+        ["me", "Time for me", "Block an hour for yourself"], ["water", "Drinking more water", "Drink more water"],
+      ]),
+      weekMeter: "Your week right now",
+      weekNote: "No wonder there’s no time left for you.",
+      loader: ["Reading what you keep trying to change", "Finding what keeps getting in the way"],
+      resultHeading: "What’s in the way, in your answers",
+      paywallTitle: ["See what moved.", "Keep it moving."],
+      trust: ["A weekly report on what moved and what slipped", "Habits tracked from what you say, no streaks", "Your patterns, week to week"],
+    },
+    men: {
+      weekItems: wk([
+        ["gym", "The gym", "Get to the gym"], ["run", "A run", "Go for a run"],
+        ["eat", "Eating better", "Plan this week’s meals"], ["bed", "Bed earlier", "Bed by 10:30 one night"],
+        ["budget", "The budget", "Look at the budget"], ["friend", "Calling a buddy", "Call a buddy"],
+        ["project", "That side project", "Give the side project an hour"], ["drink", "Drinking less", "Two nights off drinking"],
+        ["phone", "Less phone", "Phone down after dinner"], ["deadline", "A work deadline", "Get the work deadline done"],
+        ["kids", "Time with the kids", "An hour with the kids"], ["read", "Reading again", "Read for 20 minutes"],
+      ]),
+    },
+  },
+  focus: {
+    women: {
+      weekMeter: "Tabs open",
+      weekNote: "No wonder it’s hard to pick one.",
+      loader: ["Counting the tabs you have open", "Sorting it into one list"],
+      resultHeading: "Your busy brain, in your answers",
+      paywallTitle: ["Say it messy.", "Ripple sorts it."],
+      trust: ["Talk in any order, it lands sorted", "One list, nothing to set up", "Miss a day, nothing resets"],
+    },
+    men: {
+      weekItems: wk([
+        ["client", "Calling the client back", "Call the client back"], ["invoice", "Sending the invoice", "Send the invoice"],
+        ["oil", "Oil change", "Book the oil change"], ["practice", "Kids’ practice", "Get the kids to practice"],
+        ["insurance", "Renewing the insurance", "Renew the insurance"], ["boss", "Replying to the boss", "Reply to the boss"],
+        ["dentist", "The dentist", "Book the dentist"], ["card", "Paying the card", "Pay the card"],
+        ["idea", "That idea I had", "Write down that idea"], ["drill", "Returning the drill", "Return the drill"],
+        ["gym", "The gym", "Get to the gym"], ["fix", "Fixing the thing at home", "Fix the thing at home"],
+      ]),
+    },
+  },
+  journal: {
+    women: {
+      weekNote: "That’s a lot to keep track of.",
+      loader: ["Reading what you’ve tried so far", "Matching you to a way that takes no upkeep"],
+      paywallTitle: ["No upkeep.", "Just talk."],
+      trust: ["Just talk. Ripple writes it up", "No blank page, no streak to keep", "A weekly report on what moved and what slipped"],
+    },
+    men: {
+      todaysRead: "Your own goals keep getting pushed. Block one hour for you.",
+      feeling: "fed up",
+      receiptPlanner: "Productivity apps",
+    },
+  },
+};
