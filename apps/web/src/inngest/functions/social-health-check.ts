@@ -96,6 +96,37 @@ export const socialHealthCheckFn = inngest.createFunction(
         out.push(`${b._count} ${b.platform}/${b.accountKey} post(s) ${b.status} in 24h — ${sample?.error?.slice(0, 160) ?? "no error text"}`);
       }
 
+      // 1b. Overdue (2026-11-05, per Keenan: "make sure they properly go out
+      // when they're supposed to"): a row still PENDING 90+ minutes past its
+      // slot never went out. The publisher runs every 30 minutes.
+      const overdue = await prisma.socialPublish.findMany({
+        where: { status: "PENDING", scheduledAt: { lt: hoursAgo(1.5), gte: hoursAgo(48) }, platform: { in: ["instagram", "facebook"] } },
+        select: { platform: true, accountKey: true, scheduledAt: true, carouselPost: { select: { headline: true } } },
+        take: 10,
+      });
+      for (const o of overdue) {
+        out.push(`OVERDUE: ${o.platform}/${o.accountKey} "${o.carouselPost?.headline?.slice(0, 60)}" was due ${age(o.scheduledAt)} and hasn't posted.`);
+      }
+
+      // 1c. Vanished Instagram posts (2026-11-05): today's Ripple list reel
+      // published, then its link died with nothing in our logs. Any IG post
+      // from the last 48h that Graph can no longer read gets flagged.
+      const igToken = process.env.IG_ACCESS_TOKEN?.trim();
+      if (igToken) {
+        const recentIg = await prisma.socialPublish.findMany({
+          where: { platform: "instagram", accountKey: "ripple", status: "POSTED", postedAt: { gte: hoursAgo(48) }, externalId: { not: null } },
+          select: { externalId: true, permalink: true, carouselPost: { select: { headline: true } } },
+        });
+        for (const r of recentIg) {
+          try {
+            const res = await fetch(`https://graph.facebook.com/v21.0/${r.externalId}?fields=id&access_token=${igToken}`);
+            if (!res.ok) out.push(`GONE FROM INSTAGRAM: "${r.carouselPost?.headline?.slice(0, 60)}" (${r.permalink}) posted but is no longer on the account.`);
+          } catch {
+            // network blip: skip, the next run checks again
+          }
+        }
+      }
+
       // 2. Dead-man: nothing auto-published in 24h
       const posted = await prisma.socialPublish.count({
         where: { status: "POSTED", postedAt: { gte: hoursAgo(24) }, platform: { in: ["instagram", "facebook"] } },
