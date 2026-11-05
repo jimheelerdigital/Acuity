@@ -8,6 +8,32 @@
 ---
 
 
+## [2026-11-05] — Pain funnels rewritten for the people they're for (persona pass ×2)
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 89fb4811, 4ce2de48, b4278c1c, a3635f7f, dddc4de6
+
+### In plain English (for Keenan)
+The six pain funnels (mental load, things slip, tired, stuck, scattered, journal) now speak to the specific person each one is for, in her or his own words, on every screen, for both the women's and men's versions. Screen 1 animates exactly like the approved design. The duplicate "who are you keeping track of" screen is gone. The funnels no longer promise things Ripple doesn't do ("nothing slips", reminders) or hint at a cause for tiredness. The scattered funnel no longer asks whether someone has ADHD. These funnels are still OFF; nothing here turns them on.
+
+### Technical changes (for Jimmy)
+- apps/web/src/components/funnel-v9.tsx: Screen 1 HookOverlay props match the approved design (89fb4811). Per-funnel overrides read from `C.extras`: week meter/note, loader lines 1 and 3, result heading, paywall title, trust bullets, Today's read, Feeling word, journal stamps/vs. Journal reassure shows body2, and JournalResult shows state.line + resultOutro. Receipt "rarely" maps to "when it counts". Progress hero chip is now "Still at 12%". Day-30 unlock copy no longer promises "ask your past self anything".
+- apps/web/src/lib/funnel-v9-config.ts: new `FunnelExtras` type + `V9Config.extras`. The plate step was removed from the pain/journal funnels (merged into week). ADHD "brain" diagnosis step replaced by `ideas` ("Where do your best ideas show up?"). Result-order fixes in painStateName/adhdStateName. reviewAt tweaks. /start-catch reassure moved after the guilt screen. Clarity FAQ adds "not medical advice". Dead `stamps.first` removed.
+- apps/web/src/lib/funnel-copy-review.ts (new): first persona pass (`REVIEW_COPY`, `applyReviewCopy`, men's week items, `STRUCTURE` per-funnel extras) and `applyAudit()`.
+- apps/web/src/lib/funnel-copy-audit2.ts (new): second screen-by-screen persona pass, merged over the first.
+- No schema changes, no new routes, no env changes.
+
+### Manual steps needed
+- [ ] None to ship. The funnels stay off until Keenan says to turn them on (Keenan)
+- [ ] Confirm three product facts used by docs/ideal-client-profiles.md copy: Day-30 "ask your past self" live? voice recordings deleted 24h after transcription? per-task reminders? (Jimmy)
+
+### Notes
+- Review pages: funnel walkthrough artifact 1Bq771B6TfR3RcxRhrXhTj (re-recorded 11-05) and in-app prototype GjdVdM6JL3tcs6jBgoBEfQ.
+- docs/ideal-client-profiles.md (19k words, 182 sources) is the canonical ideal-client doc. It is untracked; commit it separately if we want it in the repo.
+- Copy layering order: base config → REVIEW_COPY (pass 1) ← AUDIT2 (pass 2) → STRUCTURE extras. Men inherit her new copy only where they still shared her original wording.
+- 60 split-video ad cuts (Ripple / No Ripple / Mixed) are on Keenan's Desktop under "ripple videos/*/ad versions". They were built with the local scratch script and are not in the repo.
+
 ## [2026-11-05] — Canadian creator's Stripe payout setup no longer restarts on every visit
 
 **Requested by:** Keenan
@@ -32,6 +58,30 @@ Natalie (our Canadian creator) could never finish Stripe payout setup. The "Wher
 - **Live Stripe state on 11-05:** her account is CA, recipient agreement, CAD, nothing submitted yet, `disabled_reason: requirements.past_due` (normal for an untouched account). A fresh onboarding link for it was created without error, so Stripe's side works.
 - **The loop on 11-04 at 15:03–15:04 CT:** CA → US → CA accounts created within 53 seconds.
 - **Local Stripe key is the sandbox:** use the production key from `vercel env pull` for live checks (see the 10-23 gotcha).
+
+## [2026-11-05] — Mythicals back on Kling 3; dragons and fire only when the post is about dragons
+
+- **Requested by:** Keenan
+- **Committed by:** Claude Code
+- **Commit hash:** (this commit)
+
+### In plain English (for Keenan)
+Mythicals videos render on Kling 3 again. Every clip used to carry a long paragraph about dragons breathing fire, even when the slide was a shield, a warrior or a chimera, and the video model acted it out. Now that paragraph only goes to clips that actually show a dragon or wyvern. Every other slide just animates what the post is about.
+
+### Technical changes (for Jimmy)
+- apps/web/src/lib/content-factory/post-video.ts: `MYTHICALS_VIDEO_MODEL` default back to `kling-video/v3.0/std/image-to-video` (reverts 6b386855). Clips are silent and capped at 6s again.
+- apps/web/src/lib/content-factory/living-reel.ts: new `isDragonClip()`. Gear named after dragons ("dragon-bone bow", "dragon knight", "dragon-plate") doesn't count. `measuredMythicLine(motion, grounded, scene)` adds the dragon-breath and `DRAGON_BREATH_LINE` wording only when the motion or scene shows dragon-kind. "Flames along a blade or armor" is gone from the effects list.
+- apps/web/src/lib/content-factory/mythic-motion.ts: the start-frame grounding prompt allows breath only on a dragon and never adds a dragon, fire or breath to a picture that doesn't have one.
+- apps/web/src/lib/content-factory/choice-lane.ts: removed "a dragon rider passing like a speck" from the SUPER_SCALE line and "a dragon or other threat may appear small in the background" from armor posts, replaced with a no-dragon-in-every-scene rule.
+- apps/web/src/lib/content-factory/claude-client.ts: the ChatGPT clip-prompt example limits jaw breath to dragons and wyverns.
+- mythic-motion.test.ts: new test that clips without a dragon get no dragon, fire or breath wording.
+
+### Manual steps needed
+- [ ] Check that `MYTHICALS_VIDEO_MODEL` is unset in Vercel. If it's set to the 2.5 model, it overrides this default (Keenan/Jimmy)
+
+### Notes
+- Root cause: `DRAGON_BREATH_LINE` (~900 chars) was added to every Mythicals clip prompt on both the grounded and ungrounded paths. Kling acts out the verbs it reads, so shield and warrior clips got dragons and fire.
+- Cost goes back to ~$3.65/day for Mythicals clips (from ~$2.52 on Kling 2.5).
 
 ## [2026-11-04] — Ripple video auto-posting turned off; Keenan posts them by hand
 
