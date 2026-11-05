@@ -8,17 +8,39 @@
 ---
 
 
-## [2026-11-05] — Spec for Jimmy: show first results in seconds instead of ~21
+## [2026-11-05] — Ripple list videos move clearly again
 
 - **Requested by:** Keenan
 - **Committed by:** Claude Code
 - **Commit hash:** (this commit)
 
 ### In plain English (for Keenan)
-About 1 in 4 people who finish their first recording in the app never see their results, mostly because the wait is ~21 seconds. This is the build plan for Jimmy: a quick analysis shows results in a few seconds, and the full analysis runs in the background after she creates her account. Nothing is live yet.
+Today's Ripple list post ("6 questions to ask yourself when rest feels lazy") was animated, but the clips barely moved: misty, mirror-still mountain lakes with instructions to keep almost everything still. From tomorrow every list slide is built around something that clearly moves (waves, waterfalls, falling snow, wind in grass), and the clip prompt asks for movement you can see on a phone from the first frame to the last.
 
 ### Technical changes (for Jimmy)
-- New docs/jimmy-spec-2026-11-05-fast-first-results.md (spec only, no code)
+- apps/web/src/lib/content-factory/ripple-list.ts: REAL_TIME_MOTION asks for one big, continuous, clearly visible real-time movement over much of the frame. Scenes are built around it (no still/mirror lakes or static views), and "gently/softly/slightly/barely/still/calm" are banned in motion lines. The MOUNTAIN LAKE world became MOUNTAIN WATER (waterfall, tumbling stream, wind-ruffled lake). The realTimeMotion fallback is stronger.
+- apps/web/src/lib/content-factory/living-reel.ts: scenic camera is locked (no zoom or push-in). Kling had spent today's clips on the allowed push-in, so the post looked like a zoomed slideshow. The scenic clip prompt also drops "Everything ... stays almost still ... Only small natural movement" and requires obvious, continuous movement. Sky, sun, shadows and light still hold, so the 10-15 timelapse fix stays.
+
+### Manual steps needed
+- [ ] Check tomorrow's 07 UTC Ripple list post: the slides should clearly move (Keenan)
+
+### Notes
+- Checked frame by frame: the posted reel holds the real Kling clips (frames match the raw clips). Kling's own output was basically a slow zoom on a still photo, which is why it read as a zoomed slideshow.
+- Diagnosis: credits were fine and all 7 Kling 2.5 clips rendered (video-builds marker liveSlides 7/7). Raw Kling clips averaged YDIF ~1.2-1.9 (near-frozen) vs ~6 on a breaking-wave slide from 10-28. The 10-15 anti-timelapse rule plus still-lake scenes left Kling nothing to animate.
+- Couldn't test-render locally: HIGGSFIELD_API_KEY is Vercel-only, and the app account (MCP) has no Kling 2.5 Turbo.
+- The 03:00 UTC "Running late" Ripple post was the hand-made video re-post; those are off auto-posting since 11-04.
+
+## [2026-11-05] — Spec for Jimmy: debrief results in 10 seconds (onboarding + every debrief)
+
+- **Requested by:** Keenan
+- **Committed by:** Claude Code
+- **Commit hash:** (this commit)
+
+### In plain English (for Keenan)
+About 1 in 4 people who finish their first recording in the app never see their results, mostly because the wait is ~21 seconds. This is the build plan for Jimmy: a quick analysis shows results in 10 seconds or less, and the full analysis fills in the rest behind the scenes. It covers the first debrief in onboarding and every debrief after it. Nothing is live yet.
+
+### Technical changes (for Jimmy)
+- New docs/jimmy-spec-2026-11-05-fast-first-results.md (spec only, no code). Section 2.5 covers signed-in debriefs: a quick-extract step in process-entry, a quick-ready polling state (summary set while status is EXTRACTING; no schema change), and an entry screen that fills in the rest. Needs an OTA.
 - Findings behind it: onboarding extraction (Sonnet 4.6, ClaudeCallLog entry_extraction, userId null) p50 17.8s / p90 28.3s of a 20.7s p50 phone wait; whisper-1 ~1.7s; gpt-4o-mini-transcribe ~1.2s with identical text on 8 founder clips; gpt-4o-transcribe truncated 2/8
 
 ### Manual steps needed

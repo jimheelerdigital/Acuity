@@ -1,4 +1,4 @@
-# Spec: fast first results in app onboarding (quick analysis first, deep analysis behind the scenes)
+# Spec: debrief results in 10 seconds (onboarding + every debrief): quick analysis first, deep analysis behind the scenes
 
 **Requested by:** Keenan · **Written:** 2026-11-05 · **Owner:** Jimmy (build + review) · **Go-live:** Monday 11-09 at the earliest (funnel-change rule)
 
@@ -55,7 +55,7 @@ claim (account created) ── /api/try-recording/claim
                             KEEP the quick tasks (don't replace what she saw)
 ```
 
-**No app update needed.** The response shape is the same, and `normalize()` already handles every field the quick analysis returns. **No Prisma schema change**: the depth flag lives inside the `extractionData` JSON.
+**Onboarding part: no app update needed.** (Everyday debriefs, 2.5, need an OTA.) The response shape is the same, and `normalize()` already handles every field the quick analysis returns. **No Prisma schema change**: the depth flag lives inside the `extractionData` JSON.
 
 ### 2.1 Transcription: switch to `gpt-4o-mini-transcribe`
 
@@ -125,11 +125,45 @@ New Inngest function (or reuse the per-entry step in `apps/web/src/inngest/funct
 - **Claim idempotency:** the existing double-claim guard (`claimed: false` conditional update) stays. The Inngest send goes after the guard, so a parallel claim can't send twice. The function's idempotency check is the backstop.
 - **Typed debriefs** (mic-denied, `audioPath` null) go through the same quick path.
 
+## 2.5 Everyday debriefs in the app (signed-in), same pattern
+
+Keenan, 11-05: "we should have the initial debrief results within 10sec or less and then get more info from the transcript after the fact." This applies to **every debrief**, not just onboarding.
+
+**Today:**
+1. `apps/mobile/app/record.tsx` uploads, then `hooks/use-entry-polling.ts` polls `/api/entries/[id]` until status is `COMPLETE`/`PARTIAL`/`FAILED`, then `router.replace('/entry/[id]')`.
+2. `inngest/functions/process-entry.ts`: transcribe → `prepare-and-extract` (full Sonnet extraction **with memory context**, ~18s p50 / ~29s p90; ClaudeCallLog `entry_extraction`, signed-in, n=194) → `persist-extraction` (sets COMPLETE) → habits, people, embedding, memory, life map, streak.
+
+She waits on the record screen for transcription + the full extraction.
+
+**New:**
+1. **Transcribe** with `gpt-4o-mini-transcribe` (whisper-1 fallback), same as 2.1.
+2. **New step `quick-extract`**, right after transcription, before `prepare-and-extract`:
+   - Same `quickTryAnalysis` prompt as 2.2, so one prompt serves both paths.
+   - Write `summary`, `themes`, and quick tasks to the Entry. **Leave status at `EXTRACTING`.**
+   - Don't use `COMPLETE`: weekly report, insights, achievements and life-audit read `COMPLETE` to mean "fully analyzed".
+3. **Polling (app):**
+   - `use-entry-polling.ts` gets a new "quick ready" state: status is `EXTRACTING`/`PERSISTING` **and** `summary` is set.
+   - `record.tsx` navigates to the entry on quick ready, the same way it does on complete.
+   - **No schema change:** "summary set while not yet COMPLETE" is the signal.
+   - Older app versions ignore it and keep waiting for COMPLETE, i.e. today's behavior, so this is safe to ship server-first.
+4. **Entry screen (app):** `app/entry/[id].tsx` shows the summary, themes and to-dos right away. Mood, wins, blockers, reflection, goals and life areas show a soft "Ripple is still reading this…" placeholder. Keep polling until COMPLETE, then fill them in without moving what's already on screen.
+5. **Full extraction** runs exactly as today, with one rule: **don't replace what she already saw.**
+   - Keep the quick `summary` (write the deep one to `reflection`, or keep it in `rawAnalysis` only).
+   - Tasks: add only ones that aren't already there (title match), never delete or duplicate the quick ones.
+6. **FREE users** already get a one-sentence Haiku summary and no extraction (`summarize-free`). They can use the quick step as their summary instead; the paywall rules stay the same.
+
+**Target: results on screen in ≤ 10s for typical recordings.**
+- Budget: upload ~1–2s + transcribe ~1–2s + Haiku ~2–4s + one poll interval. **Check the poll interval in `use-entry-polling.ts`;** at 2s+ it adds up to 2s on its own. Consider 1s while status is TRANSCRIBING/EXTRACTING.
+- **Long recordings (3–5 min) will miss 10s:** transcription alone grows to ~5–10s. Fixing that needs transcribe-while-recording (phase 2 below). Measure the target on p50 and on recordings under 2 min.
+- Add a timing event: `entry_quick_ready_ms` from the stop tap to navigation, plus server-side `ClaudeCallLog` purpose `entry_quick_extraction`.
+
+**Needs an OTA** (polling + entry screen), unlike the onboarding part. The server part can ship first and do nothing visible until the app update lands.
+
 ## 3. Optional phase 2 (app update / OTA, separate)
 
 Not needed for the speed-up; lower priority.
 1. **"Say a bit more" nudge:** don't allow stop under ~5s of speech, or nudge before submitting. Most `v10_processing_failed` rows are 1–5s recordings.
-2. **Start uploading while she's still recording** (chunked/resumable), so the upload is done at stop. Saves ~1–2s.
+2. **Start uploading while she's still recording** (chunked/resumable), so the upload is done at stop. Saves ~1–2s. For everyday debriefs, also **transcribe chunks while she talks**, so long recordings hit 10s too.
 3. OTA via `cd apps/mobile && npm run ota -- --message "…"`, never `eas update`.
 
 ## 4. Rollout
@@ -151,6 +185,7 @@ Not needed for the speed-up; lower priority.
 
 | | Now | Target |
 |---|---|---|
+| Everyday debrief: stop → entry screen, p50 | ~20s+ (measure first) | ≤ 10s |
 | `v10_processing_latency` p50 | 20.7s | < 8s |
 | `v10_processing_latency` p90 | 40.9s | < 15s |
 | Saw results ÷ finished recording | ~76% | > 88% |
@@ -170,3 +205,5 @@ Not needed for the speed-up; lower priority.
 2. Does anything read `Entry.extracted`/`rawAnalysis` within the first minute after claim (Home insights teaser, day count, welcome flow) that would show something wrong before deep extraction lands?
 3. Move signed-in entries to `gpt-4o-mini-transcribe` too, after a week of soak?
 4. Any reason the non-speech filter needs retuning for the 4o-mini output?
+5. Everyday debriefs: does anything besides the entry screen react to `summary` appearing before COMPLETE (the "brief ready" banner, widgets, the Home list)?
+6. Everyday debriefs: keep the deep `summary` out of the visible summary (2.5 step 5), or overwrite once she's left the screen?
