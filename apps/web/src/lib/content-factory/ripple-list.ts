@@ -98,7 +98,7 @@ export const LIST_WORLDS = [
   "SNOW: quiet snowy landscapes, snow-heavy pines, a frozen lake, falling snow, soft winter light",
   "OCEAN: a rugged coastline, rolling waves, sea spray on rocks, a long empty beach, golden light on the water",
   "AUTUMN: autumn woods, red and gold leaves, a leaf-covered path, a stream under maples, low warm sun through branches",
-  "MOUNTAIN LAKE: misty mountains, a still alpine lake, drifting clouds, pine slopes, early morning mist",
+  "MOUNTAIN WATER: a waterfall pouring into an alpine lake, a mountain stream tumbling over boulders, wind-ruffled lake water, pine slopes tossing in the wind, snowmelt cascading down rock",
   "SPRING MEADOW: wildflower meadows, a soft breeze in tall grass, blossoming trees, light spring rain, a winding country road",
   "DESERT DAWN: desert dunes at sunrise, long shadows, wind-blown sand, a canyon glowing orange, a wide clear sky",
 ] as const;
@@ -111,7 +111,12 @@ export const LIST_WORLDS = [
  * can only show those as a timelapse. Motion must be something that visibly
  * moves in 5 real seconds.
  */
-const REAL_TIME_MOTION = `Each slide's "motion" is the one small natural movement a real camera would catch in five ordinary seconds, filmed in real time: waves rolling in, snow falling, leaves drifting down, grass and branches swaying, rain dimpling water, a stream flowing, steam rising from a mug, a curtain moving in a breeze. NEVER anything that takes minutes or hours in real life: no clouds racing or rolling, no fog lifting or burning off, no sun rising, setting or breaking through, no shadows moving or sweeping, no light changing, no flowers opening, and never the words "fast", "quickly", "rushing" or "timelapse". Every slide's motion is different.`;
+// 2026-11-05 (per Keenan: "the ripple posts that went out today weren't
+// animated"): "one small natural movement" + a still-lake world gave Kling
+// nothing to move (mist on a mirror lake, ripples on pebbles), so the clips
+// came back near-frozen. Every scene is now built around something that
+// clearly moves, and soft words that read as "hold still" are out.
+const REAL_TIME_MOTION = `Each slide's "motion" is one BIG, clearly visible natural movement a real camera would catch in five ordinary seconds, filmed in real time, that covers a large part of the frame and keeps going the whole clip: waves rolling in and breaking, a waterfall pouring, a stream tumbling over rocks, snow falling thickly, leaves blowing and falling, a whole field of grass and branches tossing in the wind, rain falling and splashing, sand blowing off a dune, steam rising from a mug, a curtain billowing in a breeze. Build every "scene" around that moving thing, large in the frame: never a still or mirror-calm lake, frozen water, an empty sky or a static view as the whole picture. Don't write "gently", "softly", "slightly", "barely", "still" or "calm" in a motion line; say what moves and how much. NEVER anything that takes minutes or hours in real life: no clouds racing or rolling, no fog lifting or burning off, no sun rising, setting or breaking through, no shadows moving or sweeping, no light changing, no flowers opening, and never the words "fast", "quickly", "rushing" or "timelapse". Every slide's motion is different.`;
 
 const SCENIC_PICTURES = `THE PICTURES: every slide is a breathtaking, people-free landscape photo from the ONE scenic world named in the user message, a different view each slide (wide, close, different light, different spot) so the post feels like one calm place. NO people, NO faces, NO hands, NO animals in focus, NO buildings as the subject, NO text. Each "scene" is under 30 words, concrete nouns only, and leaves calm open sky, water or snow in the upper half for the text. ${REAL_TIME_MOTION}`;
 
@@ -131,7 +136,7 @@ const systemFor = (format: ListFormat) => SYSTEM.replace("__PICTURES__", format 
  * Last line of defense for the motion line: anything that only happens over
  * minutes (or says "fast") becomes a safe real-time movement.
  */
-export function realTimeMotion(motion: string, fallback = "a light breeze moves the leaves and grass"): string {
+export function realTimeMotion(motion: string, fallback = "a strong breeze tosses the grass and branches in big, steady waves"): string {
   const m = motion.trim();
   if (!m) return fallback;
   return /(fast|quick(ly)?|rapid(ly)?|rush(es|ing)?|rac(e|es|ing)|timelapse|time-lapse|sweep(s|ing)?|clouds?|shadows?|sun ?(rise|set|rises|sets|rays?|breaks?|light shifts)|fog (lifts|thins|burns|clears)|mist (lifts|thins|burns|clears)|light (shifts|changes|moves|spreads|grows)|blooms?|opens? up|dawn breaks|darkens|brightens)/i.test(m)

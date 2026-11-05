@@ -126,10 +126,18 @@ export function livingMotionPrompt(
       return [
         "Real-time footage filmed at normal speed: the photo comes alive. This is NOT a timelapse and NOT sped up.",
         land ? `Scene: ${land}` : "",
-        `Action: ${motion ?? "a light breeze moves the leaves and grass"}, at true real-world speed, the way it looks to someone standing there for five seconds.`,
-        "Everything that moves slowly in real life stays almost still: clouds, sky, sun, shadows and light do not visibly change. Only small natural movement (water, leaves, grass, snow, rain, steam, fabric).",
+        `Action: ${motion ?? "a strong breeze tosses the grass and branches in big, steady waves"}, at true real-world speed, the way it looks to someone standing there for five seconds.`,
+        // 2026-11-05 (per Keenan: today's Ripple posts "weren't animated"):
+        // "only small natural movement" got near-frozen clips. The moving
+        // thing now moves clearly for the whole clip; only the slow things
+        // (sky, sun, shadows) hold, which keeps it from looking sped up.
+        "The movement is obvious on a phone screen and continuous from the first frame to the last: water flows, waves roll, snow, rain and leaves fall, grass, branches and fabric toss in the wind, all over a large part of the frame. Only the slow things hold: clouds, sky, sun, shadows and light do not visibly change.",
         walking ? WALK : "",
-        "Camera: steady, with at most a very slow, gentle push-in.",
+        // Locked camera (2026-11-05, per Keenan: today's list post "looked
+        // like it was just a zoomed in slideshow"): Kling spent the clip on
+        // the allowed push-in and left the scene still. With no camera move
+        // to fall back on, the scene itself has to carry the motion.
+        "Camera: locked off on a tripod, no zoom, no push-in, no pan; all the movement comes from the scene itself.",
         walking
           ? "Keep the composition, light and color as in the photo. No other people, no animals appearing, no text, no morphing or warping."
           : "Keep the composition, light and color as in the photo. No people, no animals appearing, no text, no morphing or warping.",
