@@ -126,8 +126,10 @@ const OPTION_ICONS: Record<string, LucideIcon> = {
   "pain:slip": FileText, "pain:switch": Waves, "pain:snap": Zap, "pain:behind": Hourglass, "pain:last": HeartCrack, "pain:drained": BatteryLow,
   "easier:say": Mic, "easier:sorts": ListChecks, "easier:setup": Sparkles, "easier:matters": Eye, "easier:restart": Repeat, "easier:blank": BookOpen,
   // Pain-first funnels (/start-relief, /start-catch, /start-clarity, /start-progress)
-  "first:move": Dumbbell, "first:friends": Users, "first:appts": CalendarCheck, "first:sleep": Moon, "first:me": Heart, "first:food": Activity,
-  "seen:none": User, "seen:slip": Zap, "seen:partner": Heart, "seen:me": Eye, "help:out": Brain, "help:nothing": ListChecks,
+  "first:school": BookOpen, "first:appts": CalendarCheck, "first:bills": Wallet, "first:reply": Mail, "first:gift": Heart, "first:work": Briefcase,
+  "help:one": Layers, "help:nolist": FileText,
+  "tabs:head": Brain, "tabs:notes": FileText, "tabs:phone": Smartphone, "tabs:planner": BookOpen,
+  "seen:never": Hourglass, "seen:lost": Layers, "seen:rewrite": Repeat, "seen:ignore": Eye, "help:out": Brain, "help:nothing": ListChecks,
   "help:only": Users, "help:why": Eye, "help:me": Heart, "help:behind": Hourglass, "help:catch": Mic, "help:dates": CalendarDays,
   "help:coming": CalendarRange, "help:head": Brain, "help:top": Target, "pain:form": FileText, "pain:appt": CalendarCheck, "pain:bday": Sparkles,
   "pain:bill": Wallet, "pain:reply": Mail, "pain:promise": HeartHandshake, "pain:tired": BatteryLow, "pain:short": Zap, "pain:nextweek": CalendarClock,
@@ -358,6 +360,10 @@ const CSS = `
 @keyframes v9o-flick { 50% { opacity: .25; } }
 .v9 .ho-flip { transform-box: fill-box; transform-origin: 50% 0; animation: v9o-flip 3.6s ease-in infinite; }
 @keyframes v9o-flip { 0%,55% { transform: rotateX(0); opacity: 1; } 75%,100% { transform: rotateX(85deg); opacity: 0; } }
+.v9 .ho-creep { animation: v9o-creep 4s ease-in-out infinite; }
+@keyframes v9o-creep { 0%,12% { width: 15px; } 55% { width: 40px; } 70% { width: 40px; } 86%,100% { width: 15px; } }
+.v9 .ho-spin { transform-box: fill-box; transform-origin: center; animation: v9o-spin 1.1s linear infinite; }
+@keyframes v9o-spin { to { transform: rotate(360deg); } }
 .v9 .ho-pop { transform-box: fill-box; transform-origin: center; opacity: 0; animation: v9o-pop 4.5s infinite; }
 @keyframes v9o-pop { 0% { opacity: 0; transform: scale(.4); } 8%,85% { opacity: 1; transform: scale(1); } 95%,100% { opacity: 0; } }
 @media (prefers-reduced-motion: reduce) { .v9 * { animation: none !important; transition: none !important; } .v9 .hp-pop, .v9 .hp-fall, .v9 .ho-pop, .v9 .ho-fall { opacity: 1; } }
@@ -2466,7 +2472,7 @@ const FEELING: Record<NonNullable<PainKit["face"]>, string> = {
   clarity: "drained",
   progress: "stuck",
   focus: "scattered",
-  journal: "frustrated",
+  journal: "let down",
 };
 
 function FacePic({ size, spot = "hook" }: { size: "stage" | "hero" | "mid" | "avatar"; spot?: "hook" | "mid" | "calm" | "clear" }) {
@@ -2518,7 +2524,8 @@ function HookOverlay({ face, male }: { face: NonNullable<PainKit["face"]>; male:
   );
   const tabs = (items: string[]) =>
     items.map((t, i) => {
-      const [x, y] = [[8, 40], [238, 28], [250, 120], [6, 150], [228, 214]][i];
+      const long = t.length > 14;
+      const [x, y] = long ? [[4, 26], [154, 92], [4, 160], [154, 226]][i] : [[8, 40], [238, 28], [250, 120], [6, 150], [228, 214]][i];
       return (
         <g key={t} className="ho-pop" style={{ animationDelay: `${i * 0.7}s` }}>
           <g transform={`translate(${x} ${y})`}>
@@ -2559,22 +2566,30 @@ function HookOverlay({ face, male }: { face: NonNullable<PainKit["face"]>; male:
       </>
     );
   } else if (face === "progress") {
-    const page = (m: string) => (
-      <>
-        <rect width={70} height={76} rx={10} fill="#fff" stroke="#F6D2BE" /><rect width={70} height={22} rx={10} fill="#F2541E" /><rect y={12} width={70} height={10} fill="#F2541E" />
-        <text x={35} y={56} textAnchor="middle" fontFamily={serif} fontSize={22} fontWeight={700} fill={INK}>{m}</text>
-      </>
-    );
+    // Stuck (2026-11-04, Keenan: "it's about being stuck"): a goals bar that
+    // creeps forward and slides back to the same 12%, a spinner that never finishes.
     props = (
       <>
-        <g transform="translate(240 40)">{page("Dec")}<g className="ho-flip">{page("Jun")}</g></g>
-        <g transform="translate(18 92)"><rect width={88} height={30} rx={15} fill="#fff" stroke="#F6D2BE" /><text x={44} y={20} textAnchor="middle" fontFamily={sans} fontSize={12} fontWeight={700} fill="#C2410C">Day 1, again</text></g>
+        <g transform="translate(150 30)">
+          <rect width={150} height={58} rx={14} fill="#fff" stroke="#F6D2BE" />
+          <text x={14} y={22} fontFamily={sans} fontSize={11.5} fontWeight={700} fill={INK}>My goals</text>
+          <text x={136} y={22} textAnchor="end" fontFamily={sans} fontSize={11.5} fontWeight={800} fill="#C2410C">12%</text>
+          <rect x={14} y={33} width={122} height={11} rx={5.5} fill="#FCE7DB" />
+          <rect className="ho-creep" x={14} y={33} height={11} rx={5.5} fill="#F2541E" width={15} />
+        </g>
+        <g transform="translate(46 64)">
+          <circle r={17} fill="#fff" stroke="#F6D2BE" />
+          <circle className="ho-spin" r={9} fill="none" stroke="#F2541E" strokeWidth={3.2} strokeLinecap="round" strokeDasharray="38 60" />
+        </g>
+        <g transform="translate(16 238)"><rect width={124} height={30} rx={15} fill="#fff" stroke="#F6D2BE" /><text x={62} y={20} textAnchor="middle" fontFamily={sans} fontSize={12} fontWeight={700} fill="#C2410C">Same as last year</text></g>
       </>
     );
   } else if (face === "focus") {
     props = tabs(male ? ["Laundry!!", "Reply to Jake", "Dentist?", "That idea", "Oil change"] : ["Laundry!!", "Reply to Jen", "Dentist?", "That idea", "Passport"]);
   } else {
-    props = tabs(male ? ["New planner", "3 apps", "Blank since Feb", "Start Monday", "Fresh start #4"] : ["New journal", "Page 6", "Blank since Feb", "Start Monday", "Fresh start #4"]);
+    // Journaling (2026-11-04, Keenan: the scattered labels "don't make sense"):
+    // one story, each journal she started and how far it got.
+    props = tabs(male ? ["Planner #1 · 1 week", "App #2 · 3 days", "Planner #3 · 5 days", "App #4 · 2 days"] : ["Journal #1 · 6 pages", "Journal #2 · 4 pages", "Journal #3 · 9 pages", "Journal #4 · 2 pages"]);
   }
   return (
     <svg className="pointer-events-none absolute left-0 top-[1.8%] h-auto w-full overflow-visible" viewBox="0 0 330 330" aria-hidden="true">

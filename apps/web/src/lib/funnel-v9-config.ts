@@ -651,7 +651,7 @@ export const JOURNAL_V9_STEPS: V9Step[] = [
   {
     id: "pain",
     kind: "multi",
-    title: "When it\u2019s all in your head, what happens?",
+    title: "When you have too much in your head, what happens?",
     sub: "Pick all that apply.",
     options: [
       { id: "slip", label: "Things slip through the cracks" },
@@ -726,7 +726,7 @@ export const JOURNAL_V9_STEPS: V9Step[] = [
     ],
   },
   { id: "reassure", kind: "info", screen: "reassure" },
-  ...V9_STEPS.filter((st) => st.id === "age" || st.id === "plate" || st.id === "week"),
+  ...V9_STEPS.filter((st) => st.id === "age" || st.id === "week"),
   { id: "preview", kind: "info", screen: "preview" },
   { id: "s-say", kind: "slider", title: "Where do you land?", left: "I\u2019d rather write it down", right: "I\u2019d rather just say it" },
   { id: "st-zero", kind: "statement", statement: "If it took zero upkeep, I\u2019d actually use it.", mood: "hopeful", title: "Last one. True for you?" },
@@ -752,7 +752,7 @@ export const JOURNAL_V9_STEPS: V9Step[] = [
 const JOURNAL_SHORT: Record<string, string> = {
   hook: "None of them stuck? (screen 1, yes/no)",
   why: "Why she gets planners",
-  pain: "What happens when it's all in her head",
+  pain: "What happens when she has too much in her head",
   often: "How often things slip",
   tried: "How many times started over",
   "tried-what": "What she tried",
@@ -856,7 +856,7 @@ export const PAIN_V9_STEPS: V9Step[] = [
   {
     id: "pain",
     kind: "multi",
-    title: "When it’s all in your head, what happens?",
+    title: "When you have too much in your head, what happens?",
     sub: "Pick all that apply.",
     options: [
       { id: "slip", label: "Things slip through the cracks" },
@@ -870,7 +870,7 @@ export const PAIN_V9_STEPS: V9Step[] = [
   {
     id: "often",
     kind: "single",
-    title: "How often does something slip through?",
+    title: "How often does something slip because it was only in your head?",
     options: [
       { id: "daily", label: "Most days" },
       { id: "weekly", label: "A few times a week" },
@@ -879,55 +879,44 @@ export const PAIN_V9_STEPS: V9Step[] = [
     ],
   },
   {
+    // Screens 4-7 reworked (2026-11-04, Keenan: "these all don't really work
+    // well based on the pain"): each one narrows from "it's all in my head"
+    // to "I need one place to put it", which is what Ripple is.
     id: "tabs",
     kind: "single",
-    title: "How many things are you holding in your head right now?",
-    sub: "Appointments, forms, replies, birthdays. Every little thing counts.",
+    title: "Where does it all live right now?",
+    sub: "The dates, the forms, the replies, the birthdays.",
     options: [
-      { id: "one", label: "A handful" },
-      { id: "few", label: "About 10" },
-      { id: "many", label: "20 or more" },
-      { id: "lost", label: "I’ve lost count" },
-    ],
-  },
-  {
-    id: "first",
-    kind: "multi",
-    title: "What’s the first thing to go when the week gets full?",
-    sub: "Pick all that apply.",
-    options: [
-      { id: "move", label: "My workouts" },
-      { id: "friends", label: "Seeing friends" },
-      { id: "appts", label: "My own appointments" },
-      { id: "sleep", label: "Sleep" },
-      { id: "me", label: "Time just for me" },
-      { id: "food", label: "Eating properly" },
+      { id: "head", label: "Only in my head" },
+      { id: "notes", label: "Sticky notes and scraps of paper" },
+      { id: "phone", label: "Notes and reminders on my phone" },
+      { id: "planner", label: "A planner I forget to open" },
     ],
   },
   {
     id: "seen",
     kind: "single",
-    title: "Who notices how much you carry?",
+    title: "When you write it all down, what happens to the list?",
     options: [
-      { id: "none", label: "Nobody, really" },
-      { id: "slip", label: "Only when something slips" },
-      { id: "partner", label: "My partner, sometimes" },
-      { id: "me", label: "I’m not sure I do" },
+      { id: "never", label: "I never get the time to write it" },
+      { id: "lost", label: "It gets lost under the next one" },
+      { id: "rewrite", label: "I rewrite it every few days" },
+      { id: "ignore", label: "I stop checking it" },
     ],
   },
-  { id: "st-drop", kind: "statement", statement: "If I put it down for a second, something gets dropped.", mood: "drained" },
+  { id: "st-drop", kind: "statement", statement: "I just need one place to put it all down.", mood: "drained" },
   {
     id: "help",
     kind: "multi",
-    title: "What would help most?",
+    title: "What would help you keep track of things better?",
     sub: "Pick all that apply.",
     options: [
       { id: "out", label: "Getting it all out of my head" },
       { id: "nothing", label: "Knowing nothing’s slipping" },
-      { id: "once", label: "Saying it once and letting it go" },
-      { id: "why", label: "Seeing what’s wearing me down" },
-      { id: "habits", label: "Keeping up the things I drop" },
-      { id: "week", label: "Seeing my week laid out" },
+      { id: "once", label: "Saying it once and knowing it’s saved" },
+      { id: "one", label: "Everything on one list" },
+      { id: "nolist", label: "No more writing it all down" },
+      { id: "dates", label: "Keeping the dates straight" },
     ],
   },
   { id: "reassure", kind: "info", screen: "reassure" },
@@ -956,11 +945,11 @@ export const PAIN_V9_STEPS: V9Step[] = [
 
 const PAIN_SHORT: Record<string, string> = {
   hook: "Too much going on to keep track? (screen 1, yes/no)",
-  pain: "What happens when it's all in her head",
+  pain: "What happens when she has too much in her head",
   often: "How often things slip",
-  tabs: "How much she's holding",
-  first: "First thing to go",
-  seen: "Who notices",
+  tabs: "Where it all lives",
+  first: "What she's trying to remember",
+  seen: "What happens to the list",
   "st-drop": "Yes/no: put it down, it drops",
   help: "What would help most",
   reassure: "It's not you, it's the load",
@@ -984,14 +973,13 @@ const PAIN_SHORT: Record<string, string> = {
 export function painStateName(a: { plate: string[]; sliders: Record<string, number>; said?: Record<string, string>; multi?: Record<string, string[]> }): { name: string; line: string } {
   const said = a.said ?? {};
   const pain = a.multi?.pain ?? [];
-  const first = a.multi?.first ?? [];
-  if (said.tabs === "many" || said.tabs === "lost") {
+  if (said.tabs === "head") {
     return { name: "The Keeper of Everything", line: "You hold the dates, the forms and everyone’s plans. No one head was built to carry that much." };
   }
-  if (said.seen === "none" || said.seen === "slip" || said["st-drop"] === "yes") {
-    return { name: "The Invisible Engine", line: "Everything runs because of you, and most of it goes unseen. Even by you." };
+  if (said.seen === "lost" || said.seen === "rewrite" || said.seen === "ignore") {
+    return { name: "The List Keeper", line: "You’ve tried writing it down. Keeping the list became one more thing to carry." };
   }
-  if (pain.includes("last") || first.includes("me")) {
+  if (pain.includes("last")) {
     return { name: "The Last on the List", line: "You make room for everyone. Your own things wait for someday." };
   }
   if (pain.includes("switch")) {
@@ -1011,9 +999,9 @@ export const PAIN_V9: V9Config = {
   progressEnd: PAIN_V9_STEPS.findIndex((st) => st.id === "result"),
   stateName: painStateName as unknown as typeof v9StateName,
   reassure: {
-    title: "It’s not you. It’s the load.",
-    body: "You’re holding the dates, the plans and everyone’s needs in one head. Anyone would drop something.",
-    body2: "Ripple takes the keeping-track off you. You talk for a few minutes, and it catches the tasks and shows you what’s wearing you down.",
+    title: "It’s not you. It’s too much for one head.",
+    body: "You’re keeping track of the dates, the plans and everyone’s needs, all at once. Nobody could hold all of that.",
+    body2: "Ripple takes the keeping-track off you. Say it once, and it catches every task and date for you.",
     things: ["Dentist Thursday", "Permission slip", "Call Mom back", "Car insurance", "Book the vet", "Reply to Sarah", "Birthday gift", "Water bill"],
     cta: "That’s me",
   },
@@ -1023,10 +1011,11 @@ export const PAIN_V9: V9Config = {
     label: "Mental load",
     face: "relief",
     hookCards: ["Work", "Kids", "Home"],
-    stackStep: "tabs",
+    // No stacked-cards step here any more (the "how many things" screen is gone).
+    stackStep: "none",
     stamps: {
-      first: { move: "Skipped again", friends: "Rain check #4", appts: "Still not booked", sleep: "6 hours, maybe", me: "Someday", food: "Ate standing up" },
-      help: { out: "Ripple does this", nothing: "Ripple does this", once: "Ripple does this", why: "Ripple does this", habits: "Ripple does this", week: "Ripple does this" },
+      first: { school: "Due Friday", appts: "Still not booked", bills: "Due soon", reply: "3 days late", gift: "This Sunday", work: "Before 9am" },
+      help: { out: "Ripple does this", nothing: "Ripple does this", once: "Ripple does this", one: "Ripple does this", nolist: "Ripple does this", dates: "Ripple does this" },
     },
     reviewAt: { help: 0, commit: 3 },
     closeStamp: "held for you",
@@ -1054,7 +1043,8 @@ export const PAIN_V9: V9Config = {
 // week) question reworded to the funnel's pain (2026-11-02 review: "On your
 // plate" read as generic profiling).
 function painShared(plate: { title: string; sub?: string }, week?: { title: string; sub?: string }): V9Step[] {
-  return V9_STEPS.filter((st) => st.id === "age" || st.id === "plate" || st.id === "week").map((st) =>
+  // "Who and what are you keeping track of?" merged into the week chips (2026-11-04, Keenan: "basically the same thing").
+  return V9_STEPS.filter((st) => st.id === "age" || st.id === "week").map((st) =>
     st.id === "plate" ? ({ ...st, ...plate } as V9Step) : st.id === "week" && week ? ({ ...st, ...week } as V9Step) : st
   );
 }
@@ -1353,7 +1343,7 @@ export const LOOP_V9: V9Config = {
 
 // ─── /start-progress: pain #6, the weeks blur and nothing seems to change ───
 export const PROGRESS_V9_STEPS: V9Step[] = [
-  { id: "hook", kind: "statement", statement: "The weeks fly by, and I can’t see that anything’s changing.", mood: "drained" },
+  { id: "hook", kind: "statement", statement: "I feel stuck. I keep trying, and nothing changes.", mood: "drained" },
   {
     id: "pain", kind: "multi", title: "What does that feel like?", sub: "Pick all that apply.",
     options: [
@@ -1654,20 +1644,18 @@ const MEN_WEEK_THINGS = ["Oil change", "Call the bank", "Kid’s practice", "Ren
 export const PAIN_M_V9 = menConfig(PAIN_V9, "pain_m", {
   hook: { statement: "I’ve got too much going on, and I can’t keep track of it all." },
   pain: { title: "When it’s all on you, what happens?", options: { slip: "Things fall through the cracks", switch: "I can’t switch off", snap: "I’m short with the people I love", behind: "I’m always playing catch-up", last: "My own goals get pushed back", drained: "I’m running on fumes" } },
-  tabs: { title: "How many things are you keeping track of right now?", sub: "Work, home, kids, bills. It all counts." },
-  first: { title: "What’s the first thing to go when the week gets busy?", options: { move: "The gym", friends: "Seeing friends", appts: "My own appointments", sleep: "Sleep", me: "Time for me", food: "Eating right" } },
-  seen: { title: "Does anyone see how much you handle?", options: { none: "No, not really", slip: "Only when something slips", partner: "My partner, sometimes", me: "I don’t stop long enough to notice" } },
-  "st-drop": { statement: "If I take my foot off the gas, something drops." },
-  help: { options: { out: "Getting it out of my head", nothing: "Knowing nothing’s slipping", once: "Saying it once and moving on", why: "Seeing what’s wearing me down", habits: "Sticking to the habits I drop", week: "Seeing my week laid out" } },
+  tabs: { sub: "Work, home, kids, bills.", options: { planner: "A planner I never open" } },
+  "st-drop": { statement: "I just need one place to put it all." },
+  help: { options: { out: "Getting it out of my head", nothing: "Knowing nothing’s slipping", once: "Saying it once and moving on", one: "Everything on one list", nolist: "No more writing it all down", dates: "Keeping the dates straight" } },
   "s-load": { left: "I’ve got it handled", right: "It’s too much to carry" },
   "st-share": { statement: "I’d breathe easier if something else kept track for me." },
   commit: { title: "Ready to take some of it off your plate?" },
 }, {
-  reassure: { ...PAIN_V9.reassure, body: "You’re carrying work, home and everyone’s plans in one head. Anyone would drop something.", things: MEN_WEEK_THINGS },
+  reassure: { ...PAIN_V9.reassure, body: "You’re keeping track of work, home and everyone’s plans, all at once. Nobody could hold all of that.", things: MEN_WEEK_THINGS },
   resultOutro: "None of this means you’re slipping. It means one head is holding too much. Ripple takes the keeping-track part.",
   painKit: {
     stamps: {
-      first: { move: "Skipped again", friends: "Rain check #4", appts: "Still not booked", sleep: "5 hours, maybe", me: "Someday", food: "Drive-thru again" },
+      first: { school: "Due Friday", appts: "Still not booked", bills: "Due soon", reply: "3 days late", gift: "This Sunday", work: "Before 9am" },
       help: PAIN_V9.painKit!.stamps.help,
     },
     vs: {
@@ -1740,7 +1728,7 @@ export const LOOP_M_V9 = menConfig(LOOP_V9, "loop_m", {
 });
 
 export const PROGRESS_M_V9 = menConfig(PROGRESS_V9, "progress_m", {
-  hook: { statement: "The weeks fly by, and I’m not getting anywhere." },
+  hook: { statement: "I’m stuck. I keep grinding and getting nowhere." },
   pain: { title: "What does that look like?", options: { proud: "I can’t point to what I’ve built" } },
   look: { title: "When do you check how things are going?" },
   slid: { options: { move: "Getting in shape", hobby: "Something I used to love doing", calm: "Staying calm" } },
