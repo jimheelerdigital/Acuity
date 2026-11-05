@@ -303,6 +303,10 @@ export async function POST(req: NextRequest) {
     ? {
         ...calendarConnection,
         googleCalendarRefreshTokenEncrypted: undefined,
+        // Google Calendar direct sign-in (2026-10-28) stores encrypted
+        // OAuth tokens on this row; never export them.
+        accessToken: undefined,
+        refreshToken: undefined,
       }
     : null;
 

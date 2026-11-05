@@ -1,10 +1,17 @@
 import type { PrismaClient } from "@prisma/client";
 
-import type { CalendarProviderId, CalendarSyncOp } from "@/lib/calendar-sync";
+import { requestServerCalendarDrain } from "@/lib/calendar/server-drain-request";
+import {
+  isServerCalendarProvider,
+  type CalendarProviderId,
+  type CalendarSyncOp,
+} from "@/lib/calendar-sync";
 import { PHONE_PROVIDERS } from "@/lib/device-calendar-events";
 
 /**
- * Dismissed task → remove its event from the phone calendar (2026-10-27).
+ * Dismissed task → remove its event from the phone calendar (2026-10-27),
+ * or from Google Calendar for Google direct sign-in (server-drained,
+ * 2026-10-28).
  *
  * Dismissing a task hard-deletes the Task row (unchanged, so no task list,
  * count, widget, Siri, watch or insights query ever sees a "dismissed"
@@ -48,28 +55,43 @@ type Db = Pick<PrismaClient, "user" | "calendarDeletion">;
 /**
  * Called by the dismiss route BEFORE it deletes the task. Queues the
  * event's deletion when the task has a calendar event and the user has a
- * phone calendar connected (the only provider whose writes run today).
+ * calendar connected whose writes run today: a phone calendar (the phone
+ * drains it) or Google Calendar direct (the server drains it, 2026-10-28).
  * Never throws: the dismiss must succeed regardless.
+ *
+ * Google only: a task still PENDING may already have its event (the write
+ * landed but the result wasn't recorded yet), so its deterministic event id
+ * is queued too; deleting an event that doesn't exist counts as done.
  */
 export async function queueCalendarDeletion(
   db: Db,
   userId: string,
-  calendarEventId: string | null | undefined
+  calendarEventId: string | null | undefined,
+  task?: { id: string; calendarSyncStatus?: string | null }
 ): Promise<boolean> {
-  if (!calendarEventId) return false;
   try {
     const user = await db.user.findUnique({
       where: { id: userId },
       select: { calendarConnectedProvider: true },
     });
-    if (!user?.calendarConnectedProvider || !PHONE_PROVIDERS.has(user.calendarConnectedProvider)) {
-      return false;
+    const provider = user?.calendarConnectedProvider ?? null;
+    const isPhone = !!provider && PHONE_PROVIDERS.has(provider);
+    const isServer = isServerCalendarProvider(provider);
+    if (!isPhone && !isServer) return false;
+
+    let eventId = calendarEventId ?? null;
+    if (!eventId && isServer && task && task.calendarSyncStatus === "PENDING") {
+      const { googleEventIdForTask } = await import("@/lib/calendar/google-calendar-executor");
+      eventId = googleEventIdForTask(task.id);
     }
+    if (!eventId) return false;
+
     await db.calendarDeletion.upsert({
-      where: { userId_providerEventId: { userId, providerEventId: calendarEventId } },
-      create: { userId, providerEventId: calendarEventId },
+      where: { userId_providerEventId: { userId, providerEventId: eventId } },
+      create: { userId, providerEventId: eventId },
       update: {},
     });
+    if (isServer) await requestServerCalendarDrain(userId);
     return true;
   } catch (err) {
     console.warn(

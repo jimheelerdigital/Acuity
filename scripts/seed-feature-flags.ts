@@ -68,6 +68,15 @@ const SEEDS: Seed[] = [
     requiredTier: null,
   },
   {
+    key: "calendar_google_direct",
+    name: "Google Calendar direct sign-in",
+    description:
+      "Server writes task events straight to Google Calendar through the Calendar API (no phone needed). Needs Google OAuth verification for calendar.events before general release.",
+    enabled: false,
+    rolloutPercentage: 100,
+    requiredTier: null,
+  },
+  {
     key: "theme_evolution_map",
     name: "Theme Evolution Map",
     description: "Force-graph visualization of recurring themes over time.",

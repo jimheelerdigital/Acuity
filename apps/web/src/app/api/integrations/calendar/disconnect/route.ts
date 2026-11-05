@@ -13,10 +13,11 @@
  *   - Does NOT touch Task.calendarSyncedAt / calendarEventId fields
  *     on existing tasks. Future re-connects can decide whether to
  *     re-sync or treat them as stale.
- *   - Does NOT call any provider revoke endpoint. Provider-level
- *     revocation is the user's responsibility (Apple Calendar →
- *     Settings → Calendar Accounts; Google → security settings).
- *     We only drop our local connection state.
+ *   - Phone providers: does NOT call any provider revoke endpoint
+ *     (Apple Calendar → Settings → Calendar Accounts). We only drop our
+ *     local connection state. Google Calendar direct (2026-10-28) is
+ *     the exception: we hold its OAuth grant, so we revoke it at
+ *     Google and delete the stored tokens.
  *
  * autoSendTasks + defaultEventDuration are PRESERVED. If the user
  * re-connects later, those preferences hold. Same pattern as the
@@ -63,22 +64,20 @@ export async function POST(req: NextRequest) {
 
   const priorProvider = existing.calendarConnectedProvider;
 
-  await prisma.user.update({
-    where: { id: userId },
-    data: {
-      calendarConnectedProvider: null,
-      calendarConnectedAt: null,
-      targetCalendarId: null,
-    },
-  });
-  // Nothing will drain these any more; without this they sat in PENDING
-  // and the stuck-task cron marked them FAILED a day later (2026-10-23).
-  await prisma.task.updateMany({
-    where: { userId, calendarSyncStatus: "PENDING" },
-    data: { calendarSyncStatus: "NOT_SYNCED", calendarPendingSince: null },
-  });
-  // Queued event deletions for dismissed tasks can't run any more either.
-  await prisma.calendarDeletion.deleteMany({ where: { userId } });
+  // Clears the provider, un-queues PENDING tasks (nothing will drain them
+  // any more; they'd escalate to FAILED a day later, 2026-10-23) and drops
+  // queued event deletions for dismissed tasks.
+  const { releaseCalendarQueue } = await import("@/lib/calendar/google-direct");
+  await releaseCalendarQueue(prisma, userId);
+
+  // Google Calendar direct (2026-10-28): revoke our grant at Google
+  // (best-effort) and delete the stored tokens. Existing events stay.
+  if (priorProvider === "google") {
+    const { dropGoogleConnection } = await import("@/lib/calendar/google-direct");
+    if (!(await dropGoogleConnection(prisma, userId))) {
+      safeLog.warn("calendar.disconnect.google_revoke_failed", { userId });
+    }
+  }
 
   safeLog.info("calendar.disconnect", {
     userId,

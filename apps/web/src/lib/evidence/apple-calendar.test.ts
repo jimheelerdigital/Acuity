@@ -98,10 +98,17 @@ describe("server fixes", () => {
 
   it("connect queues open tasks due today or later; disconnect un-queues", () => {
     const connect = web("app/api/integrations/calendar/connect/route.ts");
-    expect(connect).toMatch(/if \(user\.autoSendTasks\) \{[\s\S]*?status: \{ not: "DONE" \}[\s\S]*?calendarSyncStatus: "PENDING"/);
+    expect(connect).toMatch(/if \(user\.autoSendTasks\) \{\s*queued = await queueConnectCatchUp\(prisma, userId\)/);
     expect(connect).toMatch(/"android_calendar"/);
+    // The catch-up itself (shared with Google direct sign-in, 2026-10-28).
+    expect(web("lib/enqueue-sync.ts")).toMatch(
+      /export async function queueConnectCatchUp[\s\S]*?status: \{ not: "DONE" \}[\s\S]*?calendarSyncStatus: "PENDING"/
+    );
     const disconnect = web("app/api/integrations/calendar/disconnect/route.ts");
-    expect(disconnect).toMatch(/calendarSyncStatus: "PENDING" \},\s*data: \{ calendarSyncStatus: "NOT_SYNCED"/);
+    expect(disconnect).toMatch(/await releaseCalendarQueue\(prisma, userId\)/);
+    expect(web("lib/calendar/google-direct.ts")).toMatch(
+      /calendarSyncStatus: "PENDING" \},\s*data: \{ calendarSyncStatus: "NOT_SYNCED"/
+    );
   });
 });
 

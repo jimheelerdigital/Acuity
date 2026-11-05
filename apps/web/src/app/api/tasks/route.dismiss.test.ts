@@ -39,7 +39,7 @@ describe("PATCH /api/tasks dismiss", () => {
     const { PATCH } = await import("./route");
     const res = await PATCH(patch({ id: "task_1", action: "dismiss" }) as never);
     expect(res.status).toBe(200);
-    expect(queue).toHaveBeenCalledWith(expect.anything(), "user_1", "evt_9");
+    expect(queue).toHaveBeenCalledWith(expect.anything(), "user_1", "evt_9", expect.objectContaining({ id: "task_1" }));
     expect(del).toHaveBeenCalledWith({ where: { id: "task_1" } });
     expect(queue.mock.invocationCallOrder[0]).toBeLessThan(del.mock.invocationCallOrder[0]);
   });

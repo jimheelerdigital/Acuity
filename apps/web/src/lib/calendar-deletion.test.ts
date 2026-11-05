@@ -1,5 +1,12 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+const drainRequest = vi.fn();
+vi.mock("@/lib/calendar/server-drain-request", () => ({
+  requestServerCalendarDrain: (...a: unknown[]) => drainRequest(...a),
+}));
+
+import { googleEventIdForTask } from "./calendar/google-calendar-executor";
+
 import {
   DELETION_MAX_ATTEMPTS,
   applyDeletionResult,
@@ -54,11 +61,38 @@ describe("queueCalendarDeletion", () => {
   it.each([
     ["no event", null, "ios_eventkit"],
     ["not connected", "evt_9", null],
-    ["a non-phone provider", "evt_9", "google"],
+    ["a provider whose writes don't run (outlook)", "evt_9", "outlook"],
   ])("does nothing with %s", async (_l, eventId, provider) => {
     findUnique.mockResolvedValue({ calendarConnectedProvider: provider });
     expect(await queueCalendarDeletion(db, "u1", eventId as string | null)).toBe(false);
     expect(upsert).not.toHaveBeenCalled();
+  });
+
+  it("Google direct: queues the event and asks the server to drain (no phone)", async () => {
+    findUnique.mockResolvedValue({ calendarConnectedProvider: "google" });
+    expect(await queueCalendarDeletion(db, "u1", "ripple123abc")).toBe(true);
+    expect(upsert.mock.calls[0][0].create).toEqual({ userId: "u1", providerEventId: "ripple123abc" });
+    expect(drainRequest).toHaveBeenCalledWith("u1");
+  });
+
+  it("Google direct: a still-PENDING task queues its deterministic event id", async () => {
+    findUnique.mockResolvedValue({ calendarConnectedProvider: "google" });
+    expect(
+      await queueCalendarDeletion(db, "u1", null, { id: "task_1", calendarSyncStatus: "PENDING" })
+    ).toBe(true);
+    expect(upsert.mock.calls[0][0].create.providerEventId).toBe(googleEventIdForTask("task_1"));
+    // Never synced and not pending: nothing on Google to remove.
+    upsert.mockClear();
+    expect(
+      await queueCalendarDeletion(db, "u1", null, { id: "task_1", calendarSyncStatus: "NOT_SYNCED" })
+    ).toBe(false);
+    expect(upsert).not.toHaveBeenCalled();
+  });
+
+  it("phone providers never trigger a server drain", async () => {
+    findUnique.mockResolvedValue({ calendarConnectedProvider: "ios_eventkit" });
+    await queueCalendarDeletion(db, "u1", "evt_9");
+    expect(drainRequest).not.toHaveBeenCalled();
   });
 
   it("never throws (the dismiss must still succeed)", async () => {

@@ -25,12 +25,18 @@ interface Props {
   initialAutoSendTasks: boolean;
   initialDefaultEventDuration: Duration;
   targetCalendarId: string | null;
+  /** Shown instead of the raw id (Google direct: "Primary Google Calendar"). */
+  targetCalendarLabel?: string;
+  /** Replaces the "choose from the iOS app" note; null hides it. */
+  targetCalendarNote?: string | null;
 }
 
 export function IntegrationsSettings({
   initialAutoSendTasks,
   initialDefaultEventDuration,
   targetCalendarId,
+  targetCalendarLabel,
+  targetCalendarNote,
 }: Props) {
   const router = useRouter();
   const [autoSend, setAutoSend] = useState(initialAutoSendTasks);
@@ -175,13 +181,19 @@ export function IntegrationsSettings({
             Currently syncing to:
           </p>
           <p className="mt-0.5 font-mono text-xs text-zinc-700 dark:text-zinc-200">
-            {targetCalendarId ?? "—"}
+            {targetCalendarLabel ?? targetCalendarId ?? "—"}
           </p>
         </div>
-        <p className="mt-2 text-[11px] leading-relaxed text-zinc-400 dark:text-zinc-500">
-          Choose a different calendar from the iOS app today. The web
-          picker ships once Ripple reads your calendar list directly.
-        </p>
+        {targetCalendarNote === undefined ? (
+          <p className="mt-2 text-[11px] leading-relaxed text-zinc-400 dark:text-zinc-500">
+            Choose a different calendar from the iOS app today. The web
+            picker ships once Ripple reads your calendar list directly.
+          </p>
+        ) : targetCalendarNote ? (
+          <p className="mt-2 text-[11px] leading-relaxed text-zinc-400 dark:text-zinc-500">
+            {targetCalendarNote}
+          </p>
+        ) : null}
       </div>
 
       {/* Disconnect */}

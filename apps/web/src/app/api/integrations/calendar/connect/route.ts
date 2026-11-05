@@ -30,6 +30,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 
+import { queueConnectCatchUp } from "@/lib/enqueue-sync";
 import { gateFeatureFlag } from "@/lib/feature-flags";
 import { getAnySessionUserId } from "@/lib/mobile-auth";
 import { requireEntitlement } from "@/lib/paywall";
@@ -70,6 +71,15 @@ export async function POST(req: NextRequest) {
   ) {
     return NextResponse.json(
       { error: "Invalid provider" },
+      { status: 400 }
+    );
+  }
+  // Google Calendar direct (2026-10-28) is server-executed and needs real
+  // OAuth tokens, so it can only be connected through
+  // /api/integrations/calendar/google/start → /callback, never declared here.
+  if (body.provider === "google") {
+    return NextResponse.json(
+      { error: "Connect Google Calendar via /api/integrations/calendar/google/start" },
       { status: 400 }
     );
   }
@@ -118,6 +128,12 @@ export async function POST(req: NextRequest) {
     },
   });
 
+  // Switching to a phone calendar from Google Calendar direct (2026-10-28):
+  // one connected calendar at a time, so drop the Google grant + tokens.
+  // Never throws.
+  const { dropGoogleConnection } = await import("@/lib/calendar/google-direct");
+  await dropGoogleConnection(prisma, userId);
+
   safeLog.info("calendar.connect", {
     userId,
     provider: user.calendarConnectedProvider,
@@ -126,22 +142,11 @@ export async function POST(req: NextRequest) {
   });
 
   // Auto-add on (2026-10-23): queue the open tasks that are due today or
-  // later, so connecting fills the calendar instead of only catching tasks
-  // edited from now on. "Today" is taken a day wide to cover every US
-  // timezone; the phone writes each one and reports back via /sync-result.
+  // later (lib/enqueue-sync.ts queueConnectCatchUp); the phone writes each
+  // one and reports back via /sync-result.
   let queued = 0;
   if (user.autoSendTasks) {
-    const since = new Date(Date.now() - 36 * 60 * 60 * 1000);
-    const res = await prisma.task.updateMany({
-      where: {
-        userId,
-        status: { not: "DONE" },
-        dueDate: { gte: since },
-        calendarSyncStatus: { in: ["NOT_SYNCED", "FAILED"] },
-      },
-      data: { calendarSyncStatus: "PENDING", calendarPendingSince: new Date() },
-    });
-    queued = res.count;
+    queued = await queueConnectCatchUp(prisma, userId);
   }
 
   // Same shape as GET /settings so the app can use it directly.

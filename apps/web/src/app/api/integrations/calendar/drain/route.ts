@@ -29,6 +29,8 @@ import {
   drainSupportsDelete,
 } from "@/lib/calendar-deletion";
 import {
+  isServerCalendarProvider,
+  queuedTaskOp,
   type CalendarProviderId,
   type CalendarSyncOp,
 } from "@/lib/calendar-sync";
@@ -42,12 +44,6 @@ const DRAIN_BATCH_SIZE = 100;
 
 function isProviderId(s: unknown): s is CalendarProviderId {
   return s === "ios_eventkit" || s === "android_calendar" || s === "google" || s === "outlook";
-}
-
-function sanitizeTitle(raw: string): string {
-  const collapsed = raw.replace(/\s+/g, " ").trim();
-  if (collapsed.length === 0) return "(untitled)";
-  return collapsed.length > 200 ? collapsed.slice(0, 200) + "…" : collapsed;
 }
 
 export async function GET(req: NextRequest) {
@@ -102,23 +98,23 @@ export async function GET(req: NextRequest) {
     );
   }
 
-  const duration =
-    user.defaultEventDuration === "ALL_DAY" ? "ALL_DAY" : "TIMED";
+  // Server-executed providers (Google Calendar direct, 2026-10-28): the
+  // server writes these itself, so a phone must never apply them too.
+  if (isServerCalendarProvider(user.calendarConnectedProvider)) {
+    return NextResponse.json(
+      { ops: [] },
+      { headers: { "Cache-Control": "no-store" } }
+    );
+  }
 
-  const ops: CalendarSyncOp[] = tasks.map((t) => ({
-    taskId: t.id,
-    userId,
-    // The kind is derived at drain time from the task's current
-    // status. status=DONE → complete (rewrite event title with
-    // strikethrough); otherwise upsert (create-or-update).
-    kind: t.status === "DONE" ? "complete" : "upsert",
-    providerEventId: t.calendarEventId,
-    providerId: user.calendarConnectedProvider as CalendarProviderId,
-    targetCalendarId: user.targetCalendarId as string,
-    taskTitle: sanitizeTitle(t.title ?? t.text ?? "(untitled)"),
-    dueDateISO: t.dueDate ? t.dueDate.toISOString() : null,
-    duration,
-  }));
+  const ops: CalendarSyncOp[] = tasks.map((t) =>
+    queuedTaskOp(t, {
+      userId,
+      providerId: user.calendarConnectedProvider as CalendarProviderId,
+      targetCalendarId: user.targetCalendarId as string,
+      defaultEventDuration: user.defaultEventDuration,
+    })
+  );
 
   // Dismissed tasks' events to remove (2026-10-27). Only for app JS that
   // says it can execute deletes: older JS would treat an unknown op as an

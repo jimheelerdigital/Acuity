@@ -2,8 +2,10 @@ import "server-only";
 
 import type { Prisma, PrismaClient, Task, User } from "@prisma/client";
 
+import { requestServerCalendarDrain } from "@/lib/calendar/server-drain-request";
 import {
   isCalendarProviderId,
+  isServerCalendarProvider,
   planSyncOp,
   type CalendarSyncOpKind,
   type TaskForPlanning,
@@ -143,11 +145,15 @@ export async function enqueueSyncForTask(
 
     if (!op) return { enqueued: false, reason: "no-op-needed" };
 
-    // Set PENDING. Mobile drains the queue next foreground.
+    // Set PENDING. Mobile drains the queue next foreground; for a
+    // server-executed provider (Google direct) the server drains it now.
     await tx.task.update({
       where: { id: taskId },
       data: { calendarSyncStatus: "PENDING", calendarPendingSince: new Date() },
     });
+    if (isServerCalendarProvider(user.calendarConnectedProvider)) {
+      await requestServerCalendarDrain(userId);
+    }
 
     return { enqueued: true };
   } catch (err) {
@@ -187,6 +193,9 @@ export async function enqueueSyncForLoadedTask(
     where: { id: task.id },
     data: { calendarSyncStatus: "PENDING", calendarPendingSince: new Date() },
   });
+  if (isServerCalendarProvider(user.calendarConnectedProvider)) {
+    await requestServerCalendarDrain(task.userId);
+  }
   return { enqueued: true };
 }
 
@@ -240,6 +249,9 @@ export async function enqueueEntryTasksForCalendar(
       },
       data: { calendarSyncStatus: "PENDING", calendarPendingSince: new Date() },
     });
+    if (res.count > 0 && isServerCalendarProvider(user.calendarConnectedProvider)) {
+      await requestServerCalendarDrain(userId);
+    }
     return res.count;
   } catch (err) {
     console.warn(
@@ -248,4 +260,26 @@ export async function enqueueEntryTasksForCalendar(
     );
     return 0;
   }
+}
+
+/**
+ * Connect catch-up (2026-10-23, shared with Google direct sign-in
+ * 2026-10-28): with auto-add on, queue the open tasks due today or later so
+ * connecting fills the calendar instead of only catching tasks edited from
+ * now on. "Today" is taken a day wide to cover every US timezone.
+ */
+export async function queueConnectCatchUp(
+  db: Pick<PrismaClient, "task">,
+  userId: string
+): Promise<number> {
+  const res = await db.task.updateMany({
+    where: {
+      userId,
+      status: { not: "DONE" },
+      dueDate: { gte: new Date(Date.now() - ENTRY_TASK_DUE_WINDOW_MS) },
+      calendarSyncStatus: { in: ["NOT_SYNCED", "FAILED"] },
+    },
+    data: { calendarSyncStatus: "PENDING", calendarPendingSince: new Date() },
+  });
+  return res.count;
 }

@@ -13,6 +13,7 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import * as WebBrowser from "expo-web-browser";
 
 import { BackButton } from "@/components/back-button";
 import { CalendarPicker } from "@/components/calendar/calendar-picker";
@@ -61,11 +62,47 @@ interface CalendarState {
   defaultEventDuration: Duration;
 }
 
+/** Google Calendar direct sign-in (2026-10-28), from GET /settings. */
+type GoogleDirect = {
+  available: boolean;
+  connection: { email: string | null; status: "connected" | "needs_reconnect" } | null;
+};
+
 type FetchResult =
   | { kind: "loading" }
   | { kind: "error"; message: string }
-  | { kind: "not-connected" }
-  | { kind: "connected"; calendar: CalendarState };
+  | { kind: "not-connected"; google: GoogleDirect }
+  | { kind: "connected"; calendar: CalendarState; google: GoogleDirect };
+
+const NO_GOOGLE: GoogleDirect = { available: false, connection: null };
+/** The callback sends the auth sheet back here (app.json scheme "acuity"). */
+const GOOGLE_RETURN_URL = "acuity://integrations";
+
+const GOOGLE_RESULT_MESSAGE: Record<string, string> = {
+  denied: "Access was declined, so Google Calendar wasn't connected.",
+  scope: "Ripple needs permission to add events. Connect again and leave calendar access ticked.",
+  no_token: "Google didn't finish the connection. Please try again.",
+  in_use: "That Google account is already connected to a different Ripple account.",
+  unavailable: "Google Calendar connect isn't available on your account yet.",
+  error: "Something went wrong connecting Google Calendar. Please try again.",
+};
+
+/**
+ * Google Calendar direct sign-in: the server hands back Google's consent
+ * URL (the app's bearer never enters the browser; a signed state carries
+ * the person's id), the auth sheet opens it, and the callback redirects to
+ * acuity://integrations?gcal=<status>, which closes the sheet.
+ * Returns the status, or null if the person closed the sheet.
+ */
+async function connectGoogleCalendar(): Promise<string | null> {
+  const { url } = await api.get<{ url: string }>(
+    "/api/integrations/calendar/google/start?format=json&return=app"
+  );
+  const result = await WebBrowser.openAuthSessionAsync(url, GOOGLE_RETURN_URL);
+  if (result.type !== "success") return null;
+  const match = /[?&]gcal=([a-z_]+)/.exec(result.url);
+  return match ? match[1] : "error";
+}
 
 const PROVIDER_LABEL: Record<string, string> = {
   ios_eventkit: "Apple Calendar",
@@ -134,11 +171,17 @@ function ConnectedOrPlaceholder({ tokens }: { tokens: AcuityTokens }) {
       const data = await api.get<{
         connected: boolean;
         calendar: CalendarState | null;
+        googleDirectAvailable?: boolean;
+        google?: GoogleDirect["connection"];
       }>("/api/integrations/calendar/settings");
+      const google: GoogleDirect = {
+        available: data.googleDirectAvailable === true,
+        connection: data.google ?? null,
+      };
       if (!data.connected || !data.calendar) {
-        setState({ kind: "not-connected" });
+        setState({ kind: "not-connected", google });
       } else {
-        setState({ kind: "connected", calendar: data.calendar });
+        setState({ kind: "connected", calendar: data.calendar, google });
       }
     } catch (err) {
       const message = err instanceof Error ? err.message : "Load failed";
@@ -190,21 +233,105 @@ function ConnectedOrPlaceholder({ tokens }: { tokens: AcuityTokens }) {
   }
 
   if (state.kind === "not-connected") {
+    const google = state.google;
     return (
-      <ConnectCard
-        tokens={tokens}
-        onConnected={(calendar) => setState({ kind: "connected", calendar })}
-      />
+      <View className="gap-4">
+        {google.available ? (
+          <GoogleConnectCard
+            tokens={tokens}
+            needsReconnect={google.connection?.status === "needs_reconnect"}
+            onDone={fetchState}
+          />
+        ) : null}
+        <ConnectCard
+          tokens={tokens}
+          onConnected={(calendar) => setState({ kind: "connected", calendar, google })}
+        />
+      </View>
     );
   }
 
+  const google = state.google;
   return (
     <ConnectedCard
       calendar={state.calendar}
+      googleEmail={google.connection?.email ?? null}
       tokens={tokens}
-      onUpdate={(next) => setState({ kind: "connected", calendar: next })}
-      onDisconnect={() => setState({ kind: "not-connected" })}
+      onUpdate={(next) => setState({ kind: "connected", calendar: next, google })}
+      onDisconnect={() => void fetchState()}
     />
+  );
+}
+
+function GoogleConnectCard({
+  tokens,
+  needsReconnect,
+  onDone,
+}: {
+  tokens: AcuityTokens;
+  needsReconnect: boolean;
+  onDone: () => void;
+}) {
+  const [busy, setBusy] = useState(false);
+
+  async function start() {
+    if (busy) return;
+    setBusy(true);
+    try {
+      const status = await connectGoogleCalendar();
+      if (status && status !== "connected") {
+        Alert.alert("Google Calendar", GOOGLE_RESULT_MESSAGE[status] ?? GOOGLE_RESULT_MESSAGE.error);
+      }
+      onDone();
+    } catch (err) {
+      Alert.alert("Couldn't open Google", err instanceof Error ? err.message : "Try again.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <View
+      className="rounded-2xl border p-5"
+      style={{ borderColor: tokens.line, backgroundColor: tokens.cardBg }}
+    >
+      <View className="flex-row items-start gap-3">
+        <View
+          className="h-9 w-9 shrink-0 items-center justify-center rounded-full"
+          style={{ backgroundColor: `${tokens.primary}1A` }}
+        >
+          <Ionicons name="logo-google" size={18} color={tokens.primary} />
+        </View>
+        <View className="flex-1">
+          <Text className="text-base font-semibold" style={{ color: tokens.text }}>
+            Google Calendar
+          </Text>
+          <Text className="mt-1.5 text-sm leading-relaxed" style={{ color: tokens.textSec }}>
+            Sign in with Google and Ripple adds your tasks with due dates straight to your Google
+            Calendar, from any device. Ripple only adds, changes and removes its own events.
+          </Text>
+        </View>
+      </View>
+      {needsReconnect ? (
+        <View className="mt-4 rounded-lg px-3 py-2" style={{ backgroundColor: `${WARN_AMBER}1a` }}>
+          <Text className="text-xs leading-relaxed" style={{ color: tokens.textSec }}>
+            Google stopped Ripple&apos;s access, so tasks aren&apos;t being added. Reconnect to pick up
+            where you left off.
+          </Text>
+        </View>
+      ) : null}
+      <Pressable
+        onPress={start}
+        disabled={busy}
+        accessibilityRole="button"
+        className="mt-4 items-center rounded-xl py-3"
+        style={{ backgroundColor: tokens.primary, opacity: busy ? 0.6 : 1 }}
+      >
+        <Text className="text-sm font-semibold" style={{ color: "#FFFFFF" }}>
+          {busy ? "Opening Google…" : needsReconnect ? "Reconnect Google Calendar" : "Connect Google Calendar"}
+        </Text>
+      </Pressable>
+    </View>
   );
 }
 
@@ -430,7 +557,13 @@ function TargetCalendarSection({
         ) : null}
       </View>
       <Text className="mt-1 text-sm" style={{ color: tokens.textSec }}>
-        {current ? `${current.title}${current.source ? ` · ${current.source}` : ""}` : canRead ? "Your chosen calendar" : "—"}
+        {calendar.provider === "google"
+          ? "Your primary Google Calendar"
+          : current
+            ? `${current.title}${current.source ? ` · ${current.source}` : ""}`
+            : canRead
+              ? "Your chosen calendar"
+              : "—"}
       </Text>
       {open && calendars ? (
         <View className="mt-3">
@@ -451,11 +584,13 @@ function TargetCalendarSection({
 
 function ConnectedCard({
   calendar,
+  googleEmail,
   tokens,
   onUpdate,
   onDisconnect,
 }: {
   calendar: CalendarState;
+  googleEmail: string | null;
   tokens: AcuityTokens;
   onUpdate: (next: CalendarState) => void;
   onDisconnect: () => void;
@@ -566,6 +701,7 @@ function ConnectedCard({
                 day: "numeric",
                 year: "numeric",
               })}
+              {calendar.provider === "google" && googleEmail ? ` as ${googleEmail}` : ""}
             </Text>
           )}
         </View>
