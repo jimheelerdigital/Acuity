@@ -345,7 +345,22 @@ const CSS = `
 @keyframes v9p-roll { 0% { transform: translateY(0); } 25% { transform: translateY(-34px); } 50% { transform: translateY(-68px); } 75% { transform: translateY(-102px); } }
 .v9 .hp-pop { opacity: 0; animation: v9p-pop 4.2s ease-out infinite; }
 @keyframes v9p-pop { 0% { opacity: 0; transform: scale(.6); } 10%,82% { opacity: 1; transform: scale(1); } 95%,100% { opacity: 0; } }
-@media (prefers-reduced-motion: reduce) { .v9 * { animation: none !important; transition: none !important; } .v9 .hp-pop, .v9 .hp-fall { opacity: 1; } }
+/* Screen 1 props, exactly as the approved Screen 1 design (2026-11-04). */
+.v9 .ho-orbit { transform-box: view-box; transform-origin: 165px 150px; animation: v9o-orbit 14s linear infinite; }
+@keyframes v9o-orbit { to { transform: rotate(360deg); } }
+.v9 .ho-orbit .ho-chip { transform-box: fill-box; transform-origin: center; animation: v9o-counter 14s linear infinite; }
+@keyframes v9o-counter { to { transform: rotate(-360deg); } }
+.v9 .ho-pulse { transform-box: fill-box; transform-origin: center; animation: v9o-pulse 1.6s ease-in-out infinite; }
+@keyframes v9o-pulse { 50% { transform: scale(1.15); } }
+.v9 .ho-fall { animation: v9o-fall 3.6s ease-in infinite; }
+@keyframes v9o-fall { 0% { transform: translate(0,0) rotate(0); opacity: 0; } 10% { opacity: 1; } 80% { opacity: 1; } 100% { transform: translate(30px,170px) rotate(40deg); opacity: 0; } }
+.v9 .ho-flick { animation: v9o-flick 1.2s steps(2) infinite; }
+@keyframes v9o-flick { 50% { opacity: .25; } }
+.v9 .ho-flip { transform-box: fill-box; transform-origin: 50% 0; animation: v9o-flip 3.6s ease-in infinite; }
+@keyframes v9o-flip { 0%,55% { transform: rotateX(0); opacity: 1; } 75%,100% { transform: rotateX(85deg); opacity: 0; } }
+.v9 .ho-pop { transform-box: fill-box; transform-origin: center; opacity: 0; animation: v9o-pop 4.5s infinite; }
+@keyframes v9o-pop { 0% { opacity: 0; transform: scale(.4); } 8%,85% { opacity: 1; transform: scale(1); } 95%,100% { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .v9 * { animation: none !important; transition: none !important; } .v9 .hp-pop, .v9 .hp-fall, .v9 .ho-pop, .v9 .ho-fall { opacity: 1; } }
 /* Reassure cloud without motion: the chips sit in a group above the Ripple card instead of piling up. */
 @media (prefers-reduced-motion: reduce) { .v9 .rs-cloud { display: flex; flex-wrap: wrap; justify-content: center; align-content: flex-start; gap: 6px; height: auto; padding-bottom: 76px; } .v9 .rs-float { position: static !important; margin: 0 !important; transform: none !important; width: auto !important; } }
 `;
@@ -1158,8 +1173,10 @@ function StatementScreen({ step, answers, setAnswers, next, track }: ViewProps &
         </figure>
       ) : faceHook ? (
         <figure className={`card-in relative flex flex-col items-center text-center ${fly === "yes" ? "fly-yes" : fly === "no" ? "fly-no" : ""}`}>
-          <div className="relative w-full max-w-[310px]">
+          {/* Same proportions as the Screen 1 design (300 x 340), scaled down on short screens. */}
+          <div className="relative mx-auto" style={{ width: "min(100%, 300px, calc(42vh * 0.88))" }}>
             <FacePic size="stage" />
+            <HookOverlay face={face!} male={C.brand.endsWith("_m")} />
             <span className="absolute -bottom-4 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full bg-white/95 px-3.5 py-2 text-[13px] font-semibold text-acuity-text shadow-[0_8px_20px_-10px_rgba(140,60,20,.45)]">
               Feeling: <b className="text-[#C2410C]">{FEELING[face!]}</b>
             </span>
@@ -2464,9 +2481,8 @@ function FacePic({ size, spot = "hook" }: { size: "stage" | "hero" | "mid" | "av
   const motion = spot === "hook" ? `face-${face}` : "face-soft";
   if (size === "stage") {
     return (
-      <span className="relative block w-full overflow-hidden rounded-[28px] shadow-[0_18px_36px_-18px_rgba(120,50,20,.45)]" style={{ height: "clamp(250px, 40vh, 340px)" }} aria-hidden="true">
+      <span className="relative block w-full overflow-hidden rounded-[28px] shadow-[0_18px_36px_-18px_rgba(120,50,20,.45)]" style={{ aspectRatio: "300 / 340" }} aria-hidden="true">
         <img src={src} alt="" width={560} height={700} loading="eager" decoding="async" className={`${motion} h-full w-full object-cover`} style={{ objectPosition: "50% 22%" }} />
-        <HeroProps face={face} male={male} />
       </span>
     );
   }
@@ -2482,6 +2498,88 @@ function FacePic({ size, spot = "hook" }: { size: "stage" | "hero" | "mid" | "av
     <span className="relative mx-auto block overflow-hidden rounded-full" style={{ width: 84, height: 84, border: "3px solid #fff", boxShadow: "0 10px 24px -10px rgba(140,60,20,.45)" }} aria-hidden="true">
       <img src={src} alt="" width={84} height={84} loading="lazy" decoding="async" className={`${motion} h-full w-full object-cover`} style={{ objectPosition: "50% 18%" }} />
     </span>
+  );
+}
+
+/**
+ * Screen 1 props, drawn as in the approved Screen 1 design (2026-11-04,
+ * Keenan: "make them the right animations"): a 330-unit overlay a little
+ * wider than the portrait, so props sit around and outside it.
+ */
+function HookOverlay({ face, male }: { face: NonNullable<PainKit["face"]>; male: boolean }) {
+  const INK = "#2A231D";
+  const sans = "Inter,system-ui,sans-serif";
+  const serif = "Fraunces,Georgia,serif";
+  const chip = (t: string, x: number, y: number, w = 100) => (
+    <>
+      <rect x={x - w / 2} y={y - 15} width={w} height={30} rx={15} fill="#fff" stroke="#F6D2BE" />
+      <text x={x} y={y + 5} textAnchor="middle" fontFamily={sans} fontSize={12.5} fontWeight={600} fill={INK}>{t}</text>
+    </>
+  );
+  const tabs = (items: string[]) =>
+    items.map((t, i) => {
+      const [x, y] = [[8, 40], [238, 28], [250, 120], [6, 150], [228, 214]][i];
+      return (
+        <g key={t} className="ho-pop" style={{ animationDelay: `${i * 0.7}s` }}>
+          <g transform={`translate(${x} ${y})`}>
+            <rect width={t.length * 7.4 + 30} height={28} rx={8} fill="#fff" stroke="#F6D2BE" />
+            <rect x={9} y={10} width={8} height={8} rx={2} fill="#FFB48F" />
+            <text x={23} y={18.5} fontFamily={sans} fontSize={12} fontWeight={600} fill={INK}>{t}</text>
+          </g>
+        </g>
+      );
+    });
+  let props: React.ReactNode = null;
+  if (face === "relief") {
+    const items = male ? ["Oil change", "Call the bank", "Kid’s practice", "Pay the card", "Renew insurance"] : ["Dentist Thu", "Permission slip", "Call Mom", "Water bill", "Gift for Jen"];
+    props = (
+      <g className="ho-orbit">
+        {items.map((t, i) => {
+          const a = (i / 5) * Math.PI * 2 - Math.PI / 2;
+          const x = 165 + Math.cos(a) * 148, y = 150 + Math.sin(a) * 118;
+          return <g key={t} className="ho-chip">{chip(t, x, y, t.length > 13 ? 116 : 100)}</g>;
+        })}
+      </g>
+    );
+  } else if (face === "catch") {
+    const [l1, l2] = male ? ["Late", "fee"] : ["Permission", "slip"];
+    props = (
+      <>
+        <g className="ho-pulse"><circle cx={262} cy={70} r={20} fill="#ef4444" /><rect x={259} y={56} width={6} height={18} rx={3} fill="#fff" /><circle cx={262} cy={81} r={3.4} fill="#fff" /></g>
+        <g className="ho-fall"><g transform="translate(40 70) rotate(-12)"><rect width={70} height={50} rx={6} fill="#fff" stroke="#F6D2BE" /><text x={35} y={22} textAnchor="middle" fontFamily={sans} fontSize={10} fontWeight={700} fill={INK}>{l1}</text><text x={35} y={36} textAnchor="middle" fontFamily={sans} fontSize={10} fontWeight={700} fill={INK}>{l2}</text></g></g>
+      </>
+    );
+  } else if (face === "clarity") {
+    // Battery stays near empty (2026-11-03, Keenan: "it should be empty").
+    props = (
+      <>
+        <g transform="translate(232 54)"><rect width={56} height={28} rx={7} fill="#fff" stroke={INK} strokeWidth={3} /><rect x={56} y={9} width={5} height={10} rx={2} fill={INK} /><rect className="ho-flick" x={5} y={5} height={18} rx={3} fill="#ef4444" width={7} /></g>
+        <text x={46} y={78} fontFamily={serif} fontSize={22} fontWeight={700} fill="#C2410C" opacity={0.75}>z</text>
+        <text x={62} y={58} fontFamily={serif} fontSize={16} fontWeight={700} fill="#C2410C" opacity={0.55}>z</text>
+      </>
+    );
+  } else if (face === "progress") {
+    const page = (m: string) => (
+      <>
+        <rect width={70} height={76} rx={10} fill="#fff" stroke="#F6D2BE" /><rect width={70} height={22} rx={10} fill="#F2541E" /><rect y={12} width={70} height={10} fill="#F2541E" />
+        <text x={35} y={56} textAnchor="middle" fontFamily={serif} fontSize={22} fontWeight={700} fill={INK}>{m}</text>
+      </>
+    );
+    props = (
+      <>
+        <g transform="translate(240 40)">{page("Dec")}<g className="ho-flip">{page("Jun")}</g></g>
+        <g transform="translate(18 92)"><rect width={88} height={30} rx={15} fill="#fff" stroke="#F6D2BE" /><text x={44} y={20} textAnchor="middle" fontFamily={sans} fontSize={12} fontWeight={700} fill="#C2410C">Day 1, again</text></g>
+      </>
+    );
+  } else if (face === "focus") {
+    props = tabs(male ? ["Laundry!!", "Reply to Jake", "Dentist?", "That idea", "Oil change"] : ["Laundry!!", "Reply to Jen", "Dentist?", "That idea", "Passport"]);
+  } else {
+    props = tabs(male ? ["New planner", "3 apps", "Blank since Feb", "Start Monday", "Fresh start #4"] : ["New journal", "Page 6", "Blank since Feb", "Start Monday", "Fresh start #4"]);
+  }
+  return (
+    <svg className="pointer-events-none absolute left-0 top-[1.8%] h-auto w-full overflow-visible" viewBox="0 0 330 330" aria-hidden="true">
+      {props}
+    </svg>
   );
 }
 
