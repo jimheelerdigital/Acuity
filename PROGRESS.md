@@ -8,6 +8,26 @@
 ---
 
 
+## [2026-11-05] — Ideal client profiles saved as the reference doc for all copy
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** see git log
+
+### In plain English (for Keenan)
+We now have one written profile of exactly who each funnel is for, for both women and men, across all six pains. It covers how they talk, what they've tried, what makes them say "that's me" and what makes them scroll away, plus example hooks. Anyone writing ads, funnel screens or emails can start from it instead of guessing.
+
+### Technical changes (for Jimmy)
+- docs/ideal-client-profiles.md (new, ~19k words): HER and HIM profiles for relief, catch, clarity, progress, focus and journal, plus language do/don't, objection lines, compliance guardrails and 182 numbered sources.
+- No code, schema or env changes.
+
+### Manual steps needed
+- [ ] Confirm three product facts some lines depend on: Day-30 "ask your past self anything" live? voice recordings deleted 24h after transcription? per-task reminders? (Jimmy)
+
+### Notes
+- The Reddit quotes are near-verbatim, taken from archived snapshots. Check each one at its URL before using it in public copy. Stats the doc couldn't verify are marked unverified, and several are banned in its compliance section.
+- The doc's positioning section defers to docs/acuity-positioning.md when the two conflict.
+
 ## [2026-11-05] — Ripple list videos move clearly again
 
 - **Requested by:** Keenan
