@@ -31,12 +31,22 @@ describe("Mythicals clip direction around the Action", () => {
   });
 
   it("keeps the measured best-era line for ungrounded clips", () => {
-    expect(measuredMythicLine("anything", false)).toMatch(/A dragon may breathe/);
+    expect(measuredMythicLine("The dragon turns its head", false)).toMatch(/A dragon may breathe/);
   });
 
-  it("asks for unmistakable dragon fire on both paths", () => {
+  it("asks for unmistakable dragon fire on both paths when a dragon is in the clip", () => {
     expect(measuredMythicLine("The dragon breathes fire", true)).toMatch(/MAKE IT UNMISTAKABLE/);
-    expect(measuredMythicLine("anything", false)).toMatch(/MAKE IT UNMISTAKABLE/);
+    expect(measuredMythicLine("It turns its head", false, "a frost wyvern on a cliff")).toMatch(/MAKE IT UNMISTAKABLE/);
+  });
+
+  it("never mentions dragons or breath on a clip without a dragon (2026-11-05)", () => {
+    for (const line of [
+      measuredMythicLine("The knight raises his mirror shield", true, "a knight in white plate"),
+      measuredMythicLine("The chimera rears and roars", false, "a chimera in a dark den"),
+      measuredMythicLine("He swings the bow", true, "a ranger with a dragon-bone bow in dragon-plate"),
+    ]) {
+      expect(line).not.toMatch(/dragon|fire|UNMISTAKABLE|jet of/i);
+    }
   });
 });
 

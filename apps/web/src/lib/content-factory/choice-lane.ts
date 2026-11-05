@@ -81,7 +81,7 @@ export function parseChoiceLaneSpec(raw: unknown): ChoiceLaneSpec | null {
 // are out.
 /** Super-legendary posts (2026-10-29): the scale has to read in the image. */
 const SUPER_SCALE =
-  "SUPER LEGENDARY SCALE: each beast is monstrous and impossibly huge, and every scene shows that size with something tiny in the same frame: a fleet of warships, a castle or walled city, a lone knight on a cliff, a dragon rider passing like a speck, a mountain it towers over. Shot from a low or distant angle so the beast fills the sky. Fantasy-world landmarks only, no modern cities or vehicles.";
+  "SUPER LEGENDARY SCALE: each beast is monstrous and impossibly huge, and every scene shows that size with something tiny in the same frame: a fleet of warships, a castle or walled city, a lone knight on a cliff, a mountain it towers over. Shot from a low or distant angle so the beast fills the sky. Fantasy-world landmarks only, no modern cities or vehicles.";
 
 export const CHOICE_CATEGORIES = [
   "which war-mount carries you into battle (winged, armored, clawed, serpentine; each with its rider's saddle and battle gear)",
@@ -164,7 +164,7 @@ TITLE STYLE (2026-10-06, per Keenan, after "ONE ARMOR TO SURVIVE A DRAGON'S BREA
 - The title is a plain, natural question or instruction TO THE READER, the way a person would actually say it out loud. Read it aloud: if it sounds odd, rewrite it.
 - Good: "A DRAGON IS BREATHING FIRE AT YOU. WHICH ARMOR DO YOU USE TO DEFEND YOURSELF?", "PICK YOUR ARMOR TO SURVIVE A DRAGON'S FIRE BREATH", "PICK THE ARMOR YOU'RE SURVIVING A DRAGON'S FIRE BREATH IN".
 - Never a fragment ("ONE ARMOR TO SURVIVE..."), never two ideas stitched together, never "IF YOU KNOW HIM/HER" or "SEND THIS TO..." unless this post is explicitly an if-you-know post. Ask what THEY would pick.
-- Every option answers the title. If the title asks for armor, all five options are armor, and each scene shows that armor as the hero (worn by a warrior or on display); a dragon or other threat may appear only small in the background.
+- Every option answers the title. If the title asks for armor, all five options are armor, and each scene shows that armor as the hero (worn by a warrior or on display). NO DRAGON IN EVERY SCENE (2026-11-05, per Keenan): show what the post is about; a dragon appears only when the option itself is a dragon or the subject is dragons.
 
 EPIC, NEVER ORDINARY (2026-10-02, per Keenan: "focus more on beasts and weapons and mythical creatures and sick armor... the cooler concept, the better. size also matters"):
 - Every creature is a MYTHICAL beast: dragons, wyverns, krakens, griffins, chimeras, hydras, basilisks, titans, phoenixes, and colossal legendary versions of animals. Never a real-world animal (no jaguars, dogs, wolves, lions, horses, tortoises, ordinary birds), even with a fancy name, unless it is unmistakably mythical: huge, armored, elemental or many-headed.

@@ -51,20 +51,37 @@ export const DRAGON_BREATH_LINE =
   "WHEN A DRAGON USES ITS BREATH, MAKE IT UNMISTAKABLE. The breath matches the kind of dragon it is: fire for a fire dragon, a freezing blast of ice and frost for an ice dragon, crackling lightning for a storm dragon, and likewise for any other kind (shadow, poison, magma, starlight, water...). Its jaws open wide and a thick, bright, roaring jet of that breath SHOOTS straight out of its mouth with force and speed, like a flamethrower blast, clearly visible and sustained for at least two full seconds, reaching far out into the sky or landscape. The jet is solid, vivid and brightest at the mouth, and its light falls on the dragon's face, scales and the scene around it. It never pours, dribbles or spills out, and it is never a faint haze, a wisp of smoke or mist, a short puff or a glow at the lips, and nothing hides it." + " " + BREATH_DRAGONS_ONLY;
 
 /**
+ * Does this clip show a dragon or dragon-kind? Gear named after dragons
+ * ("dragon-bone bow", "dragon knight", "dragon-plate") doesn't count.
+ */
+export function isDragonClip(text: string): boolean {
+  return /\b(dragons?|wyverns?|drakes?|wyrms?|hydras?)\b(?![-\s]?(bone|plate|scale|scaled|hide|glass|steel|forged|knight|queen|slayer|armou?r|helm|shield|blade|sword|bow|fire\b))/i.test(text);
+}
+
+/**
  * The Mythicals direction around the clip's Action. Ungrounded clips keep the
  * 2026-10-13 measured best-era line. Grounded clips (motion written from the
  * real start frame) follow the Action at full energy, with powers allowed
  * and one limit: nothing new arrives in the frame (loosened the evening of
  * 2026-10-27, per Keenan: "we need less stringent restrictions").
  */
-export function measuredMythicLine(motion: string | undefined, grounded: boolean): string {
+export function measuredMythicLine(motion: string | undefined, grounded: boolean, scene = ""): string {
+  // Dragon and breath wording only reaches Kling when the clip shows a
+  // dragon (2026-11-05, per Keenan: "stop having anything besides
+  // dragons/wyverns/dragonlike creatures breathe fire. it also DOESN'T NEED
+  // A FUCKING DRAGON IN EVERY SCENE"). The breath paragraph rode on every
+  // clip, shields and warriors included, and Kling acts out what it reads.
+  const dragon = isDragonClip(`${motion ?? ""} ${scene}`);
+  const breath = dragon
+    ? ` A dragon may breathe a long, powerful jet of fire or ice from between its open jaws in the direction they point, into the sky or landscape, never at a person and never down its own chest. ${DRAGON_BREATH_LINE}`
+    : "";
   const line =
-    `Keep it MEASURED and real: the subject holds its pose and comes alive in one clear, natural movement at real-world speed (breathing, a slow head turn, a powerful wingbeat, a warrior turning his blade so it catches the light, a few heavy steps). A dragon may breathe a long, powerful jet of fire or ice from between its open jaws in the direction they point, into the sky or landscape, never at a person and never down its own chest. ${DRAGON_BREATH_LINE} Small effects bring it to life and blend into the scene's light: glowing runes or eyes, embers and sparks drifting, flames licking along armor or a blade, frost mist curling, faint lightning across horns or steel. The air and scene move gently (cloak and mane stir, smoke and mist drift, embers float). Nothing fast or frantic: no attacks, no charging, no lunging, no whip pans, no morphing, no cartoon auras or energy blasts. A creature never holds or uses a weapon. WEAPONS ARE RIGID, UNCHANGING OBJECTS (2026-10-16): a hero may swing or strike through the air, but every weapon keeps its exact shape, size, head, blade and handle on the same side for the whole clip, like a solid metal object; it never bends, morphs, flips or changes, and it never hits the ground. The camera makes a slow, gentle push-in or stays steady.`;
+    `Keep it MEASURED and real: the subject holds its pose and comes alive in one clear, natural movement at real-world speed (breathing, a slow head turn, a powerful wingbeat, a warrior turning his blade so it catches the light, a few heavy steps).${breath} Small effects bring it to life and blend into the scene's light: glowing runes or eyes, embers and sparks drifting, frost mist curling, faint lightning across horns or steel. The air and scene move gently (cloak and mane stir, smoke and mist drift, embers float). Nothing fast or frantic: no attacks, no charging, no lunging, no whip pans, no morphing, no cartoon auras or energy blasts. A creature never holds or uses a weapon. WEAPONS ARE RIGID, UNCHANGING OBJECTS (2026-10-16): a hero may swing or strike through the air, but every weapon keeps its exact shape, size, head, blade and handle on the same side for the whole clip, like a solid metal object; it never bends, morphs, flips or changes, and it never hits the ground. The camera makes a slow, gentle push-in or stays steady.`;
   // Grounded clips (2026-10-27): the Action was written from the real
   // picture, so it leads; the one extra limit is that nothing new arrives
   // (a fireball once appeared behind two paladins).
   if (!grounded) return line;
-  return `Follow the Action as written, with its full energy. Powers and effects belong to the subjects in the picture (fire breath, flames along a blade or armor, glowing runes and eyes, embers, frost, lightning). ${DRAGON_BREATH_LINE} Nothing new arrives in the sky or background, and nothing appears that isn't in the first frame. A creature never holds a weapon; every weapon keeps its exact shape and never hits the ground. No morphing. The camera is steady or makes a slow, gentle push-in.`;
+  return `Follow the Action as written, with its full energy. Powers and effects belong to the subjects in the picture (${dragon ? "dragon breath, " : ""}glowing runes and eyes, embers, frost, lightning).${dragon ? ` ${DRAGON_BREATH_LINE}` : ""} Nothing new arrives in the sky or background, and nothing appears that isn't in the first frame. A creature never holds a weapon; every weapon keeps its exact shape and never hits the ground. No morphing. The camera is steady or makes a slow, gentle push-in.`;
 }
 
 /**
@@ -184,7 +201,7 @@ export function livingMotionPrompt(
           // can breathe fire, weapons can have effects, so can armor. gentle
           // push in is okay"): the 10-04/10-05 recipe (our best-animated posts,
           // ~16s avg watch, most shares), now on Kling 3 with sound.
-          measuredMythicLine(motion, !!opts.grounded),
+          measuredMythicLine(motion, !!opts.grounded, scene),
       "Keep the subject's design, colors, armor and setting exactly as in the image. The subject stays in frame. No text, no new creatures or people, no scene cuts.",
     ]
       .filter(Boolean)

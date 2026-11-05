@@ -219,9 +219,12 @@ export function ytReelPath(postId: string): string {
  * 2.5"): Kling 2.5 Turbo Standard, the same model as Ripple. Clip sound has
  * been off since 10-16, so Kling 3's audio was unused; 2.5 is ~$0.042/s vs
  * $0.063/s list. Clips are 5s (Kling 2.5 only takes 5|10).
+ *
+ * 2026-11-05 (per Keenan: "mythicals needs to go back to kling 3"): back on
+ * Kling 3.0 Standard (silent; clips capped at 6s).
  */
 export const MYTHICALS_VIDEO_MODEL =
-  process.env.MYTHICALS_VIDEO_MODEL?.trim() ?? "kling-video/v2.5-turbo/standard/image-to-video";
+  process.env.MYTHICALS_VIDEO_MODEL?.trim() ?? "kling-video/v3.0/std/image-to-video";
 
 /** Sound direction appended to Mythicals clip prompts when Kling 3.0 renders sound. */
 export const MYTHICALS_SOUND_LINE =
