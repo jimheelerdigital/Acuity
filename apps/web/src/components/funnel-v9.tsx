@@ -1545,10 +1545,11 @@ function LoaderScreen({ answers, firstName, next }: ViewProps) {
   const C = useV9();
   const lines = useMemo(
     () => [
-      { icon: Users, text: `Reading your answers about ${plateLabel(answers.multi.plate ?? [], C.plateLabels)}` },
+      // The plate screen is gone from the pain funnels (2026-11-04), so no "everything on your plate" fallback there.
+      { icon: Users, text: (answers.multi.plate ?? []).length ? `Reading your answers about ${plateLabel(answers.multi.plate ?? [], C.plateLabels)}` : "Reading your answers" },
       (() => {
         const chips = weekChips(C, answers);
-        if (chips.length === 0) return { icon: Layers, text: "Weighing what slips through the cracks" };
+        if (chips.length === 0) return { icon: Layers, text: "Sorting what you told us" };
         // Lowercase mid-sentence, except possessive names ("Mom’s appointment").
         const lc = (c: string) => (/^\S+[’']s\b/.test(c) ? c : c.charAt(0).toLowerCase() + c.slice(1));
         const shown = chips.slice(0, 2).map(lc);
@@ -2465,6 +2466,16 @@ function PlannerStack() {
  * associate with the emotion"). Hers on women's funnels, his on ?for=men.
  * Used on screen 1 (hero), the mid-funnel yes/no, reassure and the result.
  */
+/** The app preview's sample "Today's read", matched to each funnel's pain (2026-11-04 persona review). */
+const TODAYS_READ: Record<NonNullable<PainKit["face"]>, string> = {
+  relief: "Most of this week is for other people. Book one thing for you.",
+  catch: "Three things have dates this week. They’re all on your list.",
+  clarity: "Your heaviest days came after short nights. Worth a look.",
+  progress: "You walked three times this week, one more than last week.",
+  focus: "Five things sorted from one ramble. Start with the first one.",
+  journal: "Here’s your day, written up. No pen, no blank page.",
+};
+
 /** The feeling word under the screen 1 portrait, per pain (2026-11-04). */
 const FEELING: Record<NonNullable<PainKit["face"]>, string> = {
   relief: "overloaded",
@@ -3324,6 +3335,7 @@ const NEW_UI = {
 };
 
 function PreviewPhone({ tasks, compact = false }: { tasks: string[]; compact?: boolean }) {
+  const C = useV9();
   const rows = (tasks.length ? tasks : ["Sign the school form", "Book Mom’s appointment", "Pay the bills"]).slice(0, compact ? 3 : 4);
   return (
     <div
@@ -3353,7 +3365,7 @@ function PreviewPhone({ tasks, compact = false }: { tasks: string[]; compact?: b
         {!compact && (
           <div className="up mt-3 pl-2" style={{ borderLeft: "2px solid #F2541E", animationDelay: `${300 + rows.length * 220}ms` }}>
             <p className="text-[8px] font-extrabold tracking-[0.1em]" style={{ color: NEW_UI.coral }}>TODAY&apos;S READ</p>
-            <p className="text-[10.5px] leading-snug" style={{ color: NEW_UI.text }}>Most of this week is for other people. Book one thing for you.</p>
+            <p className="text-[10.5px] leading-snug" style={{ color: NEW_UI.text }}>{TODAYS_READ[C.painKit?.face ?? C.face ?? "relief"]}</p>
           </div>
         )}
         <div className="mt-3 grid grid-cols-2 gap-2">

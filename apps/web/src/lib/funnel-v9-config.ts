@@ -1,3 +1,4 @@
+import { REVIEW_COPY, applyReviewCopy } from "./funnel-copy-review";
 import type { Mood } from "@/components/mood-avatar";
 /**
  * /start-test — the v9 evidence-based funnel (2026-09-24, per Keenan).
@@ -1777,6 +1778,27 @@ export const JOURNAL_M_V9: V9Config = {
 
 /** Men's version of a pain funnel, by the women's brand (?for=men). */
 export const MEN_OF: Partial<Record<V9Brand, V9Brand>> = { journal: "journal_m", pain: "pain_m", slip: "slip_m", loop: "loop_m", progress: "progress_m", adhd: "adhd_m" };
+
+// ─── 2026-11-04 persona review copy (lib/funnel-copy-review.ts) ────────────
+// Result names in each StateName function's order, so the review's renamed
+// results map one to one.
+const REVIEW_RESULT_NAMES: Record<string, string[]> = {
+  relief: ["The Keeper of Everything", "The List Keeper", "The Last on the List", "The Always-On Mind", "The Carrier"],
+  catch: ["The Overflow", "The Self-Blamer", "The Human Calendar", "The Juggler"],
+  clarity: ["The Long Haul", "The Someday Self", "The Blurred Week", "The Quiet Fader"],
+  progress: ["The Fresh Starter", "The Treadmill", "The Unseen Progress", "The Quiet Climber"],
+  focus: ["The System Collector", "The Tab Opener", "The Vanishing Thought", "The Fast Thinker"],
+  journal: ["The Restarter", "The Keeper", "The Juggler", "The Carrier"],
+};
+export const REVIEW_COPY_PROBLEMS: string[] = [];
+for (const [key, her, him] of [
+  ["relief", PAIN_V9, PAIN_M_V9], ["catch", SLIP_V9, SLIP_M_V9], ["clarity", LOOP_V9, LOOP_M_V9],
+  ["progress", PROGRESS_V9, PROGRESS_M_V9], ["focus", ADHD_V9, ADHD_M_V9], ["journal", JOURNAL_V9, JOURNAL_M_V9],
+] as [string, V9Config, V9Config][]) {
+  const base: V9Config = { ...her, steps: her.steps.slice() };
+  REVIEW_COPY_PROBLEMS.push(...applyReviewCopy(her, REVIEW_COPY[key].women, REVIEW_RESULT_NAMES[key]));
+  REVIEW_COPY_PROBLEMS.push(...applyReviewCopy(him, REVIEW_COPY[key].men, REVIEW_RESULT_NAMES[key], { inheritFrom: { base, copy: REVIEW_COPY[key].women }, men: true }));
+}
 
 export const V9_CONFIGS: Record<V9Brand, V9Config> = {
   ripple: RIPPLE_V9, bwk: BWK_V9, journal: JOURNAL_V9, pain: PAIN_V9, slip: SLIP_V9, loop: LOOP_V9, progress: PROGRESS_V9, adhd: ADHD_V9,
