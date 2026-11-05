@@ -8,6 +8,25 @@
 ---
 
 
+## [2026-11-04] — Ripple video auto-posting turned off; Keenan posts them by hand
+
+- **Requested by:** Keenan
+- **Committed by:** Claude Code
+- **Commit hash:** (this commit)
+
+### In plain English (for Keenan)
+All 40 hand-made Ripple videos ("Without vs With" and "Music + CTA") are off the auto-poster after the re-post of video 2 also came out wrong. Ripple goes back to just its two normal daily posts; Keenan posts the videos himself.
+
+### Technical changes (for Jimmy)
+- DB: all 78 PENDING SocialPublish rows on ww-/cta- posts set to SKIPPED ("Turned off 11-04 (Keenan posts these by hand)")
+- No code change; the normal two Ripple lanes (ripple-split 05 UTC, ripple-list 07 UTC) are untouched
+
+### Manual steps needed
+- [ ] Delete the wrong video-2 posts by hand: IG https://www.instagram.com/reel/DfViNeMjBkw/ and https://www.instagram.com/reel/DfWEdRxD0r4/, FB https://www.facebook.com/reel/979890788014948 (Keenan)
+
+### Notes
+- To post these videos automatically again, flip the SKIPPED ww-/cta- rows back to PENDING with new scheduledAt, but find out first why the 03:00/03:30 UTC re-post was still wrong.
+
 ## [2026-11-04] — Hand-made videos can no longer be swapped for a slideshow
 
 - **Requested by:** Keenan
