@@ -8,6 +8,42 @@
 ---
 
 
+## [2026-11-06] — Pain funnels: seven screens reworked from Keenan's review
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** c7d738b4, a6139872
+
+### In plain English (for Keenan)
+- **Every funnel's reassure screen** now says "It's not you. Your current system is failing you."
+- **The app preview** plays a real debrief in each persona's own words, tied to their pain, and lists the tasks it makes.
+- **The Ripple side of the comparison** is a clean checked list.
+- **The "what unlocks" plan** is compact, with advanced task tracking and habit tracking added.
+- **The paywall receipt** shows what each pain costs her, like "due yesterday" or "late fee", instead of "weekly" three times. Each funnel and gender has its own version.
+- **The mental-load funnel** now asks "How's your current task management system working for you?" instead of assuming her list fails.
+
+The funnels are still off.
+
+### Technical changes (for Jimmy)
+- apps/web/src/components/funnel-v9.tsx:
+  - SpokenThenPlan reads `extras.previewSay`/`previewTasks` and adds a "You talk" label.
+  - PlannerVsRipple's Ripple column is a single white list.
+  - UnlockPath has compact rows plus an "Included from day 1" grid.
+  - CostReceipt reads `painKit.receipt.costs[optionId]`.
+- apps/web/src/lib/funnel-v9-config.ts:
+  - `FunnelExtras.previewSay`/`previewTasks` and `receipt.costs` types.
+  - `FINAL_1106` block: per-brand preview, receipt (title, stamp, extra, costs) and the shared reassure title.
+  - Relief "seen" step reworded for women and men. `seen=ignore` no longer maps to The List Starter.
+- No schema, route or env changes.
+
+### Manual steps needed
+- None
+
+### Notes
+- Keenan chose to keep the same reassure title on all 12 funnels. Everything else stays personal: the body text under it, the preview and the receipt are per persona.
+- Review page recordings now include the loader. The recorder reaches it from the name screen, because `?step=loader` deliberately jumps to email.
+- Watch the tired funnel's reassure drop-off once live: "system" is the least natural fit there.
+
 ## [2026-11-06] — Last persona-audit fixes on the pain funnels; "never forget" review trimmed
 
 **Requested by:** Keenan
