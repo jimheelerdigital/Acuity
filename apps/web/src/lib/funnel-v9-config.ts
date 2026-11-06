@@ -345,6 +345,8 @@ export interface FunnelExtras {
   weekItems?: { id: string; chip: string; task: string }[];
   /** Label on the week meter ("Your head right now"). */
   weekMeter?: string;
+  /** Meter words by count, 0–12 (default: Empty … Overflowing). */
+  weekWords?: string[];
   /** Shown under the week meter once she taps 5+. */
   weekNote?: string;
   /** Loader lines 1 and 3. */
@@ -863,7 +865,7 @@ export const JOURNAL_V9: V9Config = {
     things: ["Rewrite the list", "Color-code it", "Catch up on last week", "Start a new journal", "Download another app", "Fill in Monday", "Buy a nicer planner", "Set up the tracker"],
     cta: "That\u2019s me",
   },
-  milestones: { week: "Halfway there.", "s-say": "You're doing great. A few more.", name: "Almost done." },
+  milestones: { week: "Halfway there.", "s-say": "Nearly there. No upkeep from here.", name: "Almost done." },
   resultOutro: "None of this means you\u2019re bad at planning. It means planning shouldn\u2019t need upkeep. That\u2019s the part Ripple does.",
   paywall: "trust3",
   preview: {
@@ -1038,7 +1040,7 @@ export const PAIN_V9: V9Config = {
     things: ["Dentist Thursday", "Permission slip", "Call Mom back", "Car insurance", "Book the vet", "Reply to Sarah", "Birthday gift", "Water bill"],
     cta: "That’s me",
   },
-  milestones: { week: "Halfway there.", "s-load": "You’re doing great. A few more.", name: "Almost done." },
+  milestones: { week: "Halfway there.", "s-load": "Nearly there. Then it’s off your mind.", name: "Almost done." },
   resultOutro: "None of this means you’re failing. It means one head is holding too much. Ripple takes the keeping-track part.",
   painKit: {
     label: "Mental load",
@@ -1212,7 +1214,7 @@ export const SLIP_V9: V9Config = {
     things: ["Permission slip", "Dentist Thursday", "Mia’s birthday", "Car insurance", "Reply to Sarah", "Return the dress", "Water bill", "Book the vet"],
     cta: "That’s me",
   },
-  milestones: { week: "Halfway there.", "s-sure": "You’re doing great. A few more.", name: "Almost done." },
+  milestones: { week: "Halfway there.", "s-sure": "Nearly there. Then it’s all in one place.", name: "Almost done." },
   resultOutro: "None of this means you’re careless. It means there’s too much to hold in one head. Ripple holds it for you.",
   preview: { eyebrow: "How Ripple works", title: "Say it once. It’s on your list.", caption: "This is what you see after every debrief: every task caught, with its date. Nothing left to remember." },
   painKit: {
@@ -1344,7 +1346,7 @@ export const LOOP_V9: V9Config = {
     things: ["Tired again", "Skipped the walk", "Next week", "Short with the kids", "Up late again", "No time for me", "Same argument", "Monday again"],
     cta: "That’s me",
   },
-  milestones: { week: "Halfway there.", "s-know": "You’re doing great. A few more.", name: "Almost done." },
+  milestones: { week: "Halfway there.", "s-know": "Nearly there. Then you’ll see what drains you.", name: "Almost done." },
   resultOutro: "None of this means you’re doing it wrong. It means you can’t see the pattern from inside it. Ripple shows it to you.",
   preview: { eyebrow: "How Ripple works", title: "You talk. Ripple shows you the pattern.", caption: "This is what you see after every debrief: your tasks caught, and over the weeks, what keeps coming up." },
   painKit: {
@@ -1475,7 +1477,7 @@ export const PROGRESS_V9: V9Config = {
     things: ["New Year goal", "Back to the gym", "Read more", "Call friends", "Drink water", "Save money", "Bed earlier", "Be calmer"],
     cta: "That’s me",
   },
-  milestones: { week: "Halfway there.", "s-see": "You’re doing great. A few more.", name: "Almost done." },
+  milestones: { week: "Halfway there.", "s-see": "Nearly there. Then you’ll see what’s in the way.", name: "Almost done." },
   resultOutro: "None of this means you’re not trying. It means nobody’s keeping the record. Ripple keeps it, so you can see how far you’ve come.",
   preview: { eyebrow: "How Ripple works", title: "You talk. Ripple keeps the record.", caption: "This is what you see after every debrief. Week by week, it adds up to a picture of your progress." },
   painKit: {
@@ -1613,7 +1615,7 @@ export const ADHD_V9: V9Config = {
     things: ["Reply to Jen", "Laundry!!", "Dentist?", "Renew passport", "That idea", "Call back", "Return package", "Pay parking"],
     cta: "That’s me",
   },
-  milestones: { week: "Halfway there.", "s-thoughts": "You’re doing great. A few more.", name: "Almost done." },
+  milestones: { week: "Halfway there.", "s-thoughts": "Nearly there. Then it’s sorted.", name: "Almost done." },
   resultOutro: "None of this means you’re lazy or careless. Your brain needs a place to put things down. Ripple is that place.",
   preview: { eyebrow: "How Ripple works", title: "Say it messy. Ripple sorts it.", caption: "Talk in any order. Every task lands on your list, already sorted, with nothing to set up." },
   painKit: {

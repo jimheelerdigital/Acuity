@@ -2143,7 +2143,8 @@ function CostReceipt({ answers }: { answers: Answers }) {
   ];
   const total = money.reduce((n, r) => n + r.cents, 0);
   // Short enough to stay on one line at phone width (2026-10-31).
-  const OFTEN: Record<string, string> = { daily: "most days", weekly: "weekly", sometimes: "weekly", rarely: "when it counts" };
+  // 2026-11-06 audit: "A few times a week" read back as "weekly"; keep each answer's own frequency.
+  const OFTEN: Record<string, string> = { daily: "most days", weekly: "every few days", sometimes: "weekly", rarely: "when it counts" };
   const often = OFTEN[answers.single.often ?? ""] ?? "weekly";
   const FEEL: Record<string, { label: string; value: string }> = {
     slip: { label: "Guilt after a slip", value: often },
@@ -2161,7 +2162,8 @@ function CostReceipt({ answers }: { answers: Answers }) {
   const firstMulti = C.steps.find((st) => st.kind === "multi");
   const painLabels = firstMulti?.kind === "multi" ? Object.fromEntries(firstMulti.options.map((o) => [o.id, o.label])) : {};
   const painPicked = (answers.multi[firstMulti?.id ?? ""] ?? []).map((id) => painLabels[id]).filter(Boolean).slice(0, 3);
-  const painValue = answers.single.often ? often : "every week";
+  // No "often" question (/start-progress): the pain is that it keeps coming back, not a frequency.
+  const painValue = answers.single.often ? often : C.painKit?.face === "progress" ? "on repeat" : "every week";
   const lines = kit
     ? [...(painPicked.length ? painPicked : Object.values(painLabels).slice(0, 2)).map((l) => ({ label: l, value: painValue as string | null, cents: 0 })), { label: kit.receipt.extra.label, value: kit.receipt.extra.value, cents: 0 }]
     : [...money.map((m) => ({ label: m.label, value: null as string | null, cents: m.cents })), ...feel.map((f) => ({ label: f.label, value: f.value, cents: 0 }))];
@@ -2214,7 +2216,7 @@ function ValueAdd() {
   const [ref, on] = useInView<HTMLDivElement>();
   const rows: { icon: LucideIcon; feel: string; how: string }[] = [
     { icon: Waves, feel: "A quiet head", how: "Say it once. Ripple holds onto it." },
-    { icon: ListChecks, feel: "Nothing slipping through", how: "Every task lands on your list, with its date." },
+    { icon: ListChecks, feel: "It’s all in one place", how: "Every task lands on your list, with its date." },
     { icon: Heart, feel: "Time that’s yours again", how: C.painKit ? "Nothing to fill in or keep up." : "No planner to fill in or keep up." },
     { icon: Eye, feel: "Finally on top of it", how: "See what keeps coming up, week to week." },
     { icon: Sprout, feel: "No more starting over", how: "Every day adds up. Nothing resets." },
@@ -2598,7 +2600,7 @@ function HookOverlay({ face, male }: { face: NonNullable<PainKit["face"]>; male:
       </>
     );
   } else if (face === "focus") {
-    props = tabs(male ? ["Laundry!!", "Reply to Jake", "Dentist?", "That idea", "Oil change"] : ["Laundry!!", "Reply to Jen", "Dentist?", "That idea", "Passport"]);
+    props = tabs(male ? ["Invoice!!", "Call the client", "Oil change?", "That idea", "Kid’s practice"] : ["Laundry!!", "Reply to Jen", "Dentist?", "That idea", "Passport"]);
   } else {
     // Journaling (2026-11-04, Keenan: the scattered labels "don't make sense"):
     // one story, each journal she started and how far it got.
@@ -2653,7 +2655,8 @@ function HeroProps({ face, male }: { face: NonNullable<PainKit["face"]>; male: b
       </>
     );
   }
-  const tabs = male ? ["Reply to Jake", "Laundry!!", "Dentist?", "That idea"] : ["Reply to Jen", "Laundry!!", "Dentist?", "That idea"];
+  // His tabs are his list (2026-11-06 audit: "Laundry!!" read as hers).
+  const tabs = male ? ["Call the client", "Invoice!!", "Oil change?", "That idea"] : ["Reply to Jen", "Laundry!!", "Dentist?", "That idea"];
   const pos = [{ left: "5%", top: "8%" }, { right: "5%", top: "16%" }, { left: "6%", bottom: "14%" }, { right: "6%", bottom: "8%" }];
   return <>{tabs.map((t, i) => <span key={t} className={`${chip} hp-pop rounded-md`} style={{ ...pos[i], animationDelay: `${i * 0.7}s` }}>{t}</span>)}</>;
 }
@@ -2688,6 +2691,15 @@ function CarryStack({ cards }: { cards: string[] }) {
  * Result for the pain-first funnels (2026-11-02): same shape as JournalResult
  * (name, one line, her pains as tags) then "<her side> vs Ripple" from the kit.
  */
+/** /start-focus: "Where do your best ideas show up?" names the lost-idea row (2026-11-06 audit). */
+const IDEA_PLACE: Record<string, string> = { car: "on the drive", shower: "in the shower", talk: "mid-conversation", walk: "on a walk" };
+function ideasVs(C: V9Config, answers: Answers): PainKit["vs"] | undefined {
+  const vs = C.painKit?.vs;
+  const place = IDEA_PLACE[answers.single.ideas ?? ""];
+  if (!vs || !place) return vs;
+  return { ...vs, rows: vs.rows.map((r) => (/^Great idea /.test(r[0]) ? ([`Great idea ${place}, gone`, r[1], r[2]] as [string, string, string]) : r)) };
+}
+
 function PainResult({ answers, firstName, next }: ViewProps) {
   const C = useV9();
   const state = C.stateName({ plate: answers.multi.plate ?? [], sliders: answers.sliders, pileup: answers.single.pileup, said: answers.single, multi: answers.multi });
@@ -2712,7 +2724,7 @@ function PainResult({ answers, firstName, next }: ViewProps) {
         )}
       </div>
       <p className="mt-4 mb-4 text-center text-[14px] leading-relaxed text-acuity-text-sec text-balance">{C.resultOutro}</p>
-      <PlannerVsRipple vs={C.painKit?.vs} />
+      <PlannerVsRipple vs={ideasVs(C, answers)} />
       <BottomBar>
         <PrimaryButton onClick={next}>Show me how it works</PrimaryButton>
       </BottomBar>
@@ -3032,7 +3044,7 @@ function HeadLoad({ step, picked, toggle, next, track }: { step: Extract<V9Step,
       </div>
       <div className="mt-6 card rounded-3xl px-5 py-4" aria-live="polite">
         <div className="flex items-baseline justify-between gap-3">
-          <p className="text-[14px] text-acuity-text-sec">{C.extras?.weekMeter ?? "Your head right now"}: <span className="font-bold" style={{ color: "#C2410C" }}>{LOAD_WORDS[Math.min(n, 12)]}</span></p>
+          <p className="text-[14px] text-acuity-text-sec">{C.extras?.weekMeter ?? "Your head right now"}: <span className="font-bold" style={{ color: "#C2410C" }}>{(C.extras?.weekWords ?? LOAD_WORDS)[Math.min(n, 12)]}</span></p>
           <span className="serif text-[22px] tabular-nums">{n}</span>
         </div>
         <div className="mt-3 grid grid-cols-12 gap-1">

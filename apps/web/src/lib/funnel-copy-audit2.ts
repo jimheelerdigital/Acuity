@@ -472,6 +472,7 @@ export const AUDIT2: Record<string, any> = {
    },
    "extras": {
     "weekMeter": "Your meant-to list",
+    "weekWords": ["Nothing yet","One thing","Two things","A few","A few","A good list","A good list","A lot","A lot","A lot","A long list","A long list","A long list"],
     "weekNote": "You’re not lazy. That’s a lot to fit in.",
     "paywallTitle": [
      "See what’s in the way.",
@@ -533,6 +534,7 @@ export const AUDIT2: Record<string, any> = {
    },
    "extras": {
     "weekMeter": "Still on your list",
+    "weekWords": ["Nothing yet","One thing","Two things","A few","A few","A good list","A good list","A lot","A lot","A lot","A long list","A long list","A long list"],
     "weekNote": "You’re not slacking. That’s a lot to fit in.",
     "paywallTitle": [
      "See what’s in the way.",
