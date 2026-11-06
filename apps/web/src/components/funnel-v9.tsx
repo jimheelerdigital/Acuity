@@ -2055,28 +2055,23 @@ function PlannerVsRipple({ vs }: { vs?: PainKit["vs"] }) {
           <span className="absolute left-0 right-0 top-0 flex h-7 items-center justify-center gap-1 text-[11px] font-bold uppercase tracking-wide text-white">
             <Sparkles className="h-3 w-3" /> Ripple
           </span>
-          <div className="rip-list space-y-1.5">
-            {rows.map(([planner, title, sub], i) => {
-              const Icon = RIPPLE_ROW_ICONS[i % RIPPLE_ROW_ICONS.length];
-              return (
-                <div
-                  key={planner}
-                  className="rip-row rv flex min-h-[64px] items-center gap-1.5 rounded-xl bg-white px-1.5 py-2 text-acuity-text shadow-sm"
-                  style={{ "--d": `${700 + i * 170}ms` } as CSSProperties}
-                >
-                  <span className="rip-ico relative flex h-7 w-7 shrink-0 items-center justify-center rounded-lg chip-ico">
-                    <Icon className="h-3.5 w-3.5" />
-                    <span className="rip-check rv-pop absolute -right-1 -top-1 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-acuity-good text-white ring-2 ring-white" style={{ "--d": `${850 + i * 170}ms` } as CSSProperties}>
-                      <Check className="h-2 w-2" strokeWidth={4} />
-                    </span>
-                  </span>
-                  <div className="min-w-0 flex-1">
-                    <p className={`${vs ? "" : "whitespace-nowrap "}text-[13px] font-bold leading-tight`}>{title}</p>
-                    <p className="mt-0.5 text-[11px] leading-tight text-acuity-text-sec">{sub}</p>
-                  </div>
+          {/* One clean white sheet, a check and a short line per row (2026-11-06, Keenan: "clear and concise, better than the notebook"). */}
+          <div className="rip-list rounded-xl bg-white px-2.5 text-acuity-text shadow-sm">
+            {rows.map(([planner, title, sub], i) => (
+              <div
+                key={planner}
+                className={`rip-row rv flex min-h-[66px] items-center gap-2 py-2 ${i ? "border-t border-[#F3E6DD]" : ""}`}
+                style={{ "--d": `${700 + i * 170}ms` } as CSSProperties}
+              >
+                <span className="rip-check rv-pop flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-acuity-good text-white" style={{ "--d": `${850 + i * 170}ms` } as CSSProperties}>
+                  <Check className="h-3 w-3" strokeWidth={3.5} />
+                </span>
+                <div className="min-w-0 flex-1">
+                  <p className="text-[14px] font-bold leading-tight">{title}</p>
+                  {sub && <p className="mt-0.5 text-[11.5px] leading-tight text-acuity-text-sec">{sub}</p>}
                 </div>
-              );
-            })}
+              </div>
+            ))}
           </div>
         </div>
       </div>
@@ -2161,11 +2156,12 @@ function CostReceipt({ answers }: { answers: Answers }) {
   const kit = C.painKit;
   const firstMulti = C.steps.find((st) => st.kind === "multi");
   const painLabels = firstMulti?.kind === "multi" ? Object.fromEntries(firstMulti.options.map((o) => [o.id, o.label])) : {};
-  const painPicked = (answers.multi[firstMulti?.id ?? ""] ?? []).map((id) => painLabels[id]).filter(Boolean).slice(0, 3);
+  // Each pick with what it costs her (kit.receipt.costs), not one frequency repeated (2026-11-06, Keenan: "meh").
+  const pickedIds = (answers.multi[firstMulti?.id ?? ""] ?? []).filter((id) => painLabels[id]).slice(0, 3);
   // No "often" question (/start-progress): the pain is that it keeps coming back, not a frequency.
   const painValue = answers.single.often ? often : C.painKit?.face === "progress" ? "on repeat" : "every week";
   const lines = kit
-    ? [...(painPicked.length ? painPicked : Object.values(painLabels).slice(0, 2)).map((l) => ({ label: l, value: painValue as string | null, cents: 0 })), { label: kit.receipt.extra.label, value: kit.receipt.extra.value, cents: 0 }]
+    ? [...(pickedIds.length ? pickedIds : Object.keys(painLabels).slice(0, 2)).map((id) => ({ label: painLabels[id], value: (kit.receipt.costs?.[id] ?? painValue) as string | null, cents: 0 })), { label: kit.receipt.extra.label, value: kit.receipt.extra.value, cents: 0 }]
     : [...money.map((m) => ({ label: m.label, value: null as string | null, cents: m.cents })), ...feel.map((f) => ({ label: f.label, value: f.value, cents: 0 }))];
   const stampAt = lines.length * 170 + 350;
   const paper = "#FFFDF8";
@@ -3125,13 +3121,17 @@ function PlannerHistory({ answers }: { answers: Answers }) {
 }
 
 /** Preview for /start-journal: her week said out loud, then the plan it makes. */
-function SpokenThenPlan({ chips, tasks }: { chips: string[]; tasks: string[] }) {
+function SpokenThenPlan({ chips, tasks: chipTasks }: { chips: string[]; tasks: string[] }) {
+  const C = useV9();
   const items = chips.length ? chips : ["A school form", "Bills", "Groceries"];
+  // Per-funnel debrief in her own words, tied to the pain, with the tasks it makes (2026-11-06, Keenan).
+  const tasks = C.extras?.previewTasks ?? chipTasks;
   const words = useMemo(() => {
+    if (C.extras?.previewSay) return C.extras.previewSay.split(" ");
     const list = items.map(lcChip);
     const body = list.length > 1 ? `${list.slice(0, -1).join(", ")} and ${list[list.length - 1]}` : list[0];
     return `Okay, so… ${body}. I just need it out of my head.`.split(" ");
-  }, [items.join("|")]);
+  }, [items.join("|"), C.extras?.previewSay]);
   const [n, setN] = useState(0);
   useEffect(() => {
     const reduce = typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
@@ -3145,6 +3145,7 @@ function SpokenThenPlan({ chips, tasks }: { chips: string[]; tasks: string[] }) 
   const done = n >= words.length;
   return (
     <div>
+      <p className="mb-2 text-[12px] font-extrabold uppercase tracking-[0.1em]" style={{ color: "#C2410C" }}>You talk</p>
       <div className="card rounded-3xl p-4 flex items-start gap-3">
         <span className="relative h-11 w-11 shrink-0" aria-hidden="true">
           {!done && [0, 1].map((k) => <span key={k} className="ring-out absolute inset-0 rounded-full" style={{ border: "2px solid rgba(242,84,30,.35)", animationDelay: `${k * 700}ms` }} />)}
@@ -3156,7 +3157,7 @@ function SpokenThenPlan({ chips, tasks }: { chips: string[]; tasks: string[] }) 
           {!done && <span className="blink ml-0.5 inline-block h-[1em] w-[2px] align-[-2px]" style={{ background: "#F2541E" }} />}
         </p>
       </div>
-      <p className="my-3 text-center text-[13px] font-semibold" style={{ color: "#C2410C" }}>{done ? "↓ Ripple wrote it down" : "You say it…"}</p>
+      <p className="my-3 text-center text-[13px] font-semibold" style={{ color: "#C2410C" }}>{done ? "↓ Ripple wrote it down" : "Listening…"}</p>
       <div className={`transition-all duration-500 ${done ? "opacity-100 translate-y-0" : "opacity-0 translate-y-3"}`}>
         {done && <PreviewPhone tasks={tasks} />}
       </div>
@@ -3314,19 +3315,32 @@ function UnlockPath({ firstName, next }: { firstName: string; next: () => void }
         {rows.map((r, i) => {
           const Icon = r.icon;
           return (
-            <li key={r.day} className="up relative flex gap-4 pb-3" style={{ animationDelay: `${150 + i * 140}ms` }}>
+            <li key={r.day} className="up relative flex items-center gap-3 pb-2" style={{ animationDelay: `${150 + i * 110}ms` }}>
               <span className={`relative z-10 h-11 w-11 shrink-0 rounded-full flex items-center justify-center ${r.open ? "grad text-white shadow-[0_6px_16px_-6px_var(--acuity-primary)]" : "bg-white text-acuity-text-ter"}`} style={r.open ? undefined : { border: "2px dashed #E8C3AE" }}>
                 {r.open ? <Icon className="h-5 w-5" /> : <Lock className="h-4 w-4" />}
               </span>
-              <div className={`flex-1 rounded-2xl card px-4 py-3 ${r.open ? "" : "opacity-90"}`}>
-                <p className="text-[11px] font-extrabold tracking-[0.1em] text-acuity-primary">DAY {r.day}{r.open ? " · INCLUDED IN YOUR TRIAL" : ""}</p>
-                <p className="mt-0.5 text-[16px] font-semibold serif">{r.title}</p>
-                <p className="mt-0.5 text-[13.5px] leading-snug text-acuity-text-sec">{r.text}</p>
+              <div className={`flex flex-1 items-baseline gap-2 rounded-xl card px-3 py-2 ${r.open ? "" : "opacity-90"}`}>
+                <span className="w-[48px] shrink-0 text-[11px] font-extrabold tracking-[0.06em] text-acuity-primary">DAY {r.day}</span>
+                <span className="text-[14px] font-semibold leading-snug">{r.title}</span>
               </div>
             </li>
           );
         })}
       </ol>
+      {/* Everyday tools that come with it from day 1 (2026-11-06, Keenan: add task and habit tracking, all funnels). */}
+      <p className="mt-4 mb-2 text-[12px] font-extrabold uppercase tracking-[0.1em] text-acuity-text-sec">Included from day 1</p>
+      <div className="grid grid-cols-2 gap-2.5">
+        {[
+          { icon: ListChecks, t: "Advanced task tracking", d: "Dates, areas and what’s due, sorted from what you say." },
+          { icon: Repeat, t: "Habit tracking", d: "Checked off when you mention it. No streaks to keep." },
+        ].map((x, i) => (
+          <div key={x.t} className="up card rounded-2xl p-3" style={{ animationDelay: `${900 + i * 120}ms` }}>
+            <span className="flex h-8 w-8 items-center justify-center rounded-lg grad text-white"><x.icon className="h-4 w-4" /></span>
+            <p className="mt-2 text-[14px] font-bold leading-tight">{x.t}</p>
+            <p className="mt-1 text-[12px] leading-snug text-acuity-text-sec">{x.d}</p>
+          </div>
+        ))}
+      </div>
       <BottomBar>
         <PrimaryButton onClick={next}>Start my first week</PrimaryButton>
       </BottomBar>

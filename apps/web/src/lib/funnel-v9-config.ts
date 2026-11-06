@@ -345,6 +345,9 @@ export interface FunnelExtras {
   weekItems?: { id: string; chip: string; task: string }[];
   /** Label on the week meter ("Your head right now"). */
   weekMeter?: string;
+  /** App preview: the debrief in her own words, and the tasks it makes. */
+  previewSay?: string;
+  previewTasks?: string[];
   /** Meter words by count, 0–12 (default: Empty … Overflowing). */
   weekWords?: string[];
   /** Shown under the week meter once she taps 5+. */
@@ -387,7 +390,8 @@ export interface PainKit {
   /** Result: "<left> vs Ripple" rows: what she lives with, Ripple title, Ripple line. */
   vs: { left: string; sub: string; rows: [string, string, string][] };
   /** Paywall page 3 receipt: her picks from the first question are the lines. */
-  receipt: { title: string; stamp: string; stampSub: string; extra: { label: string; value: string } };
+  /** costs: what each first-question pick costs her, shown instead of a frequency (2026-11-06). */
+  receipt: { title: string; stamp: string; stampSub: string; extra: { label: string; value: string }; costs?: Record<string, string> };
 }
 
 function numberedLabels(steps: V9Step[], short: Record<string, string>): Record<string, string> {
@@ -1017,7 +1021,8 @@ export function painStateName(a: { plate: string[]; sliders: Record<string, numb
   if (pain.includes("switch")) {
     return { name: "The Always-On Mind", line: "Your head keeps going long after the day is done, because it’s holding all of it." };
   }
-  if (said.seen === "lost" || said.seen === "rewrite" || said.seen === "ignore") {
+  // "ignore" is now "It works, but it's a job to keep up" (2026-11-06), so it no longer means a failed list.
+  if (said.seen === "lost" || said.seen === "rewrite") {
     return { name: "The List Keeper", line: "You’ve tried writing it down. Keeping the list became one more thing to carry." };
   }
   return { name: "The Carrier", line: "You carry more than anyone sees, so most of it stays in your head." };
@@ -1850,6 +1855,48 @@ for (const [key, her, him] of [
   if (!STRUCTURE[key].men.weekItems) delete him.extras.weekItems;
   withWeek(her);
   withWeek(him);
+}
+
+// ─── 2026-11-06 pass (Keenan's screen review) ───────────────────────────────
+// Reassure: same frame on every funnel. Preview: a real debrief tied to the
+// pain, with its tasks. Relief "seen": no longer assumes her list fails.
+// Receipt: rewritten per funnel and side.
+const FINAL_1106: Record<string, { say: string; tasks: string[]; receipt?: Partial<PainKit["receipt"]> }> = {
+  pain: { say: "Okay. Mom’s appointment moved to Thursday, Emma’s permission slip is due, and I still haven’t paid the water bill. I can’t hold all of this.", tasks: ["Take Mom to her appointment Thursday", "Sign Emma’s permission slip", "Pay the water bill"],
+    receipt: { title: "What you carried this week", stamp: "All on you", stampSub: "and nobody else saw it", extra: { label: "Time just for you", value: "not this week" }, costs: { "slip": "guilt, again", "switch": "up at 2am", "snap": "then the guilt", "behind": "every day", "last": "pushed again", "drained": "by 9am" } } },
+  pain_m: { say: "Alright. The oil change is overdue, insurance renews Friday, and I told the kids I’d fix the bike. Way too much going on.", tasks: ["Get the oil changed", "Renew the insurance by Friday", "Fix the kids’ bike"],
+    receipt: { title: "What landed on you this week", stamp: "All on you", stampSub: "again", extra: { label: "Your own goals", value: "back burner" }, costs: { "slip": "late fee", "switch": "up at 2am", "snap": "then regret", "behind": "every week", "last": "next month", "drained": "on fumes" } } },
+  slip: { say: "Before I forget… the field trip form is due tomorrow, Sarah’s birthday is Sunday, and I need to call in Mom’s refill. I can’t drop another one.", tasks: ["Sign the field trip form", "Get Sarah’s birthday gift", "Call in Mom’s refill"],
+    receipt: { title: "What slipping cost you", stamp: "Remembered too late", stampSub: "again", extra: { label: "Sorry texts sent", value: "too many" }, costs: { "form": "due yesterday", "appt": "rescheduled", "bday": "belated card", "bill": "late fee", "reply": "3 days late", "promise": "sorry, again" } } },
+  slip_m: { say: "Okay, don’t let me forget: send Jim the quote, the registration’s due on the 15th, and practice moved to 5 on Wednesday.", tasks: ["Send Jim the quote", "Renew the registration by the 15th", "Practice at 5 on Wednesday"],
+    receipt: { title: "What slipping cost you", stamp: "Dropped the ball", stampSub: "and it bugs you", extra: { label: "Late fees", value: "adding up" }, costs: { "form": "due yesterday", "appt": "missed", "bday": "belated text", "bill": "late fee", "reply": "never sent", "promise": "she reminded me" } } },
+  loop: { say: "Wiped again. Back-to-back calls, no lunch, and I skipped my walk. I just want to know why some weeks flatten me.", tasks: ["Block 30 minutes for lunch", "Walk on Tuesday and Thursday"],
+    receipt: { title: "What’s draining you", stamp: "Running on empty", stampSub: "and you can’t say why", extra: { label: "The things that help", value: "skipped again" }, costs: { "tired": "by Wednesday", "short": "then guilt", "nextweek": "for months", "skip": "first to go", "blur": "gone", "dread": "by Sunday" } } },
+  loop_m: { say: "Rough week. Slept badly, slammed at work, short with the kids again. I don’t get what’s wiping me out.", tasks: ["In bed by 11 on weeknights", "Basketball on Thursday"],
+    receipt: { title: "What’s wiping you out", stamp: "No gas in the tank", stampSub: "and no idea why", extra: { label: "What recharges you", value: "skipped" }, costs: { "tired": "by Wednesday", "short": "with the kids", "nextweek": "for months", "skip": "first to go", "blur": "gone", "dread": "by Sunday" } } },
+  progress: { say: "Same goals as last year. I walked twice and skipped the rest. I want to see what’s actually getting in the way.", tasks: ["Walk on Tuesday and Thursday", "Sign up for the pottery class"],
+    receipt: { title: "Your year so far", stamp: "Same as last year", stampSub: "it doesn’t have to be", extra: { label: "What’s really in the way", value: "still unclear" }, costs: { "blur": "every day", "stuck": "still guessing", "goals": "to next year", "restart": "again", "proud": "nothing yet", "year": "gone, again" } } },
+  progress_m: { say: "Grinding again. Hit the gym twice, still haven’t listed the first table. I need to see what’s holding me back.", tasks: ["Gym Monday, Wednesday, Friday", "List the first table online"],
+    receipt: { title: "Your year so far", stamp: "Spinning your wheels", stampSub: "time for traction", extra: { label: "What’s holding you back", value: "no idea" }, costs: { "blur": "every day", "stuck": "no traction", "goals": "again", "restart": "back to zero", "proud": "not yet", "year": "still waiting" } } },
+  adhd: { say: "Okay, quick, before it’s gone: email my boss back, return the shoes by Friday, sign Emma’s form, and that garden idea.", tasks: ["Email your boss back", "Return the shoes by Friday", "Sign Emma’s form"],
+    receipt: { title: "Your brain this week", stamp: "47 tabs open", stampSub: "and none of them saved", extra: { label: "Ideas that vanished", value: "too many" }, costs: { "start": "none finished", "lose": "gone", "forget": "instantly", "time": "gone again", "overwhelm": "frozen", "freeze": "every time" } } },
+  adhd_m: { say: "Brain dump before the next job: invoice Mark, call the client about the quote, fix the garage door, and that second-truck idea.", tasks: ["Send Mark’s invoice", "Call the client about the quote", "Fix the garage door"],
+    receipt: { title: "Your head this week", stamp: "All over the place", stampSub: "and none of it written down", extra: { label: "Ideas lost on the drive", value: "plenty" }, costs: { "start": "none finished", "lose": "gone", "forget": "instantly", "time": "gone again", "overwhelm": "stuck", "freeze": "every time" } } },
+  journal: { say: "No planner this time. The dentist moved to Tuesday, Emma’s recital is Saturday, and I want to start walking again.", tasks: ["Dentist on Tuesday", "Emma’s recital on Saturday", "Start walking again"] },
+  journal_m: { say: "Not journaling, just getting it out: a quote for the Hendersons, call the supplier, and the boat needs a new battery.", tasks: ["Quote for the Hendersons", "Call the supplier", "New boat battery"] },
+};
+for (const c of [PAIN_V9, PAIN_M_V9, SLIP_V9, SLIP_M_V9, LOOP_V9, LOOP_M_V9, PROGRESS_V9, PROGRESS_M_V9, ADHD_V9, ADHD_M_V9, JOURNAL_V9, JOURNAL_M_V9]) {
+  const f = FINAL_1106[c.brand];
+  c.extras = { ...c.extras, previewSay: f.say, previewTasks: f.tasks };
+  c.reassure = { ...c.reassure, title: "It’s not you. Your current system is failing you." };
+  if (c.painKit && f.receipt) c.painKit = { ...c.painKit, receipt: { ...c.painKit.receipt, ...f.receipt } as PainKit["receipt"] };
+}
+// Relief "seen": she may keep a good list; ask how it's working instead of assuming it fails.
+for (const [c, title, opts] of [
+  [PAIN_V9, "How’s your current list working for you?", { never: "I don’t have time to keep one", lost: "Things still slip through", rewrite: "I keep rewriting it", ignore: "It works, but it’s a job to keep up" }],
+  [PAIN_M_V9, "How’s your current system working?", { never: "No time to keep one", lost: "Stuff still slips", rewrite: "I keep starting it over", ignore: "It works, but it’s a lot to keep up" }],
+] as [V9Config, string, Record<string, string>][]) {
+  c.steps = c.steps.map((st) => (st.id === "seen" && st.kind === "single" ? ({ ...st, title, options: st.options.map((o) => ({ ...o, label: opts[o.id] ?? o.label })) } as V9Step) : st));
 }
 
 // /start-catch: "It's a storage problem" lands right after the guilt screen, not after "what would help" (2026-11-04 review).
