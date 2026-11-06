@@ -1893,8 +1893,8 @@ for (const c of [PAIN_V9, PAIN_M_V9, SLIP_V9, SLIP_M_V9, LOOP_V9, LOOP_M_V9, PRO
 }
 // Relief "seen": she may keep a good list; ask how it's working instead of assuming it fails.
 for (const [c, title, opts] of [
-  [PAIN_V9, "How’s your current list working for you?", { never: "I don’t have time to keep one", lost: "Things still slip through", rewrite: "I keep rewriting it", ignore: "It works, but it’s a job to keep up" }],
-  [PAIN_M_V9, "How’s your current system working?", { never: "No time to keep one", lost: "Stuff still slips", rewrite: "I keep starting it over", ignore: "It works, but it’s a lot to keep up" }],
+  [PAIN_V9, "How’s your current task management system working for you?", { never: "I don’t have time to keep one", lost: "Things still slip through", rewrite: "I keep rewriting it", ignore: "It works, but it’s a job to keep up" }],
+  [PAIN_M_V9, "How’s your current task management system working for you?", { never: "No time to keep one", lost: "Stuff still slips", rewrite: "I keep starting it over", ignore: "It works, but it’s a lot to keep up" }],
 ] as [V9Config, string, Record<string, string>][]) {
   c.steps = c.steps.map((st) => (st.id === "seen" && st.kind === "single" ? ({ ...st, title, options: st.options.map((o) => ({ ...o, label: opts[o.id] ?? o.label })) } as V9Step) : st));
 }
