@@ -8,6 +8,54 @@
 ---
 
 
+## [2026-11-06] — Last persona-audit fixes on the pain funnels; "never forget" review trimmed
+
+**Requested by:** Keenan
+**Committed by:** Claude Code
+**Commit hash:** 1aa8ef37 + this commit
+
+### In plain English (for Keenan)
+Cleaned up the last small things the persona audit flagged across the pain funnels:
+- The paywall receipt now repeats her own answer ("every few days").
+- The stuck funnel's meter talks about her list, not how heavy her head is.
+- The men's scattered screen shows his to-dos.
+- The best-ideas answer now shows up on the result screen.
+- Each funnel gets its own "nearly there" line.
+
+We also stopped promising "nothing slipping through" and cut "I never forget anything anymore" from the review those funnels show, because Ripple doesn't send reminders. The pain funnels are still off.
+
+### Technical changes (for Jimmy)
+- apps/web/src/components/funnel-v9.tsx: receipt OFTEN map (weekly → "every few days"; no-often funnels "on repeat"); meter reads `C.extras.weekWords`; men's focus HookOverlay/HeroProps tabs; `ideasVs()` swaps the focus "Great idea …, gone" row by `answers.single.ideas`; ValueAdd "It's all in one place"; review topic regex widened.
+- apps/web/src/lib/funnel-v9-config.ts: `FunnelExtras.weekWords`; per-funnel slider milestones; JOURNAL_REVIEWS[0] (KeysCoins) trimmed to its first two sentences.
+- apps/web/src/lib/funnel-copy-audit2.ts: stuck funnel meter words.
+
+### Manual steps needed
+- [ ] Monday: decide whether the live /start, /start-test and BWK funnels and the homepage should also drop the "I never forget anything anymore" review. Left unchanged today because live funnel changes are Monday-only (Keenan)
+
+### Notes
+- JOURNAL_REVIEWS feeds /start-journal and all six pain funnels. V9_REVIEWS and the BWK list feed the live /start, /start-test and BWK funnels and were deliberately left alone.
+- Review page re-recorded 11-06 (artifact 1Bq771B6TfR3RcxRhrXhTj, v21).
+
+## [2026-11-05] — Hand-made Ripple videos back on auto-post; alerts for posts that don't go out
+
+- **Requested by:** Keenan
+- **Committed by:** Claude Code
+- **Commit hash:** (this commit)
+
+### In plain English (for Keenan)
+None of the hand-made Ripple videos went out today because all of them were switched off on 11-04. All 39 remaining videos are back on the schedule: two a day at 1:30pm and 4:30pm CT through 11-24, plus tonight's two at 5:45pm and 7:30pm CT. The 9am health email now also warns when a post is overdue and hasn't gone out, or when an Instagram post goes up and then disappears. That's what happened to today's list reel: it's live on Facebook but gone from Instagram, with no notice.
+
+### Technical changes (for Jimmy)
+- DB: 74 SocialPublish rows (37 posts × IG/FB, "Turned off 11-04") set back to PENDING at their original slots (19:30 / 22:30 UTC). Tonight's 4 rows moved to 23:45 and 01:30 UTC. Before requeueing, each post was checked for reels/<id>.mp4 > 2MB, a done marker and APPROVED status.
+- apps/web/src/inngest/functions/social-health-check.ts: new checks 1b (IG/FB rows still PENDING 90+ min past their slot, last 48h) and 1c (Ripple IG posts from the last 48h that Graph can no longer read)
+
+### Manual steps needed
+- [ ] Find out why Instagram reels DfXhK-djUBM (11-05 list), DfTAxq5Ezix (11-03 "Dropping things") and DfWEdRxD0r4 vanished: deleted by hand, or removed by Instagram? (Keenan)
+
+### Notes
+- Audit 10-26 to 11-05: every scheduled Ripple post published. Real problems: 11-04 slideshow over a hand-made video (fixed 7cd7b302), 11-04 normal posts pushed to 3-4pm CT by the hand-queued rows (cursor fix 11-04), 11-05 hand-made posts skipped and list clips near-frozen (730289c3).
+- Today's IG list reel used music-ig/ripple/ssstik.io_1790301812663.mp3. If Instagram took it down over the music, that track is the suspect.
+
 ## [2026-11-05] — Quick debrief test results added to Jimmy's spec
 
 - **Requested by:** Keenan

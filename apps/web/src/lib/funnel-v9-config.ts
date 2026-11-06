@@ -838,7 +838,7 @@ export function journalStateName(a: { plate: string[]; sliders: Record<string, n
  * (anxiety and reminders claims).
  */
 export const JOURNAL_REVIEWS = [
-  { quote: "Tried journaling forever and it never stuck. This makes it easy and gives me way better insights into my actual life. The task manager is a lifesaver!! I never forget anything anymore", name: "KeysCoins \u00B7 App Store" },
+  { quote: "Tried journaling forever and it never stuck. This makes it easy and gives me way better insights into my actual life.", name: "KeysCoins \u00B7 App Store" },
   { quote: "Ripple is my daily go to for organization and productivity. It helps me get my thoughts down, review my day, and ensure I don\u2019t miss any habits or to-dos.", name: "JCirishlax55 \u00B7 App Store" },
   { quote: "As an avid written journaling user to start with the transition was tricky for me\u2026 Once I got over that it became entirely natural, and the app picked up on some interesting background themes for me, as well as catching tasks and goals. I honestly wouldn\u2019t be without this now.", name: "vjhaines \u00B7 App Store" },
   { quote: "This app is amazing and been a game changer for me!", name: "JPB619 \u00B7 App Store" },

@@ -816,7 +816,7 @@ function initials(name: string) {
 function SliderReview({ stepId }: { stepId: string }) {
   const C = useV9();
   // Matched to the question where it fits; other sliders take reviews in turn.
-  const byTopic: Record<string, RegExp> = { "s-lists": /never forget|task manager/i, "s-repeat": /every Monday|weekly report/i, "s-name": /never connected|bring up/i, "s-say": /written journaling/i };
+  const byTopic: Record<string, RegExp> = { "s-lists": /never forget|task manager|to-dos|organization/i, "s-repeat": /every Monday|weekly report/i, "s-name": /never connected|bring up/i, "s-say": /written journaling/i };
   const sliders = C.steps.filter((s) => s.kind === "slider").map((s) => s.id);
   const i = sliders.indexOf(stepId);
   const r = C.reviews.find((x) => byTopic[stepId]?.test(x.quote)) ?? (i >= 0 && C.reviews.length ? C.reviews[i % C.reviews.length] : null);
